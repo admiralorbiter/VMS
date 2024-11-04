@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Jon's World{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1>Welcome to Jon's World</h1>
+{% endblock %}
