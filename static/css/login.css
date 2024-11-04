@@ -15,7 +15,7 @@
 }
 
 .login-title {
-    color: var(--dark-purple);
+    color: var(--ucla-blue);
     text-align: center;
     margin-bottom: 1.5rem;
     font-weight: bold;
@@ -26,25 +26,25 @@
 }
 
 .form-label {
-    color: var(--dark-purple);
+    color: var(--ucla-blue);
     font-weight: 500;
 }
 
 .form-control {
-    border: 2px solid var(--eggplant);
+    border: 2px solid var(--ucla-blue);
     border-radius: 4px;
     padding: 0.75rem;
 }
 
 .form-control:focus {
-    border-color: var(--redwood);
-    box-shadow: 0 0 0 0.2rem rgba(183, 93, 105, 0.25);
+    border-color: var(--poppy);
+    box-shadow: 0 0 0 0.2rem rgba(214, 64, 69, 0.25);
 }
 
 .login-btn {
-    background-color: var(--dark-purple);
+    background-color: var(--ucla-blue);
     border: none;
-    color: var(--pale-dogwood);
+    color: var(--mint-green);
     padding: 0.75rem 1.5rem;
     width: 100%;
     font-weight: 500;
@@ -52,8 +52,8 @@
 }
 
 .login-btn:hover {
-    background-color: var(--eggplant);
-    color: var(--pale-dogwood);
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
 }
 
 .alert {
@@ -62,11 +62,11 @@
 }
 
 .alert-danger {
-    background-color: rgba(183, 93, 105, 0.1);
-    color: var(--redwood);
+    background-color: rgba(214, 64, 69, 0.1);
+    color: var(--poppy);
 }
 
 .alert-success {
-    background-color: rgba(55, 37, 73, 0.1);
-    color: var(--dark-purple);
+    background-color: rgba(70, 117, 153, 0.1);
+    color: var(--ucla-blue);
 } 

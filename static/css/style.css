@@ -1,15 +1,15 @@
 *{
-    --raisin-black: #1a1423ff;
-    --dark-purple: #372549ff;
-    --eggplant: #774c60ff;
-    --redwood: #b75d69ff;
-    --pale-dogwood: #eacdc2ff;
+    --delft-blue: #1d3354ff;
+    --ucla-blue: #467599ff;
+    --poppy: #d64045ff;
+    --non-photo-blue: #9ed8dbff;
+    --mint-green: #e9fff9ff;
 }
 
 body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
-    background-color: var(--pale-dogwood)
+    background-color: var(--mint-green)
 }
 
 main {
@@ -19,31 +19,33 @@ main {
 }
 
 .custom-nav {
-    background-color: var(--raisin-black);
+    background-color: var(--delft-blue);
     padding: 1rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .navbar-brand {
-    color: var(--pale-dogwood) !important;
+    color: var(--mint-green) !important;
     font-weight: bold;
     font-size: 1.5rem;
     transition: color 0.3s ease;
 }
 
 .navbar-brand:hover {
-    color: var(--redwood) !important;
+    color: var(--poppy) !important;
 }
 
 .nav-link {
-    color: var(--pale-dogwood) !important;
+    color: var(--mint-green) !important;
     margin: 0 0.5rem;
     position: relative;
     transition: color 0.3s ease;
+    font-size: 2rem;
+    font-weight: 500;
 }
 
 .nav-link:hover {
-    color: var(--redwood) !important;
+    color: var(--poppy) !important;
 }
 
 .nav-link::after {
@@ -53,7 +55,7 @@ main {
     height: 2px;
     bottom: 0;
     left: 0;
-    background-color: var(--redwood);
+    background-color: var(--poppy);
     transition: width 0.3s ease;
 }
 
@@ -62,9 +64,118 @@ main {
 }
 
 .navbar-toggler {
-    border-color: var(--pale-dogwood);
+    border-color: var(--mint-green);
 }
 
 .navbar-toggler-icon {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(234, 205, 194, 0.9)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+.navbar-brand-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.navbar-brand-container .tagline {
+    font-size: 1rem;
+    color: var(--mint-green);
+    margin-top: -8px;
+    opacity: 0.8;
+}
+
+.hero-section {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border-radius: 1rem;
+    margin-bottom: 3rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.hero-section h1 {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.hero-section .tagline {
+    font-size: 1.5rem;
+    opacity: 0.9;
+}
+
+.features-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.feature-card {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.feature-card h2 {
+    color: var(--ucla-blue);
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.feature-card p {
+    color: var(--delft-blue);
+    line-height: 1.6;
+}
+
+.cta-section {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    border-radius: 1rem;
+    margin-top: 2rem;
+}
+
+.cta-section h2 {
+    margin-bottom: 2rem;
+    font-size: 2rem;
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 1rem 2rem;
+    background-color: var(--non-photo-blue);
+    color: var(--mint-green);
+    text-decoration: none;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.cta-button:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+}
+
+@media (max-width: 768px) {
+    .hero-section h1 {
+        font-size: 2.5rem;
+    }
+    
+    .hero-section .tagline {
+        font-size: 1.2rem;
+    }
+    
+    .features-container {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
 }
