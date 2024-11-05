@@ -1,8 +1,10 @@
-from flask import flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, url_for, request, jsonify
 from flask_login import login_required, login_user, logout_user
-from forms import LoginForm
+from forms import LoginForm, VolunteerForm
 from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
+from models.volunteer import Email, Skill, Volunteer, LocalStatusEnum
+from sqlalchemy import or_
 
 def init_routes(app):
     @app.route('/')
@@ -27,4 +29,108 @@ def init_routes(app):
     def logout():
         logout_user()
         flash('You have been logged out.', 'info')
-        return redirect(url_for('index')) 
+        return redirect(url_for('index'))
+    
+    @app.route('/volunteers', methods=['GET'])
+    @login_required
+    def volunteers():
+        # Get filter parameters from request
+        search_name = request.args.get('search_name', '').strip()
+        org_search = request.args.get('org_search', '').strip()
+        local_status = request.args.get('local_status', '')
+        email_search = request.args.get('email_search', '').strip()
+        skill_search = request.args.get('skill_search', '').strip()
+        sort_by = request.args.get('sort_by', 'last_volunteer_date')
+        
+        # Start with base query
+        query = Volunteer.query
+        
+        # Apply filters
+        if search_name:
+            query = query.filter(
+                or_(
+                    Volunteer.first_name.ilike(f'%{search_name}%'),
+                    Volunteer.middle_name.ilike(f'%{search_name}%'),
+                    Volunteer.last_name.ilike(f'%{search_name}%')
+                )
+            )
+        
+        if org_search:
+            query = query.filter(
+                or_(
+                    Volunteer.organization_name.ilike(f'%{org_search}%'),
+                    Volunteer.title.ilike(f'%{org_search}%'),
+                    Volunteer.department.ilike(f'%{org_search}%'),
+                    Volunteer.industry.ilike(f'%{org_search}%')
+                )
+            )
+        
+        if local_status:
+            query = query.filter(Volunteer.local_status == local_status)
+        
+        if email_search:
+            query = query.join(Volunteer.emails).filter(
+                Volunteer.emails.any(email=email_search)
+            )
+        
+        if skill_search:
+            query = query.join(Volunteer.skills).filter(
+                Volunteer.skills.any(name=skill_search)
+            )
+        
+        # Apply sorting
+        if sort_by == 'last_volunteer_date':
+            query = query.order_by(Volunteer.last_volunteer_date.desc())
+        elif sort_by == 'times_volunteered':
+            query = query.order_by(Volunteer.times_volunteered.desc())
+        
+        volunteers = query.all()
+        
+        return render_template(
+            '/volunteers/volunteers.html',
+            volunteers=volunteers,
+            local_status_choices=LocalStatusEnum.choices(),
+            current_filters={
+                'search_name': search_name,
+                'org_search': org_search,
+                'local_status': local_status,
+                'email_search': email_search,
+                'skill_search': skill_search,
+                'sort_by': sort_by
+            }
+        )
+    
+    @app.route('/volunteers/add', methods=['GET', 'POST'])
+    @login_required
+    def add_volunteer():
+        form = VolunteerForm()
+        if form.validate_on_submit():
+            volunteer = Volunteer(
+                first_name=form.first_name.data,
+                middle_name=form.middle_name.data,
+                last_name=form.last_name.data,
+                organization_name=form.organization_name.data,
+                title=form.title.data,
+                department=form.department.data,
+                industry=form.industry.data,
+                local_status=form.local_status.data
+            )
+            
+            # Add emails
+            for email in form.emails.data:
+                volunteer.emails.append(Email(email=email))
+            
+            # Add skills
+            for skill in form.skills.data:
+                volunteer.skills.append(Skill(name=skill))
+            
+            db.session.add(volunteer)
+            try:
+                db.session.commit()
+                flash('Volunteer added successfully!', 'success')
+                return redirect(url_for('volunteers'))
+            except Exception as e:
+                db.session.rollback()
+                flash('Error adding volunteer. Please try again.', 'danger')
+                
+        return render_template('/volunteers/add_volunteer.html', form=form)

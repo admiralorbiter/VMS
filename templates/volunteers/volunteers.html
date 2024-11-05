@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Volunteers{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="volunteers-container">
+    <div class="volunteers-header">
+        <h1>Volunteer Directory</h1>
+        <a href="{{ url_for('add_volunteer') }}" class="btn add-volunteer-btn">
+            <span class="btn-content">Add New Volunteer</span>
+        </a>
+    </div>
+
+    <div class="filter-panel">
+        <form method="GET" class="filter-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="search_name">Name Search</label>
+                    <input type="text" name="search_name" id="search_name" 
+                           value="{{ current_filters.search_name }}" 
+                           class="form-control" 
+                           placeholder="Search by name...">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="org_search">Organization/Role</label>
+                    <input type="text" name="org_search" id="org_search" 
+                           value="{{ current_filters.org_search }}" 
+                           class="form-control" 
+                           placeholder="Search organization, title, department...">
+                </div>
+
+                <div class="filter-group">
+                    <label for="local_status">Local Status</label>
+                    <select name="local_status" id="local_status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="true" {% if current_filters.local_status == 'true' %}selected{% endif %}>True</option>
+                        <option value="partial" {% if current_filters.local_status == 'partial' %}selected{% endif %}>Partial</option>
+                        <option value="false" {% if current_filters.local_status == 'false' %}selected{% endif %}>False</option>
+                        <option value="unknown" {% if current_filters.local_status == 'unknown' %}selected{% endif %}>Unknown</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="email_search">Email</label>
+                    <input type="text" name="email_search" id="email_search" 
+                           value="{{ current_filters.email_search }}" 
+                           class="form-control" 
+                           placeholder="Search by email...">
+                </div>
+
+                <div class="filter-group">
+                    <label for="skill_search">Skills</label>
+                    <input type="text" name="skill_search" id="skill_search" 
+                           value="{{ current_filters.skill_search }}" 
+                           class="form-control" 
+                           placeholder="Search by skill...">
+                </div>
+
+                <div class="filter-group">
+                    <label for="sort_by">Sort By</label>
+                    <select name="sort_by" id="sort_by" class="form-select">
+                        <option value="last_volunteer_date" 
+                                {% if current_filters.sort_by == 'last_volunteer_date' %}selected{% endif %}>
+                            Last Volunteer Date
+                        </option>
+                        <option value="times_volunteered" 
+                                {% if current_filters.sort_by == 'times_volunteered' %}selected{% endif %}>
+                            Times Volunteered
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn filter-btn">Apply Filters</button>
+                <a href="{{ url_for('volunteers') }}" class="btn reset-btn">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="volunteers-table-container">
+        <table class="table volunteers-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Organization</th>
+                    <th>Title</th>
+                    <th>Local Status</th>
+                    <th>Last Volunteered</th>
+                    <th>Times Volunteered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for volunteer in volunteers %}
+                <tr>
+                    <td>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</td>
+                    <td>{{ volunteer.organization_name }}</td>
+                    <td>{{ volunteer.title }}</td>
+                    <td>{{ volunteer.local_status }}</td>
+                    <td>{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</td>
+                    <td>{{ volunteer.times_volunteered }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="#" class="btn btn-sm action-btn view-btn">View</a>
+                            <a href="#" class="btn btn-sm action-btn edit-btn">Edit</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
