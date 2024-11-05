@@ -3,7 +3,7 @@ from flask_login import login_required, login_user, logout_user
 from forms import LoginForm, VolunteerForm
 from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
-from models.volunteer import Address, ContactTypeEnum, Email, Engagement, Phone, Skill, Volunteer , VolunteerSkill
+from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, Volunteer , VolunteerSkill
 from sqlalchemy import or_
 from datetime import datetime
 import io
@@ -276,16 +276,13 @@ def init_routes(app):
             return render_template('volunteers/import.html')
         
         try:
-            # Check if this is a quick sync request
             if request.is_json and request.json.get('quickSync'):
-                # Use the default CSV file
                 default_file_path = os.path.join('data', 'Volunteers.csv')
                 if not os.path.exists(default_file_path):
                     return jsonify({'error': 'Default CSV file not found'}), 404
                     
                 with open(default_file_path, 'r', encoding='utf-8') as file:
                     csv_data = csv.DictReader(file)
-                    # Rest of the CSV processing logic
                     success_count = 0
                     error_count = 0
                     errors = []
@@ -303,14 +300,35 @@ def init_routes(app):
                                 error_count += 1
                                 continue
                             
-                            # Create new volunteer
+                            # Create new volunteer with proper enum handling
                             volunteer = Volunteer(
+                                salesforce_individual_id=row.get('Id', '').strip(),
+                                salesforce_account_id=row.get('AccountId', '').strip(),
                                 first_name=row.get('FirstName', '').strip(),
-                                last_name=row.get('LastName', '').strip()
+                                last_name=row.get('LastName', '').strip(),
+                                middle_name=row.get('MiddleName', '').strip(),
+                                organization_name=row.get('Primary Affiliation', '').strip(),
+                                title=row.get('Title', '').strip(),
+                                department=row.get('Department', '').strip(),
+                                industry=row.get('Industry', '').strip(),
+                                
+                                gender=(
+                                    GenderEnum[row.get('Gender', '').lower().replace(' ', '_').strip()]
+                                    if row.get('Gender', '').lower().replace(' ', '_').strip() in [e.name for e in GenderEnum]
+                                    else None
+                                ),
+                                
+                                # Handle dates properly
+                                birthdate=parse_date(row.get('Birthdate', '')),
+                                last_mailchimp_activity_date=parse_date(row.get('Last_Mailchimp_Email_Date__c', '')),
+                                last_volunteer_date=parse_date(row.get('Last_Volunteer_Date__c', '')),
+                                last_email_date=parse_date(row.get('Last_Email_Message__c', '')),
+                                
+                                notes=row.get('Notes', '').strip()
                             )
-                            
+
                             # Add email if provided
-                            email = row.get('Email', '').strip()
+                            email = row.get('Email', '').strip() or row.get('Personal_Email__c', '').strip()
                             if email:
                                 email_obj = Email(
                                     email=email,
@@ -318,15 +336,43 @@ def init_routes(app):
                                     primary=True
                                 )
                                 volunteer.emails.append(email_obj)
-                            
+
+                            # Add work email if provided
+                            work_email = row.get('Work_Email__c', '').strip()
+                            if work_email:
+                                work_email_obj = Email(
+                                    email=work_email,
+                                    type=ContactTypeEnum.professional,  # Changed to match enum
+                                    primary=False
+                                )
+                                volunteer.emails.append(work_email_obj)
+
+                            # Add Phone if provided
+                            phone = row.get('Phone', '').strip() or row.get('MobilePhone', '').strip()
+                            if phone:
+                                phone_obj = Phone(
+                                    number=phone,
+                                    type=ContactTypeEnum.personal,  # Changed to match enum
+                                    primary=True
+                                )
+                                volunteer.phones.append(phone_obj)
+
                             db.session.add(volunteer)
+                            db.session.flush()  # Flush to catch any database errors early
                             success_count += 1
                             
                         except Exception as e:
+                            print(f"Error processing row: {str(e)}")  # Debug line
                             errors.append(f"Error processing row: {str(e)}")
                             error_count += 1
+                            continue
                     
-                    db.session.commit()
+                    try:
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"Database commit error: {str(e)}")  # Debug line
+                        return jsonify({'error': f'Database error: {str(e)}'}), 500
                     
                     return jsonify({
                         'success': True,
@@ -334,7 +380,7 @@ def init_routes(app):
                         'errorCount': error_count,
                         'errors': errors
                     })
-            
+
             # Handle regular file upload
             if 'file' not in request.files:
                 return jsonify({'error': 'No file uploaded'}), 400
@@ -373,3 +419,18 @@ def init_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)})
+
+def parse_date(date_str):
+    """Helper function to parse dates from the CSV"""
+    if not date_str:
+        return None
+    try:
+        # Try parsing different date formats
+        for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%m/%d/%Y']:
+            try:
+                return datetime.strptime(date_str.strip(), fmt).date()
+            except ValueError:
+                continue
+        return None
+    except Exception:
+        return None

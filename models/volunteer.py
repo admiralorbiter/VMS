@@ -99,7 +99,7 @@ class Volunteer(db.Model):
     
     id = db.Column(Integer, primary_key=True)
     salesforce_individual_id = db.Column(String(18), unique=True, nullable=True)
-    salesforce_account_id = db.Column(String(18), unique=True, nullable=True)
+    salesforce_account_id = db.Column(String(18), nullable=True)
     salutation = db.Column(Enum(SalutationEnum), nullable=True)
     first_name = db.Column(String(50), nullable=False)
     middle_name = db.Column(String(50), nullable=True)
