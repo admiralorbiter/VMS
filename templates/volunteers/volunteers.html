@@ -36,12 +36,20 @@
 
                 <div class="filter-group">
                     <label for="local_status">Local Status</label>
-                    <select name="local_status" id="local_status" class="form-select">
-                        <option value="">All Statuses</option>
-                        <option value="true" {% if current_filters.local_status == 'true' %}selected{% endif %}>True</option>
-                        <option value="partial" {% if current_filters.local_status == 'partial' %}selected{% endif %}>Partial</option>
-                        <option value="false" {% if current_filters.local_status == 'false' %}selected{% endif %}>False</option>
-                        <option value="unknown" {% if current_filters.local_status == 'unknown' %}selected{% endif %}>Unknown</option>
+                    <select name="local_status" id="local_status" class="form-select status-select">
+                        <option value=""><i class="fa-solid fa-filter"></i> All Statuses</option>
+                        <option value="true" {% if current_filters.local_status == 'true' %}selected{% endif %}>
+                            <i class="fa-solid fa-check-circle"></i> Local
+                        </option>
+                        <option value="partial" {% if current_filters.local_status == 'partial' %}selected{% endif %}>
+                            <i class="fa-solid fa-adjust"></i> Partial
+                        </option>
+                        <option value="false" {% if current_filters.local_status == 'false' %}selected{% endif %}>
+                            <i class="fa-solid fa-times-circle"></i> Non-Local
+                        </option>
+                        <option value="unknown" {% if current_filters.local_status == 'unknown' %}selected{% endif %}>
+                            <i class="fa-solid fa-question-circle"></i> Unknown
+                        </option>
                     </select>
                 </div>
             </div>
@@ -89,12 +97,22 @@
         <table class="table volunteers-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Organization</th>
-                    <th>Title</th>
+                    <th class="sortable" data-sort="name">
+                        Name <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="organization">
+                        Organization <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="title">
+                        Title <i class="fa-solid fa-sort"></i>
+                    </th>
                     <th>Local Status</th>
-                    <th>Last Volunteered</th>
-                    <th>Times Volunteered</th>
+                    <th class="sortable" data-sort="last_volunteer_date">
+                        Last Volunteered <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="times_volunteered">
+                        Times Volunteered <i class="fa-solid fa-sort"></i>
+                    </th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -104,7 +122,23 @@
                     <td>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</td>
                     <td>{{ volunteer.organization_name }}</td>
                     <td>{{ volunteer.title }}</td>
-                    <td>{{ volunteer.local_status }}</td>
+                    <td>
+                        <span class="status-badge {{ volunteer.local_status }}">
+                            {% if volunteer.local_status == 'true' %}
+                                <i class="fa-solid fa-check-circle"></i>
+                                <span>Local</span>
+                            {% elif volunteer.local_status == 'partial' %}
+                                <i class="fa-solid fa-adjust"></i>
+                                <span>Partial</span>
+                            {% elif volunteer.local_status == 'false' %}
+                                <i class="fa-solid fa-times-circle"></i>
+                                <span>Non-Local</span>
+                            {% else %}
+                                <i class="fa-solid fa-question-circle"></i>
+                                <span>Unknown</span>
+                            {% endif %}
+                        </span>
+                    </td>
                     <td>{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</td>
                     <td>{{ volunteer.times_volunteered }}</td>
                     <td>

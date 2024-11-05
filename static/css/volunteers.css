@@ -449,3 +449,103 @@
     transform: translateY(1px);
     box-shadow: 0 1px 0 var(--delft-blue);
 }
+
+/* Table Styling */
+.volunteers-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 1.5rem;
+}
+
+.volunteers-table th.sortable i {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    transition: all 0.2s ease;
+}
+
+.volunteers-table th.sortable:hover i {
+    opacity: 1;
+    color: var(--non-photo-blue);
+}
+
+.volunteers-table th.sort-asc i {
+    opacity: 1;
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.volunteers-table th.sort-desc i {
+    opacity: 1;
+}
+
+/* Status Badge Styling */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.status-badge.true {
+    background: rgba(75, 181, 67, 0.1);
+    color: #4BB543;
+}
+
+.status-badge.partial {
+    background: rgba(255, 187, 51, 0.1);
+    color: #FFBB33;
+}
+
+.status-badge.false {
+    background: rgba(214, 64, 69, 0.1);
+    color: var(--poppy);
+}
+
+.status-badge.unknown {
+    background: rgba(158, 216, 219, 0.1);
+    color: var(--ucla-blue);
+}
+
+.status-badge i {
+    font-size: 1.1rem;
+}
+
+/* Style for the status select dropdown */
+.status-select option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 8px;
+}
+
+.status-select option i {
+    margin-right: 8px;
+}
+
+/* Organization Card Styling */
+.org-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.org-name {
+    font-weight: bold;
+    color: var(--ucla-blue);
+}
+
+.org-title {
+    font-size: 0.9rem;
+    color: var(--delft-blue);
+}
+
+.org-department {
+    font-size: 0.8rem;
+    color: #666;
+}

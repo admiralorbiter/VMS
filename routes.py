@@ -31,74 +31,59 @@ def init_routes(app):
         flash('You have been logged out.', 'info')
         return redirect(url_for('index'))
     
-    @app.route('/volunteers', methods=['GET'])
+    @app.route('/volunteers')
     @login_required
     def volunteers():
-        # Get filter parameters from request
+        # Get search parameters
         search_name = request.args.get('search_name', '').strip()
         org_search = request.args.get('org_search', '').strip()
-        local_status = request.args.get('local_status', '')
         email_search = request.args.get('email_search', '').strip()
         skill_search = request.args.get('skill_search', '').strip()
+        local_status = request.args.get('local_status', '')
         sort_by = request.args.get('sort_by', 'last_volunteer_date')
-        
-        # Start with base query
+        sort_direction = request.args.get('sort_direction', 'desc')
+
+        # Build query
         query = Volunteer.query
-        
-        # Apply filters
+
         if search_name:
-            query = query.filter(
-                or_(
-                    Volunteer.first_name.ilike(f'%{search_name}%'),
-                    Volunteer.middle_name.ilike(f'%{search_name}%'),
-                    Volunteer.last_name.ilike(f'%{search_name}%')
-                )
-            )
-        
+            search_term = f"%{search_name}%"
+            query = query.filter(or_(
+                Volunteer.first_name.ilike(search_term),
+                Volunteer.last_name.ilike(search_term),
+                Volunteer.middle_name.ilike(search_term)
+            ))
+
         if org_search:
-            query = query.filter(
-                or_(
-                    Volunteer.organization_name.ilike(f'%{org_search}%'),
-                    Volunteer.title.ilike(f'%{org_search}%'),
-                    Volunteer.department.ilike(f'%{org_search}%'),
-                    Volunteer.industry.ilike(f'%{org_search}%')
-                )
-            )
-        
+            search_term = f"%{org_search}%"
+            query = query.filter(or_(
+                Volunteer.organization_name.ilike(search_term),
+                Volunteer.title.ilike(search_term),
+                Volunteer.department.ilike(search_term)
+            ))
+
+        if email_search:
+            search_term = f"%{email_search}%"
+            query = query.join(Email).filter(Email.email.ilike(search_term))
+
+        if skill_search:
+            search_term = f"%{skill_search}%"
+            query = query.join(Volunteer.skills).filter(Skill.name.ilike(search_term))
+
         if local_status:
             query = query.filter(Volunteer.local_status == local_status)
-        
-        if email_search:
-            query = query.join(Volunteer.emails).filter(
-                Volunteer.emails.any(email=email_search)
-            )
-        
-        if skill_search:
-            query = query.join(Volunteer.skills).filter(
-                Volunteer.skills.any(name=skill_search)
-            )
-        
+
         # Apply sorting
-        if sort_by == 'last_volunteer_date':
-            query = query.order_by(Volunteer.last_volunteer_date.desc())
-        elif sort_by == 'times_volunteered':
-            query = query.order_by(Volunteer.times_volunteered.desc())
-        
+        sort_column = getattr(Volunteer, sort_by)
+        if sort_direction == 'desc':
+            sort_column = sort_column.desc()
+        query = query.order_by(sort_column)
+
         volunteers = query.all()
-        
-        return render_template(
-            '/volunteers/volunteers.html',
-            volunteers=volunteers,
-            local_status_choices=LocalStatusEnum.choices(),
-            current_filters={
-                'search_name': search_name,
-                'org_search': org_search,
-                'local_status': local_status,
-                'email_search': email_search,
-                'skill_search': skill_search,
-                'sort_by': sort_by
-            }
-        )
+
+        return render_template('volunteers/volunteers.html',
+                             volunteers=volunteers,
+                             current_filters=request.args)
     
     @app.route('/volunteers/add', methods=['GET', 'POST'])
     @login_required
