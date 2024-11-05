@@ -25,7 +25,8 @@
 }
 
 .add-volunteer-btn,
-.import-volunteers-btn {
+.import-volunteers-btn,
+.purge-volunteers-btn {
     background-color: var(--ucla-blue);
     color: var(--mint-green);
     padding: 0.75rem 1.5rem;
@@ -43,6 +44,19 @@
     color: var(--non-photo-blue);
     transform: translateY(2px);
     box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+/* Special styling for the purge button */
+.purge-volunteers-btn {
+    background-color: var(--poppy);
+    box-shadow: 0 4px 0 #b73136; /* Darker shade of poppy */
+}
+
+.purge-volunteers-btn:hover {
+    background-color: #c13237; /* Slightly darker shade of poppy */
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #b73136;
 }
 
 .filter-panel {

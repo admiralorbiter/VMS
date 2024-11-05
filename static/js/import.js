@@ -43,24 +43,38 @@ document.addEventListener('DOMContentLoaded', function() {
         showProgress();
         importProgress.style.width = '50%';
         
-        fetch('/volunteers/quick-sync')
-            .then(response => response.json())
-            .then(data => {
-                importProgress.style.width = '100%';
-                setTimeout(() => {
-                    if (data.success) {
-                        showResults(data);
-                    } else {
-                        showError(data.error);
-                    }
-                }, 500);
+        fetch('/volunteers/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                quickSync: true
             })
-            .catch(error => {
-                showError('An error occurred during sync');
-            })
-            .finally(() => {
-                quickSyncBtn.disabled = false;
-            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            importProgress.style.width = '100%';
+            setTimeout(() => {
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    showError(data.error || 'Import failed');
+                }
+            }, 500);
+        })
+        .catch(error => {
+            showError(error.message || 'An error occurred during sync');
+        })
+        .finally(() => {
+            quickSyncBtn.disabled = false;
+        });
     });
 
     function handleFileUpload(file) {

@@ -9,6 +9,12 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInputs.forEach(input => {
         input.addEventListener('input', debounce(handleSearch, 300));
     });
+
+    // Initialize purge button
+    const purgeButton = document.querySelector('.purge-volunteers-btn');
+    if (purgeButton) {
+        purgeButton.addEventListener('click', confirmPurge);
+    }
 });
 
 function debounce(func, wait) {
@@ -37,4 +43,52 @@ function handleSort(header) {
 function handleSearch(event) {
     const form = event.target.closest('form');
     form.submit();
+}
+
+function confirmPurge() {
+    if (confirm('Are you sure you want to purge all volunteer data? This action cannot be undone.')) {
+        fetch('/volunteers/purge', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Volunteers purged successfully');
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error);
+        });
+    }
+}
+
+function confirmSync() {
+    if (confirm('Are you sure you want to sync volunteer data? This may take a few minutes.')) {
+        fetch('/volunteers/sync', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Volunteers synced successfully');
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error: ' + error);
+        });
+    }
 } 

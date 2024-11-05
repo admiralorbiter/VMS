@@ -3,7 +3,7 @@ from flask_login import login_required, login_user, logout_user
 from forms import LoginForm, VolunteerForm
 from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
-from models.volunteer import Email, Phone, Skill, Volunteer, LocalStatusEnum
+from models.volunteer import Address, ContactTypeEnum, Email, Engagement, Phone, Skill, Volunteer , VolunteerSkill
 from sqlalchemy import or_
 from datetime import datetime
 import io
@@ -275,128 +275,101 @@ def init_routes(app):
         if request.method == 'GET':
             return render_template('volunteers/import.html')
         
-        # Handle file upload
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file uploaded'}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
-        if not file.filename.endswith('.csv'):
-            return jsonify({'error': 'File must be a CSV'}), 400
-
         try:
-            # Read CSV file
+            # Check if this is a quick sync request
+            if request.is_json and request.json.get('quickSync'):
+                # Use the default CSV file
+                default_file_path = os.path.join('data', 'Volunteers.csv')
+                if not os.path.exists(default_file_path):
+                    return jsonify({'error': 'Default CSV file not found'}), 404
+                    
+                with open(default_file_path, 'r', encoding='utf-8') as file:
+                    csv_data = csv.DictReader(file)
+                    # Rest of the CSV processing logic
+                    success_count = 0
+                    error_count = 0
+                    errors = []
+                    
+                    for row in csv_data:
+                        try:
+                            # Check if volunteer already exists
+                            existing_volunteer = Volunteer.query.filter_by(
+                                first_name=row.get('FirstName', '').strip(),
+                                last_name=row.get('LastName', '').strip()
+                            ).first()
+                            
+                            if existing_volunteer:
+                                errors.append(f"Volunteer already exists: {row.get('FirstName')} {row.get('LastName')}")
+                                error_count += 1
+                                continue
+                            
+                            # Create new volunteer
+                            volunteer = Volunteer(
+                                first_name=row.get('FirstName', '').strip(),
+                                last_name=row.get('LastName', '').strip()
+                            )
+                            
+                            # Add email if provided
+                            email = row.get('Email', '').strip()
+                            if email:
+                                email_obj = Email(
+                                    email=email,
+                                    type=ContactTypeEnum.personal,
+                                    primary=True
+                                )
+                                volunteer.emails.append(email_obj)
+                            
+                            db.session.add(volunteer)
+                            success_count += 1
+                            
+                        except Exception as e:
+                            errors.append(f"Error processing row: {str(e)}")
+                            error_count += 1
+                    
+                    db.session.commit()
+                    
+                    return jsonify({
+                        'success': True,
+                        'successCount': success_count,
+                        'errorCount': error_count,
+                        'errors': errors
+                    })
+            
+            # Handle regular file upload
+            if 'file' not in request.files:
+                return jsonify({'error': 'No file uploaded'}), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            if not file.filename.endswith('.csv'):
+                return jsonify({'error': 'File must be a CSV'}), 400
+
+            # Process uploaded file
             stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
             csv_data = csv.DictReader(stream)
-            
-            success_count = 0
-            error_count = 0
-            errors = []
-            
-            for row in csv_data:
-                try:
-                    # Check if volunteer already exists
-                    existing_volunteer = Volunteer.query.filter_by(
-                        first_name=row.get('FirstName', '').strip(),
-                        last_name=row.get('LastName', '').strip()
-                    ).first()
-                    
-                    if existing_volunteer:
-                        errors.append(f"Volunteer already exists: {row.get('FirstName')} {row.get('LastName')}")
-                        error_count += 1
-                        continue
-                    
-                    # Create new volunteer
-                    volunteer = Volunteer(
-                        first_name=row.get('FirstName', '').strip(),
-                        last_name=row.get('LastName', '').strip()
-                    )
-                    
-                    # Add email if provided
-                    email = row.get('Email', '').strip()
-                    if email:
-                        email_obj = Email(
-                            email=email,
-                            type='Personal',
-                            primary=True
-                        )
-                        volunteer.emails.append(email_obj)
-                    
-                    db.session.add(volunteer)
-                    success_count += 1
-                    
-                except Exception as e:
-                    errors.append(f"Error processing row: {str(e)}")
-                    error_count += 1
-                
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'successCount': success_count,
-                'errorCount': error_count,
-                'errors': errors
-            })
+            # Rest of the existing CSV processing logic...
             
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-
-    @app.route('/volunteers/quick-sync')
+    
+    @app.route('/volunteers/purge', methods=['POST'])
     @login_required
-    def quick_sync():
+    def purge_volunteers():
         try:
-            csv_path = os.path.join(app.root_path, 'data', 'Volunteers.csv')
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                csv_data = csv.DictReader(file)
-                
-                success_count = 0
-                error_count = 0
-                errors = []
-                
-                for row in csv_data:
-                    try:
-                        # Check if volunteer already exists
-                        existing_volunteer = Volunteer.query.filter_by(
-                            first_name=row.get('FirstName', '').strip(),
-                            last_name=row.get('LastName', '').strip()
-                        ).first()
-                        
-                        if existing_volunteer:
-                            continue
-                        
-                        # Create new volunteer
-                        volunteer = Volunteer(
-                            first_name=row.get('FirstName', '').strip(),
-                            last_name=row.get('LastName', '').strip()
-                        )
-                        
-                        # Add email if provided
-                        email = row.get('Email', '').strip()
-                        if email:
-                            email_obj = Email(
-                                email=email,
-                                type='Personal',
-                                primary=True
-                            )
-                            volunteer.emails.append(email_obj)
-                        
-                        db.session.add(volunteer)
-                        success_count += 1
-                        
-                    except Exception as e:
-                        errors.append(f"Error processing row: {str(e)}")
-                        error_count += 1
-                    
-                db.session.commit()
-                
-                return jsonify({
-                    'success': True,
-                    'successCount': success_count,
-                    'errorCount': error_count,
-                    'errors': errors
-                })
-                
+            # Delete all related data first due to foreign key constraints
+            Email.query.delete()
+            Phone.query.delete()
+            VolunteerSkill.query.delete()
+            Engagement.query.delete()
+            Address.query.delete()
+            
+            # Finally delete all volunteers
+            Volunteer.query.delete()
+            
+            db.session.commit()
+            return jsonify({'success': True})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)})

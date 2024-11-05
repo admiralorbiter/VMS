@@ -17,6 +17,9 @@
             <a href="{{ url_for('import_volunteers') }}" class="btn import-volunteers-btn">
                 <span class="btn-content">Import Volunteers</span>
             </a>
+            <button class="btn purge-volunteers-btn">
+                <span class="btn-content">Purge Volunteers</span>
+            </button>
         </div>
     </div>
 
@@ -197,33 +200,6 @@
 </div>
 {% endblock %}
 
-<script>
-function updatePerPage(value) {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Preserve all current filters
-    const currentFilters = {
-        'search_name': urlParams.get('search_name'),
-        'org_search': urlParams.get('org_search'),
-        'email_search': urlParams.get('email_search'),
-        'skill_search': urlParams.get('skill_search'),
-        'local_status': urlParams.get('local_status'),
-        'sort_by': urlParams.get('sort_by'),
-        'sort_direction': urlParams.get('sort_direction')
-    };
-
-    // Create new URLSearchParams with only non-null values
-    const newParams = new URLSearchParams();
-    newParams.set('per_page', value);
-    newParams.set('page', 1); // Reset to first page
-
-    // Add all non-null filters
-    Object.entries(currentFilters).forEach(([key, value]) => {
-        if (value) {
-            newParams.set(key, value);
-        }
-    });
-
-    window.location.href = `${window.location.pathname}?${newParams.toString()}`;
-}
-</script>
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/volunteers.js') }}"></script>
+{% endblock %}
