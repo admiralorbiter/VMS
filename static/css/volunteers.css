@@ -1,8 +1,9 @@
 .volunteers-container {
-    background-color: var(--mint-green);
+    background-color: white;
     padding: 2rem;
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.1);
+    box-shadow: 0 6px 12px rgba(29, 51, 84, 0.15);
+    border: 2px solid var(--non-photo-blue);
 }
 
 .volunteers-header {
@@ -10,6 +11,12 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+}
+
+.volunteers-header h1 {
+    color: var(--delft-blue);
+    font-size: 2.5rem;
+    text-shadow: 2px 2px 0 var(--non-photo-blue);
 }
 
 .add-volunteer-btn {
@@ -168,4 +175,277 @@
     .volunteers-table-container {
         overflow-x: auto;
     }
+}
+
+.required-field {
+    color: var(--poppy);
+    margin-left: 4px;
+    font-weight: bold;
+}
+
+.error {
+    color: var(--poppy);
+    font-size: 0.875rem;
+    margin-top: 6px;
+    display: block;
+    padding: 0.5rem;
+    background-color: rgba(214, 64, 69, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid var(--poppy);
+}
+
+.volunteer-form-container {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.form-section {
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(145deg, var(--mint-green), #f5fffc);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+    position: relative;
+    overflow: hidden;
+}
+
+.form-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: var(--ucla-blue);
+}
+
+.form-section h2 {
+    color: var(--delft-blue);
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--ucla-blue);
+    display: flex;
+    align-items: center;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group.required .form-label::after {
+    content: '*';
+    color: var(--poppy);
+    margin-left: 4px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    color: var(--delft-blue);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+}
+
+.form-control, .form-select {
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    transition: all 0.2s ease;
+    background-color: white;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 3px rgba(70, 117, 153, 0.2);
+    outline: none;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px dashed var(--non-photo-blue);
+}
+
+.save-btn, .cancel-btn {
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-weight: bold;
+    box-shadow: 0 4px 0 rgba(29, 51, 84, 0.2);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.save-btn::after, .cancel-btn::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(45deg);
+    transition: all 0.3s ease;
+}
+
+.save-btn:hover::after, .cancel-btn:hover::after {
+    transform: rotate(45deg) translate(50%, 50%);
+}
+
+.contact-type-toggle {
+    display: inline-flex;
+    background: var(--mint-green);
+    padding: 4px;
+    border-radius: 20px;
+    margin-right: 10px;
+    border: 1px solid var(--non-photo-blue);
+}
+
+.contact-type-toggle input[type="radio"] {
+    display: none;
+}
+
+.contact-type-toggle label {
+    padding: 4px 8px;
+    border-radius: 16px;
+    margin: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--delft-blue);
+}
+
+.contact-type-toggle input[type="radio"]:checked + label {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+/* Add icons to all section headers */
+.form-section h2 i {
+    margin-right: 10px;
+    color: var(--ucla-blue);
+}
+
+/* Status Toggle Styling */
+.status-toggle-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-toggle-group input[type="radio"] {
+    display: none;
+}
+
+.status-toggle-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--mint-green);
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-toggle-group label i {
+    font-size: 1.1rem;
+}
+
+.status-toggle-group input[type="radio"]:checked + label {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border-color: var(--delft-blue);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+/* Skills Input Styling */
+.skills-container {
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: white;
+}
+
+.skills-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    min-height: 2rem;
+}
+
+.skill-tag {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--mint-green);
+    border: 1px solid var(--non-photo-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+}
+
+.skill-tag button {
+    background: none;
+    border: none;
+    color: var(--poppy);
+    padding: 0;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.skill-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.skill-input {
+    flex: 1;
+}
+
+.add-skill-btn {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 0 var(--delft-blue);
+    transition: all 0.2s ease;
+}
+
+.add-skill-btn:hover {
+    background: var(--delft-blue);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--delft-blue);
 }

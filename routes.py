@@ -3,7 +3,7 @@ from flask_login import login_required, login_user, logout_user
 from forms import LoginForm, VolunteerForm
 from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
-from models.volunteer import Email, Skill, Volunteer, LocalStatusEnum
+from models.volunteer import Email, Phone, Skill, Volunteer, LocalStatusEnum
 from sqlalchemy import or_
 
 def init_routes(app):
@@ -106,31 +106,46 @@ def init_routes(app):
         form = VolunteerForm()
         if form.validate_on_submit():
             volunteer = Volunteer(
+                salutation=form.salutation.data,
                 first_name=form.first_name.data,
                 middle_name=form.middle_name.data,
                 last_name=form.last_name.data,
+                suffix=form.suffix.data,
                 organization_name=form.organization_name.data,
                 title=form.title.data,
                 department=form.department.data,
                 industry=form.industry.data,
-                local_status=form.local_status.data
+                local_status=form.local_status.data,
+                notes=form.notes.data
             )
-            
-            # Add emails
-            for email in form.emails.data:
-                volunteer.emails.append(Email(email=email))
-            
+
+            # Add email with type
+            email = Email(
+                email=form.email.data,
+                type=form.email_type.data
+            )
+            volunteer.emails.append(email)
+
+            # Add phone if provided
+            if form.phone.data:
+                phone = Phone(
+                    number=form.phone.data,
+                    type=form.phone_type.data
+                )
+                volunteer.phones.append(phone)
+
             # Add skills
-            for skill in form.skills.data:
-                volunteer.skills.append(Skill(name=skill))
-            
+            if form.skills.data:
+                for skill_name in form.skills.data:
+                    if skill_name:
+                        skill = Skill.query.filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                        volunteer.skills.append(skill)
+
             db.session.add(volunteer)
-            try:
-                db.session.commit()
-                flash('Volunteer added successfully!', 'success')
-                return redirect(url_for('volunteers'))
-            except Exception as e:
-                db.session.rollback()
-                flash('Error adding volunteer. Please try again.', 'danger')
-                
+            db.session.commit()
+            flash('Volunteer added successfully!', 'success')
+            return redirect(url_for('volunteers'))
+
         return render_template('/volunteers/add_volunteer.html', form=form)
