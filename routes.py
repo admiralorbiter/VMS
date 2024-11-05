@@ -5,6 +5,7 @@ from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Email, Phone, Skill, Volunteer, LocalStatusEnum
 from sqlalchemy import or_
+from datetime import datetime
 
 def init_routes(app):
     @app.route('/')
@@ -134,3 +135,118 @@ def init_routes(app):
             return redirect(url_for('volunteers'))
 
         return render_template('/volunteers/add_volunteer.html', form=form)
+    
+    @app.route('/volunteers/view/<int:id>')
+    @login_required
+    def view_volunteer(id):
+        volunteer = Volunteer.query.get_or_404(id)
+        
+        # Ensure emails are ordered with primary first
+        emails = sorted(volunteer.emails, key=lambda x: x.primary, reverse=True)
+        
+        # Ensure phones are ordered with primary first
+        phones = sorted(volunteer.phones, key=lambda x: x.primary, reverse=True)
+        
+        # Sort engagements by date descending
+        engagements = sorted(
+            volunteer.engagements, 
+            key=lambda x: x.engagement_date or datetime.min, 
+            reverse=True
+        )
+        
+        # Calculate volunteer statistics
+        stats = {
+            'total_times_volunteered': len(engagements),
+            'first_volunteer_date': min([e.engagement_date for e in engagements]) if engagements else None,
+            'last_volunteer_date': max([e.engagement_date for e in engagements]) if engagements else None
+        }
+        
+        return render_template(
+            'volunteers/view.html',
+            volunteer=volunteer,
+            emails=emails,
+            phones=phones,
+            engagements=engagements,
+            stats=stats
+        )
+    
+    @app.route('/volunteers/edit/<int:id>', methods=['GET', 'POST'])
+    @login_required
+    def edit_volunteer(id):
+        volunteer = Volunteer.query.get_or_404(id)
+        form = VolunteerForm()
+        
+        if form.validate_on_submit():
+            # Update basic information
+            form.populate_obj(volunteer)
+            
+            # Handle email updates
+            if form.email.data:
+                if volunteer.emails:
+                    primary_email = next((e for e in volunteer.emails if e.primary), None)
+                    if primary_email:
+                        primary_email.email = form.email.data
+                        primary_email.type = form.email_type.data
+                    else:
+                        email = Email(email=form.email.data, type=form.email_type.data, primary=True)
+                        volunteer.emails.append(email)
+                else:
+                    email = Email(email=form.email.data, type=form.email_type.data, primary=True)
+                    volunteer.emails.append(email)
+            
+            # Handle phone updates
+            if form.phone.data:
+                if volunteer.phones:
+                    primary_phone = next((p for p in volunteer.phones if p.primary), None)
+                    if primary_phone:
+                        primary_phone.number = form.phone.data
+                        primary_phone.type = form.phone_type.data
+                    else:
+                        phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
+                        volunteer.phones.append(phone)
+                else:
+                    phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
+                    volunteer.phones.append(phone)
+            
+            # Update skills
+            if form.skills.data:
+                volunteer.skills = []
+                for skill_name in form.skills.data:
+                    if skill_name:
+                        skill = Skill.query.filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                        volunteer.skills.append(skill)
+            
+            db.session.commit()
+            flash('Volunteer updated successfully!', 'success')
+            return redirect(url_for('view_volunteer', id=volunteer.id))
+        
+        # Pre-populate form fields
+        form.salutation.data = volunteer.salutation
+        form.first_name.data = volunteer.first_name
+        form.middle_name.data = volunteer.middle_name
+        form.last_name.data = volunteer.last_name
+        form.suffix.data = volunteer.suffix
+        form.organization_name.data = volunteer.organization_name
+        form.title.data = volunteer.title
+        form.department.data = volunteer.department
+        form.industry.data = volunteer.industry
+        form.local_status.data = volunteer.local_status
+        form.notes.data = volunteer.notes
+        
+        if volunteer.emails:
+            primary_email = next((e for e in volunteer.emails if e.primary), None)
+            if primary_email:
+                form.email.data = primary_email.email
+                form.email_type.data = primary_email.type
+        
+        if volunteer.phones:
+            primary_phone = next((p for p in volunteer.phones if p.primary), None)
+            if primary_phone:
+                form.phone.data = primary_phone.number
+                form.phone_type.data = primary_phone.type
+        
+        # Don't set skills.data directly, they will be displayed from volunteer.skills in the template
+        
+        return render_template('volunteers/edit.html', form=form, volunteer=volunteer)

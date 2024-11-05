@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}View Volunteer - {{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="volunteers-container">
+    <div class="volunteers-header">
+        <h1>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('edit_volunteer', id=volunteer.id) }}" class="btn edit-volunteer-btn">
+                <i class="fa-solid fa-pencil"></i> Edit
+            </a>
+            <a href="{{ url_for('volunteers') }}" class="btn back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="volunteer-profile-grid">
+        <!-- Personal Information Card -->
+        <div class="profile-card personal-info">
+            <div class="card-header">
+                <i class="fa-solid fa-user"></i>
+                <h2>Personal Information</h2>
+            </div>
+            <div class="card-content">
+                <div class="info-group">
+                    <label>Name</label>
+                    <p>{{ volunteer.salutation }} {{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }} {{ volunteer.suffix }}</p>
+                </div>
+                <div class="info-group">
+                    <label>Local Status</label>
+                    <span class="status-badge {{ volunteer.local_status }}">
+                        {% if volunteer.local_status == 'true' %}
+                            <i class="fa-solid fa-check-circle"></i>
+                            <span>Local</span>
+                        {% elif volunteer.local_status == 'partial' %}
+                            <i class="fa-solid fa-adjust"></i>
+                            <span>Partial</span>
+                        {% elif volunteer.local_status == 'false' %}
+                            <i class="fa-solid fa-times-circle"></i>
+                            <span>Non-Local</span>
+                        {% else %}
+                            <i class="fa-solid fa-question-circle"></i>
+                            <span>Unknown</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information Card -->
+        <div class="profile-card contact-info">
+            <div class="card-header">
+                <i class="fa-solid fa-address-card"></i>
+                <h2>Contact Information</h2>
+            </div>
+            <div class="card-content">
+                <div class="contact-section">
+                    <h3><i class="fa-solid fa-envelope"></i> Email Addresses</h3>
+                    {% for email in volunteer.emails %}
+                    <div class="contact-item">
+                        <span class="contact-badge {{ email.type }}">
+                            {% if email.type == 'personal' %}
+                            <i class="fa-solid fa-user"></i>
+                            {% else %}
+                            <i class="fa-solid fa-briefcase"></i>
+                            {% endif %}
+                        </span>
+                        <span class="contact-value">{{ email.email }}</span>
+                        {% if email.primary %}
+                        <span class="primary-badge">Primary</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="contact-section">
+                    <h3><i class="fa-solid fa-phone"></i> Phone Numbers</h3>
+                    {% for phone in volunteer.phones %}
+                    <div class="contact-item">
+                        <span class="contact-badge {{ phone.type }}">
+                            {% if phone.type == 'personal' %}
+                            <i class="fa-solid fa-user"></i>
+                            {% else %}
+                            <i class="fa-solid fa-briefcase"></i>
+                            {% endif %}
+                        </span>
+                        <span class="contact-value">{{ phone.number }}</span>
+                        {% if phone.primary %}
+                        <span class="primary-badge">Primary</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="contact-section">
+                    <h3><i class="fa-solid fa-location-dot"></i> Addresses</h3>
+                    {% for address in volunteer.addresses %}
+                    <div class="contact-item">
+                        <span class="contact-badge {{ address.type }}">
+                            {% if address.type == 'personal' %}
+                            <i class="fa-solid fa-house"></i>
+                            {% else %}
+                            <i class="fa-solid fa-building"></i>
+                            {% endif %}
+                        </span>
+                        <div class="address-details">
+                            <p>{{ address.address_line1 }}</p>
+                            {% if address.address_line2 %}
+                            <p>{{ address.address_line2 }}</p>
+                            {% endif %}
+                            <p>{{ address.city }}, {{ address.state }} {{ address.zip_code }}</p>
+                            <p>{{ address.country }}</p>
+                        </div>
+                        {% if address.primary %}
+                        <span class="primary-badge">Primary</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Professional Information Card -->
+        <div class="profile-card professional-info">
+            <div class="card-header">
+                <i class="fa-solid fa-briefcase"></i>
+                <h2>Professional Information</h2>
+            </div>
+            <div class="card-content">
+                <div class="org-info">
+                    <div class="info-group">
+                        <label>Organization</label>
+                        <p class="org-name">{{ volunteer.organization_name }}</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Title</label>
+                        <p class="org-title">{{ volunteer.title }}</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Department</label>
+                        <p class="org-department">{{ volunteer.department }}</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Industry</label>
+                        <p>{{ volunteer.industry }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills Card -->
+        <div class="profile-card skills-info">
+            <div class="card-header">
+                <i class="fa-solid fa-star"></i>
+                <h2>Skills</h2>
+            </div>
+            <div class="card-content">
+                <div class="skills-grid">
+                    {% for skill in volunteer.skills %}
+                    <span class="skill-tag">
+                        <i class="fa-solid fa-check"></i>
+                        {{ skill.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Volunteer History Card -->
+        <div class="profile-card history-info">
+            <div class="card-header">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <h2>Volunteer History</h2>
+            </div>
+            <div class="card-content">
+                <div class="history-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">First Volunteered</span>
+                        <span class="stat-value">{{ volunteer.first_volunteer_date.strftime('%Y-%m-%d') if volunteer.first_volunteer_date }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Last Volunteered</span>
+                        <span class="stat-value">{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Times</span>
+                        <span class="stat-value">{{ volunteer.total_times_volunteered }}</span>
+                    </div>
+                </div>
+                
+                <div class="engagement-timeline">
+                    {% for engagement in volunteer.engagements %}
+                    <div class="engagement-item">
+                        <div class="engagement-date">
+                            {{ engagement.engagement_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        <div class="engagement-details">
+                            <span class="engagement-type">{{ engagement.engagement_type }}</span>
+                            {% if engagement.notes %}
+                            <p class="engagement-notes">{{ engagement.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

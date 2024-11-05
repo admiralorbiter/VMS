@@ -143,8 +143,12 @@
                     <td>{{ volunteer.times_volunteered }}</td>
                     <td>
                         <div class="action-buttons">
-                            <a href="#" class="btn btn-sm action-btn view-btn">View</a>
-                            <a href="#" class="btn btn-sm action-btn edit-btn">Edit</a>
+                            <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn btn-sm action-btn view-btn">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
+                            <a href="{{ url_for('edit_volunteer', id=volunteer.id) }}" class="btn btn-sm action-btn edit-btn">
+                                <i class="fa-solid fa-pencil"></i> Edit
+                            </a>
                         </div>
                     </td>
                 </tr>

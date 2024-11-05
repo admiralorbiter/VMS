@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Volunteer - {{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="volunteers-container">
+    <div class="volunteers-header">
+        <h1>Edit Volunteer</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn back-btn">
+                <i class="fa-solid fa-eye"></i> View
+            </a>
+            <a href="{{ url_for('volunteers') }}" class="btn back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="volunteer-form-container">
+        <form method="POST" class="volunteer-form">
+            {{ form.hidden_tag() }}
+            
+            <!-- Personal Information Card -->
+            <div class="form-section">
+                <h2><i class="fa-solid fa-user"></i> Personal Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form.salutation.label(class="form-label") }}
+                        {{ form.salutation(class="form-select") }}
+                    </div>
+                    <div class="form-group required">
+                        {{ form.first_name.label(class="form-label") }}
+                        {{ form.first_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.middle_name.label(class="form-label") }}
+                        {{ form.middle_name(class="form-control") }}
+                    </div>
+                    <div class="form-group required">
+                        {{ form.last_name.label(class="form-label") }}
+                        {{ form.last_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.suffix.label(class="form-label") }}
+                        {{ form.suffix(class="form-select") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.local_status.label(class="form-label") }}
+                        <div class="status-toggle-group">
+                            <input type="radio" name="local_status" id="status_true" value="true">
+                            <label for="status_true">
+                                <i class="fa-solid fa-check-circle"></i>
+                                <span>Local</span>
+                            </label>
+                            
+                            <input type="radio" name="local_status" id="status_partial" value="partial">
+                            <label for="status_partial">
+                                <i class="fa-solid fa-adjust"></i>
+                                <span>Partial</span>
+                            </label>
+                            
+                            <input type="radio" name="local_status" id="status_false" value="false">
+                            <label for="status_false">
+                                <i class="fa-solid fa-times-circle"></i>
+                                <span>False</span>
+                            </label>
+                            
+                            <input type="radio" name="local_status" id="status_unknown" value="unknown">
+                            <label for="status_unknown">
+                                <i class="fa-solid fa-question-circle"></i>
+                                <span>Unknown</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information Card -->
+            <div class="form-section">
+                <h2><i class="fa-solid fa-address-card"></i> Contact Information</h2>
+                <div class="contact-sections">
+                    <!-- Emails Section -->
+                    <div class="contact-section">
+                        <h3><i class="fa-solid fa-envelope"></i> Email Addresses</h3>
+                        <div class="contact-list" id="emailList">
+                            {% for email in volunteer.emails %}
+                            <div class="contact-item">
+                                <input type="email" name="emails-{{ loop.index0 }}" value="{{ email.email }}" class="form-control">
+                                <select name="email_types-{{ loop.index0 }}" class="form-select">
+                                    <option value="personal" {% if email.type == 'personal' %}selected{% endif %}>Personal</option>
+                                    <option value="work" {% if email.type == 'work' %}selected{% endif %}>Work</option>
+                                </select>
+                                <div class="form-check">
+                                    <input type="checkbox" name="email_primary-{{ loop.index0 }}" 
+                                           class="form-check-input" {% if email.primary %}checked{% endif %}>
+                                    <label class="form-check-label">Primary</label>
+                                </div>
+                                <button type="button" class="btn remove-btn"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn add-contact-btn" id="addEmailBtn">
+                            <i class="fa-solid fa-plus"></i> Add Email
+                        </button>
+                    </div>
+
+                    <!-- Similar sections for Phone Numbers and Addresses -->
+                </div>
+            </div>
+
+            <!-- Professional Information Card -->
+            <div class="form-section">
+                <h2><i class="fa-solid fa-building"></i> Professional Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form.organization_name.label(class="form-label") }}
+                        {{ form.organization_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.department.label(class="form-label") }}
+                        {{ form.department(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.industry.label(class="form-label") }}
+                        {{ form.industry(class="form-control") }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skills Card -->
+            <div class="form-section">
+                <h2><i class="fa-solid fa-star"></i> Skills</h2>
+                <div class="skills-container">
+                    <div class="skills-list" id="skillsList">
+                        {% for skill in volunteer.skills %}
+                        <span class="skill-tag">
+                            {{ skill.name }}
+                            <button type="button" class="remove-skill-btn">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    <div class="skill-input-group">
+                        <input type="text" class="form-control skill-input" placeholder="Enter a skill">
+                        <button type="button" class="btn add-skill-btn">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn save-btn">Save Changes</button>
+                <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn cancel-btn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/edit_volunteer.js') }}"></script>
+{% endblock %}
