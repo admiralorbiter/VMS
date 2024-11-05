@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Import Volunteers{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/import.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="volunteers-container">
+    <div class="volunteers-header">
+        <h1>Import Volunteers</h1>
+        <a href="{{ url_for('volunteers') }}" class="btn add-volunteer-btn">
+            <i class="fa-solid fa-arrow-left"></i> Back to Volunteers
+        </a>
+    </div>
+
+    <div class="import-container">
+        <!-- Quick Sync Section -->
+        <div class="import-section">
+            <h2><i class="fa-solid fa-sync"></i> Quick Sync</h2>
+            <p>Sync volunteer data from the default location: <code>@data/Volunteers.csv</code></p>
+            <button class="btn sync-btn" id="quickSyncBtn">
+                <i class="fa-solid fa-sync"></i> Sync Now
+            </button>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="import-section">
+            <h2><i class="fa-solid fa-file-import"></i> Import CSV File</h2>
+            <div class="upload-container" id="dropZone">
+                <div class="upload-content">
+                    <i class="fa-solid fa-file-csv"></i>
+                    <p>Drag and drop your CSV file here</p>
+                    <span>or</span>
+                    <label for="fileInput" class="btn upload-btn">
+                        <i class="fa-solid fa-folder-open"></i> Browse Files
+                    </label>
+                    <input type="file" id="fileInput" accept=".csv" hidden>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Section (Initially Hidden) -->
+        <div class="import-section progress-section" id="progressSection" style="display: none;">
+            <h2><i class="fa-solid fa-tasks"></i> Import Progress</h2>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress" id="importProgress"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="processedCount">0</span> / <span id="totalCount">0</span> records processed
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (Initially Hidden) -->
+        <div class="import-section results-section" id="resultsSection" style="display: none;">
+            <h2><i class="fa-solid fa-clipboard-check"></i> Import Results</h2>
+            <div class="results-stats">
+                <div class="stat-card success">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span class="stat-count" id="successCount">0</span>
+                    <span class="stat-label">Successful</span>
+                </div>
+                <div class="stat-card warning">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <span class="stat-count" id="warningCount">0</span>
+                    <span class="stat-label">Warnings</span>
+                </div>
+                <div class="stat-card error">
+                    <i class="fa-solid fa-times-circle"></i>
+                    <span class="stat-count" id="errorCount">0</span>
+                    <span class="stat-label">Errors</span>
+                </div>
+            </div>
+            <div class="error-list" id="errorList"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/import.js') }}"></script>
+{% endblock %}

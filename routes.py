@@ -6,6 +6,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Email, Phone, Skill, Volunteer, LocalStatusEnum
 from sqlalchemy import or_
 from datetime import datetime
+import io
+import csv
+import os
 
 def init_routes(app):
     @app.route('/')
@@ -35,56 +38,71 @@ def init_routes(app):
     @app.route('/volunteers')
     @login_required
     def volunteers():
-        # Get search parameters
-        search_name = request.args.get('search_name', '').strip()
-        org_search = request.args.get('org_search', '').strip()
-        email_search = request.args.get('email_search', '').strip()
-        skill_search = request.args.get('skill_search', '').strip()
-        local_status = request.args.get('local_status', '')
-        sort_by = request.args.get('sort_by', 'last_volunteer_date')
-        sort_direction = request.args.get('sort_direction', 'desc')
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+
+        # Create a dict of current filters, excluding pagination params
+        current_filters = {
+            'search_name': request.args.get('search_name', '').strip(),
+            'org_search': request.args.get('org_search', '').strip(),
+            'email_search': request.args.get('email_search', '').strip(),
+            'skill_search': request.args.get('skill_search', '').strip(),
+            'local_status': request.args.get('local_status', ''),
+            'sort_by': request.args.get('sort_by', 'last_volunteer_date'),
+            'sort_direction': request.args.get('sort_direction', 'desc')
+        }
+
+        # Remove empty filters
+        current_filters = {k: v for k, v in current_filters.items() if v}
 
         # Build query
         query = Volunteer.query
 
-        if search_name:
-            search_term = f"%{search_name}%"
+        if current_filters.get('search_name'):
+            search_term = f"%{current_filters['search_name']}%"
             query = query.filter(or_(
                 Volunteer.first_name.ilike(search_term),
                 Volunteer.last_name.ilike(search_term),
                 Volunteer.middle_name.ilike(search_term)
             ))
 
-        if org_search:
-            search_term = f"%{org_search}%"
+        if current_filters.get('org_search'):
+            search_term = f"%{current_filters['org_search']}%"
             query = query.filter(or_(
                 Volunteer.organization_name.ilike(search_term),
                 Volunteer.title.ilike(search_term),
                 Volunteer.department.ilike(search_term)
             ))
 
-        if email_search:
-            search_term = f"%{email_search}%"
+        if current_filters.get('email_search'):
+            search_term = f"%{current_filters['email_search']}%"
             query = query.join(Email).filter(Email.email.ilike(search_term))
 
-        if skill_search:
-            search_term = f"%{skill_search}%"
+        if current_filters.get('skill_search'):
+            search_term = f"%{current_filters['skill_search']}%"
             query = query.join(Volunteer.skills).filter(Skill.name.ilike(search_term))
 
-        if local_status:
-            query = query.filter(Volunteer.local_status == local_status)
+        if current_filters.get('local_status'):
+            query = query.filter(Volunteer.local_status == current_filters['local_status'])
 
         # Apply sorting
-        sort_column = getattr(Volunteer, sort_by)
-        if sort_direction == 'desc':
+        sort_column = getattr(Volunteer, current_filters.get('sort_by', 'last_volunteer_date'))
+        if current_filters.get('sort_direction', 'desc') == 'desc':
             sort_column = sort_column.desc()
         query = query.order_by(sort_column)
 
-        volunteers = query.all()
+        # Apply pagination
+        paginated_volunteers = query.paginate(
+            page=page, 
+            per_page=per_page,
+            error_out=False
+        )
 
         return render_template('volunteers/volunteers.html',
-                             volunteers=volunteers,
-                             current_filters=request.args)
+                             volunteers=paginated_volunteers.items,
+                             pagination=paginated_volunteers,
+                             current_filters=current_filters)
     
     @app.route('/volunteers/add', methods=['GET', 'POST'])
     @login_required
@@ -250,3 +268,135 @@ def init_routes(app):
         # Don't set skills.data directly, they will be displayed from volunteer.skills in the template
         
         return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
+    
+    @app.route('/volunteers/import', methods=['GET', 'POST'])
+    @login_required
+    def import_volunteers():
+        if request.method == 'GET':
+            return render_template('volunteers/import.html')
+        
+        # Handle file upload
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not file.filename.endswith('.csv'):
+            return jsonify({'error': 'File must be a CSV'}), 400
+
+        try:
+            # Read CSV file
+            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+            csv_data = csv.DictReader(stream)
+            
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            for row in csv_data:
+                try:
+                    # Check if volunteer already exists
+                    existing_volunteer = Volunteer.query.filter_by(
+                        first_name=row.get('FirstName', '').strip(),
+                        last_name=row.get('LastName', '').strip()
+                    ).first()
+                    
+                    if existing_volunteer:
+                        errors.append(f"Volunteer already exists: {row.get('FirstName')} {row.get('LastName')}")
+                        error_count += 1
+                        continue
+                    
+                    # Create new volunteer
+                    volunteer = Volunteer(
+                        first_name=row.get('FirstName', '').strip(),
+                        last_name=row.get('LastName', '').strip()
+                    )
+                    
+                    # Add email if provided
+                    email = row.get('Email', '').strip()
+                    if email:
+                        email_obj = Email(
+                            email=email,
+                            type='Personal',
+                            primary=True
+                        )
+                        volunteer.emails.append(email_obj)
+                    
+                    db.session.add(volunteer)
+                    success_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Error processing row: {str(e)}")
+                    error_count += 1
+                
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'successCount': success_count,
+                'errorCount': error_count,
+                'errors': errors
+            })
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/volunteers/quick-sync')
+    @login_required
+    def quick_sync():
+        try:
+            csv_path = os.path.join(app.root_path, 'data', 'Volunteers.csv')
+            with open(csv_path, 'r', encoding='utf-8') as file:
+                csv_data = csv.DictReader(file)
+                
+                success_count = 0
+                error_count = 0
+                errors = []
+                
+                for row in csv_data:
+                    try:
+                        # Check if volunteer already exists
+                        existing_volunteer = Volunteer.query.filter_by(
+                            first_name=row.get('FirstName', '').strip(),
+                            last_name=row.get('LastName', '').strip()
+                        ).first()
+                        
+                        if existing_volunteer:
+                            continue
+                        
+                        # Create new volunteer
+                        volunteer = Volunteer(
+                            first_name=row.get('FirstName', '').strip(),
+                            last_name=row.get('LastName', '').strip()
+                        )
+                        
+                        # Add email if provided
+                        email = row.get('Email', '').strip()
+                        if email:
+                            email_obj = Email(
+                                email=email,
+                                type='Personal',
+                                primary=True
+                            )
+                            volunteer.emails.append(email_obj)
+                        
+                        db.session.add(volunteer)
+                        success_count += 1
+                        
+                    except Exception as e:
+                        errors.append(f"Error processing row: {str(e)}")
+                        error_count += 1
+                    
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'successCount': success_count,
+                    'errorCount': error_count,
+                    'errors': errors
+                })
+                
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500

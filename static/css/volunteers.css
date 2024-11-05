@@ -19,7 +19,13 @@
     text-shadow: 2px 2px 0 var(--non-photo-blue);
 }
 
-.add-volunteer-btn {
+.volunteers-header .header-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.add-volunteer-btn,
+.import-volunteers-btn {
     background-color: var(--ucla-blue);
     color: var(--mint-green);
     padding: 0.75rem 1.5rem;
@@ -31,7 +37,8 @@
     transition: all 0.1s ease;
 }
 
-.add-volunteer-btn:hover {
+.add-volunteer-btn:hover,
+.import-volunteers-btn:hover {
     background-color: var(--delft-blue);
     color: var(--non-photo-blue);
     transform: translateY(2px);
@@ -887,4 +894,79 @@
 .cancel-btn:hover {
     background: var(--delft-blue);
     color: var(--non-photo-blue);
+}
+
+/* Add these styles at the end of the file */
+.pagination-container {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: var(--delft-blue);
+    font-weight: 500;
+}
+
+.pagination-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    border: none;
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.pagination-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+.per-page-select {
+    padding: 0.4rem 2rem 0.4rem 1rem;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 6px;
+    background-color: white;
+    color: var(--delft-blue);
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.pagination-summary {
+    text-align: center;
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .pagination-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .pagination-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 }

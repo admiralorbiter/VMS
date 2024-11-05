@@ -10,9 +10,14 @@
 <div class="volunteers-container">
     <div class="volunteers-header">
         <h1>Volunteer Directory</h1>
-        <a href="{{ url_for('add_volunteer') }}" class="btn add-volunteer-btn">
-            <span class="btn-content">Add New Volunteer</span>
-        </a>
+        <div class="header-buttons">
+            <a href="{{ url_for('add_volunteer') }}" class="btn add-volunteer-btn">
+                <span class="btn-content">Add New Volunteer</span>
+            </a>
+            <a href="{{ url_for('import_volunteers') }}" class="btn import-volunteers-btn">
+                <span class="btn-content">Import Volunteers</span>
+            </a>
+        </div>
     </div>
 
     <div class="filter-panel">
@@ -155,6 +160,70 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <div class="pagination-container">
+            <div class="pagination-controls">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('volunteers', page=pagination.prev_num, per_page=request.args.get('per_page', 25), **current_filters) }}" 
+                       class="btn pagination-btn">
+                        <i class="fa-solid fa-chevron-left"></i> Previous
+                    </a>
+                {% endif %}
+                
+                <div class="pagination-info">
+                    <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+                    <select class="form-select per-page-select" onchange="updatePerPage(this.value)">
+                        {% for count in [25, 50, 100] %}
+                            <option value="{{ count }}" {% if request.args.get('per_page', 25)|int == count %}selected{% endif %}>
+                                {{ count }} per page
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('volunteers', page=pagination.next_num, per_page=request.args.get('per_page', 25), **current_filters) }}" 
+                       class="btn pagination-btn">
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+            
+            <div class="pagination-summary">
+                Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
+
+<script>
+function updatePerPage(value) {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Preserve all current filters
+    const currentFilters = {
+        'search_name': urlParams.get('search_name'),
+        'org_search': urlParams.get('org_search'),
+        'email_search': urlParams.get('email_search'),
+        'skill_search': urlParams.get('skill_search'),
+        'local_status': urlParams.get('local_status'),
+        'sort_by': urlParams.get('sort_by'),
+        'sort_direction': urlParams.get('sort_direction')
+    };
+
+    // Create new URLSearchParams with only non-null values
+    const newParams = new URLSearchParams();
+    newParams.set('per_page', value);
+    newParams.set('page', 1); // Reset to first page
+
+    // Add all non-null filters
+    Object.entries(currentFilters).forEach(([key, value]) => {
+        if (value) {
+            newParams.set(key, value);
+        }
+    });
+
+    window.location.href = `${window.location.pathname}?${newParams.toString()}`;
+}
+</script>
