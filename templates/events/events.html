@@ -107,11 +107,7 @@
                     <th class="sortable" data-sort="start_date">
                         Start Date <i class="fa-solid fa-sort"></i>
                     </th>
-                    <th class="sortable" data-sort="end_date">
-                        End Date <i class="fa-solid fa-sort"></i>
-                    </th>
                     <th>Location</th>
-                    <th>Volunteers</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -126,9 +122,7 @@
                         </span>
                     </td>
                     <td>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>{{ event.end_date.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ event.location }}</td>
-                    <td>{{ event.volunteer_count }}/{{ event.volunteer_needed }}</td>
                     <td>
                         <span class="status-badge {{ event.status }}">
                             {{ event.status|title }}
