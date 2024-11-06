@@ -42,7 +42,7 @@ def init_routes(app):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 25, type=int)
 
-        # Create a dict of current filters, excluding pagination params
+        # Create a dict of current filters, including pagination params
         current_filters = {
             'search_name': request.args.get('search_name', '').strip(),
             'org_search': request.args.get('org_search', '').strip(),
@@ -50,7 +50,8 @@ def init_routes(app):
             'skill_search': request.args.get('skill_search', '').strip(),
             'local_status': request.args.get('local_status', ''),
             'sort_by': request.args.get('sort_by', 'last_volunteer_date'),
-            'sort_direction': request.args.get('sort_direction', 'desc')
+            'sort_direction': request.args.get('sort_direction', 'desc'),
+            'per_page': per_page
         }
 
         # Remove empty filters

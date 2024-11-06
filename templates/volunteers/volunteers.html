@@ -10,17 +10,9 @@
 <div class="volunteers-container">
     <div class="volunteers-header">
         <h1>Volunteer Directory</h1>
-        <div class="header-buttons">
-            <a href="{{ url_for('add_volunteer') }}" class="btn add-volunteer-btn">
-                <span class="btn-content">Add New Volunteer</span>
-            </a>
-            <a href="{{ url_for('import_volunteers') }}" class="btn import-volunteers-btn">
-                <span class="btn-content">Import Volunteers</span>
-            </a>
-            <button class="btn purge-volunteers-btn">
-                <span class="btn-content">Purge Volunteers</span>
-            </button>
-        </div>
+        <a href="{{ url_for('add_volunteer') }}" class="btn add-volunteer-btn">
+            <span class="btn-content">Add New Volunteer</span>
+        </a>
     </div>
 
     <div class="filter-panel">
@@ -166,40 +158,37 @@
 
         <div class="pagination-container">
             <div class="pagination-controls">
-                {% if pagination.has_prev %}
-                    <a href="{{ url_for('volunteers', page=pagination.prev_num, per_page=request.args.get('per_page', 25), **current_filters) }}" 
-                       class="btn pagination-btn">
-                        <i class="fa-solid fa-chevron-left"></i> Previous
-                    </a>
-                {% endif %}
-                
                 <div class="pagination-info">
-                    <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
-                    <select class="form-select per-page-select" onchange="updatePerPage(this.value)">
-                        {% for count in [25, 50, 100] %}
-                            <option value="{{ count }}" {% if request.args.get('per_page', 25)|int == count %}selected{% endif %}>
-                                {{ count }} per page
-                            </option>
-                        {% endfor %}
+                    <select class="per-page-select" name="per_page">
+                        <option value="10" {% if current_filters.per_page == 10 %}selected{% endif %}>10 per page</option>
+                        <option value="25" {% if current_filters.per_page == 25 %}selected{% endif %}>25 per page</option>
+                        <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 per page</option>
+                        <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
                     </select>
+                    
+                    <div class="pagination-buttons">
+                        {% if pagination.has_prev %}
+                            <a href="{{ url_for('volunteers', page=pagination.prev_num, **current_filters) }}" 
+                               class="pagination-btn">
+                                <i class="fa-solid fa-chevron-left"></i> Previous
+                            </a>
+                        {% endif %}
+                        
+                        {% if pagination.has_next %}
+                            <a href="{{ url_for('volunteers', page=pagination.next_num, **current_filters) }}" 
+                               class="pagination-btn">
+                                Next <i class="fa-solid fa-chevron-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
-
-                {% if pagination.has_next %}
-                    <a href="{{ url_for('volunteers', page=pagination.next_num, per_page=request.args.get('per_page', 25), **current_filters) }}" 
-                       class="btn pagination-btn">
-                        Next <i class="fa-solid fa-chevron-right"></i>
-                    </a>
-                {% endif %}
             </div>
             
             <div class="pagination-summary">
-                Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers
+                Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers 
+                (Page {{ pagination.page }} of {{ pagination.pages }})
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/volunteers.js') }}"></script>
 {% endblock %}

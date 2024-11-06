@@ -913,74 +913,106 @@
 /* Add these styles at the end of the file */
 .pagination-container {
     margin-top: 2rem;
-    padding: 1rem;
+    padding: 1.5rem;
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
     border: 1px solid var(--non-photo-blue);
 }
 
 .pagination-controls {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
     margin-bottom: 1rem;
 }
 
 .pagination-info {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.per-page-select {
+    padding: 0.5rem 2.5rem 0.5rem 1rem;
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    background-color: white;
     color: var(--delft-blue);
     font-weight: 500;
+    cursor: pointer;
+    min-width: 140px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23467599' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: calc(100% - 1rem) center;
 }
 
 .pagination-btn {
     background-color: var(--ucla-blue);
     color: var(--mint-green);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    display: flex;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     transition: all 0.2s ease;
     border: none;
-    box-shadow: 0 2px 0 var(--delft-blue);
+    box-shadow: 0 3px 0 var(--delft-blue);
+    font-weight: 500;
+    text-decoration: none;
+    min-width: 120px;
+    justify-content: center;
 }
 
 .pagination-btn:hover {
     background-color: var(--delft-blue);
     color: var(--non-photo-blue);
     transform: translateY(1px);
-    box-shadow: 0 1px 0 var(--delft-blue);
+    box-shadow: 0 2px 0 var(--delft-blue);
 }
 
-.per-page-select {
-    padding: 0.4rem 2rem 0.4rem 1rem;
-    border: 1px solid var(--non-photo-blue);
-    border-radius: 6px;
-    background-color: white;
-    color: var(--delft-blue);
-    font-weight: 500;
-    cursor: pointer;
-    min-width: 120px;
+.pagination-btn i {
+    font-size: 0.9rem;
 }
 
 .pagination-summary {
     text-align: center;
     color: var(--ucla-blue);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding-top: 1rem;
+    border-top: 1px solid var(--non-photo-blue);
 }
 
+/* Updated responsive styles */
 @media (max-width: 768px) {
     .pagination-controls {
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.5rem;
     }
     
     .pagination-info {
         flex-direction: column;
-        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .per-page-select {
+        width: 100%;
+    }
+
+    .pagination-buttons {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .pagination-btn {
+        flex: 1;
+        max-width: calc(50% - 0.5rem);
     }
 }
