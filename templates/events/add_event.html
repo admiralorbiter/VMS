@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Add Event{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="events-container">
+    <div class="events-header">
+        <h1>Create New Event</h1>
+    </div>
+
+    <form method="POST" class="event-form">
+        <div class="form-section">
+            <h2><i class="fa-solid fa-info-circle"></i> Basic Information</h2>
+            <div class="form-grid">
+                <div class="form-group required">
+                    <label for="title">Event Title</label>
+                    <input type="text" id="title" name="title" class="form-control" required>
+                </div>
+
+                <div class="form-group required">
+                    <label for="type">Event Type</label>
+                    <select id="type" name="type" class="form-select" required>
+                        <option value="">Select Type</option>
+                        {% for value, label in event_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group required">
+                    <label for="start_date">Start Date & Time</label>
+                    <input type="datetime-local" id="start_date" name="start_date" class="form-control" required>
+                </div>
+
+                <div class="form-group required">
+                    <label for="end_date">End Date & Time</label>
+                    <input type="datetime-local" id="end_date" name="end_date" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status" class="form-select">
+                        {% for value, label in statuses %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

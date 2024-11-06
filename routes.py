@@ -5,7 +5,7 @@ from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
 from sqlalchemy import or_
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import csv
 import os
@@ -443,6 +443,144 @@ def init_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)})
+    
+    @app.route('/events')
+    @login_required
+    def events():
+        # Temporary dummy data until we have a model
+        events = [
+            {
+                'id': 1,
+                'title': 'Summer Volunteer Workshop',
+                'type': 'workshop',
+                'start_date': datetime.now(),
+                'end_date': datetime.now() + timedelta(hours=2),
+                'location': 'Main Hall',
+                'volunteer_count': 5,
+                'volunteer_needed': 10,
+                'status': 'upcoming'
+            },
+            {
+                'id': 2,
+                'title': 'Community Outreach',
+                'type': 'volunteer',
+                'start_date': datetime.now() + timedelta(days=1),
+                'end_date': datetime.now() + timedelta(days=1, hours=4),
+                'location': 'Downtown Center',
+                'volunteer_count': 8,
+                'volunteer_needed': 8,
+                'status': 'in_progress'
+            }
+        ]
+        
+        return render_template('events/events.html', events=events)
+    
+    @app.route('/events/add', methods=['GET', 'POST'])
+    @login_required
+    def add_event():
+        if request.method == 'POST':
+            # Temporary handling of form submission
+            try:
+                # In the future, this would create a database record
+                flash('Event created successfully!', 'success')
+                return redirect(url_for('events'))
+            except Exception as e:
+                flash(f'Error creating event: {str(e)}', 'danger')
+        
+        # For GET request, render the form template
+        event_types = [
+            ('workshop', 'Workshop'),
+            ('meeting', 'Meeting'),
+            ('social', 'Social Event'),
+            ('volunteer', 'Volunteer Session')
+        ]
+        
+        statuses = [
+            ('upcoming', 'Upcoming'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled')
+        ]
+        
+        return render_template(
+            'events/add_event.html',
+            event_types=event_types,
+            statuses=statuses
+        )
+    
+    @app.route('/events/view/<int:id>')
+    @login_required
+    def view_event(id):
+        # Temporary dummy data until we have a model
+        # In the future, you would query the database with the id
+        event = {
+            'id': id,
+            'title': 'Summer Volunteer Workshop',
+            'type': 'workshop',
+            'start_date': datetime.now(),
+            'end_date': datetime.now() + timedelta(hours=2),
+            'location': 'Main Hall',
+            'description': 'A workshop to train new volunteers on our processes and procedures.',
+            'volunteer_count': 5,
+            'volunteer_needed': 10,
+            'status': 'upcoming',
+            'volunteers': [
+                {'name': 'John Doe', 'role': 'Instructor'},
+                {'name': 'Jane Smith', 'role': 'Assistant'},
+            ]
+        }
+        
+        return render_template(
+            'events/view.html',
+            event=event
+        )
+    
+    @app.route('/events/edit/<int:id>', methods=['GET', 'POST'])
+    @login_required
+    def edit_event(id):
+        # Temporary dummy data until we have a model
+        event = {
+            'id': id,
+            'title': 'Summer Volunteer Workshop',
+            'type': 'workshop',
+            'start_date': datetime.now(),
+            'end_date': datetime.now() + timedelta(hours=2),
+            'location': 'Main Hall',
+            'description': 'A workshop to train new volunteers on our processes and procedures.',
+            'volunteer_count': 5,
+            'volunteer_needed': 10,
+            'status': 'upcoming'
+        }
+        
+        if request.method == 'POST':
+            # Temporary handling of form submission
+            try:
+                # In the future, this would update the database record
+                flash('Event updated successfully!', 'success')
+                return redirect(url_for('view_event', id=id))
+            except Exception as e:
+                flash(f'Error updating event: {str(e)}', 'danger')
+        
+        event_types = [
+            ('workshop', 'Workshop'),
+            ('meeting', 'Meeting'),
+            ('social', 'Social Event'),
+            ('volunteer', 'Volunteer Session')
+        ]
+        
+        statuses = [
+            ('upcoming', 'Upcoming'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled')
+        ]
+        
+        return render_template(
+            'events/edit.html',
+            event=event,
+            event_types=event_types,
+            statuses=statuses
+        )
 
 def parse_date(date_str):
     """Helper function to parse dates from the CSV"""

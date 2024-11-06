@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Event{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="events-container">
+    <div class="events-header">
+        <h1>Edit Event</h1>
+    </div>
+
+    <form method="POST" class="event-form">
+        <div class="form-section">
+            <h2><i class="fa-solid fa-info-circle"></i> Basic Information</h2>
+            <div class="form-grid">
+                <div class="form-group required">
+                    <label for="title">Event Title</label>
+                    <input type="text" id="title" name="title" class="form-control" 
+                           value="{{ event.title }}" required>
+                </div>
+
+                <div class="form-group required">
+                    <label for="type">Event Type</label>
+                    <select id="type" name="type" class="form-select" required>
+                        <option value="">Select Type</option>
+                        {% for value, label in event_types %}
+                        <option value="{{ value }}" {% if event.type == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group required">
+                    <label for="start_date">Start Date & Time</label>
+                    <input type="datetime-local" id="start_date" name="start_date" 
+                           class="form-control" 
+                           value="{{ event.start_date.strftime('%Y-%m-%dT%H:%M') }}"
+                           required>
+                </div>
+
+                <div class="form-group required">
+                    <label for="end_date">End Date & Time</label>
+                    <input type="datetime-local" id="end_date" name="end_date" 
+                           class="form-control"
+                           value="{{ event.end_date.strftime('%Y-%m-%dT%H:%M') }}"
+                           required>
+                </div>
+
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location" 
+                           class="form-control"
+                           value="{{ event.location }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status" class="form-select">
+                        {% for value, label in statuses %}
+                        <option value="{{ value }}" {% if event.status == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="volunteer_needed">Volunteers Needed</label>
+                    <input type="number" id="volunteer_needed" name="volunteer_needed" 
+                           class="form-control" min="0"
+                           value="{{ event.volunteer_needed }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2><i class="fa-solid fa-align-left"></i> Event Details</h2>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" 
+                              class="form-control"
+                              value="{{ event.description }}"></textarea>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
