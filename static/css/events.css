@@ -20,22 +20,39 @@
     text-shadow: 2px 2px 0 var(--non-photo-blue);
 }
 
-.add-event-btn {
+.add-event-btn,
+.import-events-btn,
+.purge-events-btn {
     background-color: var(--ucla-blue);
     color: var(--mint-green);
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
     text-decoration: none;
+    position: relative;
     border: none;
     box-shadow: 0 4px 0 var(--delft-blue);
     transition: all 0.1s ease;
 }
 
-.add-event-btn:hover {
+.add-event-btn:hover,
+.import-events-btn:hover {
     background-color: var(--delft-blue);
     color: var(--non-photo-blue);
     transform: translateY(2px);
     box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+/* Special styling for the purge button */
+.purge-events-btn {
+    background-color: var(--poppy);
+    box-shadow: 0 4px 0 #b73136; /* Darker shade of poppy */
+}
+
+.purge-events-btn:hover {
+    background-color: #c13237; /* Slightly darker shade of poppy */
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #b73136;
 }
 
 /* Event specific badge styles */

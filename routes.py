@@ -606,7 +606,144 @@ def init_routes(app):
             event_types=event_types,
             statuses=statuses
         )
+    
+    @app.route('/events/import', methods=['GET', 'POST'])
+    @login_required
+    def import_events():
+        if request.method == 'GET':
+            return render_template('events/import.html')
+        
+        try:
+            if request.is_json and request.json.get('quickSync'):
+                default_file_path = os.path.join('data', 'Sessions.csv')
+                if not os.path.exists(default_file_path):
+                    return jsonify({'error': 'Default CSV file not found'}), 404
+                    
+                # Modified file reading to handle NUL bytes
+                with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
+                    # Remove NUL bytes from the content
+                    content = file.read().replace('\0', '')
+                    csv_data = csv.DictReader(content.splitlines())
+                    success_count = 0
+                    error_count = 0
+                    errors = []
+                    
+                    for row in csv_data:
+                        try:
+                            # Only get the Name column from CSV
+                            event_name = row.get('Name', '').strip()
+                            
+                            if not event_name:  # Skip empty names
+                                continue
+                            
+                            # Check if event already exists by title
+                            existing_event = Event.query.filter_by(title=event_name).first()
+                            
+                            if existing_event:
+                                errors.append(f"Event already exists: {event_name}")
+                                error_count += 1
+                                continue
+                            
+                            # Create new event with just the name/title
+                            event = Event(
+                                title=event_name,
+                                type='workshop',  # default value
+                                start_date=datetime.now(),  # default value
+                                end_date=datetime.now() + timedelta(hours=1),  # default value
+                                status='upcoming'  # default value
+                            )
+                            
+                            db.session.add(event)
+                            success_count += 1
+                            
+                        except Exception as e:
+                            errors.append(f"Error processing row: {str(e)}")
+                            error_count += 1
+                            continue
 
+                    try:
+                        db.session.commit()
+                        return jsonify({
+                            'success': True,
+                            'successCount': success_count,
+                            'errorCount': error_count,
+                            'errors': errors
+                        })
+                    except Exception as e:
+                        db.session.rollback()
+                        return jsonify({'error': f'Database error: {str(e)}'}), 500
+
+            # Handle regular file upload
+            if 'file' not in request.files:
+                return jsonify({'error': 'No file uploaded'}), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            if not file.filename.endswith('.csv'):
+                return jsonify({'error': 'File must be a CSV'}), 400
+
+            # Modified file upload handling to handle NUL bytes
+            content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
+            csv_data = csv.DictReader(content.splitlines())
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            for row in csv_data:
+                try:
+                    event_name = row.get('Name', '').strip()
+                    if not event_name:
+                        continue
+                        
+                    if Event.query.filter_by(title=event_name).first():
+                        errors.append(f"Event already exists: {event_name}")
+                        error_count += 1
+                        continue
+                        
+                    event = Event(
+                        title=event_name,
+                        type='workshop',
+                        start_date=datetime.now(),
+                        end_date=datetime.now() + timedelta(hours=1),
+                        status='upcoming'
+                    )
+                    
+                    db.session.add(event)
+                    success_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Error processing row: {str(e)}")
+                    error_count += 1
+                    continue
+            
+            try:
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'successCount': success_count,
+                    'errorCount': error_count,
+                    'errors': errors
+                })
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': f'Database error: {str(e)}'}), 500
+                
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/events/purge', methods=['POST'])
+    @login_required
+    def purge_events():
+        try:
+            # Delete all events
+            Event.query.delete()
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)})
 def parse_date(date_str):
     """Helper function to parse dates from the CSV"""
     if not date_str:
