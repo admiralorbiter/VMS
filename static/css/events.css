@@ -408,4 +408,115 @@ td:nth-child(6) {
         flex: 1;
         justify-content: center;
     }
+}
+
+/* Update the events table styles to use common styles from style.css */
+.events-table-container {
+    /* Inherit common table container styles */
+    background-color: white;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.events-table {
+    /* Inherit common table styles */
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Inherit and extend table header styles */
+.events-table th {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    padding: 1rem;
+    text-align: left;
+}
+
+/* Inherit alternating row styles */
+.events-table tr:nth-child(even) {
+    background-color: rgba(158, 216, 219, 0.1);
+}
+
+/* Inherit table cell styles */
+.events-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+}
+
+/* Add event-specific styles for the sortable headers */
+.events-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 1.5rem;
+}
+
+.events-table th.sortable i {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    transition: all 0.2s ease;
+}
+
+.events-table th.sortable:hover i {
+    opacity: 1;
+    color: var(--non-photo-blue);
+}
+
+/* Action buttons styling */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.action-btn {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.view-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: none;
+    box-shadow: 0 2px 0 var(--ucla-blue);
+}
+
+.view-btn:hover {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+.edit-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.edit-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+/* Adjust the table cell width for actions */
+.events-table td:last-child {
+    width: 1%;  /* This makes the column as narrow as possible while fitting content */
+    padding: 0.5rem 1rem;  /* Slightly reduced padding */
 } 
