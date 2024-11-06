@@ -1,6 +1,12 @@
 from datetime import datetime
 from models import db
 
+# Define the association table first
+event_volunteers = db.Table('event_volunteers',
+    db.Column('event_id', db.Integer, db.ForeignKey('event.id'), primary_key=True),
+    db.Column('volunteer_id', db.Integer, db.ForeignKey('volunteer.id'), primary_key=True)
+)
+
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -15,4 +21,6 @@ class Event(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    volunteers = db.relationship('Volunteer', secondary='event_volunteers')
+    volunteers = db.relationship('Volunteer', 
+                               secondary=event_volunteers,
+                               backref=db.backref('events', lazy='dynamic'))

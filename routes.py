@@ -2,6 +2,7 @@ from flask import flash, redirect, render_template, url_for, request, jsonify
 from flask_login import login_required, login_user, logout_user
 from forms import LoginForm, VolunteerForm
 from models.user import User, db
+from models.event import Event
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
 from sqlalchemy import or_
@@ -447,45 +448,84 @@ def init_routes(app):
     @app.route('/events')
     @login_required
     def events():
-        # Temporary dummy data until we have a model
-        events = [
-            {
-                'id': 1,
-                'title': 'Summer Volunteer Workshop',
-                'type': 'workshop',
-                'start_date': datetime.now(),
-                'end_date': datetime.now() + timedelta(hours=2),
-                'location': 'Main Hall',
-                'volunteer_count': 5,
-                'volunteer_needed': 10,
-                'status': 'upcoming'
-            },
-            {
-                'id': 2,
-                'title': 'Community Outreach',
-                'type': 'volunteer',
-                'start_date': datetime.now() + timedelta(days=1),
-                'end_date': datetime.now() + timedelta(days=1, hours=4),
-                'location': 'Downtown Center',
-                'volunteer_count': 8,
-                'volunteer_needed': 8,
-                'status': 'in_progress'
-            }
-        ]
-        
-        return render_template('events/events.html', events=events)
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+
+        # Create current_filters dictionary
+        current_filters = {
+            'search_title': request.args.get('search_title', '').strip(),
+            'event_type': request.args.get('event_type', ''),
+            'status': request.args.get('status', ''),
+            'start_date': request.args.get('start_date', ''),
+            'end_date': request.args.get('end_date', ''),
+            'per_page': per_page
+        }
+
+        # Remove empty filters
+        current_filters = {k: v for k, v in current_filters.items() if v}
+
+        # Build query
+        query = Event.query
+
+        # Apply filters
+        if current_filters.get('search_title'):
+            search_term = f"%{current_filters['search_title']}%"
+            query = query.filter(Event.title.ilike(search_term))
+
+        if current_filters.get('event_type'):
+            query = query.filter(Event.type == current_filters['event_type'])
+
+        if current_filters.get('status'):
+            query = query.filter(Event.status == current_filters['status'])
+
+        if current_filters.get('start_date'):
+            query = query.filter(Event.start_date >= current_filters['start_date'])
+
+        if current_filters.get('end_date'):
+            query = query.filter(Event.end_date <= current_filters['end_date'])
+
+        # Default sort by start_date desc
+        query = query.order_by(Event.start_date.desc())
+
+        # Apply pagination
+        pagination = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        return render_template('events/events.html',
+                             events=pagination.items,
+                             pagination=pagination,
+                             current_filters=current_filters)
     
     @app.route('/events/add', methods=['GET', 'POST'])
     @login_required
     def add_event():
         if request.method == 'POST':
-            # Temporary handling of form submission
             try:
-                # In the future, this would create a database record
+                # Create new event from form data
+                event = Event(
+                    title=request.form.get('title'),
+                    type=request.form.get('type'),
+                    start_date=datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M'),
+                    end_date=datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M'),
+                    location=request.form.get('location'),
+                    status=request.form.get('status', 'upcoming')  # Default to upcoming if not specified
+                )
+                
+                # Add and commit to database
+                db.session.add(event)
+                db.session.commit()
+                
                 flash('Event created successfully!', 'success')
                 return redirect(url_for('events'))
+                
             except Exception as e:
+                db.session.rollback()
                 flash(f'Error creating event: {str(e)}', 'danger')
+                return redirect(url_for('add_event'))
         
         # For GET request, render the form template
         event_types = [

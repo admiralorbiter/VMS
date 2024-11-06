@@ -21,6 +21,7 @@
                 <div class="filter-group">
                     <label for="search_title">Event Search</label>
                     <input type="text" name="search_title" id="search_title" 
+                           value="{{ current_filters.search_title }}"
                            class="form-control" 
                            placeholder="Search by title...">
                 </div>
@@ -28,39 +29,55 @@
                 <div class="filter-group">
                     <label for="event_type">Event Type</label>
                     <select name="event_type" id="event_type" class="form-select">
-                        <option value="">All Types</option>
-                        <option value="workshop">Workshop</option>
-                        <option value="meeting">Meeting</option>
-                        <option value="social">Social</option>
-                        <option value="volunteer">Volunteer Session</option>
+                        <option value=""><i class="fa-solid fa-filter"></i> All Types</option>
+                        <option value="workshop" {% if current_filters.event_type == 'workshop' %}selected{% endif %}>
+                            Workshop
+                        </option>
+                        <option value="meeting" {% if current_filters.event_type == 'meeting' %}selected{% endif %}>
+                            Meeting
+                        </option>
+                        <option value="social" {% if current_filters.event_type == 'social' %}selected{% endif %}>
+                            Social
+                        </option>
+                        <option value="volunteer" {% if current_filters.event_type == 'volunteer' %}selected{% endif %}>
+                            Volunteer Session
+                        </option>
                     </select>
                 </div>
 
                 <div class="filter-group">
                     <label for="status">Status</label>
                     <select name="status" id="status" class="form-select status-select">
-                        <option value="">All Statuses</option>
-                        <option value="upcoming">Upcoming</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value=""><i class="fa-solid fa-filter"></i> All Statuses</option>
+                        <option value="upcoming" {% if current_filters.status == 'upcoming' %}selected{% endif %}>
+                            Upcoming
+                        </option>
+                        <option value="in_progress" {% if current_filters.status == 'in_progress' %}selected{% endif %}>
+                            In Progress
+                        </option>
+                        <option value="completed" {% if current_filters.status == 'completed' %}selected{% endif %}>
+                            Completed
+                        </option>
+                        <option value="cancelled" {% if current_filters.status == 'cancelled' %}selected{% endif %}>
+                            Cancelled
+                        </option>
                     </select>
                 </div>
             </div>
 
             <div class="filter-row">
                 <div class="filter-group">
-                    <label for="date_range">Date Range</label>
+                    <label for="start_date">Start Date</label>
                     <input type="date" name="start_date" id="start_date" 
-                           class="form-control" 
-                           placeholder="Start date">
+                           value="{{ current_filters.start_date }}"
+                           class="form-control">
                 </div>
 
                 <div class="filter-group">
-                    <label for="end_date">&nbsp;</label>
+                    <label for="end_date">End Date</label>
                     <input type="date" name="end_date" id="end_date" 
-                           class="form-control" 
-                           placeholder="End date">
+                           value="{{ current_filters.end_date }}"
+                           class="form-control">
                 </div>
             </div>
 
@@ -125,6 +142,41 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <!-- Add pagination container at the bottom -->
+    <div class="pagination-container">
+        <div class="pagination-controls">
+            <div class="pagination-info">
+                <select class="per-page-select" name="per_page">
+                    <option value="10" {% if current_filters.per_page == 10 %}selected{% endif %}>10 per page</option>
+                    <option value="25" {% if current_filters.per_page == 25 %}selected{% endif %}>25 per page</option>
+                    <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 per page</option>
+                    <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
+                </select>
+                
+                <div class="pagination-buttons">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('events', page=pagination.prev_num, **current_filters) }}" 
+                           class="pagination-btn">
+                            <i class="fa-solid fa-chevron-left"></i> Previous
+                        </a>
+                    {% endif %}
+                    
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('events', page=pagination.next_num, **current_filters) }}" 
+                           class="pagination-btn">
+                            Next <i class="fa-solid fa-chevron-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="pagination-summary">
+            Showing {{ pagination.items|length }} of {{ pagination.total }} events 
+            (Page {{ pagination.page }} of {{ pagination.pages }})
+        </div>
     </div>
 </div>
 {% endblock %}

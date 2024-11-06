@@ -10,51 +10,84 @@
 <div class="events-container">
     <div class="events-header">
         <h1>Create New Event</h1>
+        <a href="{{ url_for('events') }}" class="cancel-btn">
+            <i class="fa-solid fa-arrow-left"></i> Back to Events
+        </a>
     </div>
 
     <form method="POST" class="event-form">
         <div class="form-section">
-            <h2><i class="fa-solid fa-info-circle"></i> Basic Information</h2>
+            <h2 class="section-title">
+                <i class="fa-solid fa-info-circle"></i>
+                Basic Information
+            </h2>
             <div class="form-grid">
                 <div class="form-group required">
                     <label for="title">Event Title</label>
-                    <input type="text" id="title" name="title" class="form-control" required>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-heading"></i>
+                        <input type="text" id="title" name="title" class="form-control" required>
+                    </div>
                 </div>
 
                 <div class="form-group required">
                     <label for="type">Event Type</label>
-                    <select id="type" name="type" class="form-select" required>
-                        <option value="">Select Type</option>
-                        {% for value, label in event_types %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-tag"></i>
+                        <select id="type" name="type" class="form-select" required>
+                            <option value="">Select Type</option>
+                            {% for value, label in event_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group required">
                     <label for="start_date">Start Date & Time</label>
-                    <input type="datetime-local" id="start_date" name="start_date" class="form-control" required>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                        <input type="datetime-local" id="start_date" name="start_date" class="form-control" required>
+                    </div>
                 </div>
 
                 <div class="form-group required">
                     <label for="end_date">End Date & Time</label>
-                    <input type="datetime-local" id="end_date" name="end_date" class="form-control" required>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <input type="datetime-local" id="end_date" name="end_date" class="form-control" required>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="location">Location</label>
-                    <input type="text" id="location" name="location" class="form-control">
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <input type="text" id="location" name="location" class="form-control">
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="status">Status</label>
-                    <select id="status" name="status" class="form-select">
-                        {% for value, label in statuses %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <select id="status" name="status" class="form-select">
+                            {% for value, label in statuses %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="save-btn">
+                <i class="fa-solid fa-save"></i> Create Event
+            </button>
+            <a href="{{ url_for('events') }}" class="cancel-btn">
+                <i class="fa-solid fa-times"></i> Cancel
+            </a>
         </div>
     </form>
 </div>
