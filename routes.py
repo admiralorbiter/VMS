@@ -3,7 +3,7 @@ from flask_login import login_required, login_user, logout_user
 from forms import LoginForm, VolunteerForm
 from models.user import User, db
 from werkzeug.security import check_password_hash, generate_password_hash
-from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, Volunteer , VolunteerSkill
+from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
 from sqlalchemy import or_
 from datetime import datetime
 import io
@@ -357,16 +357,44 @@ def init_routes(app):
                                 )
                                 volunteer.phones.append(phone_obj)
 
+                            # First add and flush the volunteer to get an ID
                             db.session.add(volunteer)
-                            db.session.flush()  # Flush to catch any database errors early
+                            db.session.flush()  # This ensures the volunteer has an ID
+
+                            # Now handle skills after we have a volunteer ID
+                            if row.get('Volunteer_Skills_Text__c') or row.get('Volunteer_Skills__c'):
+                                skills = parse_skills(
+                                    row.get('Volunteer_Skills_Text__c', ''),
+                                    row.get('Volunteer_Skills__c', '')
+                                )
+                                
+                                for skill_name in skills:
+                                    # Check if skill already exists in database
+                                    skill = Skill.query.filter_by(name=skill_name).first()
+                                    if not skill:
+                                        # Create new skill
+                                        skill = Skill(name=skill_name)
+                                        db.session.add(skill)
+                                        db.session.flush()  # Get the ID for the new skill
+                                    
+                                    # Create volunteer-skill association with the volunteer ID
+                                    volunteer_skill = VolunteerSkill(
+                                        volunteer_id=volunteer.id,  # Now we have a valid ID
+                                        skill_id=skill.id,
+                                        source=SkillSourceEnum.user_selected
+                                    )
+                                    db.session.add(volunteer_skill)
+
                             success_count += 1
                             
                         except Exception as e:
+                            db.session.rollback()  # Roll back on any error
                             print(f"Error processing row: {str(e)}")  # Debug line
                             errors.append(f"Error processing row: {str(e)}")
                             error_count += 1
                             continue
                     
+                    # Move the final commit outside the row processing loop
                     try:
                         db.session.commit()
                     except Exception as e:
@@ -434,3 +462,21 @@ def parse_date(date_str):
         return None
     except Exception:
         return None
+
+def clean_skill_name(skill_name):
+    """Standardize skill name format"""
+    return skill_name.strip().lower().capitalize()
+
+def parse_skills(text_skills, comma_skills):
+    """Parse and combine skills from both columns, removing duplicates"""
+    skills = set()
+    
+    # Parse semicolon-separated skills
+    if text_skills:
+        skills.update(clean_skill_name(s) for s in text_skills.split(';') if s.strip())
+    
+    # Parse comma-separated skills
+    if comma_skills:
+        skills.update(clean_skill_name(s) for s in comma_skills.split(',') if s.strip())
+    
+    return list(skills)
