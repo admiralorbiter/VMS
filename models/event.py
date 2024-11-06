@@ -24,3 +24,7 @@ class Event(db.Model):
     volunteers = db.relationship('Volunteer', 
                                secondary=event_volunteers,
                                backref=db.backref('events', lazy='dynamic'))
+
+    @property
+    def volunteer_count(self):
+        return len(self.volunteers)

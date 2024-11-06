@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}View Event{% endblock %}
+{% block title %}{{ event.title }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
@@ -9,8 +9,11 @@
 {% block content %}
 <div class="events-container">
     <div class="events-header">
-        <h1>{{ event.title }}</h1>
-        <div class="header-buttons">
+        <div class="title-section">
+            <h1>{{ event.title }}</h1>
+            <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
+        </div>
+        <div class="header-actions">
             <a href="{{ url_for('edit_event', id=event.id) }}" class="btn edit-btn">
                 <i class="fa-solid fa-pencil"></i> Edit Event
             </a>
@@ -20,51 +23,85 @@
         </div>
     </div>
 
-    <div class="event-details-grid">
-        <div class="event-section">
-            <h2><i class="fa-solid fa-info-circle"></i> Event Information</h2>
-            <div class="info-grid">
-                <div class="info-group">
-                    <label>Event Type</label>
-                    <p><span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span></p>
-                </div>
-                <div class="info-group">
-                    <label>Status</label>
-                    <p><span class="status-badge {{ event.status }}">{{ event.status|title }}</span></p>
-                </div>
-                <div class="info-group">
-                    <label>Start Date & Time</label>
-                    <p>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
-                </div>
-                <div class="info-group">
-                    <label>End Date & Time</label>
-                    <p>{{ event.end_date.strftime('%Y-%m-%d %H:%M') }}</p>
-                </div>
-                <div class="info-group">
-                    <label>Location</label>
-                    <p>{{ event.location }}</p>
-                </div>
-                <div class="info-group">
-                    <label>Volunteers</label>
-                    <p>{{ event.volunteer_count }}/{{ event.volunteer_needed }}</p>
+    <div class="event-content">
+        <!-- Event Information Card -->
+        <div class="event-card">
+            <div class="card-header">
+                <i class="fa-solid fa-info-circle"></i>
+                <h2>Event Details</h2>
+            </div>
+            <div class="card-content">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Status</label>
+                        <span class="status-badge {{ event.status }}">{{ event.status|title }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Start Date & Time</label>
+                        <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>End Date & Time</label>
+                        <p><i class="fa-solid fa-calendar-check"></i> {{ event.end_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Location</label>
+                        <p><i class="fa-solid fa-location-dot"></i> {{ event.location }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Volunteer Capacity</label>
+                        <div class="volunteer-progress">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ (event.volunteer_count / event.volunteer_needed) * 100 }}%">
+                                </div>
+                            </div>
+                            <span class="volunteer-count">{{ event.volunteer_count }}/{{ event.volunteer_needed }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="event-section">
-            <h2><i class="fa-solid fa-align-left"></i> Description</h2>
-            <p class="event-description">{{ event.description }}</p>
+        <!-- Description Card -->
+        {% if event.description %}
+        <div class="event-card">
+            <div class="card-header">
+                <i class="fa-solid fa-align-left"></i>
+                <h2>Description</h2>
+            </div>
+            <div class="card-content">
+                <p class="event-description">{{ event.description }}</p>
+            </div>
         </div>
+        {% endif %}
 
-        <div class="event-section">
-            <h2><i class="fa-solid fa-users"></i> Assigned Volunteers</h2>
-            <div class="volunteers-list">
-                {% for volunteer in event.volunteers %}
-                <div class="volunteer-item">
-                    <span class="volunteer-name">{{ volunteer.name }}</span>
-                    <span class="volunteer-role">{{ volunteer.role }}</span>
+        <!-- Volunteers Card -->
+        <div class="event-card">
+            <div class="card-header">
+                <i class="fa-solid fa-users"></i>
+                <h2>Assigned Volunteers</h2>
+            </div>
+            <div class="card-content">
+                {% if volunteers %}
+                <div class="volunteers-grid">
+                    {% for volunteer in volunteers %}
+                    <div class="volunteer-card">
+                        <div class="volunteer-info">
+                            <span class="volunteer-name">{{ volunteer.name }}</span>
+                            {% if volunteer.role %}
+                            <span class="volunteer-role">{{ volunteer.role }}</span>
+                            {% endif %}
+                        </div>
+                        <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn btn-sm view-volunteer-btn">
+                            <i class="fa-solid fa-eye"></i> View Profile
+                        </a>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% else %}
+                <p class="no-volunteers">No volunteers assigned yet.</p>
+                {% endif %}
             </div>
         </div>
     </div>

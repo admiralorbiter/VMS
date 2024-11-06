@@ -210,4 +210,202 @@ td:nth-child(6) {
         width: 100%;
         text-align: center;
     }
+}
+
+/* Event View Specific Styles */
+.title-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.edit-btn, .back-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.edit-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    box-shadow: 0 3px 0 var(--delft-blue);
+}
+
+.back-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: none;
+    box-shadow: 0 3px 0 var(--ucla-blue);
+}
+
+.edit-btn:hover, .back-btn:hover {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+    color: var(--mint-green);
+    background-color: var(--delft-blue);
+}
+
+.event-content {
+    display: grid;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.event-card {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid var(--non-photo-blue);
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.card-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.card-content {
+    padding: 1.5rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-item label {
+    color: var(--delft-blue);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.info-item p {
+    margin: 0;
+    color: var(--ucla-blue);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.volunteer-progress {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.progress {
+    flex: 1;
+    height: 0.5rem;
+    background-color: var(--non-photo-blue);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--ucla-blue);
+    border-radius: 1rem;
+}
+
+.volunteer-count {
+    color: var(--ucla-blue);
+    font-weight: 500;
+    min-width: 4rem;
+    text-align: right;
+}
+
+.volunteers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.volunteer-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--mint-green);
+    border-radius: 8px;
+    border: 1px solid var(--non-photo-blue);
+}
+
+.volunteer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.volunteer-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+}
+
+.volunteer-role {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+}
+
+.view-volunteer-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.view-volunteer-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+}
+
+.no-volunteers {
+    color: var(--ucla-blue);
+    text-align: center;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .events-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+    }
+    
+    .edit-btn, .back-btn {
+        flex: 1;
+        justify-content: center;
+    }
 } 

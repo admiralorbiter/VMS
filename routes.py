@@ -551,55 +551,40 @@ def init_routes(app):
     @app.route('/events/view/<int:id>')
     @login_required
     def view_event(id):
-        # Temporary dummy data until we have a model
-        # In the future, you would query the database with the id
-        event = {
-            'id': id,
-            'title': 'Summer Volunteer Workshop',
-            'type': 'workshop',
-            'start_date': datetime.now(),
-            'end_date': datetime.now() + timedelta(hours=2),
-            'location': 'Main Hall',
-            'description': 'A workshop to train new volunteers on our processes and procedures.',
-            'volunteer_count': 5,
-            'volunteer_needed': 10,
-            'status': 'upcoming',
-            'volunteers': [
-                {'name': 'John Doe', 'role': 'Instructor'},
-                {'name': 'Jane Smith', 'role': 'Assistant'},
-            ]
-        }
-        
+        event = Event.query.get_or_404(id)
+        volunteer_count = len(event.volunteers)
         return render_template(
             'events/view.html',
-            event=event
+            event=event,
+            volunteer_count=volunteer_count,
+            # ... other template variables ...
         )
     
     @app.route('/events/edit/<int:id>', methods=['GET', 'POST'])
     @login_required
     def edit_event(id):
-        # Temporary dummy data until we have a model
-        event = {
-            'id': id,
-            'title': 'Summer Volunteer Workshop',
-            'type': 'workshop',
-            'start_date': datetime.now(),
-            'end_date': datetime.now() + timedelta(hours=2),
-            'location': 'Main Hall',
-            'description': 'A workshop to train new volunteers on our processes and procedures.',
-            'volunteer_count': 5,
-            'volunteer_needed': 10,
-            'status': 'upcoming'
-        }
+        event = Event.query.get_or_404(id)
         
         if request.method == 'POST':
-            # Temporary handling of form submission
             try:
-                # In the future, this would update the database record
+                # Update event from form data
+                event.title = request.form.get('title')
+                event.type = request.form.get('type')
+                event.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M')
+                event.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M')
+                event.location = request.form.get('location')
+                event.status = request.form.get('status')
+                event.volunteer_needed = request.form.get('volunteer_needed', type=int)
+                event.description = request.form.get('description')
+                
+                db.session.commit()
                 flash('Event updated successfully!', 'success')
-                return redirect(url_for('view_event', id=id))
+                return redirect(url_for('view_event', id=event.id))
+                
             except Exception as e:
+                db.session.rollback()
                 flash(f'Error updating event: {str(e)}', 'danger')
+                return redirect(url_for('edit_event', id=id))
         
         event_types = [
             ('workshop', 'Workshop'),
