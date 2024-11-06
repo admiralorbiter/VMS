@@ -266,6 +266,42 @@ def init_routes(app):
         
         return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
     
+    def get_phone_numbers(row):
+        """Extract and format phone numbers from a CSV row."""
+        phones = []
+        seen_numbers = set()  # Track unique numbers
+        preferred_type = row.get('npe01__PreferredPhone__c', '').lower()
+        
+        # Map of CSV columns to phone types
+        phone_mappings = {
+            'Phone': ('phone', ContactTypeEnum.personal),
+            'MobilePhone': ('mobile', ContactTypeEnum.personal),
+            'HomePhone': ('home', ContactTypeEnum.personal),
+            'npe01__WorkPhone__c': ('work', ContactTypeEnum.professional)
+        }
+        
+        for column, (phone_type, contact_type) in phone_mappings.items():
+            number = row.get(column, '').strip()
+            # Standardize the number format (remove any non-digit characters)
+            cleaned_number = ''.join(filter(str.isdigit, number))
+            
+            if number and cleaned_number not in seen_numbers:
+                # Determine if this phone should be primary based on preferred_type
+                is_primary = (
+                    preferred_type == phone_type.lower() or
+                    (preferred_type == 'mobile' and phone_type == 'phone') or  # Handle generic 'Phone' column
+                    (not preferred_type and phone_type == 'mobile')  # Default to mobile if no preference
+                )
+                
+                phones.append(Phone(
+                    number=number,
+                    type=contact_type,
+                    primary=is_primary
+                ))
+                seen_numbers.add(cleaned_number)
+        
+        return phones
+
     @app.route('/volunteers/import', methods=['GET', 'POST'])
     @login_required
     def import_volunteers():
@@ -324,35 +360,13 @@ def init_routes(app):
                                 notes=row.get('Notes', '').strip()
                             )
 
-                            # Add email if provided
-                            email = row.get('Email', '').strip() or row.get('Personal_Email__c', '').strip()
-                            if email:
-                                email_obj = Email(
-                                    email=email,
-                                    type=ContactTypeEnum.personal,
-                                    primary=True
-                                )
-                                volunteer.emails.append(email_obj)
+                            # Replace the old email handling with the new function
+                            email_objects = get_email_addresses(row)
+                            volunteer.emails.extend(email_objects)
 
-                            # Add work email if provided
-                            work_email = row.get('Work_Email__c', '').strip()
-                            if work_email:
-                                work_email_obj = Email(
-                                    email=work_email,
-                                    type=ContactTypeEnum.professional,  # Changed to match enum
-                                    primary=False
-                                )
-                                volunteer.emails.append(work_email_obj)
-
-                            # Add Phone if provided
-                            phone = row.get('Phone', '').strip() or row.get('MobilePhone', '').strip()
-                            if phone:
-                                phone_obj = Phone(
-                                    number=phone,
-                                    type=ContactTypeEnum.personal,  # Changed to match enum
-                                    primary=True
-                                )
-                                volunteer.phones.append(phone_obj)
+                            # Add Phone numbers if provided
+                            phone_objects = get_phone_numbers(row)
+                            volunteer.phones.extend(phone_objects)
 
                             # First add and flush the volunteer to get an ID
                             db.session.add(volunteer)
@@ -776,3 +790,37 @@ def parse_skills(text_skills, comma_skills):
         skills.update(clean_skill_name(s) for s in comma_skills.split(',') if s.strip())
     
     return list(skills)
+
+def get_email_addresses(row):
+    """Extract and format email addresses from a CSV row."""
+    emails = []
+    seen_emails = set()  # Track unique emails
+    preferred_type = row.get('npe01__Preferred_Email__c', '').lower()
+    
+    # Map of CSV columns to email types
+    email_mappings = {
+        'Email': ('personal', ContactTypeEnum.personal),  # Changed 'email' to 'personal' to match data
+        'npe01__HomeEmail__c': ('home', ContactTypeEnum.personal),
+        'npe01__AlternateEmail__c': ('alternate', ContactTypeEnum.personal),
+        'npe01__WorkEmail__c': ('work', ContactTypeEnum.professional)
+    }
+
+    for column, (email_type, contact_type) in email_mappings.items():
+        email = row.get(column, '').strip().lower()
+        if email and email not in seen_emails:
+            # Set primary based on the preferred email type from the CSV
+            is_primary = False
+            if preferred_type:
+                is_primary = (preferred_type == email_type)
+            else:
+                # If no preferred type is specified, make the 'Email' column primary
+                is_primary = (column == 'Email')
+            
+            emails.append(Email(
+                email=email,
+                type=contact_type,
+                primary=is_primary
+            ))
+            seen_emails.add(email)
+    
+    return emails
