@@ -106,13 +106,10 @@
                     <th class="sortable" data-sort="title">
                         Title <i class="fa-solid fa-sort"></i>
                     </th>
-                    <th>Local Status</th>
-                    <th class="sortable" data-sort="last_volunteer_date">
-                        Last Volunteered <i class="fa-solid fa-sort"></i>
-                    </th>
                     <th class="sortable" data-sort="times_volunteered">
                         Times Volunteered <i class="fa-solid fa-sort"></i>
                     </th>
+                    <th>Skills</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -122,25 +119,20 @@
                     <td>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</td>
                     <td>{{ volunteer.organization_name }}</td>
                     <td>{{ volunteer.title }}</td>
+                    <td>{{ volunteer.total_times_volunteered }}</td>
                     <td>
-                        <span class="status-badge {{ volunteer.local_status }}">
-                            {% if volunteer.local_status == 'true' %}
-                                <i class="fa-solid fa-check-circle"></i>
-                                <span>Local</span>
-                            {% elif volunteer.local_status == 'partial' %}
-                                <i class="fa-solid fa-adjust"></i>
-                                <span>Partial</span>
-                            {% elif volunteer.local_status == 'false' %}
-                                <i class="fa-solid fa-times-circle"></i>
-                                <span>Non-Local</span>
-                            {% else %}
-                                <i class="fa-solid fa-question-circle"></i>
-                                <span>Unknown</span>
+                        <div class="skills-container">
+                            {% for skill in volunteer.skills[:3] %}
+                                <span class="skill-badge">{{ skill.name }}</span>
+                            {% endfor %}
+                            {% if volunteer.skills|length > 3 %}
+                                <span class="skill-badge more-skills" 
+                                      title="{{ volunteer.skills[3:]|map(attribute='name')|join(', ') }}">
+                                    +{{ volunteer.skills|length - 3 }}
+                                </span>
                             {% endif %}
-                        </span>
+                        </div>
                     </td>
-                    <td>{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</td>
-                    <td>{{ volunteer.times_volunteered }}</td>
                     <td>
                         <div class="action-buttons">
                             <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn btn-sm action-btn view-btn">
