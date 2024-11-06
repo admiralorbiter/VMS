@@ -8,21 +8,23 @@
 
 {% block content %}
 <div class="events-container">
-    <div class="events-header">
-        <div class="title-section">
-            <h1>{{ event.title }}</h1>
-            <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
-        </div>
+    <!-- Title -->
+    <h1 class="event-title">{{ event.title }}</h1>
+    
+    <!-- Type and Actions Row -->
+    <div class="type-actions-row">
+        <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
         <div class="header-actions">
-            <a href="{{ url_for('edit_event', id=event.id) }}" class="btn edit-btn">
-                <i class="fa-solid fa-pencil"></i> Edit Event
+            <a href="{{ url_for('edit_event', id=event.id) }}" class="action-btn edit-btn">
+                <i class="fa-solid fa-pencil"></i> Edit
             </a>
-            <a href="{{ url_for('events') }}" class="btn back-btn">
-                <i class="fa-solid fa-arrow-left"></i> Back to Events
+            <a href="{{ url_for('events') }}" class="action-btn back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back
             </a>
         </div>
     </div>
 
+    <!-- Rest of the content remains the same -->
     <div class="event-content">
         <!-- Event Information Card -->
         <div class="event-card">
@@ -46,18 +48,11 @@
                     </div>
                     <div class="info-item">
                         <label>Location</label>
-                        <p><i class="fa-solid fa-location-dot"></i> {{ event.location }}</p>
+                        <p><i class="fa-solid fa-location-dot"></i> {{ event.location or 'None' }}</p>
                     </div>
                     <div class="info-item">
                         <label>Volunteer Capacity</label>
-                        <div class="volunteer-progress">
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar" 
-                                     style="width: {{ (event.volunteer_count / event.volunteer_needed) * 100 }}%">
-                                </div>
-                            </div>
-                            <span class="volunteer-count">{{ event.volunteer_count }}/{{ event.volunteer_needed }}</span>
-                        </div>
+                        <p><i class="fa-solid fa-users"></i> {{ event.volunteer_count }}/{{ event.volunteer_needed or 0 }} volunteers</p>
                     </div>
                 </div>
             </div>
@@ -93,8 +88,8 @@
                             <span class="volunteer-role">{{ volunteer.role }}</span>
                             {% endif %}
                         </div>
-                        <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn btn-sm view-volunteer-btn">
-                            <i class="fa-solid fa-eye"></i> View Profile
+                        <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="view-volunteer-btn">
+                            <i class="fa-solid fa-eye"></i> View
                         </a>
                     </div>
                     {% endfor %}

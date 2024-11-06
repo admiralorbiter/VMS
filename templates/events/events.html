@@ -8,17 +8,19 @@
 
 {% block content %}
 <div class="events-container">
-    <div class="events-header">
+    <div class="page-header">
         <h1>Event Calendar</h1>
-        <a href="{{ url_for('add_event') }}" class="btn add-event-btn">
-            <span class="btn-content">Create New Event</span>
-        </a>
-        <a href="{{ url_for('import_events') }}" class="btn import-events-btn">
-            <span class="btn-content">Import Events</span>
-        </a>
-        <button class="btn purge-events-btn">
-            <span class="btn-content">Purge Events</span>
-        </button>
+        <div class="header-actions">
+            <a href="{{ url_for('add_event') }}" class="action-btn">
+                <i class="fa-solid fa-plus"></i> Create New Event
+            </a>
+            <a href="{{ url_for('import_events') }}" class="action-btn">
+                <i class="fa-solid fa-file-import"></i> Import Events
+            </a>
+            <button class="action-btn delete-btn purge-events-btn">
+                <i class="fa-solid fa-trash"></i> Purge Events
+            </button>
+        </div>
     </div>
 
     <div class="filter-panel">
