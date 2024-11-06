@@ -30,7 +30,7 @@
             <div class="card-content">
                 <div class="info-group">
                     <label>Name</label>
-                    <p>{{ volunteer.salutation }} {{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }} {{ volunteer.suffix }}</p>
+                    <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
                 </div>
                 <div class="info-group">
                     <label>Local Status</label>
