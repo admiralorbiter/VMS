@@ -49,8 +49,6 @@ def init_routes(app):
             'email_search': request.args.get('email_search', '').strip(),
             'skill_search': request.args.get('skill_search', '').strip(),
             'local_status': request.args.get('local_status', ''),
-            'sort_by': request.args.get('sort_by', 'last_volunteer_date'),
-            'sort_direction': request.args.get('sort_direction', 'desc'),
             'per_page': per_page
         }
 
@@ -87,11 +85,8 @@ def init_routes(app):
         if current_filters.get('local_status'):
             query = query.filter(Volunteer.local_status == current_filters['local_status'])
 
-        # Apply sorting
-        sort_column = getattr(Volunteer, current_filters.get('sort_by', 'last_volunteer_date'))
-        if current_filters.get('sort_direction', 'desc') == 'desc':
-            sort_column = sort_column.desc()
-        query = query.order_by(sort_column)
+        # Default sort by last_volunteer_date desc
+        query = query.order_by(Volunteer.last_volunteer_date.desc())
 
         # Apply pagination
         paginated_volunteers = query.paginate(

@@ -70,20 +70,6 @@
                            class="form-control" 
                            placeholder="Search by skill...">
                 </div>
-
-                <div class="filter-group">
-                    <label for="sort_by">Sort By</label>
-                    <select name="sort_by" id="sort_by" class="form-select">
-                        <option value="last_volunteer_date" 
-                                {% if current_filters.sort_by == 'last_volunteer_date' %}selected{% endif %}>
-                            Last Volunteer Date
-                        </option>
-                        <option value="times_volunteered" 
-                                {% if current_filters.sort_by == 'times_volunteered' %}selected{% endif %}>
-                            Times Volunteered
-                        </option>
-                    </select>
-                </div>
             </div>
 
             <div class="filter-actions">
