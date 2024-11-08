@@ -1,5 +1,5 @@
 from flask import flash, redirect, render_template, url_for, request, jsonify
-from flask_login import login_required, login_user, logout_user
+from flask_login import current_user, login_required, login_user, logout_user
 from config import Config
 from forms import LoginForm, VolunteerForm
 from models.upcoming_events import UpcomingEvent
@@ -516,8 +516,13 @@ def init_routes(app):
     
     @app.route('/sync_upcoming_events', methods=['POST'])
     def sync_upcoming_events():
+        # Check if request is from automated script (using token)
         token = request.args.get('token')
-        if token != os.getenv('SYNC_AUTH_TOKEN'):
+        # Check if request is from logged-in user
+        is_authenticated = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
+        
+        # Verify either token or user authentication
+        if not (token == os.getenv('SYNC_AUTH_TOKEN') or is_authenticated):
             return jsonify({'message': 'Unauthorized'}), 401
         
         try:

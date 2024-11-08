@@ -60,17 +60,17 @@ class UpcomingEvent(db.Model):
                 'date_and_time': record['Date_and_Time_for_Cal__c'],
                 'event_type': record['Session_Type__c'],
                 'registration_link': record['Registration_Link__c'],
-                'display_on_website': bool(record['Display_on_Website__c']),
-                'start_date': start_date  # Use the parsed datetime object
+                'start_date': start_date
             }
             
             if existing:
-                # Update existing record
+                # Update existing record, preserving display_on_website
                 for key, value in event_data.items():
                     setattr(existing, key, value)
                 updated_count += 1
             else:
-                # Create new record
+                # Create new record with display_on_website defaulting to False
+                event_data['display_on_website'] = False
                 new_event = cls(**event_data)
                 db.session.add(new_event)
                 new_count += 1
