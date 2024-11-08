@@ -515,7 +515,6 @@ def init_routes(app):
                              current_filters=current_filters)
     
     @app.route('/sync_upcoming_events', methods=['POST'])
-    @login_required
     def sync_upcoming_events():
         token = request.args.get('token')
         if token != os.getenv('SYNC_AUTH_TOKEN'):
