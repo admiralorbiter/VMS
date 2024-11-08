@@ -517,6 +517,10 @@ def init_routes(app):
     @app.route('/sync_upcoming_events', methods=['POST'])
     @login_required
     def sync_upcoming_events():
+        token = request.args.get('token')
+        if token != os.getenv('SYNC_AUTH_TOKEN'):
+            return jsonify({'message': 'Unauthorized'}), 401
+        
         try:
             print(f"Attempting to connect with: {Config.SF_USERNAME}")
             
