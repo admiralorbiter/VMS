@@ -305,6 +305,79 @@ def init_routes(app):
         
         return phones
 
+    def process_volunteer_row(row, success_count, error_count, errors):
+        """Process a single volunteer row from CSV data"""
+        try:
+            # Check if volunteer already exists
+            existing_volunteer = Volunteer.query.filter_by(
+                first_name=row.get('FirstName', '').strip(),
+                last_name=row.get('LastName', '').strip()
+            ).first()
+            
+            if existing_volunteer:
+                errors.append(f"Volunteer already exists: {row.get('FirstName')} {row.get('LastName')}")
+                return success_count, error_count + 1
+            
+            # Create new volunteer with proper enum handling
+            volunteer = Volunteer(
+                salesforce_individual_id=row.get('Id', '').strip(),
+                salesforce_account_id=row.get('AccountId', '').strip(),
+                first_name=row.get('FirstName', '').strip(),
+                last_name=row.get('LastName', '').strip(),
+                middle_name=row.get('MiddleName', '').strip(),
+                organization_name=row.get('Primary Affiliation', '').strip(),
+                title=row.get('Title', '').strip(),
+                department=row.get('Department', '').strip(),
+                industry=row.get('Industry', '').strip(),
+                gender=(
+                    GenderEnum[row.get('Gender', '').lower().replace(' ', '_').strip()]
+                    if row.get('Gender', '').lower().replace(' ', '_').strip() in [e.name for e in GenderEnum]
+                    else None
+                ),
+                birthdate=parse_date(row.get('Birthdate', '')),
+                last_mailchimp_activity_date=parse_date(row.get('Last_Mailchimp_Email_Date__c', '')),
+                last_volunteer_date=parse_date(row.get('Last_Volunteer_Date__c', '')),
+                last_email_date=parse_date(row.get('Last_Email_Message__c', '')),
+                notes=row.get('Notes', '').strip()
+            )
+
+            # Add emails and phones
+            volunteer.emails.extend(get_email_addresses(row))
+            volunteer.phones.extend(get_phone_numbers(row))
+
+            # Add volunteer and get ID
+            db.session.add(volunteer)
+            db.session.flush()
+
+            # Handle skills
+            if row.get('Volunteer_Skills_Text__c') or row.get('Volunteer_Skills__c'):
+                skills = parse_skills(
+                    row.get('Volunteer_Skills_Text__c', ''),
+                    row.get('Volunteer_Skills__c', '')
+                )
+                
+                for skill_name in skills:
+                    skill = Skill.query.filter_by(name=skill_name).first()
+                    if not skill:
+                        skill = Skill(name=skill_name)
+                        db.session.add(skill)
+                        db.session.flush()
+                    
+                    volunteer_skill = VolunteerSkill(
+                        volunteer_id=volunteer.id,
+                        skill_id=skill.id,
+                        source=SkillSourceEnum.user_selected
+                    )
+                    db.session.add(volunteer_skill)
+
+            return success_count + 1, error_count
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error processing row: {str(e)}")
+            errors.append(f"Error processing row: {str(e)}")
+            return success_count, error_count + 1
+
     @app.route('/volunteers/import', methods=['GET', 'POST'])
     @login_required
     def import_volunteers():
@@ -312,133 +385,57 @@ def init_routes(app):
             return render_template('volunteers/import.html')
         
         try:
+            success_count = 0
+            error_count = 0
+            errors = []
+
             if request.is_json and request.json.get('quickSync'):
+                # Handle quickSync
                 default_file_path = os.path.join('data', 'Volunteers.csv')
                 if not os.path.exists(default_file_path):
                     return jsonify({'error': 'Default CSV file not found'}), 404
                     
                 with open(default_file_path, 'r', encoding='utf-8') as file:
                     csv_data = csv.DictReader(file)
-                    success_count = 0
-                    error_count = 0
-                    errors = []
-                    
                     for row in csv_data:
-                        try:
-                            # Check if volunteer already exists
-                            existing_volunteer = Volunteer.query.filter_by(
-                                first_name=row.get('FirstName', '').strip(),
-                                last_name=row.get('LastName', '').strip()
-                            ).first()
-                            
-                            if existing_volunteer:
-                                errors.append(f"Volunteer already exists: {row.get('FirstName')} {row.get('LastName')}")
-                                error_count += 1
-                                continue
-                            
-                            # Create new volunteer with proper enum handling
-                            volunteer = Volunteer(
-                                salesforce_individual_id=row.get('Id', '').strip(),
-                                salesforce_account_id=row.get('AccountId', '').strip(),
-                                first_name=row.get('FirstName', '').strip(),
-                                last_name=row.get('LastName', '').strip(),
-                                middle_name=row.get('MiddleName', '').strip(),
-                                organization_name=row.get('Primary Affiliation', '').strip(),
-                                title=row.get('Title', '').strip(),
-                                department=row.get('Department', '').strip(),
-                                industry=row.get('Industry', '').strip(),
-                                
-                                gender=(
-                                    GenderEnum[row.get('Gender', '').lower().replace(' ', '_').strip()]
-                                    if row.get('Gender', '').lower().replace(' ', '_').strip() in [e.name for e in GenderEnum]
-                                    else None
-                                ),
-                                
-                                # Handle dates properly
-                                birthdate=parse_date(row.get('Birthdate', '')),
-                                last_mailchimp_activity_date=parse_date(row.get('Last_Mailchimp_Email_Date__c', '')),
-                                last_volunteer_date=parse_date(row.get('Last_Volunteer_Date__c', '')),
-                                last_email_date=parse_date(row.get('Last_Email_Message__c', '')),
-                                
-                                notes=row.get('Notes', '').strip()
-                            )
+                        success_count, error_count = process_volunteer_row(
+                            row, success_count, error_count, errors
+                        )
 
-                            # Replace the old email handling with the new function
-                            email_objects = get_email_addresses(row)
-                            volunteer.emails.extend(email_objects)
+            else:
+                # Handle regular file upload
+                if 'file' not in request.files:
+                    return jsonify({'error': 'No file uploaded'}), 400
+                
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({'error': 'No file selected'}), 400
+                
+                if not file.filename.endswith('.csv'):
+                    return jsonify({'error': 'File must be a CSV'}), 400
 
-                            # Add Phone numbers if provided
-                            phone_objects = get_phone_numbers(row)
-                            volunteer.phones.extend(phone_objects)
+                # Process uploaded file
+                stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+                csv_data = csv.DictReader(stream)
+                for row in csv_data:
+                    success_count, error_count = process_volunteer_row(
+                        row, success_count, error_count, errors
+                    )
 
-                            # First add and flush the volunteer to get an ID
-                            db.session.add(volunteer)
-                            db.session.flush()  # This ensures the volunteer has an ID
-
-                            # Now handle skills after we have a volunteer ID
-                            if row.get('Volunteer_Skills_Text__c') or row.get('Volunteer_Skills__c'):
-                                skills = parse_skills(
-                                    row.get('Volunteer_Skills_Text__c', ''),
-                                    row.get('Volunteer_Skills__c', '')
-                                )
-                                
-                                for skill_name in skills:
-                                    # Check if skill already exists in database
-                                    skill = Skill.query.filter_by(name=skill_name).first()
-                                    if not skill:
-                                        # Create new skill
-                                        skill = Skill(name=skill_name)
-                                        db.session.add(skill)
-                                        db.session.flush()  # Get the ID for the new skill
-                                    
-                                    # Create volunteer-skill association with the volunteer ID
-                                    volunteer_skill = VolunteerSkill(
-                                        volunteer_id=volunteer.id,  # Now we have a valid ID
-                                        skill_id=skill.id,
-                                        source=SkillSourceEnum.user_selected
-                                    )
-                                    db.session.add(volunteer_skill)
-
-                            success_count += 1
-                            
-                        except Exception as e:
-                            db.session.rollback()  # Roll back on any error
-                            print(f"Error processing row: {str(e)}")  # Debug line
-                            errors.append(f"Error processing row: {str(e)}")
-                            error_count += 1
-                            continue
-                    
-                    # Move the final commit outside the row processing loop
-                    try:
-                        db.session.commit()
-                    except Exception as e:
-                        db.session.rollback()
-                        print(f"Database commit error: {str(e)}")  # Debug line
-                        return jsonify({'error': f'Database error: {str(e)}'}), 500
-                    
-                    return jsonify({
-                        'success': True,
-                        'successCount': success_count,
-                        'errorCount': error_count,
-                        'errors': errors
-                    })
-
-            # Handle regular file upload
-            if 'file' not in request.files:
-                return jsonify({'error': 'No file uploaded'}), 400
-            
-            file = request.files['file']
-            if file.filename == '':
-                return jsonify({'error': 'No file selected'}), 400
-            
-            if not file.filename.endswith('.csv'):
-                return jsonify({'error': 'File must be a CSV'}), 400
-
-            # Process uploaded file
-            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-            csv_data = csv.DictReader(stream)
-            # Rest of the existing CSV processing logic...
-            
+            # Commit all changes
+            try:
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'successCount': success_count,
+                    'errorCount': error_count,
+                    'errors': errors
+                })
+            except Exception as e:
+                db.session.rollback()
+                print(f"Database commit error: {str(e)}")
+                return jsonify({'error': f'Database error: {str(e)}'}), 500
+                
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
@@ -725,6 +722,39 @@ def init_routes(app):
         events = [event.to_dict() for event in UpcomingEvent.query.all()]
         return render_template('management/upcoming_event_management.html', initial_events=events)
     
+    def process_event_row(row, success_count, error_count, errors):
+        """Process a single event row from CSV data"""
+        try:
+            # Get and validate event name
+            event_name = row.get('Name', '').strip()
+            if not event_name:
+                return success_count, error_count  # Skip empty names silently
+            
+            # Check if event already exists
+            if Event.query.filter_by(title=event_name).first():
+                errors.append(f"Event already exists: {event_name}")
+                return success_count, error_count + 1
+            
+            # Create new event with default values
+            event = Event(
+                title=event_name,
+                type=row.get('Session_Type__c', 'workshop'),  # Use Session_Type__c if available
+                start_date=parse_date(row.get('Start_Date__c')) or datetime.now(),
+                end_date=parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1),
+                status=row.get('Status__c', 'upcoming'),
+                location=row.get('Location__c', ''),
+                description=row.get('Description__c', '')
+            )
+            
+            db.session.add(event)
+            return success_count + 1, error_count
+                
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error processing event row: {str(e)}")
+            errors.append(f"Error processing row: {str(e)}")
+            return success_count, error_count + 1
+
     @app.route('/events/import', methods=['GET', 'POST'])
     @login_required
     def import_events():
@@ -732,110 +762,46 @@ def init_routes(app):
             return render_template('events/import.html')
         
         try:
+            success_count = 0
+            error_count = 0
+            errors = []
+
             if request.is_json and request.json.get('quickSync'):
+                # Handle quickSync
                 default_file_path = os.path.join('data', 'Sessions.csv')
                 if not os.path.exists(default_file_path):
                     return jsonify({'error': 'Default CSV file not found'}), 404
                     
-                # Modified file reading to handle NUL bytes
+                # Read and process the default file
                 with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
-                    # Remove NUL bytes from the content
-                    content = file.read().replace('\0', '')
+                    content = file.read().replace('\0', '')  # Remove NUL bytes
                     csv_data = csv.DictReader(content.splitlines())
-                    success_count = 0
-                    error_count = 0
-                    errors = []
-                    
                     for row in csv_data:
-                        try:
-                            # Only get the Name column from CSV
-                            event_name = row.get('Name', '').strip()
-                            
-                            if not event_name:  # Skip empty names
-                                continue
-                            
-                            # Check if event already exists by title
-                            existing_event = Event.query.filter_by(title=event_name).first()
-                            
-                            if existing_event:
-                                errors.append(f"Event already exists: {event_name}")
-                                error_count += 1
-                                continue
-                            
-                            # Create new event with just the name/title
-                            event = Event(
-                                title=event_name,
-                                type='workshop',  # default value
-                                start_date=datetime.now(),  # default value
-                                end_date=datetime.now() + timedelta(hours=1),  # default value
-                                status='upcoming'  # default value
-                            )
-                            
-                            db.session.add(event)
-                            success_count += 1
-                            
-                        except Exception as e:
-                            errors.append(f"Error processing row: {str(e)}")
-                            error_count += 1
-                            continue
+                        success_count, error_count = process_event_row(
+                            row, success_count, error_count, errors
+                        )
 
-                    try:
-                        db.session.commit()
-                        return jsonify({
-                            'success': True,
-                            'successCount': success_count,
-                            'errorCount': error_count,
-                            'errors': errors
-                        })
-                    except Exception as e:
-                        db.session.rollback()
-                        return jsonify({'error': f'Database error: {str(e)}'}), 500
+            else:
+                # Handle regular file upload
+                if 'file' not in request.files:
+                    return jsonify({'error': 'No file uploaded'}), 400
+                
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({'error': 'No file selected'}), 400
+                
+                if not file.filename.endswith('.csv'):
+                    return jsonify({'error': 'File must be a CSV'}), 400
 
-            # Handle regular file upload
-            if 'file' not in request.files:
-                return jsonify({'error': 'No file uploaded'}), 400
-            
-            file = request.files['file']
-            if file.filename == '':
-                return jsonify({'error': 'No file selected'}), 400
-            
-            if not file.filename.endswith('.csv'):
-                return jsonify({'error': 'File must be a CSV'}), 400
-
-            # Modified file upload handling to handle NUL bytes
-            content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
-            csv_data = csv.DictReader(content.splitlines())
-            success_count = 0
-            error_count = 0
-            errors = []
-            
-            for row in csv_data:
-                try:
-                    event_name = row.get('Name', '').strip()
-                    if not event_name:
-                        continue
-                        
-                    if Event.query.filter_by(title=event_name).first():
-                        errors.append(f"Event already exists: {event_name}")
-                        error_count += 1
-                        continue
-                        
-                    event = Event(
-                        title=event_name,
-                        type='workshop',
-                        start_date=datetime.now(),
-                        end_date=datetime.now() + timedelta(hours=1),
-                        status='upcoming'
+                # Process uploaded file
+                content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
+                csv_data = csv.DictReader(content.splitlines())
+                for row in csv_data:
+                    success_count, error_count = process_event_row(
+                        row, success_count, error_count, errors
                     )
-                    
-                    db.session.add(event)
-                    success_count += 1
-                    
-                except Exception as e:
-                    errors.append(f"Error processing row: {str(e)}")
-                    error_count += 1
-                    continue
-            
+
+            # Commit all changes
             try:
                 db.session.commit()
                 return jsonify({
@@ -846,9 +812,11 @@ def init_routes(app):
                 })
             except Exception as e:
                 db.session.rollback()
+                print(f"Database commit error: {str(e)}")
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
                 
         except Exception as e:
+            print(f"Import error: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @app.route('/events/purge', methods=['POST'])
