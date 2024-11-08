@@ -96,40 +96,54 @@ document.addEventListener('DOMContentLoaded', function() {
     syncButton.addEventListener('click', async function() {
         try {
             // Show loading state
-            syncButton.disabled = true;
-            syncButton.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing...';
-            statusMessage.innerHTML = '';
-            statusMessage.className = 'status-message info';
-            statusMessage.innerHTML = '<i class="fas fa-info-circle"></i> Syncing with Salesforce...';
-            statusMessage.classList.remove('hidden');
+            this.disabled = true;
+            const originalContent = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing...';
 
-            const response = await fetch('/events');
+            const response = await fetch('/sync_upcoming_events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
             const data = await response.json();
-
+            
             if (data.success) {
-                // Success
-                statusMessage.className = 'status-message success';
-                statusMessage.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
-                
-                // Display updated events
-                displayEvents(data.events);
+                showNotification('success', `Successfully synced: ${data.new_count} new, ${data.updated_count} updated events`);
+                // Refresh the events display
+                location.reload(); // Reload the page to show updated events
             } else {
-                // Error
-                throw new Error(data.message);
+                showNotification('error', `Sync failed: ${data.message}`);
             }
         } catch (error) {
-            statusMessage.className = 'status-message error';
-            statusMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.message}`;
+            showNotification('error', 'An unexpected error occurred during sync');
         } finally {
-            syncButton.disabled = false;
-            syncButton.innerHTML = '<i class="fas fa-sync"></i> Sync Events';
-            
-            // Hide status message after 5 seconds
-            setTimeout(() => {
-                statusMessage.classList.add('hidden');
-            }, 5000);
+            // Restore button state
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync"></i> Sync Events';
         }
     });
+
+    function showNotification(type, message) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Fade in
+        setTimeout(() => notification.classList.add('show'), 100);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
 
     function displayEvents(events) {
         eventsContainer.innerHTML = events.map(event => `
