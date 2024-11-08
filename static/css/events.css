@@ -715,3 +715,75 @@ td:nth-child(6) {
         min-width: 150px;
     }
 }
+
+/* Sync button specific styles */
+.sync-events-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    position: relative;
+    border: none;
+    box-shadow: 0 4px 0 var(--delft-blue);
+    transition: all 0.1s ease;
+}
+
+.sync-events-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.sync-events-btn i {
+    margin-right: 0.5rem;
+}
+
+/* Notification styles */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.notification.success {
+    border-left: 4px solid #4CAF50;
+}
+
+.notification.error {
+    border-left: 4px solid var(--poppy);
+}
+
+.notification i {
+    font-size: 1.25rem;
+}
+
+.notification.success i {
+    color: #4CAF50;
+}
+
+.notification.error i {
+    color: var(--poppy);
+}
+
+.notification span {
+    color: var(--delft-blue);
+    font-weight: 500;
+}

@@ -17,6 +17,9 @@
             <a href="{{ url_for('import_events') }}" class="action-btn">
                 <i class="fa-solid fa-file-import"></i> Import Events
             </a>
+            <button class="action-btn sync-events-btn">
+                <i class="fa-solid fa-sync"></i> Sync Upcoming Events
+            </button>
             <button class="action-btn delete-btn purge-events-btn">
                 <i class="fa-solid fa-trash"></i> Purge Events
             </button>
@@ -185,4 +188,46 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/events.js') }}"></script>
+<script>
+document.querySelector('.sync-events-btn').addEventListener('click', async function() {
+    try {
+        const response = await fetch('/sync_upcoming_events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('success', `Successfully synced: ${data.new_count} new, ${data.updated_count} updated events`);
+        } else {
+            showNotification('error', `Sync failed: ${data.message}`);
+        }
+    } catch (error) {
+        showNotification('error', 'An unexpected error occurred during sync');
+    }
+});
+
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Fade in
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+</script>
 {% endblock %}

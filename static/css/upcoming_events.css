@@ -1,0 +1,209 @@
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.dashboard-title {
+    color: var(--delft-blue);
+    margin-bottom: 1rem;
+}
+
+.sync-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.sync-btn:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(-2px);
+}
+
+.info-container {
+    background-color: white;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-container p i {
+    color: var(--ucla-blue);
+}
+
+/* Event Cards Grid */
+.events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.event-card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid var(--non-photo-blue);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.event-card h3 {
+    color: var(--delft-blue);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.event-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ucla-blue);
+}
+
+.event-detail i {
+    color: var(--ucla-blue);
+    width: 20px;
+}
+
+/* Toggle Switch Styling */
+.visibility-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--non-photo-blue);
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--ucla-blue);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+/* Register Now Button */
+.registration-link {
+    display: inline-block;
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 1rem;
+    text-align: center;
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.registration-link:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+}
+
+/* Status Message Styling */
+.status-message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-message.info {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: 1px solid var(--ucla-blue);
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .events-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.preview-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.preview-btn:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(-2px);
+    color: var(--mint-green);
+}

@@ -1,0 +1,114 @@
+{% extends "base-nonav.html" %}
+
+{% block title %}PREP-KC Volunteer Sign Up{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/upcoming_events.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-section">
+        <h1>PREP-KC Volunteer Signup</h1>
+    </div>
+
+    <div id="statusMessage" class="status-message hidden"></div>
+
+    <div id="eventsContainer" class="events-grid">
+        <!-- Initial events will be populated here -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const syncButton = document.getElementById('syncButton');
+    const statusMessage = document.getElementById('statusMessage');
+    const eventsContainer = document.getElementById('eventsContainer');
+
+    // Display initial events if available
+    {% if initial_events %}
+        displayEvents({{ initial_events|tojson|safe }});
+    {% endif %}
+
+    syncButton.addEventListener('click', async function() {
+        try {
+            // Show loading state
+            syncButton.disabled = true;
+            syncButton.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing...';
+            statusMessage.innerHTML = '';
+            statusMessage.className = 'status-message info';
+            statusMessage.innerHTML = '<i class="fas fa-info-circle"></i> Syncing with Salesforce...';
+            statusMessage.classList.remove('hidden');
+
+            const response = await fetch('/events');
+            const data = await response.json();
+
+            if (data.success) {
+                // Success
+                statusMessage.className = 'status-message success';
+                statusMessage.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
+                
+                // Display updated events
+                displayEvents(data.events);
+            } else {
+                // Error
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            statusMessage.className = 'status-message error';
+            statusMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.message}`;
+        } finally {
+            syncButton.disabled = false;
+            syncButton.innerHTML = '<i class="fas fa-sync"></i> Sync Events';
+            
+            // Hide status message after 5 seconds
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 5000);
+        }
+    });
+
+    function displayEvents(events) {
+        eventsContainer.innerHTML = events.map(event => `
+            <div class="event-card">
+                <h3>${event.Name}</h3>
+                <div class="event-info">
+                    <div class="event-detail">
+                        <i class="fas fa-users"></i>
+                        <span>Volunteers Needed: ${event.Available_Slots__c || 'Not specified'}</span>
+                    </div>
+                    <div class="event-detail">
+                        <i class="fas fa-user-check"></i>
+                        <span>Currently Filled: ${event.Filled_Volunteer_Jobs__c || '0'}</span>
+                    </div>
+                    <div class="event-detail">
+                        <i class="far fa-calendar-alt"></i>
+                        <span>${event.Date_and_Time_for_Cal__c}</span>
+                    </div>
+                    <div class="event-detail">
+                        <i class="fas fa-tag"></i>
+                        <span>${event.Session_Type__c}</span>
+                    </div>
+                    ${event.Registration_Link__c ? `
+                        <a href="${extractHref(event.Registration_Link__c)}" 
+                           target="_blank" 
+                           class="registration-link">
+                            <i class="fas fa-external-link-alt"></i> Register Now
+                        </a>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function extractHref(linkHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = linkHtml;
+        const anchor = div.querySelector('a');
+        return anchor ? anchor.href : '#';
+    }
+});
+</script>
+{% endblock %}
