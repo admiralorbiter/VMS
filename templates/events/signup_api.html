@@ -1,0 +1,65 @@
+<div class="dashboard-container">
+    <div class="header-section">
+        <h1>PREP-KC Volunteer Signup</h1>
+    </div>
+
+    <div id="statusMessage" class="status-message hidden"></div>
+
+    <div id="eventsContainer" class="events-grid">
+        {% if initial_events %}
+            {{ initial_events|tojson|safe }}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusMessage = document.getElementById('statusMessage');
+    const eventsContainer = document.getElementById('eventsContainer');
+
+    function displayEvents(events) {
+        eventsContainer.innerHTML = events.map(event => `
+            <div class="event-card">
+                <h3>${event.Name}</h3>
+                <div class="event-info">
+                    <div class="event-detail">
+                        <i class="fas fa-users"></i>
+                        <span>Volunteers Needed: ${event.Available_Slots__c || 'Not specified'}</span>
+                    </div>
+                    <div class="event-detail">
+                        <i class="fas fa-user-check"></i>
+                        <span>Currently Filled: ${event.Filled_Volunteer_Jobs__c || '0'}</span>
+                    </div>
+                    <div class="event-detail">
+                        <i class="far fa-calendar-alt"></i>
+                        <span>${event.Date_and_Time_for_Cal__c}</span>
+                    </div>
+                    <div class="event-detail">
+                        <i class="fas fa-tag"></i>
+                        <span>${event.Session_Type__c}</span>
+                    </div>
+                    ${event.Registration_Link__c ? `
+                        <a href="${extractHref(event.Registration_Link__c)}" 
+                           target="_blank" 
+                           class="registration-link">
+                            <i class="fas fa-external-link-alt"></i> Register Now
+                        </a>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Display initial events if available
+    {% if initial_events %}
+        displayEvents({{ initial_events|tojson|safe }});
+    {% endif %}
+
+    function extractHref(linkHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = linkHtml;
+        const anchor = div.querySelector('a');
+        return anchor ? anchor.href : '#';
+    }
+});
+</script>

@@ -1,6 +1,7 @@
 # app.py
 
 from flask import Flask
+from flask_cors import CORS
 from models import db, User
 from flask_login import LoginManager
 from forms import LoginForm
@@ -10,6 +11,7 @@ from dotenv import load_dotenv
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 # Load configuration based on the environment
 if os.environ.get('FLASK_ENV') == 'production':

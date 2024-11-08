@@ -673,6 +673,12 @@ def init_routes(app):
         events = [event.to_dict() for event in UpcomingEvent.query.filter_by(display_on_website=True).order_by(UpcomingEvent.start_date).all()]
         return render_template('events/signup.html', initial_events=events)
     
+    @app.route('/volunteer_signup_api')
+    def volunteer_signup_api():
+        # Get initial events from database where display_on_website is True, ordered by date
+        events = [event.to_dict() for event in UpcomingEvent.query.filter_by(display_on_website=True).order_by(UpcomingEvent.start_date).all()]
+        return render_template('events/signup_api.html', initial_events=events)
+    
     @app.route('/toggle-event-visibility', methods=['POST'])
     @login_required
     def toggle_event_visibility():
