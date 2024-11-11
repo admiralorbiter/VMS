@@ -816,6 +816,39 @@ def init_routes(app):
         }
         return format_mapping.get(format_str, EventFormat.IN_PERSON)  # Default to in-person if not found
 
+    def parse_event_skills(skills_str):
+        """Parse skills from Legacy_Skill_Covered_for_the_Session__c"""
+        if not skills_str:
+            return []
+        
+        # Split by commas and clean up each skill
+        skills = []
+        raw_skills = [s.strip() for s in skills_str.split(',')]
+        
+        for skill in raw_skills:
+            # Remove quotes if present
+            skill = skill.strip('"')
+            
+            # Skip empty skills
+            if not skill:
+                continue
+                
+            # Map common prefixes to standardized categories
+            if skill.startswith('PWY-'):
+                skill = skill.replace('PWY-', 'Pathway: ')
+            elif skill.startswith('Skills-'):
+                skill = skill.replace('Skills-', 'Skill: ')
+            elif skill.startswith('CCE-'):
+                skill = skill.replace('CCE-', 'Career/College: ')
+            elif skill.startswith('CSCs-'):
+                skill = skill.replace('CSCs-', 'Core Skill: ')
+            elif skill.startswith('ACT-'):
+                skill = skill.replace('ACT-', 'Activity: ')
+                
+            skills.append(skill)
+        
+        return skills
+
     def process_event_row(row, success_count, error_count, errors):
         """Process a single event row from CSV data"""
         try:
@@ -824,28 +857,67 @@ def init_routes(app):
             if not event_name:
                 return success_count, error_count  # Skip empty names silently
             
-            # Create new event with default values
-            event = Event(
-                salesforce_id=row.get('Id', '').strip(),
-                title=event_name,
-                type=map_session_type(row.get('Session_Type__c', '')),
-                format=map_event_format(row.get('Format__c', '')),
-                start_date=parse_date(row.get('Start_Date__c')) or datetime.now(),
-                end_date=parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1),
-                status=row.get('Status__c', 'upcoming'),
-                location=row.get('Location__c', ''),
-                description=row.get('Description__c', ''),
-                volunteer_needed=int(row.get('Volunteers_Needed__c', 0)),
-                cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c'))
-            )
+            # Check if event already exists by salesforce_id
+            existing_event = None
+            if row.get('Id'):
+                existing_event = Event.query.filter_by(salesforce_id=row.get('Id')).first()
+            
+            if existing_event:
+                event = existing_event
+                # Update existing event fields
+                event.title = event_name
+                event.type = map_session_type(row.get('Session_Type__c', ''))
+                event.format = map_event_format(row.get('Format__c', ''))
+                event.start_date = parse_date(row.get('Start_Date__c')) or datetime.now()
+                event.end_date = parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1)
+                event.status = row.get('Status__c', 'upcoming')
+                event.location = row.get('Location__c', '')
+                event.description = row.get('Description__c', '')
+                event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))
+                event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
+            else:
+                # Create new event
+                event = Event(
+                    salesforce_id=row.get('Id', '').strip(),
+                    title=event_name,
+                    type=map_session_type(row.get('Session_Type__c', '')),
+                    format=map_event_format(row.get('Format__c', '')),
+                    start_date=parse_date(row.get('Start_Date__c')) or datetime.now(),
+                    end_date=parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1),
+                    status=row.get('Status__c', 'upcoming'),
+                    location=row.get('Location__c', ''),
+                    description=row.get('Description__c', ''),
+                    volunteer_needed=int(row.get('Volunteers_Needed__c', 0)),
+                    cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c'))
+                )
+                db.session.add(event)
+                db.session.flush()  # Get the event ID
             
             # Handle district
             district_name = row.get('District__c')
             if district_name and district_name in DISTRICT_MAPPINGS:
                 district = get_or_create_district(DISTRICT_MAPPINGS[district_name])
-                event.districts.append(district)
+                # Check if district is already associated
+                if district not in event.districts:
+                    event.districts.append(district)
             
-            db.session.add(event)
+            # Handle skills
+            skills_str = row.get('Legacy_Skill_Covered_for_the_Session__c', '')
+            if skills_str:
+                skill_names = parse_event_skills(skills_str)
+                
+                for skill_name in skill_names:
+                    # Get or create skill
+                    skill = Skill.query.filter_by(name=skill_name).first()
+                    if not skill:
+                        skill = Skill(name=skill_name)
+                        db.session.add(skill)
+                        db.session.flush()
+                    
+                    # Check if skill is already associated
+                    if skill not in event.skills:
+                        event.skills.append(skill)
+            
             return success_count + 1, error_count
                 
         except Exception as e:

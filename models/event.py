@@ -16,6 +16,12 @@ event_districts = db.Table('event_districts',
     db.Column('district_id', db.Integer, db.ForeignKey('district.id'), primary_key=True)
 )
 
+# Add this near the top with other association tables
+event_skills = db.Table('event_skills',
+    db.Column('event_id', db.Integer, db.ForeignKey('event.id'), primary_key=True),
+    db.Column('skill_id', db.Integer, db.ForeignKey('skill.id'), primary_key=True)
+)
+
 class EventType(str, Enum):
     CONNECTOR_SESSION = 'connector_session'
     CAREER_JUMPING = 'career_jumping'
@@ -120,6 +126,9 @@ class Event(db.Model):
     districts = db.relationship('District', 
                               secondary=event_districts,
                               backref=db.backref('events', lazy='dynamic'))
+    skills = db.relationship('Skill', 
+                           secondary=event_skills,
+                           backref=db.backref('events', lazy='dynamic'))
 
     @property
     def volunteer_count(self):

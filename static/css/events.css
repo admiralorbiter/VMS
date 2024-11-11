@@ -793,3 +793,59 @@ td:nth-child(6) {
     margin: 0;
     line-height: 1.4;
 }
+
+/* Skills Grid Styling */
+.skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.skill-tag {
+    background-color: #f0f0f0;
+    border-radius: 1rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #444;
+}
+
+.skill-tag i {
+    color: #666;
+}
+
+/* Different colors for different skill types */
+.skill-tag:has(i.fa-road) {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.skill-tag:has(i.fa-tools) {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.skill-tag:has(i.fa-graduation-cap) {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+.skill-tag:has(i.fa-cube) {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.skill-tag:has(i.fa-running) {
+    background-color: #e0f2f1;
+    color: #00796b;
+}
+
+.no-skills {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
