@@ -877,11 +877,12 @@ def init_routes(app):
                 event.format = map_event_format(row.get('Format__c', ''))
                 event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or default_date
                 event.end_date = parse_date(row.get('End_Date_and_Time__c')) or default_date
-                event.status = row.get('Status__c', 'upcoming')
+                event.status = row.get('Session_Status__c', 'unknown')
                 event.location = row.get('Location_Information__c', '')
                 event.description = row.get('Description__c', '')
                 event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))
                 event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
+                event.participant_count = int(row.get('Participant_Count_0__c', 0))
             else:
                 # Create new event
                 event = Event(
@@ -891,11 +892,12 @@ def init_routes(app):
                     format=map_event_format(row.get('Format__c', '')),
                     start_date=parse_date(row.get('Start_Date_and_Time__c')) or default_date,
                     end_date=parse_date(row.get('End_Date_and_Time__c')) or default_date,
-                    status=row.get('Status__c', 'upcoming'),
+                    status=row.get('Session_Status__c', 'unknown'),
                     location=row.get('Location_Information__c', ''),
                     description=row.get('Description__c', ''),
                     volunteer_needed=int(row.get('Volunteers_Needed__c', 0)),
-                    cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c'))
+                    cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c')),
+                    participant_count=int(row.get('Participant_Count_0__c', 0)),
                 )
                 db.session.add(event)
                 db.session.flush()  # Get the event ID
@@ -908,12 +910,13 @@ def init_routes(app):
                 if district not in event.districts:
                     event.districts.append(district)
             
-            # Handle both covered skills and needed skills
+            # Handle all three types of skills
             skills_covered = parse_event_skills(row.get('Legacy_Skill_Covered_for_the_Session__c', ''))
             skills_needed = parse_event_skills(row.get('Legacy_Skills_Needed__c', ''))
+            requested_skills = parse_event_skills(row.get('Requested_Skills__c', ''))
             
             # Combine all skills (removing duplicates automatically since it's a set)
-            all_skills = set(skills_covered + skills_needed)
+            all_skills = set(skills_covered + skills_needed + requested_skills)
             
             for skill_name in all_skills:
                 # Get or create skill

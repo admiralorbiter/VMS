@@ -114,6 +114,7 @@ class Event(db.Model):
     format = db.Column(SQLAlchemyEnum(EventFormat), nullable=False, default=EventFormat.IN_PERSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    participant_count = db.Column(db.Integer, default=0)
     
     # Relationships
     volunteers = db.relationship('Volunteer', 
