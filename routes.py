@@ -875,7 +875,7 @@ def init_routes(app):
                 event.start_date = parse_date(row.get('Start_Date__c')) or datetime.now()
                 event.end_date = parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1)
                 event.status = row.get('Status__c', 'upcoming')
-                event.location = row.get('Location__c', '')
+                event.location = row.get('Location_Information__c', '')
                 event.description = row.get('Description__c', '')
                 event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))
                 event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
@@ -889,7 +889,7 @@ def init_routes(app):
                     start_date=parse_date(row.get('Start_Date__c')) or datetime.now(),
                     end_date=parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1),
                     status=row.get('Status__c', 'upcoming'),
-                    location=row.get('Location__c', ''),
+                    location=row.get('Location_Information__c', ''),
                     description=row.get('Description__c', ''),
                     volunteer_needed=int(row.get('Volunteers_Needed__c', 0)),
                     cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c'))
