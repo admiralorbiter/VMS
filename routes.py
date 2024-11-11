@@ -861,6 +861,9 @@ def init_routes(app):
             if not event_name:
                 return success_count, error_count  # Skip empty names silently
             
+            # Define default date (January 1, 2000)
+            default_date = datetime(2000, 1, 1)
+            
             # Check if event already exists by salesforce_id
             existing_event = None
             if row.get('Id'):
@@ -872,8 +875,8 @@ def init_routes(app):
                 event.title = event_name
                 event.type = map_session_type(row.get('Session_Type__c', ''))
                 event.format = map_event_format(row.get('Format__c', ''))
-                event.start_date = parse_date(row.get('Start_Date__c')) or datetime.now()
-                event.end_date = parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1)
+                event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or default_date
+                event.end_date = parse_date(row.get('End_Date_and_Time__c')) or default_date
                 event.status = row.get('Status__c', 'upcoming')
                 event.location = row.get('Location_Information__c', '')
                 event.description = row.get('Description__c', '')
@@ -886,8 +889,8 @@ def init_routes(app):
                     title=event_name,
                     type=map_session_type(row.get('Session_Type__c', '')),
                     format=map_event_format(row.get('Format__c', '')),
-                    start_date=parse_date(row.get('Start_Date__c')) or datetime.now(),
-                    end_date=parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1),
+                    start_date=parse_date(row.get('Start_Date_and_Time__c')) or default_date,
+                    end_date=parse_date(row.get('End_Date_and_Time__c')) or default_date,
                     status=row.get('Status__c', 'upcoming'),
                     location=row.get('Location_Information__c', ''),
                     description=row.get('Description__c', ''),
@@ -1009,19 +1012,18 @@ def init_routes(app):
             return jsonify({'success': False, 'error': str(e)})
 
 def parse_date(date_str):
-    """Helper function to parse dates from the CSV"""
+    """Parse date string from Salesforce CSV"""
     if not date_str:
         return None
     try:
-        # Try parsing different date formats
-        for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%m/%d/%Y']:
-            try:
-                return datetime.strptime(date_str.strip(), fmt).date()
-            except ValueError:
-                continue
-        return None
-    except Exception:
-        return None
+        return datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        try:
+            # Fallback for dates without times
+            return datetime.strptime(date_str.strip(), '%Y-%m-%d')
+        except ValueError:
+            print(f"Could not parse date: {date_str}")
+            return None
 
 def clean_skill_name(skill_name):
     """Standardize skill name format"""
