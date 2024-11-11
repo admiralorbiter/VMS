@@ -816,8 +816,8 @@ def init_routes(app):
         }
         return format_mapping.get(format_str, EventFormat.IN_PERSON)  # Default to in-person if not found
 
-    def parse_event_skills(skills_str):
-        """Parse skills from Legacy_Skill_Covered_for_the_Session__c"""
+    def parse_event_skills(skills_str, is_needed=False):
+        """Parse skills from Legacy_Skill_Covered_for_the_Session__c or Legacy_Skills_Needed__c"""
         if not skills_str:
             return []
         
@@ -844,6 +844,10 @@ def init_routes(app):
                 skill = skill.replace('CSCs-', 'Core Skill: ')
             elif skill.startswith('ACT-'):
                 skill = skill.replace('ACT-', 'Activity: ')
+            
+            # Add "(Required)" suffix for needed skills
+            if is_needed:
+                skill = f"{skill} (Required)"
                 
             skills.append(skill)
         
@@ -901,22 +905,24 @@ def init_routes(app):
                 if district not in event.districts:
                     event.districts.append(district)
             
-            # Handle skills
-            skills_str = row.get('Legacy_Skill_Covered_for_the_Session__c', '')
-            if skills_str:
-                skill_names = parse_event_skills(skills_str)
+            # Handle both covered skills and needed skills
+            skills_covered = parse_event_skills(row.get('Legacy_Skill_Covered_for_the_Session__c', ''))
+            skills_needed = parse_event_skills(row.get('Legacy_Skills_Needed__c', ''))
+            
+            # Combine all skills (removing duplicates automatically since it's a set)
+            all_skills = set(skills_covered + skills_needed)
+            
+            for skill_name in all_skills:
+                # Get or create skill
+                skill = Skill.query.filter_by(name=skill_name).first()
+                if not skill:
+                    skill = Skill(name=skill_name)
+                    db.session.add(skill)
+                    db.session.flush()
                 
-                for skill_name in skill_names:
-                    # Get or create skill
-                    skill = Skill.query.filter_by(name=skill_name).first()
-                    if not skill:
-                        skill = Skill(name=skill_name)
-                        db.session.add(skill)
-                        db.session.flush()
-                    
-                    # Check if skill is already associated
-                    if skill not in event.skills:
-                        event.skills.append(skill)
+                # Check if skill is already associated
+                if skill not in event.skills:
+                    event.skills.append(skill)
             
             return success_count + 1, error_count
                 
