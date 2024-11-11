@@ -38,6 +38,22 @@
                         <label>Status</label>
                         <span class="status-badge {{ event.status }}">{{ event.status|title }}</span>
                     </div>
+                    {% if event.salesforce_id %}
+                    <div class="info-item">
+                        <label>Salesforce ID</label>
+                        <p><i class="fa-solid fa-database"></i> {{ event.salesforce_id }}</p>
+                    </div>
+                    {% endif %}
+                    {% if event.districts %}
+                    <div class="info-item">
+                        <label>District{% if event.districts|length > 1 %}s{% endif %}</label>
+                        <p><i class="fa-solid fa-school"></i> 
+                            {% for district in event.districts %}
+                                {{ district.name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
+                    </div>
+                    {% endif %}
                     <div class="info-item">
                         <label>Start Date & Time</label>
                         <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
@@ -53,6 +69,12 @@
                     <div class="info-item">
                         <label>Volunteer Capacity</label>
                         <p><i class="fa-solid fa-users"></i> {{ event.volunteer_count }}/{{ event.volunteer_needed or 0 }} volunteers</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Format</label>
+                        <p><i class="fa-solid {% if event.format == 'virtual' %}fa-video{% else %}fa-person{% endif %}"></i> 
+                            {{ event.format.value|replace('_', ' ')|title }}
+                        </p>
                     </div>
                 </div>
             </div>

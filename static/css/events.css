@@ -787,3 +787,9 @@ td:nth-child(6) {
     color: var(--delft-blue);
     font-weight: 500;
 }
+
+.info-item p {
+    word-break: break-word;  /* Handles long district names */
+    margin: 0;
+    line-height: 1.4;
+}

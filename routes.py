@@ -4,7 +4,7 @@ from config import Config
 from forms import LoginForm, VolunteerForm
 from models.upcoming_events import UpcomingEvent
 from models.user import User, db
-from models.event import Event
+from models.event import CancellationReason, District, Event, EventType, EventFormat
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
 from sqlalchemy import or_
@@ -13,6 +13,37 @@ import io
 import csv
 import os
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+
+DISTRICT_MAPPINGS = {
+    'KANSAS CITY USD 500': 'KANSAS CITY USD 500',
+    'HICKMAN MILLS C-1': 'HICKMAN MILLS C-1',
+    'GRANDVIEW C-4': 'GRANDVIEW C-4',
+    'NORTH KANSAS CITY 74': 'NORTH KANSAS CITY 74',
+    'REPUBLIC R-III': 'REPUBLIC R-III',
+    'KANSAS CITY PUBLIC SCHOOL DISTRICT': 'KANSAS CITY PUBLIC SCHOOL DISTRICT',
+    'INDEPENDENCE 30': 'INDEPENDENCE 30',
+    'HOGAN PREPARATORY ACADEMY': 'HOGAN PREPARATORY ACADEMY',
+    'PIPER-KANSAS CITY': 'PIPER-KANSAS CITY',
+    'BELTON 124': 'BELTON 124',
+    'CROSSROADS ACADEMY OF KANSAS CITY': 'CROSSROADS ACADEMY OF KANSAS CITY',
+    'CENTER SCHOOL DISTRICT': 'CENTER SCHOOL DISTRICT',
+    'GUADALUPE CENTERS SCHOOLS': 'GUADALUPE CENTERS SCHOOLS',
+    'BLUE VALLEY': 'BLUE VALLEY',
+    'BASEHOR-LINWOOD': 'BASEHOR-LINWOOD',
+    'ALLEN VILLAGE': 'ALLEN VILLAGE',
+    'SPRINGFIELD R-XII': 'SPRINGFIELD R-XII',
+    'DE SOTO': 'DE SOTO',
+    'INDEPENDENT': 'INDEPENDENT',
+    'CENTER 58 SCHOOL DISTRICT': 'CENTER 58 SCHOOL DISTRICT'
+}
+
+def get_or_create_district(district_name):
+    """Get existing district or create new one"""
+    district = District.query.filter_by(name=district_name).first()
+    if not district:
+        district = District(name=district_name)
+        db.session.add(district)
+    return district
 
 def init_routes(app):
     @app.route('/')
@@ -738,6 +769,53 @@ def init_routes(app):
         events = [event.to_dict() for event in UpcomingEvent.query.all()]
         return render_template('management/upcoming_event_management.html', initial_events=events)
     
+    def map_session_type(salesforce_type):
+        """Map Salesforce session types to EventType enum values"""
+        mapping = {
+            'Connector Session': EventType.CONNECTOR_SESSION,
+            'Career Jumping': EventType.CAREER_JUMPING,
+            'Career Speaker': EventType.CAREER_SPEAKER,
+            'Employability Skills': EventType.EMPLOYABILITY_SKILLS,
+            'IGNITE': EventType.IGNITE,
+            'Career Fair': EventType.CAREER_FAIR,
+            'Client Connected Project': EventType.CLIENT_CONNECTED_PROJECT,
+            'Pathway Campus Visits': EventType.PATHWAY_CAMPUS_VISITS,
+            'Workplace Visit': EventType.WORKPLACE_VISIT,
+            'Pathway Workplace Visits': EventType.PATHWAY_WORKPLACE_VISITS,
+            'College Options': EventType.COLLEGE_OPTIONS,
+            'DIA - Classroom Speaker': EventType.DIA_CLASSROOM_SPEAKER,
+            'DIA': EventType.DIA,
+            'Campus Visit': EventType.CAMPUS_VISIT,
+            'Advisory Sessions': EventType.ADVISORY_SESSIONS,
+            'Volunteer Orientation': EventType.VOLUNTEER_ORIENTATION,
+            'Volunteer Engagement': EventType.VOLUNTEER_ENGAGEMENT,
+            'Mentoring': EventType.MENTORING,
+            'Financial Literacy': EventType.FINANCIAL_LITERACY,
+            'Math Relays': EventType.MATH_RELAYS,
+            'Classroom Speaker': EventType.CLASSROOM_SPEAKER,
+            'Internship': EventType.INTERNSHIP,
+            'College Application Fair': EventType.COLLEGE_APPLICATION_FAIR,
+            'FAFSA': EventType.FAFSA,
+            'Classroom Activity': EventType.CLASSROOM_ACTIVITY,
+            'Historical, Not Yet Updated': EventType.HISTORICAL,
+            'DataViz': EventType.DATA_VIZ
+        }
+        return mapping.get(salesforce_type, EventType.CLASSROOM_ACTIVITY)  # default to CLASSROOM_ACTIVITY if not found
+
+    def map_cancellation_reason(reason):
+        """Map cancellation reasons to CancellationReason enum values"""
+        if reason == 'Inclement Weather Cancellation':
+            return CancellationReason.WEATHER
+        return None
+
+    def map_event_format(format_str):
+        """Map Salesforce format to EventFormat enum values"""
+        format_mapping = {
+            'In-Person': EventFormat.IN_PERSON,
+            'Virtual': EventFormat.VIRTUAL
+        }
+        return format_mapping.get(format_str, EventFormat.IN_PERSON)  # Default to in-person if not found
+
     def process_event_row(row, success_count, error_count, errors):
         """Process a single event row from CSV data"""
         try:
@@ -746,21 +824,26 @@ def init_routes(app):
             if not event_name:
                 return success_count, error_count  # Skip empty names silently
             
-            # Check if event already exists
-            if Event.query.filter_by(title=event_name).first():
-                errors.append(f"Event already exists: {event_name}")
-                return success_count, error_count + 1
-            
             # Create new event with default values
             event = Event(
+                salesforce_id=row.get('Id', '').strip(),
                 title=event_name,
-                type=row.get('Session_Type__c', 'workshop'),  # Use Session_Type__c if available
+                type=map_session_type(row.get('Session_Type__c', '')),
+                format=map_event_format(row.get('Format__c', '')),
                 start_date=parse_date(row.get('Start_Date__c')) or datetime.now(),
                 end_date=parse_date(row.get('End_Date__c')) or datetime.now() + timedelta(hours=1),
                 status=row.get('Status__c', 'upcoming'),
                 location=row.get('Location__c', ''),
-                description=row.get('Description__c', '')
+                description=row.get('Description__c', ''),
+                volunteer_needed=int(row.get('Volunteers_Needed__c', 0)),
+                cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c'))
             )
+            
+            # Handle district
+            district_name = row.get('District__c')
+            if district_name and district_name in DISTRICT_MAPPINGS:
+                district = get_or_create_district(DISTRICT_MAPPINGS[district_name])
+                event.districts.append(district)
             
             db.session.add(event)
             return success_count + 1, error_count

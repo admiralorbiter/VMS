@@ -43,5 +43,5 @@ load_dotenv()
 
 if __name__ == '__main__':
     # Use production-ready server configuration
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5050))
     app.run(host='0.0.0.0', port=port)
