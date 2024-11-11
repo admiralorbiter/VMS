@@ -339,46 +339,50 @@ def init_routes(app):
     def process_volunteer_row(row, success_count, error_count, errors):
         """Process a single volunteer row from CSV data"""
         try:
-            # Check if volunteer already exists
-            existing_volunteer = Volunteer.query.filter_by(
-                first_name=row.get('FirstName', '').strip(),
-                last_name=row.get('LastName', '').strip()
-            ).first()
+            # Check if volunteer exists by salesforce_id
+            volunteer = None
+            if row.get('Id'):
+                volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Id']).first()
             
-            if existing_volunteer:
-                errors.append(f"Volunteer already exists: {row.get('FirstName')} {row.get('LastName')}")
-                return success_count, error_count + 1
+            # If volunteer doesn't exist, create new one
+            if not volunteer:
+                volunteer = Volunteer()
+                db.session.add(volunteer)
             
-            # Create new volunteer with proper enum handling
-            volunteer = Volunteer(
-                salesforce_individual_id=row.get('Id', '').strip(),
-                salesforce_account_id=row.get('AccountId', '').strip(),
-                first_name=row.get('FirstName', '').strip(),
-                last_name=row.get('LastName', '').strip(),
-                middle_name=row.get('MiddleName', '').strip(),
-                organization_name=row.get('Primary Affiliation', '').strip(),
-                title=row.get('Title', '').strip(),
-                department=row.get('Department', '').strip(),
-                industry=row.get('Industry', '').strip(),
-                gender=(
-                    GenderEnum[row.get('Gender', '').lower().replace(' ', '_').strip()]
-                    if row.get('Gender', '').lower().replace(' ', '_').strip() in [e.name for e in GenderEnum]
-                    else None
-                ),
-                birthdate=parse_date(row.get('Birthdate', '')),
-                last_mailchimp_activity_date=parse_date(row.get('Last_Mailchimp_Email_Date__c', '')),
-                last_volunteer_date=parse_date(row.get('Last_Volunteer_Date__c', '')),
-                last_email_date=parse_date(row.get('Last_Email_Message__c', '')),
-                notes=row.get('Notes', '').strip()
-            )
+            # Update volunteer fields (handles both new and existing volunteers)
+            volunteer.salesforce_individual_id = row.get('Id', '').strip()
+            volunteer.salesforce_account_id = row.get('AccountId', '').strip()
+            volunteer.first_name = row.get('FirstName', '').strip()
+            volunteer.last_name = row.get('LastName', '').strip()
+            volunteer.middle_name = row.get('MiddleName', '').strip()
+            volunteer.organization_name = row.get('Primary Affiliation', '').strip()
+            volunteer.title = row.get('Title', '').strip()
+            volunteer.department = row.get('Department', '').strip()
+            volunteer.industry = row.get('Industry', '').strip()
+            
+            # Handle gender enum
+            gender_str = row.get('Gender', '').lower().replace(' ', '_').strip()
+            if gender_str in [e.name for e in GenderEnum]:
+                volunteer.gender = GenderEnum[gender_str]
+            
+            # Handle dates
+            volunteer.birthdate = parse_date(row.get('Birthdate', ''))
+            volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c', ''))
+            volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c', ''))
+            volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c', ''))
+            volunteer.notes = row.get('Notes', '').strip()
 
-            # Add emails and phones
-            volunteer.emails.extend(get_email_addresses(row))
-            volunteer.phones.extend(get_phone_numbers(row))
+            # Handle emails
+            new_emails = get_email_addresses(row)
+            if new_emails:
+                # Clear existing emails and add new ones
+                volunteer.emails = new_emails
 
-            # Add volunteer and get ID
-            db.session.add(volunteer)
-            db.session.flush()
+            # Handle phones
+            new_phones = get_phone_numbers(row)
+            if new_phones:
+                # Clear existing phones and add new ones
+                volunteer.phones = new_phones
 
             # Handle skills
             if row.get('Volunteer_Skills_Text__c') or row.get('Volunteer_Skills__c'):
@@ -387,25 +391,20 @@ def init_routes(app):
                     row.get('Volunteer_Skills__c', '')
                 )
                 
+                # Update skills
                 for skill_name in skills:
                     skill = Skill.query.filter_by(name=skill_name).first()
                     if not skill:
                         skill = Skill(name=skill_name)
                         db.session.add(skill)
-                        db.session.flush()
-                    
-                    volunteer_skill = VolunteerSkill(
-                        volunteer_id=volunteer.id,
-                        skill_id=skill.id,
-                        source=SkillSourceEnum.user_selected
-                    )
-                    db.session.add(volunteer_skill)
+                    if skill not in volunteer.skills:
+                        volunteer.skills.append(skill)
 
             return success_count + 1, error_count
-            
+                
         except Exception as e:
             db.session.rollback()
-            print(f"Error processing row: {str(e)}")
+            print(f"Error processing volunteer row: {str(e)}")
             errors.append(f"Error processing row: {str(e)}")
             return success_count, error_count + 1
 
@@ -861,75 +860,57 @@ def init_routes(app):
             if not event_name:
                 return success_count, error_count  # Skip empty names silently
             
-            # Define default date (January 1, 2000)
+            # Define default date
             default_date = datetime(2000, 1, 1)
             
-            # Check if event already exists by salesforce_id
-            existing_event = None
+            # Check if event exists by salesforce_id
+            event = None
             if row.get('Id'):
-                existing_event = Event.query.filter_by(salesforce_id=row.get('Id')).first()
+                event = Event.query.filter_by(salesforce_id=row.get('Id')).first()
             
-            if existing_event:
-                event = existing_event
-                # Update existing event fields
-                event.title = event_name
-                event.type = map_session_type(row.get('Session_Type__c', ''))
-                event.format = map_event_format(row.get('Format__c', ''))
-                event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or default_date
-                event.end_date = parse_date(row.get('End_Date_and_Time__c')) or default_date
-                event.status = row.get('Session_Status__c', 'unknown')
-                event.location = row.get('Location_Information__c', '')
-                event.description = row.get('Description__c', '')
-                event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))
-                event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
-                event.participant_count = int(row.get('Participant_Count_0__c', 0))
-            else:
-                # Create new event
-                event = Event(
-                    salesforce_id=row.get('Id', '').strip(),
-                    title=event_name,
-                    type=map_session_type(row.get('Session_Type__c', '')),
-                    format=map_event_format(row.get('Format__c', '')),
-                    start_date=parse_date(row.get('Start_Date_and_Time__c')) or default_date,
-                    end_date=parse_date(row.get('End_Date_and_Time__c')) or default_date,
-                    status=row.get('Session_Status__c', 'unknown'),
-                    location=row.get('Location_Information__c', ''),
-                    description=row.get('Description__c', ''),
-                    volunteer_needed=int(row.get('Volunteers_Needed__c', 0)),
-                    cancellation_reason=map_cancellation_reason(row.get('Cancellation_Reason__c')),
-                    participant_count=int(row.get('Participant_Count_0__c', 0)),
-                )
+            # If event doesn't exist, create new one
+            if not event:
+                event = Event()
                 db.session.add(event)
-                db.session.flush()  # Get the event ID
             
+            # Update event fields (handles both new and existing events)
+            event.salesforce_id = row.get('Id', '').strip()
+            event.title = event_name
+            event.type = map_session_type(row.get('Session_Type__c', ''))
+            event.format = map_event_format(row.get('Format__c', ''))
+            event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or default_date
+            event.end_date = parse_date(row.get('End_Date_and_Time__c')) or default_date
+            event.status = row.get('Session_Status__c', 'unknown')
+            event.location = row.get('Location_Information__c', '')
+            event.description = row.get('Description__c', '')
+            event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))
+            event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
+            event.participant_count = int(row.get('Participant_Count_0__c', 0))
+
             # Handle district
             district_name = row.get('District__c')
             if district_name and district_name in DISTRICT_MAPPINGS:
                 district = get_or_create_district(DISTRICT_MAPPINGS[district_name])
-                # Check if district is already associated
                 if district not in event.districts:
                     event.districts.append(district)
-            
-            # Handle all three types of skills
+
+            # Handle skills
             skills_covered = parse_event_skills(row.get('Legacy_Skill_Covered_for_the_Session__c', ''))
             skills_needed = parse_event_skills(row.get('Legacy_Skills_Needed__c', ''))
             requested_skills = parse_event_skills(row.get('Requested_Skills__c', ''))
             
-            # Combine all skills (removing duplicates automatically since it's a set)
+            # Combine all skills
             all_skills = set(skills_covered + skills_needed + requested_skills)
             
+            # Update skills
             for skill_name in all_skills:
-                # Get or create skill
                 skill = Skill.query.filter_by(name=skill_name).first()
                 if not skill:
                     skill = Skill(name=skill_name)
                     db.session.add(skill)
-                    db.session.flush()
-                
-                # Check if skill is already associated
                 if skill not in event.skills:
                     event.skills.append(skill)
-            
+
             return success_count + 1, error_count
                 
         except Exception as e:
