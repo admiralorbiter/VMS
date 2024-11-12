@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}View History - {{ history.summary }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <div class="page-header">
+        <div class="title-section">
+            <h1>{{ history.summary }}</h1>
+            <span class="activity-type-badge {{ history.activity_type.lower() }}">
+                {{ history.activity_type }}
+            </span>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('history') }}" class="back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to History
+            </a>
+            {% if history.event_id %}
+            <a href="{{ url_for('view_event', id=history.event_id) }}" class="event-btn">
+                <i class="fa-solid fa-calendar"></i> View Event
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="history-content">
+        <div class="info-card">
+            <div class="card-header">
+                <i class="fa-solid fa-info-circle"></i>
+                <h2>Activity Details</h2>
+            </div>
+            <div class="card-content">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Status</label>
+                        <span class="status-badge {{ history.activity_status.lower() }}">
+                            {{ history.activity_status }}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <label>Activity Date</label>
+                        <p>{{ history.activity_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Action</label>
+                        <p>{{ history.action }}</p>
+                    </div>
+                    {% if history.completed_at %}
+                    <div class="info-item">
+                        <label>Completed At</label>
+                        <p>{{ history.completed_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if history.description %}
+        <div class="info-card">
+            <div class="card-header">
+                <i class="fa-solid fa-align-left"></i>
+                <h2>Description</h2>
+            </div>
+            <div class="card-content">
+                <p class="description-text">{{ history.description }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if history.email_message_id %}
+        <div class="info-card">
+            <div class="card-header">
+                <i class="fa-solid fa-envelope"></i>
+                <h2>Email Details</h2>
+            </div>
+            <div class="card-content">
+                <div class="info-item">
+                    <label>Message ID</label>
+                    <p>{{ history.email_message_id }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

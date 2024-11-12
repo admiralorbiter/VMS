@@ -4,9 +4,11 @@ from datetime import datetime
 class History(db.Model):
     __tablename__ = 'history'
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id', ondelete="CASCADE"))
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'))
     volunteer_id = db.Column(db.Integer, db.ForeignKey('volunteer.id', ondelete="CASCADE"), index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"))
+    # Remove or comment out user_id if you don't have a User model
+    # user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    # account_id = db.Column(db.Integer, db.ForeignKey('account.id'))
     action = db.Column(db.String(255))
     summary = db.Column(db.Text)  # Mapped from "Subject"
     description = db.Column(db.Text)
@@ -18,3 +20,7 @@ class History(db.Model):
     last_modified_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = db.Column(db.Boolean, default=False)
     email_message_id = db.Column(db.String(255), nullable=True)
+
+    # Add relationships to Event and Volunteer models
+    event = db.relationship('Event', backref=db.backref('histories', lazy='dynamic'))
+    volunteer = db.relationship('Volunteer', backref=db.backref('histories', lazy='dynamic'))
