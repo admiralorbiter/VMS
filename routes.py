@@ -6,7 +6,7 @@ from models.upcoming_events import UpcomingEvent
 from models.user import User, db
 from models.event import CancellationReason, District, Event, EventType, EventFormat
 from werkzeug.security import check_password_hash, generate_password_hash
-from models.volunteer import Address, ContactTypeEnum, Email, Engagement, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
+from models.volunteer import Address, ContactTypeEnum, Email, Engagement, EventParticipation, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
 from sqlalchemy import or_
 from datetime import datetime, timedelta
 import io
@@ -190,33 +190,33 @@ def init_routes(app):
     def view_volunteer(id):
         volunteer = Volunteer.query.get_or_404(id)
         
-        # Ensure emails are ordered with primary first
-        emails = sorted(volunteer.emails, key=lambda x: x.primary, reverse=True)
-        
-        # Ensure phones are ordered with primary first
-        phones = sorted(volunteer.phones, key=lambda x: x.primary, reverse=True)
-        
-        # Sort engagements by date descending
-        engagements = sorted(
-            volunteer.engagements, 
-            key=lambda x: x.engagement_date or datetime.min, 
-            reverse=True
-        )
-        
-        # Calculate volunteer statistics
-        stats = {
-            'total_times_volunteered': len(engagements),
-            'first_volunteer_date': min([e.engagement_date for e in engagements]) if engagements else None,
-            'last_volunteer_date': max([e.engagement_date for e in engagements]) if engagements else None
+        # Get participations and group by status
+        participations = EventParticipation.query.filter_by(volunteer_id=id).all()
+        participation_stats = {
+            'Attended': [],
+            'No-Show': [],
+            'Cancelled': []
         }
+        
+        for participation in participations:
+            status = participation.status
+            if status in participation_stats:
+                participation_stats[status].append({
+                    'event': participation.event,
+                    'delivery_hours': participation.delivery_hours,
+                    'date': participation.event.start_date
+                })
+        
+        # Sort each list by date
+        for status in participation_stats:
+            participation_stats[status].sort(key=lambda x: x['date'], reverse=True)
         
         return render_template(
             'volunteers/view.html',
             volunteer=volunteer,
-            emails=emails,
-            phones=phones,
-            engagements=engagements,
-            stats=stats
+            emails=sorted(volunteer.emails, key=lambda x: x.primary, reverse=True),
+            phones=sorted(volunteer.phones, key=lambda x: x.primary, reverse=True),
+            participation_stats=participation_stats
         )
     
     @app.route('/volunteers/edit/<int:id>', methods=['GET', 'POST'])
@@ -650,12 +650,30 @@ def init_routes(app):
     @login_required
     def view_event(id):
         event = Event.query.get_or_404(id)
-        volunteer_count = len(event.volunteers)
+        # Get participations with volunteers
+        participations = EventParticipation.query.filter_by(event_id=id).all()
+        
+        # Group participations by status
+        participation_stats = {
+            'Attended': [],
+            'No-Show': [],
+            'Cancelled': []
+        }
+        
+        for participation in participations:
+            status = participation.status
+            if status in participation_stats:
+                participation_stats[status].append({
+                    'volunteer': participation.volunteer,
+                    'delivery_hours': participation.delivery_hours
+                })
+        
         return render_template(
             'events/view.html',
             event=event,
-            volunteer_count=volunteer_count,
-            # ... other template variables ...
+            volunteer_count=len(event.volunteers),
+            participation_stats=participation_stats,
+            volunteers=event.volunteers  # Keep existing volunteer list for backward compatibility
         )
     
     @app.route('/events/edit/<int:id>', methods=['GET', 'POST'])
@@ -919,6 +937,39 @@ def init_routes(app):
             errors.append(f"Error processing row: {str(e)}")
             return success_count, error_count + 1
 
+    def process_participation_row(row, success_count, error_count, errors):
+        """Process a single participation row from CSV data"""
+        try:
+            # Check if participation already exists
+            existing = EventParticipation.query.filter_by(salesforce_id=row['Id']).first()
+            if existing:
+                return success_count, error_count  # Skip existing records
+            
+            # Find the volunteer and event by their Salesforce IDs
+            volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Contact__c']).first()
+            event = Event.query.filter_by(salesforce_id=row['Session__c']).first()
+            
+            if not volunteer or not event:
+                errors.append(f"Could not find volunteer or event for participation {row['Id']}")
+                return success_count, error_count + 1
+            
+            # Create new participation record
+            participation = EventParticipation(
+                volunteer_id=volunteer.id,
+                event_id=event.id,
+                status=row['Status__c'],
+                delivery_hours=float(row['Delivery_Hours__c']) if row['Delivery_Hours__c'] else None,
+                salesforce_id=row['Id']
+            )
+            
+            db.session.add(participation)
+            return success_count + 1, error_count
+
+        except Exception as e:
+            db.session.rollback()
+            errors.append(f"Error processing participation row: {str(e)}")
+            return success_count, error_count + 1
+
     @app.route('/events/import', methods=['GET', 'POST'])
     @login_required
     def import_events():
@@ -929,24 +980,31 @@ def init_routes(app):
             success_count = 0
             error_count = 0
             errors = []
+            
+            # Determine import type
+            import_type = request.json.get('importType', 'events') if request.is_json else request.form.get('importType', 'events')
+            
+            # Set default file path based on import type
+            default_file_path = os.path.join('data', 'Sessions.csv' if import_type == 'events' else 'Session_Participant__c - volunteers.csv')
+            
+            # Process function based on import type
+            process_func = process_event_row if import_type == 'events' else process_participation_row
 
             if request.is_json and request.json.get('quickSync'):
                 # Handle quickSync
-                default_file_path = os.path.join('data', 'Sessions.csv')
                 if not os.path.exists(default_file_path):
                     return jsonify({'error': 'Default CSV file not found'}), 404
                     
-                # Read and process the default file
                 with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
-                    content = file.read().replace('\0', '')  # Remove NUL bytes
+                    content = file.read().replace('\0', '')
                     csv_data = csv.DictReader(content.splitlines())
                     for row in csv_data:
-                        success_count, error_count = process_event_row(
+                        success_count, error_count = process_func(
                             row, success_count, error_count, errors
                         )
 
             else:
-                # Handle regular file upload
+                # Handle file upload
                 if 'file' not in request.files:
                     return jsonify({'error': 'No file uploaded'}), 400
                 
@@ -957,15 +1015,14 @@ def init_routes(app):
                 if not file.filename.endswith('.csv'):
                     return jsonify({'error': 'File must be a CSV'}), 400
 
-                # Process uploaded file
                 content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
                 csv_data = csv.DictReader(content.splitlines())
                 for row in csv_data:
-                    success_count, error_count = process_event_row(
+                    success_count, error_count = process_func(
                         row, success_count, error_count, errors
                     )
 
-            # Commit all changes
+            # Commit changes
             try:
                 db.session.commit()
                 return jsonify({

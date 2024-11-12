@@ -17,10 +17,19 @@
     </div>
 
     <div class="import-container">
+        <!-- Import Type Selection -->
+        <div class="import-section">
+            <h2><i class="fa-solid fa-filter"></i> Import Type</h2>
+            <select id="importType" class="form-select">
+                <option value="events">Events</option>
+                <option value="participations">Event Participations</option>
+            </select>
+        </div>
+
         <!-- Quick Sync Section -->
         <div class="import-section">
             <h2><i class="fa-solid fa-sync"></i> Quick Sync</h2>
-            <p>Sync event data from the default location: <code>data/Sessions.csv</code></p>
+            <p>Sync data from the default location: <code id="defaultPath">data/Sessions.csv</code></p>
             <button class="btn sync-btn" id="quickSyncBtn">
                 <i class="fa-solid fa-sync"></i> Sync Now
             </button>

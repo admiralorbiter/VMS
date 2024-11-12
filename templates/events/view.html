@@ -135,27 +135,73 @@
         <div class="event-card">
             <div class="card-header">
                 <i class="fa-solid fa-users"></i>
-                <h2>Assigned Volunteers</h2>
+                <h2>Volunteer Participation</h2>
             </div>
             <div class="card-content">
-                {% if volunteers %}
-                <div class="volunteers-grid">
-                    {% for volunteer in volunteers %}
-                    <div class="volunteer-card">
-                        <div class="volunteer-info">
-                            <span class="volunteer-name">{{ volunteer.name }}</span>
-                            {% if volunteer.role %}
-                            <span class="volunteer-role">{{ volunteer.role }}</span>
+                {% if participation_stats %}
+                    <div class="participation-stats">
+                        <!-- Attended Volunteers -->
+                        <div class="participation-section">
+                            <h3><i class="fa-solid fa-check-circle"></i> Attended ({{ participation_stats['Attended']|length }})</h3>
+                            {% if participation_stats['Attended'] %}
+                                <div class="volunteers-grid">
+                                    {% for participation in participation_stats['Attended'] %}
+                                    <div class="volunteer-card">
+                                        <div class="volunteer-info">
+                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                            {% if participation.delivery_hours %}
+                                            <span class="volunteer-hours">{{ participation.delivery_hours }} hours</span>
+                                            {% endif %}
+                                        </div>
+                                        <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                             {% endif %}
                         </div>
-                        <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="view-volunteer-btn">
-                            <i class="fa-solid fa-eye"></i> View
-                        </a>
+
+                        <!-- No-Shows -->
+                        <div class="participation-section">
+                            <h3><i class="fa-solid fa-times-circle"></i> No-Shows ({{ participation_stats['No-Show']|length }})</h3>
+                            {% if participation_stats['No-Show'] %}
+                                <div class="volunteers-grid">
+                                    {% for participation in participation_stats['No-Show'] %}
+                                    <div class="volunteer-card no-show">
+                                        <div class="volunteer-info">
+                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                        </div>
+                                        <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Cancelled -->
+                        <div class="participation-section">
+                            <h3><i class="fa-solid fa-ban"></i> Cancelled ({{ participation_stats['Cancelled']|length }})</h3>
+                            {% if participation_stats['Cancelled'] %}
+                                <div class="volunteers-grid">
+                                    {% for participation in participation_stats['Cancelled'] %}
+                                    <div class="volunteer-card cancelled">
+                                        <div class="volunteer-info">
+                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                        </div>
+                                        <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% endfor %}
-                </div>
                 {% else %}
-                <p class="no-volunteers">No volunteers assigned yet.</p>
+                    <p class="no-volunteers">No volunteer participation records found.</p>
                 {% endif %}
             </div>
         </div>

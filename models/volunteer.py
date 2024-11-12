@@ -1,5 +1,5 @@
 from models import db
-from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey
+from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
 
@@ -204,3 +204,18 @@ class Engagement(db.Model):
     engagement_date = db.Column(Date)
     engagement_type = db.Column(String(50))
     notes = db.Column(Text)
+
+# Event Participation Model
+class EventParticipation(db.Model):
+    __tablename__ = 'event_participation'
+
+    id = db.Column(Integer, primary_key=True)
+    volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
+    event_id = db.Column(Integer, ForeignKey('event.id'), nullable=False)
+    status = db.Column(String(20), nullable=False)  # For storing Status__c values like 'Attended', 'No-Show', etc.
+    delivery_hours = db.Column(Float, nullable=True)  # For storing Delivery_Hours__c
+    salesforce_id = db.Column(String(18), unique=True)  # For storing the original Id from Salesforce
+
+    # Relationships
+    volunteer = relationship('Volunteer', backref='event_participations')
+    event = relationship('Event', backref='volunteer_participations')

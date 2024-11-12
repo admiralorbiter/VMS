@@ -211,6 +211,60 @@
                 </div>
             </div>
         </div>
+
+
+        <!-- Add this after your existing profile cards -->
+        <div class="profile-card participation-card">
+            <div class="card-header">
+                <i class="fa-solid fa-calendar-check"></i>
+                <h2>Event Participation History</h2>
+            </div>
+            <div class="card-content">
+                <div class="participation-tabs">
+                    <div class="participation-tab active">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>Attended</span>
+                        <span class="participation-tab-count">{{ participation_stats['Attended']|length }}</span>
+                    </div>
+                    <div class="participation-tab">
+                        <i class="fa-solid fa-times-circle"></i>
+                        <span>No-Shows</span>
+                        <span class="participation-tab-count">{{ participation_stats['No-Show']|length }}</span>
+                    </div>
+                    <div class="participation-tab">
+                        <i class="fa-solid fa-ban"></i>
+                        <span>Cancelled</span>
+                        <span class="participation-tab-count">{{ participation_stats['Cancelled']|length }}</span>
+                    </div>
+                </div>
+
+                {% for status, events in participation_stats.items() %}
+                <div class="event-list" {% if not loop.first %}style="display: none;"{% endif %}>
+                    {% if events %}
+                        {% for event in events %}
+                        <div class="event-item">
+                            <div class="event-date">
+                                <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
+                                <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
+                            </div>
+                            <div class="event-info">
+                                <div class="event-title">{{ event.event.title }}</div>
+                                <div class="event-location">{{ event.event.location }}</div>
+                            </div>
+                            {% if event.delivery_hours %}
+                            <div class="event-hours">
+                                {{ event.delivery_hours }} hours
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-events">No {{ status.lower() }} events found.</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
