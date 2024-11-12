@@ -192,4 +192,276 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* Add these styles to your existing history.css */
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.import-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.import-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+.sync-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: 1px solid var(--ucla-blue);
+}
+
+.sync-btn:hover {
+    background-color: var(--mint-green);
+    transform: translateY(1px);
+}
+
+.purge-btn {
+    background-color: var(--poppy);
+    color: white;
+    border: none;
+    box-shadow: 0 2px 0 #b73229;
+}
+
+.purge-btn:hover {
+    background-color: #b73229;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #b73229;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+    }
+    
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Import section styles */
+.import-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.import-section h2 {
+    color: var(--delft-blue);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.import-section h2 i {
+    color: var(--ucla-blue);
+}
+
+/* Upload container styles */
+.upload-container {
+    border: 2px dashed var(--non-photo-blue);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--mint-green);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-container:hover {
+    border-color: var(--ucla-blue);
+    background-color: #f0f9f9;
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.upload-content i {
+    font-size: 3rem;
+    color: var(--ucla-blue);
+}
+
+.upload-content p {
+    color: var(--delft-blue);
+    margin: 0;
+}
+
+.upload-content span {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+}
+
+/* Progress section styles */
+.progress-section {
+    display: none;
+}
+
+.progress-container {
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: var(--non-photo-blue);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress {
+    height: 100%;
+    background-color: var(--ucla-blue);
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+.progress-stats {
+    text-align: right;
+    color: var(--delft-blue);
+    font-size: 0.9rem;
+}
+
+/* Results section styles */
+.results-section {
+    display: none;
+}
+
+.results-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stat-card {
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-card i {
+    font-size: 1.5rem;
+}
+
+.stat-card.success {
+    background-color: #E8F5E9;
+    color: #388E3C;
+}
+
+.stat-card.warning {
+    background-color: #FFF3E0;
+    color: #F57C00;
+}
+
+.stat-card.error {
+    background-color: #FFEBEE;
+    color: var(--poppy);
+}
+
+.stat-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+}
+
+.error-list {
+    background-color: #FFEBEE;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.error-item {
+    color: var(--poppy);
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.error-item:last-child {
+    border-bottom: none;
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--delft-blue);
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+}
+
+.form-text {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .results-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .upload-container {
+        padding: 1rem;
+    }
 } 

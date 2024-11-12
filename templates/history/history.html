@@ -6,10 +6,18 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
 {% endblock %}
 
-fsdf{% block content %}
+{% block content %}
 <div class="history-container">
     <div class="page-header">
         <h1>Activity History</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('import_history') }}" class="action-btn import-btn">
+                <i class="fa-solid fa-file-import"></i> Import History
+            </a>
+            <button class="action-btn purge-btn" onclick="confirmPurge()">
+                <i class="fa-solid fa-trash"></i> Purge History
+            </button>
+        </div>
     </div>
 
     <div class="filter-panel">
@@ -162,4 +170,28 @@ fsdf{% block content %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+<script>
+function confirmPurge() {
+    if (confirm('Are you sure you want to purge all history records? This action cannot be undone.')) {
+        fetch('/history/purge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('History records purged successfully', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showNotification('Error purging history: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Error purging history: ' + error, 'error');
+        });
+    }
+}
+</script>
 {% endblock %}

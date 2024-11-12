@@ -1236,6 +1236,11 @@ def init_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)})
+        
+    @app.route('/history/import', methods=['GET', 'POST'])
+    @login_required
+    def import_history():
+        return render_template('history/import.html')
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
