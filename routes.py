@@ -4,7 +4,7 @@ from config import Config
 from forms import LoginForm, VolunteerForm
 from models.upcoming_events import UpcomingEvent
 from models.user import User, db
-from models.event import CancellationReason, District, Event, EventType, EventFormat
+from models.event import CancellationReason, District, Event, EventType, EventFormat, EventStatus
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Address, ContactTypeEnum, Email, Engagement, EventParticipation, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
 from sqlalchemy import or_
@@ -518,16 +518,40 @@ def init_routes(app):
             query = query.filter(Event.title.ilike(search_term))
 
         if current_filters.get('event_type'):
-            query = query.filter(Event.type == current_filters['event_type'])
+            try:
+                event_type = EventType[current_filters['event_type'].upper()]
+                query = query.filter(Event.type == event_type)
+            except KeyError:
+                flash(f"Invalid event type: {current_filters['event_type']}", 'warning')
 
         if current_filters.get('status'):
-            query = query.filter(Event.status == current_filters['status'])
+            status = current_filters['status']
+            # Handle case where imported status doesn't match enum
+            status_mapping = {
+                'Completed': 'COMPLETED',
+                'Confirmed': 'CONFIRMED',
+                'Cancelled': 'CANCELLED',
+                'Requested': 'REQUESTED',
+                'Draft': 'DRAFT',
+                'Published': 'PUBLISHED'
+            }
+            query = query.filter(Event.status == status)
 
         if current_filters.get('start_date'):
-            query = query.filter(Event.start_date >= current_filters['start_date'])
+            try:
+                start_date = datetime.strptime(current_filters['start_date'], '%Y-%m-%d')
+                query = query.filter(Event.start_date >= start_date)
+            except ValueError:
+                flash('Invalid start date format', 'warning')
 
         if current_filters.get('end_date'):
-            query = query.filter(Event.end_date <= current_filters['end_date'])
+            try:
+                end_date = datetime.strptime(current_filters['end_date'], '%Y-%m-%d')
+                # Add 23:59:59 to include the entire end date
+                end_date = end_date + timedelta(days=1) - timedelta(seconds=1)
+                query = query.filter(Event.start_date <= end_date)
+            except ValueError:
+                flash('Invalid end date format', 'warning')
 
         # Default sort by start_date desc
         query = query.order_by(Event.start_date.desc())
@@ -539,10 +563,26 @@ def init_routes(app):
             error_out=False
         )
 
+        # Get all event types for the dropdown
+        event_types = [(t.name.lower(), t.name.replace('_', ' ').title()) 
+                      for t in EventType]
+
+        # Define valid statuses (matching exactly what's in the database)
+        statuses = [
+            ('Completed', 'Completed'),
+            ('Confirmed', 'Confirmed'),
+            ('Cancelled', 'Cancelled'),
+            ('Requested', 'Requested'),
+            ('Draft', 'Draft'),
+            ('Published', 'Published')
+        ]
+
         return render_template('events/events.html',
                              events=pagination.items,
                              pagination=pagination,
-                             current_filters=current_filters)
+                             current_filters=current_filters,
+                             event_types=event_types,
+                             statuses=statuses)
     
     @app.route('/sync_upcoming_events', methods=['POST'])
     def sync_upcoming_events():
@@ -604,13 +644,14 @@ def init_routes(app):
         if request.method == 'POST':
             try:
                 # Create new event from form data
+                status = request.form.get('status', EventStatus.DRAFT)
                 event = Event(
                     title=request.form.get('title'),
                     type=request.form.get('type'),
                     start_date=datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M'),
                     end_date=datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M'),
                     location=request.form.get('location'),
-                    status=request.form.get('status', 'upcoming')  # Default to upcoming if not specified
+                    status=status
                 )
                 
                 # Add and commit to database
@@ -633,12 +674,7 @@ def init_routes(app):
             ('volunteer', 'Volunteer Session')
         ]
         
-        statuses = [
-            ('upcoming', 'Upcoming'),
-            ('in_progress', 'In Progress'),
-            ('completed', 'Completed'),
-            ('cancelled', 'Cancelled')
-        ]
+        statuses = [(status.value, status.value) for status in EventStatus]
         
         return render_template(
             'events/add_event.html',
@@ -689,7 +725,7 @@ def init_routes(app):
                 event.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M')
                 event.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M')
                 event.location = request.form.get('location')
-                event.status = request.form.get('status')
+                event.status = request.form.get('status', event.status)
                 event.volunteer_needed = request.form.get('volunteer_needed', type=int)
                 event.description = request.form.get('description')
                 
@@ -709,12 +745,7 @@ def init_routes(app):
             ('volunteer', 'Volunteer Session')
         ]
         
-        statuses = [
-            ('upcoming', 'Upcoming'),
-            ('in_progress', 'In Progress'),
-            ('completed', 'Completed'),
-            ('cancelled', 'Cancelled')
-        ]
+        statuses = [(status.value, status.value) for status in EventStatus]
         
         return render_template(
             'events/edit.html',
@@ -898,7 +929,9 @@ def init_routes(app):
             event.format = map_event_format(row.get('Format__c', ''))
             event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or default_date
             event.end_date = parse_date(row.get('End_Date_and_Time__c')) or default_date
-            event.status = row.get('Session_Status__c', 'unknown')
+            event.status = row.get('Session_Status__c', 'Draft')
+            if event.status not in [s.value for s in EventStatus]:
+                event.status = EventStatus.DRAFT.value
             event.location = row.get('Location_Information__c', '')
             event.description = row.get('Description__c', '')
             event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))

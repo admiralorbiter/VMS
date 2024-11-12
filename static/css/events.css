@@ -987,3 +987,96 @@ td:nth-child(6) {
         justify-content: center;
     }
 }
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.status-badge::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background-color: currentColor;
+}
+
+.status-badge.completed {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.status-badge.confirmed {
+    background-color: #2196F3;
+    color: white;
+}
+
+.status-badge.cancelled {
+    background-color: #f44336;
+    color: white;
+}
+
+.status-badge.requested {
+    background-color: #FF9800;
+    color: white;
+}
+
+.status-badge.draft {
+    background-color: #9E9E9E;
+    color: white;
+}
+
+.status-badge.published {
+    background-color: #673AB7;
+    color: white;
+}
+
+/* Status Filter Dropdown Styling */
+.filter-group select#status {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.filter-group select#status option {
+    padding: 8px;
+}
+
+/* Add colored dots to the dropdown options */
+.filter-group select#status option[value="Completed"] { color: #4CAF50; }
+.filter-group select#status option[value="Confirmed"] { color: #2196F3; }
+.filter-group select#status option[value="Cancelled"] { color: #f44336; }
+.filter-group select#status option[value="Requested"] { color: #FF9800; }
+.filter-group select#status option[value="Draft"] { color: #9E9E9E; }
+.filter-group select#status option[value="Published"] { color: #673AB7; }
+
+/* Hover effect for status badges */
+.status-badge {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.status-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Status count indicators */
+.status-count {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    font-size: 0.8rem;
+    color: #666;
+}

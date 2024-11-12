@@ -40,38 +40,25 @@
                 <div class="filter-group">
                     <label for="event_type">Event Type</label>
                     <select name="event_type" id="event_type" class="form-select">
-                        <option value=""><i class="fa-solid fa-filter"></i> All Types</option>
-                        <option value="workshop" {% if current_filters.event_type == 'workshop' %}selected{% endif %}>
-                            Workshop
+                        <option value="">All Types</option>
+                        {% for value, label in event_types %}
+                        <option value="{{ value }}" {% if current_filters.event_type == value %}selected{% endif %}>
+                            {{ label }}
                         </option>
-                        <option value="meeting" {% if current_filters.event_type == 'meeting' %}selected{% endif %}>
-                            Meeting
-                        </option>
-                        <option value="social" {% if current_filters.event_type == 'social' %}selected{% endif %}>
-                            Social
-                        </option>
-                        <option value="volunteer" {% if current_filters.event_type == 'volunteer' %}selected{% endif %}>
-                            Volunteer Session
-                        </option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="filter-group">
                     <label for="status">Status</label>
-                    <select name="status" id="status" class="form-select status-select">
-                        <option value=""><i class="fa-solid fa-filter"></i> All Statuses</option>
-                        <option value="upcoming" {% if current_filters.status == 'upcoming' %}selected{% endif %}>
-                            Upcoming
+                    <select name="status" id="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        {% for status in statuses %}
+                        <option value="{{ status[0] }}" 
+                                {% if current_filters.status == status[0] %}selected{% endif %}>
+                            {{ status[1] }}
                         </option>
-                        <option value="in_progress" {% if current_filters.status == 'in_progress' %}selected{% endif %}>
-                            In Progress
-                        </option>
-                        <option value="completed" {% if current_filters.status == 'completed' %}selected{% endif %}>
-                            Completed
-                        </option>
-                        <option value="cancelled" {% if current_filters.status == 'cancelled' %}selected{% endif %}>
-                            Cancelled
-                        </option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
@@ -129,8 +116,8 @@
                     <td>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ event.location }}</td>
                     <td>
-                        <span class="status-badge {{ event.status }}">
-                            {{ event.status|title }}
+                        <span class="status-badge {{ event.status.lower() }}">
+                            {{ event.display_status }}
                         </span>
                     </td>
                     <td>

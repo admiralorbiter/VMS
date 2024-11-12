@@ -99,6 +99,14 @@ class EventFormat(str, Enum):
     IN_PERSON = 'in_person'
     VIRTUAL = 'virtual'
 
+class EventStatus(str, Enum):
+    COMPLETED = 'Completed'
+    CONFIRMED = 'Confirmed'
+    CANCELLED = 'Cancelled'
+    REQUESTED = 'Requested'
+    DRAFT = 'Draft'
+    PUBLISHED = 'Published'
+
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     salesforce_id = db.Column(String(18), unique=True, nullable=True)
@@ -109,7 +117,7 @@ class Event(db.Model):
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=False)
     location = db.Column(db.String(255))
-    status = db.Column(db.String(50))  # upcoming, in_progress, completed, cancelled
+    status = db.Column(SQLAlchemyEnum(EventStatus), nullable=False, default=EventStatus.DRAFT)
     volunteer_needed = db.Column(db.Integer)
     format = db.Column(SQLAlchemyEnum(EventFormat), nullable=False, default=EventFormat.IN_PERSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -148,3 +156,8 @@ class Event(db.Model):
         if not self.attendance:
             return 0
         return self.attendance.total_attendance
+
+    @property
+    def display_status(self):
+        """Returns a clean version of the status for display"""
+        return self.status.value if hasattr(self.status, 'value') else str(self.status)
