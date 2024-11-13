@@ -1432,6 +1432,11 @@ def init_routes(app):
         if date:
             return date.strftime('%B %d, %Y')
         return ''
+    
+    @app.route('/admin')
+    @login_required
+    def admin():
+        return render_template('management/admin.html')
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
