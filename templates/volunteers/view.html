@@ -220,53 +220,69 @@
             </div>
             <div class="card-content">
                 {% if histories %}
-                    <div class="history-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Total Activities</span>
-                            <span class="stat-value">{{ histories|length }}</span>
+                    <div class="history-filters">
+                        <div class="history-filter" data-type="Email">
+                            <i class="fa-solid fa-envelope"></i>
+                            <span>Email</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Last Activity</span>
-                            <span class="stat-value">
-                                {% if histories %}
-                                    {{ histories[0].activity_date|format_date }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </span>
+                        <div class="history-filter" data-type="Call">
+                            <i class="fa-solid fa-phone"></i>
+                            <span>Call</span>
+                        </div>
+                        <div class="history-filter" data-type="Meeting">
+                            <i class="fa-solid fa-handshake"></i>
+                            <span>Meeting</span>
+                        </div>
+                        <div class="history-filter" data-type="Other">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                            <span>Other</span>
                         </div>
                     </div>
-
+                    
                     <div class="history-timeline">
                         {% for history in histories %}
-                        <div class="history-item">
-                            <div class="history-icon">
-                                {% if history.activity_type == 'Email' %}
-                                    <i class="fa-solid fa-envelope"></i>
-                                {% elif history.activity_type == 'Call' %}
-                                    <i class="fa-solid fa-phone"></i>
-                                {% elif history.activity_type == 'Meeting' %}
-                                    <i class="fa-solid fa-handshake"></i>
-                                {% else %}
-                                    <i class="fa-solid fa-clipboard-list"></i>
-                                {% endif %}
+                        <div class="history-group">
+                            <div class="history-group-header">
+                                <span>{{ history.activity_date.strftime('%B %Y') }}</span>
+                                <button class="collapse-btn">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
                             </div>
-                            <div class="history-content">
-                                <div class="history-header">
-                                    <span class="history-date">{{ history.activity_date|format_date }}</span>
-                                    <span class="history-type">{{ history.activity_type }}</span>
-                                    <span class="history-status">{{ history.activity_status }}</span>
+                            <div class="history-group-content collapsed">
+                                <div class="history-item" data-date="{{ history.activity_date.isoformat() if history.activity_date else '' }}">
+                                    <div class="history-header">
+                                        <span class="history-date">
+                                            <i class="fa-regular fa-calendar"></i>
+                                            {{ history.activity_date|format_date }}
+                                        </span>
+                                        <span class="history-status">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            {{ history.activity_status }}
+                                        </span>
+                                    </div>
+                                    {% if history.activity_type == 'Email' %}
+                                        <div class="email-header">
+                                            <div><span>Subject:</span> {{ history.summary }}</div>
+                                            {% if history.description %}
+                                                <div><span>To:</span> {{ history.description.split('\n')[0] }}</div>
+                                            {% endif %}
+                                        </div>
+                                        {% if history.description %}
+                                            <div class="email-body">
+                                                {{ history.description|replace('', '')|safe }}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="history-content">
+                                            {% if history.summary %}
+                                                <div class="history-summary">{{ history.summary }}</div>
+                                            {% endif %}
+                                            {% if history.description %}
+                                                <div class="history-description">{{ history.description }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
                                 </div>
-                                <div class="history-summary">{{ history.summary }}</div>
-                                {% if history.description %}
-                                <div class="history-description">{{ history.description }}</div>
-                                {% endif %}
-                                {% if history.event %}
-                                <div class="history-event">
-                                    <i class="fa-solid fa-calendar"></i>
-                                    Related Event: {{ history.event.name }}
-                                </div>
-                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -334,4 +350,7 @@
         </div>
     </div>
 </div>
+
+<!-- Add this before closing body tag -->
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
 {% endblock %}
