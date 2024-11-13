@@ -20,6 +20,7 @@ class History(db.Model):
     last_modified_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = db.Column(db.Boolean, default=False)
     email_message_id = db.Column(db.String(255), nullable=True)
+    salesforce_id = db.Column(db.String(18), unique=True, nullable=True)
 
     # Add relationships to Event and Volunteer models
     event = db.relationship('Event', backref=db.backref('histories', lazy='dynamic'))

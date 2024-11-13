@@ -1240,7 +1240,139 @@ def init_routes(app):
     @app.route('/history/import', methods=['GET', 'POST'])
     @login_required
     def import_history():
-        return render_template('history/import.html')
+        if request.method == 'GET':
+            return render_template('history/import.html')
+        
+        try:
+            success_count = 0
+            error_count = 0
+            errors = []
+
+            if request.is_json and request.json.get('quickSync'):
+                # Handle quickSync
+                default_file_path = os.path.join('data', 'Task.csv')
+                if not os.path.exists(default_file_path):
+                    return jsonify({'error': 'Default CSV file not found'}), 404
+                    
+                try:
+                    with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
+                        content = file.read().replace('\0', '')  # Remove null bytes
+                        csv_data = csv.DictReader(content.splitlines())
+                        
+                        for row in csv_data:
+                            try:
+                                # Process history row
+                                history = History.query.filter_by(salesforce_id=row.get('Id')).first()
+                                if not history:
+                                    history = History()
+                                    db.session.add(history)
+                                
+                                # Update history fields
+                                history.salesforce_id = row.get('Id')
+                                history.summary = row.get('Subject', '')
+                                history.description = row.get('Description', '')
+                                history.activity_type = row.get('Type', '')
+                                history.activity_status = row.get('Status', '')
+                                history.activity_date = parse_date(row.get('ActivityDate')) or datetime.now()
+                                history.email_message_id = row.get('EmailMessageId')
+                                
+                                # Handle volunteer relationship
+                                if row.get('WhoId'):
+                                    volunteer = Volunteer.query.filter_by(
+                                        salesforce_individual_id=row['WhoId']
+                                    ).first()
+                                    if volunteer:
+                                        history.volunteer_id = volunteer.id
+
+                                # Handle event relationship
+                                if row.get('WhatId'):
+                                    event = Event.query.filter_by(
+                                        salesforce_id=row['WhatId']
+                                    ).first()
+                                    if event:
+                                        history.event_id = event.id
+                                
+                                success_count += 1
+                                
+                            except Exception as e:
+                                error_count += 1
+                                errors.append(f"Error processing row: {str(e)}")
+                                continue
+
+                except Exception as e:
+                    return jsonify({'error': f'Error reading file: {str(e)}'}), 500
+
+            else:
+                # Handle file upload
+                if 'file' not in request.files:
+                    return jsonify({'error': 'No file uploaded'}), 400
+                
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({'error': 'No file selected'}), 400
+                
+                if not file.filename.endswith('.csv'):
+                    return jsonify({'error': 'File must be a CSV'}), 400
+
+                content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
+                csv_data = csv.DictReader(content.splitlines())
+                
+                # Process the uploaded file using the same logic as above
+                for row in csv_data:
+                    try:
+                        # Process history row
+                        history = History.query.filter_by(salesforce_id=row.get('Id')).first()
+                        if not history:
+                            history = History()
+                            db.session.add(history)
+                        
+                        # Update history fields
+                        history.salesforce_id = row.get('Id')
+                        history.summary = row.get('Subject', '')
+                        history.description = row.get('Description', '')
+                        history.activity_type = row.get('Type', '')
+                        history.activity_status = row.get('Status', '')
+                        history.activity_date = parse_date(row.get('ActivityDate')) or datetime.now()
+                        history.email_message_id = row.get('EmailMessageId')
+                        
+                        # Handle volunteer relationship
+                        if row.get('WhoId'):
+                            volunteer = Volunteer.query.filter_by(
+                                salesforce_individual_id=row['WhoId']
+                            ).first()
+                            if volunteer:
+                                history.volunteer_id = volunteer.id
+
+                        # Handle event relationship
+                        if row.get('WhatId'):
+                            event = Event.query.filter_by(
+                                salesforce_id=row['WhatId']
+                            ).first()
+                            if event:
+                                history.event_id = event.id
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"Error processing row: {str(e)}")
+                        continue
+
+            # Commit all changes
+            try:
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'successCount': success_count,
+                    'errorCount': error_count,
+                    'errors': errors
+                })
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': f'Database error: {str(e)}'}), 500
+                
+        except Exception as e:
+            return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
