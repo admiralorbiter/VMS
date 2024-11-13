@@ -19,10 +19,10 @@
             <li class="nav-item">
               <a class="nav-link" href="/upcoming_event_management">Upcoming Events</a>
             </li>
-            {% if current_user.is_admin %}
             <li class="nav-item">
               <a class="nav-link" href="/admin">Admin</a>
             </li>
+            {% if current_user.is_admin %}
             <li class="nav-item"></li>
               <a class="nav-link" href="/history">History</a>
             </li>

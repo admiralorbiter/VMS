@@ -6,6 +6,7 @@
 <div class="container mt-4">
     <h1>Admin Dashboard</h1>
     
+    {% if current_user.is_admin %}
     <!-- User Creation Form -->
     <div class="card admin-card mt-4">
         <div class="card-body">
@@ -24,6 +25,29 @@
                     <div class="col-auto">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Add User
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Password Change Form -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Change Password</h5>
+            <form id="changePasswordForm" method="POST" action="{{ url_for('change_password') }}">
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <input type="password" name="new_password" class="form-control" placeholder="New Password" required>
+                    </div>
+                    <div class="col-auto">
+                        <input type="password" name="confirm_password" class="form-control" placeholder="Confirm New Password" required>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-key"></i> Change Password
                         </button>
                     </div>
                 </div>

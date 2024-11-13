@@ -1491,6 +1491,33 @@ def init_routes(app):
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
+    @app.route('/change_password', methods=['POST'])
+    @login_required
+    def change_password():
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Verify all fields are provided
+        if not all([new_password, confirm_password]):
+            flash('Both password fields are required', 'danger')
+            return redirect(url_for('admin'))
+        
+        # Verify new passwords match
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'danger')
+            return redirect(url_for('admin'))
+        
+        try:
+            # Update password
+            current_user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Password updated successfully', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating password: {str(e)}', 'danger')
+        
+        return redirect(url_for('admin'))
+
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
     if not date_str:
