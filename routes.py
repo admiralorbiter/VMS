@@ -8,7 +8,7 @@ from models.user import User, db
 from models.event import CancellationReason, District, Event, EventType, EventFormat, EventStatus
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.volunteer import Address, ContactTypeEnum, Email, Engagement, EventParticipation, GenderEnum, LocalStatusEnum, Phone, Skill, SkillSourceEnum, Volunteer , VolunteerSkill
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from datetime import datetime, timedelta
 import io
 import csv
@@ -259,12 +259,25 @@ def init_routes(app):
 
         # Apply filters
         if current_filters.get('search_name'):
-            search_term = f"%{current_filters['search_name']}%"
-            query = query.filter(or_(
-                Volunteer.first_name.ilike(search_term),
-                Volunteer.last_name.ilike(search_term),
-                Volunteer.middle_name.ilike(search_term)
-            ))
+            # Split search terms and remove empty strings
+            search_terms = [term.strip() for term in current_filters['search_name'].split() if term.strip()]
+            
+            # Build dynamic search condition
+            name_conditions = []
+            for term in search_terms:
+                search_pattern = f"%{term}%"
+                name_conditions.append(or_(
+                    Volunteer.first_name.ilike(search_pattern),
+                    Volunteer.middle_name.ilike(search_pattern),
+                    Volunteer.last_name.ilike(search_pattern),
+                    # Concatenated name search using SQLite's || operator
+                    (Volunteer.first_name + ' ' + 
+                     db.func.coalesce(Volunteer.middle_name, '') + ' ' + 
+                     Volunteer.last_name).ilike(search_pattern)
+                ))
+            # Combine all conditions with AND (each term must match somewhere)
+            if name_conditions:
+                query = query.filter(and_(*name_conditions))
 
         if current_filters.get('org_search'):
             search_term = f"%{current_filters['org_search']}%"
