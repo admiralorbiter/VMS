@@ -1,8 +1,14 @@
+/* Override the main container width from style.css */
+main {
+    max-width: none !important;  /* Override the 1200px limit */
+    padding: 20px 0;  /* Remove horizontal padding, keep vertical */
+}
+
 /* Events specific styles */
 .events-container {
-    max-width: 1200px;
+    max-width: 95%;
     margin: 0 auto;
-    padding: 20px;
+    padding: 15px;
 }
 
 .events-header {
@@ -1079,4 +1085,18 @@ td:nth-child(6) {
     margin-left: 8px;
     font-size: 0.8rem;
     color: #666;
+}
+
+/* Add responsive breakpoints for container width */
+@media (min-width: 1600px) {
+    .events-container {
+        max-width: 90%;
+    }
+}
+
+@media (max-width: 768px) {
+    .events-container {
+        max-width: 98%;
+        padding: 10px;
+    }
 }
