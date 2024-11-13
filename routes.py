@@ -759,6 +759,14 @@ def init_routes(app):
         try:
             print(f"Attempting to connect with: {Config.SF_USERNAME}")
             
+            # First, remove past events
+            today = datetime.now().date()
+            deleted_count = UpcomingEvent.query.filter(
+                UpcomingEvent.start_date <= today
+            ).delete()
+            db.session.commit()
+
+            # Then proceed with the sync
             sf = Salesforce(
                 username=Config.SF_USERNAME,
                 password=Config.SF_PASSWORD,
@@ -784,7 +792,8 @@ def init_routes(app):
                 'success': True,
                 'new_count': new_count,
                 'updated_count': updated_count,
-                'message': f'Successfully synced: {new_count} new, {updated_count} updated'
+                'deleted_count': deleted_count,
+                'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} past events removed'
             })
 
         except SalesforceAuthenticationFailed as e:

@@ -110,8 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data.success) {
-                showNotification('success', `Successfully synced: ${data.new_count} new, ${data.updated_count} updated events`);
-                // Refresh the events display
+                showNotification('success', `Successfully synced: ${data.new_count} new, ${data.updated_count} updated, ${data.deleted_count} past events removed`);
                 location.reload(); // Reload the page to show updated events
             } else {
                 showNotification('error', `Sync failed: ${data.message}`);
