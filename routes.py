@@ -1436,7 +1436,60 @@ def init_routes(app):
     @app.route('/admin')
     @login_required
     def admin():
-        return render_template('management/admin.html')
+        users = User.query.all()
+        return render_template('management/admin.html', users=users)
+
+    @app.route('/admin/users', methods=['POST'])
+    @login_required
+    def create_user():
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        if not all([username, email, password]):
+            flash('All fields are required', 'danger')
+            return redirect(url_for('admin'))
+        
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'danger')
+            return redirect(url_for('admin'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists', 'danger')
+            return redirect(url_for('admin'))
+        
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password)
+        )
+        
+        try:
+            db.session.add(user)
+            db.session.commit()
+            flash('User created successfully', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating user: {str(e)}', 'danger')
+        
+        return redirect(url_for('admin'))
+
+    @app.route('/admin/users/<int:id>', methods=['DELETE'])
+    @login_required
+    def delete_user(id):
+        print(f"Delete request received for user {id}")  # Add this line
+        if current_user.id == id:
+            return jsonify({'error': 'Cannot delete yourself'}), 400
+        
+        user = User.query.get_or_404(id)
+        try:
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"Error deleting user: {str(e)}")  # Add this line
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""

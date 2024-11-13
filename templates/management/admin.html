@@ -1,17 +1,99 @@
 {% extends "base.html" %}
-
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
 {% block content %}
 <div class="container mt-4">
     <h1>Admin Dashboard</h1>
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Administration Tools</h5>
-                    <p class="card-text">Welcome to the admin dashboard. More features coming soon.</p>
+    
+    <!-- User Creation Form -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Create New User</h5>
+            <form id="createUserForm" method="POST" action="{{ url_for('create_user') }}">
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <input type="text" name="username" class="form-control" placeholder="Username" required>
+                    </div>
+                    <div class="col-auto">
+                        <input type="email" name="email" class="form-control" placeholder="Email" required>
+                    </div>
+                    <div class="col-auto">
+                        <input type="password" name="password" class="form-control" placeholder="Password" required>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                    </div>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Current Users</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.created_at|format_date }}</td>
+                            <td>
+                                <button onclick="deleteUser('{{ user.id }}')" class="btn admin-btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteUser(userId) {
+    console.log('Delete function called with userId:', userId);
+    if (confirm('Are you sure you want to delete this user?')) {
+        console.log('Delete confirmed, sending request...');
+        fetch(`/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Response received:', response);
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                response.json().then(data => {
+                    alert(data.error || 'Error deleting user');
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting user');
+        });
+    }
+}
+</script>
 {% endblock %} 

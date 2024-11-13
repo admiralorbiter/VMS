@@ -423,3 +423,65 @@ main {
         max-width: calc(50% - 0.5rem);
     }
 }
+
+/* Add these at the end of your existing CSS file */
+
+.admin-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.admin-card .card-title {
+    color: var(--delft-blue);
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+}
+
+.admin-card .form-control {
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+.admin-card .form-control:focus {
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 0.2rem rgba(70, 117, 153, 0.25);
+}
+
+.admin-card .btn-primary {
+    background-color: var(--ucla-blue);
+    border: none;
+    box-shadow: 0 3px 0 var(--delft-blue);
+    transition: all 0.2s ease;
+}
+
+.admin-card .btn-primary:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.admin-card .table th {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    border: none;
+}
+
+.admin-card .table td {
+    vertical-align: middle;
+    color: var(--delft-blue);
+}
+
+.admin-card .btn-danger {
+    background-color: var(--poppy);
+    border: none;
+    box-shadow: 0 2px 0 #b53035;
+}
+
+.admin-card .btn-danger:hover {
+    background-color: #c13136;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #b53035;
+}
