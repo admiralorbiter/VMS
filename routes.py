@@ -243,8 +243,21 @@ def init_routes(app):
         current_filters = {k: v for k, v in current_filters.items() if v}
 
         # Build query
-        query = Volunteer.query
+        query = db.session.query(
+            Volunteer,
+            db.func.count(
+                db.case(
+                    (EventParticipation.status == 'Attended', 1),
+                    else_=0
+                )
+            ).label('attended_count')
+        ).outerjoin(
+            EventParticipation
+        ).group_by(
+            Volunteer.id
+        )
 
+        # Apply filters
         if current_filters.get('search_name'):
             search_term = f"%{current_filters['search_name']}%"
             query = query.filter(or_(
@@ -276,15 +289,24 @@ def init_routes(app):
         query = query.order_by(Volunteer.last_volunteer_date.desc())
 
         # Apply pagination
-        paginated_volunteers = query.paginate(
-            page=page, 
+        pagination = query.paginate(
+            page=page,
             per_page=per_page,
             error_out=False
         )
 
+        # Transform the results to include the attended count
+        volunteers_with_counts = [
+            {
+                'volunteer': result[0],
+                'attended_count': result[1]
+            }
+            for result in pagination.items
+        ]
+
         return render_template('volunteers/volunteers.html',
-                             volunteers=paginated_volunteers.items,
-                             pagination=paginated_volunteers,
+                             volunteers=volunteers_with_counts,
+                             pagination=pagination,
                              current_filters=current_filters)
     
     @app.route('/volunteers/add', methods=['GET', 'POST'])
