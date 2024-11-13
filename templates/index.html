@@ -7,5 +7,100 @@
 {% endblock %}
 
 {% block content %}
-<h1>Volunteer Managment System</h1>
+<div class="dashboard-section">
+    <div class="dashboard-header">
+        <h2>System Status & Updates</h2>
+    </div>
+
+    <div class="status-grid">
+        <!-- Live Features -->
+        <div class="status-card live">
+            <h3><i class="fa-solid fa-circle-check"></i> Live Features</h3>
+            <ul class="feature-list">
+                <li class="feature-item">
+                    <i class="fa-solid fa-check feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">Event Management</div>
+                        <div class="feature-description">Create, edit, and track events with volunteer participation</div>
+                    </div>
+                </li>
+                <li class="feature-item">
+                    <i class="fa-solid fa-check feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">Volunteer Directory</div>
+                        <div class="feature-description">Comprehensive volunteer profiles with participation history</div>
+                    </div>
+                </li>
+                <li class="feature-item">
+                    <i class="fa-solid fa-check feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">Search</div>
+                        <div class="feature-description">Search events and volunteers by every field including skills, interests, and more.</div>
+                    </div>
+                </li>
+                <li class="feature-item">
+                    <i class="fa-solid fa-check feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">Upcoming Event Management</div>
+                        <div class="feature-description">Manage which upcoming events are displayed on the homepage by using the management tab.</div>
+                    </div>
+                </li>
+                <!-- Add more live features -->
+            </ul>
+        </div>
+
+        <!-- In Development -->
+        <div class="status-card development">
+            <h3><i class="fa-solid fa-code"></i> In Development</h3>
+            <ul class="feature-list">
+                <li class="feature-item">
+                    <i class="fa-solid fa-code-branch feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">User Management</div>
+                        <div class="feature-description">Manage user accounts, roles, and permissions</div>
+                    </div>
+                </li>
+                <li class="feature-item">
+                    <i class="fa-solid fa-code-branch feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">Organization Management</div>
+                        <div class="feature-description">Create, edit, and manage organizations with volunteer participation</div>
+                    </div>
+                </li>
+                <!-- Add more in-development features -->
+            </ul>
+        </div>
+
+        <!-- Known Issues -->
+        <div class="status-card bug">
+            <h3><i class="fa-solid fa-bug"></i> Known Issues</h3>
+            <ul class="feature-list">
+                <li class="feature-item">
+                    <i class="fa-solid fa-exclamation-triangle feature-icon"></i>
+                    <div class="feature-content">
+                        <div class="feature-title">Report to Jon</div>
+                        <div class="feature-description">jlane@prepkc.org</div>
+                    </div>
+                </li>
+                <!-- Add more known issues -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Recent Updates -->
+    <div class="dashboard-header">
+        <h2>Recent Updates</h2>
+    </div>
+    
+    <div class="update-timeline">
+        <div class="timeline-item">
+            <div class="timeline-date">November 13, 2024</div>
+            <div class="timeline-content">
+                <div class="timeline-title">Enhanced Volunteer Profiles</div>
+                <div class="timeline-description">Added detailed participation history and improved contact management</div>
+            </div>
+        </div>
+        <!-- Add more timeline items -->
+    </div>
+</div>
 {% endblock %}
