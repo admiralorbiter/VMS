@@ -14,15 +14,17 @@
             <a href="{{ url_for('add_event') }}" class="action-btn">
                 <i class="fa-solid fa-plus"></i> Create New Event
             </a>
-            <a href="{{ url_for('import_events') }}" class="action-btn">
-                <i class="fa-solid fa-file-import"></i> Import Events
-            </a>
             <button class="action-btn sync-events-btn">
                 <i class="fa-solid fa-sync"></i> Sync Upcoming Events
             </button>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('import_events') }}" class="action-btn">
+                <i class="fa-solid fa-file-import"></i> Import Events
+            </a>
             <button class="action-btn delete-btn purge-events-btn">
                 <i class="fa-solid fa-trash"></i> Purge Events
             </button>
+            {% endif %}
         </div>
     </div>
 
