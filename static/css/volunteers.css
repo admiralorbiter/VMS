@@ -592,9 +592,9 @@
 /* Volunteer Profile Grid Layout */
 .volunteer-profile-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
-    margin-top: 2rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    align-items: start;
 }
 
 /* Profile Cards */
@@ -605,6 +605,8 @@
     border: 2px solid var(--non-photo-blue);
     overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 1rem;
+    padding: 1rem;
 }
 
 .profile-card:hover {
@@ -780,7 +782,13 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
+@media (max-width: 1400px) {
+    .volunteer-profile-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
     .volunteer-profile-grid {
         grid-template-columns: 1fr;
     }
@@ -1113,6 +1121,49 @@
 }
 
 @media (max-width: 768px) {
+    .volunteer-profile-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Override main container styles from style.css */
+main {
+    max-width: 1600px !important;
+    padding: 1rem !important;
+}
+
+/* Update the grid layout for the profile cards */
+.volunteer-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+/* Make specific cards span first two columns */
+.profile-card:not(.history-info) {
+    grid-column: span 1;
+}
+
+/* Make history card always appear in third column */
+.profile-card.history-info {
+    grid-column: 3;
+    grid-row: 1 / span 4;  /* Adjust the span based on how many other cards you have */
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+    .volunteer-profile-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .profile-card.history-info {
+        grid-column: auto;
+        grid-row: auto;
+    }
+}
+
+@media (max-width: 992px) {
     .volunteer-profile-grid {
         grid-template-columns: 1fr;
     }

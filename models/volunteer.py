@@ -3,6 +3,8 @@ from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey, F
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
 
+from models.history import History
+
 # Base Enum Class
 class FormEnum(str, PyEnum):
     @classmethod
