@@ -212,6 +212,73 @@
             </div>
         </div>
 
+        <!-- History Card -->
+        <div class="profile-card history-info">
+            <div class="card-header">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <h2>History</h2>
+            </div>
+            <div class="card-content">
+                {% if histories %}
+                    <div class="history-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Activities</span>
+                            <span class="stat-value">{{ histories|length }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Last Activity</span>
+                            <span class="stat-value">
+                                {% if histories %}
+                                    {{ histories[0].activity_date|format_date }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="history-timeline">
+                        {% for history in histories %}
+                        <div class="history-item">
+                            <div class="history-icon">
+                                {% if history.activity_type == 'Email' %}
+                                    <i class="fa-solid fa-envelope"></i>
+                                {% elif history.activity_type == 'Call' %}
+                                    <i class="fa-solid fa-phone"></i>
+                                {% elif history.activity_type == 'Meeting' %}
+                                    <i class="fa-solid fa-handshake"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-clipboard-list"></i>
+                                {% endif %}
+                            </div>
+                            <div class="history-content">
+                                <div class="history-header">
+                                    <span class="history-date">{{ history.activity_date|format_date }}</span>
+                                    <span class="history-type">{{ history.activity_type }}</span>
+                                    <span class="history-status">{{ history.activity_status }}</span>
+                                </div>
+                                <div class="history-summary">{{ history.summary }}</div>
+                                {% if history.description %}
+                                <div class="history-description">{{ history.description }}</div>
+                                {% endif %}
+                                {% if history.event %}
+                                <div class="history-event">
+                                    <i class="fa-solid fa-calendar"></i>
+                                    Related Event: {{ history.event.name }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="no-history">
+                        <i class="fa-solid fa-clock"></i>
+                        <p>No history records found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
 
         <!-- Add this after your existing profile cards -->
         <div class="profile-card participation-card">

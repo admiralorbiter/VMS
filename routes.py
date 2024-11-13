@@ -359,6 +359,14 @@ def init_routes(app):
                     'date': participation.event.start_date
                 })
         
+        # Get history records for the volunteer
+        histories = History.query.filter_by(
+            volunteer_id=id, 
+            is_deleted=False
+        ).order_by(
+            History.activity_date.desc()
+        ).all()
+        
         # Sort each list by date
         for status in participation_stats:
             participation_stats[status].sort(key=lambda x: x['date'], reverse=True)
@@ -368,7 +376,8 @@ def init_routes(app):
             volunteer=volunteer,
             emails=sorted(volunteer.emails, key=lambda x: x.primary, reverse=True),
             phones=sorted(volunteer.phones, key=lambda x: x.primary, reverse=True),
-            participation_stats=participation_stats
+            participation_stats=participation_stats,
+            histories=histories  # Pass histories to the template
         )
     
     @app.route('/volunteers/edit/<int:id>', methods=['GET', 'POST'])
@@ -1373,6 +1382,12 @@ def init_routes(app):
                 
         except Exception as e:
             return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+
+    @app.template_filter('format_date')
+    def format_date(date):
+        if date:
+            return date.strftime('%B %d, %Y')
+        return ''
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""

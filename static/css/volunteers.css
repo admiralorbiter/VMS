@@ -993,3 +993,127 @@
         justify-self: center;
     }
 }
+
+/* History Card Styles */
+.history-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.history-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(158, 216, 219, 0.1);
+    border-radius: 8px;
+    position: relative;
+}
+
+.history-item::before {
+    content: '';
+    position: absolute;
+    left: 2.5rem;
+    top: 100%;
+    bottom: -1.5rem;
+    width: 2px;
+    background: var(--non-photo-blue);
+    opacity: 0.5;
+}
+
+.history-item:last-child::before {
+    display: none;
+}
+
+.history-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.history-content {
+    flex: 1;
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.history-date {
+    color: var(--delft-blue);
+    font-weight: bold;
+}
+
+.history-type {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.history-status {
+    background: rgba(158, 216, 219, 0.2);
+    color: var(--delft-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.history-summary {
+    color: var(--delft-blue);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.history-description {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.history-event {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    background: rgba(158, 216, 219, 0.1);
+    border-radius: 6px;
+}
+
+.no-history {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ucla-blue);
+}
+
+.no-history i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Update grid layout to accommodate history card */
+.volunteer-profile-grid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+@media (max-width: 768px) {
+    .volunteer-profile-grid {
+        grid-template-columns: 1fr;
+    }
+}

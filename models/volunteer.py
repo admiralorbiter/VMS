@@ -144,6 +144,16 @@ class Volunteer(db.Model):
     def total_times_volunteered(self):
         return self.times_volunteered + self.additional_volunteer_count
 
+    @property
+    def active_histories(self):
+        """Get non-deleted history records ordered by date"""
+        return History.query.filter_by(
+            volunteer_id=self.id,
+            is_deleted=False
+        ).order_by(
+            History.activity_date.desc()
+        ).all()
+
 # Phone Model
 class Phone(db.Model):
     __tablename__ = 'phone'
