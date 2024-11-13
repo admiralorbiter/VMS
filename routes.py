@@ -1020,7 +1020,7 @@ def init_routes(app):
     def upcoming_event_management():
         # Get initial events from database and convert to dict
         events = [event.to_dict() for event in UpcomingEvent.query.all()]
-        return render_template('management/upcoming_event_management.html', initial_events=events)
+        return render_template('events/upcoming_event_management.html', initial_events=events)
     
     def map_session_type(salesforce_type):
         """Map Salesforce session types to EventType enum values"""
