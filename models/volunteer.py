@@ -138,6 +138,11 @@ class Volunteer(db.Model):
     emails = relationship('Email', backref='volunteer', lazy='dynamic')
     addresses = relationship('Address', backref='volunteer', lazy='dynamic')
     engagements = relationship('Engagement', backref='volunteer', lazy='dynamic')
+    
+    # Add this new relationship
+    organizations = relationship('Organization', 
+                               secondary='volunteer_organization',
+                               back_populates='volunteers')
 
     # Skills relationship through association table
     skills = relationship('Skill', secondary='volunteer_skills', backref='volunteers')

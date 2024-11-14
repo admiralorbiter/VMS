@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Organizations{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/organizations.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="organizations-container">
+    <div class="page-header">
+        <h1>Organizations</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('import_organizations') }}" class="action-btn">
+                <i class="fa-solid fa-file-import"></i> Import Organizations
+            </a>
+        </div>
+    </div>
+
+    <div class="filter-panel">
+        <form method="GET" class="filter-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="search_name">Organization Search</label>
+                    <input type="text" name="search_name" id="search_name" 
+                           value="{{ current_filters.get('search_name', '') }}"
+                           class="form-control" 
+                           placeholder="Search by name...">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="type">Organization Type</label>
+                    <select name="type" id="type" class="form-select">
+                        <option value="">All Types</option>
+                        {% for type in organization_types %}
+                        <option value="{{ type }}" {% if current_filters.get('type') == type %}selected{% endif %}>
+                            {{ type }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn filter-btn">
+                    <i class="fa-solid fa-filter"></i> Apply Filters
+                </button>
+                <a href="{{ url_for('organizations') }}" class="btn reset-btn">
+                    <i class="fa-solid fa-times"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table organizations-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="name">
+                        Name <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="type">
+                        Type <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th>Location</th>
+                    <th class="sortable" data-sort="last_activity">
+                        Last Activity <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for org in organizations %}
+                <tr>
+                    <td>{{ org.name }}</td>
+                    <td>
+                        <span class="org-type-badge">{{ org.type or 'N/A' }}</span>
+                    </td>
+                    <td>
+                        {% if org.billing_city and org.billing_state %}
+                            {{ org.billing_city }}, {{ org.billing_state }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>{{ org.last_activity_date|format_date if org.last_activity_date else 'Never' }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('view_organization', id=org.id) }}" class="btn btn-sm action-btn view-btn">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
+                            {% if org.salesforce_url %}
+                            <a href="{{ org.salesforce_url }}" target="_blank" class="btn btn-sm action-btn salesforce-btn">
+                                <i class="fa-solid fa-external-link"></i> SF
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination-container">
+        <div class="pagination-info">
+            <select name="per_page" class="per-page-select" onchange="this.form.submit()">
+                {% for count in [10, 25, 50, 100] %}
+                <option value="{{ count }}" {% if current_filters.get('per_page', 25)|int == count %}selected{% endif %}>
+                    {{ count }} per page
+                </option>
+                {% endfor %}
+            </select>
+            <span class="pagination-summary">
+                Showing {{ organizations|length }} of {{ pagination.total }} organizations
+            </span>
+        </div>
+        
+        <div class="pagination-controls">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('organizations', page=pagination.prev_num, **current_filters) }}" 
+               class="pagination-btn">
+                <i class="fa-solid fa-chevron-left"></i> Previous
+            </a>
+            {% endif %}
+            
+            {% if pagination.has_next %}
+            <a href="{{ url_for('organizations', page=pagination.next_num, **current_filters) }}" 
+               class="pagination-btn">
+                Next <i class="fa-solid fa-chevron-right"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

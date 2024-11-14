@@ -1,0 +1,154 @@
+/* Override the main container width from style.css */
+main {
+    max-width: none !important;
+    padding: 20px 0;
+}
+
+.organizations-container {
+    max-width: 95%;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* Header Styles */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    color: var(--delft-blue);
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.action-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    box-shadow: 0 4px 0 var(--delft-blue);
+    transition: all 0.1s ease;
+}
+
+.action-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+/* Filter Panel */
+.filter-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+/* Table Styles */
+.table-responsive {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    overflow-x: auto;
+}
+
+.organizations-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.organizations-table th {
+    background-color: var(--mint-green);
+    color: var(--delft-blue);
+    padding: 1rem;
+    font-weight: 500;
+    text-align: left;
+}
+
+.organizations-table td {
+    padding: 1rem;
+    border-top: 1px solid var(--non-photo-blue);
+}
+
+/* Organization Type Badge */
+.org-type-badge {
+    background-color: var(--mint-green);
+    color: var(--delft-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.view-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+}
+
+/* Pagination */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    
+    .action-btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 150px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .organizations-container {
+        max-width: 90%;
+    }
+} 

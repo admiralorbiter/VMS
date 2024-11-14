@@ -3,6 +3,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from config import Config
 from forms import LoginForm, VolunteerForm
 from models.history import History
+from models.organization import Organization
 from models.upcoming_events import UpcomingEvent
 from models.user import User, db
 from models.event import CancellationReason, District, Event, EventType, EventFormat, EventStatus
@@ -684,6 +685,115 @@ def init_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)})
+        
+    @app.route('/organizations/import', methods=['GET', 'POST'])
+    @login_required
+    def import_organizations():
+        if request.method == 'GET':
+            return render_template('organizations/import.html')
+        
+        try:
+            success_count = 0
+            error_count = 0
+            errors = []
+
+            if request.is_json and request.json.get('quickSync'):
+                # Handle quickSync
+                default_file_path = os.path.join('data', 'Organizations.csv')
+                if not os.path.exists(default_file_path):
+                    return jsonify({'error': 'Default CSV file not found'}), 404
+                    
+                with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
+                    content = file.read().replace('\0', '')
+                    csv_data = csv.DictReader(content.splitlines())
+                    for row in csv_data:
+                        try:
+                            # Process organization row
+                            org = Organization.query.filter_by(salesforce_id=row.get('Id')).first()
+                            if not org:
+                                org = Organization()
+                                db.session.add(org)
+                            
+                            # Update organization fields
+                            org.salesforce_id = row.get('Id')
+                            org.name = row.get('Name', '')
+                            org.type = row.get('Type')
+                            org.description = row.get('Description')
+                            org.parent_id = row.get('ParentId')
+                            org.billing_street = row.get('BillingStreet')
+                            org.billing_city = row.get('BillingCity')
+                            org.billing_state = row.get('BillingState')
+                            org.billing_postal_code = row.get('BillingPostalCode')
+                            org.billing_country = row.get('BillingCountry')
+                            
+                            # Parse dates
+                            if row.get('LastActivityDate'):
+                                org.last_activity_date = parse_date(row['LastActivityDate'])
+                            
+                            success_count += 1
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f"Error processing row: {str(e)}")
+                            continue
+
+            else:
+                # Handle file upload
+                if 'file' not in request.files:
+                    return jsonify({'error': 'No file uploaded'}), 400
+                
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({'error': 'No file selected'}), 400
+                
+                if not file.filename.endswith('.csv'):
+                    return jsonify({'error': 'File must be a CSV'}), 400
+
+                content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
+                csv_data = csv.DictReader(content.splitlines())
+                
+                for row in csv_data:
+                    try:
+                        # Process organization row (same logic as above)
+                        org = Organization.query.filter_by(salesforce_id=row.get('Id')).first()
+                        if not org:
+                            org = Organization()
+                            db.session.add(org)
+                        
+                        org.salesforce_id = row.get('Id')
+                        org.name = row.get('Name', '')
+                        org.type = row.get('Type')
+                        org.description = row.get('Description')
+                        org.parent_id = row.get('ParentId')
+                        org.billing_street = row.get('BillingStreet')
+                        org.billing_city = row.get('BillingCity')
+                        org.billing_state = row.get('BillingState')
+                        org.billing_postal_code = row.get('BillingPostalCode')
+                        org.billing_country = row.get('BillingCountry')
+                        
+                        if row.get('LastActivityDate'):
+                            org.last_activity_date = parse_date(row['LastActivityDate'])
+                        
+                        success_count += 1
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"Error processing row: {str(e)}")
+                        continue
+
+            # Commit all changes
+            try:
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'successCount': success_count,
+                    'errorCount': error_count,
+                    'errors': errors
+                })
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': f'Database error: {str(e)}'}), 500
+                
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
     
     @app.route('/events')
     @login_required
@@ -1517,6 +1627,58 @@ def init_routes(app):
             flash(f'Error updating password: {str(e)}', 'danger')
         
         return redirect(url_for('admin'))
+
+    @app.route('/organizations')
+    @login_required
+    def organizations():
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+
+        # Create current_filters dictionary
+        current_filters = {
+            'search_name': request.args.get('search_name', '').strip(),
+            'type': request.args.get('type', ''),
+            'per_page': per_page
+        }
+
+        # Remove empty filters
+        current_filters = {k: v for k, v in current_filters.items() if v}
+
+        # Build query
+        query = Organization.query
+
+        # Apply filters
+        if current_filters.get('search_name'):
+            search_term = f"%{current_filters['search_name']}%"
+            query = query.filter(Organization.name.ilike(search_term))
+
+        if current_filters.get('type'):
+            query = query.filter(Organization.type == current_filters['type'])
+
+        # Get unique types for filter dropdown
+        organization_types = db.session.query(Organization.type)\
+            .filter(Organization.type.isnot(None))\
+            .distinct()\
+            .order_by(Organization.type)\
+            .all()
+        organization_types = [t[0] for t in organization_types if t[0]]
+
+        # Default sort by name
+        query = query.order_by(Organization.name)
+
+        # Apply pagination
+        pagination = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        return render_template('organizations/organizations.html',
+                             organizations=pagination.items,
+                             pagination=pagination,
+                             current_filters=current_filters,
+                             organization_types=organization_types)
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
