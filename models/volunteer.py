@@ -156,6 +156,20 @@ class Volunteer(db.Model):
             History.activity_date.desc()
         ).all()
 
+    @property
+    def salesforce_contact_url(self):
+        """Generate Salesforce contact URL if ID exists"""
+        if self.salesforce_individual_id:
+            return f"https://prep-kc.lightning.force.com/lightning/r/Contact/{self.salesforce_individual_id}/view"
+        return None
+
+    @property
+    def salesforce_account_url(self):
+        """Generate Salesforce account URL if ID exists"""
+        if self.salesforce_account_id:
+            return f"https://prep-kc.lightning.force.com/lightning/r/Account/{self.salesforce_account_id}/view"
+        return None
+
 # Phone Model
 class Phone(db.Model):
     __tablename__ = 'phone'

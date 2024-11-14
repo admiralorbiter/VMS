@@ -12,18 +12,37 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 20px;
 }
 
-.volunteers-header h1 {
-    color: var(--delft-blue);
-    font-size: 2.5rem;
-    text-shadow: 2px 2px 0 var(--non-photo-blue);
-}
-
-.volunteers-header .header-buttons {
+.header-left {
     display: flex;
-    gap: 1rem;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-left h1 {
+    margin: 0;
+}
+
+.salesforce-links {
+    display: flex;
+    gap: 8px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+}
+
+.salesforce-btn:hover {
+    background-color: #0089bd;
+    color: white;
 }
 
 .add-volunteer-btn,
@@ -1464,4 +1483,20 @@ main {
 
 .history-group-header:hover {
     background: var(--non-photo-blue);
+}
+
+.salesforce-links {
+    display: flex;
+    gap: 8px;
+    margin-right: 8px;
+}
+
+.salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+}
+
+.salesforce-btn:hover {
+    background-color: #0089bd;
+    color: white;
 }

@@ -9,7 +9,23 @@
 {% block content %}
 <div class="volunteers-container">
     <div class="volunteers-header">
-        <h1>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</h1>
+        <div class="header-left">
+            <h1>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</h1>
+            {% if volunteer.salesforce_contact_url or volunteer.salesforce_account_url %}
+            <div class="salesforce-links">
+                {% if volunteer.salesforce_contact_url %}
+                <a href="{{ volunteer.salesforce_contact_url }}" class="btn salesforce-btn" target="_blank">
+                    <i class="fa-solid fa-cloud"></i> Contact
+                </a>
+                {% endif %}
+                {% if volunteer.salesforce_account_url %}
+                <a href="{{ volunteer.salesforce_account_url }}" class="btn salesforce-btn" target="_blank">
+                    <i class="fa-solid fa-building-user"></i> Account
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
         <div class="header-actions">
             <a href="{{ url_for('edit_volunteer', id=volunteer.id) }}" class="btn edit-volunteer-btn">
                 <i class="fa-solid fa-pencil"></i> Edit

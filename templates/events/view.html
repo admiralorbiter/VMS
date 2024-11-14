@@ -13,7 +13,14 @@
     
     <!-- Type and Actions Row -->
     <div class="type-actions-row">
-        <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
+        <div class="header-left">
+            <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
+            {% if event.salesforce_url %}
+            <a href="{{ event.salesforce_url }}" class="btn salesforce-btn" target="_blank">
+                <i class="fa-solid fa-cloud"></i> Salesforce
+            </a>
+            {% endif %}
+        </div>
         <div class="header-actions">
             <a href="{{ url_for('edit_event', id=event.id) }}" class="action-btn edit-btn">
                 <i class="fa-solid fa-pencil"></i> Edit
@@ -24,186 +31,177 @@
         </div>
     </div>
 
-    <!-- Rest of the content remains the same -->
-    <div class="event-content">
-        <!-- Event Information Card -->
-        <div class="event-card">
-            <div class="card-header">
-                <i class="fa-solid fa-info-circle"></i>
-                <h2>Event Details</h2>
-            </div>
-            <div class="card-content">
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Status</label>
-                        <span class="status-badge {{ event.status }}">{{ event.status|title }}</span>
-                    </div>
-                    {% if event.salesforce_id %}
-                    <div class="info-item">
-                        <label>Salesforce ID</label>
-                        <p><i class="fa-solid fa-database"></i> {{ event.salesforce_id }}</p>
-                    </div>
-                    {% endif %}
-                    {% if event.districts %}
-                    <div class="info-item">
-                        <label>District{% if event.districts|length > 1 %}s{% endif %}</label>
-                        <p><i class="fa-solid fa-school"></i> 
-                            {% for district in event.districts %}
-                                {{ district.name }}{% if not loop.last %}, {% endif %}
-                            {% endfor %}
-                        </p>
-                    </div>
-                    {% endif %}
-                    <div class="info-item">
-                        <label>Start Date & Time</label>
-                        <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
-                    </div>
-                    <div class="info-item">
-                        <label>End Date & Time</label>
-                        <p><i class="fa-solid fa-calendar-check"></i> {{ event.end_date.strftime('%Y-%m-%d %H:%M') }}</p>
-                    </div>
-                    <div class="info-item">
-                        <label>Location</label>
-                        <p><i class="fa-solid fa-location-dot"></i> {{ event.location or 'None' }}</p>
-                    </div>
-                    <div class="info-item">
-                        <label>Volunteer Capacity</label>
-                        <p><i class="fa-solid fa-users"></i> {{ event.volunteer_count }}/{{ event.volunteer_needed or 0 }} volunteers</p>
-                    </div>
-                    <div class="info-item">
-                        <label>Format</label>
-                        <p><i class="fa-solid {% if event.format == 'virtual' %}fa-video{% else %}fa-person{% endif %}"></i> 
-                            {{ event.format.value|replace('_', ' ')|title }}
-                        </p>
-                    </div>
-                    <div class="info-item">
-                        <label>Participant Count</label>
-                        <p><i class="fa-solid fa-users-line"></i> {{ event.participant_count }} participants</p>
-                    </div>
+    <!-- Event Information Card -->
+    <div class="event-card">
+        <div class="card-header">
+            <i class="fa-solid fa-info-circle"></i>
+            <h2>Event Details</h2>
+        </div>
+        <div class="card-content">
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Status</label>
+                    <span class="status-badge {{ event.status }}">{{ event.status|title }}</span>
+                </div>
+                {% if event.districts %}
+                <div class="info-item">
+                    <label>District{% if event.districts|length > 1 %}s{% endif %}</label>
+                    <p><i class="fa-solid fa-school"></i> 
+                        {% for district in event.districts %}
+                            {{ district.name }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </p>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <label>Start Date & Time</label>
+                    <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="info-item">
+                    <label>End Date & Time</label>
+                    <p><i class="fa-solid fa-calendar-check"></i> {{ event.end_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Location</label>
+                    <p><i class="fa-solid fa-location-dot"></i> {{ event.location or 'None' }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Volunteer Capacity</label>
+                    <p><i class="fa-solid fa-users"></i> {{ event.volunteer_count }}/{{ event.volunteer_needed or 0 }} volunteers</p>
+                </div>
+                <div class="info-item">
+                    <label>Format</label>
+                    <p><i class="fa-solid {% if event.format == 'virtual' %}fa-video{% else %}fa-person{% endif %}"></i> 
+                        {{ event.format.value|replace('_', ' ')|title }}
+                    </p>
+                </div>
+                <div class="info-item">
+                    <label>Participant Count</label>
+                    <p><i class="fa-solid fa-users-line"></i> {{ event.participant_count }} participants</p>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Skills Card -->
-        <div class="event-card">
-            <div class="card-header">
-                <i class="fa-solid fa-star"></i>
-                <h2>Required Skills</h2>
+    <!-- Skills Card -->
+    <div class="event-card">
+        <div class="card-header">
+            <i class="fa-solid fa-star"></i>
+            <h2>Required Skills</h2>
+        </div>
+        <div class="card-content">
+            {% if event.skills %}
+            <div class="skills-grid">
+                {% for skill in event.skills %}
+                <span class="skill-tag">
+                    {% if skill.name.startswith('Pathway:') %}
+                        <i class="fa-solid fa-road"></i>
+                    {% elif skill.name.startswith('Skill:') %}
+                        <i class="fa-solid fa-tools"></i>
+                    {% elif skill.name.startswith('Career/College:') %}
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    {% elif skill.name.startswith('Core Skill:') %}
+                        <i class="fa-solid fa-cube"></i>
+                    {% elif skill.name.startswith('Activity:') %}
+                        <i class="fa-solid fa-running"></i>
+                    {% else %}
+                        <i class="fa-solid fa-check"></i>
+                    {% endif %}
+                    {{ skill.name }}
+                </span>
+                {% endfor %}
             </div>
-            <div class="card-content">
-                {% if event.skills %}
-                <div class="skills-grid">
-                    {% for skill in event.skills %}
-                    <span class="skill-tag">
-                        {% if skill.name.startswith('Pathway:') %}
-                            <i class="fa-solid fa-road"></i>
-                        {% elif skill.name.startswith('Skill:') %}
-                            <i class="fa-solid fa-tools"></i>
-                        {% elif skill.name.startswith('Career/College:') %}
-                            <i class="fa-solid fa-graduation-cap"></i>
-                        {% elif skill.name.startswith('Core Skill:') %}
-                            <i class="fa-solid fa-cube"></i>
-                        {% elif skill.name.startswith('Activity:') %}
-                            <i class="fa-solid fa-running"></i>
-                        {% else %}
-                            <i class="fa-solid fa-check"></i>
+            {% else %}
+            <p class="no-skills">No specific skills required for this event.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Description Card -->
+    {% if event.description %}
+    <div class="event-card">
+        <div class="card-header">
+            <i class="fa-solid fa-align-left"></i>
+            <h2>Description</h2>
+        </div>
+        <div class="card-content">
+            <p class="event-description">{{ event.description }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Volunteers Card -->
+    <div class="event-card">
+        <div class="card-header">
+            <i class="fa-solid fa-users"></i>
+            <h2>Volunteer Participation</h2>
+        </div>
+        <div class="card-content">
+            {% if participation_stats %}
+                <div class="participation-stats">
+                    <!-- Attended Volunteers -->
+                    <div class="participation-section">
+                        <h3><i class="fa-solid fa-check-circle"></i> Attended ({{ participation_stats['Attended']|length }})</h3>
+                        {% if participation_stats['Attended'] %}
+                            <div class="volunteers-grid">
+                                {% for participation in participation_stats['Attended'] %}
+                                <div class="volunteer-card">
+                                    <div class="volunteer-info">
+                                        <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                        {% if participation.delivery_hours %}
+                                        <span class="volunteer-hours">{{ participation.delivery_hours }} hours</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
                         {% endif %}
-                        {{ skill.name }}
-                    </span>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="no-skills">No specific skills required for this event.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Description Card -->
-        {% if event.description %}
-        <div class="event-card">
-            <div class="card-header">
-                <i class="fa-solid fa-align-left"></i>
-                <h2>Description</h2>
-            </div>
-            <div class="card-content">
-                <p class="event-description">{{ event.description }}</p>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Volunteers Card -->
-        <div class="event-card">
-            <div class="card-header">
-                <i class="fa-solid fa-users"></i>
-                <h2>Volunteer Participation</h2>
-            </div>
-            <div class="card-content">
-                {% if participation_stats %}
-                    <div class="participation-stats">
-                        <!-- Attended Volunteers -->
-                        <div class="participation-section">
-                            <h3><i class="fa-solid fa-check-circle"></i> Attended ({{ participation_stats['Attended']|length }})</h3>
-                            {% if participation_stats['Attended'] %}
-                                <div class="volunteers-grid">
-                                    {% for participation in participation_stats['Attended'] %}
-                                    <div class="volunteer-card">
-                                        <div class="volunteer-info">
-                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                            {% if participation.delivery_hours %}
-                                            <span class="volunteer-hours">{{ participation.delivery_hours }} hours</span>
-                                            {% endif %}
-                                        </div>
-                                        <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                            <i class="fa-solid fa-eye"></i> View
-                                        </a>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- No-Shows -->
-                        <div class="participation-section">
-                            <h3><i class="fa-solid fa-times-circle"></i> No-Shows ({{ participation_stats['No-Show']|length }})</h3>
-                            {% if participation_stats['No-Show'] %}
-                                <div class="volunteers-grid">
-                                    {% for participation in participation_stats['No-Show'] %}
-                                    <div class="volunteer-card no-show">
-                                        <div class="volunteer-info">
-                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                        </div>
-                                        <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                            <i class="fa-solid fa-eye"></i> View
-                                        </a>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Cancelled -->
-                        <div class="participation-section">
-                            <h3><i class="fa-solid fa-ban"></i> Cancelled ({{ participation_stats['Cancelled']|length }})</h3>
-                            {% if participation_stats['Cancelled'] %}
-                                <div class="volunteers-grid">
-                                    {% for participation in participation_stats['Cancelled'] %}
-                                    <div class="volunteer-card cancelled">
-                                        <div class="volunteer-info">
-                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                        </div>
-                                        <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                            <i class="fa-solid fa-eye"></i> View
-                                        </a>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
                     </div>
-                {% else %}
-                    <p class="no-volunteers">No volunteer participation records found.</p>
-                {% endif %}
-            </div>
+
+                    <!-- No-Shows -->
+                    <div class="participation-section">
+                        <h3><i class="fa-solid fa-times-circle"></i> No-Shows ({{ participation_stats['No-Show']|length }})</h3>
+                        {% if participation_stats['No-Show'] %}
+                            <div class="volunteers-grid">
+                                {% for participation in participation_stats['No-Show'] %}
+                                <div class="volunteer-card no-show">
+                                    <div class="volunteer-info">
+                                        <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                    </div>
+                                    <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Cancelled -->
+                    <div class="participation-section">
+                        <h3><i class="fa-solid fa-ban"></i> Cancelled ({{ participation_stats['Cancelled']|length }})</h3>
+                        {% if participation_stats['Cancelled'] %}
+                            <div class="volunteers-grid">
+                                {% for participation in participation_stats['Cancelled'] %}
+                                <div class="volunteer-card cancelled">
+                                    <div class="volunteer-info">
+                                        <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                    </div>
+                                    <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <p class="no-volunteers">No volunteer participation records found.</p>
+            {% endif %}
         </div>
     </div>
 </div>

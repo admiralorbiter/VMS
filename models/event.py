@@ -161,3 +161,10 @@ class Event(db.Model):
     def display_status(self):
         """Returns a clean version of the status for display"""
         return self.status.value if hasattr(self.status, 'value') else str(self.status)
+
+    @property
+    def salesforce_url(self):
+        """Generate Salesforce session URL if ID exists"""
+        if self.salesforce_id:
+            return f"https://prep-kc.lightning.force.com/lightning/r/Session__c/{self.salesforce_id}/view"
+        return None
