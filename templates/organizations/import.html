@@ -1,6 +1,9 @@
 {% extends "base.html" %}
-{% block styles %}
-{{ super() }}
+
+{% block title %}Import Organizations{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/organizations.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/import.css') }}">
 {% endblock %}
 
@@ -8,7 +11,10 @@
 <div class="import-container">
     <!-- Quick Sync Section -->
     <section class="import-section">
-        <h2><i class="fa-solid fa-sync"></i>Quick Sync</h2>
+        <h2>
+            <i class="fa-solid fa-sync"></i>
+            Quick Sync
+        </h2>
         <p>Sync organizations from the default CSV file in the data directory.</p>
         <button id="quickSyncBtn" class="sync-btn">
             <i class="fa-solid fa-bolt"></i>
@@ -18,7 +24,10 @@
 
     <!-- Manual Upload Section -->
     <section class="import-section">
-        <h2><i class="fa-solid fa-upload"></i>Manual Upload</h2>
+        <h2>
+            <i class="fa-solid fa-upload"></i>
+            Manual Upload
+        </h2>
         <p>Upload a CSV file containing organization data.</p>
         
         <div id="uploadContainer" class="upload-container">
@@ -36,25 +45,39 @@
 
     <!-- Progress Section -->
     <section id="progressSection" class="import-section" style="display: none;">
-        <h2><i class="fa-solid fa-spinner fa-spin"></i>Import Progress</h2>
+        <h2>
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Import Progress
+        </h2>
         <div class="progress">
             <div id="importProgress" class="progress-bar" role="progressbar"></div>
         </div>
+        <p class="progress-stats">
+            Processing... <span id="processedCount">0</span> records
+        </p>
     </section>
 
     <!-- Results Section -->
     <section id="resultsSection" class="import-section" style="display: none;">
-        <h2><i class="fa-solid fa-chart-bar"></i>Import Results</h2>
+        <h2>
+            <i class="fa-solid fa-chart-bar"></i>
+            Import Results
+        </h2>
         <div class="results-stats">
             <div class="stat-card success">
                 <i class="fa-solid fa-check-circle"></i>
                 <span id="successCount" class="stat-count">0</span>
-                <span>Successful</span>
+                <span class="stat-label">Successful</span>
+            </div>
+            <div class="stat-card warning">
+                <i class="fa-solid fa-exclamation-circle"></i>
+                <span id="warningCount" class="stat-count">0</span>
+                <span class="stat-label">Warnings</span>
             </div>
             <div class="stat-card error">
                 <i class="fa-solid fa-times-circle"></i>
                 <span id="errorCount" class="stat-count">0</span>
-                <span>Errors</span>
+                <span class="stat-label">Errors</span>
             </div>
         </div>
         <div id="errorList" class="error-list"></div>

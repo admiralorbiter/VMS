@@ -151,4 +151,80 @@ main {
     .organizations-container {
         max-width: 90%;
     }
+}
+
+/* Import specific styles */
+.import-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.import-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.import-section h2 {
+    color: var(--delft-blue);
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.import-section h2 i {
+    color: var(--ucla-blue);
+}
+
+/* Progress bar styles */
+.progress {
+    height: 10px;
+    background-color: var(--non-photo-blue);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--ucla-blue);
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+/* Results section styles */
+.results-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .import-container {
+        padding: 1rem;
+    }
+
+    .results-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-container {
+        padding: 1.5rem;
+    }
 } 
