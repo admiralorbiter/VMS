@@ -33,12 +33,10 @@
         <div id="uploadContainer" class="upload-container">
             <div class="upload-content">
                 <i class="fa-solid fa-file-csv"></i>
-                <div class="upload-text">
-                    <h3>Drop your CSV file here</h3>
-                    <p>or</p>
-                    <label for="fileInput" class="upload-btn">Choose File</label>
-                    <input type="file" id="fileInput" accept=".csv" hidden>
-                </div>
+                <p>Drop your CSV file here</p>
+                <span>or</span>
+                <label for="fileInput" class="upload-btn">Choose File</label>
+                <input type="file" id="fileInput" accept=".csv" hidden>
             </div>
         </div>
     </section>
@@ -49,12 +47,14 @@
             <i class="fa-solid fa-spinner fa-spin"></i>
             Import Progress
         </h2>
-        <div class="progress">
-            <div id="importProgress" class="progress-bar" role="progressbar"></div>
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div id="importProgress" class="progress" style="width: 0%"></div>
+            </div>
+            <div class="progress-stats">
+                Processing... <span id="processedCount">0</span> records
+            </div>
         </div>
-        <p class="progress-stats">
-            Processing... <span id="processedCount">0</span> records
-        </p>
     </section>
 
     <!-- Results Section -->
@@ -85,7 +85,6 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-{{ super() }}
+{% block extra_js %}
 <script src="{{ url_for('static', filename='js/organization_import.js') }}"></script>
 {% endblock %}

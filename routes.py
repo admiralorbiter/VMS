@@ -1680,6 +1680,33 @@ def init_routes(app):
                              current_filters=current_filters,
                              organization_types=organization_types)
 
+    @app.route('/organizations/view/<int:id>')
+    @login_required
+    def view_organization(id):
+        organization = Organization.query.get_or_404(id)
+        
+        # Get all volunteers associated with this organization
+        volunteers = Volunteer.query.filter_by(organization_name=organization.name).all()
+        
+        # Get recent events/activities
+        recent_activities = []
+        for volunteer in volunteers:
+            participations = EventParticipation.query.filter_by(volunteer_id=volunteer.id)\
+                .order_by(EventParticipation.created_at.desc())\
+                .limit(5)\
+                .all()
+            recent_activities.extend(participations)
+        
+        # Sort activities by date
+        recent_activities.sort(key=lambda x: x.created_at, reverse=True)
+        
+        return render_template(
+            'organizations/view.html',
+            organization=organization,
+            volunteers=volunteers,
+            recent_activities=recent_activities
+        )
+
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
     if not date_str:

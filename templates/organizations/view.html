@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}{{ organization.name }}{% endblock %}
+
+{% block content %}
+<div class="org-profile-container">
+    <!-- Header Section -->
+    <div class="org-header">
+        <div class="org-title">
+            <h1>{{ organization.name }}</h1>
+            {% if organization.type %}
+            <span class="org-type-badge">{{ organization.type }}</span>
+            {% endif %}
+        </div>
+        <div class="header-actions">
+            {% if organization.salesforce_id %}
+            <a href="https://yourinstance.salesforce.com/{{ organization.salesforce_id }}" 
+               target="_blank" 
+               class="action-btn salesforce-btn">
+                <i class="fa-solid fa-cloud"></i> View in Salesforce
+            </a>
+            {% endif %}
+            <a href="{{ url_for('organizations') }}" class="action-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to Organizations
+            </a>
+        </div>
+    </div>
+
+    <!-- Profile Grid -->
+    <div class="org-profile-grid">
+        <!-- Basic Info Card -->
+        <div class="profile-card basic-info">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-building"></i> Organization Details</h2>
+            </div>
+            <div class="card-content">
+                {% if organization.description %}
+                <div class="info-group">
+                    <label>Description</label>
+                    <p>{{ organization.description }}</p>
+                </div>
+                {% endif %}
+
+                {% if organization.billing_street or organization.billing_city %}
+                <div class="info-group">
+                    <label>Address</label>
+                    <address>
+                        {% if organization.billing_street %}{{ organization.billing_street }}<br>{% endif %}
+                        {% if organization.billing_city %}{{ organization.billing_city }}{% endif %}
+                        {% if organization.billing_state %}, {{ organization.billing_state }}{% endif %}
+                        {% if organization.billing_postal_code %} {{ organization.billing_postal_code }}{% endif %}
+                        {% if organization.billing_country %}<br>{{ organization.billing_country }}{% endif %}
+                    </address>
+                </div>
+                {% endif %}
+
+                {% if organization.last_activity_date %}
+                <div class="info-group">
+                    <label>Last Activity</label>
+                    <p>{{ organization.last_activity_date.strftime('%B %d, %Y') }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Associated Volunteers Card -->
+        <div class="profile-card volunteers-info">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-users"></i> Associated Volunteers</h2>
+            </div>
+            <div class="card-content">
+                {% if volunteers %}
+                <div class="volunteers-list">
+                    {% for volunteer in volunteers %}
+                    <div class="volunteer-item">
+                        <div class="volunteer-info">
+                            <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="volunteer-name">
+                                {{ volunteer.full_name }}
+                            </a>
+                            {% if volunteer.title %}
+                            <span class="volunteer-title">{{ volunteer.title }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No volunteers associated with this organization</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Activities Card -->
+        <div class="profile-card activities-info">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent Activities</h2>
+            </div>
+            <div class="card-content">
+                {% if recent_activities %}
+                <div class="activities-list">
+                    {% for activity in recent_activities %}
+                    <div class="activity-item">
+                        <div class="activity-date">
+                            {{ activity.created_at.strftime('%B %d, %Y') }}
+                        </div>
+                        <div class="activity-details">
+                            <span class="activity-volunteer">{{ activity.volunteer.full_name }}</span>
+                            participated in
+                            <span class="activity-event">{{ activity.event.name }}</span>
+                            <span class="activity-status {{ activity.status.lower() }}">
+                                {{ activity.status }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No recent activities</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
