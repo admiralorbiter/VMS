@@ -103,7 +103,7 @@
                     {% for activity in recent_activities %}
                     <div class="activity-item">
                         <div class="activity-date">
-                            {{ activity.created_at.strftime('%B %d, %Y') }}
+                            {{ activity.event.start_date.strftime('%B %d, %Y') }}
                         </div>
                         <div class="activity-details">
                             <span class="activity-volunteer">{{ activity.volunteer.full_name }}</span>

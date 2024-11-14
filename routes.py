@@ -1686,25 +1686,26 @@ def init_routes(app):
         organization = Organization.query.get_or_404(id)
         
         # Get all volunteers associated with this organization
-        volunteers = Volunteer.query.filter_by(organization_name=organization.name).all()
+        volunteers = organization.volunteers  # Using the relationship directly
         
         # Get recent events/activities
         recent_activities = []
         for volunteer in volunteers:
             participations = EventParticipation.query.filter_by(volunteer_id=volunteer.id)\
-                .order_by(EventParticipation.created_at.desc())\
+                .join(Event)\
+                .order_by(Event.start_date.desc())\
                 .limit(5)\
                 .all()
             recent_activities.extend(participations)
         
-        # Sort activities by date
-        recent_activities.sort(key=lambda x: x.created_at, reverse=True)
+        # Sort activities by event date
+        recent_activities.sort(key=lambda x: x.event.start_date, reverse=True)
         
         return render_template(
             'organizations/view.html',
             organization=organization,
             volunteers=volunteers,
-            recent_activities=recent_activities
+            recent_activities=recent_activities[:10]  # Limit to 10 most recent
         )
 
 def parse_date(date_str):
