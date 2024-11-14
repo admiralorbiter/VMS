@@ -387,4 +387,51 @@ main {
     .org-profile-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Import Type Selector Styles */
+.import-type-selector {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.import-type-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.import-type-option input[type="radio"] {
+    display: none;
+}
+
+.option-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 2px solid var(--ucla-blue);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.option-content i {
+    font-size: 1.25rem;
+    color: var(--ucla-blue);
+}
+
+.import-type-option input[type="radio"]:checked + .option-content {
+    background-color: var(--ucla-blue);
+    color: white;
+}
+
+.import-type-option input[type="radio"]:checked + .option-content i {
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .import-type-selector {
+        flex-direction: column;
+    }
 } 

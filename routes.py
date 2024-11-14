@@ -3,7 +3,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from config import Config
 from forms import LoginForm, VolunteerForm
 from models.history import History
-from models.organization import Organization
+from models.organization import Organization, VolunteerOrganization
 from models.upcoming_events import UpcomingEvent
 from models.user import User, db
 from models.event import CancellationReason, District, Event, EventType, EventFormat, EventStatus
@@ -697,87 +697,100 @@ def init_routes(app):
             error_count = 0
             errors = []
 
+            # Determine import type
+            import_type = request.json.get('importType', 'organizations') if request.is_json else request.form.get('importType', 'organizations')
+            
             if request.is_json and request.json.get('quickSync'):
-                # Handle quickSync
-                default_file_path = os.path.join('data', 'Organizations.csv')
-                if not os.path.exists(default_file_path):
-                    return jsonify({'error': 'Default CSV file not found'}), 404
-                    
-                with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
+                # Set file path based on import type
+                file_path = os.path.join('data', 'Organizations.csv' if import_type == 'organizations' else 'npe5__Affiliation__c.csv')
+                
+                if not os.path.exists(file_path):
+                    return jsonify({'error': f'Default CSV file not found for {import_type}'}), 404
+                
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
                     content = file.read().replace('\0', '')
                     csv_data = csv.DictReader(content.splitlines())
-                    for row in csv_data:
-                        try:
-                            # Process organization row
-                            org = Organization.query.filter_by(salesforce_id=row.get('Id')).first()
-                            if not org:
-                                org = Organization()
-                                db.session.add(org)
-                            
-                            # Update organization fields
-                            org.salesforce_id = row.get('Id')
-                            org.name = row.get('Name', '')
-                            org.type = row.get('Type')
-                            org.description = row.get('Description')
-                            org.parent_id = row.get('ParentId')
-                            org.billing_street = row.get('BillingStreet')
-                            org.billing_city = row.get('BillingCity')
-                            org.billing_state = row.get('BillingState')
-                            org.billing_postal_code = row.get('BillingPostalCode')
-                            org.billing_country = row.get('BillingCountry')
-                            
-                            # Parse dates
-                            if row.get('LastActivityDate'):
-                                org.last_activity_date = parse_date(row['LastActivityDate'])
-                            
-                            success_count += 1
-                        except Exception as e:
-                            error_count += 1
-                            errors.append(f"Error processing row: {str(e)}")
-                            continue
+                    
+                    if import_type == 'organizations':
+                        for row in csv_data:
+                            try:
+                                org = Organization.query.filter_by(salesforce_id=row.get('Id')).first()
+                                if not org:
+                                    org = Organization()
+                                    db.session.add(org)
+                                
+                                # Update organization fields
+                                org.salesforce_id = row.get('Id')
+                                org.name = row.get('Name', '')
+                                org.type = row.get('Type')
+                                org.description = row.get('Description')
+                                org.volunteer_parent_id = row.get('ParentId')
+                                org.billing_street = row.get('BillingStreet')
+                                org.billing_city = row.get('BillingCity')
+                                org.billing_state = row.get('BillingState')
+                                org.billing_postal_code = row.get('BillingPostalCode')
+                                org.billing_country = row.get('BillingCountry')
+                                
+                                if row.get('LastActivityDate'):
+                                    org.last_activity_date = parse_date(row['LastActivityDate'])
+                                
+                                success_count += 1
+                            except Exception as e:
+                                error_count += 1
+                                errors.append(f"Error processing organization: {str(e)}")
+                                continue
+                    
+                    else:  # affiliations
+                        for row in csv_data:
+                            try:
+                                # Get the organization and volunteer by their Salesforce IDs
+                                org = Organization.query.filter_by(
+                                    salesforce_id=row.get('npe5__Organization__c')
+                                ).first()
+                                
+                                # Use salesforce_individual_id instead of salesforce_id
+                                volunteer = Volunteer.query.filter_by(
+                                    salesforce_individual_id=row.get('npe5__Contact__c')
+                                ).first()
 
-            else:
-                # Handle file upload
-                if 'file' not in request.files:
-                    return jsonify({'error': 'No file uploaded'}), 400
-                
-                file = request.files['file']
-                if file.filename == '':
-                    return jsonify({'error': 'No file selected'}), 400
-                
-                if not file.filename.endswith('.csv'):
-                    return jsonify({'error': 'File must be a CSV'}), 400
+                                if org and volunteer:
+                                    # Check for existing relationship
+                                    vol_org = VolunteerOrganization.query.filter_by(
+                                        volunteer_id=volunteer.id,
+                                        organization_id=org.id
+                                    ).first()
 
-                content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
-                csv_data = csv.DictReader(content.splitlines())
-                
-                for row in csv_data:
-                    try:
-                        # Process organization row (same logic as above)
-                        org = Organization.query.filter_by(salesforce_id=row.get('Id')).first()
-                        if not org:
-                            org = Organization()
-                            db.session.add(org)
-                        
-                        org.salesforce_id = row.get('Id')
-                        org.name = row.get('Name', '')
-                        org.type = row.get('Type')
-                        org.description = row.get('Description')
-                        org.parent_id = row.get('ParentId')
-                        org.billing_street = row.get('BillingStreet')
-                        org.billing_city = row.get('BillingCity')
-                        org.billing_state = row.get('BillingState')
-                        org.billing_postal_code = row.get('BillingPostalCode')
-                        org.billing_country = row.get('BillingCountry')
-                        
-                        if row.get('LastActivityDate'):
-                            org.last_activity_date = parse_date(row['LastActivityDate'])
-                        
-                        success_count += 1
-                    except Exception as e:
-                        error_count += 1
-                        errors.append(f"Error processing row: {str(e)}")
-                        continue
+                                    if not vol_org:
+                                        vol_org = VolunteerOrganization(
+                                            volunteer_id=volunteer.id,
+                                            organization_id=org.id
+                                        )
+                                        db.session.add(vol_org)
+
+                                    # Update relationship details
+                                    vol_org.salesforce_volunteer_id = row.get('npe5__Contact__c')
+                                    vol_org.salesforce_org_id = row.get('npe5__Organization__c')
+                                    vol_org.role = row.get('npe5__Role__c')
+                                    vol_org.is_primary = row.get('npe5__Primary__c') == '1'
+                                    vol_org.status = row.get('npe5__Status__c')
+                                    
+                                    if row.get('npe5__StartDate__c'):
+                                        vol_org.start_date = parse_date(row['npe5__StartDate__c'])
+                                    if row.get('npe5__EndDate__c'):
+                                        vol_org.end_date = parse_date(row['npe5__EndDate__c'])
+                                    
+                                    success_count += 1
+                                else:
+                                    error_count += 1
+                                    if not org:
+                                        errors.append(f"Organization with Salesforce ID {row.get('npe5__Organization__c')} not found")
+                                    if not volunteer:
+                                        errors.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
+                                    
+                            except Exception as e:
+                                error_count += 1
+                                errors.append(f"Error processing affiliation: {str(e)}")
+                                continue
 
             # Commit all changes
             try:
@@ -793,7 +806,7 @@ def init_routes(app):
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
                 
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
     
     @app.route('/events')
     @login_required

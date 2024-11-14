@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Quick sync button handler
     quickSyncBtn.addEventListener('click', () => {
+        const importType = document.querySelector('input[name="importType"]:checked').value;
         quickSyncBtn.disabled = true;
         showProgress();
         importProgress.style.width = '50%';
@@ -51,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                quickSync: true
+                quickSync: true,
+                importType: importType
             })
         })
         .then(response => response.json())
@@ -73,8 +75,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function handleFileUpload(file) {
+        const importType = document.querySelector('input[name="importType"]:checked').value;
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('importType', importType);
         
         showProgress();
         importProgress.style.width = '50%';

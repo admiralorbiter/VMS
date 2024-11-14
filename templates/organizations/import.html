@@ -9,13 +9,37 @@
 
 {% block content %}
 <div class="import-container">
+    <!-- Import Type Selection -->
+    <section class="import-section">
+        <h2>
+            <i class="fa-solid fa-filter"></i>
+            Import Type
+        </h2>
+        <div class="import-type-selector">
+            <label class="import-type-option">
+                <input type="radio" name="importType" value="organizations" checked>
+                <span class="option-content">
+                    <i class="fa-solid fa-building"></i>
+                    Organizations
+                </span>
+            </label>
+            <label class="import-type-option">
+                <input type="radio" name="importType" value="affiliations">
+                <span class="option-content">
+                    <i class="fa-solid fa-link"></i>
+                    Affiliations
+                </span>
+            </label>
+        </div>
+    </section>
+
     <!-- Quick Sync Section -->
     <section class="import-section">
         <h2>
             <i class="fa-solid fa-sync"></i>
             Quick Sync
         </h2>
-        <p>Sync organizations from the default CSV file in the data directory.</p>
+        <p>Sync data from the default CSV files in the data directory.</p>
         <button id="quickSyncBtn" class="sync-btn">
             <i class="fa-solid fa-bolt"></i>
             Quick Sync
@@ -28,7 +52,7 @@
             <i class="fa-solid fa-upload"></i>
             Manual Upload
         </h2>
-        <p>Upload a CSV file containing organization data.</p>
+        <p>Upload a CSV file containing organization or affiliation data.</p>
         
         <div id="uploadContainer" class="upload-container">
             <div class="upload-content">
