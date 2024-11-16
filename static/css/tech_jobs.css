@@ -1,9 +1,9 @@
 /* Inherit base styles from style.css and customize for tech jobs */
 
 .jobs-container {
-    max-width: 95%;
+    max-width: 98%;
     margin: 0 auto;
-    padding: 15px;
+    padding: 10px;
 }
 
 /* Industry badge styles */
@@ -56,10 +56,10 @@
 .jobs-table-container {
     background-color: white;
     border-radius: 10px;
-    padding: 1rem;
+    padding: 0.75rem;
     box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
     border: 1px solid var(--non-photo-blue);
-    margin-top: 2rem;
+    margin-top: 1.5rem;
 }
 
 .jobs-table {
@@ -177,7 +177,7 @@
 }
 
 .action-buttons .action-btn {
-    padding: 0.35rem 0.75rem;
+    padding: 0.25rem 0.5rem;
     font-size: 0.9rem;
 }
 
@@ -432,5 +432,64 @@
     
     .results-stats {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Make table columns more compact */
+.jobs-table td, 
+.jobs-table th {
+    padding: 0.75rem 0.5rem;
+    white-space: nowrap;
+}
+
+/* Adjust action buttons to be more compact */
+.action-buttons .action-btn {
+    padding: 0.25rem 0.5rem;
+    min-width: auto;
+}
+
+/* Responsive adjustments */
+@media (min-width: 1600px) {
+    .jobs-container {
+        max-width: 95%;
+    }
+}
+
+@media (max-width: 768px) {
+    .jobs-container {
+        max-width: 100%;
+        padding: 5px;
+    }
+}
+
+/* Override main container width */
+main {
+    max-width: none !important;
+    padding: 10px;
+}
+
+/* Update jobs container */
+.jobs-container {
+    max-width: 98%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+/* Make table more compact */
+.jobs-table td, 
+.jobs-table th {
+    padding: 0.75rem 0.5rem;
+    white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    main {
+        padding: 5px;
+    }
+    
+    .jobs-container {
+        max-width: 100%;
+        padding: 5px;
     }
 } 
