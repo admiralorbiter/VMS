@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.company_name }} - Job Details{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tech_jobs.css') }}">
+{% endblock %}
+{% block content %}
+<div class="job-detail-container">
+    <div class="job-detail-header">
+        <h1 class="job-detail-title">
+            <i class="fa-solid fa-building"></i>
+            {{ job.company_name }}
+        </h1>
+        <div class="job-detail-meta">
+            <span class="industry-badge">
+                <i class="fa-solid fa-industry"></i> {{ job.industry }}
+            </span>
+            {% if job.kc_based %}
+            <span class="location-badge kc">
+                <i class="fa-solid fa-location-dot"></i> KC Based
+            </span>
+            {% endif %}
+            {% if job.entry_level_available %}
+            <span class="entry-level-badge">
+                <i class="fa-solid fa-graduation-cap"></i> Entry Level
+            </span>
+            {% endif %}
+        </div>
+        <div class="job-detail-actions">
+            <a href="{{ url_for('edit_job', id=job.id) }}" class="action-btn edit-btn">
+                <i class="fa-solid fa-pencil"></i> Edit Position
+            </a>
+            {% if job.job_link %}
+            <a href="{{ job.job_link }}" target="_blank" class="action-btn apply-btn">
+                <i class="fa-solid fa-external-link"></i> Apply Now
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="job-info-grid">
+        <div class="job-info-item">
+            <div class="job-info-label">
+                <i class="fa-solid fa-briefcase"></i> Openings
+            </div>
+            <div class="job-info-value">{{ job.current_openings }}</div>
+        </div>
+        <div class="job-info-item">
+            <div class="job-info-label">
+                <i class="fa-solid fa-location-dot"></i> Location
+            </div>
+            <div class="job-info-value">{{ job.location }}</div>
+        </div>
+        {% if job.opening_types %}
+        <div class="job-info-item">
+            <div class="job-info-label">
+                <i class="fa-solid fa-tags"></i> Position Types
+            </div>
+            <div class="job-info-value">{{ job.opening_types }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="job-description">
+        <h2>
+            <i class="fa-solid fa-file-lines"></i>
+            Position Description
+        </h2>
+        <div class="job-description-content">
+            {{ job.description | nl2br }}
+        </div>
+    </div>
+</div>
+{% endblock %} 

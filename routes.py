@@ -1724,6 +1724,7 @@ def init_routes(app):
         )
 
     @app.route('/tech_jobs')
+    @login_required
     def tech_jobs():
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
@@ -1734,6 +1735,7 @@ def init_routes(app):
             'search_company': request.args.get('search_company', '').strip(),
             'industry': request.args.get('industry', ''),
             'location': request.args.get('location', ''),
+            'entry_level': request.args.get('entry_level', ''),  # Add entry level filter
             'per_page': per_page
         }
 
@@ -1757,16 +1759,12 @@ def init_routes(app):
             elif current_filters['location'] == 'remote':
                 query = query.filter(JobOpportunity.remote_available == True)
 
-        # Get unique industries for filter dropdown
-        industries = db.session.query(JobOpportunity.industry)\
-            .filter(JobOpportunity.industry.isnot(None))\
-            .distinct()\
-            .order_by(JobOpportunity.industry)\
-            .all()
-        industries = [i[0] for i in industries if i[0]]
-
-        # Default sort by company name
-        query = query.order_by(JobOpportunity.company_name)
+        # Add entry level filter
+        if current_filters.get('entry_level'):
+            if current_filters['entry_level'] == 'yes':
+                query = query.filter(JobOpportunity.entry_level_available == True)
+            elif current_filters['entry_level'] == 'no':
+                query = query.filter(JobOpportunity.entry_level_available == False)
 
         # Apply pagination
         pagination = query.paginate(
@@ -1775,11 +1773,20 @@ def init_routes(app):
             error_out=False
         )
 
-        return render_template('job_board/tech.html',
-                                 jobs=pagination.items,
-                                 pagination=pagination,
-                                 current_filters=current_filters,
-                                 industries=industries)
+        # Get unique industries for dropdown
+        industries = db.session.query(JobOpportunity.industry)\
+            .distinct()\
+            .order_by(JobOpportunity.industry)\
+            .all()
+        industries = [i[0] for i in industries if i[0]]  # Flatten and remove empty
+
+        return render_template(
+            'job_board/tech.html',
+            jobs=pagination.items,
+            pagination=pagination,
+            current_filters=current_filters,
+            industries=industries
+        )
 
     @app.route('/tech_jobs/add', methods=['GET', 'POST'])
     @login_required
@@ -2040,6 +2047,12 @@ def init_routes(app):
                 
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+    @app.template_filter('nl2br')
+    def nl2br_filter(text):
+        if not text:
+            return ""
+        return text.replace('\n', '<br>')
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""

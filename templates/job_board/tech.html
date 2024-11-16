@@ -51,6 +51,15 @@
                         <option value="remote">Remote Available</option>
                     </select>
                 </div>
+
+                <div class="filter-group">
+                    <label for="entry_level">Entry Level</label>
+                    <select name="entry_level" id="entry_level" class="form-control">
+                        <option value="">All Jobs</option>
+                        <option value="yes" {% if current_filters.entry_level == 'yes' %}selected{% endif %}>Entry Level Only</option>
+                        <option value="no" {% if current_filters.entry_level == 'no' %}selected{% endif %}>Non-Entry Level</option>
+                    </select>
+                </div>
             </div>
 
             <div class="filter-actions">
