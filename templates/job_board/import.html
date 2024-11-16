@@ -25,6 +25,16 @@
                     </div>
                 </div>
             </label>
+            <label class="import-type-option">
+                <input type="radio" name="importType" value="entry_level">
+                <div class="option-content">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <div>
+                        <h3>Entry Level Positions</h3>
+                        <p>Import entry level job positions</p>
+                    </div>
+                </div>
+            </label>
         </div>
     </section>
 
@@ -34,11 +44,17 @@
             <i class="fa-solid fa-sync"></i>
             Quick Import
         </h2>
-        <p>Import data from the default CSV file in the data directory.</p>
-        <button id="quickSyncBtn" class="sync-btn">
-            <i class="fa-solid fa-bolt"></i>
-            Quick Import
-        </button>
+        <p>Import data from the default CSV files in the data directory.</p>
+        <div class="quick-sync-actions">
+            <button id="quickSyncBtn" class="sync-btn" data-type="tech_jobs">
+                <i class="fa-solid fa-bolt"></i>
+                Quick Import Tech Jobs
+            </button>
+            <button id="quickSyncEntryBtn" class="sync-btn" data-type="entry_level">
+                <i class="fa-solid fa-bolt"></i>
+                Quick Import Entry Level
+            </button>
+        </div>
     </section>
 
     <!-- Manual Upload Section -->

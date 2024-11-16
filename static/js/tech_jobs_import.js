@@ -1,43 +1,53 @@
 document.addEventListener('DOMContentLoaded', function() {
     const quickSyncBtn = document.getElementById('quickSyncBtn');
+    const quickSyncEntryBtn = document.getElementById('quickSyncEntryBtn');
     const progressSection = document.getElementById('progressSection');
     const resultsSection = document.getElementById('resultsSection');
+    const importProgress = document.getElementById('importProgress');
     const processedCount = document.getElementById('processedCount');
     const successCount = document.getElementById('successCount');
     const errorCount = document.getElementById('errorCount');
-    const importProgress = document.getElementById('importProgress');
 
-    quickSyncBtn.addEventListener('click', async function() {
+    function updateProgress(processed, total) {
+        const percentage = (processed / total) * 100;
+        importProgress.style.width = `${percentage}%`;
+        processedCount.textContent = processed;
+    }
+
+    async function performImport(type) {
         try {
-            // Show progress section
             progressSection.style.display = 'block';
             resultsSection.style.display = 'none';
-            quickSyncBtn.disabled = true;
-
-            const response = await fetch('/tech_jobs/import/quick', {
+            
+            const response = await fetch(`/tech_jobs/import/quick?type=${type}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 }
             });
-
+            
             const data = await response.json();
-
+            
             if (data.success) {
-                // Update results
                 successCount.textContent = data.successCount;
                 errorCount.textContent = data.errorCount;
                 
-                // Hide progress, show results
-                progressSection.style.display = 'none';
-                resultsSection.style.display = 'block';
+                if (data.errors && data.errors.length > 0) {
+                    console.error('Import errors:', data.errors);
+                }
             } else {
-                throw new Error(data.error);
+                throw new Error(data.error || 'Import failed');
             }
+            
         } catch (error) {
-            alert('Error during import: ' + error.message);
+            console.error('Import error:', error);
+            errorCount.textContent = '!';
         } finally {
-            quickSyncBtn.disabled = false;
+            progressSection.style.display = 'none';
+            resultsSection.style.display = 'block';
         }
-    });
+    }
+
+    quickSyncBtn.addEventListener('click', () => performImport('tech_jobs'));
+    quickSyncEntryBtn.addEventListener('click', () => performImport('entry_level'));
 }); 
