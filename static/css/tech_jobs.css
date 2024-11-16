@@ -751,4 +751,114 @@ main {
     margin-top: 2rem;
     padding-top: 1.5rem;
     border-top: 2px solid var(--non-photo-blue);
+}
+
+/* Entry Level Positions Styles */
+.entry-level-positions {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 2rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.entry-level-positions h2 {
+    color: var(--delft-blue);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.entry-positions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.entry-position-card {
+    background: var(--mint-green);
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid var(--non-photo-blue);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.entry-position-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(29, 51, 84, 0.1);
+}
+
+.position-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.position-header h3 {
+    color: var(--delft-blue);
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.work-location-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.work-location-badge.remote {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+}
+
+.work-location-badge.hybrid {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.work-location-badge.onsite {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.skills-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.skill-badge {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.position-description {
+    color: var(--delft-blue);
+    margin: 1rem 0;
+    line-height: 1.6;
+}
+
+.position-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.entry-level-actions {
+    margin-top: 2rem;
+    text-align: center;
 } 

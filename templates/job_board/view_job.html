@@ -70,5 +70,65 @@
             {{ job.description | nl2br }}
         </div>
     </div>
+
+    <div class="entry-level-positions">
+        <h2>
+            <i class="fa-solid fa-graduation-cap"></i>
+            Entry Level Positions
+        </h2>
+        <div class="entry-positions-grid">
+            {% for position in job.active_entry_level_positions %}
+            <div class="entry-position-card">
+                <div class="position-header">
+                    <h3>{{ position.title }}</h3>
+                    <span class="work-location-badge {{ position.work_location.value }}">
+                        <i class="fa-solid {% if position.work_location.value == 'remote' %}fa-laptop-house
+                                        {% elif position.work_location.value == 'hybrid' %}fa-building-user
+                                        {% else %}fa-building{% endif %}"></i>
+                        {{ position.work_location.value|title }}
+                    </span>
+                </div>
+                
+                <div class="position-details">
+                    {% if position.address %}
+                    <div class="detail-item">
+                        <i class="fa-solid fa-location-dot"></i>
+                        {{ position.address }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if position.skills_list %}
+                    <div class="skills-list">
+                        {% for skill in position.skills_list %}
+                        <span class="skill-badge">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="position-description">
+                    {{ position.description|nl2br|safe }}
+                </div>
+
+                <div class="position-actions">
+                    {% if position.job_link %}
+                    <a href="{{ position.job_link }}" target="_blank" class="action-btn apply-btn">
+                        <i class="fa-solid fa-external-link"></i> Apply
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('edit_entry_level_job', id=position.id) }}" class="action-btn edit-btn">
+                        <i class="fa-solid fa-pencil"></i> Edit
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="entry-level-actions">
+            <a href="{{ url_for('add_entry_level_job', job_id=job.id) }}" class="action-btn add-btn">
+                <i class="fa-solid fa-plus"></i> Add Entry Level Position
+            </a>
+        </div>
+    </div>
 </div>
 {% endblock %} 

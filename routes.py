@@ -16,7 +16,7 @@ import csv
 import os
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy import or_
-from models.tech_job_board import JobOpportunity
+from models.tech_job_board import JobOpportunity, EntryLevelJob, WorkLocationType
 
 DISTRICT_MAPPINGS = {
     'KANSAS CITY USD 500': 'KANSAS CITY USD 500',
@@ -517,21 +517,6 @@ def init_routes(app):
             number = row.get(column, '').strip()
             # Standardize the number format (remove any non-digit characters)
             cleaned_number = ''.join(filter(str.isdigit, number))
-            
-            if number and cleaned_number not in seen_numbers:
-                # Determine if this phone should be primary based on preferred_type
-                is_primary = (
-                    preferred_type == phone_type.lower() or
-                    (preferred_type == 'mobile' and phone_type == 'phone') or  # Handle generic 'Phone' column
-                    (not preferred_type and phone_type == 'mobile')  # Default to mobile if no preference
-                )
-                
-                phones.append(Phone(
-                    number=number,
-                    type=contact_type,
-                    primary=is_primary
-                ))
-                seen_numbers.add(cleaned_number)
         
         return phones
 
@@ -2053,6 +2038,66 @@ def init_routes(app):
         if not text:
             return ""
         return text.replace('\n', '<br>')
+
+    @app.route('/tech_jobs/entry_level/add/<int:job_id>', methods=['GET', 'POST'])
+    @login_required
+    def add_entry_level_job(job_id):
+        job = JobOpportunity.query.get_or_404(job_id)
+        
+        if request.method == 'POST':
+            try:
+                entry_job = EntryLevelJob(
+                    job_opportunity_id=job_id,
+                    title=request.form.get('title'),
+                    description=request.form.get('description'),
+                    address=request.form.get('address'),
+                    job_link=request.form.get('job_link'),
+                    skills_needed=request.form.get('skills_needed'),
+                    work_location=WorkLocationType(request.form.get('work_location')),
+                    is_active=True
+                )
+                
+                db.session.add(entry_job)
+                db.session.commit()
+                
+                flash('Entry level position added successfully!', 'success')
+                return redirect(url_for('view_job', id=job_id))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error adding entry level position: {str(e)}', 'danger')
+        
+        return render_template('job_board/entry_level_form.html', 
+                             job=job, 
+                             entry_job=None,
+                             work_locations=WorkLocationType)
+
+    @app.route('/tech_jobs/entry_level/edit/<int:id>', methods=['GET', 'POST'])
+    @login_required
+    def edit_entry_level_job(id):
+        entry_job = EntryLevelJob.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            try:
+                entry_job.title = request.form.get('title')
+                entry_job.description = request.form.get('description')
+                entry_job.address = request.form.get('address')
+                entry_job.job_link = request.form.get('job_link')
+                entry_job.skills_needed = request.form.get('skills_needed')
+                entry_job.work_location = WorkLocationType(request.form.get('work_location'))
+                
+                db.session.commit()
+                flash('Entry level position updated successfully!', 'success')
+                return redirect(url_for('view_job', id=entry_job.job_opportunity_id))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error updating entry level position: {str(e)}', 'danger')
+        
+        return render_template('job_board/entry_level_form.html', 
+                             job=entry_job.job_opportunity,
+                             entry_job=entry_job,
+                             work_locations=WorkLocationType)
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV"""
