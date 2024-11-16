@@ -1,0 +1,436 @@
+/* Inherit base styles from style.css and customize for tech jobs */
+
+.jobs-container {
+    max-width: 95%;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* Industry badge styles */
+.industry-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+/* Location badge styles */
+.location-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.location-badge.kc {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+/* Entry level badge */
+.entry-level-badge {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Apply button specific styling */
+.apply-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.apply-btn:hover {
+    background-color: #388E3C;
+}
+
+/* Inherit and customize table styles from events.css */
+.jobs-table-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    margin-top: 2rem;
+}
+
+.jobs-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Add responsive styles */
+@media (max-width: 768px) {
+    .jobs-container {
+        max-width: 98%;
+        padding: 10px;
+    }
+    
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Rest of the styles can be inherited from events.css */
+
+/* Page header and action buttons */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    color: var(--delft-blue);
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Base action button styles */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 120px;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    transition: all 0.2s ease;
+    color: var(--mint-green);
+    background-color: var(--ucla-blue);
+    box-shadow: 0 3px 0 var(--delft-blue);
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+}
+
+/* Add New Job button */
+.action-btn[href*="add_job"] {
+    background-color: var(--ucla-blue);
+    box-shadow: 0 3px 0 var(--delft-blue);
+}
+
+/* Import Jobs button */
+.action-btn[href*="import_tech_jobs"] {
+    background-color: var(--ucla-blue);
+    box-shadow: 0 3px 0 var(--delft-blue);
+}
+
+/* Purge Jobs button */
+.purge-jobs-btn {
+    background-color: var(--poppy);
+    box-shadow: 0 3px 0 #b53035;
+}
+
+/* Hover states */
+.action-btn:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+    color: var(--mint-green);
+}
+
+.purge-jobs-btn:hover {
+    background-color: #c13136;
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 #b53035;
+}
+
+/* Icon styling in buttons */
+.action-btn i {
+    font-size: 1rem;
+}
+
+/* Table action buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-buttons .action-btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.view-btn {
+    background-color: var(--ucla-blue);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.edit-btn {
+    background-color: var(--non-photo-blue);
+    box-shadow: 0 2px 0 #7eb6b9;
+}
+
+.apply-btn {
+    background-color: #4CAF50;
+    box-shadow: 0 2px 0 #388E3C;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Update header actions to ensure proper spacing and alignment */
+.header-actions .action-btn {
+    min-width: 120px;  /* Ensures consistent button width */
+    justify-content: center;
+    text-align: center;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+/* Ensure all action buttons have consistent base styles */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    transition: all 0.2s ease;
+    color: var(--mint-green);
+    cursor: pointer;
+}
+
+/* Import container styles */
+.import-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.import-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.import-section h2 {
+    color: var(--delft-blue);
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.import-section h2 i {
+    color: var(--ucla-blue);
+}
+
+.import-section p {
+    color: var(--delft-blue);
+    margin-bottom: 1.5rem;
+}
+
+/* Import Type Selector */
+.import-type-selector {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.import-type-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.import-type-option input[type="radio"] {
+    display: none;
+}
+
+.option-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 2px solid var(--ucla-blue);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.option-content i {
+    font-size: 1.5rem;
+    color: var(--ucla-blue);
+}
+
+.option-content div {
+    flex: 1;
+}
+
+.option-content h3 {
+    margin: 0;
+    color: var(--delft-blue);
+    font-size: 1.2rem;
+}
+
+.option-content p {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--ucla-blue);
+}
+
+.import-type-option input[type="radio"]:checked + .option-content {
+    background-color: var(--ucla-blue);
+}
+
+.import-type-option input[type="radio"]:checked + .option-content * {
+    color: white;
+}
+
+/* Upload Container */
+.upload-container {
+    border: 2px dashed var(--ucla-blue);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--mint-green);
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.upload-content i {
+    font-size: 3rem;
+    color: var(--ucla-blue);
+}
+
+.upload-btn {
+    background-color: var(--ucla-blue);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+    background-color: var(--delft-blue);
+}
+
+/* Sync button */
+.sync-btn {
+    background-color: var(--ucla-blue);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sync-btn:hover {
+    background-color: var(--delft-blue);
+}
+
+/* Results stats */
+.results-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-card i {
+    font-size: 2rem;
+}
+
+.stat-card.success i {
+    color: #4CAF50;
+}
+
+.stat-card.error i {
+    color: var(--poppy);
+}
+
+.stat-count {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--delft-blue);
+}
+
+.stat-label {
+    color: var(--ucla-blue);
+}
+
+@media (max-width: 768px) {
+    .import-container {
+        padding: 1rem;
+    }
+    
+    .import-section {
+        padding: 1.5rem;
+    }
+    
+    .results-stats {
+        grid-template-columns: 1fr;
+    }
+} 
