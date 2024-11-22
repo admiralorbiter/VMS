@@ -895,26 +895,19 @@ def init_routes(app):
     
     @app.route('/sync_upcoming_events', methods=['POST'])
     def sync_upcoming_events():
-        # Check if request is from automated script (using token)
-        token = request.args.get('token')
-        # Check if request is from logged-in user
-        is_authenticated = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
-        
-        # Verify either token or user authentication
-        if not (token == os.getenv('SYNC_AUTH_TOKEN') or is_authenticated):
-            return jsonify({'message': 'Unauthorized'}), 401
-        
         try:
-            print(f"Attempting to connect with: {Config.SF_USERNAME}")
-            
-            # First, remove past events
             today = datetime.now().date()
+            
+            # 1. Remove past events AND filled/overfilled events
             deleted_count = UpcomingEvent.query.filter(
-                UpcomingEvent.start_date <= today
+                or_(
+                    UpcomingEvent.start_date <= today,
+                    UpcomingEvent.filled_volunteer_jobs >= UpcomingEvent.available_slots  # Compare filled vs needed
+                )
             ).delete()
             db.session.commit()
 
-            # Then proceed with the sync
+            # 2. Connect to Salesforce and query
             sf = Salesforce(
                 username=Config.SF_USERNAME,
                 password=Config.SF_PASSWORD,
@@ -927,13 +920,14 @@ def init_routes(app):
                 Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
                 Display_on_Website__c, Start_Date__c 
                 FROM Session__c 
-                WHERE Start_Date__c > TODAY and Available_Slots__c > 0 
+                WHERE Start_Date__c > TODAY 
+                AND Available_slots__c > Filled_Volunteer_Jobs__c  # Modified to compare slots
                 ORDER BY Start_Date__c ASC
             """
             result = sf.query(query)
             events = result.get('records', [])
 
-            # Store the data using the upsert method from your model
+            # 3. Update database with new events
             new_count, updated_count = UpcomingEvent.upsert_from_salesforce(events)
             
             return jsonify({
@@ -941,7 +935,7 @@ def init_routes(app):
                 'new_count': new_count,
                 'updated_count': updated_count,
                 'deleted_count': deleted_count,
-                'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} past events removed'
+                'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} removed (past or filled)'
             })
 
         except SalesforceAuthenticationFailed as e:
