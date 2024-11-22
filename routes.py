@@ -2266,18 +2266,25 @@ def init_routes(app):
             return redirect(url_for('tech_jobs'))
 
 def parse_date(date_str):
-    """Parse date string from Salesforce CSV"""
+    """Parse date string from Salesforce CSV or API"""
     if not date_str:
         return None
     try:
-        return datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S')
+        # First try parsing ISO 8601 format (from Salesforce API)
+        # Example: 2025-03-05T14:15:00.000+0000
+        if 'T' in date_str:
+            return datetime.strptime(date_str.split('.')[0], '%Y-%m-%dT%H:%M:%S')
     except ValueError:
         try:
-            # Fallback for dates without times
-            return datetime.strptime(date_str.strip(), '%Y-%m-%d')
+            # Try CSV format with time
+            return datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S')
         except ValueError:
-            print(f"Could not parse date: {date_str}")
-            return None
+            try:
+                # Fallback for dates without times
+                return datetime.strptime(date_str.strip(), '%Y-%m-%d')
+            except ValueError:
+                print(f"Could not parse date: {date_str}")
+                return None
 
 def clean_skill_name(skill_name):
     """Standardize skill name format"""

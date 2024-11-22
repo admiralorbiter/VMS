@@ -1122,3 +1122,24 @@ td:nth-child(6) {
         padding: 10px;
     }
 }
+
+/* Add Salesforce button styles for the table */
+.action-buttons .salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 0 #0089bd;
+}
+
+.action-buttons .salesforce-btn:hover {
+    background-color: #0089bd;
+    color: white;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #0076a3;
+}
+
+/* Adjust spacing for the new button */
+.action-buttons {
+    gap: 0.35rem; /* Slightly reduce gap to accommodate new button */
+}
