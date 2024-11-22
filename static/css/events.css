@@ -1143,3 +1143,100 @@ td:nth-child(6) {
 .action-buttons {
     gap: 0.35rem; /* Slightly reduce gap to accommodate new button */
 }
+
+/* Quick Sync Section Styles */
+.sync-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.sync-section h2 {
+    color: var(--delft-blue);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sync-section p {
+    color: var(--ucla-blue);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.sync-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+/* Sync Button Styles */
+.sync-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+/* Quick Sync Button */
+#quickSyncBtn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    box-shadow: 0 3px 0 var(--delft-blue);
+}
+
+#quickSyncBtn:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+/* Event Sync Button */
+#eventSyncBtn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    box-shadow: 0 3px 0 #7ab5b8;
+}
+
+#eventSyncBtn:hover {
+    background-color: #8ec9cc;
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 #7ab5b8;
+}
+
+/* Participant Sync Button */
+#participantSyncBtn {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    box-shadow: 0 3px 0 #b53035;
+}
+
+#participantSyncBtn:hover {
+    background-color: #c13136;
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 #b53035;
+}
+
+/* Icon styles */
+.sync-btn i {
+    font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sync-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .sync-btn {
+        width: 100%;
+    }
+}

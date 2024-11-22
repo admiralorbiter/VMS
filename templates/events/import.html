@@ -17,6 +17,39 @@
     </div>
 
     <div class="import-container">
+        <!-- Quick Sync Section -->
+        <div class="import-section sync-section">
+            <h2><i class="fa-solid fa-sync"></i> Quick Sync</h2>
+            <p>
+                <i class="fa-solid fa-info-circle"></i>
+                Sync Now connects directly to Salesforce, while Events and Participants sync from CSV backups
+            </p>
+            <div class="sync-buttons">
+                <button class="sync-btn" id="quickSyncBtn">
+                    <i class="fa-solid fa-sync"></i> Sync Now
+                </button>
+                <button class="sync-btn" id="eventSyncBtn">
+                    <i class="fa-solid fa-calendar-sync"></i> Sync Events
+                </button>
+                <button class="sync-btn" id="participantSyncBtn">
+                    <i class="fa-solid fa-users-sync"></i> Sync Participants
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Section (Initially Hidden) -->
+        <div class="import-section progress-section" id="progressSection" style="display: none;">
+            <h2><i class="fa-solid fa-tasks"></i> Import Progress</h2>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress" id="importProgress"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="processedCount">0</span> / <span id="totalCount">0</span> records processed
+                </div>
+            </div>
+        </div>
+
         <!-- Import Type Selection -->
         <div class="import-section">
             <h2><i class="fa-solid fa-filter"></i> Import Type</h2>
@@ -25,15 +58,7 @@
                 <option value="participations">Event Participations</option>
             </select>
         </div>
-
-        <!-- Quick Sync Section -->
-        <div class="import-section">
-            <h2><i class="fa-solid fa-sync"></i> Quick Sync</h2>
-            <p>Sync data from the default location: <code id="defaultPath">data/Sessions.csv</code></p>
-            <button class="btn sync-btn" id="quickSyncBtn">
-                <i class="fa-solid fa-sync"></i> Sync Now
-            </button>
-        </div>
+        
 
         <!-- File Upload Section -->
         <div class="import-section">
@@ -51,18 +76,6 @@
             </div>
         </div>
 
-        <!-- Progress Section (Initially Hidden) -->
-        <div class="import-section progress-section" id="progressSection" style="display: none;">
-            <h2><i class="fa-solid fa-tasks"></i> Import Progress</h2>
-            <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress" id="importProgress"></div>
-                </div>
-                <div class="progress-stats">
-                    <span id="processedCount">0</span> / <span id="totalCount">0</span> records processed
-                </div>
-            </div>
-        </div>
 
         <!-- Results Section (Initially Hidden) -->
         <div class="import-section results-section" id="resultsSection" style="display: none;">

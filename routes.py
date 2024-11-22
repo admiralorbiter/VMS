@@ -256,11 +256,11 @@ def init_routes(app):
                     (EventParticipation.status == 'Attended', 1),
                     else_=0
                 )
-            ).label('attended_count')
-        ).outerjoin(
+            ).outerjoin(
             EventParticipation
-        ).group_by(
-            Volunteer.id
+            ).group_by(
+                Volunteer.id
+            )
         )
 
         # Apply filters
@@ -1234,8 +1234,8 @@ def init_routes(app):
             event.title = row.get('Name', '').strip()
             event.type = map_session_type(row.get('Session_Type__c', ''))
             event.format = map_event_format(row.get('Format__c', ''))
-            event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or datetime.now()
-            event.end_date = parse_date(row.get('End_Date_and_Time__c')) or datetime.now()
+            event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or datetime(2000, 1, 1)
+            event.end_date = parse_date(row.get('End_Date_and_Time__c')) or datetime(2000, 1, 1)
             event.status = row.get('Session_Status__c', 'Draft')
             event.location = row.get('Location_Information__c', '')
             event.description = row.get('Description__c', '')
@@ -1286,9 +1286,10 @@ def init_routes(app):
             # Find the volunteer and event by their Salesforce IDs
             volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Contact__c']).first()
             event = Event.query.filter_by(salesforce_id=row['Session__c']).first()
-            
+                        
             if not volunteer or not event:
-                errors.append(f"Could not find volunteer or event for participation {row['Id']}")
+                error_msg = f"Could not find volunteer or event for participation {row['Id']}"
+                errors.append(error_msg)
                 return success_count, error_count + 1
             
             # Create new participation record
@@ -1301,11 +1302,14 @@ def init_routes(app):
             )
             
             db.session.add(participation)
+            print(f"Successfully added participation: {row['Id']}")  # Debug log
             return success_count + 1, error_count
 
         except Exception as e:
+            error_msg = f"Error processing participation row: {str(e)}"
+            print(error_msg)  # Debug log
             db.session.rollback()
-            errors.append(f"Error processing participation row: {str(e)}")
+            errors.append(error_msg)
             return success_count, error_count + 1
 
     @app.route('/events/import', methods=['GET', 'POST'])
@@ -1407,13 +1411,16 @@ def init_routes(app):
             return jsonify({'error': str(e)}), 500
 
 
-
     @app.route('/events/purge', methods=['POST'])
     @login_required
     def purge_events():
         try:
-            # Delete all events
+            # First delete all event participations
+            EventParticipation.query.delete()
+            
+            # Then delete all events
             Event.query.delete()
+            
             db.session.commit()
             return jsonify({'success': True})
         except Exception as e:
@@ -2264,27 +2271,97 @@ def init_routes(app):
         except Exception as e:
             flash(f'Error exporting data: {str(e)}', 'danger')
             return redirect(url_for('tech_jobs'))
+        
+    @app.route('/sync/events', methods=['POST'])
+    @login_required
+    def sync_events():
+        try:
+            csv_file = os.path.join('data', 'Sessions.csv')
+            if not os.path.exists(csv_file):
+                return jsonify({'error': f'CSV file not found: {csv_file}'}), 404
+
+            success_count = 0
+            error_count = 0
+            errors = []
+
+            with open(csv_file, 'r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    success_count, error_count = process_event_row(row, success_count, error_count, errors)
+
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': f'Successfully processed {success_count} events with {error_count} errors',
+                'errors': errors
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in sync_events: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/sync/participants', methods=['POST'])
+    @login_required
+    def sync_participants():
+        try:
+            csv_file = os.path.join('data', 'Session_Participant__c - volunteers.csv')
+            if not os.path.exists(csv_file):
+                return jsonify({'error': f'CSV file not found: {csv_file}'}), 404
+
+            success_count = 0
+            error_count = 0
+            errors = []
+
+            with open(csv_file, 'r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    success_count, error_count = process_participation_row(
+                        row, success_count, error_count, errors
+                    )
+
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Successfully processed {success_count} participants with {error_count} errors',
+                'errors': errors
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in sync_participants: {str(e)}")
+            return jsonify({'error': str(e)}), 500
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV or API"""
     if not date_str:
         return None
+    
     try:
         # First try parsing ISO 8601 format (from Salesforce API)
         # Example: 2025-03-05T14:15:00.000+0000
         if 'T' in date_str:
             return datetime.strptime(date_str.split('.')[0], '%Y-%m-%dT%H:%M:%S')
-    except ValueError:
+            
+        # Try CSV format with time (YYYY-MM-DD HH:MM:SS)
         try:
-            # Try CSV format with time
-            return datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S')
+            parsed_date = datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S')
+            return parsed_date
         except ValueError:
+            # If that fails, try without seconds (YYYY-MM-DD HH:MM)
             try:
-                # Fallback for dates without times
-                return datetime.strptime(date_str.strip(), '%Y-%m-%d')
+                parsed_date = datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M')
+                return parsed_date
             except ValueError:
-                print(f"Could not parse date: {date_str}")
-                return None
+                # Fallback for dates without times
+                try:
+                    return datetime.strptime(date_str.strip(), '%Y-%m-%d')
+                except ValueError:
+                    return None
+    except Exception as e:
+        print(f"Error parsing date {date_str}: {str(e)}")  # Debug logging
+        return None
 
 def clean_skill_name(skill_name):
     """Standardize skill name format"""

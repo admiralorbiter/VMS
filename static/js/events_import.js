@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
     const quickSyncBtn = document.getElementById('quickSyncBtn');
+    const eventSyncBtn = document.getElementById('eventSyncBtn');
+    const participantSyncBtn = document.getElementById('participantSyncBtn');
     const progressSection = document.getElementById('progressSection');
     const resultsSection = document.getElementById('resultsSection');
     const importTypeSelect = document.getElementById('importType');
@@ -9,6 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Quick Sync button handler
     quickSyncBtn.addEventListener('click', function() {
         handleQuickSync();
+    });
+
+    // Event Sync button handler
+    eventSyncBtn.addEventListener('click', function() {
+        handleEventSync();
+    });
+
+    // Participant Sync button handler
+    participantSyncBtn.addEventListener('click', function() {
+        handleParticipantSync();
     });
 
     // File input change handler
@@ -58,6 +70,78 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function handleEventSync() {
+        showProgress();
+        
+        fetch('/sync/events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Extract numbers from message string
+                const messageMatch = data.message.match(/Successfully processed (\d+) events with (\d+) errors/);
+                const successCount = messageMatch ? parseInt(messageMatch[1]) : 0;
+                const errorCount = messageMatch ? parseInt(messageMatch[2]) : 0;
+
+                showResults({
+                    success: true,
+                    successCount: successCount,
+                    errorCount: errorCount,
+                    warningCount: 0,
+                    errors: data.errors || [],
+                    message: data.message
+                });
+            } else {
+                showError(data.error);
+            }
+        })
+        .catch(error => {
+            showError(error);
+        });
+    }
+
+    function handleParticipantSync() {
+        showProgress();
+        
+        fetch('/sync/participants', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Extract numbers from message string
+                const messageMatch = data.message.match(/Successfully processed (\d+) participants with (\d+) errors/);
+                const successCount = messageMatch ? parseInt(messageMatch[1]) : 0;
+                const errorCount = messageMatch ? parseInt(messageMatch[2]) : 0;
+
+                showResults({
+                    success: true,
+                    successCount: successCount,
+                    errorCount: errorCount,
+                    warningCount: 0,
+                    errors: data.errors || [],
+                    message: data.message
+                });
+                
+                // Log for debugging
+                console.log('Sync response:', data);
+            } else {
+                showError(data.error);
+            }
+        })
+        .catch(error => {
+            showError(error);
+            console.error('Sync error:', error);
+        });
+    }
+
     function handleFileUpload(file) {
         if (!file || !file.name.endsWith('.csv')) {
             showError('Please select a valid CSV file');
@@ -96,12 +180,23 @@ document.addEventListener('DOMContentLoaded', function() {
         progressSection.style.display = 'none';
         resultsSection.style.display = 'block';
         
-        document.getElementById('successCount').textContent = data.successCount;
-        document.getElementById('errorCount').textContent = data.errorCount;
+        // Update counts
+        document.getElementById('successCount').textContent = data.successCount || 0;
+        document.getElementById('errorCount').textContent = data.errorCount || 0;
         
+        // Update error list
         const errorList = document.getElementById('errorList');
         errorList.innerHTML = '';
         
+        // Add message if exists
+        if (data.message) {
+            const messageItem = document.createElement('div');
+            messageItem.className = 'success-item';
+            messageItem.textContent = data.message;
+            errorList.appendChild(messageItem);
+        }
+        
+        // Add errors if they exist
         if (data.errors && data.errors.length > 0) {
             data.errors.forEach(error => {
                 const errorItem = document.createElement('div');
