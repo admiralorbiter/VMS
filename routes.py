@@ -1220,20 +1220,15 @@ def init_routes(app):
         return skills
 
     def process_event_row(row, success_count, error_count, errors):
-        """Process a single event row from CSV data"""
+        """Process a single event row from CSV/Salesforce data"""
         try:
-            # Get and validate event name
-            event_name = row.get('Name', '').strip()
-            if not event_name:
-                return success_count, error_count  # Skip empty names silently
-            
-            # Define default date
-            default_date = datetime(2000, 1, 1)
-            
             # Check if event exists by salesforce_id
             event = None
             if row.get('Id'):
-                event = Event.query.filter_by(salesforce_id=row.get('Id')).first()
+                event = Event.query.filter_by(salesforce_id=row['Id']).first()
+            
+            # Track if this is an update or new record
+            is_new = event is None
             
             # If event doesn't exist, create new one
             if not event:
@@ -1242,19 +1237,17 @@ def init_routes(app):
             
             # Update event fields (handles both new and existing events)
             event.salesforce_id = row.get('Id', '').strip()
-            event.title = event_name
+            event.title = row.get('Name', '').strip()
             event.type = map_session_type(row.get('Session_Type__c', ''))
             event.format = map_event_format(row.get('Format__c', ''))
-            event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or default_date
-            event.end_date = parse_date(row.get('End_Date_and_Time__c')) or default_date
+            event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or datetime.now()
+            event.end_date = parse_date(row.get('End_Date_and_Time__c')) or datetime.now()
             event.status = row.get('Session_Status__c', 'Draft')
-            if event.status not in [s.value for s in EventStatus]:
-                event.status = EventStatus.DRAFT.value
             event.location = row.get('Location_Information__c', '')
             event.description = row.get('Description__c', '')
-            event.volunteer_needed = int(row.get('Volunteers_Needed__c', 0))
             event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
             event.participant_count = int(row.get('Participant_Count_0__c', 0))
+            event.last_sync_date = datetime.now()  # Add this field to track last sync
 
             # Handle district
             district_name = row.get('District__c')
@@ -1271,16 +1264,16 @@ def init_routes(app):
             # Combine all skills
             all_skills = set(skills_covered + skills_needed + requested_skills)
             
-            # Update skills
+            # Clear existing skills and add new ones
+            event.skills = []
             for skill_name in all_skills:
                 skill = Skill.query.filter_by(name=skill_name).first()
                 if not skill:
                     skill = Skill(name=skill_name)
                     db.session.add(skill)
-                if skill not in event.skills:
-                    event.skills.append(skill)
+                event.skills.append(skill)
 
-            return success_count + 1, error_count
+            return success_count + (1 if is_new else 0), error_count
                 
         except Exception as e:
             db.session.rollback()
@@ -1326,36 +1319,63 @@ def init_routes(app):
     def import_events():
         if request.method == 'GET':
             return render_template('events/import.html')
-        
+
         try:
             success_count = 0
             error_count = 0
             errors = []
-            
+
             # Determine import type
             import_type = request.json.get('importType', 'events') if request.is_json else request.form.get('importType', 'events')
-            
-            # Set default file path based on import type
-            default_file_path = os.path.join('data', 'Sessions.csv' if import_type == 'events' else 'Session_Participant__c - volunteers.csv')
-            
-            # Process function based on import type
+
+            # Select the appropriate process function
             process_func = process_event_row if import_type == 'events' else process_participation_row
 
+            # Handle quickSync from Salesforce
             if request.is_json and request.json.get('quickSync'):
-                # Handle quickSync
-                if not os.path.exists(default_file_path):
-                    return jsonify({'error': 'Default CSV file not found'}), 404
-                    
-                with open(default_file_path, 'r', encoding='utf-8', errors='replace') as file:
-                    content = file.read().replace('\0', '')
-                    csv_data = csv.DictReader(content.splitlines())
-                    for row in csv_data:
+                try:
+                    print("Fetching data from Salesforce...")
+
+                    # Define Salesforce query
+                    salesforce_query = """
+                    SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
+                            End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
+                            Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
+                            District__c, Legacy_Skill_Covered_for_the_Session__c, 
+                            Legacy_Skills_Needed__c, Requested_Skills__c
+                    FROM Session__c
+                    WHERE CreatedDate >= LAST_N_MONTHS:12
+                    ORDER BY Start_Date_and_Time__c ASC
+                    """
+
+                    # Connect to Salesforce
+                    sf = Salesforce(
+                        username=Config.SF_USERNAME,
+                        password=Config.SF_PASSWORD,
+                        security_token=Config.SF_SECURITY_TOKEN,
+                        domain='login'
+                    )
+
+                    # Execute the query
+                    result = sf.query_all(salesforce_query)
+                    sf_rows = result.get('records', [])
+
+                    # Process each row from Salesforce
+                    for row in sf_rows:
                         success_count, error_count = process_func(
                             row, success_count, error_count, errors
                         )
+                except SalesforceAuthenticationFailed:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Failed to authenticate with Salesforce'
+                    }), 401
+                except Exception as e:
+                    print(f"Salesforce sync error: {str(e)}")
+                    return jsonify({'error': f'Salesforce sync error: {str(e)}'}), 500
 
             else:
-                # Handle file upload
+                # Handle file upload as fallback
                 if 'file' not in request.files:
                     return jsonify({'error': 'No file uploaded'}), 400
                 
@@ -1366,6 +1386,7 @@ def init_routes(app):
                 if not file.filename.endswith('.csv'):
                     return jsonify({'error': 'File must be a CSV'}), 400
 
+                # Read and process the CSV file
                 content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
                 csv_data = csv.DictReader(content.splitlines())
                 for row in csv_data:
@@ -1373,7 +1394,7 @@ def init_routes(app):
                         row, success_count, error_count, errors
                     )
 
-            # Commit changes
+            # Commit changes to the database
             try:
                 db.session.commit()
                 return jsonify({
@@ -1386,10 +1407,12 @@ def init_routes(app):
                 db.session.rollback()
                 print(f"Database commit error: {str(e)}")
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
-                
+
         except Exception as e:
             print(f"Import error: {str(e)}")
             return jsonify({'error': str(e)}), 500
+
+
 
     @app.route('/events/purge', methods=['POST'])
     @login_required
