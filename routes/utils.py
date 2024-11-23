@@ -222,3 +222,8 @@ def parse_event_skills(skills_str, is_needed=False):
         skills.append(skill)
     
     return skills
+
+def format_date(date):
+    if date:
+        return date.strftime('%B %d, %Y')
+    return ''
