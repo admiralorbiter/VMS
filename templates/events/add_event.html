@@ -10,7 +10,7 @@
 <div class="events-container">
     <div class="events-header">
         <h1>Create New Event</h1>
-        <a href="{{ url_for('events') }}" class="cancel-btn">
+        <a href="{{ url_for('events.events') }}" class="cancel-btn">
             <i class="fa-solid fa-arrow-left"></i> Back to Events
         </a>
     </div>
@@ -85,7 +85,7 @@
             <button type="submit" class="save-btn">
                 <i class="fa-solid fa-save"></i> Create Event
             </button>
-            <a href="{{ url_for('events') }}" class="cancel-btn">
+            <a href="{{ url_for('events.events') }}" class="cancel-btn">
                 <i class="fa-solid fa-times"></i> Cancel
             </a>
         </div>

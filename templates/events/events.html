@@ -11,14 +11,14 @@
     <div class="page-header">
         <h1>Event Calendar</h1>
         <div class="header-actions">
-            <a href="{{ url_for('add_event') }}" class="action-btn">
+            <a href="{{ url_for('events.add_event') }}" class="action-btn">
                 <i class="fa-solid fa-plus"></i> Create New Event
             </a>
             <button class="action-btn sync-events-btn">
                 <i class="fa-solid fa-sync"></i> Sync Upcoming Events
             </button>
             {% if current_user.is_admin %}
-            <a href="{{ url_for('import_events') }}" class="action-btn">
+            <a href="{{ url_for('events.import_events') }}" class="action-btn">
                 <i class="fa-solid fa-file-import"></i> Import Events
             </a>
             <button class="action-btn delete-btn purge-events-btn">
@@ -83,7 +83,7 @@
 
             <div class="filter-actions">
                 <button type="submit" class="btn filter-btn">Apply Filters</button>
-                <a href="{{ url_for('events') }}" class="btn reset-btn">Reset</a>
+                <a href="{{ url_for('events.events') }}" class="btn reset-btn">Reset</a>
             </div>
         </form>
     </div>
@@ -124,10 +124,10 @@
                     </td>
                     <td>
                         <div class="action-buttons">
-                            <a href="{{ url_for('view_event', id=event.id) }}" class="btn btn-sm action-btn view-btn">
+                            <a href="{{ url_for('events.view_event', id=event.id) }}" class="btn btn-sm action-btn view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
-                            <a href="{{ url_for('edit_event', id=event.id) }}" class="btn btn-sm action-btn edit-btn">
+                            <a href="{{ url_for('events.edit_event', id=event.id) }}" class="btn btn-sm action-btn edit-btn">
                                 <i class="fa-solid fa-pencil"></i> Edit
                             </a>
                             {% if event.salesforce_url %}
@@ -156,14 +156,14 @@
                 
                 <div class="pagination-buttons">
                     {% if pagination.has_prev %}
-                        <a href="{{ url_for('events', page=pagination.prev_num, **current_filters) }}" 
+                        <a href="{{ url_for('events.events', page=pagination.prev_num, **current_filters) }}" 
                            class="pagination-btn">
                             <i class="fa-solid fa-chevron-left"></i> Previous
                         </a>
                     {% endif %}
                     
                     {% if pagination.has_next %}
-                        <a href="{{ url_for('events', page=pagination.next_num, **current_filters) }}" 
+                        <a href="{{ url_for('events.events', page=pagination.next_num, **current_filters) }}" 
                            class="pagination-btn">
                             Next <i class="fa-solid fa-chevron-right"></i>
                         </a>

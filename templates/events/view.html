@@ -22,10 +22,10 @@
             {% endif %}
         </div>
         <div class="header-actions">
-            <a href="{{ url_for('edit_event', id=event.id) }}" class="action-btn edit-btn">
+            <a href="{{ url_for('events.edit_event', id=event.id) }}" class="action-btn edit-btn">
                 <i class="fa-solid fa-pencil"></i> Edit
             </a>
-            <a href="{{ url_for('events') }}" class="action-btn back-btn">
+            <a href="{{ url_for('events.events') }}" class="action-btn back-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>
         </div>
