@@ -11,7 +11,7 @@
     <div class="page-header">
         <h1>Activity History</h1>
         <div class="header-actions">
-            <a href="{{ url_for('import_history') }}" class="action-btn import-btn">
+            <a href="{{ url_for('history.import_history') }}" class="action-btn import-btn">
                 <i class="fa-solid fa-file-import"></i> Import History
             </a>
             <button class="action-btn purge-btn" onclick="confirmPurge()">
@@ -75,7 +75,7 @@
 
             <div class="filter-actions">
                 <button type="submit" class="btn filter-btn">Apply Filters</button>
-                <a href="{{ url_for('history') }}" class="btn reset-btn">Reset</a>
+                <a href="{{ url_for('history.history_table') }}" class="btn reset-btn">Reset</a>
             </div>
         </form>
     </div>
@@ -116,7 +116,7 @@
                     </td>
                     <td>
                         <div class="action-buttons">
-                            <a href="{{ url_for('view_history', id=item.id) }}" class="btn btn-sm action-btn view-btn">
+                            <a href="{{ url_for('history.view_history', id=item.id) }}" class="btn btn-sm action-btn view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
                             {% if item.event_id %}
@@ -144,14 +144,14 @@
                 
                 <div class="pagination-buttons">
                     {% if pagination.has_prev %}
-                        <a href="{{ url_for('history', page=pagination.prev_num, **current_filters) }}" 
+                        <a href="{{ url_for('history.history_table', page=pagination.prev_num, **current_filters) }}" 
                            class="pagination-btn">
                             <i class="fa-solid fa-chevron-left"></i> Previous
                         </a>
                     {% endif %}
                     
                     {% if pagination.has_next %}
-                        <a href="{{ url_for('history', page=pagination.next_num, **current_filters) }}" 
+                        <a href="{{ url_for('history.history_table', page=pagination.next_num, **current_filters) }}" 
                            class="pagination-btn">
                             Next <i class="fa-solid fa-chevron-right"></i>
                         </a>
