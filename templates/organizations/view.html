@@ -76,7 +76,7 @@
                     {% for volunteer in volunteers %}
                     <div class="volunteer-item">
                         <div class="volunteer-info">
-                            <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="volunteer-name">
+                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="volunteer-name">
                                 {{ volunteer.first_name }} {{ volunteer.last_name }}
                             </a>
                             {% if volunteer.title %}

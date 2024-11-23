@@ -11,10 +11,10 @@
     <div class="volunteers-header">
         <h1>Edit Volunteer</h1>
         <div class="header-actions">
-            <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn back-btn">
+            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="btn back-btn">
                 <i class="fa-solid fa-eye"></i> View
             </a>
-            <a href="{{ url_for('volunteers') }}" class="btn back-btn">
+            <a href="{{ url_for('volunteers.volunteers') }}" class="btn back-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>
         </div>
@@ -160,7 +160,7 @@
 
             <div class="form-actions">
                 <button type="submit" class="btn save-btn">Save Changes</button>
-                <a href="{{ url_for('view_volunteer', id=volunteer.id) }}" class="btn cancel-btn">Cancel</a>
+                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="btn cancel-btn">Cancel</a>
             </div>
         </form>
     </div>

@@ -10,7 +10,7 @@
 <div class="volunteers-container">
     <div class="volunteers-header">
         <h1>Add New Volunteer</h1>
-        <a href="{{ url_for('volunteers') }}" class="btn add-volunteer-btn">
+        <a href="{{ url_for('volunteers.volunteers') }}" class="btn add-volunteer-btn">
             Back to Volunteers
         </a>
     </div>
@@ -162,7 +162,7 @@
 
             <div class="form-actions">
                 <button type="submit" class="btn save-btn">Save Volunteer</button>
-                <a href="{{ url_for('volunteers') }}" class="btn cancel-btn">Cancel</a>
+                <a href="{{ url_for('volunteers.volunteers') }}" class="btn cancel-btn">Cancel</a>
             </div>
         </form>
     </div>

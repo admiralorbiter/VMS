@@ -152,7 +152,7 @@
                                         <span class="volunteer-hours">{{ participation.delivery_hours }} hours</span>
                                         {% endif %}
                                     </div>
-                                    <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
                                         <i class="fa-solid fa-eye"></i> View
                                     </a>
                                 </div>
@@ -171,7 +171,7 @@
                                     <div class="volunteer-info">
                                         <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
                                     </div>
-                                    <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
                                         <i class="fa-solid fa-eye"></i> View
                                     </a>
                                 </div>
@@ -190,7 +190,7 @@
                                     <div class="volunteer-info">
                                         <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
                                     </div>
-                                    <a href="{{ url_for('view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
                                         <i class="fa-solid fa-eye"></i> View
                                     </a>
                                 </div>
