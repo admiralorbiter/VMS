@@ -27,7 +27,7 @@
             {% endif %}
         </div>
         <div class="job-detail-actions">
-            <a href="{{ url_for('edit_job', id=job.id) }}" class="action-btn edit-btn">
+            <a href="{{ url_for('job_board.edit_job', id=job.id) }}" class="action-btn edit-btn">
                 <i class="fa-solid fa-pencil"></i> Edit Position
             </a>
             {% if job.job_link %}
@@ -116,7 +116,7 @@
                         <i class="fa-solid fa-external-link"></i> Apply
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('edit_entry_level_job', id=position.id) }}" class="action-btn edit-btn">
+                    <a href="{{ url_for('job_board.edit_entry_level_job', id=position.id) }}" class="action-btn edit-btn">
                         <i class="fa-solid fa-pencil"></i> Edit
                     </a>
                 </div>
@@ -125,7 +125,7 @@
         </div>
 
         <div class="entry-level-actions">
-            <a href="{{ url_for('add_entry_level_job', job_id=job.id) }}" class="action-btn add-btn">
+            <a href="{{ url_for('job_board.add_entry_level_job', job_id=job.id) }}" class="action-btn add-btn">
                 <i class="fa-solid fa-plus"></i> Add Entry Level Position
             </a>
         </div>
