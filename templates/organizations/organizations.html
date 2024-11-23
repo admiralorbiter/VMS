@@ -11,7 +11,7 @@
     <div class="page-header">
         <h1>Organizations</h1>
         <div class="header-actions">
-            <a href="{{ url_for('import_organizations') }}" class="action-btn">
+            <a href="{{ url_for('organizations.import_organizations') }}" class="action-btn">
                 <i class="fa-solid fa-file-import"></i> Import Organizations
             </a>
         </div>
@@ -86,7 +86,7 @@
                     <td>{{ org.last_activity_date|format_date if org.last_activity_date else 'Never' }}</td>
                     <td>
                         <div class="action-buttons">
-                            <a href="{{ url_for('view_organization', id=org.id) }}" class="btn btn-sm action-btn view-btn">
+                            <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="btn btn-sm action-btn view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
                             {% if org.salesforce_url %}
