@@ -20,6 +20,7 @@ from models.tech_job_board import JobOpportunity, EntryLevelJob, WorkLocationTyp
 from io import StringIO
 import zipfile
 from io import BytesIO
+from routes.auth.routes import auth_bp
 
 DISTRICT_MAPPINGS = {
     'KANSAS CITY USD 500': 'KANSAS CITY USD 500',
@@ -56,26 +57,26 @@ def init_routes(app):
     @app.route('/')
     def index():
         return render_template('index.html')
+    app.register_blueprint(auth_bp)
+    # @app.route('/login', methods=['GET', 'POST'])
+    # def login():
+    #     form = LoginForm()
+    #     if form.validate_on_submit():
+    #         user = User.query.filter_by(username=form.username.data).first()
+    #         if user and check_password_hash(user.password_hash, form.password.data):
+    #             login_user(user)
+    #             flash('Logged in successfully.', 'success')
+    #             return redirect(url_for('index'))
+    #         else:
+    #             flash('Invalid username or password.', 'danger')
+    #     return render_template('login.html', form=form)
     
-    @app.route('/login', methods=['GET', 'POST'])
-    def login():
-        form = LoginForm()
-        if form.validate_on_submit():
-            user = User.query.filter_by(username=form.username.data).first()
-            if user and check_password_hash(user.password_hash, form.password.data):
-                login_user(user)
-                flash('Logged in successfully.', 'success')
-                return redirect(url_for('index'))
-            else:
-                flash('Invalid username or password.', 'danger')
-        return render_template('login.html', form=form)
-    
-    @app.route('/logout')
-    @login_required
-    def logout():
-        logout_user()
-        flash('You have been logged out.', 'info')
-        return redirect(url_for('index'))
+    # @app.route('/logout')
+    # @login_required
+    # def logout():
+    #     logout_user()
+    #     flash('You have been logged out.', 'info')
+    #     return redirect(url_for('index'))
     
     @app.route('/history')
     @login_required

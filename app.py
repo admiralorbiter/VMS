@@ -5,7 +5,7 @@ from flask_cors import CORS
 from models import db, User
 from flask_login import LoginManager
 from forms import LoginForm
-from routes import init_routes
+from routes.routes import init_routes
 from config import DevelopmentConfig, ProductionConfig
 from dotenv import load_dotenv
 import os
