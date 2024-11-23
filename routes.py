@@ -256,11 +256,11 @@ def init_routes(app):
                     (EventParticipation.status == 'Attended', 1),
                     else_=0
                 )
-            ).outerjoin(
-            EventParticipation
-            ).group_by(
-                Volunteer.id
             )
+        ).outerjoin(
+            EventParticipation
+        ).group_by(
+            Volunteer.id
         )
 
         # Apply filters
@@ -1342,7 +1342,7 @@ def init_routes(app):
                             District__c, Legacy_Skill_Covered_for_the_Session__c, 
                             Legacy_Skills_Needed__c, Requested_Skills__c
                     FROM Session__c
-                    WHERE CreatedDate >= LAST_N_MONTHS:12
+                    WHERE CreatedDate >= LAST_N_MONTHS:120
                     ORDER BY Start_Date_and_Time__c ASC
                     """
 
@@ -2276,7 +2276,9 @@ def init_routes(app):
     @login_required
     def sync_events():
         try:
-            csv_file = os.path.join('data', 'Sessions.csv')
+            # Get absolute path using application root
+            csv_file = os.path.join(app.root_path, 'data', 'Sessions.csv')
+            print(f"CSV file path: {csv_file}")
             if not os.path.exists(csv_file):
                 return jsonify({'error': f'CSV file not found: {csv_file}'}), 404
 
