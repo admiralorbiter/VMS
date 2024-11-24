@@ -421,7 +421,7 @@ def import_events():
         print(f"Import error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@events_bp.route('/events/purge')
+@events_bp.route('/events/purge', methods=['POST'])
 @login_required
 def purge_events():
     try:
