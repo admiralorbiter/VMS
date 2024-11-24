@@ -77,6 +77,13 @@ def process_volunteer_row(row, success_count, error_count, errors):
                     if skill not in volunteer.skills:
                         volunteer.skills.append(skill)
 
+            # Add this new section to handle times_volunteered
+            if row.get('Number_of_Attended_Volunteer_Sessions__c'):
+                try:
+                    volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
+                except (ValueError, TypeError):
+                    volunteer.times_volunteered = 0
+
             return success_count + 1, error_count
                 
         except Exception as e:
@@ -187,7 +194,11 @@ def volunteers():
         elif sort_by == 'title':
             sort_column = Volunteer.title
         elif sort_by == 'times_volunteered':
-            sort_column = db.func.coalesce(attended_count_subq.c.attended_count, 0)
+            sort_column = (
+                Volunteer.times_volunteered + 
+                db.func.coalesce(attended_count_subq.c.attended_count, 0) + 
+                Volunteer.additional_volunteer_count
+            )
         
         if sort_column is not None:
             if sort_direction == 'desc':
