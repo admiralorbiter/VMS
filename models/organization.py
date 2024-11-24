@@ -28,7 +28,10 @@ class Organization(db.Model):
     last_activity_date = db.Column(db.DateTime, nullable=True)
 
     # Relationships
-    volunteers = relationship('Volunteer', secondary='volunteer_organization', back_populates='organizations')
+    volunteers = relationship('Volunteer', 
+                            secondary='volunteer_organization',
+                            back_populates='organizations')
+    volunteer_organizations = relationship('VolunteerOrganization', back_populates='organization')
 
     @property
     def salesforce_url(self):
@@ -54,3 +57,7 @@ class VolunteerOrganization(db.Model):
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Add these relationships
+    volunteer = relationship('Volunteer', back_populates='volunteer_organizations')
+    organization = relationship('Organization', back_populates='volunteer_organizations')

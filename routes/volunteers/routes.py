@@ -216,14 +216,26 @@ def volunteers():
         error_out=False
     )
 
-    # Transform the results to include the attended count
-    volunteers_with_counts = [
-        {
+    # Transform the results to include the attended count and organization info
+    volunteers_with_counts = []
+    for result in pagination.items:
+        volunteer_data = {
             'volunteer': result[0],
-            'attended_count': result[1] or 0  # Ensure null values become 0
+            'attended_count': result[1] or 0,
+            'organizations': []
         }
-        for result in pagination.items
-    ]
+        
+        # Get organization info with roles
+        for vol_org in result[0].volunteer_organizations:
+            org_info = {
+                'organization': vol_org.organization,
+                'role': vol_org.role,
+                'status': vol_org.status,
+                'is_primary': vol_org.is_primary
+            }
+            volunteer_data['organizations'].append(org_info)
+        
+        volunteers_with_counts.append(volunteer_data)
 
     return render_template('volunteers/volunteers.html',
                          volunteers=volunteers_with_counts,
@@ -329,13 +341,19 @@ def view_volunteer(id):
     for status in participation_stats:
         participation_stats[status].sort(key=lambda x: x['date'], reverse=True)
     
+    # Create a dictionary of organization relationships for easy access in template
+    org_relationships = {}
+    for vol_org in volunteer.volunteer_organizations:
+        org_relationships[vol_org.organization_id] = vol_org
+    
     return render_template(
         'volunteers/view.html',
         volunteer=volunteer,
         emails=sorted(volunteer.emails, key=lambda x: x.primary, reverse=True),
         phones=sorted(volunteer.phones, key=lambda x: x.primary, reverse=True),
         participation_stats=participation_stats,
-        histories=histories  # Pass histories to the template
+        histories=histories,
+        org_relationships=org_relationships  # Pass the relationships to the template
     )
 
 @volunteers_bp.route('/volunteers/edit/<int:id>', methods=['GET', 'POST'])

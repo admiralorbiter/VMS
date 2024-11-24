@@ -645,11 +645,9 @@
 /* Volunteer Profile Grid Layout */
 .volunteer-profile-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
     align-items: start;
-    max-width: 100%;
-    margin: 0;
 }
 
 /* Profile Cards */
@@ -1205,23 +1203,40 @@ main {
 /* Update the grid layout for the profile cards */
 .volunteer-profile-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
     align-items: start;
 }
 
-/* Make specific cards span first two columns */
-.profile-card:not(.history-info) {
+/* Make specific cards span columns as needed */
+.profile-card.personal-info,
+.profile-card.contact-info,
+.profile-card.professional-info,
+.profile-card.skills-info {
     grid-column: span 1;
 }
 
-/* Make history card always appear in third column */
+/* Make volunteer history and history cards span full width */
+.profile-card.history-info,
+.profile-card.participation-card {
+    grid-column: 1 / -1;
+}
+
+/* Remove the previous positioning styles */
 .profile-card.history-info {
-    grid-column: 3;
-    grid-row: 1 / span 4;  /* Adjust the span based on how many other cards you have */
-    max-height: 1200px; /* Double the height */
-    width: 100%;
-    box-sizing: border-box;
+    grid-row: auto;
+    max-height: 800px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .volunteer-profile-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-card {
+        grid-column: 1 / -1;
+    }
 }
 
 /* History Item Styling */

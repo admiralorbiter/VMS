@@ -150,10 +150,46 @@
             </div>
             <div class="card-content">
                 <div class="org-info">
-                    <div class="info-group">
-                        <label>Organization</label>
-                        <p class="org-name">{{ volunteer.organization_name }}</p>
-                    </div>
+                    {% if volunteer.organizations %}
+                        <div class="info-group">
+                            <label>Organizations</label>
+                            <div class="organizations-list">
+                                {% for org in volunteer.organizations %}
+                                    <div class="organization-item">
+                                        <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-name">
+                                            {{ org.name }}
+                                        </a>
+                                        {% set vol_org = org_relationships[org.id] %}
+                                        {% if vol_org and (vol_org.role or vol_org.status) %}
+                                            <div class="org-details">
+                                                {% if vol_org.role %}
+                                                    <span class="org-role">{{ vol_org.role }}</span>
+                                                {% endif %}
+                                                {% if vol_org.status %}
+                                                    <span class="org-status">{{ vol_org.status }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                        {% if vol_org and (vol_org.start_date or vol_org.end_date) %}
+                                            <div class="org-dates">
+                                                {% if vol_org.start_date %}
+                                                    <span class="start-date">From: {{ vol_org.start_date.strftime('%Y-%m-%d') }}</span>
+                                                {% endif %}
+                                                {% if vol_org.end_date %}
+                                                    <span class="end-date">To: {{ vol_org.end_date.strftime('%Y-%m-%d') }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% elif volunteer.organization_name %}
+                        <div class="info-group">
+                            <label>Organization</label>
+                            <p class="org-name">{{ volunteer.organization_name }}</p>
+                        </div>
+                    {% endif %}
                     <div class="info-group">
                         <label>Title</label>
                         <p class="org-title">{{ volunteer.title }}</p>

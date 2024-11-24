@@ -145,6 +145,8 @@ class Volunteer(db.Model):
     organizations = relationship('Organization', 
                                secondary='volunteer_organization',
                                back_populates='volunteers')
+    # Add this relationship
+    volunteer_organizations = relationship('VolunteerOrganization', back_populates='volunteer')
 
     # Skills relationship through association table
     skills = relationship('Skill', secondary='volunteer_skills', backref='volunteers')
