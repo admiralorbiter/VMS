@@ -1,6 +1,7 @@
 import csv
 import io
 import os
+import json
 from flask import Blueprint, jsonify, request, render_template, flash, redirect, url_for
 from flask_login import login_required
 from models import Volunteer, db
@@ -283,9 +284,13 @@ def add_volunteer():
                 )
                 volunteer.phones.append(phone)
 
-            # Add skills
+            # Add skills - Fixed section
             if form.skills.data:
-                for skill_name in form.skills.data:
+                # Parse the JSON string into a Python list
+                skill_names = json.loads(form.skills.data)
+                # Use a set to prevent duplicates
+                unique_skill_names = set(skill_names)
+                for skill_name in unique_skill_names:
                     if skill_name:
                         skill = Skill.query.filter_by(name=skill_name).first()
                         if not skill:
