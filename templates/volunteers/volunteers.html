@@ -100,11 +100,11 @@
                     <th class="sortable" data-sort="title">
                         Title <i class="fa-solid fa-sort"></i>
                     </th>
-                    <th class="sortable" data-sort="times_volunteered">
-                        Times Volunteered <i class="fa-solid fa-sort"></i>
+                    <th class="sortable times-col" data-sort="times_volunteered">
+                        Times Volunteered<i class="fa-solid fa-sort"></i>
                     </th>
                     <th>Skills</th>
-                    <th>Actions</th>
+                    <th class="actions-col">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -129,12 +129,22 @@
                     </td>
                     <td>
                         <div class="action-buttons">
-                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn btn-sm action-btn view-btn">
-                                <i class="fa-solid fa-eye"></i> View
+                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn btn-sm action-btn view-btn" title="View">
+                                <i class="fa-solid fa-eye"></i>
                             </a>
-                            <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn btn-sm action-btn edit-btn">
-                                <i class="fa-solid fa-pencil"></i> Edit
+                            <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn btn-sm action-btn edit-btn" title="Edit">
+                                <i class="fa-solid fa-pencil"></i>
                             </a>
+                            {% if volunteer.volunteer.salesforce_contact_url %}
+                            <a href="{{ volunteer.volunteer.salesforce_contact_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Contact">
+                                <i class="fa-solid fa-cloud"></i>
+                            </a>
+                            {% endif %}
+                            {% if volunteer.volunteer.salesforce_account_url %}
+                            <a href="{{ volunteer.volunteer.salesforce_account_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Account">
+                                <i class="fa-solid fa-building-user"></i>
+                            </a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

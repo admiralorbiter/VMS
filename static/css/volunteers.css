@@ -1500,3 +1500,62 @@ main {
     background-color: #0089bd;
     color: white;
 }
+
+/* Salesforce button styling in table */
+.action-buttons .salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    min-width: auto;
+}
+
+.action-buttons .salesforce-btn:hover {
+    background-color: #0089bd;
+    color: white;
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Adjust spacing in action buttons container */
+.action-buttons {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+/* Column width adjustments */
+.times-col {
+    width: 80px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.actions-col {
+    width: 160px;
+    min-width: 160px;
+}
+
+/* Action buttons styling */
+.action-buttons {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: flex-start;
+}
+
+.action-btn {
+    padding: 0.4rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn i {
+    font-size: 0.9rem;
+}
+
+/* Center times volunteered column content */
+.volunteers-table td:nth-child(4) {
+    text-align: center;
+}
