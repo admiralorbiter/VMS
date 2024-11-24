@@ -14,9 +14,6 @@
             <a href="{{ url_for('events.add_event') }}" class="action-btn">
                 <i class="fa-solid fa-plus"></i> Create New Event
             </a>
-            <button class="action-btn sync-events-btn">
-                <i class="fa-solid fa-sync"></i> Sync Upcoming Events
-            </button>
             {% if current_user.is_admin %}
             <a href="{{ url_for('events.import_events') }}" class="action-btn">
                 <i class="fa-solid fa-file-import"></i> Import Events

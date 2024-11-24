@@ -142,11 +142,18 @@ class Volunteer(db.Model):
     engagements = relationship('Engagement', backref='volunteer', lazy='dynamic')
     
     # Add this new relationship
-    organizations = relationship('Organization', 
-                               secondary='volunteer_organization',
-                               back_populates='volunteers')
+    organizations = relationship(
+        'Organization', 
+        secondary='volunteer_organization',
+        back_populates='volunteers',
+        overlaps="volunteer_organizations"
+    )
     # Add this relationship
-    volunteer_organizations = relationship('VolunteerOrganization', back_populates='volunteer')
+    volunteer_organizations = relationship(
+        'VolunteerOrganization', 
+        back_populates='volunteer',
+        overlaps="organizations"
+    )
 
     # Skills relationship through association table
     skills = relationship('Skill', secondary='volunteer_skills', backref='volunteers')

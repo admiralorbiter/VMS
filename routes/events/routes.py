@@ -216,7 +216,7 @@ def add_event():
             status = request.form.get('status', EventStatus.DRAFT)
             event = Event(
                 title=request.form.get('title'),
-                type=request.form.get('type'),
+                type=EventType[request.form.get('type').upper()],
                 start_date=datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M'),
                 end_date=datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M'),
                 location=request.form.get('location'),
@@ -228,21 +228,15 @@ def add_event():
             db.session.commit()
             
             flash('Event created successfully!', 'success')
-            return redirect(url_for('events'))
+            return redirect(url_for('events.events'))
             
         except Exception as e:
             db.session.rollback()
             flash(f'Error creating event: {str(e)}', 'danger')
-            return redirect(url_for('add_event'))
+            return redirect(url_for('events.add_event'))
     
-    # For GET request, render the form template
-    event_types = [
-        ('workshop', 'Workshop'),
-        ('meeting', 'Meeting'),
-        ('social', 'Social Event'),
-        ('volunteer', 'Volunteer Session')
-    ]
-    
+    # For GET request, use EventType enum for dropdown options
+    event_types = [(t.value, t.value.replace('_', ' ').title()) for t in EventType]
     statuses = [(status.value, status.value) for status in EventStatus]
     
     return render_template(
@@ -290,7 +284,7 @@ def edit_event(id):
         try:
             # Update event from form data
             event.title = request.form.get('title')
-            event.type = request.form.get('type')
+            event.type = EventType[request.form.get('type').upper()]
             event.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M')
             event.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M')
             event.location = request.form.get('location')
@@ -300,20 +294,15 @@ def edit_event(id):
             
             db.session.commit()
             flash('Event updated successfully!', 'success')
-            return redirect(url_for('view_event', id=event.id))
+            return redirect(url_for('events.view_event', id=event.id))
             
         except Exception as e:
             db.session.rollback()
             flash(f'Error updating event: {str(e)}', 'danger')
-            return redirect(url_for('edit_event', id=id))
+            return redirect(url_for('events.edit_event', id=id))
     
-    event_types = [
-        ('workshop', 'Workshop'),
-        ('meeting', 'Meeting'),
-        ('social', 'Social Event'),
-        ('volunteer', 'Volunteer Session')
-    ]
-    
+    # Use EventType enum for dropdown options
+    event_types = [(t.value, t.value.replace('_', ' ').title()) for t in EventType]
     statuses = [(status.value, status.value) for status in EventStatus]
     
     return render_template(

@@ -26,7 +26,7 @@ def sync_upcoming_events():
         db.session.commit()
 
         # 2. Connect to Salesforce and query
-        sf = simple_salesforce(
+        sf = Salesforce(
             username=Config.SF_USERNAME,
             password=Config.SF_PASSWORD,
             security_token=Config.SF_SECURITY_TOKEN,
@@ -35,12 +35,12 @@ def sync_upcoming_events():
 
         query = """
             SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
-            Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
-            Display_on_Website__c, Start_Date__c 
-            FROM Session__c 
-            WHERE Start_Date__c > TODAY 
-            AND Available_slots__c > Filled_Volunteer_Jobs__c  # Modified to compare slots
-            ORDER BY Start_Date__c ASC
+                Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
+                Display_on_Website__c, Start_Date__c 
+                FROM Session__c 
+                WHERE Start_Date__c > TODAY 
+                AND Available_slots__c > 0
+                ORDER BY Start_Date__c ASC
         """
         result = sf.query(query)
         events = result.get('records', [])
