@@ -452,20 +452,29 @@ def import_volunteers():
             errors = []
 
             if request.is_json and request.json.get('quickSync'):
-                # Handle quickSync
+                # Handle quickSync with different encodings
                 default_file_path = os.path.join('data', 'Volunteers.csv')
                 if not os.path.exists(default_file_path):
                     return jsonify({'error': 'Default CSV file not found'}), 404
-                    
-                with open(default_file_path, 'r', encoding='utf-8') as file:
-                    csv_data = csv.DictReader(file)
-                    for row in csv_data:
-                        success_count, error_count = process_volunteer_row(
-                            row, success_count, error_count, errors
-                        )
+                
+                # Try different encodings
+                encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'iso-8859-1']
+                for encoding in encodings:
+                    try:
+                        with open(default_file_path, 'r', encoding=encoding) as file:
+                            csv_data = csv.DictReader(file)
+                            for row in csv_data:
+                                success_count, error_count = process_volunteer_row(
+                                    row, success_count, error_count, errors
+                                )
+                        break  # If successful, exit the encoding loop
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    return jsonify({'error': 'Could not decode file with any known encoding'}), 400
 
             else:
-                # Handle regular file upload
+                # Handle regular file upload with different encodings
                 if 'file' not in request.files:
                     return jsonify({'error': 'No file uploaded'}), 400
                 
@@ -476,13 +485,24 @@ def import_volunteers():
                 if not file.filename.endswith('.csv'):
                     return jsonify({'error': 'File must be a CSV'}), 400
 
-                # Process uploaded file
-                stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-                csv_data = csv.DictReader(stream)
-                for row in csv_data:
-                    success_count, error_count = process_volunteer_row(
-                        row, success_count, error_count, errors
-                    )
+                # Read the file content once
+                file_content = file.read()
+                
+                # Try different encodings
+                encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'iso-8859-1']
+                for encoding in encodings:
+                    try:
+                        stream = io.StringIO(file_content.decode(encoding), newline=None)
+                        csv_data = csv.DictReader(stream)
+                        for row in csv_data:
+                            success_count, error_count = process_volunteer_row(
+                                row, success_count, error_count, errors
+                            )
+                        break  # If successful, exit the encoding loop
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    return jsonify({'error': 'Could not decode file with any known encoding'}), 400
 
             # Commit all changes
             try:
