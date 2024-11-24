@@ -191,8 +191,6 @@ def volunteers():
                           Volunteer.last_name)
         elif sort_by == 'organization':
             sort_column = Volunteer.organization_name
-        elif sort_by == 'title':
-            sort_column = Volunteer.title
         elif sort_by == 'times_volunteered':
             sort_column = (
                 Volunteer.times_volunteered + 

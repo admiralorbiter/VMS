@@ -172,8 +172,8 @@
 }
 
 .volunteers-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--non-photo-blue);
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
 }
 
 .action-buttons {
@@ -1648,18 +1648,13 @@ main {
 }
 
 .org-role {
-    background: var(--ucla-blue);
-    color: var(--mint-green);
-    padding: 0.25rem 0.75rem;
-    border-radius: 16px;
+    color: var(--ucla-blue);
     font-size: 0.85rem;
+    background: rgba(70, 117, 153, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-}
-
-.org-role i {
-    font-size: 0.8rem;
 }
 
 .org-status {
@@ -1823,4 +1818,100 @@ main {
 /* Icon styling */
 .edit-volunteer-btn i, .back-btn i {
     font-size: 0.9rem;
+}
+
+/* Update the organization and title container for better space usage */
+.org-title-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(158, 216, 219, 0.05);  /* var(--non-photo-blue) with opacity */
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.org-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+    text-decoration: none;
+    margin-right: auto;  /* Push following elements to the right */
+}
+
+.org-name:hover {
+    color: var(--ucla-blue);
+}
+
+.org-title {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    font-style: italic;
+    background: rgba(70, 117, 153, 0.1);  /* var(--ucla-blue) with opacity */
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+}
+
+/* Role badge styling */
+.org-role {
+    color: var(--delft-blue);
+    font-size: 0.85rem;
+    background: var(--non-photo-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+/* Add subtle hover effect to table rows */
+.volunteers-table tr:hover {
+    background-color: rgba(158, 216, 219, 0.1);
+}
+
+/* Update the organization and title container styling */
+.org-title-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(158, 216, 219, 0.05);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+/* Add specific styling for title-only containers */
+.org-title-container:not(:has(.org-name)) .org-title {
+    margin-left: auto;  /* Push to the right when no org name */
+    background: rgba(70, 117, 153, 0.1);
+}
+
+.org-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+    text-decoration: none;
+    margin-right: auto;  /* Push following elements to the right */
+}
+
+.org-name:hover {
+    color: var(--ucla-blue);
+}
+
+.org-title {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    font-style: italic;
+    background: rgba(70, 117, 153, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+}
+
+/* Role badge styling */
+.org-role {
+    color: var(--delft-blue);
+    font-size: 0.85rem;
+    background: var(--non-photo-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
 }
