@@ -1772,3 +1772,55 @@ main {
 .profile-card .org-item.primary:hover {
     background: rgba(214, 64, 69, 0.08);
 }
+
+/* Header Actions Styling */
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.edit-volunteer-btn, .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Edit Button */
+.edit-volunteer-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+}
+
+.edit-volunteer-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Back Button */
+.back-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: 2px solid var(--delft-blue);
+}
+
+.back-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Icon styling */
+.edit-volunteer-btn i, .back-btn i {
+    font-size: 0.9rem;
+}
