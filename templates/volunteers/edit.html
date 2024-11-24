@@ -22,7 +22,7 @@
 
     <div class="volunteer-form-container">
         <form method="POST" class="volunteer-form">
-            {{ form.hidden_tag() }}
+            {{ form.csrf_token }}
             
             <!-- Personal Information Card -->
             <div class="form-section">

@@ -189,49 +189,64 @@ def volunteers():
 @login_required
 def add_volunteer():
     form = VolunteerForm()
-    if form.validate_on_submit():
-        volunteer = Volunteer(
-            salutation=form.salutation.data,
-            first_name=form.first_name.data,
-            middle_name=form.middle_name.data,
-            last_name=form.last_name.data,
-            suffix=form.suffix.data,
-            organization_name=form.organization_name.data,
-            title=form.title.data,
-            department=form.department.data,
-            industry=form.industry.data,
-            local_status=form.local_status.data,
-            notes=form.notes.data
-        )
-
-        # Add email with type
-        email = Email(
-            email=form.email.data,
-            type=form.email_type.data
-        )
-        volunteer.emails.append(email)
-
-        # Add phone if provided
-        if form.phone.data:
-            phone = Phone(
-                number=form.phone.data,
-                type=form.phone_type.data
+    if request.method == 'POST':
+        print("Form data:", form.data)  # Debug form data
+        print("Form errors:", form.errors)  # Debug validation errors
+        print("Is submitted:", form.is_submitted())  # Debug submission status
+        print("Is validated:", form.validate())  # Debug validation status
+        
+        try:
+            volunteer = Volunteer(
+                salutation=form.salutation.data,
+                first_name=form.first_name.data,
+                middle_name=form.middle_name.data or '',
+                last_name=form.last_name.data,
+                suffix=form.suffix.data or None,
+                organization_name=form.organization_name.data or '',
+                title=form.title.data or '',
+                department=form.department.data or '',
+                industry=form.industry.data or '',
+                local_status=form.local_status.data,
+                notes=form.notes.data or ''
             )
-            volunteer.phones.append(phone)
 
-        # Add skills
-        if form.skills.data:
-            for skill_name in form.skills.data:
-                if skill_name:
-                    skill = Skill.query.filter_by(name=skill_name).first()
-                    if not skill:
-                        skill = Skill(name=skill_name)
-                    volunteer.skills.append(skill)
+            # Add email with type
+            if form.email.data:  # Check if email exists
+                email = Email(
+                    email=form.email.data,
+                    type=form.email_type.data or 'personal',  # Default to personal if not set
+                    primary=True
+                )
+                volunteer.emails.append(email)
 
-        db.session.add(volunteer)
-        db.session.commit()
-        flash('Volunteer added successfully!', 'success')
-        return redirect(url_for('volunteers'))
+            # Add phone if provided
+            if form.phone.data:
+                phone = Phone(
+                    number=form.phone.data,
+                    type=form.phone_type.data or 'personal',  # Default to personal if not set
+                    primary=True
+                )
+                volunteer.phones.append(phone)
+
+            # Add skills
+            if form.skills.data:
+                for skill_name in form.skills.data:
+                    if skill_name:
+                        skill = Skill.query.filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                            db.session.add(skill)
+                        volunteer.skills.append(skill)
+
+            db.session.add(volunteer)
+            db.session.commit()
+            flash('Volunteer added successfully!', 'success')
+            return redirect(url_for('volunteers.volunteers'))
+        except Exception as e:
+            db.session.rollback()
+            print(f"Database error: {str(e)}")  # Debug database errors
+            flash(f'Error adding volunteer: {str(e)}', 'error')
+            return render_template('/volunteers/add_volunteer.html', form=form)
 
     return render_template('/volunteers/add_volunteer.html', form=form)
 
@@ -284,63 +299,86 @@ def edit_volunteer(id):
     volunteer = Volunteer.query.get_or_404(id)
     form = VolunteerForm()
     
-    if form.validate_on_submit():
-        # Update basic information
-        form.populate_obj(volunteer)
+    if request.method == 'POST':
+        print("Form data:", form.data)  # Debug form data
+        print("Form errors:", form.errors)  # Debug validation errors
+        print("Is submitted:", form.is_submitted())  # Debug validation status
         
-        # Handle email updates
-        if form.email.data:
-            if volunteer.emails:
-                primary_email = next((e for e in volunteer.emails if e.primary), None)
-                if primary_email:
-                    primary_email.email = form.email.data
-                    primary_email.type = form.email_type.data
+        try:
+            # Convert empty strings to None for enum fields
+            volunteer.salutation = None if form.salutation.data == 'none' else form.salutation.data
+            volunteer.suffix = None if form.suffix.data == 'none' else form.suffix.data
+            
+            # Update basic information
+            volunteer.first_name = form.first_name.data
+            volunteer.middle_name = form.middle_name.data or None
+            volunteer.last_name = form.last_name.data
+            volunteer.organization_name = form.organization_name.data or None
+            volunteer.title = form.title.data or None
+            volunteer.department = form.department.data or None
+            volunteer.industry = form.industry.data or None
+            volunteer.local_status = form.local_status.data or None
+            volunteer.notes = form.notes.data or None
+            
+            # Handle email updates
+            if form.email.data:
+                if volunteer.emails:
+                    primary_email = next((e for e in volunteer.emails if e.primary), None)
+                    if primary_email:
+                        primary_email.email = form.email.data
+                        primary_email.type = form.email_type.data
+                    else:
+                        email = Email(email=form.email.data, type=form.email_type.data, primary=True)
+                        volunteer.emails.append(email)
                 else:
                     email = Email(email=form.email.data, type=form.email_type.data, primary=True)
                     volunteer.emails.append(email)
-            else:
-                email = Email(email=form.email.data, type=form.email_type.data, primary=True)
-                volunteer.emails.append(email)
-        
-        # Handle phone updates
-        if form.phone.data:
-            if volunteer.phones:
-                primary_phone = next((p for p in volunteer.phones if p.primary), None)
-                if primary_phone:
-                    primary_phone.number = form.phone.data
-                    primary_phone.type = form.phone_type.data
+            
+            # Handle phone updates
+            if form.phone.data:
+                if volunteer.phones:
+                    primary_phone = next((p for p in volunteer.phones if p.primary), None)
+                    if primary_phone:
+                        primary_phone.number = form.phone.data
+                        primary_phone.type = form.phone_type.data
+                    else:
+                        phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
+                        volunteer.phones.append(phone)
                 else:
                     phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
                     volunteer.phones.append(phone)
-            else:
-                phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
-                volunteer.phones.append(phone)
-        
-        # Update skills
-        if form.skills.data:
-            volunteer.skills = []
-            for skill_name in form.skills.data:
-                if skill_name:
-                    skill = Skill.query.filter_by(name=skill_name).first()
-                    if not skill:
-                        skill = Skill(name=skill_name)
-                    volunteer.skills.append(skill)
-        
-        db.session.commit()
-        flash('Volunteer updated successfully!', 'success')
-        return redirect(url_for('view_volunteer', id=volunteer.id))
+            
+            # Update skills
+            if form.skills.data:
+                volunteer.skills = []
+                for skill_name in form.skills.data:
+                    if skill_name:
+                        skill = Skill.query.filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                            db.session.add(skill)
+                        volunteer.skills.append(skill)
+            
+            db.session.commit()
+            flash('Volunteer updated successfully!', 'success')
+            return redirect(url_for('volunteers.view_volunteer', id=volunteer.id))
+        except Exception as e:
+            db.session.rollback()
+            print(f"Database error: {str(e)}")  # Debug database errors
+            flash(f'Error updating volunteer: {str(e)}', 'error')
+            return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
     
-    # Pre-populate form fields
-    form.salutation.data = volunteer.salutation
+    # Pre-populate form fields for GET request
+    form.salutation.data = volunteer.salutation.name if volunteer.salutation else 'none'
     form.first_name.data = volunteer.first_name
     form.middle_name.data = volunteer.middle_name
     form.last_name.data = volunteer.last_name
-    form.suffix.data = volunteer.suffix
+    form.suffix.data = volunteer.suffix.name if volunteer.suffix else 'none'
     form.organization_name.data = volunteer.organization_name
     form.title.data = volunteer.title
     form.department.data = volunteer.department
     form.industry.data = volunteer.industry
-    form.local_status.data = volunteer.local_status
+    form.local_status.data = volunteer.local_status.name if volunteer.local_status else None
     form.notes.data = volunteer.notes
     
     if volunteer.emails:
@@ -354,8 +392,6 @@ def edit_volunteer(id):
         if primary_phone:
             form.phone.data = primary_phone.number
             form.phone_type.data = primary_phone.type
-    
-    # Don't set skills.data directly, they will be displayed from volunteer.skills in the template
     
     return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
 

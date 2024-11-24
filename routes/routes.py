@@ -22,3 +22,9 @@ def init_routes(app):
     @app.route('/')
     def index():
         return render_template('index.html')
+    
+    @app.template_filter('format_date')
+    def format_date(date):
+        if date:
+            return date.strftime('%B %d, %Y')
+        return ''

@@ -9,19 +9,20 @@ from models.history import History
 class FormEnum(str, PyEnum):
     @classmethod
     def choices(cls):
-        return [{'value': '', 'label': ''}] + [
-            {'value': member.name, 'label': member.value}
+        return [
+            (member.name, member.value)
             for member in cls
         ]
 
     @classmethod
     def choices_required(cls):
         return [
-            {'value': member.name, 'label': member.value}
+            (member.name, member.value)
             for member in cls
         ]
 
 class SalutationEnum(FormEnum):
+    none = ''
     mr = 'Mr.'
     ms = 'Ms.'
     mrs = 'Mrs.'
@@ -38,6 +39,7 @@ class SalutationEnum(FormEnum):
     staff_sergeant = 'Staff Sergeant'
 
 class SuffixEnum(FormEnum):
+    none = ''
     jr = 'Jr.'
     sr = 'Sr.'
     ii = 'II'
