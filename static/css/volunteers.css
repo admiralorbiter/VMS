@@ -515,30 +515,62 @@
     cursor: pointer;
     user-select: none;
     position: relative;
-    padding-right: 1.5rem;
+    padding-right: 2rem;
 }
 
 .volunteers-table th.sortable i {
     position: absolute;
-    right: 0.5rem;
+    right: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
-    opacity: 0.5;
+    opacity: 0.3;
     transition: all 0.2s ease;
+    font-size: 0.9rem;
 }
 
 .volunteers-table th.sortable:hover i {
-    opacity: 1;
-    color: var(--non-photo-blue);
+    opacity: 0.8;
+    color: var(--mint-green);
+}
+
+/* Show different icons for different states */
+.volunteers-table th.sortable:not(.sort-asc):not(.sort-desc) i::before {
+    content: "\f0dc";  /* fa-sort */
 }
 
 .volunteers-table th.sort-asc i {
     opacity: 1;
-    transform: translateY(-50%) rotate(180deg);
+    color: var(--mint-green);
+}
+
+.volunteers-table th.sort-asc i::before {
+    content: "\f0d8";  /* fa-sort-up */
 }
 
 .volunteers-table th.sort-desc i {
     opacity: 1;
+    color: var(--mint-green);
+}
+
+.volunteers-table th.sort-desc i::before {
+    content: "\f0d7";  /* fa-sort-down */
+}
+
+/* Column width adjustments */
+.times-col {
+    width: 120px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.actions-col {
+    width: 160px;
+    min-width: 160px;
+}
+
+/* Center times volunteered column content */
+.volunteers-table td:nth-child(4) {
+    text-align: center;
 }
 
 /* Status Badge Styling */

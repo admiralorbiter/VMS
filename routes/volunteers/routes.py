@@ -105,19 +105,33 @@ def volunteers():
     # Remove empty filters
     current_filters = {k: v for k, v in current_filters.items() if v}
 
-    # Build query
+    # Get sort parameters
+    sort_by = request.args.get('sort_by', 'last_volunteer_date')  # default sort field
+    sort_direction = request.args.get('sort_direction', 'desc')  # default direction
+
+    # Add sort parameters to current_filters
+    current_filters.update({
+        'sort_by': sort_by,
+        'sort_direction': sort_direction
+    })
+
+    # Start with a subquery to get the attended count
+    attended_count_subq = db.session.query(
+        EventParticipation.volunteer_id,
+        db.func.count(EventParticipation.id).label('attended_count')
+    ).filter(
+        EventParticipation.status == 'Attended'
+    ).group_by(
+        EventParticipation.volunteer_id
+    ).subquery()
+
+    # Build main query
     query = db.session.query(
         Volunteer,
-        db.func.count(
-            db.case(
-                (EventParticipation.status == 'Attended', 1),
-                else_=0
-            )
-        )
+        db.func.coalesce(attended_count_subq.c.attended_count, 0).label('attended_count')
     ).outerjoin(
-        EventParticipation
-    ).group_by(
-        Volunteer.id
+        attended_count_subq,
+        Volunteer.id == attended_count_subq.c.volunteer_id
     )
 
     # Apply filters
@@ -161,8 +175,28 @@ def volunteers():
     if current_filters.get('local_status'):
         query = query.filter(Volunteer.local_status == current_filters['local_status'])
 
-    # Default sort by last_volunteer_date desc
-    query = query.order_by(Volunteer.last_volunteer_date.desc())
+    # Apply sorting based on parameters
+    if sort_by:
+        sort_column = None
+        if sort_by == 'name':
+            sort_column = (Volunteer.first_name + ' ' + 
+                          db.func.coalesce(Volunteer.middle_name, '') + ' ' + 
+                          Volunteer.last_name)
+        elif sort_by == 'organization':
+            sort_column = Volunteer.organization_name
+        elif sort_by == 'title':
+            sort_column = Volunteer.title
+        elif sort_by == 'times_volunteered':
+            sort_column = db.func.coalesce(attended_count_subq.c.attended_count, 0)
+        
+        if sort_column is not None:
+            if sort_direction == 'desc':
+                query = query.order_by(sort_column.desc(), Volunteer.last_name.asc())
+            else:
+                query = query.order_by(sort_column.asc(), Volunteer.last_name.asc())
+        else:
+            # Default sort
+            query = query.order_by(Volunteer.last_volunteer_date.desc())
 
     # Apply pagination
     pagination = query.paginate(
@@ -175,7 +209,7 @@ def volunteers():
     volunteers_with_counts = [
         {
             'volunteer': result[0],
-            'attended_count': result[1]
+            'attended_count': result[1] or 0  # Ensure null values become 0
         }
         for result in pagination.items
     ]

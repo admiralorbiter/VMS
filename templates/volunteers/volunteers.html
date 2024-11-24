@@ -92,16 +92,16 @@
             <thead>
                 <tr>
                     <th class="sortable" data-sort="name">
-                        Name <i class="fa-solid fa-sort"></i>
+                        Name <i class="fa-solid"></i>
                     </th>
                     <th class="sortable" data-sort="organization">
-                        Organization <i class="fa-solid fa-sort"></i>
+                        Organization <i class="fa-solid"></i>
                     </th>
                     <th class="sortable" data-sort="title">
-                        Title <i class="fa-solid fa-sort"></i>
+                        Title <i class="fa-solid"></i>
                     </th>
                     <th class="sortable times-col" data-sort="times_volunteered">
-                        Times Volunteered<i class="fa-solid fa-sort"></i>
+                        Times Volunteered <i class="fa-solid"></i>
                     </th>
                     <th>Skills</th>
                     <th class="actions-col">Actions</th>
@@ -113,7 +113,9 @@
                     <td>{{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}</td>
                     <td>{{ volunteer.volunteer.organization_name }}</td>
                     <td>{{ volunteer.volunteer.title }}</td>
-                    <td>{{ volunteer.attended_count }}</td>
+                    <td class="text-center">
+                        {{ volunteer.attended_count if volunteer.attended_count else '0' }}
+                    </td>
                     <td>
                         <div class="skills-container">
                             {% for skill in volunteer.volunteer.skills[:3] %}

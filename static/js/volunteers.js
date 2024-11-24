@@ -2,6 +2,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize sorting
     document.querySelectorAll('th.sortable').forEach(header => {
         header.addEventListener('click', () => handleSort(header));
+        
+        // Set initial sort indicators
+        const url = new URL(window.location);
+        const currentSortField = url.searchParams.get('sort_by');
+        const currentSortDirection = url.searchParams.get('sort_direction');
+        
+        if (currentSortField === header.dataset.sort) {
+            header.classList.add(`sort-${currentSortDirection}`);
+            updateSortIcon(header, currentSortDirection);
+        }
     });
 
     // Initialize search with debouncing
@@ -39,11 +49,30 @@ function handleSort(header) {
     const sortField = header.dataset.sort;
     const currentSort = header.classList.contains('sort-asc') ? 'desc' : 'asc';
     
+    // Remove sort classes from all headers
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    // Add sort class to clicked header
+    header.classList.add(`sort-${currentSort}`);
+    
+    // Update sort icon
+    updateSortIcon(header, currentSort);
+    
     // Update URL with sort parameters
     const url = new URL(window.location);
     url.searchParams.set('sort_by', sortField);
     url.searchParams.set('sort_direction', currentSort);
     window.location = url;
+}
+
+function updateSortIcon(header, direction) {
+    const icon = header.querySelector('i.fa-sort, i.fa-sort-up, i.fa-sort-down');
+    if (icon) {
+        icon.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
+        icon.classList.add(direction === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+    }
 }
 
 function handleSearch(event) {
