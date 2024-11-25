@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (purgeButton) {
         purgeButton.addEventListener('click', confirmPurge);
     }
+
+    // Initialize per-page select
+    const perPageSelect = document.querySelector('.per-page-select');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', handlePerPageChange);
+    }
 });
 
 function debounce(func, wait) {
@@ -95,4 +101,17 @@ function confirmPurge() {
             alert('Error: ' + error);
         });
     }
+}
+
+function handlePerPageChange(event) {
+    const url = new URL(window.location);
+    
+    // Update per_page parameter
+    url.searchParams.set('per_page', event.target.value);
+    
+    // Reset to first page when changing items per page
+    url.searchParams.set('page', '1');
+    
+    // Maintain other existing parameters (sort, filters, etc)
+    window.location = url.toString();
 }

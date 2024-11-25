@@ -118,6 +118,11 @@ def events():
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
+    
+    # Validate per_page value
+    allowed_per_page = [10, 25, 50, 100]
+    if per_page not in allowed_per_page:
+        per_page = 25  # fallback to default if invalid value
 
     # Create current_filters dictionary
     current_filters = {

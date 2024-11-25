@@ -153,14 +153,22 @@
                 
                 <div class="pagination-buttons">
                     {% if pagination.has_prev %}
-                        <a href="{{ url_for('events.events', page=pagination.prev_num, **current_filters) }}" 
+                        {% set filtered_params = {} %}
+                        {% for key, value in current_filters.items() if key != 'per_page' %}
+                            {% set _ = filtered_params.update({key: value}) %}
+                        {% endfor %}
+                        <a href="{{ url_for('events.events', page=pagination.prev_num, per_page=current_filters.per_page, **filtered_params) }}" 
                            class="pagination-btn">
                             <i class="fa-solid fa-chevron-left"></i> Previous
                         </a>
                     {% endif %}
                     
                     {% if pagination.has_next %}
-                        <a href="{{ url_for('events.events', page=pagination.next_num, **current_filters) }}" 
+                        {% set filtered_params = {} %}
+                        {% for key, value in current_filters.items() if key != 'per_page' %}
+                            {% set _ = filtered_params.update({key: value}) %}
+                        {% endfor %}
+                        <a href="{{ url_for('events.events', page=pagination.next_num, per_page=current_filters.per_page, **filtered_params) }}" 
                            class="pagination-btn">
                             Next <i class="fa-solid fa-chevron-right"></i>
                         </a>
