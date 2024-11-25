@@ -9,7 +9,7 @@ from forms import VolunteerForm
 from sqlalchemy import or_, and_
 
 from models.history import History
-from models.volunteer import Address, EducationEnum, Engagement, EventParticipation, GenderEnum, RaceEthnicityEnum, Skill, VolunteerSkill, Email, Phone, LocalStatusEnum
+from models.volunteer import Address, EducationEnum, Engagement, EventParticipation, GenderEnum, RaceEthnicityEnum, SalutationEnum, Skill, SuffixEnum, VolunteerSkill, Email, Phone, LocalStatusEnum
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
 volunteers_bp = Blueprint('volunteers', __name__)
@@ -365,12 +365,9 @@ def view_volunteer(id):
 @login_required
 def edit_volunteer(id):
     volunteer = Volunteer.query.get_or_404(id)
-    form = VolunteerForm()
+    form = VolunteerForm(obj=volunteer)
     
     if request.method == 'POST':
-        print("Form data:", form.data)  # Debug form data
-        print("Form errors:", form.errors)  # Debug validation errors
-        
         try:
             # Convert empty strings to None for enum fields
             volunteer.salutation = None if form.salutation.data == 'none' else form.salutation.data
@@ -423,16 +420,20 @@ def edit_volunteer(id):
                     phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
                     volunteer.phones.append(phone)
             
-            # Update skills
-            if form.skills.data:
-                volunteer.skills = []
-                for skill_name in form.skills.data:
-                    if skill_name:
-                        skill = Skill.query.filter_by(name=skill_name).first()
-                        if not skill:
-                            skill = Skill(name=skill_name)
-                            db.session.add(skill)
-                        volunteer.skills.append(skill)
+            # Handle skills
+            skills_data = json.loads(request.form.get('skills', '[]'))
+            
+            # Remove all existing skills
+            volunteer.skills = []
+            
+            # Add new skills
+            for skill_name in skills_data:
+                # Get or create skill
+                skill = Skill.query.filter_by(name=skill_name).first()
+                if not skill:
+                    skill = Skill(name=skill_name)
+                    db.session.add(skill)
+                volunteer.skills.append(skill)
             
             db.session.commit()
             flash('Volunteer updated successfully!', 'success')
@@ -440,51 +441,17 @@ def edit_volunteer(id):
             
         except Exception as e:
             db.session.rollback()
-            print(f"Database error: {str(e)}")  # Debug database errors
             flash(f'Error updating volunteer: {str(e)}', 'error')
-            return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
-
-    # GET request - populate form with existing data
-    if volunteer:
-        form.salutation.data = volunteer.salutation
-        form.first_name.data = volunteer.first_name
-        form.middle_name.data = volunteer.middle_name
-        form.last_name.data = volunteer.last_name
-        form.suffix.data = volunteer.suffix
-        form.organization_name.data = volunteer.organization_name
-        form.title.data = volunteer.title
-        form.department.data = volunteer.department
-        form.industry.data = volunteer.industry
-        form.local_status.data = volunteer.local_status
-        form.notes.data = volunteer.notes
-        
-        # Populate new demographic fields
-        form.gender.data = volunteer.gender
-        form.race_ethnicity.data = volunteer.race_ethnicity
-        form.education.data = volunteer.education
-
-        # Get primary email and phone if they exist
-        primary_email = next((email for email in volunteer.emails if email.primary), None)
-        if primary_email:
-            form.email.data = primary_email.email
-            form.email_type.data = primary_email.type
-
-        primary_phone = next((phone for phone in volunteer.phones if phone.primary), None)
-        if primary_phone:
-            form.phone.data = primary_phone.number
-            form.phone_type.data = primary_phone.type
-
-        # Handle skills
-        if volunteer.skills:
-            form.skills.data = json.dumps([skill.name for skill in volunteer.skills])
-
+    
     return render_template('volunteers/edit.html', 
                          form=form, 
                          volunteer=volunteer,
                          GenderEnum=GenderEnum,
+                         LocalStatusEnum=LocalStatusEnum,
                          RaceEthnicityEnum=RaceEthnicityEnum,
-                         EducationEnum=EducationEnum,
-                         LocalStatusEnum=LocalStatusEnum)
+                         SalutationEnum=SalutationEnum,
+                         SuffixEnum=SuffixEnum,
+                         EducationEnum=EducationEnum)
 
 @volunteers_bp.route('/volunteers/import', methods=['GET', 'POST'])
 @login_required

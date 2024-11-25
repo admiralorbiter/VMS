@@ -89,6 +89,50 @@ document.addEventListener('DOMContentLoaded', function() {
         emailContainer.appendChild(createEmailInput());
     });
     
+    // Skills handling
+    const skillsList = document.getElementById('skillsList');
+    const skillInput = document.querySelector('.skill-input');
+    const addSkillBtn = document.querySelector('.add-skill-btn');
+
+    function createSkillTag(skillName) {
+        const skillTag = document.createElement('span');
+        skillTag.className = 'skill-tag';
+        skillTag.innerHTML = `
+            ${skillName}
+            <button type="button" class="remove-skill-btn">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        `;
+
+        // Add remove button handler
+        skillTag.querySelector('.remove-skill-btn').addEventListener('click', () => {
+            skillTag.remove();
+        });
+
+        return skillTag;
+    }
+
+    // Add skill when clicking the add button
+    addSkillBtn.addEventListener('click', () => {
+        const skillName = skillInput.value.trim();
+        if (skillName) {
+            skillsList.appendChild(createSkillTag(skillName));
+            skillInput.value = ''; // Clear input
+        }
+    });
+
+    // Add skill when pressing Enter
+    skillInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const skillName = skillInput.value.trim();
+            if (skillName) {
+                skillsList.appendChild(createSkillTag(skillName));
+                skillInput.value = ''; // Clear input
+            }
+        }
+    });
+
     // Form submission handling
     const form = document.querySelector('.volunteer-form');
     form.addEventListener('submit', function(e) {
@@ -112,6 +156,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // Collect skills
+        const skills = [];
+        document.querySelectorAll('.skill-tag').forEach(tag => {
+            skills.push(tag.textContent.trim());
+        });
+
+        // Add skills to form data
+        const skillsInput = document.createElement('input');
+        skillsInput.type = 'hidden';
+        skillsInput.name = 'skills';
+        skillsInput.value = JSON.stringify(skills);
+        form.appendChild(skillsInput);
+
+        // Add emails to form data
         const emailsInput = document.createElement('input');
         emailsInput.type = 'hidden';
         emailsInput.name = 'emails';
