@@ -115,3 +115,54 @@ function handlePerPageChange(event) {
     // Maintain other existing parameters (sort, filters, etc)
     window.location = url.toString();
 }
+
+let eventToDelete = null;
+
+function deleteEvent(eventId) {
+    eventToDelete = eventId;
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'block';
+    
+    // Add event listeners
+    document.getElementById('cancelDelete').onclick = closeDeleteModal;
+    document.getElementById('confirmDelete').onclick = confirmDelete;
+    
+    // Close on background click
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeDeleteModal();
+        }
+    };
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'none';
+    eventToDelete = null;
+}
+
+function confirmDelete() {
+    if (!eventToDelete) return;
+    
+    fetch(`/events/delete/${eventToDelete}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error deleting event: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting event');
+    })
+    .finally(() => {
+        closeDeleteModal();
+    });
+}

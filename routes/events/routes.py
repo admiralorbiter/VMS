@@ -505,3 +505,21 @@ def sync_events():
         db.session.rollback()
         print(f"Error in sync_events: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@events_bp.route('/events/delete/<int:id>', methods=['DELETE'])
+@login_required
+def delete_event(id):
+    try:
+        event = Event.query.get_or_404(id)
+        
+        # First delete all participations
+        EventParticipation.query.filter_by(event_id=id).delete()
+        
+        # Then delete the event
+        db.session.delete(event)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
