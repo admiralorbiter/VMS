@@ -21,7 +21,7 @@
     </div>
 
     <div class="volunteer-form-container">
-        <form method="POST" class="volunteer-form">
+        <form method="POST" class="volunteer-form" action="{{ url_for('volunteers.edit_volunteer', id=volunteer.id) }}">
             {{ form.csrf_token }}
             
             <!-- Personal Information Card -->
@@ -223,6 +223,63 @@
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <div class="form-section">
+                <h2><i class="fas fa-phone"></i> Phone Numbers</h2>
+                <div id="phones-container">
+                    {% for phone in volunteer.phones %}
+                    <div class="phone-group">
+                        <input type="tel" class="form-control phone-input" value="{{ phone.number }}" required>
+                        <select class="form-select type-select">
+                            <option value="personal" {% if phone.type.name == 'personal' %}selected{% endif %}>Personal</option>
+                            <option value="professional" {% if phone.type.name == 'professional' %}selected{% endif %}>Professional</option>
+                        </select>
+                        <div class="form-check">
+                            <input type="radio" name="primary_phone" class="form-check-input primary-check" {% if phone.primary %}checked{% endif %}>
+                            <label class="form-check-label">Primary</label>
+                        </div>
+                        <button type="button" class="btn btn-danger remove-btn">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-phone-btn" class="btn btn-secondary mt-2">
+                    <i class="fas fa-plus"></i> Add Phone
+                </button>
+            </div>
+
+            <div class="form-section">
+                <h2><i class="fas fa-home"></i> Addresses</h2>
+                <div id="addresses-container">
+                    {% for address in volunteer.addresses %}
+                    <div class="address-group">
+                        <input type="text" class="form-control" value="{{ address.address_line1 }}" placeholder="Address Line 1" required>
+                        <input type="text" class="form-control" value="{{ address.address_line2 }}" placeholder="Address Line 2">
+                        <input type="text" class="form-control" value="{{ address.city }}" placeholder="City" required>
+                        <input type="text" class="form-control" value="{{ address.state }}" placeholder="State" required>
+                        <input type="text" class="form-control" value="{{ address.zip_code }}" placeholder="ZIP Code" required>
+                        <input type="text" class="form-control" value="{{ address.country }}" placeholder="Country">
+                        <div class="address-actions">
+                            <select class="form-select type-select">
+                                <option value="personal" {% if address.type.name == 'personal' %}selected{% endif %}>Personal</option>
+                                <option value="professional" {% if address.type.name == 'professional' %}selected{% endif %}>Professional</option>
+                            </select>
+                            <div class="form-check">
+                                <input type="radio" name="primary_address" class="form-check-input primary-check" {% if address.primary %}checked{% endif %}>
+                                <label class="form-check-label">Primary</label>
+                            </div>
+                            <button type="button" class="btn btn-danger remove-btn">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-address-btn" class="btn btn-secondary mt-2">
+                    <i class="fas fa-plus"></i> Add Address
+                </button>
             </div>
 
             <div class="form-actions">

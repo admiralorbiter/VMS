@@ -52,6 +52,116 @@ document.addEventListener('DOMContentLoaded', function() {
     if (confirmButton) {
         confirmButton.addEventListener('click', executeDelete);
     }
+
+    // Initialize phone and address management
+    document.addEventListener('DOMContentLoaded', function() {
+        // ... existing code ...
+
+        // Initialize add buttons
+        document.getElementById('add-phone-btn')?.addEventListener('click', addPhoneGroup);
+        document.getElementById('add-address-btn')?.addEventListener('click', addAddressGroup);
+    });
+
+    function addPhoneGroup() {
+        const container = document.getElementById('phones-container');
+        const phoneGroup = document.createElement('div');
+        phoneGroup.className = 'phone-group';
+        phoneGroup.innerHTML = `
+            <input type="tel" class="form-control phone-input" placeholder="Phone Number" required>
+            <select class="form-select type-select">
+                <option value="personal">Personal</option>
+                <option value="professional">Professional</option>
+            </select>
+            <div class="form-check">
+                <input type="radio" name="primary_phone" class="form-check-input primary-check">
+                <label class="form-check-label">Primary</label>
+            </div>
+            <button type="button" class="btn btn-danger remove-btn" onclick="removeGroup(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        container.appendChild(phoneGroup);
+    }
+
+    function addAddressGroup() {
+        const container = document.getElementById('addresses-container');
+        const addressGroup = document.createElement('div');
+        addressGroup.className = 'address-group';
+        addressGroup.innerHTML = `
+            <input type="text" class="form-control" placeholder="Address Line 1" required>
+            <input type="text" class="form-control" placeholder="Address Line 2">
+            <input type="text" class="form-control" placeholder="City" required>
+            <input type="text" class="form-control" placeholder="State" required>
+            <input type="text" class="form-control" placeholder="ZIP Code" required>
+            <input type="text" class="form-control" placeholder="Country" value="USA">
+            <div class="address-actions">
+                <select class="form-select type-select">
+                    <option value="personal">Personal</option>
+                    <option value="professional">Professional</option>
+                </select>
+                <div class="form-check">
+                    <input type="radio" name="primary_address" class="form-check-input primary-check">
+                    <label class="form-check-label">Primary</label>
+                </div>
+                <button type="button" class="btn btn-danger remove-btn" onclick="removeGroup(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(addressGroup);
+    }
+
+    function removeGroup(button) {
+        button.closest('.phone-group, .address-group').remove();
+    }
+
+    // Update the form submission to include phones and addresses
+    document.querySelector('form')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // ... existing email collection code ...
+
+        // Collect phone data
+        const phones = [];
+        document.querySelectorAll('.phone-group').forEach(group => {
+            phones.push({
+                number: group.querySelector('.phone-input').value,
+                type: group.querySelector('.type-select').value,
+                primary: group.querySelector('.primary-check').checked
+            });
+        });
+        
+        // Collect address data
+        const addresses = [];
+        document.querySelectorAll('.address-group').forEach(group => {
+            const inputs = group.querySelectorAll('.form-control');
+            addresses.push({
+                address_line1: inputs[0].value,
+                address_line2: inputs[1].value,
+                city: inputs[2].value,
+                state: inputs[3].value,
+                zip_code: inputs[4].value,
+                country: inputs[5].value,
+                type: group.querySelector('.type-select').value,
+                primary: group.querySelector('.primary-check').checked
+            });
+        });
+
+        // Add to form data
+        const phonesInput = document.createElement('input');
+        phonesInput.type = 'hidden';
+        phonesInput.name = 'phones';
+        phonesInput.value = JSON.stringify(phones);
+        this.appendChild(phonesInput);
+
+        const addressesInput = document.createElement('input');
+        addressesInput.type = 'hidden';
+        addressesInput.name = 'addresses';
+        addressesInput.value = JSON.stringify(addresses);
+        this.appendChild(addressesInput);
+
+        this.submit();
+    });
 });
 
 function debounce(func, wait) {

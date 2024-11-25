@@ -375,91 +375,71 @@ def view_volunteer(id):
 def edit_volunteer(id):
     volunteer = Volunteer.query.get_or_404(id)
     form = VolunteerForm(obj=volunteer)
-    
+
     if request.method == 'POST':
         try:
-            # Convert empty strings to None for enum fields
-            volunteer.salutation = None if form.salutation.data == 'none' else form.salutation.data
-            volunteer.suffix = None if form.suffix.data == 'none' else form.suffix.data
-            
-            # Update basic information
-            volunteer.first_name = form.first_name.data
-            volunteer.middle_name = form.middle_name.data or None
-            volunteer.last_name = form.last_name.data
-            volunteer.organization_name = form.organization_name.data or None
-            volunteer.title = form.title.data or None
-            volunteer.department = form.department.data or None
-            volunteer.industry = form.industry.data or None
-            
-            # Add new demographic fields
-            volunteer.gender = form.gender.data if form.gender.data else None
-            volunteer.race_ethnicity = form.race_ethnicity.data if form.race_ethnicity.data else None
-            volunteer.education = form.education.data if form.education.data else None
-            volunteer.local_status = form.local_status.data
-            volunteer.notes = form.notes.data or None
+            # Update volunteer with form data
+            form.populate_obj(volunteer)
 
-            # Handle emails
-            emails_data = json.loads(request.form.get('emails', '[]'))
+            # Handle phones
+            phones_data = json.loads(request.form.get('phones', '[]'))
+            Phone.query.filter_by(volunteer_id=volunteer.id).delete()
             
-            # Remove all existing emails
-            for email in volunteer.emails:
-                db.session.delete(email)
-            
-            # Add new emails
-            for email_data in emails_data:
-                email = Email(
-                    email=email_data['email'],
-                    type=email_data['type'],
-                    primary=email_data['primary'],
-                    volunteer=volunteer
+            for phone_data in phones_data:
+                phone = Phone(
+                    volunteer_id=volunteer.id,
+                    number=phone_data['number'],
+                    type=phone_data['type'],
+                    primary=phone_data['primary']
                 )
-                db.session.add(email)
+                db.session.add(phone)
 
-            # Handle phone updates
-            if form.phone.data:
-                if volunteer.phones:
-                    primary_phone = next((p for p in volunteer.phones if p.primary), None)
-                    if primary_phone:
-                        primary_phone.number = form.phone.data
-                        primary_phone.type = form.phone_type.data
-                    else:
-                        phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
-                        volunteer.phones.append(phone)
-                else:
-                    phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
-                    volunteer.phones.append(phone)
+            # Handle addresses
+            addresses_data = json.loads(request.form.get('addresses', '[]'))
+            Address.query.filter_by(volunteer_id=volunteer.id).delete()
             
-            # Handle skills
-            skills_data = json.loads(request.form.get('skills', '[]'))
-            
-            # Remove all existing skills
-            volunteer.skills = []
-            
-            # Add new skills
-            for skill_name in skills_data:
-                # Get or create skill
-                skill = Skill.query.filter_by(name=skill_name).first()
-                if not skill:
-                    skill = Skill(name=skill_name)
-                    db.session.add(skill)
-                volunteer.skills.append(skill)
-            
+            for address_data in addresses_data:
+                address = Address(
+                    volunteer_id=volunteer.id,
+                    address_line1=address_data['address_line1'],
+                    address_line2=address_data.get('address_line2', ''),
+                    city=address_data['city'],
+                    state=address_data['state'],
+                    zip_code=address_data['zip_code'],
+                    country=address_data.get('country', 'USA'),
+                    type=address_data['type'],
+                    primary=address_data['primary']
+                )
+                db.session.add(address)
+
             db.session.commit()
-            flash('Volunteer updated successfully!', 'success')
-            return redirect(url_for('volunteers.view_volunteer', id=id))
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'redirect_url': url_for('volunteers.view_volunteer', id=volunteer.id)
+                })
             
+            flash('Volunteer updated successfully!', 'success')
+            return redirect(url_for('volunteers.view_volunteer', id=volunteer.id))
+
         except Exception as e:
             db.session.rollback()
+            print(f"Error updating volunteer: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                })
+            
             flash(f'Error updating volunteer: {str(e)}', 'error')
-    
+
     return render_template('volunteers/edit.html', 
                          form=form, 
                          volunteer=volunteer,
                          GenderEnum=GenderEnum,
-                         LocalStatusEnum=LocalStatusEnum,
                          RaceEthnicityEnum=RaceEthnicityEnum,
-                         SalutationEnum=SalutationEnum,
-                         SuffixEnum=SuffixEnum,
+                         LocalStatusEnum=LocalStatusEnum,
                          EducationEnum=EducationEnum)
 
 @volunteers_bp.route('/volunteers/import', methods=['GET', 'POST'])

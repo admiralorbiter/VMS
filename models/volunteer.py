@@ -60,6 +60,7 @@ class GenderEnum(FormEnum):
     other = 'Other'
 
 class EducationEnum(FormEnum):
+    none = ''
     high_school = 'High School Diploma'
     associate_degree = 'Associate Degree'
     bachelors_degree = 'Bachelor’s Degree'
@@ -71,6 +72,7 @@ class EducationEnum(FormEnum):
     other = 'Other'
 
 class RaceEthnicityEnum(FormEnum):
+    unknown = 'Unknown'
     american_indian = 'American Indian or Alaska Native'
     asian = 'Asian'
     black = 'Black or African American'
@@ -122,7 +124,7 @@ class Volunteer(db.Model):
     # Additional Information
     birthdate = db.Column(Date)
     gender = db.Column(Enum(GenderEnum))
-    education = db.Column(Enum(EducationEnum))
+    education = db.Column(Enum(EducationEnum), nullable=True)
     local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown)
     race_ethnicity = db.Column(Enum(RaceEthnicityEnum))
 

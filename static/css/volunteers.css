@@ -2183,3 +2183,46 @@ main {
     color: var(--delft-blue);
     border: none;
 }
+
+/* Phone Group Styles */
+.phone-group {
+    background-color: var(--mint-green);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid var(--non-photo-blue);
+    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: minmax(200px, 2fr) auto auto auto;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Address Group Styles */
+.address-group {
+    background-color: var(--mint-green);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid var(--non-photo-blue);
+    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.address-group .form-control {
+    width: 100%;
+}
+
+.address-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .phone-group,
+    .address-group {
+        grid-template-columns: 1fr;
+    }
+}
