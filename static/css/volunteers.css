@@ -1915,3 +1915,114 @@ main {
     display: inline-flex;
     align-items: center;
 }
+
+/* Gender Toggle Group */
+.gender-toggle-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.gender-toggle-group input[type="radio"] {
+    display: none;
+}
+
+.gender-toggle-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--mint-green);
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--delft-blue);
+}
+
+.gender-toggle-group label i {
+    font-size: 1.1rem;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.gender-toggle-group input[type="radio"]:checked + label {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border-color: var(--delft-blue);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.gender-toggle-group input[type="radio"]:checked + label i {
+    transform: scale(1.1);
+}
+
+/* Status Toggle Group */
+.status-toggle-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.status-toggle-group input[type="radio"] {
+    display: none;
+}
+
+.status-toggle-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--mint-green);
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--delft-blue);
+    justify-content: center;
+}
+
+.status-toggle-group input[type="radio"]:checked + label {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border-color: var(--delft-blue);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .gender-toggle-group,
+    .status-toggle-group {
+        grid-template-columns: 1fr;
+    }
+}
+
+.email-group {
+    background-color: var(--mint-green);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid var(--non-photo-blue);
+    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: minmax(300px, 2fr) auto auto auto;
+    gap: 1rem;
+    align-items: center;
+}
+
+.email-input {
+    min-width: 300px;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.email-input:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 2px rgba(70, 117, 153, 0.2);
+}

@@ -48,6 +48,39 @@
                     <label>Name</label>
                     <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
                 </div>
+
+                <!-- Add Gender Info -->
+                <div class="info-group">
+                    <label>Gender</label>
+                    <div class="gender-badge {{ volunteer.gender if volunteer.gender else 'unknown' }}">
+                        {% if volunteer.gender == 'male' %}
+                            <i class="fa-solid fa-mars"></i>
+                        {% elif volunteer.gender == 'female' %}
+                            <i class="fa-solid fa-venus"></i>
+                        {% elif volunteer.gender == 'non_binary' %}
+                            <i class="fa-solid fa-venus-mars"></i>
+                        {% elif volunteer.gender == 'genderfluid' %}
+                            <i class="fa-solid fa-transgender-alt"></i>
+                        {% elif volunteer.gender == 'agender' %}
+                            <i class="fa-solid fa-genderless"></i>
+                        {% elif volunteer.gender == 'transgender' %}
+                            <i class="fa-solid fa-transgender"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-question"></i>
+                        {% endif %}
+                        <span>{{ volunteer.gender.replace('_', ' ').title() if volunteer.gender else 'Not Specified' }}</span>
+                    </div>
+                </div>
+
+                <!-- Add Race/Ethnicity Info -->
+                <div class="info-group">
+                    <label>Race/Ethnicity</label>
+                    <div class="ethnicity-badge">
+                        <i class="fa-solid fa-users"></i>
+                        <span>{{ volunteer.race_ethnicity.replace('_', ' ').title() if volunteer.race_ethnicity else 'Not Specified' }}</span>
+                    </div>
+                </div>
+
                 <div class="info-group">
                     <label>Local Status</label>
                     <span class="status-badge {{ volunteer.local_status }}">

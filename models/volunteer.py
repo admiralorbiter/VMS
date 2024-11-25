@@ -53,6 +53,9 @@ class GenderEnum(FormEnum):
     male = 'Male'
     female = 'Female'
     non_binary = 'Non-binary'
+    genderfluid = 'Genderfluid'
+    agender = 'Agender'
+    transgender = 'Transgender'
     prefer_not_to_say = 'Prefer not to say'
     other = 'Other'
 
@@ -205,6 +208,14 @@ class Email(db.Model):
     email = db.Column(String(100))
     type = db.Column(Enum(ContactTypeEnum))
     primary = db.Column(Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'type': self.type.name if self.type else 'personal',
+            'primary': self.primary
+        }
 
 # Address Model
 class Address(db.Model):

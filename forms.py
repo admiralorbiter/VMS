@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, StringField, SelectField, SubmitField, TextAreaField
+from wtforms import PasswordField, StringField, SelectField, SubmitField, TextAreaField, RadioField
 from wtforms.validators import DataRequired, Email, Optional
-from models.volunteer import LocalStatusEnum, SalutationEnum, SuffixEnum
+from models.volunteer import LocalStatusEnum, SalutationEnum, SuffixEnum, GenderEnum, RaceEthnicityEnum, EducationEnum
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(message="Username is required.")])
@@ -25,3 +25,18 @@ class VolunteerForm(FlaskForm):
     local_status = SelectField('Local Status', choices=LocalStatusEnum.choices(), validators=[Optional()])
     skills = TextAreaField('Skills', validators=[Optional()])
     notes = TextAreaField('Notes', validators=[Optional()])
+    gender = SelectField(
+        'Gender',
+        choices=GenderEnum.choices(),
+        validators=[Optional()]
+    )
+    race_ethnicity = SelectField(
+        'Race/Ethnicity',
+        choices=RaceEthnicityEnum.choices(),
+        validators=[Optional()]
+    )
+    education = SelectField(
+        'Education',
+        choices=EducationEnum.choices(),
+        validators=[Optional()]
+    )

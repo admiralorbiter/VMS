@@ -9,7 +9,7 @@ from forms import VolunteerForm
 from sqlalchemy import or_, and_
 
 from models.history import History
-from models.volunteer import Address, Engagement, EventParticipation, GenderEnum, Skill, VolunteerSkill, Email, Phone
+from models.volunteer import Address, EducationEnum, Engagement, EventParticipation, GenderEnum, RaceEthnicityEnum, Skill, VolunteerSkill, Email, Phone, LocalStatusEnum
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
 volunteers_bp = Blueprint('volunteers', __name__)
@@ -263,6 +263,8 @@ def add_volunteer():
                 department=form.department.data or '',
                 industry=form.industry.data or '',
                 local_status=form.local_status.data,
+                gender=form.gender.data if form.gender.data else None,
+                race_ethnicity=form.race_ethnicity.data if form.race_ethnicity.data else None,
                 notes=form.notes.data or ''
             )
 
@@ -368,7 +370,6 @@ def edit_volunteer(id):
     if request.method == 'POST':
         print("Form data:", form.data)  # Debug form data
         print("Form errors:", form.errors)  # Debug validation errors
-        print("Is submitted:", form.is_submitted())  # Debug validation status
         
         try:
             # Convert empty strings to None for enum fields
@@ -383,23 +384,31 @@ def edit_volunteer(id):
             volunteer.title = form.title.data or None
             volunteer.department = form.department.data or None
             volunteer.industry = form.industry.data or None
-            volunteer.local_status = form.local_status.data or None
+            
+            # Add new demographic fields
+            volunteer.gender = form.gender.data if form.gender.data else None
+            volunteer.race_ethnicity = form.race_ethnicity.data if form.race_ethnicity.data else None
+            volunteer.education = form.education.data if form.education.data else None
+            volunteer.local_status = form.local_status.data
             volunteer.notes = form.notes.data or None
+
+            # Handle emails
+            emails_data = json.loads(request.form.get('emails', '[]'))
             
-            # Handle email updates
-            if form.email.data:
-                if volunteer.emails:
-                    primary_email = next((e for e in volunteer.emails if e.primary), None)
-                    if primary_email:
-                        primary_email.email = form.email.data
-                        primary_email.type = form.email_type.data
-                    else:
-                        email = Email(email=form.email.data, type=form.email_type.data, primary=True)
-                        volunteer.emails.append(email)
-                else:
-                    email = Email(email=form.email.data, type=form.email_type.data, primary=True)
-                    volunteer.emails.append(email)
+            # Remove all existing emails
+            for email in volunteer.emails:
+                db.session.delete(email)
             
+            # Add new emails
+            for email_data in emails_data:
+                email = Email(
+                    email=email_data['email'],
+                    type=email_data['type'],
+                    primary=email_data['primary'],
+                    volunteer=volunteer
+                )
+                db.session.add(email)
+
             # Handle phone updates
             if form.phone.data:
                 if volunteer.phones:
@@ -427,39 +436,55 @@ def edit_volunteer(id):
             
             db.session.commit()
             flash('Volunteer updated successfully!', 'success')
-            return redirect(url_for('volunteers.view_volunteer', id=volunteer.id))
+            return redirect(url_for('volunteers.view_volunteer', id=id))
+            
         except Exception as e:
             db.session.rollback()
             print(f"Database error: {str(e)}")  # Debug database errors
             flash(f'Error updating volunteer: {str(e)}', 'error')
             return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
-    
-    # Pre-populate form fields for GET request
-    form.salutation.data = volunteer.salutation.name if volunteer.salutation else 'none'
-    form.first_name.data = volunteer.first_name
-    form.middle_name.data = volunteer.middle_name
-    form.last_name.data = volunteer.last_name
-    form.suffix.data = volunteer.suffix.name if volunteer.suffix else 'none'
-    form.organization_name.data = volunteer.organization_name
-    form.title.data = volunteer.title
-    form.department.data = volunteer.department
-    form.industry.data = volunteer.industry
-    form.local_status.data = volunteer.local_status.name if volunteer.local_status else None
-    form.notes.data = volunteer.notes
-    
-    if volunteer.emails:
-        primary_email = next((e for e in volunteer.emails if e.primary), None)
+
+    # GET request - populate form with existing data
+    if volunteer:
+        form.salutation.data = volunteer.salutation
+        form.first_name.data = volunteer.first_name
+        form.middle_name.data = volunteer.middle_name
+        form.last_name.data = volunteer.last_name
+        form.suffix.data = volunteer.suffix
+        form.organization_name.data = volunteer.organization_name
+        form.title.data = volunteer.title
+        form.department.data = volunteer.department
+        form.industry.data = volunteer.industry
+        form.local_status.data = volunteer.local_status
+        form.notes.data = volunteer.notes
+        
+        # Populate new demographic fields
+        form.gender.data = volunteer.gender
+        form.race_ethnicity.data = volunteer.race_ethnicity
+        form.education.data = volunteer.education
+
+        # Get primary email and phone if they exist
+        primary_email = next((email for email in volunteer.emails if email.primary), None)
         if primary_email:
             form.email.data = primary_email.email
             form.email_type.data = primary_email.type
-    
-    if volunteer.phones:
-        primary_phone = next((p for p in volunteer.phones if p.primary), None)
+
+        primary_phone = next((phone for phone in volunteer.phones if phone.primary), None)
         if primary_phone:
             form.phone.data = primary_phone.number
             form.phone_type.data = primary_phone.type
-    
-    return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
+
+        # Handle skills
+        if volunteer.skills:
+            form.skills.data = json.dumps([skill.name for skill in volunteer.skills])
+
+    return render_template('volunteers/edit.html', 
+                         form=form, 
+                         volunteer=volunteer,
+                         GenderEnum=GenderEnum,
+                         RaceEthnicityEnum=RaceEthnicityEnum,
+                         EducationEnum=EducationEnum,
+                         LocalStatusEnum=LocalStatusEnum)
 
 @volunteers_bp.route('/volunteers/import', methods=['GET', 'POST'])
 @login_required
