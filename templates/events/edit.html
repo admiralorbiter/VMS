@@ -118,6 +118,33 @@
             </div>
         </div>
 
+        <div class="form-section">
+            <h2><i class="fa-solid fa-brain"></i> Skills Required</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="skill-input">Add Skills</label>
+                    <div class="skill-input-group">
+                        <input type="text" id="skill-input" class="form-control skill-input" 
+                               placeholder="Enter a skill...">
+                        <button type="button" class="add-skill-btn" onclick="addSkill()">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="skills-container" class="skills-grid">
+                        {% for skill in event.skills %}
+                        <div class="skill-tag" data-skill-id="{{ skill.id }}">
+                            <span>{{ skill.name }}</span>
+                            <button type="button" onclick="removeSkill(this)">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                            <input type="hidden" name="skills[]" value="{{ skill.id }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="save-btn">
                 <i class="fa-solid fa-save"></i> Save Changes
@@ -128,4 +155,7 @@
         </div>
     </form>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/events.js') }}"></script>
 {% endblock %}

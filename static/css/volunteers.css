@@ -2251,3 +2251,62 @@ main {
         grid-template-columns: 1fr;
     }
 }
+
+/* Event Skills Section */
+.skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 1rem;
+}
+
+.skill-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.skill-input {
+    flex: 1;
+}
+
+.add-skill-btn {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 0 var(--delft-blue);
+    transition: all 0.2s ease;
+}
+
+.add-skill-btn:hover {
+    background: var(--delft-blue);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+.skill-tag {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--mint-green);
+    border: 1px solid var(--non-photo-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+}
+
+.skill-tag button {
+    background: none;
+    border: none;
+    color: var(--poppy);
+    padding: 0;
+    cursor: pointer;
+    font-size: 1rem;
+}

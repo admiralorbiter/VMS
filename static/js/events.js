@@ -166,3 +166,55 @@ function confirmDelete() {
         closeDeleteModal();
     });
 }
+
+function addSkill() {
+    const input = document.getElementById('skill-input');
+    const skillName = input.value.trim();
+    
+    if (!skillName) return;
+    
+    // Check if skill already exists
+    const existingSkills = document.querySelectorAll('.skill-tag span');
+    for (let skill of existingSkills) {
+        if (skill.textContent.toLowerCase() === skillName.toLowerCase()) {
+            alert('This skill has already been added.');
+            return;
+        }
+    }
+    
+    // Create new skill tag
+    fetch('/api/skills/find-or-create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: skillName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const skillsContainer = document.getElementById('skills-container');
+            const skillTag = document.createElement('div');
+            skillTag.className = 'skill-tag';
+            skillTag.dataset.skillId = data.skill.id;
+            skillTag.innerHTML = `
+                <span>${data.skill.name}</span>
+                <button type="button" onclick="removeSkill(this)">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+                <input type="hidden" name="skills[]" value="${data.skill.id}">
+            `;
+            skillsContainer.appendChild(skillTag);
+            input.value = '';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding skill');
+    });
+}
+
+function removeSkill(button) {
+    const skillTag = button.closest('.skill-tag');
+    skillTag.remove();
+}

@@ -8,6 +8,7 @@ from models.event import Event, EventType, EventStatus
 from models.volunteer import EventParticipation, Skill, Volunteer
 from datetime import datetime, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from sqlalchemy.sql import func
 
 from routes.utils import DISTRICT_MAPPINGS, get_or_create_district, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 
@@ -309,6 +310,11 @@ def edit_event(id):
             event.volunteer_needed = request.form.get('volunteer_needed', type=int)
             event.description = request.form.get('description')
             
+            # Update skills
+            skill_ids = request.form.getlist('skills[]')
+            skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
+            event.skills = skills
+            
             db.session.commit()
             flash('Event updated successfully!', 'success')
             return redirect(url_for('events.view_event', id=event.id))
@@ -523,3 +529,30 @@ def delete_event(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@events_bp.route('/api/skills/find-or-create', methods=['POST'])
+@login_required
+def find_or_create_skill():
+    try:
+        data = request.get_json()
+        skill_name = data.get('name').strip()
+        
+        # Look for existing skill
+        skill = Skill.query.filter(func.lower(Skill.name) == func.lower(skill_name)).first()
+        
+        # Create new skill if it doesn't exist
+        if not skill:
+            skill = Skill(name=skill_name)
+            db.session.add(skill)
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'skill': {
+                'id': skill.id,
+                'name': skill.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
