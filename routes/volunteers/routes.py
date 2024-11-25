@@ -9,6 +9,7 @@ from forms import VolunteerForm
 from sqlalchemy import or_, and_
 
 from models.history import History
+from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Address, EducationEnum, Engagement, EventParticipation, GenderEnum, RaceEthnicityEnum, SalutationEnum, Skill, SuffixEnum, VolunteerSkill, Email, Phone, LocalStatusEnum
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
@@ -166,10 +167,20 @@ def volunteers():
 
     if current_filters.get('org_search'):
         search_term = f"%{current_filters['org_search']}%"
-        query = query.filter(or_(
+        # Join with VolunteerOrganization and Organization tables
+        query = query.outerjoin(
+            VolunteerOrganization
+        ).outerjoin(
+            Organization,
+            VolunteerOrganization.organization_id == Organization.id
+        ).filter(or_(
+            # Search direct volunteer fields
             Volunteer.organization_name.ilike(search_term),
             Volunteer.title.ilike(search_term),
-            Volunteer.department.ilike(search_term)
+            Volunteer.department.ilike(search_term),
+            # Search related organization fields
+            Organization.name.ilike(search_term),
+            VolunteerOrganization.role.ilike(search_term)
         ))
 
     if current_filters.get('email_search'):
