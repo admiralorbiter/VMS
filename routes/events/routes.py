@@ -132,6 +132,14 @@ def events():
     # Remove empty filters
     current_filters = {k: v for k, v in current_filters.items() if v}
 
+    # Get sort parameters
+    sort_by = request.args.get('sort_by', 'start_date')  # default sort by start_date
+    sort_direction = request.args.get('sort_direction', 'desc')  # default direction
+    
+    # Add sort parameters to current_filters
+    current_filters['sort_by'] = sort_by
+    current_filters['sort_direction'] = sort_direction
+
     # Build query
     query = Event.query
 
@@ -176,8 +184,12 @@ def events():
         except ValueError:
             flash('Invalid end date format', 'warning')
 
-    # Default sort by start_date desc
-    query = query.order_by(Event.start_date.desc())
+    # Apply sorting
+    sort_column = getattr(Event, sort_by, Event.start_date)
+    if sort_direction == 'desc':
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
 
     # Apply pagination
     pagination = query.paginate(

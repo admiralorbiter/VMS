@@ -1240,3 +1240,22 @@ td:nth-child(6) {
         width: 100%;
     }
 }
+
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+th.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+th.sort-asc i.fa-sort-up,
+th.sort-desc i.fa-sort-down {
+    opacity: 1;
+}
+
+th.sortable i {
+    margin-left: 5px;
+    opacity: 0.5;
+}
