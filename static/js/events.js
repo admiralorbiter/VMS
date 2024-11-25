@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize search with debouncing
     const searchInputs = document.querySelectorAll('.filter-group input[type="text"]');
     searchInputs.forEach(input => {
-        input.addEventListener('input', debounce(handleSearch, 300));
+        input.addEventListener('input', debounce(handleSearch, 600));
     });
 
     // Initialize purge button
