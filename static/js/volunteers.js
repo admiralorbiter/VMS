@@ -31,6 +31,27 @@ document.addEventListener('DOMContentLoaded', function() {
     if (perPageSelect) {
         perPageSelect.addEventListener('change', handlePerPageChange);
     }
+
+    // Initialize delete buttons
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const volunteerId = button.dataset.volunteerId;
+            const volunteerName = button.dataset.volunteerName;
+            confirmDelete(volunteerId, volunteerName);
+        });
+    });
+
+    // Initialize modal cancel button
+    const cancelButton = document.querySelector('.cancel-delete');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', cancelDelete);
+    }
+
+    // Initialize modal confirm button
+    const confirmButton = document.querySelector('.confirm-delete');
+    if (confirmButton) {
+        confirmButton.addEventListener('click', executeDelete);
+    }
 });
 
 function debounce(func, wait) {
@@ -133,4 +154,45 @@ function handlePerPageChange(event) {
     url.searchParams.set('per_page', event.target.value);
     url.searchParams.set('page', 1); // Reset to first page when changing items per page
     window.location = url;
+}
+
+let deleteVolunteerId = null;
+
+function confirmDelete(id, name) {
+    deleteVolunteerId = id;
+    document.getElementById('volunteerName').textContent = name;
+    document.getElementById('deleteModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+}
+
+function cancelDelete() {
+    document.getElementById('deleteModal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
+    deleteVolunteerId = null;
+}
+
+function executeDelete() {
+    if (!deleteVolunteerId) return;
+    
+    fetch(`/volunteers/delete/${deleteVolunteerId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error deleting volunteer: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting volunteer: ' + error);
+    })
+    .finally(() => {
+        cancelDelete();
+    });
 } 

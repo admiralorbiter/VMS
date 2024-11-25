@@ -2132,3 +2132,54 @@ main {
     cursor: pointer;
     font-size: 1rem;
 }
+
+/* Delete Button Volunteer-specific Styles */
+.action-btn.delete-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    background-color: var(--poppy);
+    color: var(--mint-green);
+}
+
+.action-btn.delete-btn:hover {
+    background-color: #c13136;
+}
+
+/* Confirmation Modal Content Styles */
+.confirm-modal h3 {
+    color: var(--delft-blue);
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.confirm-modal p {
+    color: var(--ucla-blue);
+    margin-bottom: 1.5rem;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.confirm-modal-actions button {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.confirm-modal-actions .confirm-delete {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    border: none;
+}
+
+.confirm-modal-actions .cancel-delete {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: none;
+}

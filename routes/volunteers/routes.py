@@ -201,8 +201,6 @@ def volunteers():
             sort_column = (Volunteer.first_name + ' ' + 
                           db.func.coalesce(Volunteer.middle_name, '') + ' ' + 
                           Volunteer.last_name)
-        elif sort_by == 'organization':
-            sort_column = Volunteer.organization_name
         elif sort_by == 'times_volunteered':
             sort_column = (
                 Volunteer.times_volunteered + 
@@ -564,4 +562,26 @@ def purge_volunteers():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
+    
+@volunteers_bp.route('/volunteers/delete/<int:id>', methods=['DELETE'])
+@login_required
+def delete_volunteer(id):
+    try:
+        volunteer = Volunteer.query.get_or_404(id)
+        
+        # Delete related records first
+        Email.query.filter_by(volunteer_id=id).delete()
+        Phone.query.filter_by(volunteer_id=id).delete()
+        VolunteerSkill.query.filter_by(volunteer_id=id).delete()
+        History.query.filter_by(volunteer_id=id).delete()
+        EventParticipation.query.filter_by(volunteer_id=id).delete()
+        
+        # Delete the volunteer
+        db.session.delete(volunteer)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Volunteer deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
     
