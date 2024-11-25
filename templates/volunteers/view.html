@@ -407,7 +407,7 @@
                 </div>
 
                 {% for status, events in participation_stats.items() %}
-                <div class="event-list" {% if not loop.first %}style="display: none;"{% endif %}>
+                <div class="event-list" data-status="{{ status }}" {% if not loop.first %}style="display: none;"{% endif %}>
                     {% if events %}
                         {% for event in events %}
                         <div class="event-item">
@@ -415,10 +415,10 @@
                                 <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
                                 <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
                             </div>
-                            <div class="event-info">
+                            <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
                                 <div class="event-title">{{ event.event.title }}</div>
                                 <div class="event-location">{{ event.event.location }}</div>
-                            </div>
+                            </a>
                             {% if event.delivery_hours %}
                             <div class="event-hours">
                                 {{ event.delivery_hours }} hours
@@ -438,4 +438,7 @@
 
 <!-- Add this before closing body tag -->
 <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/volunteers.js') }}"></script>
 {% endblock %}

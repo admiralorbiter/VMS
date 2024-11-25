@@ -162,6 +162,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
         this.submit();
     });
+
+    // Initialize participation tabs
+    document.querySelectorAll('.participation-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            document.querySelectorAll('.participation-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Hide all event lists
+            document.querySelectorAll('.event-list').forEach(list => {
+                list.style.display = 'none';
+            });
+            
+            // Show the selected event list
+            // Get the text content of the span that contains just the status (not the count)
+            const statusSpan = tab.querySelector('span:not(.participation-tab-count)');
+            const status = statusSpan.textContent.trim();
+            
+            // Find the matching event list
+            const targetList = document.querySelector(`.event-list[data-status="${status}"]`);
+            if (targetList) {
+                targetList.style.display = 'block';
+            }
+        });
+    });
 });
 
 function debounce(func, wait) {
