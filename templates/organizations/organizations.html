@@ -11,6 +11,9 @@
     <div class="page-header">
         <h1>Organizations</h1>
         <div class="header-actions">
+            <a href="{{ url_for('organizations.add_organization') }}" class="action-btn">
+                <i class="fa-solid fa-plus"></i> Add Organization
+            </a>
             <a href="{{ url_for('organizations.import_organizations') }}" class="action-btn">
                 <i class="fa-solid fa-file-import"></i> Import Organizations
             </a>

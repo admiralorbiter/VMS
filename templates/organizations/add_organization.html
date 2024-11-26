@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Add Organization{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/organizations.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="organizations-container">
+    <div class="organizations-header">
+        <h1>Create New Organization</h1>
+        <a href="{{ url_for('organizations.organizations') }}" class="cancel-btn">
+            <i class="fa-solid fa-arrow-left"></i> Back to Organizations
+        </a>
+    </div>
+
+    <form method="POST" class="organization-form">
+        <div class="form-section">
+            <h2 class="section-title">
+                <i class="fa-solid fa-info-circle"></i>
+                Basic Information
+            </h2>
+            <div class="form-grid">
+                <div class="form-group required">
+                    <label for="name">Organization Name</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-building"></i>
+                        <input type="text" id="name" name="name" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="type">Organization Type</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-tag"></i>
+                        <select id="type" name="type" class="form-select">
+                            <option value="">Select Type</option>
+                            {% for type in organization_types %}
+                            <option value="{{ type }}">{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-align-left"></i>
+                        <input type="text" id="description" name="description" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2 class="section-title">
+                <i class="fa-solid fa-location-dot"></i>
+                Address Information
+            </h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="billing_street">Street Address</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-road"></i>
+                        <input type="text" id="billing_street" name="billing_street" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="billing_city">City</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-city"></i>
+                        <input type="text" id="billing_city" name="billing_city" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="billing_state">State</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-map"></i>
+                        <input type="text" id="billing_state" name="billing_state" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="billing_postal_code">Postal Code</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-mail-bulk"></i>
+                        <input type="text" id="billing_postal_code" name="billing_postal_code" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="billing_country">Country</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-globe"></i>
+                        <input type="text" id="billing_country" name="billing_country" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="save-btn">
+                <i class="fa-solid fa-save"></i> Create Organization
+            </button>
+            <a href="{{ url_for('organizations.organizations') }}" class="cancel-btn">
+                <i class="fa-solid fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, jsonify, flash
+from flask import Blueprint, request, render_template, jsonify, flash, redirect, url_for
 from flask_login import login_required
 from models import Volunteer, db
 from models.event import Event
@@ -211,3 +211,42 @@ def view_organization(id):
         volunteers=volunteers,
         recent_activities=recent_activities[:10]  # Limit to 10 most recent
     )
+
+@organizations_bp.route('/organizations/add', methods=['GET', 'POST'])
+@login_required
+def add_organization():
+    if request.method == 'POST':
+        try:
+            # Create new organization
+            organization = Organization(
+                name=request.form['name'],
+                type=request.form['type'],
+                description=request.form['description'],
+                billing_street=request.form['billing_street'],
+                billing_city=request.form['billing_city'],
+                billing_state=request.form['billing_state'],
+                billing_postal_code=request.form['billing_postal_code'],
+                billing_country=request.form['billing_country']
+            )
+            
+            db.session.add(organization)
+            db.session.commit()
+            
+            flash('Organization created successfully!', 'success')
+            return redirect(url_for('organizations.organizations'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating organization: {str(e)}', 'error')
+            return redirect(url_for('organizations.add_organization'))
+    
+    # Get unique organization types for the dropdown
+    organization_types = db.session.query(Organization.type)\
+        .filter(Organization.type.isnot(None))\
+        .distinct()\
+        .order_by(Organization.type)\
+        .all()
+    organization_types = [t[0] for t in organization_types if t[0]]
+    
+    return render_template('organizations/add_organization.html',
+                         organization_types=organization_types)
