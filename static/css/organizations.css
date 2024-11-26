@@ -538,4 +538,126 @@ main {
 .action-btn:hover {
     transform: translateY(1px);
     filter: brightness(90%);
+}
+
+.action-btn.purge-btn {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+}
+
+.action-btn.purge-btn:hover {
+    background-color: #c13136;
+}
+
+/* Notification Styles (if not already present) */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification.success {
+    border-left: 4px solid #4CAF50;
+}
+
+.notification.error {
+    border-left: 4px solid var(--poppy);
+}
+
+.notification i {
+    font-size: 1.25rem;
+}
+
+.notification.success i {
+    color: #4CAF50;
+}
+
+.notification.error i {
+    color: var(--poppy);
+}
+
+.volunteer-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+}
+
+.volunteer-item:last-child {
+    border-bottom: none;
+}
+
+.volunteer-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.volunteer-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.volunteer-role {
+    background-color: var(--non-photo-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: var(--delft-blue);
+}
+
+.volunteer-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
+.volunteer-status.current {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.volunteer-dates {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.date-label {
+    font-weight: 500;
+    margin-right: 0.25rem;
+}
+
+.info-group {
+    margin-bottom: 1.5rem;
+}
+
+.info-group:last-child {
+    margin-bottom: 0;
+}
+
+.info-group label {
+    display: block;
+    color: var(--ucla-blue);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.info-group address {
+    font-style: normal;
+    line-height: 1.5;
 } 

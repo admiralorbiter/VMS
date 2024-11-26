@@ -77,3 +77,50 @@ window.addEventListener('click', function(event) {
         organizationToDelete = null;
     }
 });
+
+function purgeOrganizations() {
+    if (confirm('Are you sure you want to purge ALL organizations? This will delete all organizations and their affiliations. This action cannot be undone.')) {
+        fetch('/organizations/purge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('success', data.message);
+                // Reload the page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('error', data.error || 'An error occurred while purging organizations');
+            }
+        })
+        .catch(error => {
+            showNotification('error', 'An error occurred while purging organizations');
+        });
+    }
+}
+
+// Add this if you don't already have a showNotification function
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Fade in
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}

@@ -306,3 +306,27 @@ def edit_organization(id):
     return render_template('organizations/edit_organization.html',
                          organization=organization,
                          organization_types=organization_types)
+
+@organizations_bp.route('/organizations/purge', methods=['POST'])
+@login_required
+def purge_organizations():
+    try:
+        # First delete all volunteer organization affiliations
+        VolunteerOrganization.query.delete()
+        
+        # Then delete all organizations
+        Organization.query.delete()
+        
+        # Commit the changes
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'All organizations and their affiliations have been purged'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

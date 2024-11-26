@@ -16,12 +16,15 @@
         </div>
         <div class="header-actions">
             {% if organization.salesforce_id %}
-            <a href="https://prep-kc.lightning.force.com/lightning/r/Account/{{ organization.salesforce_id }}/view" 
+            <a href="{{ organization.salesforce_url }}" 
                target="_blank" 
                class="action-btn salesforce-btn">
                 <i class="fa-solid fa-cloud"></i> View in Salesforce
             </a>
             {% endif %}
+            <a href="{{ url_for('organizations.edit_organization', id=organization.id) }}" class="action-btn">
+                <i class="fa-solid fa-pencil"></i> Edit Organization
+            </a>
             <a href="{{ url_for('organizations.organizations') }}" class="action-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back to Organizations
             </a>
@@ -54,12 +57,33 @@
                         {% if organization.billing_country %}<br>{{ organization.billing_country }}{% endif %}
                     </address>
                 </div>
-                {% endif %} 
+                {% endif %}
+
+                {% if organization.created_at %}
+                <div class="info-group">
+                    <label>Created</label>
+                    <p>{{ organization.created_at.strftime('%B %d, %Y') }}</p>
+                </div>
+                {% endif %}
+
+                {% if organization.updated_at %}
+                <div class="info-group">
+                    <label>Last Updated</label>
+                    <p>{{ organization.updated_at.strftime('%B %d, %Y') }}</p>
+                </div>
+                {% endif %}
 
                 {% if organization.last_activity_date %}
                 <div class="info-group">
                     <label>Last Activity</label>
                     <p>{{ organization.last_activity_date.strftime('%B %d, %Y') }}</p>
+                </div>
+                {% endif %}
+
+                {% if organization.salesforce_id %}
+                <div class="info-group">
+                    <label>Salesforce ID</label>
+                    <p>{{ organization.salesforce_id }}</p>
                 </div>
                 {% endif %}
             </div>
@@ -71,53 +95,36 @@
                 <h2><i class="fa-solid fa-users"></i> Associated Volunteers</h2>
             </div>
             <div class="card-content">
-                {% if volunteers %}
+                {% if organization.volunteer_organizations %}
                 <div class="volunteers-list">
-                    {% for volunteer in volunteers %}
+                    {% for vo in organization.volunteer_organizations %}
                     <div class="volunteer-item">
                         <div class="volunteer-info">
-                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="volunteer-name">
-                                {{ volunteer.first_name }} {{ volunteer.last_name }}
+                            <a href="{{ url_for('volunteers.view_volunteer', id=vo.volunteer.id) }}" class="volunteer-name">
+                                {{ vo.volunteer.first_name }} {{ vo.volunteer.last_name }}
                             </a>
-                            {% if volunteer.title %}
-                            <span class="volunteer-title">{{ volunteer.title }}</span>
+                            {% if vo.role %}
+                            <span class="volunteer-role">{{ vo.role }}</span>
+                            {% endif %}
+                            {% if vo.status %}
+                            <span class="volunteer-status {{ vo.status.lower() }}">{{ vo.status }}</span>
                             {% endif %}
                         </div>
+                        {% if vo.start_date or vo.end_date %}
+                        <div class="volunteer-dates">
+                            {% if vo.start_date %}
+                            <span class="date-label">Started:</span> {{ vo.start_date.strftime('%B %d, %Y') }}
+                            {% endif %}
+                            {% if vo.end_date %}
+                            <span class="date-label">Ended:</span> {{ vo.end_date.strftime('%B %d, %Y') }}
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
                 <p class="no-data">No volunteers associated with this organization</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Recent Activities Card -->
-        <div class="profile-card activities-info">
-            <div class="card-header">
-                <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent Activities</h2>
-            </div>
-            <div class="card-content">
-                {% if recent_activities %}
-                <div class="activities-list">
-                    {% for activity in recent_activities %}
-                    <div class="activity-item">
-                        <div class="activity-date">
-                            {{ activity.event.start_date.strftime('%B %d, %Y') }}
-                        </div>
-                        <div class="activity-details">
-                            <span class="activity-volunteer">{{ activity.volunteer.full_name }}</span>
-                            participated in
-                            <span class="activity-event">{{ activity.event.name }}</span>
-                            <span class="activity-status {{ activity.status.lower() }}">
-                                {{ activity.status }}
-                            </span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="no-data">No recent activities</p>
                 {% endif %}
             </div>
         </div>
