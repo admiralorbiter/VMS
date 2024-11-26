@@ -10,6 +10,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (perPageSelect) {
         perPageSelect.addEventListener('change', handlePerPageChange);
     }
+
+    // Initialize sorting
+    const sortableHeaders = document.querySelectorAll('th.sortable');
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', handleSort);
+        // Add initial sort direction indicator
+        const currentSort = getCurrentSort();
+        if (currentSort.sort === header.dataset.sort) {
+            updateSortIcon(header, currentSort.direction);
+        }
+    });
 });
 
 function debounce(func, wait) {
@@ -123,4 +134,45 @@ function showNotification(type, message) {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
     }, 5000);
+}
+
+function getCurrentSort() {
+    const url = new URL(window.location);
+    return {
+        sort: url.searchParams.get('sort') || 'name',
+        direction: url.searchParams.get('direction') || 'asc'
+    };
+}
+
+function updateSortIcon(header, direction) {
+    // Remove all existing sort icons
+    header.querySelectorAll('i').forEach(icon => {
+        icon.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
+    });
+
+    // Add the appropriate icon
+    const icon = header.querySelector('i');
+    if (direction === 'asc') {
+        icon.classList.add('fa-sort-up');
+    } else {
+        icon.classList.add('fa-sort-down');
+    }
+}
+
+function handleSort(event) {
+    const header = event.currentTarget;
+    const sortField = header.dataset.sort;
+    const currentSort = getCurrentSort();
+    
+    let newDirection = 'asc';
+    if (currentSort.sort === sortField) {
+        // Toggle direction if clicking the same column
+        newDirection = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    }
+
+    const url = new URL(window.location);
+    url.searchParams.set('sort', sortField);
+    url.searchParams.set('direction', newDirection);
+    url.searchParams.set('page', 1); // Reset to first page when sorting
+    window.location = url;
 }

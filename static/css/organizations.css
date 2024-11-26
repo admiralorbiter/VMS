@@ -660,4 +660,26 @@ main {
 .info-group address {
     font-style: normal;
     line-height: 1.5;
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortable i {
+    margin-left: 0.5rem;
+    color: var(--ucla-blue);
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+/* Active sort styles */
+.sortable i.fa-sort-up,
+.sortable i.fa-sort-down {
+    opacity: 1;
 } 

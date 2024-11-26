@@ -135,19 +135,20 @@ def import_organizations():
 @organizations_bp.route('/organizations')
 @login_required
 def organizations():
-    # Get pagination parameters
+    # Get pagination and sorting parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
+    sort_by = request.args.get('sort', 'name')  # Default sort by name
+    sort_dir = request.args.get('direction', 'asc')  # Default ascending
 
     # Create current_filters dictionary
     current_filters = {
         'search_name': request.args.get('search_name', '').strip(),
         'type': request.args.get('type', ''),
-        'per_page': per_page
+        'per_page': per_page,
+        'sort': sort_by,
+        'direction': sort_dir
     }
-
-    # Remove empty filters
-    current_filters = {k: v for k, v in current_filters.items() if v}
 
     # Build query
     query = Organization.query
@@ -160,6 +161,12 @@ def organizations():
     if current_filters.get('type'):
         query = query.filter(Organization.type == current_filters['type'])
 
+    # Apply sorting
+    sort_column = getattr(Organization, sort_by, Organization.name)
+    if sort_dir == 'desc':
+        sort_column = sort_column.desc()
+    query = query.order_by(sort_column)
+
     # Get unique types for filter dropdown
     organization_types = db.session.query(Organization.type)\
         .filter(Organization.type.isnot(None))\
@@ -167,9 +174,6 @@ def organizations():
         .order_by(Organization.type)\
         .all()
     organization_types = [t[0] for t in organization_types if t[0]]
-
-    # Default sort by name
-    query = query.order_by(Organization.name)
 
     # Apply pagination
     pagination = query.paginate(
