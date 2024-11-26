@@ -92,6 +92,9 @@
                             <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="btn btn-sm action-btn view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
+                            <a href="{{ url_for('organizations.edit_organization', id=org.id) }}" class="btn btn-sm action-btn edit-btn">
+                                <i class="fa-solid fa-pencil"></i> Edit
+                            </a>
                             {% if org.salesforce_url %}
                             <a href="{{ org.salesforce_url }}" target="_blank" class="btn btn-sm action-btn salesforce-btn">
                                 <i class="fa-solid fa-external-link"></i> SF

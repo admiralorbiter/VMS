@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Organization{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/organizations.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="organization-form">
+    <div class="organizations-header">
+        <h1>Edit Organization</h1>
+    </div>
+
+    <form method="POST">
+        <div class="form-section">
+            <h2 class="section-title">
+                <i class="fa-solid fa-building"></i>
+                Basic Information
+            </h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name">Organization Name *</label>
+                    <input type="text" id="name" name="name" class="form-control" 
+                           value="{{ organization.name }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="type">Organization Type</label>
+                    <select id="type" name="type" class="form-select">
+                        <option value="">Select Type</option>
+                        {% for type in organization_types %}
+                        <option value="{{ type }}" {% if organization.type == type %}selected{% endif %}>
+                            {{ type }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" class="form-control" rows="3">{{ organization.description }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2 class="section-title">
+                <i class="fa-solid fa-location-dot"></i>
+                Address Information
+            </h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="billing_street">Street</label>
+                    <input type="text" id="billing_street" name="billing_street" 
+                           class="form-control" value="{{ organization.billing_street }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="billing_city">City</label>
+                    <input type="text" id="billing_city" name="billing_city" 
+                           class="form-control" value="{{ organization.billing_city }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="billing_state">State</label>
+                    <input type="text" id="billing_state" name="billing_state" 
+                           class="form-control" value="{{ organization.billing_state }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="billing_postal_code">Postal Code</label>
+                    <input type="text" id="billing_postal_code" name="billing_postal_code" 
+                           class="form-control" value="{{ organization.billing_postal_code }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="billing_country">Country</label>
+                    <input type="text" id="billing_country" name="billing_country" 
+                           class="form-control" value="{{ organization.billing_country }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('organizations.organizations') }}" class="btn cancel-btn">Cancel</a>
+            <button type="submit" class="btn save-btn">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -268,3 +268,41 @@ def delete_organization(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@organizations_bp.route('/organizations/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_organization(id):
+    organization = Organization.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        try:
+            # Update organization fields
+            organization.name = request.form['name']
+            organization.type = request.form['type']
+            organization.description = request.form['description']
+            organization.billing_street = request.form['billing_street']
+            organization.billing_city = request.form['billing_city']
+            organization.billing_state = request.form['billing_state']
+            organization.billing_postal_code = request.form['billing_postal_code']
+            organization.billing_country = request.form['billing_country']
+            
+            db.session.commit()
+            flash('Organization updated successfully!', 'success')
+            return redirect(url_for('organizations.organizations'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating organization: {str(e)}', 'error')
+            return redirect(url_for('organizations.edit_organization', id=id))
+    
+    # Get unique organization types for the dropdown
+    organization_types = db.session.query(Organization.type)\
+        .filter(Organization.type.isnot(None))\
+        .distinct()\
+        .order_by(Organization.type)\
+        .all()
+    organization_types = [t[0] for t in organization_types if t[0]]
+    
+    return render_template('organizations/edit_organization.html',
+                         organization=organization,
+                         organization_types=organization_types)
