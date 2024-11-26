@@ -103,6 +103,7 @@ main {
 .action-buttons {
     display: flex;
     gap: 0.5rem;
+    justify-content: flex-end;
 }
 
 .view-btn {
@@ -492,4 +493,49 @@ main {
         gap: 1rem;
         align-items: flex-start;
     }
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.action-btn {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.action-btn.view-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.action-btn.edit-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.action-btn.delete-btn {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+}
+
+.action-btn.salesforce-btn {
+    background-color: #00A1E0;
+    color: white;
+}
+
+.action-btn:hover {
+    transform: translateY(1px);
+    filter: brightness(90%);
 } 

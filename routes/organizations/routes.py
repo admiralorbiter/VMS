@@ -250,3 +250,21 @@ def add_organization():
     
     return render_template('organizations/add_organization.html',
                          organization_types=organization_types)
+
+@organizations_bp.route('/organizations/delete/<int:id>', methods=['DELETE'])
+@login_required
+def delete_organization(id):
+    try:
+        organization = Organization.query.get_or_404(id)
+        
+        # Delete associated volunteer organizations first
+        VolunteerOrganization.query.filter_by(organization_id=id).delete()
+        
+        # Delete the organization
+        db.session.delete(organization)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
