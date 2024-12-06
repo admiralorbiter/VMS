@@ -1240,3 +1240,73 @@ td:nth-child(6) {
         width: 100%;
     }
 }
+
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+th.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+th.sort-asc i.fa-sort-up,
+th.sort-desc i.fa-sort-down {
+    opacity: 1;
+}
+
+th.sortable i {
+    margin-left: 5px;
+    opacity: 0.5;
+}
+
+/* Delete button specific styles */
+.action-buttons .delete-btn {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    border: none;
+    box-shadow: 0 2px 0 #b53035;
+}
+
+.action-buttons .delete-btn:hover {
+    background-color: #c13136;
+    color: var(--mint-green);
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #b53035;
+}
+
+.confirm-modal .cancel-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    box-shadow: 0 2px 0 #7ab5b8;
+}
+
+.confirm-modal .cancel-btn:hover {
+    background-color: #8ec9cc;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #7ab5b8;
+}
+
+.confirm-modal .delete-btn {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    box-shadow: 0 2px 0 #b53035;
+}
+
+.confirm-modal .delete-btn:hover {
+    background-color: #c13136;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #b53035;
+}

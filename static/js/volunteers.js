@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize search with debouncing
     const searchInputs = document.querySelectorAll('.filter-group input[type="text"]');
     searchInputs.forEach(input => {
-        input.addEventListener('input', debounce(handleSearch, 300));
+        input.addEventListener('input', debounce(handleSearch, 600));
     });
 
     // Initialize purge button
@@ -31,6 +31,166 @@ document.addEventListener('DOMContentLoaded', function() {
     if (perPageSelect) {
         perPageSelect.addEventListener('change', handlePerPageChange);
     }
+
+    // Initialize delete buttons
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const volunteerId = button.dataset.volunteerId;
+            const volunteerName = button.dataset.volunteerName;
+            confirmDelete(volunteerId, volunteerName);
+        });
+    });
+
+    // Initialize modal cancel button
+    const cancelButton = document.querySelector('.cancel-delete');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', cancelDelete);
+    }
+
+    // Initialize modal confirm button
+    const confirmButton = document.querySelector('.confirm-delete');
+    if (confirmButton) {
+        confirmButton.addEventListener('click', executeDelete);
+    }
+
+    // Initialize phone and address management
+    document.addEventListener('DOMContentLoaded', function() {
+        // ... existing code ...
+
+        // Initialize add buttons
+        document.getElementById('add-phone-btn')?.addEventListener('click', addPhoneGroup);
+        document.getElementById('add-address-btn')?.addEventListener('click', addAddressGroup);
+    });
+
+    function addPhoneGroup() {
+        const container = document.getElementById('phones-container');
+        const phoneGroup = document.createElement('div');
+        phoneGroup.className = 'phone-group';
+        phoneGroup.innerHTML = `
+            <input type="tel" class="form-control phone-input" placeholder="Phone Number" required>
+            <select class="form-select type-select">
+                <option value="personal">Personal</option>
+                <option value="professional">Professional</option>
+            </select>
+            <div class="form-check">
+                <input type="radio" name="primary_phone" class="form-check-input primary-check">
+                <label class="form-check-label">Primary</label>
+            </div>
+            <button type="button" class="btn btn-danger remove-btn" onclick="removeGroup(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        container.appendChild(phoneGroup);
+    }
+
+    function addAddressGroup() {
+        const container = document.getElementById('addresses-container');
+        const addressGroup = document.createElement('div');
+        addressGroup.className = 'address-group';
+        addressGroup.innerHTML = `
+            <input type="text" class="form-control" placeholder="Address Line 1" required>
+            <input type="text" class="form-control" placeholder="Address Line 2">
+            <input type="text" class="form-control" placeholder="City" required>
+            <input type="text" class="form-control" placeholder="State" required>
+            <input type="text" class="form-control" placeholder="ZIP Code" required>
+            <input type="text" class="form-control" placeholder="Country" value="USA">
+            <div class="address-actions">
+                <select class="form-select type-select">
+                    <option value="personal">Personal</option>
+                    <option value="professional">Professional</option>
+                </select>
+                <div class="form-check">
+                    <input type="radio" name="primary_address" class="form-check-input primary-check">
+                    <label class="form-check-label">Primary</label>
+                </div>
+                <button type="button" class="btn btn-danger remove-btn" onclick="removeGroup(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(addressGroup);
+    }
+
+    function removeGroup(button) {
+        button.closest('.phone-group, .address-group').remove();
+    }
+
+    // Update the form submission to include phones and addresses
+    document.querySelector('form')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // ... existing email collection code ...
+
+        // Collect phone data
+        const phones = [];
+        document.querySelectorAll('.phone-group').forEach(group => {
+            phones.push({
+                number: group.querySelector('.phone-input').value,
+                type: group.querySelector('.type-select').value,
+                primary: group.querySelector('.primary-check').checked
+            });
+        });
+        
+        // Collect address data
+        const addresses = [];
+        document.querySelectorAll('.address-group').forEach(group => {
+            const inputs = group.querySelectorAll('.form-control');
+            addresses.push({
+                address_line1: inputs[0].value,
+                address_line2: inputs[1].value,
+                city: inputs[2].value,
+                state: inputs[3].value,
+                zip_code: inputs[4].value,
+                country: inputs[5].value,
+                type: group.querySelector('.type-select').value,
+                primary: group.querySelector('.primary-check').checked
+            });
+        });
+
+        // Add to form data
+        const phonesInput = document.createElement('input');
+        phonesInput.type = 'hidden';
+        phonesInput.name = 'phones';
+        phonesInput.value = JSON.stringify(phones);
+        this.appendChild(phonesInput);
+
+        const addressesInput = document.createElement('input');
+        addressesInput.type = 'hidden';
+        addressesInput.name = 'addresses';
+        addressesInput.value = JSON.stringify(addresses);
+        this.appendChild(addressesInput);
+
+        this.submit();
+    });
+
+    // Initialize participation tabs
+    document.querySelectorAll('.participation-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            document.querySelectorAll('.participation-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Hide all event lists
+            document.querySelectorAll('.event-list').forEach(list => {
+                list.style.display = 'none';
+            });
+            
+            // Show the selected event list
+            // Get the text content of the span that contains just the status (not the count)
+            const statusSpan = tab.querySelector('span:not(.participation-tab-count)');
+            const status = statusSpan.textContent.trim();
+            
+            // Find the matching event list
+            const targetList = document.querySelector(`.event-list[data-status="${status}"]`);
+            if (targetList) {
+                targetList.style.display = 'block';
+            }
+        });
+    });
 });
 
 function debounce(func, wait) {
@@ -133,4 +293,45 @@ function handlePerPageChange(event) {
     url.searchParams.set('per_page', event.target.value);
     url.searchParams.set('page', 1); // Reset to first page when changing items per page
     window.location = url;
+}
+
+let deleteVolunteerId = null;
+
+function confirmDelete(id, name) {
+    deleteVolunteerId = id;
+    document.getElementById('volunteerName').textContent = name;
+    document.getElementById('deleteModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+}
+
+function cancelDelete() {
+    document.getElementById('deleteModal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
+    deleteVolunteerId = null;
+}
+
+function executeDelete() {
+    if (!deleteVolunteerId) return;
+    
+    fetch(`/volunteers/delete/${deleteVolunteerId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error deleting volunteer: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting volunteer: ' + error);
+    })
+    .finally(() => {
+        cancelDelete();
+    });
 } 

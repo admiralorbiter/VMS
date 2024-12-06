@@ -9,7 +9,8 @@ from forms import VolunteerForm
 from sqlalchemy import or_, and_
 
 from models.history import History
-from models.volunteer import Address, Engagement, EventParticipation, GenderEnum, Skill, VolunteerSkill, Email, Phone
+from models.organization import Organization, VolunteerOrganization
+from models.volunteer import Address, EducationEnum, Engagement, EventParticipation, GenderEnum, RaceEthnicityEnum, SalutationEnum, Skill, SuffixEnum, VolunteerSkill, Email, Phone, LocalStatusEnum
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
 volunteers_bp = Blueprint('volunteers', __name__)
@@ -166,10 +167,20 @@ def volunteers():
 
     if current_filters.get('org_search'):
         search_term = f"%{current_filters['org_search']}%"
-        query = query.filter(or_(
+        # Join with VolunteerOrganization and Organization tables
+        query = query.outerjoin(
+            VolunteerOrganization
+        ).outerjoin(
+            Organization,
+            VolunteerOrganization.organization_id == Organization.id
+        ).filter(or_(
+            # Search direct volunteer fields
             Volunteer.organization_name.ilike(search_term),
             Volunteer.title.ilike(search_term),
-            Volunteer.department.ilike(search_term)
+            Volunteer.department.ilike(search_term),
+            # Search related organization fields
+            Organization.name.ilike(search_term),
+            VolunteerOrganization.role.ilike(search_term)
         ))
 
     if current_filters.get('email_search'):
@@ -190,8 +201,6 @@ def volunteers():
             sort_column = (Volunteer.first_name + ' ' + 
                           db.func.coalesce(Volunteer.middle_name, '') + ' ' + 
                           Volunteer.last_name)
-        elif sort_by == 'organization':
-            sort_column = Volunteer.organization_name
         elif sort_by == 'times_volunteered':
             sort_column = (
                 Volunteer.times_volunteered + 
@@ -263,6 +272,8 @@ def add_volunteer():
                 department=form.department.data or '',
                 industry=form.industry.data or '',
                 local_status=form.local_status.data,
+                gender=form.gender.data if form.gender.data else None,
+                race_ethnicity=form.race_ethnicity.data if form.race_ethnicity.data else None,
                 notes=form.notes.data or ''
             )
 
@@ -363,103 +374,73 @@ def view_volunteer(id):
 @login_required
 def edit_volunteer(id):
     volunteer = Volunteer.query.get_or_404(id)
-    form = VolunteerForm()
-    
+    form = VolunteerForm(obj=volunteer)
+
     if request.method == 'POST':
-        print("Form data:", form.data)  # Debug form data
-        print("Form errors:", form.errors)  # Debug validation errors
-        print("Is submitted:", form.is_submitted())  # Debug validation status
-        
         try:
-            # Convert empty strings to None for enum fields
-            volunteer.salutation = None if form.salutation.data == 'none' else form.salutation.data
-            volunteer.suffix = None if form.suffix.data == 'none' else form.suffix.data
+            # Update volunteer with form data
+            form.populate_obj(volunteer)
+
+            # Handle phones
+            phones_data = json.loads(request.form.get('phones', '[]'))
+            Phone.query.filter_by(volunteer_id=volunteer.id).delete()
             
-            # Update basic information
-            volunteer.first_name = form.first_name.data
-            volunteer.middle_name = form.middle_name.data or None
-            volunteer.last_name = form.last_name.data
-            volunteer.organization_name = form.organization_name.data or None
-            volunteer.title = form.title.data or None
-            volunteer.department = form.department.data or None
-            volunteer.industry = form.industry.data or None
-            volunteer.local_status = form.local_status.data or None
-            volunteer.notes = form.notes.data or None
+            for phone_data in phones_data:
+                phone = Phone(
+                    volunteer_id=volunteer.id,
+                    number=phone_data['number'],
+                    type=phone_data['type'],
+                    primary=phone_data['primary']
+                )
+                db.session.add(phone)
+
+            # Handle addresses
+            addresses_data = json.loads(request.form.get('addresses', '[]'))
+            Address.query.filter_by(volunteer_id=volunteer.id).delete()
             
-            # Handle email updates
-            if form.email.data:
-                if volunteer.emails:
-                    primary_email = next((e for e in volunteer.emails if e.primary), None)
-                    if primary_email:
-                        primary_email.email = form.email.data
-                        primary_email.type = form.email_type.data
-                    else:
-                        email = Email(email=form.email.data, type=form.email_type.data, primary=True)
-                        volunteer.emails.append(email)
-                else:
-                    email = Email(email=form.email.data, type=form.email_type.data, primary=True)
-                    volunteer.emails.append(email)
-            
-            # Handle phone updates
-            if form.phone.data:
-                if volunteer.phones:
-                    primary_phone = next((p for p in volunteer.phones if p.primary), None)
-                    if primary_phone:
-                        primary_phone.number = form.phone.data
-                        primary_phone.type = form.phone_type.data
-                    else:
-                        phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
-                        volunteer.phones.append(phone)
-                else:
-                    phone = Phone(number=form.phone.data, type=form.phone_type.data, primary=True)
-                    volunteer.phones.append(phone)
-            
-            # Update skills
-            if form.skills.data:
-                volunteer.skills = []
-                for skill_name in form.skills.data:
-                    if skill_name:
-                        skill = Skill.query.filter_by(name=skill_name).first()
-                        if not skill:
-                            skill = Skill(name=skill_name)
-                            db.session.add(skill)
-                        volunteer.skills.append(skill)
-            
+            for address_data in addresses_data:
+                address = Address(
+                    volunteer_id=volunteer.id,
+                    address_line1=address_data['address_line1'],
+                    address_line2=address_data.get('address_line2', ''),
+                    city=address_data['city'],
+                    state=address_data['state'],
+                    zip_code=address_data['zip_code'],
+                    country=address_data.get('country', 'USA'),
+                    type=address_data['type'],
+                    primary=address_data['primary']
+                )
+                db.session.add(address)
+
             db.session.commit()
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'redirect_url': url_for('volunteers.view_volunteer', id=volunteer.id)
+                })
+            
             flash('Volunteer updated successfully!', 'success')
             return redirect(url_for('volunteers.view_volunteer', id=volunteer.id))
+
         except Exception as e:
             db.session.rollback()
-            print(f"Database error: {str(e)}")  # Debug database errors
+            print(f"Error updating volunteer: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                })
+            
             flash(f'Error updating volunteer: {str(e)}', 'error')
-            return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
-    
-    # Pre-populate form fields for GET request
-    form.salutation.data = volunteer.salutation.name if volunteer.salutation else 'none'
-    form.first_name.data = volunteer.first_name
-    form.middle_name.data = volunteer.middle_name
-    form.last_name.data = volunteer.last_name
-    form.suffix.data = volunteer.suffix.name if volunteer.suffix else 'none'
-    form.organization_name.data = volunteer.organization_name
-    form.title.data = volunteer.title
-    form.department.data = volunteer.department
-    form.industry.data = volunteer.industry
-    form.local_status.data = volunteer.local_status.name if volunteer.local_status else None
-    form.notes.data = volunteer.notes
-    
-    if volunteer.emails:
-        primary_email = next((e for e in volunteer.emails if e.primary), None)
-        if primary_email:
-            form.email.data = primary_email.email
-            form.email_type.data = primary_email.type
-    
-    if volunteer.phones:
-        primary_phone = next((p for p in volunteer.phones if p.primary), None)
-        if primary_phone:
-            form.phone.data = primary_phone.number
-            form.phone_type.data = primary_phone.type
-    
-    return render_template('volunteers/edit.html', form=form, volunteer=volunteer)
+
+    return render_template('volunteers/edit.html', 
+                         form=form, 
+                         volunteer=volunteer,
+                         GenderEnum=GenderEnum,
+                         RaceEthnicityEnum=RaceEthnicityEnum,
+                         LocalStatusEnum=LocalStatusEnum,
+                         EducationEnum=EducationEnum)
 
 @volunteers_bp.route('/volunteers/import', methods=['GET', 'POST'])
 @login_required
@@ -561,4 +542,29 @@ def purge_volunteers():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
+    
+@volunteers_bp.route('/volunteers/delete/<int:id>', methods=['DELETE'])
+@login_required
+def delete_volunteer(id):
+    try:
+        volunteer = Volunteer.query.get_or_404(id)
+        
+        # Delete all related records first (in correct order due to foreign key constraints)
+        Email.query.filter_by(volunteer_id=id).delete()
+        Phone.query.filter_by(volunteer_id=id).delete()
+        VolunteerSkill.query.filter_by(volunteer_id=id).delete()
+        History.query.filter_by(volunteer_id=id).delete()
+        EventParticipation.query.filter_by(volunteer_id=id).delete()
+        VolunteerOrganization.query.filter_by(volunteer_id=id).delete()
+        # Add this line to delete address records
+        Address.query.filter_by(volunteer_id=id).delete()
+        
+        # Delete the volunteer
+        db.session.delete(volunteer)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Volunteer deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
     

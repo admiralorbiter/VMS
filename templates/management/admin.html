@@ -11,7 +11,7 @@
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Create New User</h5>
-            <form id="createUserForm" method="POST" action="{{ url_for('create_user') }}">
+            <form id="createUserForm" method="POST" action="{{ url_for('auth.create_user') }}">
                 <div class="row g-3 align-items-center">
                     <div class="col-auto">
                         <input type="text" name="username" class="form-control" placeholder="Username" required>
@@ -37,7 +37,7 @@
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Change Password</h5>
-            <form id="changePasswordForm" method="POST" action="{{ url_for('change_password') }}">
+            <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}">
                 <div class="row g-3 align-items-center">
                     <div class="col-auto">
                         <input type="password" name="new_password" class="form-control" placeholder="New Password" required>

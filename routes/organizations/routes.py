@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, jsonify, flash
+from flask import Blueprint, request, render_template, jsonify, flash, redirect, url_for
 from flask_login import login_required
 from models import Volunteer, db
 from models.event import Event
@@ -135,19 +135,20 @@ def import_organizations():
 @organizations_bp.route('/organizations')
 @login_required
 def organizations():
-    # Get pagination parameters
+    # Get pagination and sorting parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
+    sort_by = request.args.get('sort', 'name')  # Default sort by name
+    sort_dir = request.args.get('direction', 'asc')  # Default ascending
 
     # Create current_filters dictionary
     current_filters = {
         'search_name': request.args.get('search_name', '').strip(),
         'type': request.args.get('type', ''),
-        'per_page': per_page
+        'per_page': per_page,
+        'sort': sort_by,
+        'direction': sort_dir
     }
-
-    # Remove empty filters
-    current_filters = {k: v for k, v in current_filters.items() if v}
 
     # Build query
     query = Organization.query
@@ -160,6 +161,12 @@ def organizations():
     if current_filters.get('type'):
         query = query.filter(Organization.type == current_filters['type'])
 
+    # Apply sorting
+    sort_column = getattr(Organization, sort_by, Organization.name)
+    if sort_dir == 'desc':
+        sort_column = sort_column.desc()
+    query = query.order_by(sort_column)
+
     # Get unique types for filter dropdown
     organization_types = db.session.query(Organization.type)\
         .filter(Organization.type.isnot(None))\
@@ -167,9 +174,6 @@ def organizations():
         .order_by(Organization.type)\
         .all()
     organization_types = [t[0] for t in organization_types if t[0]]
-
-    # Default sort by name
-    query = query.order_by(Organization.name)
 
     # Apply pagination
     pagination = query.paginate(
@@ -211,3 +215,122 @@ def view_organization(id):
         volunteers=volunteers,
         recent_activities=recent_activities[:10]  # Limit to 10 most recent
     )
+
+@organizations_bp.route('/organizations/add', methods=['GET', 'POST'])
+@login_required
+def add_organization():
+    if request.method == 'POST':
+        try:
+            # Create new organization
+            organization = Organization(
+                name=request.form['name'],
+                type=request.form['type'],
+                description=request.form['description'],
+                billing_street=request.form['billing_street'],
+                billing_city=request.form['billing_city'],
+                billing_state=request.form['billing_state'],
+                billing_postal_code=request.form['billing_postal_code'],
+                billing_country=request.form['billing_country']
+            )
+            
+            db.session.add(organization)
+            db.session.commit()
+            
+            flash('Organization created successfully!', 'success')
+            return redirect(url_for('organizations.organizations'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating organization: {str(e)}', 'error')
+            return redirect(url_for('organizations.add_organization'))
+    
+    # Get unique organization types for the dropdown
+    organization_types = db.session.query(Organization.type)\
+        .filter(Organization.type.isnot(None))\
+        .distinct()\
+        .order_by(Organization.type)\
+        .all()
+    organization_types = [t[0] for t in organization_types if t[0]]
+    
+    return render_template('organizations/add_organization.html',
+                         organization_types=organization_types)
+
+@organizations_bp.route('/organizations/delete/<int:id>', methods=['DELETE'])
+@login_required
+def delete_organization(id):
+    try:
+        organization = Organization.query.get_or_404(id)
+        
+        # Delete associated volunteer organizations first
+        VolunteerOrganization.query.filter_by(organization_id=id).delete()
+        
+        # Delete the organization
+        db.session.delete(organization)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@organizations_bp.route('/organizations/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_organization(id):
+    organization = Organization.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        try:
+            # Update organization fields
+            organization.name = request.form['name']
+            organization.type = request.form['type']
+            organization.description = request.form['description']
+            organization.billing_street = request.form['billing_street']
+            organization.billing_city = request.form['billing_city']
+            organization.billing_state = request.form['billing_state']
+            organization.billing_postal_code = request.form['billing_postal_code']
+            organization.billing_country = request.form['billing_country']
+            
+            db.session.commit()
+            flash('Organization updated successfully!', 'success')
+            return redirect(url_for('organizations.organizations'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating organization: {str(e)}', 'error')
+            return redirect(url_for('organizations.edit_organization', id=id))
+    
+    # Get unique organization types for the dropdown
+    organization_types = db.session.query(Organization.type)\
+        .filter(Organization.type.isnot(None))\
+        .distinct()\
+        .order_by(Organization.type)\
+        .all()
+    organization_types = [t[0] for t in organization_types if t[0]]
+    
+    return render_template('organizations/edit_organization.html',
+                         organization=organization,
+                         organization_types=organization_types)
+
+@organizations_bp.route('/organizations/purge', methods=['POST'])
+@login_required
+def purge_organizations():
+    try:
+        # First delete all volunteer organization affiliations
+        VolunteerOrganization.query.delete()
+        
+        # Then delete all organizations
+        Organization.query.delete()
+        
+        # Commit the changes
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'All organizations and their affiliations have been purged'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

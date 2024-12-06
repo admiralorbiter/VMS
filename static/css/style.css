@@ -485,3 +485,96 @@ main {
     transform: translateY(1px);
     box-shadow: 0 1px 0 #b53035;
 }
+
+/* Organization Display Components */
+.org-title-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: rgba(158, 216, 219, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid var(--ucla-blue);
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.org-title-container:hover {
+    background-color: rgba(158, 216, 219, 0.1);
+}
+
+.org-name {
+    color: var(--delft-blue);
+    font-weight: 600;
+    text-decoration: none;
+    margin-right: auto;
+}
+
+.org-name:hover {
+    color: var(--ucla-blue);
+}
+
+.org-title {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    background-color: rgba(70, 117, 153, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    margin-left: auto;
+}
+
+.org-role {
+    color: var(--delft-blue);
+    font-size: 0.85rem;
+    background-color: var(--non-photo-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+/* Delete Button Base Styles */
+.delete-btn {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    box-shadow: 0 2px 0 #b53035;
+}
+
+.delete-btn:hover {
+    background-color: #c13136;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #b53035;
+}
+
+/* Confirmation Modal Base Styles */
+.confirm-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-width: 400px;
+    width: 90%;
+    border: 2px solid var(--non-photo-blue);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(29, 51, 84, 0.5);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+}

@@ -94,8 +94,8 @@
                     <th class="sortable" data-sort="name">
                         Name <i class="fa-solid"></i>
                     </th>
-                    <th class="sortable" data-sort="organization">
-                        Organization & Title <i class="fa-solid"></i>
+                    <th>
+                        Organization & Title
                     </th>
                     <th class="sortable times-col" data-sort="times_volunteered" data-default-sort="desc">
                         Times Volunteered <i class="fa-solid fa-sort"></i>
@@ -152,14 +152,8 @@
                             {% endif %}
                         </div>
                     </td>
-                    <td>
+                    <td class="actions-col">
                         <div class="action-buttons">
-                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn btn-sm action-btn view-btn" title="View">
-                                <i class="fa-solid fa-eye"></i>
-                            </a>
-                            <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn btn-sm action-btn edit-btn" title="Edit">
-                                <i class="fa-solid fa-pencil"></i>
-                            </a>
                             {% if volunteer.volunteer.salesforce_contact_url %}
                             <a href="{{ volunteer.volunteer.salesforce_contact_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Contact">
                                 <i class="fa-solid fa-cloud"></i>
@@ -170,6 +164,16 @@
                                 <i class="fa-solid fa-building-user"></i>
                             </a>
                             {% endif %}
+                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn view-btn">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn edit-btn">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn action-btn delete-btn" data-volunteer-id="{{ volunteer.volunteer.id }}" 
+                                    data-volunteer-name="{{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -212,6 +216,16 @@
         </div>
     </div>
 </div>
+
+<div id="deleteModal" class="confirm-modal" style="display: none;">
+    <h3>Confirm Delete</h3>
+    <p>Are you sure you want to delete <span id="volunteerName"></span>? This action cannot be undone.</p>
+    <div class="confirm-modal-actions">
+        <button class="cancel-delete">Cancel</button>
+        <button class="confirm-delete">Delete</button>
+    </div>
+</div>
+<div id="modalOverlay" class="modal-overlay" style="display: none;"></div>
 {% endblock %}
 
 {% block extra_js %}

@@ -53,10 +53,14 @@ class GenderEnum(FormEnum):
     male = 'Male'
     female = 'Female'
     non_binary = 'Non-binary'
+    genderfluid = 'Genderfluid'
+    agender = 'Agender'
+    transgender = 'Transgender'
     prefer_not_to_say = 'Prefer not to say'
     other = 'Other'
 
 class EducationEnum(FormEnum):
+    none = ''
     high_school = 'High School Diploma'
     associate_degree = 'Associate Degree'
     bachelors_degree = 'Bachelor’s Degree'
@@ -68,6 +72,7 @@ class EducationEnum(FormEnum):
     other = 'Other'
 
 class RaceEthnicityEnum(FormEnum):
+    unknown = 'Unknown'
     american_indian = 'American Indian or Alaska Native'
     asian = 'Asian'
     black = 'Black or African American'
@@ -119,7 +124,7 @@ class Volunteer(db.Model):
     # Additional Information
     birthdate = db.Column(Date)
     gender = db.Column(Enum(GenderEnum))
-    education = db.Column(Enum(EducationEnum))
+    education = db.Column(Enum(EducationEnum), nullable=True)
     local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown)
     race_ethnicity = db.Column(Enum(RaceEthnicityEnum))
 
@@ -205,6 +210,14 @@ class Email(db.Model):
     email = db.Column(String(100))
     type = db.Column(Enum(ContactTypeEnum))
     primary = db.Column(Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'type': self.type.name if self.type else 'personal',
+            'primary': self.primary
+        }
 
 # Address Model
 class Address(db.Model):

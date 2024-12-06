@@ -8,6 +8,7 @@ from models.event import Event, EventType, EventStatus
 from models.volunteer import EventParticipation, Skill, Volunteer
 from datetime import datetime, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from sqlalchemy.sql import func
 
 from routes.utils import DISTRICT_MAPPINGS, get_or_create_district, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 
@@ -118,6 +119,11 @@ def events():
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
+    
+    # Validate per_page value
+    allowed_per_page = [10, 25, 50, 100]
+    if per_page not in allowed_per_page:
+        per_page = 25  # fallback to default if invalid value
 
     # Create current_filters dictionary
     current_filters = {
@@ -131,6 +137,14 @@ def events():
 
     # Remove empty filters
     current_filters = {k: v for k, v in current_filters.items() if v}
+
+    # Get sort parameters
+    sort_by = request.args.get('sort_by', 'start_date')  # default sort by start_date
+    sort_direction = request.args.get('sort_direction', 'desc')  # default direction
+    
+    # Add sort parameters to current_filters
+    current_filters['sort_by'] = sort_by
+    current_filters['sort_direction'] = sort_direction
 
     # Build query
     query = Event.query
@@ -176,8 +190,12 @@ def events():
         except ValueError:
             flash('Invalid end date format', 'warning')
 
-    # Default sort by start_date desc
-    query = query.order_by(Event.start_date.desc())
+    # Apply sorting
+    sort_column = getattr(Event, sort_by, Event.start_date)
+    if sort_direction == 'desc':
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
 
     # Apply pagination
     pagination = query.paginate(
@@ -291,6 +309,11 @@ def edit_event(id):
             event.status = request.form.get('status', event.status)
             event.volunteer_needed = request.form.get('volunteer_needed', type=int)
             event.description = request.form.get('description')
+            
+            # Update skills
+            skill_ids = request.form.getlist('skills[]')
+            skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
+            event.skills = skills
             
             db.session.commit()
             flash('Event updated successfully!', 'success')
@@ -488,3 +511,48 @@ def sync_events():
         db.session.rollback()
         print(f"Error in sync_events: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@events_bp.route('/events/delete/<int:id>', methods=['DELETE'])
+@login_required
+def delete_event(id):
+    try:
+        event = Event.query.get_or_404(id)
+        
+        # First delete all participations
+        EventParticipation.query.filter_by(event_id=id).delete()
+        
+        # Then delete the event
+        db.session.delete(event)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@events_bp.route('/api/skills/find-or-create', methods=['POST'])
+@login_required
+def find_or_create_skill():
+    try:
+        data = request.get_json()
+        skill_name = data.get('name').strip()
+        
+        # Look for existing skill
+        skill = Skill.query.filter(func.lower(Skill.name) == func.lower(skill_name)).first()
+        
+        # Create new skill if it doesn't exist
+        if not skill:
+            skill = Skill(name=skill_name)
+            db.session.add(skill)
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'skill': {
+                'id': skill.id,
+                'name': skill.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
