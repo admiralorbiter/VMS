@@ -64,12 +64,14 @@ class UpcomingEvent(db.Model):
             }
             
             if existing:
-                # Update existing record, preserving display_on_website
+                # Don't include display_on_website in the update
                 for key, value in event_data.items():
                     setattr(existing, key, value)
+                # Explicitly preserve display_on_website
+                # existing.display_on_website = existing.display_on_website  # This line isn't necessary but shows intent
                 updated_count += 1
             else:
-                # Create new record with display_on_website defaulting to False
+                # Only set display_on_website for new records
                 event_data['display_on_website'] = False
                 new_event = cls(**event_data)
                 db.session.add(new_event)
