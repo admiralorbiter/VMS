@@ -16,11 +16,11 @@ def sync_upcoming_events():
     try:
         today = datetime.now().date()
         
-        # 1. Remove past events AND filled/overfilled events
+        # 1. Remove past events AND events with no available slots
         deleted_count = UpcomingEvent.query.filter(
             or_(
-                UpcomingEvent.start_date <= today,
-                UpcomingEvent.filled_volunteer_jobs >= UpcomingEvent.available_slots  # Compare filled vs needed
+                UpcomingEvent.start_date < today,  # Less than today (past events)
+                UpcomingEvent.available_slots <= 0  # No slots available
             )
         ).delete()
         db.session.commit()

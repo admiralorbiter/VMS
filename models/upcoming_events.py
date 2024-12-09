@@ -72,7 +72,10 @@ class UpcomingEvent(db.Model):
                 updated_count += 1
             else:
                 # Only set display_on_website for new records
-                event_data['display_on_website'] = False
+                if record['Display_on_Website__c'] == 'Yes':
+                    event_data['display_on_website'] = True
+                else:
+                    event_data['display_on_website'] = False
                 new_event = cls(**event_data)
                 db.session.add(new_event)
                 new_count += 1
