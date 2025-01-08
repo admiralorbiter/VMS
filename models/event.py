@@ -23,6 +23,8 @@ event_skills = db.Table('event_skills',
 )
 
 class EventType(str, Enum):
+    IN_PERSON = 'in_person'
+    VIRTUAL_SESSION = 'virtual_session'
     CONNECTOR_SESSION = 'connector_session'
     CAREER_JUMPING = 'career_jumping'
     CAREER_SPEAKER = 'career_speaker'
@@ -108,14 +110,15 @@ class EventStatus(str, Enum):
     PUBLISHED = 'Published'
 
 class Event(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
     salesforce_id = db.Column(String(18), unique=True, nullable=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    type = db.Column(SQLAlchemyEnum(EventType), nullable=False)
+    type = db.Column(SQLAlchemyEnum(EventType), default=EventType.IN_PERSON)
     cancellation_reason = db.Column(SQLAlchemyEnum(CancellationReason), nullable=True)
     start_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime)
     location = db.Column(db.String(255))
     status = db.Column(SQLAlchemyEnum(EventStatus), nullable=False, default=EventStatus.DRAFT)
     volunteer_needed = db.Column(db.Integer)
@@ -123,6 +126,17 @@ class Event(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     participant_count = db.Column(db.Integer, default=0)
+    
+    # Virtual specific fields (new)
+    session_id = db.Column(db.String(255))  # Session ID from CSV
+    series = db.Column(db.String(255))      # Series or Career Cluster
+    duration = db.Column(db.Integer)        # Duration in minutes
+    registered_count = db.Column(db.Integer, default=0)
+    attended_count = db.Column(db.Integer, default=0)
+    educator_name = db.Column(db.String(255))    # User Auth Name
+    educator_id = db.Column(db.String(255))      # User Auth ID
+    school = db.Column(db.String(255))           # School/District info
+    district_partner = db.Column(db.String(255)) # District or Partner
     
     # Relationships
     volunteers = db.relationship('Volunteer', 
@@ -168,3 +182,30 @@ class Event(db.Model):
         if self.salesforce_id:
             return f"https://prep-kc.lightning.force.com/lightning/r/Session__c/{self.salesforce_id}/view"
         return None
+
+    @property
+    def is_virtual(self):
+        return self.type == EventType.VIRTUAL_SESSION
+
+    def update_from_csv(self, data):
+        """Update event from CSV data"""
+        self.session_id = data.get('Session ID')
+        self.title = data.get('Title')
+        self.series = data.get('Series or Event Title')
+        
+        # Handle date conversion
+        date_str = data.get('Date')
+        if date_str:
+            self.start_date = datetime.strptime(date_str, '%m/%d/%Y')
+        else:
+            raise ValueError("Date is required")
+        
+        self.status = data.get('Status')
+        self.duration = int(data.get('Duration', 0))
+        self.educator_name = data.get('Name')
+        self.educator_id = data.get('User Auth Id')
+        self.school = data.get('School')
+        self.district_partner = data.get('District or Company')
+        self.registered_count = int(data.get('Registered Student Count', '0').replace('n/a', '0'))
+        self.attended_count = int(data.get('Attended Student Count', '0').replace('n/a', '0'))
+        self.type = EventType.VIRTUAL_SESSION

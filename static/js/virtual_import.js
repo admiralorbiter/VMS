@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         quickSyncBtn.disabled = true;
         showProgress();
         
-        fetch('/virtual/import', {
+        fetch('/import', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         showProgress();
 
-        fetch('/virtual/import', {
+        fetch('/import', {
             method: 'POST',
             body: formData
         })
