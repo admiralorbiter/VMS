@@ -7,6 +7,7 @@ from routes.job_board.routes import job_board_bp
 from routes.upcoming_events.routes import upcoming_events_bp
 from routes.events.routes import events_bp
 from routes.virtual.routes import virtual_bp
+from routes.reports.routes import report_bp
 from routes.job_board.filters import init_filters
 
 
@@ -19,6 +20,7 @@ def init_routes(app):
     app.register_blueprint(job_board_bp)
     app.register_blueprint(upcoming_events_bp)
     app.register_blueprint(virtual_bp)
+    app.register_blueprint(report_bp)
     init_filters(app)
 
     @app.route('/')

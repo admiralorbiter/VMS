@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .reports-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .reports-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .report-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+        border: 1px solid var(--non-photo-blue);
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .report-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(29, 51, 84, 0.15);
+    }
+
+    .report-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .report-icon {
+        font-size: 1.5rem;
+        color: var(--ucla-blue);
+        background: var(--mint-green);
+        padding: 1rem;
+        border-radius: 50%;
+        width: 3.5rem;
+        height: 3.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .report-title {
+        color: var(--delft-blue);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .report-description {
+        color: var(--ucla-blue);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .report-category {
+        color: var(--ucla-blue);
+        font-size: 0.8rem;
+        background: var(--mint-green);
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        align-self: flex-start;
+        margin-top: auto;
+    }
+
+    .page-header {
+        color: var(--delft-blue);
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--non-photo-blue);
+    }
+
+    .page-description {
+        color: var(--ucla-blue);
+        max-width: 800px;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+    <h1 class="page-header">Reports Dashboard</h1>
+    <p class="page-description">
+        Access and analyze data across various aspects of the platform. Select a report from the options below to view detailed statistics and insights.
+    </p>
+
+    <div class="reports-grid">
+        {% for report in reports %}
+        <a href="{{ report.url }}" class="report-card">
+            <div class="report-header">
+                <div class="report-icon">
+                    <i class="{{ report.icon }}"></i>
+                </div>
+                <h2 class="report-title">{{ report.title }}</h2>
+            </div>
+            <p class="report-description">{{ report.description }}</p>
+            <span class="report-category">{{ report.category }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

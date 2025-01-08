@@ -1,0 +1,71 @@
+.usage-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.district-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    transition: transform 0.2s ease;
+}
+
+.district-card:hover {
+    transform: translateY(-2px);
+}
+
+.district-name {
+    color: var(--delft-blue);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--non-photo-blue);
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: var(--mint-green);
+    border-radius: 6px;
+}
+
+.stat-label {
+    color: var(--ucla-blue);
+    font-weight: 500;
+}
+
+.stat-value {
+    color: var(--delft-blue);
+    font-weight: 600;
+}
+
+.attendance-rate {
+    text-align: center;
+    padding: 1rem;
+    margin-top: 1rem;
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ucla-blue);
+    font-style: italic;
+} 

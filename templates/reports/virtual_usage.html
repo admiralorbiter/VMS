@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Virtual Session Usage Report{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="usage-container">
+    <h1 class="page-title">Virtual Session Usage by District</h1>
+    
+    {% if district_stats %}
+        <div class="stats-grid">
+            {% for district, stats in district_stats.items() %}
+            <div class="district-card">
+                <h2 class="district-name">{{ district }}</h2>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Total Sessions</span>
+                    <span class="stat-value">{{ stats.total_sessions }}</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Total Registered</span>
+                    <span class="stat-value">{{ stats.total_registered }}</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Total Attended</span>
+                    <span class="stat-value">{{ stats.total_attended }}</span>
+                </div>
+                
+                <div class="attendance-rate">
+                    Average Attendance Rate: {{ "%.1f"|format(stats.avg_attendance_rate) }}%
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-data">
+            No virtual session data available for any districts.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

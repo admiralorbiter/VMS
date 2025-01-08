@@ -4,7 +4,7 @@ import csv
 from io import StringIO
 from datetime import datetime
 from flask import current_app
-from models.event import db, Event
+from models.event import db, Event, EventType
 
 virtual_bp = Blueprint('virtual', __name__)
 
