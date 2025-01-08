@@ -2,15 +2,76 @@
 
 {% block title %}Virtual Session Usage Report{% endblock %}
 
-{% block styles %}
-{{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="usage-container">
     <h1 class="page-title">Virtual Session Usage by District</h1>
     
+    <!-- Filter Section -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            <div class="filter-group">
+                <label for="date_from">Date From:</label>
+                <input type="date" id="date_from" name="date_from" 
+                       value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="date_to">Date To:</label>
+                <input type="date" id="date_to" name="date_to" 
+                       value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="career_cluster">Career Cluster:</label>
+                <select id="career_cluster" name="career_cluster">
+                    <option value="">All Clusters</option>
+                    {% for cluster in filter_options.career_clusters %}
+                    <option value="{{ cluster }}" 
+                            {% if cluster == current_filters.career_cluster %}selected{% endif %}>
+                        {{ cluster }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="school">School:</label>
+                <select id="school" name="school">
+                    <option value="">All Schools</option>
+                    {% for school in filter_options.schools %}
+                    <option value="{{ school }}"
+                            {% if school == current_filters.school %}selected{% endif %}>
+                        {{ school }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="district">District:</label>
+                <select id="district" name="district">
+                    <option value="">All Districts</option>
+                    {% for district in filter_options.districts %}
+                    <option value="{{ district }}"
+                            {% if district == current_filters.district %}selected{% endif %}>
+                        {{ district }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="filter-btn">Apply Filters</button>
+                <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing Stats Grid -->
     {% if district_stats %}
         <div class="stats-grid">
             {% for district, stats in district_stats.items() %}
@@ -23,13 +84,33 @@
                 </div>
                 
                 <div class="stat-row">
-                    <span class="stat-label">Total Registered</span>
+                    <span class="stat-label">Total Students Registered</span>
                     <span class="stat-value">{{ stats.total_registered }}</span>
                 </div>
                 
                 <div class="stat-row">
-                    <span class="stat-label">Total Attended</span>
+                    <span class="stat-label">Total Students Attended</span>
                     <span class="stat-value">{{ stats.total_attended }}</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Average Duration</span>
+                    <span class="stat-value">{{ "%.0f"|format(stats.avg_duration) }} min</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Unique Schools</span>
+                    <span class="stat-value">{{ stats.school_count }}</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Unique Educators</span>
+                    <span class="stat-value">{{ stats.educator_count }}</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span class="stat-label">Career Clusters</span>
+                    <span class="stat-value">{{ stats.career_cluster_count }}</span>
                 </div>
                 
                 <div class="attendance-rate">
@@ -40,7 +121,7 @@
         </div>
     {% else %}
         <div class="no-data">
-            No virtual session data available for any districts.
+            No virtual session data available for the selected filters.
         </div>
     {% endif %}
 </div>
