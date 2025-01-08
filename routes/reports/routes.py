@@ -1,9 +1,12 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required
+from sqlalchemy import extract
 from models.event import Event, EventType, EventStatus
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from models.event import db
+from models.volunteer import Volunteer, EventParticipation
+from models.organization import Organization, VolunteerOrganization
 
 report_bp = Blueprint('report', __name__)
 
@@ -19,7 +22,13 @@ def reports():
             'url': '/reports/virtual/usage',
             'category': 'Virtual Events'
         },
-        # Add more reports here as they become available
+        {
+            'title': 'Volunteer Thank You Report',
+            'description': 'View top volunteers by hours and events for end of year thank you notes.',
+            'icon': 'fa-solid fa-heart',
+            'url': '/reports/volunteer/thankyou',
+            'category': 'Volunteer Recognition'
+        }
     ]
     
     return render_template('reports/reports.html', reports=available_reports)
@@ -244,5 +253,50 @@ def virtual_usage_district(district_name):
             'date_from': date_from,
             'date_to': date_to
         }
+    )
+
+@report_bp.route('/reports/volunteer/thankyou')
+@login_required
+def volunteer_thankyou():
+    # Get filter parameters
+    year = request.args.get('year', datetime.now().year)
+    
+    # Query volunteer participation through EventParticipation
+    volunteer_stats = db.session.query(
+        Volunteer,
+        db.func.sum(EventParticipation.delivery_hours).label('total_hours'),
+        db.func.count(EventParticipation.id).label('total_events'),
+        Organization.name.label('organization_name')
+    ).join(
+        EventParticipation, Volunteer.id == EventParticipation.volunteer_id
+    ).join(
+        Event, EventParticipation.event_id == Event.id
+    ).outerjoin(
+        VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+    ).outerjoin(
+        Organization, VolunteerOrganization.organization_id == Organization.id
+    ).filter(
+        extract('year', Event.start_date) == year,
+        EventParticipation.status == 'Attended'
+    ).group_by(
+        Volunteer.id,
+        Organization.name
+    ).order_by(
+        db.desc('total_hours')
+    ).all()
+
+    # Format the data for the template
+    volunteer_data = [{
+        'name': f"{v.first_name} {v.last_name}",
+        'total_hours': round(hours, 2),
+        'total_events': events,
+        'organization': org or 'Independent'
+    } for v, hours, events, org in volunteer_stats]
+
+    return render_template(
+        'reports/volunteer_thankyou.html',
+        volunteers=volunteer_data,
+        year=year,
+        now=datetime.now()
     )
 
