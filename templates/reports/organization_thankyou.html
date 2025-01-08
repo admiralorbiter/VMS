@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Organization Thank You Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="thankyou-container">
+    <h1 class="page-header">Organization Thank You Report</h1>
+    
+    <div class="filters">
+        <form method="GET" class="year-filter">
+            <label for="year">Year:</label>
+            <select name="year" id="year" onchange="this.form.submit()">
+                {% for y in range(2020, now.year + 1) %}
+                <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="organization-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Organization</th>
+                    <th>Unique Sessions</th>
+                    <th>Total Hours</th>
+                    <th># of Unique Volunteers</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for org in organizations %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('report.organization_thankyou_detail', org_id=org.id, year=year) }}" class="org-link">
+                            {{ org.name }}
+                        </a>
+                    </td>
+                    <td>{{ org.unique_sessions }}</td>
+                    <td>{{ org.total_hours }}</td>
+                    <td>{{ org.unique_volunteers }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 
