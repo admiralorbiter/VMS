@@ -1,0 +1,129 @@
+.district-usage-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.district-header {
+    margin-bottom: 2rem;
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.back-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.back-link:hover {
+    color: var(--delft-blue);
+}
+
+.date-filters {
+    margin-top: 1rem;
+}
+
+.date-filter-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.monthly-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.month-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+}
+
+.month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+}
+
+.month-summary {
+    display: flex;
+    gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ucla-blue);
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    background: var(--mint-cream);
+    padding: 1rem;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.events-list {
+    margin-top: 1.5rem;
+}
+
+.events-table {
+    margin-top: 1rem;
+}
+
+.event-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+    align-items: center;
+}
+
+.event-row:last-child {
+    border-bottom: none;
+}
+
+.event-stats {
+    display: flex;
+    gap: 1rem;
+    color: var(--ucla-blue);
+}
+
+@media (max-width: 768px) {
+    .date-filter-form {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .event-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+} 

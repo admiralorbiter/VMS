@@ -76,46 +76,48 @@
         <div class="stats-grid">
             {% for district, stats in district_stats.items() %}
             <div class="district-card">
-                <h2 class="district-name">{{ district }}</h2>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Total Sessions</span>
-                    <span class="stat-value">{{ stats.total_sessions }}</span>
-                </div>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Total Students Registered</span>
-                    <span class="stat-value">{{ stats.total_registered }}</span>
-                </div>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Total Students Attended</span>
-                    <span class="stat-value">{{ stats.total_attended }}</span>
-                </div>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Average Duration</span>
-                    <span class="stat-value">{{ "%.0f"|format(stats.avg_duration) }} min</span>
-                </div>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Unique Schools</span>
-                    <span class="stat-value">{{ stats.school_count }}</span>
-                </div>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Unique Educators</span>
-                    <span class="stat-value">{{ stats.educator_count }}</span>
-                </div>
-                
-                <div class="stat-row">
-                    <span class="stat-label">Career Clusters</span>
-                    <span class="stat-value">{{ stats.career_cluster_count }}</span>
-                </div>
-                
-                <div class="attendance-rate">
-                    Average Attendance Rate: {{ "%.1f"|format(stats.avg_attendance_rate) }}%
-                </div>
+                <a href="{{ url_for('report.virtual_usage_district', district_name=district) }}" class="district-link">
+                    <h2 class="district-name">{{ district }}</h2>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Total Sessions</span>
+                        <span class="stat-value">{{ stats.total_sessions }}</span>
+                    </div>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Total Students Registered</span>
+                        <span class="stat-value">{{ stats.total_registered }}</span>
+                    </div>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Total Students Attended</span>
+                        <span class="stat-value">{{ stats.total_attended }}</span>
+                    </div>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Average Duration</span>
+                        <span class="stat-value">{{ "%.0f"|format(stats.avg_duration) }} min</span>
+                    </div>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Unique Schools</span>
+                        <span class="stat-value">{{ stats.school_count }}</span>
+                    </div>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Unique Educators</span>
+                        <span class="stat-value">{{ stats.educator_count }}</span>
+                    </div>
+                    
+                    <div class="stat-row">
+                        <span class="stat-label">Career Clusters</span>
+                        <span class="stat-value">{{ stats.career_cluster_count }}</span>
+                    </div>
+                    
+                    <div class="attendance-rate">
+                        Average Attendance Rate: {{ "%.1f"|format(stats.avg_attendance_rate) }}%
+                    </div>
+                </a>
             </div>
             {% endfor %}
         </div>

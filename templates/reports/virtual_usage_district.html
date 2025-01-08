@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ district_name }} - Virtual Usage Details{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_usage.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="district-usage-container">
+    <div class="district-header">
+        <div class="header-content">
+            <a href="{{ url_for('report.virtual_usage') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Districts
+            </a>
+            <h1>{{ district_name }}</h1>
+        </div>
+        
+        <!-- Filter Section -->
+        <div class="date-filters">
+            <form method="GET" class="date-filter-form">
+                <div class="filter-group">
+                    <label for="date_from">From:</label>
+                    <input type="date" id="date_from" name="date_from" 
+                           value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
+                </div>
+                <div class="filter-group">
+                    <label for="date_to">To:</label>
+                    <input type="date" id="date_to" name="date_to" 
+                           value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
+                </div>
+                <button type="submit" class="filter-btn">Apply</button>
+                <a href="{{ url_for('report.virtual_usage_district', district_name=district_name) }}" 
+                   class="reset-btn">Reset</a>
+            </form>
+        </div>
+    </div>
+
+    {% if monthly_stats %}
+        <div class="monthly-stats">
+            {% for month, stats in monthly_stats.items() %}
+            <div class="month-card">
+                <div class="month-header">
+                    <h2>{{ stats.month_name }}</h2>
+                    <div class="month-summary">
+                        <span class="summary-item">
+                            <i class="fas fa-video"></i> {{ stats.total_sessions }} Sessions
+                        </span>
+                        <span class="summary-item">
+                            <i class="fas fa-users"></i> {{ stats.total_attended }}/{{ stats.total_registered }} Students
+                        </span>
+                    </div>
+                </div>
+
+                <div class="month-details">
+                    <div class="stats-overview">
+                        <div class="stat-item">
+                            <span class="stat-label">Average Duration</span>
+                            <span class="stat-value">{{ "%.0f"|format(stats.avg_duration) }} min</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Schools</span>
+                            <span class="stat-value">{{ stats.school_count }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Educators</span>
+                            <span class="stat-value">{{ stats.educator_count }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Career Clusters</span>
+                            <span class="stat-value">{{ stats.career_cluster_count }}</span>
+                        </div>
+                    </div>
+
+                    <div class="events-list">
+                        <h3>Sessions</h3>
+                        <div class="events-table">
+                            {% for event in stats.events %}
+                            <div class="event-row">
+                                <div class="event-date">{{ event.date }}</div>
+                                <div class="event-title">{{ event.title }}</div>
+                                <div class="event-school">{{ event.school }}</div>
+                                <div class="event-stats">
+                                    <span>{{ event.attended }}/{{ event.registered }}</span>
+                                    <span>{{ event.duration }} min</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-data">
+            No virtual session data available for this district in the selected date range.
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 
