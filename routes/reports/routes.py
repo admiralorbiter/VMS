@@ -287,6 +287,7 @@ def volunteer_thankyou():
 
     # Format the data for the template
     volunteer_data = [{
+        'id': v.id,
         'name': f"{v.first_name} {v.last_name}",
         'total_hours': round(hours, 2),
         'total_events': events,
@@ -296,6 +297,53 @@ def volunteer_thankyou():
     return render_template(
         'reports/volunteer_thankyou.html',
         volunteers=volunteer_data,
+        year=year,
+        now=datetime.now()
+    )
+
+@report_bp.route('/reports/volunteer/thankyou/detail/<int:volunteer_id>')
+@login_required
+def volunteer_thankyou_detail(volunteer_id):
+    # Get filter parameters
+    year = request.args.get('year', datetime.now().year)
+    
+    # Get volunteer details
+    volunteer = Volunteer.query.get_or_404(volunteer_id)
+    
+    # Query all events for this volunteer in the specified year
+    events = db.session.query(
+        Event,
+        EventParticipation.delivery_hours
+    ).join(
+        EventParticipation, Event.id == EventParticipation.event_id
+    ).filter(
+        EventParticipation.volunteer_id == volunteer_id,
+        extract('year', Event.start_date) == year,
+        EventParticipation.status == 'Attended'
+    ).order_by(
+        Event.start_date
+    ).all()
+    
+    # Format the events data
+    events_data = [{
+        'date': event.start_date.strftime('%B %d, %Y'),
+        'title': event.title,
+        'type': event.type.value if event.type else 'Unknown',
+        'hours': round(hours or 0, 2),
+        'school': event.school or 'N/A',
+        'district': event.district_partner or 'N/A'
+    } for event, hours in events]
+    
+    # Calculate totals
+    total_hours = sum(event['hours'] for event in events_data)
+    total_events = len(events_data)
+    
+    return render_template(
+        'reports/volunteer_thankyou_detail.html',
+        volunteer=volunteer,
+        events=events_data,
+        total_hours=total_hours,
+        total_events=total_events,
         year=year,
         now=datetime.now()
     )

@@ -55,4 +55,68 @@ tr:hover {
 td:nth-child(2),
 td:nth-child(3) {
     text-align: center;
+}
+
+.thankyou-detail-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    margin-bottom: 2rem;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #666;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    color: #333;
+}
+
+.volunteer-summary {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-item .label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.summary-item .value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.events-table {
+    margin-top: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Make the volunteer names clickable in the main table */
+.volunteer-link {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.volunteer-link:hover {
+    text-decoration: underline;
 } 

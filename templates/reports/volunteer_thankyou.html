@@ -34,7 +34,11 @@
             <tbody>
                 {% for volunteer in volunteers %}
                 <tr>
-                    <td>{{ volunteer.name }}</td>
+                    <td>
+                        <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, year=year) }}" class="volunteer-link">
+                            {{ volunteer.name }}
+                        </a>
+                    </td>
                     <td>{{ volunteer.total_hours }}</td>
                     <td>{{ volunteer.total_events }}</td>
                     <td>{{ volunteer.organization }}</td>

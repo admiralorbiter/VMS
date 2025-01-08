@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Volunteer Details - {{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteer_thankyou.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="thankyou-detail-container">
+    <div class="detail-header">
+        <a href="{{ url_for('report.volunteer_thankyou', year=year) }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Summary
+        </a>
+        <h1>{{ volunteer.first_name }} {{ volunteer.last_name }}</h1>
+        <div class="volunteer-summary">
+            <div class="summary-item">
+                <span class="label">Total Hours:</span>
+                <span class="value">{{ total_hours }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Total Events:</span>
+                <span class="value">{{ total_events }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <form method="GET" class="year-filter">
+            <label for="year">Year:</label>
+            <select name="year" id="year" onchange="this.form.submit()">
+                {% for y in range(2020, now.year + 1) %}
+                <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="events-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Event</th>
+                    <th>Type</th>
+                    <th>Hours</th>
+                    <th>School</th>
+                    <th>District</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.date }}</td>
+                    <td>{{ event.title }}</td>
+                    <td>{{ event.type }}</td>
+                    <td>{{ event.hours }}</td>
+                    <td>{{ event.school }}</td>
+                    <td>{{ event.district }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 
