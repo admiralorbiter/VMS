@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}District Year-End Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="year-end-container">
+    <h1 class="page-header">Underconstruction: District Year-End Report</h1>
+    
+    <div class="filters">
+        <form method="GET" class="year-filter">
+            <label for="year">Year:</label>
+            <select name="year" id="year" onchange="this.form.submit()">
+                {% for y in range(2020, now.year + 1) %}
+                <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% for district_name, stats in districts.items() %}
+    <div class="district-section">
+        <h2>{{ district_name }}</h2>
+        <div class="stats-grid">
+            <div class="stat-category">
+                <h3>Events Summary</h3>
+                <ul>
+                    <li>Total Events: {{ stats.total_events }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

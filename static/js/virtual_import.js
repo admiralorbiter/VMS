@@ -38,27 +38,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Quick sync button handler
-    quickSyncBtn.addEventListener('click', () => {
-        const importType = document.querySelector('input[name="importType"]:checked').value;
+    quickSyncBtn.addEventListener('click', async () => {
         quickSyncBtn.disabled = true;
         showProgress();
         
-        fetch('/import', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                quickSync: true,
-                importType: importType
-            })
-        })
-        .then(handleResponse)
-        .catch(handleError)
-        .finally(() => {
+        try {
+            const response = await fetch(window.QUICK_SYNC_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            await handleResponse(response);
+        } catch (error) {
+            handleError(error);
+        } finally {
             quickSyncBtn.disabled = false;
-        });
+        }
     });
 
     function handleFileUpload(file) {
@@ -67,14 +64,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const importType = document.querySelector('input[name="importType"]:checked').value;
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('importType', importType);
 
         showProgress();
 
-        fetch('/import', {
+        fetch(window.IMPORT_URL, {
             method: 'POST',
             body: formData
         })
@@ -82,20 +77,28 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(handleError);
     }
 
-    function handleResponse(response) {
+    async function handleResponse(response) {
         if (!response.ok) {
             throw new Error(response.statusText);
         }
-        return response.json().then(data => {
-            importProgress.style.width = '100%';
-            setTimeout(() => {
-                if (data.success) {
-                    showResults(data);
-                } else {
-                    showError(data.error || 'Import failed');
-                }
-            }, 500);
-        });
+        const data = await response.json();
+        
+        // Update progress bar to 100%
+        importProgress.style.width = '100%';
+        
+        // Update processed count
+        const totalProcessed = (data.successCount || 0) + 
+                             (data.warningCount || 0) + 
+                             (data.errorCount || 0);
+        processedCount.textContent = totalProcessed;
+
+        setTimeout(() => {
+            if (data.success) {
+                showResults(data);
+            } else {
+                showError(data.error || 'Import failed');
+            }
+        }, 500);
     }
 
     function handleError(error) {

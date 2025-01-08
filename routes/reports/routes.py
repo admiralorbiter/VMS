@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, flash
 from flask_login import login_required
 from sqlalchemy import extract
 from models.event import Event, EventType, EventStatus
@@ -7,6 +7,8 @@ from flask_sqlalchemy import SQLAlchemy
 from models.event import db
 from models.volunteer import Volunteer, EventParticipation
 from models.organization import Organization, VolunteerOrganization
+from models.event import District, event_districts
+import json
 
 report_bp = Blueprint('report', __name__)
 
@@ -35,6 +37,13 @@ def reports():
             'icon': 'fa-solid fa-building',
             'url': '/reports/organization/thankyou',
             'category': 'Organization Recognition'
+        },
+        {
+            'title': 'District Year-End Report',
+            'description': 'View comprehensive year-end statistics for each district.',
+            'icon': 'fa-solid fa-chart-pie',
+            'url': '/reports/district/year-end',
+            'category': 'District Reports'
         }
     ]
     
@@ -473,6 +482,51 @@ def organization_thankyou_detail(org_id):
         organization=organization,
         volunteers=volunteers_data,
         events=events_data,
+        year=year,
+        now=datetime.now()
+    )
+
+@report_bp.route('/reports/district/year-end')
+@login_required
+def district_year_end():
+    year = request.args.get('year', datetime.now().year)
+    
+    # Get all districts from District model
+    districts = District.query.order_by(District.name).all()
+    district_stats = {}
+    
+    # Create a mapping of variations to standardized names
+    district_name_variations = {
+        'GRANDVIEW C-4': ['Grandview C-4 School District', 'Grandview C-4', 'Grandview C4'],
+        'KANSAS CITY USD 500': ['Kansas City USD 500', 'Kansas City, Kansas Public Schools', 'KCK Public Schools'],
+        'HICKMAN MILLS C-1': ['Hickman Mills C-1', 'Hickman Mills', 'Hickman Mills School District'],
+        # Add more variations as needed
+    }
+    
+    for district in districts:
+        print(f"Processing district: {district.name}")  # Debug log
+        
+        # Get all possible name variations for this district
+        name_variations = district_name_variations.get(district.name, [district.name])
+        name_variations = [name.upper() for name in name_variations]  # Convert all to uppercase
+        
+        # Count all events for this district using name variations
+        total_events = Event.query.filter(
+            Event.district_partner.in_(name_variations),
+            extract('year', Event.start_date) == year
+        ).count()
+
+        print(f"Checking variations for {district.name}: {name_variations}")
+        print(f"Found {total_events} events")
+
+        district_stats[district.name] = {
+            'name': district.name,
+            'total_events': total_events
+        }
+
+    return render_template(
+        'reports/district_year_end.html',
+        districts=district_stats,
         year=year,
         now=datetime.now()
     )

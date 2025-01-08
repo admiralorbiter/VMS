@@ -128,15 +128,15 @@ class Event(db.Model):
     participant_count = db.Column(db.Integer, default=0)
     
     # Virtual specific fields (new)
-    session_id = db.Column(db.String(255))  # Session ID from CSV
-    series = db.Column(db.String(255))      # Series or Career Cluster
-    duration = db.Column(db.Integer)        # Duration in minutes
+    session_id = db.Column(db.String(255))      # Session ID from CSV
+    series = db.Column(db.String(255))          # Series or Career Cluster
+    duration = db.Column(db.Integer)            # Duration in minutes
     registered_count = db.Column(db.Integer, default=0)
     attended_count = db.Column(db.Integer, default=0)
-    educator_name = db.Column(db.String(255))    # User Auth Name
-    educator_id = db.Column(db.String(255))      # User Auth ID
-    school = db.Column(db.String(255))           # School/District info
-    district_partner = db.Column(db.String(255)) # District or Partner
+    educator_name = db.Column(db.Text)          # Changed to Text to store multiple names
+    educator_id = db.Column(db.Text)            # Changed to Text to store multiple IDs
+    school = db.Column(db.Text)                 # Changed to Text to store multiple schools
+    district_partner = db.Column(db.Text)       # Changed to Text to store multiple districts
     
     # Relationships
     volunteers = db.relationship('Volunteer', 
@@ -186,6 +186,27 @@ class Event(db.Model):
     @property
     def is_virtual(self):
         return self.type == EventType.VIRTUAL_SESSION
+
+    def merge_duplicate(self, data):
+        """Merge data from a duplicate event's CSV row"""
+        # Combine counts
+        new_registered = int(data.get('Registered Student Count', '0').replace('n/a', '0'))
+        new_attended = int(data.get('Attended Student Count', '0').replace('n/a', '0'))
+        self.registered_count += new_registered
+        self.attended_count += new_attended
+
+        # Combine text fields with semicolon separator
+        for field, csv_key in {
+            'educator_name': 'Name',
+            'educator_id': 'User Auth Id',
+            'school': 'School',
+            'district_partner': 'District or Company'
+        }.items():
+            current_value = getattr(self, field) or ''
+            new_value = data.get(csv_key, '').strip()
+            if new_value and new_value not in current_value:
+                values = set(filter(None, [current_value, new_value]))
+                setattr(self, field, '; '.join(values))
 
     def update_from_csv(self, data):
         """Update event from CSV data"""

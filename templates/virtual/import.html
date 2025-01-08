@@ -110,5 +110,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    // Add these variables before loading the JS file
+    window.QUICK_SYNC_URL = "{{ url_for('virtual.quick_sync') }}";
+    window.IMPORT_URL = "{{ url_for('virtual.import_virtual') }}";
+</script>
 <script src="{{ url_for('static', filename='js/virtual_import.js') }}"></script>
 {% endblock %} 
