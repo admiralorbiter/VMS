@@ -267,6 +267,13 @@ def add_event():
 @login_required
 def view_event(id):
     event = Event.query.get_or_404(id)
+    
+    # Set default dates if None
+    if event.start_date is None:
+        event.start_date = datetime.now()
+    if event.end_date is None:
+        event.end_date = datetime.now()
+    
     # Get participations with volunteers
     participations = EventParticipation.query.filter_by(event_id=id).all()
     

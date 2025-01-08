@@ -39,45 +39,80 @@
         </div>
         <div class="card-content">
             <div class="info-grid">
+                <!-- Always show status -->
                 <div class="info-item">
                     <label>Status</label>
                     <span class="status-badge {{ event.status }}">{{ event.status|title }}</span>
                 </div>
-                {% if event.districts %}
-                <div class="info-item">
-                    <label>District{% if event.districts|length > 1 %}s{% endif %}</label>
-                    <p><i class="fa-solid fa-school"></i> 
-                        {% for district in event.districts %}
-                            {{ district.name }}{% if not loop.last %}, {% endif %}
-                        {% endfor %}
-                    </p>
-                </div>
+
+                <!-- Virtual Session specific information -->
+                {% if event.type == 'virtual_session' %}
+                    <div class="info-item">
+                        <label>Session ID</label>
+                        <p><i class="fa-solid fa-id-badge"></i> {{ event.session_id or 'Not set' }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Series/Career Cluster</label>
+                        <p><i class="fa-solid fa-layer-group"></i> {{ event.series or 'Not set' }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Duration</label>
+                        <p><i class="fa-solid fa-clock"></i> {{ event.duration or 0 }} minutes</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Educator</label>
+                        <p><i class="fa-solid fa-chalkboard-teacher"></i> {{ event.educator_name or 'Not assigned' }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>School</label>
+                        <p><i class="fa-solid fa-school"></i> {{ event.school or 'Not set' }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Attendance</label>
+                        <p><i class="fa-solid fa-user-check"></i> {{ event.attended_count }}/{{ event.registered_count }} students</p>
+                    </div>
                 {% endif %}
+
+                <!-- Standard event information (shown for non-virtual events) -->
+                {% if event.type != 'virtual_session' %}
+                    {% if event.districts %}
+                    <div class="info-item">
+                        <label>District{% if event.districts|length > 1 %}s{% endif %}</label>
+                        <p><i class="fa-solid fa-school"></i> 
+                            {% for district in event.districts %}
+                                {{ district.name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
+                    </div>
+                    {% endif %}
+                    <div class="info-item">
+                        <label>Location</label>
+                        <p><i class="fa-solid fa-location-dot"></i> {{ event.location or 'None' }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Volunteer Capacity</label>
+                        <p><i class="fa-solid fa-users"></i> {{ event.volunteer_count }}/{{ event.volunteer_needed or 0 }} volunteers</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Participant Count</label>
+                        <p><i class="fa-solid fa-users-line"></i> {{ event.participant_count }} participants</p>
+                    </div>
+                {% endif %}
+
+                <!-- Common fields shown for all events -->
                 <div class="info-item">
                     <label>Start Date & Time</label>
-                    <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') if event.start_date else 'Not set' }}</p>
                 </div>
                 <div class="info-item">
                     <label>End Date & Time</label>
-                    <p><i class="fa-solid fa-calendar-check"></i> {{ event.end_date.strftime('%Y-%m-%d %H:%M') }}</p>
-                </div>
-                <div class="info-item">
-                    <label>Location</label>
-                    <p><i class="fa-solid fa-location-dot"></i> {{ event.location or 'None' }}</p>
-                </div>
-                <div class="info-item">
-                    <label>Volunteer Capacity</label>
-                    <p><i class="fa-solid fa-users"></i> {{ event.volunteer_count }}/{{ event.volunteer_needed or 0 }} volunteers</p>
+                    <p><i class="fa-solid fa-calendar-check"></i> {{ event.end_date.strftime('%Y-%m-%d %H:%M') if event.end_date else 'Not set' }}</p>
                 </div>
                 <div class="info-item">
                     <label>Format</label>
                     <p><i class="fa-solid {% if event.format == 'virtual' %}fa-video{% else %}fa-person{% endif %}"></i> 
                         {{ event.format.value|replace('_', ' ')|title }}
                     </p>
-                </div>
-                <div class="info-item">
-                    <label>Participant Count</label>
-                    <p><i class="fa-solid fa-users-line"></i> {{ event.participant_count }} participants</p>
                 </div>
             </div>
         </div>
