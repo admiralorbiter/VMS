@@ -23,15 +23,18 @@
               <a class="nav-link" href="/upcoming_event_management">Upcoming Events</a>
             </li>
             <li class="nav-item">
+              <a class="nav-link" href="/virtual">Virtual</a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" href="/admin">Admin</a>
             </li>
             {% if current_user.is_admin %}
             <li class="nav-item"></li>
               <a class="nav-link" href="/history_table">History</a>
             </li>
-            <li class="nav-item"></li>
+            <!-- <li class="nav-item"></li>
               <a class="nav-link" href="/tech_jobs">Tech Jobs</a>
-            </li>
+            </li> -->
             {% endif %}
             <li class="nav-item">
               <a class="nav-link" href="/logout">Logout</a>

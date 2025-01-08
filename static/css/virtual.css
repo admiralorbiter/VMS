@@ -1,0 +1,63 @@
+/* Override the main container width from style.css */
+main {
+    max-width: none !important;
+    padding: 20px 0;
+}
+
+.virtual-container {
+    max-width: 95%;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* Header Styles */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    color: var(--delft-blue);
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Action Button Styles */
+.action-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    box-shadow: 0 3px 0 var(--delft-blue);
+}
+
+.action-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+
+.action-btn.purge-btn {
+    background-color: var(--poppy);
+    box-shadow: 0 3px 0 #b73136;
+}
+
+.action-btn.purge-btn:hover {
+    background-color: #c13136;
+    box-shadow: 0 2px 0 #b53035;
+} 
