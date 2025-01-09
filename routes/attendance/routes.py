@@ -273,3 +273,31 @@ def purge_attendance():
             'status': 'error',
             'message': str(e)
         })
+
+@attendance.route('/attendance/view/<type>/<int:id>')
+@login_required
+def view_details(type, id):
+    try:
+        if type == 'student':
+            contact = Student.query.get_or_404(id)
+        elif type == 'teacher':
+            contact = Teacher.query.get_or_404(id)
+        else:
+            return jsonify({'status': 'error', 'message': 'Invalid type'})
+        
+        # Get related data
+        primary_email = contact.emails.filter_by(primary=True).first()
+        primary_phone = contact.phones.filter_by(primary=True).first()
+        primary_address = contact.addresses.filter_by(primary=True).first()
+        
+        return render_template(
+            'attendance/view_details.html',
+            contact=contact,
+            type=type,
+            primary_email=primary_email,
+            primary_phone=primary_phone,
+            primary_address=primary_address
+        )
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})

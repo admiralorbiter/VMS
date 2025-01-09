@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}View {{ type|title }} Details{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attendance_details.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="details-container">
+    <div class="details-header">
+        <h1>
+            <i class="fas {% if type == 'student' %}fa-user-graduate{% else %}fa-chalkboard-teacher{% endif %}"></i>
+            {{ contact.first_name }} {{ contact.last_name }}
+        </h1>
+        <div class="header-actions">
+            <a href="{{ url_for('attendance.view_attendance') }}" class="action-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="details-content">
+        <div class="details-section">
+            <h2>Basic Information</h2>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <label>Full Name</label>
+                    <span>
+                        {% if contact.salutation %}{{ contact.salutation.value }} {% endif %}
+                        {{ contact.first_name }}
+                        {% if contact.middle_name %}{{ contact.middle_name }} {% endif %}
+                        {{ contact.last_name }}
+                        {% if contact.suffix %}{{ contact.suffix.value }}{% endif %}
+                    </span>
+                </div>
+                
+                {% if contact.gender %}
+                <div class="detail-item">
+                    <label>Gender</label>
+                    <span>{{ contact.gender.value }}</span>
+                </div>
+                {% endif %}
+
+                {% if contact.birthdate %}
+                <div class="detail-item">
+                    <label>Birthdate</label>
+                    <span>{{ contact.birthdate.strftime('%B %d, %Y') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="details-section">
+            <h2>Contact Information</h2>
+            <div class="details-grid">
+                {% if primary_email %}
+                <div class="detail-item">
+                    <label>Primary Email</label>
+                    <span>{{ primary_email.email }}</span>
+                </div>
+                {% endif %}
+
+                {% if primary_phone %}
+                <div class="detail-item">
+                    <label>Primary Phone</label>
+                    <span>{{ primary_phone.number }}</span>
+                </div>
+                {% endif %}
+
+                {% if primary_address %}
+                <div class="detail-item">
+                    <label>Primary Address</label>
+                    <span>
+                        {{ primary_address.address_line1 }}
+                        {% if primary_address.address_line2 %}<br>{{ primary_address.address_line2 }}{% endif %}
+                        <br>{{ primary_address.city }}, {{ primary_address.state }} {{ primary_address.zip_code }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if type == 'student' %}
+        <div class="details-section">
+            <h2>Student Information</h2>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <label>Student ID</label>
+                    <span>{{ contact.student_id }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Grade</label>
+                    <span>{{ contact.current_grade }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>School</label>
+                    <span>{{ contact.school_code }}</span>
+                </div>
+                {% if contact.ell_language %}
+                <div class="detail-item">
+                    <label>ELL Language</label>
+                    <span>{{ contact.ell_language }}</span>
+                </div>
+                {% endif %}
+                <div class="detail-item">
+                    <label>Gifted Program</label>
+                    <span>{{ 'Yes' if contact.gifted else 'No' }}</span>
+                </div>
+                {% if contact.lunch_status %}
+                <div class="detail-item">
+                    <label>Lunch Status</label>
+                    <span>{{ contact.lunch_status }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="details-section">
+            <h2>Teacher Information</h2>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <label>Department</label>
+                    <span>{{ contact.department or 'N/A' }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>School</label>
+                    <span>{{ contact.school_code or 'N/A' }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Role</label>
+                    <span>{{ contact.connector_role or 'N/A' }}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Status</label>
+                    <span>{{ 'Active' if contact.active else 'Inactive' }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

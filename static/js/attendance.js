@@ -64,8 +64,7 @@ function switchTab(tabName) {
 }
 
 function viewDetails(type, id) {
-    // Implement view details functionality
-    console.log(`Viewing ${type} details for ID: ${id}`);
+    window.location.href = `/attendance/view/${type}/${id}`;
 }
 
 function changePage(page, type) {
