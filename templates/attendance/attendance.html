@@ -14,9 +14,23 @@
             <a href="{{ url_for('attendance.import_attendance') }}" class="action-btn">
                 <i class="fas fa-file-import"></i> Import Attendance
             </a>
-            <button onclick="confirmPurge()" class="action-btn purge-btn">
-                <i class="fas fa-trash"></i> Purge Attendance
-            </button>
+            <div class="dropdown">
+                <button class="action-btn purge-btn" onclick="togglePurgeMenu()">
+                    <i class="fas fa-trash"></i> Purge Data
+                    <i class="fas fa-caret-down"></i>
+                </button>
+                <div id="purgeMenu" class="dropdown-content">
+                    <a href="#" onclick="confirmPurge('all')">
+                        <i class="fas fa-trash-alt"></i> Purge All Data
+                    </a>
+                    <a href="#" onclick="confirmPurge('students')">
+                        <i class="fas fa-user-graduate"></i> Purge Student Data
+                    </a>
+                    <a href="#" onclick="confirmPurge('teachers')">
+                        <i class="fas fa-chalkboard-teacher"></i> Purge Teacher Data
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -54,26 +68,96 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/attendance.js') }}"></script>
 <script>
-function confirmPurge() {
-    if (confirm('Are you sure you want to purge all attendance records? This action cannot be undone.')) {
+function togglePurgeMenu() {
+    document.getElementById("purgeMenu").classList.toggle("show");
+}
+
+// Close the dropdown if the user clicks outside of it
+window.onclick = function(event) {
+    if (!event.target.matches('.purge-btn')) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        for (var i = 0; i < dropdowns.length; i++) {
+            var openDropdown = dropdowns[i];
+            if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+            }
+        }
+    }
+}
+
+function confirmPurge(type) {
+    let message = '';
+    switch(type) {
+        case 'all':
+            message = 'Are you sure you want to purge ALL student and teacher data? This action cannot be undone.';
+            break;
+        case 'students':
+            message = 'Are you sure you want to purge all student data? This action cannot be undone.';
+            break;
+        case 'teachers':
+            message = 'Are you sure you want to purge all teacher data? This action cannot be undone.';
+            break;
+    }
+
+    if (confirm(message)) {
         fetch('/attendance/purge', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({ type: type })
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
+                showNotification(data.message, 'success');
                 location.reload();
             } else {
-                showNotification('Error purging attendance: ' + data.error, 'error');
+                showNotification('Error: ' + data.message, 'error');
             }
         })
         .catch(error => {
-            showNotification('Error purging attendance: ' + error, 'error');
+            showNotification('Error: ' + error, 'error');
         });
     }
 }
 </script>
+
+<style>
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 200px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+.show {
+    display: block;
+}
+
+.dropdown-content a i {
+    margin-right: 8px;
+    width: 20px;
+}
+</style>
 {% endblock %}
