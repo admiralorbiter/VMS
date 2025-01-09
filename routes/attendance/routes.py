@@ -12,7 +12,37 @@ attendance = Blueprint('attendance', __name__)
 @attendance.route('/attendance')
 @login_required
 def view_attendance():
-    return render_template('attendance/attendance.html')
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    # Query with pagination
+    students = Student.query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    teachers = Teacher.query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # Calculate total pages for both tables
+    total_students = Student.query.count()
+    total_teachers = Teacher.query.count()
+    
+    return render_template(
+        'attendance/attendance.html',
+        students=students,
+        teachers=teachers,
+        current_page=page,
+        per_page=per_page,
+        total_students=total_students,
+        total_teachers=total_teachers,
+        per_page_options=[10, 25, 50, 100]
+    )
 
 @attendance.route('/attendance/import')
 @login_required

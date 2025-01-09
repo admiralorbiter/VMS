@@ -124,4 +124,163 @@ a.action-btn:hover {
         width: 100%;
         justify-content: center;
     }
+}
+
+.attendance-table th.sortable {
+    cursor: pointer;
+}
+
+.attendance-table th.sortable span {
+    margin-right: 0.5rem;
+}
+
+.attendance-table th.sortable i {
+    font-size: 0.9rem;
+    opacity: 0.5;
+}
+
+.attendance-table th.sortable:hover i {
+    opacity: 1;
+}
+
+.attendance-table tbody tr:hover {
+    background-color: rgba(29, 51, 84, 0.05);
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 200px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+.show {
+    display: block;
+}
+
+.dropdown-content a i {
+    margin-right: 8px;
+    width: 20px;
+}
+
+.table-tabs {
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--non-photo-blue);
+}
+
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--delft-blue);
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+    opacity: 1;
+    border-bottom: 3px solid var(--ucla-blue);
+}
+
+.tab-btn:hover {
+    opacity: 1;
+}
+
+.hidden {
+    display: none;
+}
+
+.action-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ucla-blue);
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.action-icon:hover {
+    background-color: rgba(29, 51, 84, 0.1);
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+}
+
+.pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.per-page-select {
+    padding: 0.5rem;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 4px;
+    background: white;
+    color: var(--delft-blue);
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.page-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 4px;
+    background: white;
+    color: var(--delft-blue);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: var(--ucla-blue);
+    color: white;
+}
+
+.page-btn.active {
+    background: var(--ucla-blue);
+    color: white;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.attendance-table-wrapper {
+    margin-bottom: 1rem;
 } 
