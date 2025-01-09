@@ -72,12 +72,19 @@
                         </p>
                     </div>
                     
-                    <!-- New Professionals section -->
+                    <!-- Updated to show Volunteers instead of Professionals -->
                     <div class="info-item">
                         <label>Professionals</label>
                         <p><i class="fa-solid fa-briefcase"></i>
-                            {% if event.professionals %}
-                                {{ event.professionals|replace(';', ',') }}
+                            {% if event.volunteers %}
+                                {% for volunteer in event.volunteers %}
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="volunteer-link">
+                                        {{ volunteer.first_name }} {{ volunteer.last_name }}
+                                        {% if volunteer.organizations %}
+                                            ({{ volunteer.organizations[0].name }})
+                                        {% endif %}
+                                    </a>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
                             {% else %}
                                 Not assigned
                             {% endif %}

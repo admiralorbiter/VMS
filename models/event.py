@@ -202,14 +202,13 @@ class Event(db.Model):
         role = data.get('SignUp Role', '').strip().lower()
         name = data.get('Name', '').strip()
         user_id = data.get('User Auth Id', '').strip()
+        company = data.get('District or Company', '').strip()
 
         if name and role:
             if role == 'educator':
-                # Initialize sets from existing data
                 current_educators = set(filter(None, (self.educators or '').split('; ')))
                 current_educator_ids = set(filter(None, (self.educator_ids or '').split('; ')))
                 
-                # Add new data
                 if name:
                     current_educators.add(name)
                     self.educators = '; '.join(sorted(current_educators))
@@ -218,29 +217,56 @@ class Event(db.Model):
                     self.educator_ids = '; '.join(sorted(current_educator_ids))
                     
             elif role == 'professional':
-                # Initialize sets from existing data
-                current_professionals = set(filter(None, (self.professionals or '').split('; ')))
-                current_professional_ids = set(filter(None, (self.professional_ids or '').split('; ')))
-                
-                # Add new data
-                if name:
-                    current_professionals.add(name)
-                    self.professionals = '; '.join(sorted(current_professionals))
-                if user_id:
-                    current_professional_ids.add(user_id)
-                    self.professional_ids = '; '.join(sorted(current_professional_ids))
+                # Split name into first and last
+                name_parts = name.split(' ', 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+                # Try to find existing volunteer
+                from models.volunteer import Volunteer, db
+                volunteer = Volunteer.query.filter(
+                    Volunteer.first_name == first_name,
+                    Volunteer.last_name == last_name
+                ).first()
+
+                if not volunteer:
+                    # Create new volunteer with empty middle name
+                    volunteer = Volunteer(
+                        first_name=first_name,
+                        last_name=last_name,
+                        middle_name=''  # Explicitly set empty string
+                    )
+                    db.session.add(volunteer)
+                    
+                    # Create or get organization if company provided
+                    if company:
+                        from models.organization import Organization, VolunteerOrganization
+                        org = Organization.query.filter_by(name=company).first()
+                        if not org:
+                            org = Organization(name=company)
+                            db.session.add(org)
+                            db.session.flush()
+                        
+                        # Link volunteer to organization
+                        vol_org = VolunteerOrganization(
+                            volunteer=volunteer,
+                            organization=org,
+                            role='Professional',
+                            is_primary=True
+                        )
+                        db.session.add(vol_org)
+
+                # Link volunteer to event if not already linked
+                if volunteer not in self.volunteers:
+                    self.volunteers.append(volunteer)
 
     def update_from_csv(self, data):
         """Update event from CSV data"""
-        # Debug log the incoming data
-        # current_app.logger.debug(f"Updating from CSV data: {data}")
-        
-        # Skip if no date
+        # Basic event data setup remains the same
         date_str = data.get('Date')
         if not date_str:
             raise ValueError("Date is required")
 
-        # Basic event data
         self.session_id = data.get('Session ID')
         self.title = data.get('Title')
         self.series = data.get('Series or Event Title')
@@ -257,18 +283,51 @@ class Event(db.Model):
         role = data.get('SignUp Role', '').strip().lower()
         name = data.get('Name', '').strip()
         user_id = data.get('User Auth Id', '').strip()
+        company = data.get('District or Company', '').strip()
 
-        # current_app.logger.debug(f"Processing role data - Role: {role}, Name: {name}, User ID: {user_id}")
-
-        # Set the appropriate field based on role
         if name and role:
             if role == 'educator':
                 self.educators = name
                 self.educator_ids = user_id if user_id else ''
-                # current_app.logger.debug(f"Set educator - Name: {self.educators}, ID: {self.educator_ids}")
             elif role == 'professional':
-                self.professionals = name
-                self.professional_ids = user_id if user_id else ''
-                # current_app.logger.debug(f"Set professional - Name: {self.professionals}, ID: {self.professional_ids}")
-        else:
-            current_app.logger.debug("No role or name provided")
+                # Split name into first and last
+                name_parts = name.split(' ', 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+                # Try to find existing volunteer
+                from models.volunteer import Volunteer, db
+                volunteer = Volunteer.query.filter(
+                    Volunteer.first_name == first_name,
+                    Volunteer.last_name == last_name
+                ).first()
+
+                if not volunteer:
+                    # Create new volunteer with empty middle name
+                    volunteer = Volunteer(
+                        first_name=first_name,
+                        last_name=last_name,
+                        middle_name=''  # Explicitly set empty string
+                    )
+                    db.session.add(volunteer)
+                    
+                    # Create or get organization if company provided
+                    if company:
+                        from models.organization import Organization, VolunteerOrganization
+                        org = Organization.query.filter_by(name=company).first()
+                        if not org:
+                            org = Organization(name=company)
+                            db.session.add(org)
+                            db.session.flush()
+                        
+                        # Link volunteer to organization
+                        vol_org = VolunteerOrganization(
+                            volunteer=volunteer,
+                            organization=org,
+                            role='Professional',
+                            is_primary=True
+                        )
+                        db.session.add(vol_org)
+
+                # Link volunteer to event
+                self.volunteers.append(volunteer)
