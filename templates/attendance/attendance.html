@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attendance.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="attendance-container">
+    <div class="page-header">
+        <h1><i class="fa-solid fa-calendar-check"></i> Attendance Management</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('attendance.import_attendance') }}" class="action-btn">
+                <i class="fas fa-file-import"></i> Import Attendance
+            </a>
+            <button onclick="confirmPurge()" class="action-btn purge-btn">
+                <i class="fas fa-trash"></i> Purge Attendance
+            </button>
+        </div>
+    </div>
+
+    <div class="attendance-table-container">
+        <table class="table attendance-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="date">
+                        <span>Date</span>
+                        <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="event">
+                        <span>Event</span>
+                        <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="volunteer">
+                        <span>Volunteer</span>
+                        <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th class="sortable" data-sort="status">
+                        <span>Status</span>
+                        <i class="fa-solid fa-sort"></i>
+                    </th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Attendance records will be populated here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/attendance.js') }}"></script>
+<script>
+function confirmPurge() {
+    if (confirm('Are you sure you want to purge all attendance records? This action cannot be undone.')) {
+        fetch('/attendance/purge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                showNotification('Error purging attendance: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Error purging attendance: ' + error, 'error');
+        });
+    }
+}
+</script>
+{% endblock %}

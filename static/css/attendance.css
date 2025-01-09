@@ -1,0 +1,127 @@
+/* Override the main container width from style.css */
+main {
+    max-width: none !important;
+    padding: 20px 0;
+}
+
+.attendance-container {
+    max-width: 95%;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.page-header h1 {
+    color: var(--delft-blue);
+    font-size: 1.75rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 1.1rem;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Import button style */
+a.action-btn {
+    background-color: var(--ucla-blue);
+    color: white;
+}
+
+a.action-btn:hover {
+    background-color: #1a365d;
+    transform: translateY(1px);
+}
+
+/* Purge button style */
+.purge-btn {
+    background-color: var(--poppy);
+    color: white;
+}
+
+.purge-btn:hover {
+    background-color: #d32f2f;
+    transform: translateY(1px);
+}
+
+.action-btn i {
+    font-size: 1.2rem;
+}
+
+.attendance-table-container {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+    overflow-x: auto;
+}
+
+.attendance-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.attendance-table th {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 1rem;
+    text-align: left;
+    font-weight: 500;
+}
+
+.attendance-table th:first-child {
+    border-top-left-radius: 8px;
+}
+
+.attendance-table th:last-child {
+    border-top-right-radius: 8px;
+}
+
+.attendance-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+    }
+
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+} 

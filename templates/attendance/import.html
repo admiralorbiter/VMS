@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Import Attendance{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attendance.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/import.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="attendance-container">
+    <div class="attendance-header">
+        <h1><i class="fa-solid fa-file-import"></i> Import Attendance Records</h1>
+    </div>
+
+    <div class="import-container">
+        <div class="import-section">
+            <h2><i class="fa-solid fa-upload"></i> Upload Attendance Data</h2>
+            <div class="upload-container" id="uploadContainer">
+                <input type="file" id="fileInput" accept=".csv" class="file-input" />
+                <div class="upload-content">
+                    <i class="fa-solid fa-cloud-upload-alt"></i>
+                    <p>Drag and drop your CSV file here or click to browse</p>
+                    <small>Supported format: CSV</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="import-section results-section" id="resultsSection" style="display: none;">
+            <h2><i class="fa-solid fa-list-check"></i> Import Results</h2>
+            <div class="results-stats">
+                <div class="stat-card success">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span id="successCount" class="stat-count">0</span>
+                    <span class="stat-label">Successful</span>
+                </div>
+                <div class="stat-card error">
+                    <i class="fa-solid fa-times-circle"></i>
+                    <span id="errorCount" class="stat-count">0</span>
+                    <span class="stat-label">Errors</span>
+                </div>
+            </div>
+            <div class="error-list" id="errorList"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/attendance_import.js') }}"></script>
+{% endblock %} 
