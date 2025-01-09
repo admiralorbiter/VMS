@@ -59,13 +59,38 @@
                         <label>Duration</label>
                         <p><i class="fa-solid fa-clock"></i> {{ event.duration or 0 }} minutes</p>
                     </div>
+                    
+                    <!-- Updated Educators section -->
                     <div class="info-item">
-                        <label>Educator</label>
-                        <p><i class="fa-solid fa-chalkboard-teacher"></i> {{ event.educator_name or 'Not assigned' }}</p>
+                        <label>Educators</label>
+                        <p><i class="fa-solid fa-chalkboard-teacher"></i>
+                            {% if event.educators %}
+                                {{ event.educators|replace(';', ',') }}
+                            {% else %}
+                                Not assigned
+                            {% endif %}
+                        </p>
                     </div>
+                    
+                    <!-- New Professionals section -->
+                    <div class="info-item">
+                        <label>Professionals</label>
+                        <p><i class="fa-solid fa-briefcase"></i>
+                            {% if event.professionals %}
+                                {{ event.professionals|replace(';', ',') }}
+                            {% else %}
+                                Not assigned
+                            {% endif %}
+                        </p>
+                    </div>
+                    
                     <div class="info-item">
                         <label>School</label>
                         <p><i class="fa-solid fa-school"></i> {{ event.school or 'Not set' }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>District/Company</label>
+                        <p><i class="fa-solid fa-building"></i> {{ event.district_partner or 'Not set' }}</p>
                     </div>
                     <div class="info-item">
                         <label>Attendance</label>

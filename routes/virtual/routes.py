@@ -17,20 +17,29 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
     try:
         db.session.rollback()
         
-        # Check if event already exists
+        # Skip rows without dates
+        if not row.get('Date'):
+            warning_count += 1
+            errors.append(f"Row {success_count + warning_count + error_count}: Skipped - No date provided")
+            return success_count, warning_count, error_count
+
+        # Check if event already exists by session ID
         existing_event = Event.query.filter_by(
             session_id=row.get('Session ID')
         ).first()
 
         if existing_event:
+            
             # Merge and update existing event
             existing_event.merge_duplicate(row)
             db.session.commit()
+
             warning_count += 1
         else:
             # Create new event
             new_event = Event()
             new_event.update_from_csv(row)
+            
             db.session.add(new_event)
             db.session.commit()
             success_count += 1
@@ -38,6 +47,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
     except Exception as e:
         error_count += 1
         errors.append(f"Row {success_count + warning_count + error_count}: {str(e)}")
+        current_app.logger.error(f"Error processing row: {str(e)}", exc_info=True)
         db.session.rollback()
 
     return success_count, warning_count, error_count

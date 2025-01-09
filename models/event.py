@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from flask import current_app
 from sqlalchemy import String, Enum as SQLAlchemyEnum
 
 from models import db
@@ -133,10 +134,12 @@ class Event(db.Model):
     duration = db.Column(db.Integer)            # Duration in minutes
     registered_count = db.Column(db.Integer, default=0)
     attended_count = db.Column(db.Integer, default=0)
-    educator_name = db.Column(db.Text)          # Changed to Text to store multiple names
-    educator_id = db.Column(db.Text)            # Changed to Text to store multiple IDs
+    educators = db.Column(db.Text)              # To store educator names
+    educator_ids = db.Column(db.Text)           # To store educator IDs
     school = db.Column(db.Text)                 # Changed to Text to store multiple schools
     district_partner = db.Column(db.Text)       # Changed to Text to store multiple districts
+    professionals = db.Column(db.Text)          # To store professional names
+    professional_ids = db.Column(db.Text)       # To store professional IDs
     
     # Relationships
     volunteers = db.relationship('Volunteer', 
@@ -195,38 +198,77 @@ class Event(db.Model):
         self.registered_count += new_registered
         self.attended_count += new_attended
 
-        # Combine text fields with semicolon separator
-        for field, csv_key in {
-            'educator_name': 'Name',
-            'educator_id': 'User Auth Id',
-            'school': 'School',
-            'district_partner': 'District or Company'
-        }.items():
-            current_value = getattr(self, field) or ''
-            new_value = data.get(csv_key, '').strip()
-            if new_value and new_value not in current_value:
-                values = set(filter(None, [current_value, new_value]))
-                setattr(self, field, '; '.join(values))
+        # Handle role-specific data
+        role = data.get('SignUp Role', '').strip().lower()
+        name = data.get('Name', '').strip()
+        user_id = data.get('User Auth Id', '').strip()
+
+        if name and role:
+            if role == 'educator':
+                # Initialize sets from existing data
+                current_educators = set(filter(None, (self.educators or '').split('; ')))
+                current_educator_ids = set(filter(None, (self.educator_ids or '').split('; ')))
+                
+                # Add new data
+                if name:
+                    current_educators.add(name)
+                    self.educators = '; '.join(sorted(current_educators))
+                if user_id:
+                    current_educator_ids.add(user_id)
+                    self.educator_ids = '; '.join(sorted(current_educator_ids))
+                    
+            elif role == 'professional':
+                # Initialize sets from existing data
+                current_professionals = set(filter(None, (self.professionals or '').split('; ')))
+                current_professional_ids = set(filter(None, (self.professional_ids or '').split('; ')))
+                
+                # Add new data
+                if name:
+                    current_professionals.add(name)
+                    self.professionals = '; '.join(sorted(current_professionals))
+                if user_id:
+                    current_professional_ids.add(user_id)
+                    self.professional_ids = '; '.join(sorted(current_professional_ids))
 
     def update_from_csv(self, data):
         """Update event from CSV data"""
+        # Debug log the incoming data
+        # current_app.logger.debug(f"Updating from CSV data: {data}")
+        
+        # Skip if no date
+        date_str = data.get('Date')
+        if not date_str:
+            raise ValueError("Date is required")
+
+        # Basic event data
         self.session_id = data.get('Session ID')
         self.title = data.get('Title')
         self.series = data.get('Series or Event Title')
-        
-        # Handle date conversion
-        date_str = data.get('Date')
-        if date_str:
-            self.start_date = datetime.strptime(date_str, '%m/%d/%Y')
-        else:
-            raise ValueError("Date is required")
-        
+        self.start_date = datetime.strptime(date_str, '%m/%d/%Y')
         self.status = data.get('Status')
         self.duration = int(data.get('Duration', 0))
-        self.educator_name = data.get('Name')
-        self.educator_id = data.get('User Auth Id')
         self.school = data.get('School')
         self.district_partner = data.get('District or Company')
         self.registered_count = int(data.get('Registered Student Count', '0').replace('n/a', '0'))
         self.attended_count = int(data.get('Attended Student Count', '0').replace('n/a', '0'))
         self.type = EventType.VIRTUAL_SESSION
+
+        # Handle role-specific data
+        role = data.get('SignUp Role', '').strip().lower()
+        name = data.get('Name', '').strip()
+        user_id = data.get('User Auth Id', '').strip()
+
+        # current_app.logger.debug(f"Processing role data - Role: {role}, Name: {name}, User ID: {user_id}")
+
+        # Set the appropriate field based on role
+        if name and role:
+            if role == 'educator':
+                self.educators = name
+                self.educator_ids = user_id if user_id else ''
+                # current_app.logger.debug(f"Set educator - Name: {self.educators}, ID: {self.educator_ids}")
+            elif role == 'professional':
+                self.professionals = name
+                self.professional_ids = user_id if user_id else ''
+                # current_app.logger.debug(f"Set professional - Name: {self.professionals}, ID: {self.professional_ids}")
+        else:
+            current_app.logger.debug("No role or name provided")
