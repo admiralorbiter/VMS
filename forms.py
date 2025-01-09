@@ -1,7 +1,10 @@
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, SelectField, SubmitField, TextAreaField, RadioField
 from wtforms.validators import DataRequired, Email, Optional
-from models.volunteer import LocalStatusEnum, SalutationEnum, SuffixEnum, GenderEnum, RaceEthnicityEnum, EducationEnum
+from models.contact import (
+    SalutationEnum, SuffixEnum, GenderEnum, 
+    RaceEthnicityEnum, EducationEnum, LocalStatusEnum
+)
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(message="Username is required.")])

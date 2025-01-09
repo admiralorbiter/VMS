@@ -10,7 +10,8 @@ from sqlalchemy import or_, and_
 
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
-from models.volunteer import Address, EducationEnum, Engagement, EventParticipation, GenderEnum, RaceEthnicityEnum, SalutationEnum, Skill, SuffixEnum, VolunteerSkill, Email, Phone, LocalStatusEnum
+from models.contact import Address, EducationEnum, GenderEnum, RaceEthnicityEnum, SalutationEnum, SuffixEnum,Email, Phone, LocalStatusEnum
+from models.volunteer import Volunteer, Engagement, EventParticipation, Skill, VolunteerSkill
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
 volunteers_bp = Blueprint('volunteers', __name__)

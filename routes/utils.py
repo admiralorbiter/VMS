@@ -2,7 +2,7 @@ from datetime import datetime
 
 from models import db
 from models.event import CancellationReason, District, EventFormat, EventType
-from models.volunteer import ContactTypeEnum, Email
+from models.contact import ContactTypeEnum, Email
 
 DISTRICT_MAPPINGS = {
     'KANSAS CITY USD 500': 'KANSAS CITY USD 500',

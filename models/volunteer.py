@@ -1,120 +1,21 @@
 from models import db
-from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey, Float
-from sqlalchemy.orm import relationship
-from enum import Enum as PyEnum
-
+from models.contact import (
+    Contact, EducationEnum, RaceEthnicityEnum, 
+    LocalStatusEnum, SkillSourceEnum
+)
+from sqlalchemy import Enum, Date, Integer, String, Text, ForeignKey, Float
+from sqlalchemy.orm import relationship, declared_attr
 from models.history import History
 
-# Base Enum Class
-class FormEnum(str, PyEnum):
-    @classmethod
-    def choices(cls):
-        return [
-            (member.name, member.value)
-            for member in cls
-        ]
-
-    @classmethod
-    def choices_required(cls):
-        return [
-            (member.name, member.value)
-            for member in cls
-        ]
-
-class SalutationEnum(FormEnum):
-    none = ''
-    mr = 'Mr.'
-    ms = 'Ms.'
-    mrs = 'Mrs.'
-    dr = 'Dr.'
-    prof = 'Prof.'
-    mx = 'Mx.'
-    rev = 'Rev.'
-    hon = 'Hon.'
-    captain = 'Captain'
-    commissioner = 'Commissioner'
-    general = 'General'
-    judge = 'Judge'
-    officer = 'Officer'
-    staff_sergeant = 'Staff Sergeant'
-
-class SuffixEnum(FormEnum):
-    none = ''
-    jr = 'Jr.'
-    sr = 'Sr.'
-    ii = 'II'
-    iii = 'III'
-    iv = 'IV'
-    phd = 'Ph.D.'
-    md = 'M.D.'
-    esq = 'Esq.'
-
-class GenderEnum(FormEnum):
-    male = 'Male'
-    female = 'Female'
-    non_binary = 'Non-binary'
-    genderfluid = 'Genderfluid'
-    agender = 'Agender'
-    transgender = 'Transgender'
-    prefer_not_to_say = 'Prefer not to say'
-    other = 'Other'
-
-class EducationEnum(FormEnum):
-    none = ''
-    high_school = 'High School Diploma'
-    associate_degree = 'Associate Degree'
-    bachelors_degree = 'Bachelor’s Degree'
-    masters_degree = 'Master’s Degree'
-    doctorate_degree = 'Doctorate Degree'
-    professional_degree = 'Professional Degree'
-    some_college = 'Some College'
-    technical_certification = 'Technical Certification'
-    other = 'Other'
-
-class RaceEthnicityEnum(FormEnum):
-    unknown = 'Unknown'
-    american_indian = 'American Indian or Alaska Native'
-    asian = 'Asian'
-    black = 'Black or African American'
-    hispanic = 'Hispanic or Latino'
-    native_hawaiian = 'Native Hawaiian or Other Pacific Islander'
-    white = 'White'
-    two_or_more = 'Two or More Races'
-    prefer_not_to_say = 'Prefer not to say'
-    other = 'Other'
-
-# Enums for field choices
-class LocalStatusEnum(FormEnum):
-    true = 'true'
-    partial = 'partial'
-    false = 'false'
-    unknown = 'unknown'
-
-class ContactTypeEnum(FormEnum):
-    personal = 'personal'
-    professional = 'professional'
-
-class SkillSourceEnum(FormEnum):
-    job = 'job'
-    organization = 'organization'
-    interest = 'interest'
-    previous_engagement = 'previous_engagement'
-    user_selected = 'user_selected'
-    admin_selected = 'admin_selected'
-
-# Volunteer Model
-class Volunteer(db.Model):
+class Volunteer(Contact):
     __tablename__ = 'volunteer'
     
-    id = db.Column(Integer, primary_key=True)
-    salesforce_individual_id = db.Column(String(18), unique=True, nullable=True)
-    salesforce_account_id = db.Column(String(18), nullable=True)
-    salutation = db.Column(Enum(SalutationEnum), nullable=True)
-    first_name = db.Column(String(50), nullable=False)
-    middle_name = db.Column(String(50), nullable=True)
-    last_name = db.Column(String(50), nullable=False)
-    suffix = db.Column(Enum(SuffixEnum), nullable=True) 
-
+    id = db.Column(Integer, ForeignKey('contact.id'), primary_key=True)
+    
+    __mapper_args__ = {
+        'polymorphic_identity': 'volunteer',
+    }
+    
     # Organization Information
     organization_name = db.Column(String(100))
     title = db.Column(String(50))
@@ -122,8 +23,6 @@ class Volunteer(db.Model):
     industry = db.Column(String(50))
 
     # Additional Information
-    birthdate = db.Column(Date)
-    gender = db.Column(Enum(GenderEnum))
     education = db.Column(Enum(EducationEnum), nullable=True)
     local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown)
     race_ethnicity = db.Column(Enum(RaceEthnicityEnum))
@@ -132,36 +31,42 @@ class Volunteer(db.Model):
     first_volunteer_date = db.Column(Date)
     last_volunteer_date = db.Column(Date)
     times_volunteered = db.Column(Integer, default=0)
-    additional_volunteer_count = db.Column(Integer, default=0)  # For adding constants
+    additional_volunteer_count = db.Column(Integer, default=0)
 
+    # Communication History
     last_mailchimp_activity_date = db.Column(Date)
     mailchimp_history = db.Column(Text)
-    last_email_date = db.Column(Date)
-    notes = db.Column(Text)
     admin_contacts = db.Column(String(200))
 
-    # Relationships
-    phones = relationship('Phone', backref='volunteer', lazy='dynamic')
-    emails = relationship('Email', backref='volunteer', lazy='dynamic')
-    addresses = relationship('Address', backref='volunteer', lazy='dynamic')
-    engagements = relationship('Engagement', backref='volunteer', lazy='dynamic')
-    
-    # Add this new relationship
-    organizations = relationship(
-        'Organization', 
-        secondary='volunteer_organization',
-        back_populates='volunteers',
-        overlaps="volunteer_organizations"
-    )
-    # Add this relationship
-    volunteer_organizations = relationship(
-        'VolunteerOrganization', 
-        back_populates='volunteer',
-        overlaps="organizations"
-    )
+    # Relationships need @declared_attr
+    @declared_attr
+    def engagements(cls):
+        return relationship('Engagement', backref='volunteer', lazy='dynamic')
 
-    # Skills relationship through association table
-    skills = relationship('Skill', secondary='volunteer_skills', backref='volunteers')
+    @declared_attr
+    def organizations(cls):
+        return relationship(
+            'Organization', 
+            secondary='volunteer_organization',
+            back_populates='volunteers',
+            overlaps="volunteer_organizations"
+        )
+
+    @declared_attr
+    def volunteer_organizations(cls):
+        return relationship(
+            'VolunteerOrganization', 
+            back_populates='volunteer',
+            overlaps="organizations"
+        )
+
+    @declared_attr
+    def skills(cls):
+        return relationship('Skill', secondary='volunteer_skills', backref='volunteers')
+
+    @declared_attr
+    def event_participations(cls):
+        return relationship('EventParticipation', backref='volunteer')
 
     @property
     def total_times_volunteered(self):
@@ -169,70 +74,12 @@ class Volunteer(db.Model):
 
     @property
     def active_histories(self):
-        """Get non-deleted history records ordered by date"""
         return History.query.filter_by(
             volunteer_id=self.id,
             is_deleted=False
         ).order_by(
             History.activity_date.desc()
         ).all()
-
-    @property
-    def salesforce_contact_url(self):
-        """Generate Salesforce contact URL if ID exists"""
-        if self.salesforce_individual_id:
-            return f"https://prep-kc.lightning.force.com/lightning/r/Contact/{self.salesforce_individual_id}/view"
-        return None
-
-    @property
-    def salesforce_account_url(self):
-        """Generate Salesforce account URL if ID exists"""
-        if self.salesforce_account_id:
-            return f"https://prep-kc.lightning.force.com/lightning/r/Account/{self.salesforce_account_id}/view"
-        return None
-
-# Phone Model
-class Phone(db.Model):
-    __tablename__ = 'phone'
-
-    id = db.Column(Integer, primary_key=True)
-    volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
-    number = db.Column(String(20))
-    type = db.Column(Enum(ContactTypeEnum))
-    primary = db.Column(Boolean, default=False)
-
-# Email Model
-class Email(db.Model):
-    __tablename__ = 'email'
-
-    id = db.Column(Integer, primary_key=True)
-    volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
-    email = db.Column(String(100))
-    type = db.Column(Enum(ContactTypeEnum))
-    primary = db.Column(Boolean, default=False)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'email': self.email,
-            'type': self.type.name if self.type else 'personal',
-            'primary': self.primary
-        }
-
-# Address Model
-class Address(db.Model):
-    __tablename__ = 'address'
-
-    id = db.Column(Integer, primary_key=True)
-    volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
-    address_line1 = db.Column(String(100))
-    address_line2 = db.Column(String(100))
-    city = db.Column(String(50))
-    state = db.Column(String(50))
-    zip_code = db.Column(String(20))
-    country = db.Column(String(50))
-    type = db.Column(Enum(ContactTypeEnum))
-    primary = db.Column(Boolean, default=False)
 
 # Skill Model
 class Skill(db.Model):
@@ -272,5 +119,4 @@ class EventParticipation(db.Model):
     salesforce_id = db.Column(String(18), unique=True)  # For storing the original Id from Salesforce
 
     # Relationships
-    volunteer = relationship('Volunteer', backref='event_participations')
     event = relationship('Event', backref='volunteer_participations')
