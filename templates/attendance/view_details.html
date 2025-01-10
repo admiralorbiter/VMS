@@ -42,11 +42,136 @@
                 </div>
                 {% endif %}
 
-                {% if contact.birthdate %}
-                <div class="detail-item">
-                    <label>Birthdate</label>
-                    <span>{{ contact.birthdate.strftime('%B %d, %Y') }}</span>
-                </div>
+                {% if type == 'teacher' %}
+                    {% if contact.department %}
+                    <div class="detail-item">
+                        <label>Department</label>
+                        <span>{{ contact.department }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.school_id %}
+                    <div class="detail-item">
+                        <label>School ID</label>
+                        <span>{{ contact.school_id }}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="detail-item">
+                        <label>Status</label>
+                        <span>{{ 'Active' if contact.active else 'Inactive' }}</span>
+                    </div>
+                {% endif %}
+
+                {% if type == 'student' %}
+                    {% if contact.salesforce_individual_id %}
+                    <div class="detail-item">
+                        <label>Salesforce ID</label>
+                        <span>
+                            {% if contact.salesforce_contact_url %}
+                            <a href="{{ contact.salesforce_contact_url }}" target="_blank">
+                                {{ contact.salesforce_individual_id }}
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                            {% else %}
+                            {{ contact.salesforce_individual_id }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.salesforce_account_id %}
+                    <div class="detail-item">
+                        <label>Account ID</label>
+                        <span>
+                            {% if contact.salesforce_account_url %}
+                            <a href="{{ contact.salesforce_account_url }}" target="_blank">
+                                {{ contact.salesforce_account_id }}
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                            {% else %}
+                            {{ contact.salesforce_account_id }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.student_id %}
+                    <div class="detail-item">
+                        <label>Student ID</label>
+                        <span>{{ contact.student_id }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.school_id %}
+                    <div class="detail-item">
+                        <label>School ID</label>
+                        <span>{{ contact.school_id }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.class_id %}
+                    <div class="detail-item">
+                        <label>Class ID</label>
+                        <span>{{ contact.class_id }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.current_grade %}
+                    <div class="detail-item">
+                        <label>Current Grade</label>
+                        <span>{{ contact.current_grade }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.legacy_grade %}
+                    <div class="detail-item">
+                        <label>Legacy Grade</label>
+                        <span>{{ contact.legacy_grade }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.racial_ethnic %}
+                    <div class="detail-item">
+                        <label>Racial/Ethnic Background</label>
+                        <span>{{ contact.racial_ethnic.value }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.birthdate %}
+                    <div class="detail-item">
+                        <label>Birthdate</label>
+                        <span>{{ contact.birthdate.strftime('%B %d, %Y') }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.school_code %}
+                    <div class="detail-item">
+                        <label>School Code</label>
+                        <span>{{ contact.school_code }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.ell_language %}
+                    <div class="detail-item">
+                        <label>ELL Language</label>
+                        <span>{{ contact.ell_language }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.gifted is not none %}
+                    <div class="detail-item">
+                        <label>Gifted</label>
+                        <span>{{ 'Yes' if contact.gifted else 'No' }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if contact.lunch_status %}
+                    <div class="detail-item">
+                        <label>Lunch Status</label>
+                        <span>{{ contact.lunch_status }}</span>
+                    </div>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -81,60 +206,54 @@
             </div>
         </div>
 
-        {% if type == 'student' %}
+        {% if type == 'teacher' %}
         <div class="details-section">
-            <h2>Student Information</h2>
+            <h2>Connector Information</h2>
             <div class="details-grid">
+                {% if contact.connector_role %}
                 <div class="detail-item">
-                    <label>Student ID</label>
-                    <span>{{ contact.student_id }}</span>
-                </div>
-                <div class="detail-item">
-                    <label>Grade</label>
-                    <span>{{ contact.current_grade }}</span>
-                </div>
-                <div class="detail-item">
-                    <label>School</label>
-                    <span>{{ contact.school_code }}</span>
-                </div>
-                {% if contact.ell_language %}
-                <div class="detail-item">
-                    <label>ELL Language</label>
-                    <span>{{ contact.ell_language }}</span>
+                    <label>Connector Role</label>
+                    <span>{{ contact.connector_role }}</span>
                 </div>
                 {% endif %}
+
                 <div class="detail-item">
-                    <label>Gifted Program</label>
-                    <span>{{ 'Yes' if contact.gifted else 'No' }}</span>
+                    <label>Connector Status</label>
+                    <span>{{ 'Active' if contact.connector_active else 'Inactive' }}</span>
                 </div>
-                {% if contact.lunch_status %}
+
+                {% if contact.connector_start_date %}
                 <div class="detail-item">
-                    <label>Lunch Status</label>
-                    <span>{{ contact.lunch_status }}</span>
+                    <label>Start Date</label>
+                    <span>{{ contact.connector_start_date.strftime('%B %d, %Y') }}</span>
+                </div>
+                {% endif %}
+
+                {% if contact.connector_end_date %}
+                <div class="detail-item">
+                    <label>End Date</label>
+                    <span>{{ contact.connector_end_date.strftime('%B %d, %Y') }}</span>
                 </div>
                 {% endif %}
             </div>
         </div>
-        {% else %}
+
         <div class="details-section">
-            <h2>Teacher Information</h2>
+            <h2>Email Tracking</h2>
             <div class="details-grid">
+                {% if contact.last_email_message %}
                 <div class="detail-item">
-                    <label>Department</label>
-                    <span>{{ contact.department or 'N/A' }}</span>
+                    <label>Last Email Message</label>
+                    <span>{{ contact.last_email_message.strftime('%B %d, %Y') }}</span>
                 </div>
+                {% endif %}
+
+                {% if contact.last_mailchimp_date %}
                 <div class="detail-item">
-                    <label>School</label>
-                    <span>{{ contact.school_code or 'N/A' }}</span>
+                    <label>Last Mailchimp Email</label>
+                    <span>{{ contact.last_mailchimp_date.strftime('%B %d, %Y') }}</span>
                 </div>
-                <div class="detail-item">
-                    <label>Role</label>
-                    <span>{{ contact.connector_role or 'N/A' }}</span>
-                </div>
-                <div class="detail-item">
-                    <label>Status</label>
-                    <span>{{ 'Active' if contact.active else 'Inactive' }}</span>
-                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}

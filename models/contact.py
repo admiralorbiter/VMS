@@ -162,7 +162,7 @@ class RaceEthnicityEnum(FormEnum):
     american_indian = 'American Indian or Alaska Native'
     asian = 'Asian'
     black = 'Black or African American'
-    hispanic = 'Hispanic or Latino'
+    hispanic = 'Hispanic or Latino' or 'Hispanic/Latino'
     native_hawaiian = 'Native Hawaiian or Other Pacific Islander'
     white = 'White'
     two_or_more = 'Two or More Races'

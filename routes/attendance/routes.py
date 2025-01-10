@@ -5,7 +5,7 @@ import os
 from models import db
 from models.student import Student
 from models.teacher import Teacher
-from models.contact import Email
+from models.contact import Email, Phone, GenderEnum, RaceEthnicityEnum
 
 attendance = Blueprint('attendance', __name__)
 
@@ -141,28 +141,116 @@ def process_student_data(df):
     try:
         for _, row in df.iterrows():
             try:
-                # Check if student already exists
-                student = Student.query.filter_by(student_id=str(row.get('Local_Student_ID__c', ''))).first()
+                # Get required fields
+                first_name = str(row.get('FirstName', '')).strip()
+                last_name = str(row.get('LastName', '')).strip()
+                
+                # Track missing fields
+                missing_fields = []
+                if not first_name:
+                    missing_fields.append('FirstName')
+                if not last_name:
+                    missing_fields.append('LastName')
+
+                if missing_fields:
+                    errors.append(f"Student {first_name} {last_name}: Missing required fields: {', '.join(missing_fields)}")
+                    continue
+
+                # Check if student already exists by Salesforce ID or student ID
+                student = None
+                salesforce_id = str(row.get('Id', '')).strip()
+                student_id = str(row.get('Local_Student_ID__c', '')).strip()
+                
+                if salesforce_id:
+                    student = Student.query.filter_by(salesforce_individual_id=salesforce_id).first()
+                if not student and student_id:
+                    student = Student.query.filter_by(student_id=student_id).first()
                 
                 if not student:
                     student = Student()
 
-                # Update student fields
-                student.first_name = row.get('FirstName', '')
-                student.last_name = row.get('LastName', '')
-                student.email = row.get('Email', '')
-                student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
-                student.student_id = str(row.get('Local_Student_ID__c', ''))
-                student.school_code = str(row.get('AttendingSchoolCode__c', ''))
-                student.ell_language = row.get('ELL_Language__c', '')
-                student.gifted = bool(row.get('Gifted__c', False))
-                student.lunch_status = row.get('Lunch_Status__c', '')
+                # Update basic Contact fields
+                student.salesforce_individual_id = salesforce_id
+                student.salesforce_account_id = str(row.get('AccountId', '')).strip() or None
+                student.first_name = first_name
+                student.middle_name = str(row.get('MiddleName', '')).strip() or None
+                student.last_name = last_name
+                
+                # Handle birthdate
+                if row.get('Birthdate'):
+                    student.birthdate = pd.to_datetime(row['Birthdate']).date()
 
+                # Handle gender using GenderEnum
+                gender_value = row.get('Gender__c')
+                if gender_value:
+                    gender_key = gender_value.lower().replace(' ', '_')
+                    try:
+                        student.gender = GenderEnum[gender_key]
+                    except KeyError:
+                        errors.append(f"Student {first_name} {last_name}: Invalid gender value: {gender_value}")
+
+                # Handle racial/ethnic background
+                racial_ethnic = row.get('Racial_Ethnic_Background__c')
+                if racial_ethnic:
+                    racial_key = racial_ethnic.lower().replace(' ', '_').replace('/', '_')
+                    try:
+                        student.racial_ethnic = RaceEthnicityEnum[racial_key]
+                    except KeyError:
+                        errors.append(f"Student {first_name} {last_name}: Invalid racial/ethnic value: {racial_ethnic}")
+
+                # Update student-specific fields
+                student.student_id = student_id
+                student.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
+                student.class_id = str(row.get('Class__c', '')).strip() or None
+                student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
+                student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
+
+                # Save the student first to get an ID
                 db.session.add(student)
+                db.session.flush()  # This will assign an ID to the student
+
+                # Handle email after student is saved
+                email_address = str(row.get('Email', '')).strip()
+                if email_address:
+                    existing_email = Email.query.filter_by(
+                        contact_id=student.id,
+                        email=email_address,
+                        primary=True
+                    ).first()
+                    
+                    if not existing_email:
+                        email = Email(
+                            contact_id=student.id,
+                            email=email_address,
+                            type='personal',
+                            primary=True
+                        )
+                        db.session.add(email)
+
+                # Handle phone after student is saved
+                phone_number = str(row.get('Phone', '')).strip()
+                if phone_number:
+                    existing_phone = Phone.query.filter_by(
+                        contact_id=student.id,
+                        number=phone_number,
+                        primary=True
+                    ).first()
+                    
+                    if not existing_phone:
+                        phone = Phone(
+                            contact_id=student.id,
+                            number=phone_number,
+                            type='personal',
+                            primary=True
+                        )
+                        db.session.add(phone)
+
                 success_count += 1
 
             except Exception as e:
-                errors.append(f"Error processing student {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
+                errors.append(f"Error processing student {first_name} {last_name}: {str(e)}")
+                db.session.rollback()  # Rollback on error
+                continue
 
         db.session.commit()
         return {'status': 'success', 'success': success_count, 'errors': errors}
@@ -190,7 +278,7 @@ def process_teacher_data(df):
                     missing_fields.append('LastName')
 
                 if missing_fields:
-                    errors.append(f"Teacher {row.get('FirstName', '')} {row.get('LastName', '')}: Missing required fields: {', '.join(missing_fields)}")
+                    errors.append(f"Teacher {first_name} {last_name}: Missing required fields: {', '.join(missing_fields)}")
                     continue
 
                 # Get email (optional but needed for lookup)
@@ -203,15 +291,16 @@ def process_teacher_data(df):
                     if email:
                         teacher = Teacher.query.get(email.contact_id)
 
+                # If no teacher found by email, create new one
                 if not teacher:
-                    # Create new teacher with required fields
                     teacher = Teacher(
                         first_name=first_name,
                         last_name=last_name,
+                        middle_name='',  # Explicitly set empty string
                         type='teacher'
                     )
                     db.session.add(teacher)
-                    db.session.flush()
+                    db.session.flush()  # Get ID for relationships
                     
                     # Create email record if provided
                     if email_address:
@@ -223,20 +312,48 @@ def process_teacher_data(df):
                         )
                         db.session.add(email)
 
-                # Update optional teacher fields
+                # Update teacher fields
+                teacher.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
                 teacher.department = str(row.get('Department', '')).strip() or None
-                teacher.school_code = str(row.get('AccountId', '')).strip() or None
-                teacher.active = True
-                teacher.connector_role = str(row.get('Title', '')).strip() or None
+                
+                # Handle gender using GenderEnum
+                gender_value = row.get('Gender__c')
+                if gender_value:
+                    # Convert to lowercase and replace spaces with underscores for enum matching
+                    gender_key = gender_value.lower().replace(' ', '_')
+                    try:
+                        teacher.gender = GenderEnum[gender_key]
+                    except KeyError:
+                        errors.append(f"Teacher {first_name} {last_name}: Invalid gender value: {gender_value}")
+                
+                # Phone handling
+                phone_number = str(row.get('Phone', '')).strip()
+                if phone_number:
+                    existing_phone = Phone.query.filter_by(
+                        contact_id=teacher.id,
+                        number=phone_number,
+                        primary=True
+                    ).first()
+                    
+                    if not existing_phone:
+                        phone = Phone(
+                            contact_id=teacher.id,
+                            number=phone_number,
+                            type='professional',
+                            primary=True
+                        )
+                        db.session.add(phone)
+
+                # Email tracking
+                if row.get('Last_Email_Message__c'):
+                    teacher.last_email_message = pd.to_datetime(row['Last_Email_Message__c']).date()
+                if row.get('Last_Mailchimp_Email_Date__c'):
+                    teacher.last_mailchimp_date = pd.to_datetime(row['Last_Mailchimp_Email_Date__c']).date()
 
                 success_count += 1
-                
-                # Commit every 100 records
-                if success_count % 100 == 0:
-                    db.session.commit()
 
             except Exception as e:
-                errors.append(f"Error processing teacher {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
+                errors.append(f"Error processing teacher {first_name} {last_name}: {str(e)}")
 
         db.session.commit()
         return {'status': 'success', 'success': success_count, 'errors': errors}

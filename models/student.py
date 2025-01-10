@@ -1,5 +1,5 @@
 from models import db
-from models.contact import Contact
+from models.contact import Contact, RaceEthnicityEnum
 from sqlalchemy import Enum, String, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, declared_attr
 
@@ -14,7 +14,13 @@ class Student(Contact):
     
     # Student-specific fields
     current_grade = db.Column(Integer)
-    student_id = db.Column(String(50))
+    legacy_grade = db.Column(String(50))  # Legacy Grade__C
+    student_id = db.Column(String(50))    # Local_Student_ID__c
+    school_id = db.Column(String(50))     # npsp__Primary_Affiliation__c
+    class_id = db.Column(String(50))      # Class__c
+    racial_ethnic = db.Column(Enum(RaceEthnicityEnum))  # Racial_Ethnic_Background__c
+    
+    # Existing fields
     school_code = db.Column(String(50))
     ell_language = db.Column(String(50))
     gifted = db.Column(Boolean)
