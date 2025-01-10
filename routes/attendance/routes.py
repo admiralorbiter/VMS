@@ -6,6 +6,7 @@ from models import db
 from models.student import Student
 from models.teacher import Teacher
 from models.contact import Email, Phone, GenderEnum, RaceEthnicityEnum
+from models.class_model import Class
 
 attendance = Blueprint('attendance', __name__)
 
@@ -156,7 +157,7 @@ def process_student_data(df):
                     errors.append(f"Student {first_name} {last_name}: Missing required fields: {', '.join(missing_fields)}")
                     continue
 
-                # Check if student already exists by Salesforce ID or student ID
+                # Check if student already exists
                 student = None
                 salesforce_id = str(row.get('Id', '')).strip()
                 student_id = str(row.get('Local_Student_ID__c', '')).strip()
@@ -205,6 +206,16 @@ def process_student_data(df):
                 student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
                 student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
 
+                # Handle class relationship
+                class_salesforce_id = str(row.get('Class__c', '')).strip()
+                if class_salesforce_id:
+                    # Check if the class exists
+                    class_obj = Class.query.filter_by(salesforce_id=class_salesforce_id).first()
+                    if class_obj:
+                        student.class_id = class_salesforce_id
+                    else:
+                        errors.append(f"Student {first_name} {last_name}: Referenced class {class_salesforce_id} not found")
+
                 # Save the student first to get an ID
                 db.session.add(student)
                 db.session.flush()  # This will assign an ID to the student
@@ -249,15 +260,23 @@ def process_student_data(df):
 
             except Exception as e:
                 errors.append(f"Error processing student {first_name} {last_name}: {str(e)}")
-                db.session.rollback()  # Rollback on error
+                db.session.rollback()
                 continue
 
         db.session.commit()
-        return {'status': 'success', 'success': success_count, 'errors': errors}
+        return {
+            'status': 'success', 
+            'success': success_count, 
+            'errors': errors
+        }
 
     except Exception as e:
         db.session.rollback()
-        return {'status': 'error', 'message': str(e), 'errors': errors}
+        return {
+            'status': 'error', 
+            'message': str(e), 
+            'errors': errors
+        }
 
 def process_teacher_data(df):
     success_count = 0

@@ -110,10 +110,15 @@
                     </div>
                     {% endif %}
 
-                    {% if contact.class_id %}
+                    {% if contact.class_ref %}
                     <div class="detail-item">
-                        <label>Class ID</label>
-                        <span>{{ contact.class_id }}</span>
+                        <label>Class</label>
+                        <span>
+                            {{ contact.class_ref.name }}
+                            {% if contact.class_ref.class_year %}
+                                (Year {{ contact.class_ref.class_year }})
+                            {% endif %}
+                        </span>
                     </div>
                     {% endif %}
 
