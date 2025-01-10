@@ -1,7 +1,7 @@
 from models import db
 from models.contact import Contact, RaceEthnicityEnum
 from sqlalchemy import Enum, String, Integer, Boolean, ForeignKey
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship
 
 class Student(Contact):
     __tablename__ = 'student'
@@ -16,14 +16,16 @@ class Student(Contact):
     current_grade = db.Column(Integer)
     legacy_grade = db.Column(String(50))  # Legacy Grade__C
     student_id = db.Column(String(50))    # Local_Student_ID__c
-    school_id = db.Column(String(50))     # npsp__Primary_Affiliation__c
-    class_id = db.Column(String(50), db.ForeignKey('class.salesforce_id'))
-    racial_ethnic = db.Column(Enum(RaceEthnicityEnum))  # Racial_Ethnic_Background__c
     
-    # Add relationship to Class
-    class_ref = db.relationship('Class', foreign_keys=[class_id], backref='students')
+    # Foreign Keys - Updated to match parent table IDs
+    school_id = db.Column(String(18), db.ForeignKey('school.id'))  # References School.id (Salesforce ID)
+    class_id = db.Column(String(18), db.ForeignKey('class.salesforce_id'))  # References Class.salesforce_id
     
-    # Existing fields
+    # Relationships
+    school = db.relationship('School', backref='students')
+    class_ref = db.relationship('Class', backref='students')
+    
+    racial_ethnic = db.Column(Enum(RaceEthnicityEnum))
     school_code = db.Column(String(50))
     ell_language = db.Column(String(50))
     gifted = db.Column(Boolean)

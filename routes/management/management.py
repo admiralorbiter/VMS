@@ -6,6 +6,7 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from models import db
 from config import Config
 from models.class_model import Class
+from models.school_model import School
 
 management_bp = Blueprint('management', __name__)
 
@@ -99,6 +100,82 @@ def import_classes():
         return jsonify({
             'success': True,
             'message': f'Successfully processed {success_count} classes with {error_count} errors',
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@management_bp.route('/management/import-schools', methods=['POST'])
+@login_required
+def import_schools():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        # Define Salesforce query
+        salesforce_query = """
+        SELECT Id, Name, ParentId, Connector_Account_Name__c, School_Code_External_ID__c
+        FROM Account 
+        WHERE Type = 'School'
+        """
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Execute the query
+        result = sf.query_all(salesforce_query)
+        sf_rows = result.get('records', [])
+
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        # Process each row from Salesforce
+        for row in sf_rows:
+            try:
+                # Check if school exists
+                existing_school = School.query.filter_by(id=row['Id']).first()
+                
+                if existing_school:
+                    # Update existing school
+                    existing_school.name = row['Name']
+                    existing_school.district_id = row['ParentId']
+                    existing_school.normalized_name = row['Connector_Account_Name__c']
+                    existing_school.school_code = row['School_Code_External_ID__c']
+                else:
+                    # Create new school
+                    new_school = School(
+                        id=row['Id'],
+                        name=row['Name'],
+                        district_id=row['ParentId'],
+                        normalized_name=row['Connector_Account_Name__c'],
+                        school_code=row['School_Code_External_ID__c']
+                    )
+                    db.session.add(new_school)
+                
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Error processing school {row.get('Name')}: {str(e)}")
+
+        # Commit changes
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully processed {success_count} schools with {error_count} errors',
             'errors': errors
         })
 

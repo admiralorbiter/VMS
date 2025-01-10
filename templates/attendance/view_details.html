@@ -105,8 +105,14 @@
 
                     {% if contact.school_id %}
                     <div class="detail-item">
-                        <label>School ID</label>
-                        <span>{{ contact.school_id }}</span>
+                        <label>School</label>
+                        <span>
+                            {% if contact.school %}
+                                {{ contact.school.name }}
+                            {% else %}
+                                {{ contact.school_id }}
+                            {% endif %}
+                        </span>
                     </div>
                     {% endif %}
 

@@ -55,12 +55,15 @@
         </div>
     </div>
 
-    <!-- Import Classes Section -->
+    <!-- Import Section -->
     <div class="card admin-card mt-4">
         <div class="card-body">
-            <h5 class="card-title">Import Classes</h5>
-            <button onclick="importClasses()" class="btn admin-btn-import">
+            <h5 class="card-title">Import Data</h5>
+            <button onclick="importClasses()" class="btn admin-btn-import me-2">
                 <i class="fas fa-file-import"></i> Import Classes from Salesforce
+            </button>
+            <button onclick="importSchools()" class="btn admin-btn-import">
+                <i class="fas fa-school"></i> Import Schools from Salesforce
             </button>
         </div>
     </div>
@@ -150,6 +153,30 @@ function importClasses() {
         .catch(error => {
             console.error('Error:', error);
             alert('Error importing classes');
+        });
+    }
+}
+
+function importSchools() {
+    if (confirm('Are you sure you want to import schools from Salesforce?')) {
+        fetch('/management/import-schools', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert(data.message || 'Error importing schools');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error importing schools');
         });
     }
 }

@@ -7,6 +7,7 @@ from models.student import Student
 from models.teacher import Teacher
 from models.contact import Email, Phone, GenderEnum, RaceEthnicityEnum
 from models.class_model import Class
+from models.school_model import School
 
 attendance = Blueprint('attendance', __name__)
 
@@ -215,6 +216,15 @@ def process_student_data(df):
                         student.class_id = class_salesforce_id
                     else:
                         errors.append(f"Student {first_name} {last_name}: Referenced class {class_salesforce_id} not found")
+
+                # Add school relationship handling
+                school_salesforce_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip()
+                if school_salesforce_id:
+                    school = School.query.get(school_salesforce_id)
+                    if school:
+                        student.school_id = school_salesforce_id
+                    else:
+                        errors.append(f"Student {first_name} {last_name}: Referenced school {school_salesforce_id} not found")
 
                 # Save the student first to get an ID
                 db.session.add(student)
