@@ -19,4 +19,27 @@
     background-color: #c13136 !important;
     transform: translateY(1px);
     box-shadow: 0 2px 0 #b53035 !important;
+}
+
+.admin-btn-import,
+.btn.admin-btn-import {
+    background-color: var(--mint-green) !important;
+    color: var(--dark) !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 8px !important;
+    border: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 3px 0 #2a9d8f !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+}
+
+.admin-btn-import:hover,
+.btn.admin-btn-import:hover {
+    background-color: #34c0af !important;
+    transform: translateY(1px);
+    box-shadow: 0 2px 0 #2a9d8f !important;
 } 

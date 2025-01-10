@@ -55,6 +55,35 @@
         </div>
     </div>
 
+    <!-- Import Section -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Import Data</h5>
+            <form id="importForm" method="POST" action="{{ url_for('management.import_data') }}" enctype="multipart/form-data">
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <input type="file" name="import_file" class="form-control" accept=".csv,.xlsx" required>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn admin-btn-import">
+                            <i class="fas fa-file-import"></i> Import Data
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import Classes Section -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Import Classes</h5>
+            <button onclick="importClasses()" class="btn admin-btn-import">
+                <i class="fas fa-file-import"></i> Import Classes from Salesforce
+            </button>
+        </div>
+    </div>
+
     <!-- Users Table -->
     <div class="card admin-card mt-4">
         <div class="card-body">
@@ -116,6 +145,30 @@ function deleteUser(userId) {
         .catch(error => {
             console.error('Error:', error);
             alert('Error deleting user');
+        });
+    }
+}
+
+function importClasses() {
+    if (confirm('Are you sure you want to import classes from Salesforce?')) {
+        fetch('/management/import-classes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert(data.message || 'Error importing classes');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error importing classes');
         });
     }
 }
