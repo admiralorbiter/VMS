@@ -11,7 +11,7 @@ from sqlalchemy import or_, and_
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
-from models.contact import Address, EducationEnum, GenderEnum, RaceEthnicityEnum, SalutationEnum, SuffixEnum,Email, Phone, LocalStatusEnum
+from models.contact import Contact, Address, EducationEnum, Email, GenderEnum, Phone, LocalStatusEnum, RaceEthnicityEnum
 from models.volunteer import Volunteer, Engagement, EventParticipation, Skill, VolunteerSkill
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
@@ -529,15 +529,25 @@ def import_volunteers():
 @login_required
 def purge_volunteers():
     try:
-        # Delete all related data first due to foreign key constraints
-        Email.query.delete()
-        Phone.query.delete()
-        VolunteerSkill.query.delete()
-        Engagement.query.delete()
-        Address.query.delete()
+        # Get all volunteer IDs first
+        volunteer_ids = db.session.query(Volunteer.id).all()
+        volunteer_ids = [v[0] for v in volunteer_ids]
         
-        # Finally delete all volunteers
-        Volunteer.query.delete()
+        # Delete all related data for volunteers
+        Email.query.filter(Email.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        Phone.query.filter(Phone.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        Address.query.filter(Address.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        VolunteerSkill.query.filter(VolunteerSkill.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        Engagement.query.filter(Engagement.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        EventParticipation.query.filter(EventParticipation.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        VolunteerOrganization.query.filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        
+        # Delete volunteers first
+        Volunteer.query.delete(synchronize_session=False)
+        
+        # Then delete the corresponding contact records
+        Contact.query.filter(Contact.type == 'volunteer').delete(synchronize_session=False)
         
         db.session.commit()
         return jsonify({'success': True})
