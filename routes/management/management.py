@@ -298,3 +298,44 @@ def import_districts():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@management_bp.route('/schools')
+@login_required
+def schools():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.index'))
+    
+    districts = District.query.order_by(District.name).all()
+    schools = School.query.order_by(School.name).all()
+    return render_template('management/schools.html', districts=districts, schools=schools)
+
+@management_bp.route('/management/schools/<school_id>', methods=['DELETE'])
+@login_required
+def delete_school(school_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        school = School.query.get_or_404(school_id)
+        db.session.delete(school)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'School deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@management_bp.route('/management/districts/<district_id>', methods=['DELETE'])
+@login_required
+def delete_district(district_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        district = District.query.get_or_404(district_id)
+        db.session.delete(district)  # This will cascade delete associated schools
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'District and associated schools deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
