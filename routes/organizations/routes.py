@@ -344,17 +344,9 @@ def import_organizations_from_salesforce():
         print("Fetching organizations from Salesforce...")
         success_count = 0
         error_count = 0
+        affiliation_success = 0
+        affiliation_error = 0
         errors = []
-
-        # Define Salesforce query
-        salesforce_query = """
-        SELECT Id, Name, Type, Description, ParentId, 
-               BillingStreet, BillingCity, BillingState, 
-               BillingPostalCode, BillingCountry, LastActivityDate
-        FROM Account
-        WHERE Type NOT IN ('Household', 'School District', 'School')
-        ORDER BY Name ASC
-        """
 
         # Connect to Salesforce
         sf = Salesforce(
@@ -364,11 +356,21 @@ def import_organizations_from_salesforce():
             domain='login'
         )
 
-        # Execute the query
-        result = sf.query_all(salesforce_query)
+        # First query: Get organizations
+        org_query = """
+        SELECT Id, Name, Type, Description, ParentId, 
+               BillingStreet, BillingCity, BillingState, 
+               BillingPostalCode, BillingCountry, LastActivityDate
+        FROM Account
+        WHERE Type NOT IN ('Household', 'School District', 'School')
+        ORDER BY Name ASC
+        """
+
+        # Execute organizations query
+        result = sf.query_all(org_query)
         sf_rows = result.get('records', [])
 
-        # Process each row from Salesforce
+        # Process organizations
         for row in sf_rows:
             try:
                 # Check if organization exists
@@ -398,12 +400,77 @@ def import_organizations_from_salesforce():
                 errors.append(f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}")
                 continue
 
-        # Commit changes to the database
+        # Second query: Get affiliations
+        affiliation_query = """
+        SELECT Id, Name, npe5__Organization__c, npe5__Contact__c, 
+               npe5__Role__c, npe5__Primary__c, npe5__Status__c, 
+               npe5__StartDate__c, npe5__EndDate__c
+        FROM npe5__Affiliation__c
+        """
+
+        # Execute affiliations query
+        affiliation_result = sf.query_all(affiliation_query)
+        affiliation_rows = affiliation_result.get('records', [])
+
+        # Process affiliations
+        for row in affiliation_rows:
+            try:
+                # Get the organization and volunteer by their Salesforce IDs
+                org = Organization.query.filter_by(
+                    salesforce_id=row.get('npe5__Organization__c')
+                ).first()
+                
+                volunteer = Volunteer.query.filter_by(
+                    salesforce_individual_id=row.get('npe5__Contact__c')
+                ).first()
+
+                if org and volunteer:
+                    # Check for existing relationship
+                    vol_org = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id,
+                        organization_id=org.id
+                    ).first()
+
+                    if not vol_org:
+                        vol_org = VolunteerOrganization(
+                            volunteer_id=volunteer.id,
+                            organization_id=org.id
+                        )
+                        db.session.add(vol_org)
+
+                    # Update relationship details
+                    vol_org.salesforce_volunteer_id = row.get('npe5__Contact__c')
+                    vol_org.salesforce_org_id = row.get('npe5__Organization__c')
+                    vol_org.role = row.get('npe5__Role__c')
+                    vol_org.is_primary = row.get('npe5__Primary__c') == 'true'
+                    vol_org.status = row.get('npe5__Status__c')
+                    
+                    if row.get('npe5__StartDate__c'):
+                        vol_org.start_date = parse_date(row['npe5__StartDate__c'])
+                    if row.get('npe5__EndDate__c'):
+                        vol_org.end_date = parse_date(row['npe5__EndDate__c'])
+                    
+                    affiliation_success += 1
+                else:
+                    affiliation_error += 1
+                    if not org:
+                        errors.append(f"Organization with Salesforce ID {row.get('npe5__Organization__c')} not found")
+                    if not volunteer:
+                        errors.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
+
+            except Exception as e:
+                affiliation_error += 1
+                errors.append(f"Error processing affiliation: {str(e)}")
+                continue
+
+        # Commit all changes
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': f'Successfully processed {success_count} organizations with {error_count} errors',
+            'message': (f'Successfully processed {success_count} organizations and '
+                       f'{affiliation_success} affiliations with '
+                       f'{error_count + affiliation_error} total errors'),
             'errors': errors
         })
 
