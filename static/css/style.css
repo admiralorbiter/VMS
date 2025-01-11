@@ -578,3 +578,86 @@ main {
     z-index: 999;
     backdrop-filter: blur(2px);
 }
+
+/* Side Navigation Panel */
+.side-nav-panel {
+    position: fixed;
+    top: 0;
+    right: -300px; /* Start off-screen */
+    width: 300px;
+    height: 100vh;
+    background-color: var(--delft-blue);
+    box-shadow: -2px 0 4px rgba(0,0,0,0.1);
+    transition: right 0.3s ease;
+    z-index: 1000;
+}
+
+.side-nav-panel.active {
+    right: 0;
+}
+
+.side-nav-content {
+    padding: 6rem 1rem 1rem;
+}
+
+.side-nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.side-nav-link {
+    display: block;
+    color: var(--mint-green);
+    text-decoration: none;
+    padding: 1rem;
+    font-size: 1.5rem;
+    font-weight: 500;
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.side-nav-link:hover {
+    color: var(--poppy);
+}
+
+.side-nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: var(--poppy);
+    transition: width 0.3s ease;
+}
+
+.side-nav-link:hover::after {
+    width: 100%;
+}
+
+/* Style for the More button icon transition */
+#moreMenuToggle i {
+    transition: transform 0.3s ease;
+}
+
+#moreMenuToggle.active i {
+    transform: rotate(180deg);
+}
+
+/* Add overlay when side nav is open */
+.side-nav-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(29, 51, 84, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+}
+
+.side-nav-overlay.active {
+    display: block;
+}

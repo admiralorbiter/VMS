@@ -23,24 +23,17 @@
               <a class="nav-link" href="/upcoming_event_management">Upcoming</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/virtual">Virtual</a>
-            </li>
-            <li class="nav-item">
               <a class="nav-link" href="/reports">Reports</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/admin">Admin</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="/attendance">Attendance</a>
             </li>
             {% if current_user.is_admin %}
-            <li class="nav-item"></li>
-              <a class="nav-link" href="/history_table">History</a>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="moreMenuToggle">
+                More <i class="fas fa-chevron-right"></i>
+              </a>
             </li>
-            <!-- <li class="nav-item"></li>
-              <a class="nav-link" href="/tech_jobs">Tech Jobs</a>
-            </li> -->
             {% endif %}
             <li class="nav-item">
               <a class="nav-link" href="/logout">Logout</a>
@@ -54,4 +47,16 @@
       </div>
     </div>
   </nav>
+  
+<div class="side-nav-panel" id="sideNavPanel">
+  <div class="side-nav-content">
+    <ul class="side-nav-menu">
+      <li><a href="/virtual" class="side-nav-link">Virtual</a></li>
+      <li><a href="/admin" class="side-nav-link">Admin</a></li>
+      <li><a href="/history_table" class="side-nav-link">History</a></li>
+      <li><a href="/schools" class="side-nav-link">Schools</a></li>
+      <!-- Add more items as needed -->
+    </ul>
+  </div>
+</div>
   
