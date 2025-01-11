@@ -9,8 +9,11 @@ class School(db.Model):
     normalized_name = db.Column(db.String(255))  # Normalized/standardized school name
     school_code = db.Column(db.String(20))  # School code (e.g., '4045', '48077-6080')
     
-    # Relationship to district (assuming you have a District model)
-    district = db.relationship('District', backref='schools')
+    # Updated relationship with cascade options
+    district = db.relationship('District', 
+                             backref=db.backref('schools', 
+                                              lazy='dynamic',
+                                              cascade='all, delete-orphan'))
     
     def __repr__(self):
         return f'<School {self.name}>'

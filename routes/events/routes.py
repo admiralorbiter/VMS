@@ -4,13 +4,14 @@ from flask import Blueprint, app, jsonify, request, render_template, flash, redi
 from flask_login import login_required
 from config import Config
 from models import db
+from models.district_model import District
 from models.event import Event, EventType, EventStatus
 from models.volunteer import EventParticipation, Skill, Volunteer
 from datetime import datetime, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
 
-from routes.utils import DISTRICT_MAPPINGS, get_or_create_district, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
+from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 
 events_bp = Blueprint('events', __name__)
 
@@ -44,11 +45,12 @@ def process_event_row(row, success_count, error_count, errors):
         event.participant_count = int(row.get('Participant_Count_0__c', 0))
         event.last_sync_date = datetime.now()  # Add this field to track last sync
 
-        # Handle district
+        # Update district handling to only link existing districts
         district_name = row.get('District__c')
         if district_name and district_name in DISTRICT_MAPPINGS:
-            district = get_or_create_district(DISTRICT_MAPPINGS[district_name])
-            if district not in event.districts:
+            mapped_name = DISTRICT_MAPPINGS[district_name]
+            district = District.query.filter_by(name=mapped_name).first()
+            if district and district not in event.districts:
                 event.districts.append(district)
 
         # Handle skills

@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from models import db
-from models.event import CancellationReason, District, EventFormat, EventType
+from models.event import CancellationReason, EventFormat, EventType
 from models.contact import ContactTypeEnum, Email
+from models.district_model import District
 
 DISTRICT_MAPPINGS = {
     'KANSAS CITY USD 500': 'KANSAS CITY USD 500',
@@ -26,14 +27,6 @@ DISTRICT_MAPPINGS = {
     'INDEPENDENT': 'INDEPENDENT',
     'CENTER 58 SCHOOL DISTRICT': 'CENTER 58 SCHOOL DISTRICT'
 }
-
-def get_or_create_district(district_name):
-    """Get existing district or create new one"""
-    district = District.query.filter_by(name=district_name).first()
-    if not district:
-        district = District(name=district_name)
-        db.session.add(district)
-    return district
 
 def parse_date(date_str):
     """Parse date string from Salesforce CSV or API"""

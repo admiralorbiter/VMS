@@ -7,7 +7,8 @@ from flask_sqlalchemy import SQLAlchemy
 from models.event import db
 from models.volunteer import Volunteer, EventParticipation
 from models.organization import Organization, VolunteerOrganization
-from models.event import District, event_districts
+from models.event import event_districts
+from models.district_model import District
 import json
 
 report_bp = Blueprint('report', __name__)

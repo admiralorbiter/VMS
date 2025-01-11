@@ -14,7 +14,7 @@ event_volunteers = db.Table('event_volunteers',
 # Add this association table for event-district relationship
 event_districts = db.Table('event_districts',
     db.Column('event_id', db.Integer, db.ForeignKey('event.id'), primary_key=True),
-    db.Column('district_id', db.Integer, db.ForeignKey('district.id'), primary_key=True)
+    db.Column('district_id', db.String(18), db.ForeignKey('district.id'), primary_key=True)
 )
 
 # Add this near the top with other association tables
@@ -88,15 +88,6 @@ class EventAttendance(db.Model):
     
     # Relationship back to event
     event = db.relationship('Event', backref=db.backref('attendance', uselist=False))
-
-class District(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False, unique=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<District {self.name}>'
 
 class EventFormat(str, Enum):
     IN_PERSON = 'in_person'
