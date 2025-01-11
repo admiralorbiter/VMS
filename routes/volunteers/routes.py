@@ -3,11 +3,12 @@ import io
 import os
 import json
 from flask import Blueprint, jsonify, request, render_template, flash, redirect, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
+from config import Config
 from models import Volunteer, db
 from forms import VolunteerForm
 from sqlalchemy import or_, and_
-
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
 from models.contact import Address, EducationEnum, GenderEnum, RaceEthnicityEnum, SalutationEnum, SuffixEnum,Email, Phone, LocalStatusEnum
@@ -568,4 +569,155 @@ def delete_volunteer(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@volunteers_bp.route('/volunteers/import-from-salesforce', methods=['POST'])
+@login_required
+def import_from_salesforce():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        # Define Salesforce query
+        salesforce_query = """
+        SELECT Id, AccountId, FirstName, LastName, MiddleName, 
+               npsp__Primary_Affiliation__c, Title, Department, Gender__c, 
+               Birthdate, Last_Mailchimp_Email_Date__c, Last_Volunteer_Date__c, 
+               Last_Email_Message__c, Volunteer_Recruitment_Notes__c, 
+               Volunteer_Skills__c, Volunteer_Skills_Text__c, 
+               Number_of_Attended_Volunteer_Sessions__c
+        FROM Contact
+        WHERE Contact_Type__c = 'Volunteer'
+        """
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Execute the query
+        result = sf.query_all(salesforce_query)
+        sf_rows = result.get('records', [])
+
+        success_count = 0
+        error_count = 0
+        errors = []
+        processed_volunteers = []
+
+        # Process each row from Salesforce
+        for row in sf_rows:
+            try:
+                # Check if volunteer exists
+                volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Id']).first()
+                
+                if not volunteer:
+                    volunteer = Volunteer()
+                    volunteer.salesforce_individual_id = row['Id']  # Only set this for new volunteers
+                    db.session.add(volunteer)
+                
+                # Update volunteer fields (whether new or existing)
+                volunteer.salesforce_account_id = row['AccountId']
+                volunteer.first_name = (row.get('FirstName') or '').strip()
+                volunteer.last_name = (row.get('LastName') or '').strip()
+                volunteer.middle_name = (row.get('MiddleName') or '').strip()
+                volunteer.organization_name = (row.get('npsp__Primary_Affiliation__c') or '').strip()
+                volunteer.title = (row.get('Title') or '').strip()
+                volunteer.department = (row.get('Department') or '').strip()
+
+                # Handle gender enum
+                gender_str = (row.get('Gender__c') or '').lower().replace(' ', '_').strip()
+                if gender_str and gender_str in [e.name for e in GenderEnum]:
+                    volunteer.gender = GenderEnum[gender_str]
+
+                # Handle dates
+                volunteer.birthdate = parse_date(row.get('Birthdate'))
+                volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c'))
+                volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c'))
+                volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c'))
+                volunteer.notes = (row.get('Volunteer_Recruitment_Notes__c') or '').strip()
+
+                # Handle skills
+                if row.get('Volunteer_Skills__c') or row.get('Volunteer_Skills_Text__c'):
+                    skills = parse_skills(
+                        row.get('Volunteer_Skills_Text__c', ''),
+                        row.get('Volunteer_Skills__c', '')
+                    )
+                    
+                    # Clear existing skills
+                    volunteer.skills = []
+                    
+                    # Add new skills
+                    for skill_name in skills:
+                        skill = Skill.query.filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                            db.session.add(skill)
+                        if skill not in volunteer.skills:
+                            volunteer.skills.append(skill)
+
+                # Handle times_volunteered
+                if row.get('Number_of_Attended_Volunteer_Sessions__c'):
+                    try:
+                        volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
+                    except (ValueError, TypeError):
+                        volunteer.times_volunteered = 0
+
+                success_count += 1
+                processed_volunteers.append(f"{volunteer.first_name} {volunteer.last_name}")
+                
+            except Exception as e:
+                error_count += 1
+                error_detail = {
+                    'name': f"{row.get('FirstName', '')} {row.get('LastName', '')}",
+                    'salesforce_id': row.get('Id', ''),
+                    'error': str(e)
+                }
+                errors.append(error_detail)
+                db.session.rollback()
+
+        # Commit all successful changes
+        try:
+            db.session.commit()
+            
+            # Print detailed results to console
+            print("\n=== Salesforce Import Results ===")
+            print(f"Total processed: {success_count + error_count}")
+            print(f"Successful imports: {success_count}")
+            print(f"Failed imports: {error_count}")
+            
+
+            return jsonify({
+                'success': True,
+                'message': f'Successfully processed {success_count} volunteers with {error_count} errors'
+            })
+        except Exception as e:
+            db.session.rollback()
+            print("\n=== Database Commit Error ===")
+            print(f"Error: {str(e)}")
+            print("Previously processed successfully:", len(processed_volunteers))
+            print("Previously encountered errors:", len(errors))
+            print("=============================\n")
+            return jsonify({
+                'success': False,
+                'message': f'Database commit error: {str(e)}'
+            }), 500
+
+    except SalesforceAuthenticationFailed:
+        print("\n=== Salesforce Authentication Error ===")
+        print("Failed to authenticate with provided credentials")
+        print("=====================================\n")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        print("\n=== Unexpected Error ===")
+        print(f"Error: {str(e)}")
+        print("=====================\n")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
     
