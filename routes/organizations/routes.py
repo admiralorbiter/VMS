@@ -7,6 +7,8 @@ from models.volunteer import EventParticipation
 from routes.utils import parse_date
 import csv
 import os
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from config import Config
 
 organizations_bp = Blueprint('organizations', __name__)
 
@@ -334,3 +336,83 @@ def purge_organizations():
             'success': False,
             'error': str(e)
         }), 500
+
+@organizations_bp.route('/organizations/import-from-salesforce', methods=['POST'])
+@login_required
+def import_organizations_from_salesforce():
+    try:
+        print("Fetching organizations from Salesforce...")
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        # Define Salesforce query
+        salesforce_query = """
+        SELECT Id, Name, Type, Description, ParentId, 
+               BillingStreet, BillingCity, BillingState, 
+               BillingPostalCode, BillingCountry, LastActivityDate
+        FROM Account
+        WHERE Type NOT IN ('Household', 'School District', 'School')
+        ORDER BY Name ASC
+        """
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Execute the query
+        result = sf.query_all(salesforce_query)
+        sf_rows = result.get('records', [])
+
+        # Process each row from Salesforce
+        for row in sf_rows:
+            try:
+                # Check if organization exists
+                org = Organization.query.filter_by(salesforce_id=row['Id']).first()
+                if not org:
+                    org = Organization()
+                    db.session.add(org)
+                
+                # Update organization fields
+                org.salesforce_id = row['Id']
+                org.name = row.get('Name', '')
+                org.type = row.get('Type')
+                org.description = row.get('Description')
+                org.volunteer_parent_id = row.get('ParentId')
+                org.billing_street = row.get('BillingStreet')
+                org.billing_city = row.get('BillingCity')
+                org.billing_state = row.get('BillingState')
+                org.billing_postal_code = row.get('BillingPostalCode')
+                org.billing_country = row.get('BillingCountry')
+                
+                if row.get('LastActivityDate'):
+                    org.last_activity_date = parse_date(row['LastActivityDate'])
+                
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}")
+                continue
+
+        # Commit changes to the database
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully processed {success_count} organizations with {error_count} errors',
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
