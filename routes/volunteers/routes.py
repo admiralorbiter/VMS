@@ -562,14 +562,13 @@ def delete_volunteer(id):
         volunteer = Volunteer.query.get_or_404(id)
         
         # Delete all related records first (in correct order due to foreign key constraints)
-        Email.query.filter_by(volunteer_id=id).delete()
-        Phone.query.filter_by(volunteer_id=id).delete()
+        Email.query.filter_by(contact_id=id).delete()
+        Phone.query.filter_by(contact_id=id).delete()
+        Address.query.filter_by(contact_id=id).delete()
         VolunteerSkill.query.filter_by(volunteer_id=id).delete()
         History.query.filter_by(volunteer_id=id).delete()
         EventParticipation.query.filter_by(volunteer_id=id).delete()
         VolunteerOrganization.query.filter_by(volunteer_id=id).delete()
-        # Add this line to delete address records
-        Address.query.filter_by(volunteer_id=id).delete()
         
         # Delete the volunteer
         db.session.delete(volunteer)
