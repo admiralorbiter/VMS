@@ -565,3 +565,60 @@ def find_or_create_skill():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@events_bp.route('/events/import-from-salesforce', methods=['POST'])
+@login_required
+def import_events_from_salesforce():
+    try:
+        print("Fetching data from Salesforce...")
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        # Define Salesforce query without time restriction
+        salesforce_query = """
+        SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
+                End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
+                Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
+                District__c, Legacy_Skill_Covered_for_the_Session__c, 
+                Legacy_Skills_Needed__c, Requested_Skills__c
+        FROM Session__c
+        ORDER BY Start_Date_and_Time__c ASC
+        """
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Execute the query
+        result = sf.query_all(salesforce_query)
+        sf_rows = result.get('records', [])
+
+        # Process each row from Salesforce
+        for row in sf_rows:
+            success_count, error_count = process_event_row(
+                row, success_count, error_count, errors
+            )
+
+        # Commit changes to the database
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully processed {success_count} events with {error_count} errors',
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
