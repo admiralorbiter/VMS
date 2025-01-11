@@ -43,9 +43,9 @@ def process_event_row(row, success_count, error_count, errors):
         event.description = row.get('Description__c', '')
         event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
         event.participant_count = int(row.get('Participant_Count_0__c', 0))
-        event.last_sync_date = datetime.now()  # Add this field to track last sync
+        event.last_sync_date = datetime.now()
 
-        # Update district handling to only link existing districts
+        # Update district handling
         district_name = row.get('District__c')
         if district_name and district_name in DISTRICT_MAPPINGS:
             mapped_name = DISTRICT_MAPPINGS[district_name]
@@ -58,17 +58,23 @@ def process_event_row(row, success_count, error_count, errors):
         skills_needed = parse_event_skills(row.get('Legacy_Skills_Needed__c', ''))
         requested_skills = parse_event_skills(row.get('Requested_Skills__c', ''))
         
-        # Combine all skills
+        # Combine all skills and remove duplicates
         all_skills = set(skills_covered + skills_needed + requested_skills)
         
-        # Clear existing skills and add new ones
-        event.skills = []
-        for skill_name in all_skills:
+        # Get existing skills to avoid duplicates
+        existing_skill_names = {skill.name for skill in event.skills}
+        
+        # Only process new skills
+        new_skill_names = all_skills - existing_skill_names
+        
+        # Add only new skills
+        for skill_name in new_skill_names:
             skill = Skill.query.filter_by(name=skill_name).first()
             if not skill:
                 skill = Skill(name=skill_name)
                 db.session.add(skill)
-            event.skills.append(skill)
+            if skill not in event.skills:  # Double-check to prevent duplicates
+                event.skills.append(skill)
 
         return success_count + (1 if is_new else 0), error_count
             
@@ -105,7 +111,7 @@ def process_participation_row(row, success_count, error_count, errors):
         )
         
         db.session.add(participation)
-        print(f"Successfully added participation: {row['Id']}")  # Debug log
+        # print(f"Successfully added participation: {row['Id']}")  # Debug log
         return success_count + 1, error_count
 
     except Exception as e:
@@ -575,8 +581,16 @@ def import_events_from_salesforce():
         error_count = 0
         errors = []
 
-        # Define Salesforce query without time restriction
-        salesforce_query = """
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # First query: Get events
+        events_query = """
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
                 End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
                 Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
@@ -586,30 +600,43 @@ def import_events_from_salesforce():
         ORDER BY Start_Date_and_Time__c ASC
         """
 
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain='login'
-        )
+        # Execute events query
+        events_result = sf.query_all(events_query)
+        events_rows = events_result.get('records', [])
 
-        # Execute the query
-        result = sf.query_all(salesforce_query)
-        sf_rows = result.get('records', [])
-
-        # Process each row from Salesforce
-        for row in sf_rows:
+        # Process events
+        for row in events_rows:
             success_count, error_count = process_event_row(
                 row, success_count, error_count, errors
             )
 
-        # Commit changes to the database
+        # Second query: Get participants
+        participants_query = """
+        SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c
+        FROM Session_Participant__c
+        WHERE Participant_Type__c = 'Volunteer'
+        """
+
+        # Execute participants query
+        participants_result = sf.query_all(participants_query)
+        participant_rows = participants_result.get('records', [])
+
+        # Process participants
+        participant_success = 0
+        participant_error = 0
+        for row in participant_rows:
+            participant_success, participant_error = process_participation_row(
+                row, participant_success, participant_error, errors
+            )
+
+        # Commit all changes
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': f'Successfully processed {success_count} events with {error_count} errors',
+            'message': (f'Successfully processed {success_count} events and '
+                       f'{participant_success} participants with '
+                       f'{error_count + participant_error} total errors'),
             'errors': errors
         })
 
