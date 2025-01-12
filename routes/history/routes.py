@@ -7,6 +7,8 @@ from models.history import History
 from models import db
 from sqlalchemy import or_
 from datetime import datetime, timedelta
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from config import Config
 
 from models.volunteer import Volunteer
 from routes.utils import parse_date
@@ -300,3 +302,94 @@ def import_history():
             
     except Exception as e:
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+
+@history_bp.route('/history/import-from-salesforce', methods=['POST'])
+@login_required
+def import_history_from_salesforce():
+    try:
+        print("Fetching history from Salesforce...")
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Query for history
+        history_query = """
+        SELECT Id, Subject, Description, Type, Status, ActivityDate, WhoId, WhatId
+        FROM Task
+        """
+
+        # Execute query
+        result = sf.query_all(history_query)
+        history_rows = result.get('records', [])
+
+        # Process each history record
+        for row in history_rows:
+            try:
+                # Check if history exists
+                history = History.query.filter_by(salesforce_id=row['Id']).first()
+                if not history:
+                    history = History()
+                    db.session.add(history)
+
+                # Update history fields
+                history.salesforce_id = row['Id']
+                history.summary = row.get('Subject', '')
+                history.description = row.get('Description', '')
+                history.activity_type = row.get('Type', '')
+                history.activity_status = row.get('Status', '')
+                
+                # Handle activity date
+                if row.get('ActivityDate'):
+                    history.activity_date = parse_date(row['ActivityDate'])
+                else:
+                    history.activity_date = datetime.now()
+
+                # Handle volunteer relationship
+                if row.get('WhoId'):
+                    volunteer = Volunteer.query.filter_by(
+                        salesforce_individual_id=row['WhoId']
+                    ).first()
+                    if volunteer:
+                        history.volunteer_id = volunteer.id
+
+                # Handle event relationship
+                if row.get('WhatId'):
+                    event = Event.query.filter_by(
+                        salesforce_id=row['WhatId']
+                    ).first()
+                    if event:
+                        history.event_id = event.id
+
+                success_count += 1
+
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Error processing history record {row.get('Subject', 'Unknown')}: {str(e)}")
+                continue
+
+        # Commit all changes
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully processed {success_count} history records with {error_count} errors',
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500

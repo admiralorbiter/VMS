@@ -103,15 +103,15 @@
                 <tr>
                     <td>{{ item.summary }}</td>
                     <td>
-                        <span class="activity-type-badge {{ item.activity_type.lower() }}">
-                            {{ item.activity_type }}
+                        <span class="activity-type-badge {{ item.activity_type.lower() if item.activity_type else 'unknown' }}">
+                            {{ item.activity_type or 'Unknown' }}
                         </span>
                     </td>
                     <td>{{ item.activity_date.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ item.description }}</td>
                     <td>
-                        <span class="status-badge {{ item.activity_status.lower() }}">
-                            {{ item.activity_status }}
+                        <span class="status-badge {{ item.activity_status.lower() if item.activity_status else 'unknown' }}">
+                            {{ item.activity_status or 'Unknown' }}
                         </span>
                     </td>
                     <td>
