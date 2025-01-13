@@ -5,6 +5,7 @@ from models.event import Event, EventType, EventStatus
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from models.event import db
+from models.teacher import Teacher
 from models.volunteer import Volunteer, EventParticipation
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
@@ -130,8 +131,22 @@ def virtual_usage():
         
         if event.school:
             stats['schools'].add(event.school)
-        if event.educator_name:
-            stats['educators'].add(event.educator_name)
+        if event.educator_ids:
+            # Convert string of IDs to list of integers
+            try:
+                # Handle different possible formats
+                if isinstance(event.educator_ids, str):
+                    # Remove any brackets and split by commas
+                    educator_id_list = [int(id.strip()) for id in event.educator_ids.strip('[]').split(',') if id.strip()]
+                else:
+                    educator_id_list = event.educator_ids
+
+                educators = Teacher.query.filter(Teacher.id.in_(educator_id_list)).all()
+                educator_names = [f"{educator.first_name} {educator.last_name}" for educator in educators]
+                educator_name = ", ".join(educator_names) if educator_names else "Unknown"
+                stats['educators'].add(educator_name)
+            except (ValueError, AttributeError):
+                stats['educators'].add("Unknown")
         if event.series:
             stats['career_clusters'].add(event.series)
     
@@ -228,8 +243,11 @@ def virtual_usage_district(district_name):
         
         if event.school:
             stats['schools'].add(event.school)
-        if event.educator_name:
-            stats['educators'].add(event.educator_name)
+        if event.educator_ids:
+            educators = Teacher.query.filter(Teacher.id.in_(event.educator_ids)).all()
+            educator_names = [f"{educator.first_name} {educator.last_name}" for educator in educators]
+            educator_name = ", ".join(educator_names) if educator_names else "Unknown"
+            stats['educators'].add(educator_name)
         if event.series:
             stats['career_clusters'].add(event.series)
             
@@ -306,7 +324,7 @@ def volunteer_thankyou():
     volunteer_data = [{
         'id': v.id,
         'name': f"{v.first_name} {v.last_name}",
-        'total_hours': round(hours, 2),
+        'total_hours': round(float(hours or 0), 2) if hours is not None else 0,
         'total_events': events,
         'organization': org or 'Independent'
     } for v, hours, events, org in volunteer_stats]
