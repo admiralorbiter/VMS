@@ -66,7 +66,7 @@ def create_user():
         db.session.rollback()
         flash(f'Error creating user: {str(e)}', 'danger')
     
-    return redirect(url_for('admin'))
+    return redirect(url_for('auth.admin'))
 
 @auth_bp.route('/admin/users/<int:id>', methods=['DELETE'])
 @login_required
