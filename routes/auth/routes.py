@@ -42,15 +42,15 @@ def create_user():
     
     if not all([username, email, password]):
         flash('All fields are required', 'danger')
-        return redirect(url_for('admin'))
+        return redirect(url_for('auth.admin'))
     
     if User.query.filter_by(username=username).first():
         flash('Username already exists', 'danger')
-        return redirect(url_for('admin'))
+        return redirect(url_for('auth.admin'))
     
     if User.query.filter_by(email=email).first():
         flash('Email already exists', 'danger')
-        return redirect(url_for('admin'))
+        return redirect(url_for('auth.admin'))
     
     user = User(
         username=username,
@@ -94,12 +94,12 @@ def change_password():
     # Verify all fields are provided
     if not all([new_password, confirm_password]):
         flash('Both password fields are required', 'danger')
-        return redirect(url_for('admin'))
+        return redirect(url_for('auth.admin'))
     
     # Verify new passwords match
     if new_password != confirm_password:
         flash('New passwords do not match', 'danger')
-        return redirect(url_for('admin'))
+        return redirect(url_for('auth.admin'))
     
     try:
         # Update password
@@ -110,4 +110,4 @@ def change_password():
         db.session.rollback()
         flash(f'Error updating password: {str(e)}', 'danger')
     
-    return redirect(url_for('admin'))
+    return redirect(url_for('auth.admin'))
