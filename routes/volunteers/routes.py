@@ -9,6 +9,7 @@ from models import Volunteer, db
 from forms import VolunteerForm
 from sqlalchemy import or_, and_
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from models.event import Event
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
 from models.contact import Contact, Address, EducationEnum, Email, GenderEnum, Phone, LocalStatusEnum, RaceEthnicityEnum
@@ -329,7 +330,10 @@ def view_volunteer(id):
     volunteer = Volunteer.query.get_or_404(id)
     
     # Get participations and group by status
-    participations = EventParticipation.query.filter_by(volunteer_id=id).all()
+    participations = EventParticipation.query.filter_by(volunteer_id=id).join(
+        Event, EventParticipation.event_id == Event.id
+    ).all()
+    
     participation_stats = {
         'Attended': [],
         'No-Show': [],
@@ -342,8 +346,12 @@ def view_volunteer(id):
             participation_stats[status].append({
                 'event': participation.event,
                 'delivery_hours': participation.delivery_hours,
-                'date': participation.event.start_date
+                'date': participation.event.start_date if participation.event.start_date else participation.event.date  # Handle both date fields
             })
+    
+    # Sort each list by date
+    for status in participation_stats:
+        participation_stats[status].sort(key=lambda x: x['date'], reverse=True)
     
     # Get history records for the volunteer
     histories = History.query.filter_by(
@@ -352,10 +360,6 @@ def view_volunteer(id):
     ).order_by(
         History.activity_date.desc()
     ).all()
-    
-    # Sort each list by date
-    for status in participation_stats:
-        participation_stats[status].sort(key=lambda x: x['date'], reverse=True)
     
     # Create a dictionary of organization relationships for easy access in template
     org_relationships = {}
@@ -369,7 +373,7 @@ def view_volunteer(id):
         phones=sorted(volunteer.phones, key=lambda x: x.primary, reverse=True),
         participation_stats=participation_stats,
         histories=histories,
-        org_relationships=org_relationships  # Pass the relationships to the template
+        org_relationships=org_relationships
     )
 
 @volunteers_bp.route('/volunteers/edit/<int:id>', methods=['GET', 'POST'])

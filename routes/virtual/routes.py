@@ -5,6 +5,7 @@ from io import StringIO
 from datetime import datetime
 from flask import current_app
 from models.event import db, Event, EventType
+from models.volunteer import Volunteer, EventParticipation
 import os
 
 virtual_bp = Blueprint('virtual', __name__)
@@ -29,20 +30,51 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
         ).first()
 
         if existing_event:
-            
-            # Merge and update existing event
-            existing_event.merge_duplicate(row)
-            db.session.commit()
-
+            # For existing events, just update the participation record
+            event = existing_event
             warning_count += 1
         else:
             # Create new event
-            new_event = Event()
-            new_event.update_from_csv(row)
-            
-            db.session.add(new_event)
-            db.session.commit()
+            event = Event()
+            event.update_from_csv(row)
+            db.session.add(event)
+            db.session.flush()  # Flush to get event ID
             success_count += 1
+
+        # Handle professional/volunteer connection
+        if row.get('Name'):
+            name_parts = row.get('Name').strip().split(' ', 1)
+            if len(name_parts) >= 2:
+                first_name, last_name = name_parts[0], name_parts[1]
+                
+                # Try to find existing volunteer
+                volunteer = Volunteer.query.filter(
+                    Volunteer.first_name == first_name,
+                    Volunteer.last_name == last_name
+                ).first()
+
+                if volunteer:
+                    # Check if participation already exists
+                    existing_participation = EventParticipation.query.filter_by(
+                        volunteer_id=volunteer.id,
+                        event_id=event.id
+                    ).first()
+
+                    if not existing_participation:
+                        # Create new participation record
+                        participation = EventParticipation(
+                            volunteer_id=volunteer.id,
+                            event_id=event.id,
+                            status='Attended',  # Default for virtual sessions
+                            delivery_hours=event.duration / 60 if event.duration else None  # Convert minutes to hours
+                        )
+                        db.session.add(participation)
+                        
+                        # Remove existing volunteer-event association if it exists
+                        if volunteer in event.volunteers:
+                            event.volunteers.remove(volunteer)
+
+        db.session.commit()
 
     except Exception as e:
         error_count += 1
