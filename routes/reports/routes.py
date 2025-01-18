@@ -54,42 +54,54 @@ def reports():
 @report_bp.route('/reports/virtual/usage')
 @login_required
 def virtual_usage():
-    # Get filter parameters
-    date_from = request.args.get('date_from')
-    date_to = request.args.get('date_to')
-    career_cluster = request.args.get('career_cluster')
-    school = request.args.get('school')
-    district = request.args.get('district')
+    # Get filter parameters with explicit year handling
+    year = int(request.args.get('year', '2024'))  # Default to 2024, convert to int
     
-    # Base query
-    query = Event.query.filter_by(
-        type=EventType.VIRTUAL_SESSION,
-        status=EventStatus.COMPLETED
+    # Check if date_from and date_to are provided and match the selected year
+    date_from_str = request.args.get('date_from')
+    date_to_str = request.args.get('date_to')
+    
+    # If dates are provided, check if they match the selected year
+    if date_from_str and date_to_str:
+        try:
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+            # If the dates don't match the selected year, use the year's full range
+            if date_from.year != year or date_to.year != year:
+                date_from = datetime(year, 1, 1)
+                date_to = datetime(year, 12, 31)
+        except ValueError:
+            date_from = datetime(year, 1, 1)
+            date_to = datetime(year, 12, 31)
+    else:
+        # If no dates provided, use the full year range
+        date_from = datetime(year, 1, 1)
+        date_to = datetime(year, 12, 31)
+
+    current_filters = {
+        'year': year,
+        'date_from': date_from,
+        'date_to': date_to,
+        'career_cluster': request.args.get('career_cluster'),
+        'school': request.args.get('school'),
+        'district': request.args.get('district')
+    }
+    
+    # Base query with date range filter
+    query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.status == EventStatus.COMPLETED,
+        Event.start_date >= date_from,
+        Event.start_date <= date_to
     )
     
-    # Apply filters
-    if date_from:
-        try:
-            date_from = datetime.strptime(date_from, '%Y-%m-%d')
-            query = query.filter(Event.start_date >= date_from)
-        except ValueError:
-            pass
-            
-    if date_to:
-        try:
-            date_to = datetime.strptime(date_to, '%Y-%m-%d')
-            query = query.filter(Event.start_date <= date_to)
-        except ValueError:
-            pass
-            
-    if career_cluster:
-        query = query.filter(Event.series.ilike(f'%{career_cluster}%'))
-        
-    if school:
-        query = query.filter(Event.school.ilike(f'%{school}%'))
-        
-    if district:
-        query = query.filter(Event.district_partner.ilike(f'%{district}%'))
+    # Apply additional filters
+    if current_filters['career_cluster']:
+        query = query.filter(Event.series.ilike(f'%{current_filters["career_cluster"]}%'))
+    if current_filters['school']:
+        query = query.filter(Event.school.ilike(f'%{current_filters["school"]}%'))
+    if current_filters['district']:
+        query = query.filter(Event.district_partner.ilike(f'%{current_filters["district"]}%'))
     
     # Get all events after filtering
     virtual_events = query.all()
@@ -131,22 +143,8 @@ def virtual_usage():
         
         if event.school:
             stats['schools'].add(event.school)
-        if event.educator_ids:
-            # Convert string of IDs to list of integers
-            try:
-                # Handle different possible formats
-                if isinstance(event.educator_ids, str):
-                    # Remove any brackets and split by commas
-                    educator_id_list = [int(id.strip()) for id in event.educator_ids.strip('[]').split(',') if id.strip()]
-                else:
-                    educator_id_list = event.educator_ids
-
-                educators = Teacher.query.filter(Teacher.id.in_(educator_id_list)).all()
-                educator_names = [f"{educator.first_name} {educator.last_name}" for educator in educators]
-                educator_name = ", ".join(educator_names) if educator_names else "Unknown"
-                stats['educators'].add(educator_name)
-            except (ValueError, AttributeError):
-                stats['educators'].add("Unknown")
+        if event.educators:
+            stats['educators'].add(event.educators)
         if event.series:
             stats['career_clusters'].add(event.series)
     
@@ -175,46 +173,53 @@ def virtual_usage():
         'reports/virtual_usage.html',
         district_stats=sorted_districts,
         filter_options=filter_options,
-        current_filters={
-            'date_from': date_from,
-            'date_to': date_to,
-            'career_cluster': career_cluster,
-            'school': school,
-            'district': district
-        }
+        current_filters=current_filters
     )
 
 @report_bp.route('/reports/virtual/usage/district/<district_name>')
 @login_required
 def virtual_usage_district(district_name):
-    # Get filter parameters
-    date_from = request.args.get('date_from')
-    date_to = request.args.get('date_to')
+    # Get filter parameters with explicit year handling
+    year = int(request.args.get('year', '2024'))  # Default to 2024, convert to int
     
-    # Base query for this district
-    query = Event.query.filter_by(
-        type=EventType.VIRTUAL_SESSION,
-        status=EventStatus.COMPLETED,
-        district_partner=district_name
-    )
+    # Check if date_from and date_to are provided and match the selected year
+    date_from_str = request.args.get('date_from')
+    date_to_str = request.args.get('date_to')
     
-    # Apply date filters
-    if date_from:
+    # If dates are provided, check if they match the selected year
+    if date_from_str and date_to_str:
         try:
-            date_from = datetime.strptime(date_from, '%Y-%m-%d')
-            query = query.filter(Event.start_date >= date_from)
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+            # If the dates don't match the selected year, use the year's full range
+            if date_from.year != year or date_to.year != year:
+                date_from = datetime(year, 1, 1)
+                date_to = datetime(year, 12, 31)
         except ValueError:
-            pass
-            
-    if date_to:
-        try:
-            date_to = datetime.strptime(date_to, '%Y-%m-%d')
-            query = query.filter(Event.start_date <= date_to)
-        except ValueError:
-            pass
+            date_from = datetime(year, 1, 1)
+            date_to = datetime(year, 12, 31)
+    else:
+        # If no dates provided, use the full year range
+        date_from = datetime(year, 1, 1)
+        date_to = datetime(year, 12, 31)
+
+    current_filters = {
+        'year': year,
+        'date_from': date_from,
+        'date_to': date_to
+    }
+    
+    # Base query for this district with date filtering
+    query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.status == EventStatus.COMPLETED,
+        Event.district_partner == district_name,
+        Event.start_date >= date_from,
+        Event.start_date <= date_to
+    ).order_by(Event.start_date)
     
     # Get all events for this district
-    district_events = query.order_by(Event.start_date).all()
+    district_events = query.all()
     
     # Group events by month
     monthly_stats = {}
@@ -232,7 +237,7 @@ def virtual_usage_district(district_name):
                 'schools': set(),
                 'educators': set(),
                 'career_clusters': set(),
-                'events': []  # List to store individual event details
+                'events': []
             }
         
         stats = monthly_stats[month_key]
@@ -243,11 +248,8 @@ def virtual_usage_district(district_name):
         
         if event.school:
             stats['schools'].add(event.school)
-        if event.educator_ids:
-            educators = Teacher.query.filter(Teacher.id.in_(event.educator_ids)).all()
-            educator_names = [f"{educator.first_name} {educator.last_name}" for educator in educators]
-            educator_name = ", ".join(educator_names) if educator_names else "Unknown"
-            stats['educators'].add(educator_name)
+        if event.educators:
+            stats['educators'].add(event.educators)
         if event.series:
             stats['career_clusters'].add(event.series)
             
@@ -259,7 +261,7 @@ def virtual_usage_district(district_name):
             'registered': event.registered_count,
             'attended': event.attended_count,
             'school': event.school,
-            'educator': event.educator_name,
+            'educator': event.educators,
             'career_cluster': event.series
         })
     
@@ -267,7 +269,7 @@ def virtual_usage_district(district_name):
     for stats in monthly_stats.values():
         if stats['total_registered'] > 0:
             stats['avg_attendance_rate'] = (stats['total_attended'] / stats['total_registered']) * 100
-        stats['avg_duration'] = stats['total_duration'] / stats['total_sessions']
+        stats['avg_duration'] = stats['total_duration'] / stats['total_sessions'] if stats['total_sessions'] > 0 else 0
         stats['school_count'] = len(stats['schools'])
         stats['educator_count'] = len(stats['educators'])
         stats['career_cluster_count'] = len(stats['career_clusters'])
@@ -284,10 +286,7 @@ def virtual_usage_district(district_name):
         'reports/virtual_usage_district.html',
         district_name=district_name,
         monthly_stats=sorted_stats,
-        current_filters={
-            'date_from': date_from,
-            'date_to': date_to
-        }
+        current_filters=current_filters
     )
 
 @report_bp.route('/reports/volunteer/thankyou')

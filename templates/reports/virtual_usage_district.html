@@ -21,6 +21,17 @@
         <div class="date-filters">
             <form method="GET" class="date-filter-form">
                 <div class="filter-group">
+                    <label for="year">Year:</label>
+                    <select id="year" name="year">
+                        {% for year in range(2025, 2017, -1) %}
+                            <option value="{{ year }}" {% if year == current_filters.year|default(2024) %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
                     <label for="date_from">From:</label>
                     <input type="date" id="date_from" name="date_from" 
                            value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
