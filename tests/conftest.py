@@ -16,6 +16,10 @@ from models.teacher import Teacher
 from models.contact import GenderEnum
 from models.tech_job_board import JobOpportunity
 from models.upcoming_events import UpcomingEvent
+from models.volunteer import Volunteer, Skill, VolunteerSkill, Engagement, EventParticipation
+from models.contact import EducationEnum, LocalStatusEnum, SkillSourceEnum
+from models.history import History
+from models.organization import Organization
 
 @pytest.fixture
 def app():
@@ -209,18 +213,25 @@ def test_event_comment(app, test_event):
 @pytest.fixture
 def test_volunteer(app):
     """Fixture for creating a test volunteer"""
-    from models.volunteer import Volunteer
     with app.app_context():
         volunteer = Volunteer(
             first_name='Test',
             last_name='Volunteer',
-            middle_name=''
+            middle_name='',
+            organization_name='Test Corp',
+            title='Software Engineer',
+            department='Engineering',
+            industry='Technology',
+            education=EducationEnum.bachelors_degree,
+            local_status=LocalStatusEnum.true,
+            race_ethnicity=RaceEthnicityEnum.white
         )
         db.session.add(volunteer)
         db.session.commit()
+        
         yield volunteer
         
-        # More graceful cleanup
+        # Clean up
         existing = db.session.get(Volunteer, volunteer.id)
         if existing:
             db.session.delete(existing)
@@ -229,38 +240,101 @@ def test_volunteer(app):
 @pytest.fixture
 def test_skill(app):
     """Fixture for creating a test skill"""
-    from models.volunteer import Skill
     with app.app_context():
         skill = Skill(
-            name='Test Skill'
+            name='Python Programming'
         )
         db.session.add(skill)
         db.session.commit()
+        
         yield skill
-        db.session.delete(skill)
+        
+        # Clean up
+        existing = db.session.get(Skill, skill.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_volunteer_skill(app, test_volunteer, test_skill):
+    """Fixture for creating a test volunteer skill relationship"""
+    with app.app_context():
+        vol_skill = VolunteerSkill(
+            volunteer_id=test_volunteer.id,
+            skill_id=test_skill.id,
+            source=SkillSourceEnum.self_reported,
+            interest_level='High'
+        )
+        db.session.add(vol_skill)
+        db.session.commit()
+        
+        yield vol_skill
+        
+        # Clean up
+        db.session.delete(vol_skill)
         db.session.commit()
 
 @pytest.fixture
-def test_organization(app):
-    """Fixture for creating a test organization"""
-    from models.organization import Organization
+def test_engagement(app, test_volunteer):
+    """Fixture for creating a test engagement"""
     with app.app_context():
-        organization = Organization(
-            name='Test Organization',
-            type='Business',
-            description='Test Description',
-            billing_street='123 Test St',
-            billing_city='Test City',
-            billing_state='MO',
-            billing_postal_code='64111',
-            billing_country='USA'
+        engagement = Engagement(
+            volunteer_id=test_volunteer.id,
+            engagement_date=date(2024, 1, 1),
+            engagement_type='Meeting',
+            notes='Test engagement notes'
         )
-        db.session.add(organization)
+        db.session.add(engagement)
         db.session.commit()
-        yield organization
+        
+        yield engagement
         
         # Clean up
-        existing = db.session.get(Organization, organization.id)
+        existing = db.session.get(Engagement, engagement.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_event_participation(app, test_volunteer, test_event):
+    """Fixture for creating a test event participation"""
+    with app.app_context():
+        participation = EventParticipation(
+            volunteer_id=test_volunteer.id,
+            event_id=test_event.id,
+            status='Attended',
+            delivery_hours=2.5,
+            salesforce_id='a005f000003TEST789'
+        )
+        db.session.add(participation)
+        db.session.commit()
+        
+        yield participation
+        
+        # Clean up
+        existing = db.session.get(EventParticipation, participation.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_history(app, test_volunteer):
+    """Fixture for creating a test history record"""
+    with app.app_context():
+        history = History(
+            volunteer_id=test_volunteer.id,
+            activity_date=datetime.now(),
+            activity_type='Test Activity',
+            notes='Test history notes',
+            is_deleted=False
+        )
+        db.session.add(history)
+        db.session.commit()
+        
+        yield history
+        
+        # Clean up
+        existing = db.session.get(History, history.id)
         if existing:
             db.session.delete(existing)
             db.session.commit()
@@ -410,6 +484,31 @@ def test_upcoming_event(app):
         
         # Clean up
         existing = db.session.get(UpcomingEvent, event.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_organization(app):
+    """Fixture for creating a test organization"""
+    with app.app_context():
+        organization = Organization(
+            name='Test Organization',
+            description='Test Description',
+            type='Business',
+            billing_street='123 Test St',
+            billing_city='Test City',
+            billing_state='Test State',
+            billing_postal_code='12345',
+            billing_country='USA'
+        )
+        db.session.add(organization)
+        db.session.commit()
+        
+        yield organization
+        
+        # Clean up
+        existing = db.session.get(Organization, organization.id)
         if existing:
             db.session.delete(existing)
             db.session.commit() 
