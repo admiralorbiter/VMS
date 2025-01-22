@@ -19,11 +19,13 @@ class Student(Contact):
     
     # Foreign Keys - Updated to match parent table IDs
     school_id = db.Column(String(18), db.ForeignKey('school.id'))  # References School.id (Salesforce ID)
-    class_id = db.Column(String(18), db.ForeignKey('class.salesforce_id'))  # References Class.salesforce_id
+    class_salesforce_id = db.Column(String(18), db.ForeignKey('class.salesforce_id'))  # References Class.salesforce_id
     
     # Relationships
     school = db.relationship('School', backref='students')
-    class_ref = db.relationship('Class', backref='students')
+    class_ref = db.relationship('Class', 
+                              backref='students',
+                              primaryjoin="Student.class_salesforce_id==Class.salesforce_id")
     
     racial_ethnic = db.Column(Enum(RaceEthnicityEnum))
     school_code = db.Column(String(50))

@@ -9,6 +9,9 @@ from models.contact import *
 from models.class_model import Class
 from models.district_model import District
 from models.event import *
+from models.school_model import School
+from models.student import Student
+from models.contact import RaceEthnicityEnum
 
 @pytest.fixture
 def app():
@@ -121,6 +124,9 @@ def test_contact(app):
 def test_class(app):
     """Fixture for creating a test class"""
     with app.app_context():
+        from models.class_model import Class
+        
+        # Debug: Print test_class details before creation
         test_class = Class(
             salesforce_id='a005f000003XNa7AAG',
             name='Test Class 2024',
@@ -129,9 +135,22 @@ def test_class(app):
         )
         db.session.add(test_class)
         db.session.commit()
+        
+        # Verify the class was created using salesforce_id
+        created_class = db.session.query(Class).filter_by(
+            salesforce_id=test_class.salesforce_id
+        ).first()
+        assert created_class is not None
+        
         yield test_class
-        db.session.delete(test_class)
-        db.session.commit()
+        
+        # Clean up
+        existing = db.session.query(Class).filter_by(
+            salesforce_id=test_class.salesforce_id
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
 
 @pytest.fixture
 def test_district(app):
@@ -238,6 +257,75 @@ def test_organization(app):
         
         # Clean up
         existing = db.session.get(Organization, organization.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_school(app, test_district):
+    """Fixture for creating a test school"""
+    with app.app_context():
+        school = School(
+            id='0015f00000TEST123',
+            name='Test School',
+            normalized_name='TEST SCHOOL',
+            school_code='4045',
+            district_id=test_district.id
+        )
+        db.session.add(school)
+        db.session.commit()
+        yield school
+        
+        # Clean up
+        existing = db.session.get(School, school.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_student(app, test_school, test_class):
+    """Fixture for creating a test student"""
+    with app.app_context():
+        student = Student(
+            first_name='Test',
+            last_name='Student',
+            current_grade=9,
+            legacy_grade='Freshman',
+            student_id='ST12345',
+            school_id=test_school.id,
+            class_id=test_class.salesforce_id,
+            racial_ethnic=RaceEthnicityEnum.white,
+            school_code='4045',
+            ell_language='Spanish',
+            gifted=True,
+            lunch_status='Free'
+        )
+        db.session.add(student)
+        db.session.commit()
+        yield student
+        
+        # Clean up
+        existing = db.session.get(Student, student.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_student_no_school(app):
+    """Fixture for creating a test student without school/class relationships"""
+    with app.app_context():
+        student = Student(
+            first_name='Independent',
+            last_name='Student',
+            current_grade=10,
+            racial_ethnic=RaceEthnicityEnum.white
+        )
+        db.session.add(student)
+        db.session.commit()
+        yield student
+        
+        # Clean up
+        existing = db.session.get(Student, student.id)
         if existing:
             db.session.delete(existing)
             db.session.commit() 
