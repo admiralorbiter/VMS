@@ -47,7 +47,7 @@ class Volunteer(Contact):
     @declared_attr
     def organizations(cls):
         return relationship(
-            'Organization', 
+            'Organization',
             secondary='volunteer_organization',
             back_populates='volunteers',
             overlaps="volunteer_organizations"
@@ -56,8 +56,10 @@ class Volunteer(Contact):
     @declared_attr
     def volunteer_organizations(cls):
         return relationship(
-            'VolunteerOrganization', 
+            'VolunteerOrganization',
             back_populates='volunteer',
+            cascade='all, delete-orphan',
+            passive_deletes=True,
             overlaps="organizations"
         )
 

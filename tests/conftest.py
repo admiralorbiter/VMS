@@ -215,4 +215,29 @@ def test_skill(app):
         db.session.commit()
         yield skill
         db.session.delete(skill)
-        db.session.commit() 
+        db.session.commit()
+
+@pytest.fixture
+def test_organization(app):
+    """Fixture for creating a test organization"""
+    from models.organization import Organization
+    with app.app_context():
+        organization = Organization(
+            name='Test Organization',
+            type='Business',
+            description='Test Description',
+            billing_street='123 Test St',
+            billing_city='Test City',
+            billing_state='MO',
+            billing_postal_code='64111',
+            billing_country='USA'
+        )
+        db.session.add(organization)
+        db.session.commit()
+        yield organization
+        
+        # Clean up
+        existing = db.session.get(Organization, organization.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit() 

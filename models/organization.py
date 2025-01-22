@@ -27,16 +27,19 @@ class Organization(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_activity_date = db.Column(db.DateTime, nullable=True)
 
-    # Relationships
+    # Fix relationship definitions
     volunteers = relationship(
-        'Volunteer', 
+        'Volunteer',
         secondary='volunteer_organization',
         back_populates='organizations',
         overlaps="volunteer_organizations"
     )
+    
     volunteer_organizations = relationship(
-        'VolunteerOrganization', 
+        'VolunteerOrganization',
         back_populates='organization',
+        cascade='all, delete-orphan',
+        passive_deletes=True,
         overlaps="volunteers"
     )
 
@@ -50,12 +53,15 @@ class Organization(db.Model):
 class VolunteerOrganization(db.Model):
     __tablename__ = 'volunteer_organization'
     
-    volunteer_id = db.Column(db.Integer, db.ForeignKey('volunteer.id'), primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), primary_key=True)
+    volunteer_id = db.Column(Integer, 
+                           ForeignKey('volunteer.id', ondelete='CASCADE'), 
+                           primary_key=True)
+    organization_id = db.Column(Integer, 
+                              ForeignKey('organization.id', ondelete='CASCADE'), 
+                              primary_key=True)
     salesforce_volunteer_id = db.Column(db.String(18), nullable=True)
     salesforce_org_id = db.Column(db.String(18), nullable=True)
     
-    # Additional fields from npe5__Affiliation__c
     role = db.Column(String(255), nullable=True)
     start_date = db.Column(db.DateTime, nullable=True)
     end_date = db.Column(db.DateTime, nullable=True)
@@ -65,14 +71,15 @@ class VolunteerOrganization(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Add these relationships
+    # Update relationship definitions
     volunteer = relationship(
-        'Volunteer', 
+        'Volunteer',
         back_populates='volunteer_organizations',
         overlaps="organizations,volunteers"
     )
+    
     organization = relationship(
-        'Organization', 
+        'Organization',
         back_populates='volunteer_organizations',
         overlaps="organizations,volunteers"
     )
