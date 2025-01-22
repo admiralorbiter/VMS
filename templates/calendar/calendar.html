@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Event Calendar{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<script src="
+https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js
+"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calendar.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="calendar-container">
+    <div class="calendar-header">
+        <h1 class="calendar-title">Event Calendar</h1>
+    </div>
+    <div id="calendar"></div>
+</div>
+
+<!-- Event Details Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Event Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="event-details">
+                    <p><strong>Title:</strong> <span id="eventTitle"></span></p>
+                    <p><strong>Date:</strong> <span id="eventDate"></span></p>
+                    <p><strong>Time:</strong> <span id="eventTime"></span></p>
+                    <p><strong>Location:</strong> <span id="eventLocation"></span></p>
+                    <p><strong>Type:</strong> <span id="eventType"></span></p>
+                    <p><strong>Status:</strong> <span id="eventStatus"></span></p>
+                    <p><strong>Description:</strong> <span id="eventDescription"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="viewEventBtn" class="btn btn-primary">View Details</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.10/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.10/main.min.js'></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+        },
+        events: '/calendar/events',  // This will be our API endpoint
+        eventClick: function(info) {
+            // Populate modal with event details
+            document.getElementById('eventTitle').textContent = info.event.title;
+            document.getElementById('eventDate').textContent = info.event.start.toLocaleDateString();
+            document.getElementById('eventTime').textContent = info.event.start.toLocaleTimeString();
+            document.getElementById('eventLocation').textContent = info.event.extendedProps.location || 'N/A';
+            document.getElementById('eventType').textContent = info.event.extendedProps.type || 'N/A';
+            document.getElementById('eventStatus').textContent = info.event.extendedProps.status || 'N/A';
+            document.getElementById('eventDescription').textContent = info.event.extendedProps.description || 'N/A';
+            
+            // Set up the view details button
+            const viewEventBtn = document.getElementById('viewEventBtn');
+            viewEventBtn.href = `/events/view/${info.event.id}`;
+            
+            eventModal.show();
+        },
+        eventDidMount: function(info) {
+            // Add custom styling based on event properties
+            if (info.event.extendedProps.status === 'Cancelled') {
+                info.el.classList.add('cancelled-event');
+            }
+            if (info.event.extendedProps.is_past) {
+                info.el.classList.add('past-event');
+            }
+            
+            // Add tooltips with more information
+            const tooltipContent = `
+                ${info.event.title}
+                <br>
+                Status: ${info.event.extendedProps.status}
+                <br>
+                Type: ${info.event.extendedProps.type}
+                <br>
+                Volunteers: ${info.event.extendedProps.volunteer_count}/${info.event.extendedProps.volunteer_needed || 'N/A'}
+            `;
+            
+            new bootstrap.Tooltip(info.el, {
+                title: tooltipContent,
+                html: true,
+                placement: 'top',
+                trigger: 'hover',
+                container: 'body'
+            });
+        }
+    });
+
+    calendar.render();
+});
+</script>
+{% endblock %}

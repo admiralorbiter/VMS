@@ -11,6 +11,7 @@ from routes.reports.routes import report_bp
 from routes.attendance.routes import attendance
 from routes.management.management import management_bp
 from routes.job_board.filters import init_filters
+from routes.calendar.routes import calendar_bp
 
 
 def init_routes(app):
@@ -25,6 +26,7 @@ def init_routes(app):
     app.register_blueprint(report_bp)
     app.register_blueprint(attendance)
     app.register_blueprint(management_bp)
+    app.register_blueprint(calendar_bp)
     init_filters(app)
 
     @app.route('/')

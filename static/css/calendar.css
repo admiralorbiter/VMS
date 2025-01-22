@@ -1,0 +1,97 @@
+/* Calendar Container */
+.calendar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Calendar Header */
+.calendar-header {
+    margin-bottom: 2rem;
+}
+
+.calendar-title {
+    color: var(--delft-blue);
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+/* FullCalendar Custom Styles */
+.fc {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fc-toolbar-title {
+    color: var(--delft-blue) !important;
+}
+
+.fc-button-primary {
+    background-color: var(--ucla-blue) !important;
+    border-color: var(--ucla-blue) !important;
+}
+
+.fc-button-primary:hover {
+    background-color: var(--delft-blue) !important;
+    border-color: var(--delft-blue) !important;
+}
+
+.fc-event {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fc-event:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+/* Event status styles */
+.cancelled-event {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Modal styles */
+.event-details p {
+    margin-bottom: 0.5rem;
+}
+
+.event-details strong {
+    color: var(--delft-blue);
+}
+
+/* Past event styling */
+.fc-event.past-event {
+    opacity: 0.7;
+    background-color: var(--non-photo-blue) !important;
+    border-color: var(--non-photo-blue) !important;
+}
+
+.fc-event.past-event .fc-event-title {
+    text-decoration: none;
+    color: var(--delft-blue);
+}
+
+/* Additional event status styles */
+.fc-event.cancelled-event {
+    text-decoration: line-through !important;
+    opacity: 0.7;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .fc-toolbar {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+    }
+} 
