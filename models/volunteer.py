@@ -91,6 +91,12 @@ class Skill(db.Model):
     id = db.Column(Integer, primary_key=True)
     name = db.Column(String(50), unique=True, nullable=False)
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f'<Skill {self.name}>'
+
 # Association Table for Volunteer and Skill
 class VolunteerSkill(db.Model):
     __tablename__ = 'volunteer_skills'

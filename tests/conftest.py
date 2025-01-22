@@ -511,4 +511,50 @@ def test_organization(app):
         existing = db.session.get(Organization, organization.id)
         if existing:
             db.session.delete(existing)
-            db.session.commit() 
+            db.session.commit()
+
+@pytest.fixture
+def test_volunteer_with_relationships(app, test_volunteer):
+    """Fixture for creating a test volunteer with all relationships"""
+    with app.app_context():
+        # Add email
+        email = Email(
+            email='test.volunteer@example.com',
+            type='personal',
+            primary=True,
+            contact_id=test_volunteer.id
+        )
+        
+        # Add phone
+        phone = Phone(
+            number='123-456-7890',
+            type='personal',
+            primary=True,
+            contact_id=test_volunteer.id
+        )
+        
+        # Add skills
+        skill1 = Skill(name='Python')
+        skill2 = Skill(name='JavaScript')
+        db.session.add_all([skill1, skill2])
+        
+        # Add volunteer skills
+        test_volunteer.skills.extend([skill1, skill2])
+        
+        # Add email and phone
+        db.session.add(email)
+        db.session.add(phone)
+        db.session.commit()
+        
+        yield test_volunteer
+        
+        # Cleanup is handled by test_volunteer fixture
+
+@pytest.fixture
+def test_admin_headers(test_admin, client):
+    """Fixture for admin authentication headers"""
+    response = client.post('/login', data={
+        'username': 'admin',
+        'password': 'admin123'
+    })
+    return {'Cookie': response.headers.get('Set-Cookie', '')} 
