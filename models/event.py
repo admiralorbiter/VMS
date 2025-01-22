@@ -117,7 +117,7 @@ class Event(db.Model):
     end_date = db.Column(db.DateTime)
     location = db.Column(db.String(255))
     status = db.Column(SQLAlchemyEnum(EventStatus), nullable=False, default=EventStatus.DRAFT)
-    volunteer_needed = db.Column(db.Integer)
+    volunteers_needed = db.Column(db.Integer)
     format = db.Column(SQLAlchemyEnum(EventFormat), nullable=False, default=EventFormat.IN_PERSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

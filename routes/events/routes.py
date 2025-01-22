@@ -1,11 +1,11 @@
 import csv
 import os
-from flask import Blueprint, app, jsonify, request, render_template, flash, redirect, url_for
+from flask import Blueprint, app, jsonify, request, render_template, flash, redirect, url_for, abort
 from flask_login import login_required
 from config import Config
 from models import db
 from models.district_model import District
-from models.event import Event, EventType, EventStatus
+from models.event import Event, EventType, EventStatus, EventFormat
 from models.volunteer import EventParticipation, Skill, Volunteer
 from datetime import datetime, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
@@ -238,27 +238,33 @@ def events():
 def add_event():
     if request.method == 'POST':
         try:
-            # Create new event from form data
-            status = request.form.get('status', EventStatus.DRAFT)
             event = Event(
                 title=request.form.get('title'),
                 type=EventType[request.form.get('type').upper()],
                 start_date=datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M'),
                 end_date=datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M'),
                 location=request.form.get('location'),
-                status=status
+                status=request.form.get('status', EventStatus.DRAFT.value),
+                format=EventFormat[request.form.get('format').upper()],
+                description=request.form.get('description'),
+                volunteers_needed=int(request.form.get('volunteers_needed', 0))  # Add explicit type conversion
             )
             
-            # Add and commit to database
+            # Handle skills
+            skill_ids = request.form.getlist('skills[]')
+            if skill_ids:
+                skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
+                event.skills = skills
+            
             db.session.add(event)
             db.session.commit()
             
-            flash('Event created successfully!', 'success')
-            return redirect(url_for('events.events'))
+            flash('Event added successfully!', 'success')
+            return redirect(url_for('events.view_event', id=event.id))
             
         except Exception as e:
             db.session.rollback()
-            flash(f'Error creating event: {str(e)}', 'danger')
+            flash(f'Error adding event: {str(e)}', 'danger')
             return redirect(url_for('events.add_event'))
     
     # For GET request, use EventType enum for dropdown options
@@ -274,7 +280,9 @@ def add_event():
 @events_bp.route('/events/view/<int:id>')
 @login_required
 def view_event(id):
-    event = Event.query.get_or_404(id)
+    event = db.session.get(Event, id)
+    if not event:
+        abort(404)
     
     # Set default dates if None
     if event.start_date is None:
@@ -311,19 +319,21 @@ def view_event(id):
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_event(id):
-    event = Event.query.get_or_404(id)
+    event = db.session.get(Event, id)
+    if not event:
+        abort(404)
     
     if request.method == 'POST':
         try:
-            # Update event from form data
             event.title = request.form.get('title')
             event.type = EventType[request.form.get('type').upper()]
             event.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M')
             event.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M')
             event.location = request.form.get('location')
             event.status = request.form.get('status', event.status)
-            event.volunteer_needed = request.form.get('volunteer_needed', type=int)
+            event.format = EventFormat[request.form.get('format').upper()]
             event.description = request.form.get('description')
+            event.volunteers_needed = int(request.form.get('volunteers_needed', 0))
             
             # Update skills
             skill_ids = request.form.getlist('skills[]')
@@ -531,7 +541,9 @@ def sync_events():
 @login_required
 def delete_event(id):
     try:
-        event = Event.query.get_or_404(id)
+        event = db.session.get(Event, id)
+        if not event:
+            abort(404)
         
         # First delete all participations
         EventParticipation.query.filter_by(event_id=id).delete()
