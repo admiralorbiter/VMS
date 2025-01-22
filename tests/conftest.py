@@ -12,6 +12,10 @@ from models.event import *
 from models.school_model import School
 from models.student import Student
 from models.contact import RaceEthnicityEnum
+from models.teacher import Teacher
+from models.contact import GenderEnum
+from models.tech_job_board import JobOpportunity
+from models.upcoming_events import UpcomingEvent
 
 @pytest.fixture
 def app():
@@ -326,6 +330,86 @@ def test_student_no_school(app):
         
         # Clean up
         existing = db.session.get(Student, student.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_teacher(app):
+    """Fixture for creating a test teacher"""
+    with app.app_context():
+        teacher = Teacher(
+            first_name='Test',
+            last_name='Teacher',
+            department='Science',
+            school_id='0015f00000TEST123',
+            active=True,
+            connector_role='Lead',
+            connector_active=True,
+            connector_start_date=date(2024, 1, 1),
+            connector_end_date=date(2024, 12, 31),
+            gender=GenderEnum.female
+        )
+        db.session.add(teacher)
+        db.session.commit()
+        
+        yield teacher
+        
+        # Clean up
+        existing = db.session.get(Teacher, teacher.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_job_opportunity(app):
+    """Fixture for creating a test job opportunity"""
+    with app.app_context():
+        job_opp = JobOpportunity(
+            company_name='Test Company',
+            description='Test Description',
+            industry='Technology',
+            current_openings=5,
+            opening_types='Software Engineer, Data Scientist',
+            location='Kansas City, MO',
+            entry_level_available=True,
+            kc_based=True,
+            remote_available=True,
+            notes='Test notes',
+            job_link='https://example.com/jobs',
+            is_active=True
+        )
+        db.session.add(job_opp)
+        db.session.commit()
+        yield job_opp
+        
+        # Clean up
+        existing = db.session.get(JobOpportunity, job_opp.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+
+@pytest.fixture
+def test_upcoming_event(app):
+    """Fixture for creating a test upcoming event"""
+    with app.app_context():
+        event = UpcomingEvent(
+            salesforce_id='a005f000003TEST789',
+            name='Test Upcoming Event',
+            available_slots=10,
+            filled_volunteer_jobs=5,
+            date_and_time='01/01/2024 09:00 AM to 11:00 AM',
+            event_type='In Person',
+            registration_link='https://example.com/register',
+            display_on_website=True,
+            start_date=datetime(2024, 1, 1, 9, 0)
+        )
+        db.session.add(event)
+        db.session.commit()
+        yield event
+        
+        # Clean up
+        existing = db.session.get(UpcomingEvent, event.id)
         if existing:
             db.session.delete(existing)
             db.session.commit() 
