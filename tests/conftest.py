@@ -196,8 +196,12 @@ def test_volunteer(app):
         db.session.add(volunteer)
         db.session.commit()
         yield volunteer
-        db.session.delete(volunteer)
-        db.session.commit()
+        
+        # More graceful cleanup
+        existing = db.session.get(Volunteer, volunteer.id)
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
 
 @pytest.fixture
 def test_skill(app):

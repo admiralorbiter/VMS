@@ -83,7 +83,8 @@ class Contact(db.Model):
 
     __mapper_args__ = {
         'polymorphic_identity': 'contact',
-        'polymorphic_on': type
+        'polymorphic_on': type,
+        'confirm_deleted_rows': False
     }
 
     # Update relationships to include cascade delete

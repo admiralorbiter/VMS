@@ -22,6 +22,13 @@ class History(db.Model):
     email_message_id = db.Column(db.String(255), nullable=True)
     salesforce_id = db.Column(db.String(18), unique=True, nullable=True)
 
-    # Add relationships to Event and Volunteer models
-    event = db.relationship('Event', backref=db.backref('histories', lazy='dynamic'))
-    volunteer = db.relationship('Volunteer', backref=db.backref('histories', lazy='dynamic'))
+    # Update relationship definitions to include cascade
+    event = db.relationship('Event', 
+                          backref=db.backref('histories', 
+                                           lazy='dynamic',
+                                           cascade='all, delete-orphan'))
+    volunteer = db.relationship('Volunteer', 
+                              backref=db.backref('histories', 
+                                               lazy='dynamic',
+                                               cascade='all, delete-orphan'),
+                              passive_deletes=True)  # Enable passive deletes for cascade

@@ -14,6 +14,7 @@ class Volunteer(Contact):
     
     __mapper_args__ = {
         'polymorphic_identity': 'volunteer',
+        'confirm_deleted_rows': False
     }
     
     # Organization Information
