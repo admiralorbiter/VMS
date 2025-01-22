@@ -26,9 +26,17 @@ login_manager.init_app(app)
 login_manager.login_view = 'auth.login'  # Redirect to 'login' view if unauthorized
 login_manager.login_message_category = 'info'
 
-# Create the database tables
+# Create instance directory if it doesn't exist
+instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance')
+if not os.path.exists(instance_path):
+    os.makedirs(instance_path)
+
+# Only create tables if they don't exist
 with app.app_context():
-    db.create_all()
+    # Check if database exists and has tables
+    inspector = db.inspect(db.engine)
+    if not inspector.get_table_names():
+        db.create_all()
 
 # User loader callback for Flask-Login
 @login_manager.user_loader
