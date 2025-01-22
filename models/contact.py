@@ -86,10 +86,13 @@ class Contact(db.Model):
         'polymorphic_on': type
     }
 
-    # Relationships
-    phones = relationship('Phone', backref='contact', lazy='dynamic')
-    emails = relationship('Email', backref='contact', lazy='dynamic')
-    addresses = relationship('Address', backref='contact', lazy='dynamic')
+    # Update relationships to include cascade delete
+    phones = relationship('Phone', backref='contact', lazy='dynamic',
+                         cascade='all, delete-orphan')
+    emails = relationship('Email', backref='contact', lazy='dynamic',
+                         cascade='all, delete-orphan')
+    addresses = relationship('Address', backref='contact', lazy='dynamic',
+                           cascade='all, delete-orphan')
 
     @property
     def salesforce_contact_url(self):

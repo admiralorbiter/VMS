@@ -80,14 +80,18 @@ class EventAttendance(db.Model):
     # Attendance details
     status = db.Column(SQLAlchemyEnum(AttendanceStatus), default=AttendanceStatus.NOT_TAKEN, nullable=False)
     last_taken = db.Column(db.DateTime, nullable=True)
-    total_attendance = db.Column(db.Integer, default=0)  # Simple counter for now
+    total_attendance = db.Column(db.Integer, default=0)
     
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationship back to event
-    event = db.relationship('Event', backref=db.backref('attendance', uselist=False))
+    # Change the relationship definition to prevent circular updates
+    event = db.relationship('Event', 
+                          backref=db.backref('attendance', 
+                                           uselist=False,
+                                           cascade='all, delete-orphan'),
+                          single_parent=True)
 
 class EventFormat(str, Enum):
     IN_PERSON = 'in_person'
@@ -253,7 +257,13 @@ class Event(db.Model):
 
     def update_from_csv(self, data):
         """Update event from CSV data"""
-        # Basic event data setup remains the same
+        # Validate required fields
+        if not data.get('Date'):
+            raise ValueError("Date is required")
+        if not data.get('Title'):
+            raise ValueError("Title is required")
+        
+        # Rest of the method remains the same
         date_str = data.get('Date')
         if not date_str:
             raise ValueError("Date is required")
