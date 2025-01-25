@@ -4,7 +4,7 @@ from models import db
 from config import TestingConfig
 from models.user import User
 from werkzeug.security import generate_password_hash
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from models.contact import *
 from models.class_model import Class
 from models.district_model import District
@@ -183,16 +183,18 @@ def test_event(app):
             title='Test Event',
             description='Test Description',
             type=EventType.IN_PERSON,
-            start_date=datetime.utcnow(),
-            end_date=datetime.utcnow(),
-            location='Test Location',
+            start_date=datetime.now(),
+            end_date=datetime.now() + timedelta(hours=2),
             status=EventStatus.DRAFT,
-            volunteer_needed=5,
-            format=EventFormat.IN_PERSON
+            format=EventFormat.IN_PERSON,
+            volunteers_needed=5
         )
         db.session.add(event)
         db.session.commit()
+        
         yield event
+        
+        # Clean up
         db.session.delete(event)
         db.session.commit()
 
@@ -557,4 +559,58 @@ def test_admin_headers(test_admin, client):
         'username': 'admin',
         'password': 'admin123'
     })
-    return {'Cookie': response.headers.get('Set-Cookie', '')} 
+    return {'Cookie': response.headers.get('Set-Cookie', '')}
+
+@pytest.fixture
+def test_calendar_events(app):
+    """Fixture for creating test calendar events"""
+    with app.app_context():
+        # Create multiple events with different dates and statuses
+        events = [
+            Event(
+                title='Past Event',
+                description='A past event',
+                type=EventType.IN_PERSON,
+                start_date=datetime.now() - timedelta(days=7),
+                end_date=datetime.now() - timedelta(days=7, hours=-2),
+                location='Test Location',
+                status=EventStatus.COMPLETED,
+                format=EventFormat.IN_PERSON,
+                volunteers_needed=5
+            ),
+            Event(
+                title='Current Event',
+                description='A current event',
+                type=EventType.VIRTUAL_SESSION,
+                start_date=datetime.now(),
+                end_date=datetime.now() + timedelta(hours=2),
+                location='Virtual',
+                status=EventStatus.CONFIRMED,
+                format=EventFormat.VIRTUAL,
+                volunteers_needed=3
+            ),
+            Event(
+                title='Future Event',
+                description='A future event',
+                type=EventType.CAREER_FAIR,
+                start_date=datetime.now() + timedelta(days=7),
+                end_date=datetime.now() + timedelta(days=7, hours=4),
+                location='Test Location 2',
+                status=EventStatus.PUBLISHED,
+                format=EventFormat.IN_PERSON,
+                volunteers_needed=10
+            )
+        ]
+        
+        for event in events:
+            db.session.add(event)
+        db.session.commit()
+        
+        yield events
+        
+        # Clean up
+        for event in events:
+            existing = db.session.get(Event, event.id)
+            if existing:
+                db.session.delete(existing)
+        db.session.commit() 

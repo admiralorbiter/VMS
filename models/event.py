@@ -263,7 +263,6 @@ class Event(db.Model):
         if not data.get('Title'):
             raise ValueError("Title is required")
         
-        # Rest of the method remains the same
         date_str = data.get('Date')
         if not date_str:
             raise ValueError("Date is required")
@@ -278,6 +277,11 @@ class Event(db.Model):
         self.district_partner = data.get('District or Company')
         self.registered_count = int(data.get('Registered Student Count', '0').replace('n/a', '0'))
         self.attended_count = int(data.get('Attended Student Count', '0').replace('n/a', '0'))
+        
+        # Add handling for volunteers_needed
+        if data.get('Volunteers Needed'):
+            self.volunteers_needed = int(data.get('Volunteers Needed', '0'))
+        
         self.type = EventType.VIRTUAL_SESSION
 
         # Handle role-specific data
