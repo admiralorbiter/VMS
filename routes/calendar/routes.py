@@ -11,15 +11,18 @@ def show_calendar():
 
 @calendar_bp.route('/calendar/events')
 def get_events():
-    # Get date range parameters from the request (FullCalendar sends these automatically)
+    # Get date range parameters from the request
     start = request.args.get('start')
     end = request.args.get('end')
+    
+    # Add debug logging
+    print(f"Fetching events between {start} and {end}")
     
     # Convert string dates to datetime objects
     start_date = datetime.fromisoformat(start.replace('Z', '')) if start else datetime.now() - timedelta(days=365)
     end_date = datetime.fromisoformat(end.replace('Z', '')) if end else datetime.now() + timedelta(days=365)
     
-    # Query events within the date range
+    # Query events
     events = Event.query.filter(
         and_(
             or_(Event.end_date >= start_date, Event.end_date.is_(None)),
@@ -27,10 +30,15 @@ def get_events():
         )
     ).order_by(Event.start_date).all()
     
-    # Format events for FullCalendar
+    # Debug print
+    print(f"Found {len(events)} events")
+    
     calendar_events = []
     for event in events:
-        # Define color based on event status and whether it's past
+        # Debug print first event
+        if len(calendar_events) == 0:
+            print(f"Sample event: {event.title}, {event.start_date}, {event.status}")
+            
         is_past = event.end_date < datetime.now() if event.end_date else event.start_date < datetime.now()
         
         color_map = {
@@ -42,15 +50,11 @@ def get_events():
             EventStatus.PUBLISHED: '#007bff'     # Blue for published
         }
         
-        # Calculate event end time (use start_date + 1 hour if no end_date)
-        end_time = event.end_date if event.end_date else event.start_date + timedelta(hours=1)
-        
-        # Format the event for the calendar
         calendar_event = {
             'id': event.id,
             'title': event.title,
             'start': event.start_date.isoformat(),
-            'end': end_time.isoformat(),
+            'end': (event.end_date or event.start_date + timedelta(hours=1)).isoformat(),
             'color': color_map.get(event.status, '#6c757d'),
             'className': 'past-event' if is_past else '',
             'extendedProps': {
@@ -59,13 +63,12 @@ def get_events():
                 'status': event.status.value if event.status else 'N/A',
                 'description': event.description or 'No description available',
                 'volunteer_count': event.volunteer_count,
-                'volunteer_needed': event.volunteer_needed,
+                'volunteers_needed': event.volunteers_needed or 0,
                 'format': event.format.value if event.format else 'N/A',
                 'participant_count': event.participant_count,
                 'is_past': is_past
             }
         }
-        
         calendar_events.append(calendar_event)
     
-    return jsonify(calendar_events) 
+    return jsonify(calendar_events)
