@@ -10,6 +10,9 @@ from config import DevelopmentConfig, ProductionConfig
 from dotenv import load_dotenv
 import os
 
+# Load environment variables from .env file first
+# load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
 
@@ -33,9 +36,18 @@ if not os.path.exists(instance_path):
 
 # Only create tables if they don't exist
 with app.app_context():
-    # Check if database exists and has tables
+    # Create all tables
+    db.create_all()
+    
+    # Verify tables were created
     inspector = db.inspect(db.engine)
-    if not inspector.get_table_names():
+    expected_tables = ['event', 'event_volunteers', 'event_districts', 'event_skills', 'event_participation']
+    existing_tables = inspector.get_table_names()
+    
+    missing_tables = [table for table in expected_tables if table not in existing_tables]
+    if missing_tables:
+        print(f"Warning: Missing tables detected: {missing_tables}")
+        # Try to create missing tables specifically
         db.create_all()
 
 # User loader callback for Flask-Login
@@ -45,9 +57,6 @@ def load_user(user_id):
 
 # Initialize routes
 init_routes(app)
-
-# Load environment variables from .env file
-load_dotenv()
 
 if __name__ == '__main__':
     # Use production-ready server configuration
