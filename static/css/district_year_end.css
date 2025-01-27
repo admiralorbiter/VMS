@@ -1,17 +1,25 @@
 .year-end-container {
     padding: 2rem;
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
-.page-header {
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 2rem;
-    color: #333;
-    font-size: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.filters {
-    margin-bottom: 2rem;
+.report-header h1 {
+    color: var(--delft-blue);
+    font-size: 1.8rem;
+    margin: 0;
+    font-weight: 600;
 }
 
 .year-filter {
@@ -20,74 +28,189 @@
     gap: 1rem;
 }
 
-.year-filter label {
-    font-weight: 500;
-    color: #555;
-}
-
 .year-filter select {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-.district-section {
-    background: white;
+    padding: 0.5rem 2.5rem 0.5rem 1rem;
+    border: 2px solid var(--non-photo-blue);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 2rem;
-    margin-bottom: 2rem;
+    font-size: 1rem;
+    background-color: white;
+    color: var(--delft-blue);
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23467599' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: calc(100% - 1rem) center;
+    min-width: 120px;
 }
 
-.district-section h2 {
-    color: #2c3e50;
+.districts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+}
+
+.district-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.district-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.district-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #eee;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--non-photo-blue);
+}
+
+.district-header h2 {
+    color: var(--delft-blue);
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.district-code {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    background: rgba(70, 117, 153, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
 }
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 }
 
-.stat-category {
-    background: #f8f9fa;
-    padding: 1.5rem;
+.stat-box {
+    background: var(--mint-green);
+    padding: 1.25rem;
+    border-radius: 8px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.stat-box:hover {
+    transform: translateY(-2px);
+}
+
+.stat-box.primary {
+    background: var(--ucla-blue);
+    color: white;
+    grid-column: span 2;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: inherit;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: inherit;
+    opacity: 0.9;
+}
+
+.detail-sections {
+    border-top: 1px solid var(--non-photo-blue);
+    padding-top: 1.5rem;
+}
+
+.detail-section {
+    margin-bottom: 1.5rem;
+}
+
+.detail-section h3 {
+    color: var(--delft-blue);
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.event-types {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.event-type {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--mint-green);
     border-radius: 6px;
 }
 
-.stat-category h3 {
-    color: #34495e;
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
+.type-name {
+    color: var(--delft-blue);
+    font-weight: 500;
 }
 
-.stat-category ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.type-count {
+    background: var(--ucla-blue);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
 }
 
-.stat-category li {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #eee;
+.monthly-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.month-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--mint-green);
+    border-radius: 6px;
 }
 
-.stat-category li:last-child {
-    border-bottom: none;
+.month-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+}
+
+.month-stats {
+    display: flex;
+    gap: 1rem;
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
-    .year-end-container {
-        padding: 1rem;
+    .districts-grid {
+        grid-template-columns: 1fr;
     }
     
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .stat-box.primary {
+        grid-column: span 1;
+    }
+    
+    .month-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: right;
     }
 } 
