@@ -47,6 +47,7 @@ def import_classes():
         return jsonify({'error': 'Unauthorized'}), 403
         
     try:
+        print("Starting class import process...")
         # Define Salesforce query
         salesforce_query = """
         SELECT Id, Name, School__c, Class_Year_Number__c
@@ -98,6 +99,12 @@ def import_classes():
         # Commit changes
         db.session.commit()
         
+        print(f"Class import complete: {success_count} successes, {error_count} errors")
+        if errors:
+            print("Class import errors:")
+            for error in errors:
+                print(f"  - {error}")
+        
         return jsonify({
             'success': True,
             'message': f'Successfully processed {success_count} classes with {error_count} errors',
@@ -120,6 +127,7 @@ def import_schools():
         return jsonify({'error': 'Unauthorized'}), 403
         
     try:
+        print("Starting school import process...")
         # First, import districts
         district_query = """
         SELECT Id, Name, School_Code_External_ID__c
@@ -166,6 +174,12 @@ def import_schools():
 
         # Commit district changes before processing schools
         db.session.commit()
+        
+        print(f"District import complete: {district_success} successes, {len(district_errors)} errors")
+        if district_errors:
+            print("District errors:")
+            for error in district_errors:
+                print(f"  - {error}")
 
         # Now proceed with school import
         school_query = """
@@ -209,6 +223,12 @@ def import_schools():
 
         # Commit all changes
         db.session.commit()
+        
+        print(f"School import complete: {school_success} successes, {len(school_errors)} errors")
+        if school_errors:
+            print("School errors:")
+            for error in school_errors:
+                print(f"  - {error}")
         
         return jsonify({
             'success': True,
@@ -338,4 +358,3 @@ def delete_district(district_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
-

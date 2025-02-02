@@ -455,7 +455,7 @@ def view_details(type, id):
 @login_required
 def import_teachers_from_salesforce():
     try:
-        print("Fetching teachers from Salesforce...")
+        print("Starting teacher import from Salesforce...")
         success_count = 0
         error_count = 0
         errors = []
@@ -507,42 +507,6 @@ def import_teachers_from_salesforce():
                     except KeyError:
                         errors.append(f"Teacher {teacher.first_name} {teacher.last_name}: Invalid gender value: {gender_value}")
 
-                # Handle email after teacher is saved
-                email_address = row.get('Email', '').strip()
-                if email_address:
-                    existing_email = Email.query.filter_by(
-                        contact_id=teacher.id,
-                        email=email_address,
-                        primary=True
-                    ).first()
-                    
-                    if not existing_email:
-                        email = Email(
-                            contact_id=teacher.id,
-                            email=email_address,
-                            type='professional',
-                            primary=True
-                        )
-                        db.session.add(email)
-
-                # Handle phone
-                phone_number = row.get('Phone', '').strip()
-                if phone_number:
-                    existing_phone = Phone.query.filter_by(
-                        contact_id=teacher.id,
-                        number=phone_number,
-                        primary=True
-                    ).first()
-                    
-                    if not existing_phone:
-                        phone = Phone(
-                            contact_id=teacher.id,
-                            number=phone_number,
-                            type='professional',
-                            primary=True
-                        )
-                        db.session.add(phone)
-
                 # Handle dates
                 if row.get('Last_Email_Message__c'):
                     teacher.last_email_message = parse_date(row['Last_Email_Message__c'])
@@ -550,14 +514,75 @@ def import_teachers_from_salesforce():
                     teacher.last_mailchimp_date = parse_date(row['Last_Mailchimp_Email_Date__c'])
 
                 success_count += 1
+                
+                # Save the teacher first to get the ID
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    error_count += 1
+                    errors.append(f"Error saving teacher {teacher.first_name} {teacher.last_name}: {str(e)}")
+                    continue
+
+                # Now handle email and phone in a new transaction
+                try:
+                    # Handle email after teacher is saved
+                    email_address = row.get('Email')
+                    if email_address and isinstance(email_address, str):
+                        email_address = email_address.strip()
+                        if email_address:  # Check if non-empty after stripping
+                            existing_email = Email.query.filter_by(
+                                contact_id=teacher.id,
+                                email=email_address,
+                                primary=True
+                            ).first()
+                            
+                            if not existing_email:
+                                email = Email(
+                                    contact_id=teacher.id,
+                                    email=email_address,
+                                    type='professional',
+                                    primary=True
+                                )
+                                db.session.add(email)
+
+                    # Handle phone after teacher is saved
+                    phone_number = row.get('Phone')
+                    if phone_number and isinstance(phone_number, str):
+                        phone_number = phone_number.strip()
+                        if phone_number:  # Check if non-empty after stripping
+                            existing_phone = Phone.query.filter_by(
+                                contact_id=teacher.id,
+                                number=phone_number,
+                                primary=True
+                            ).first()
+                            
+                            if not existing_phone:
+                                phone = Phone(
+                                    contact_id=teacher.id,
+                                    number=phone_number,
+                                    type='professional',
+                                    primary=True
+                                )
+                                db.session.add(phone)
+
+                    # Commit email and phone changes
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    errors.append(f"Error saving contact info for teacher {teacher.first_name} {teacher.last_name}: {str(e)}")
+                    # Don't increment error_count since the teacher was saved successfully
 
             except Exception as e:
                 error_count += 1
                 errors.append(f"Error processing teacher {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
                 continue
 
-        # Commit all changes
-        db.session.commit()
+        print(f"Teacher import complete: {success_count} successes, {error_count} errors")
+        if errors:
+            print("Teacher import errors:")
+            for error in errors:
+                print(f"  - {error}")
         
         return jsonify({
             'success': True,
@@ -566,20 +591,21 @@ def import_teachers_from_salesforce():
         })
 
     except SalesforceAuthenticationFailed:
+        print("Salesforce authentication failed")
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce'
         }), 401
     except Exception as e:
         db.session.rollback()
-        print(f"Salesforce sync error: {str(e)}")
+        print(f"Teacher import failed with error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @attendance.route('/attendance/import-students-from-salesforce', methods=['POST'])
 @login_required
 def import_students_from_salesforce():
     try:
-        print("Fetching students from Salesforce...")
+        print("Starting student import from Salesforce...")
         success_count = 0
         error_count = 0
         errors = []
@@ -602,8 +628,10 @@ def import_students_from_salesforce():
         """
 
         # Execute query
+        print("Fetching students from Salesforce...")
         result = sf.query_all(student_query)
         student_rows = result.get('records', [])
+        print(f"Found {len(student_rows)} students in Salesforce")
 
         # Process each student
         for row in student_rows:
@@ -664,40 +692,44 @@ def import_students_from_salesforce():
                 student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
 
                 # Handle email after student is saved
-                email_address = str(row.get('Email', '')).strip()
-                if email_address:
-                    existing_email = Email.query.filter_by(
-                        contact_id=student.id,
-                        email=email_address,
-                        primary=True
-                    ).first()
-                    
-                    if not existing_email:
-                        email = Email(
+                email_address = row.get('Email')
+                if email_address and isinstance(email_address, str):
+                    email_address = email_address.strip()
+                    if email_address:  # Check if non-empty after stripping
+                        existing_email = Email.query.filter_by(
                             contact_id=student.id,
                             email=email_address,
-                            type='personal',
                             primary=True
-                        )
-                        db.session.add(email)
+                        ).first()
+                        
+                        if not existing_email:
+                            email = Email(
+                                contact_id=student.id,
+                                email=email_address,
+                                type='personal',
+                                primary=True
+                            )
+                            db.session.add(email)
 
                 # Handle phone
-                phone_number = str(row.get('Phone', '')).strip()
-                if phone_number:
-                    existing_phone = Phone.query.filter_by(
-                        contact_id=student.id,
-                        number=phone_number,
-                        primary=True
-                    ).first()
-                    
-                    if not existing_phone:
-                        phone = Phone(
+                phone_number = row.get('Phone')
+                if phone_number and isinstance(phone_number, str):
+                    phone_number = phone_number.strip()
+                    if phone_number:  # Check if non-empty after stripping
+                        existing_phone = Phone.query.filter_by(
                             contact_id=student.id,
                             number=phone_number,
-                            type='personal',
                             primary=True
-                        )
-                        db.session.add(phone)
+                        ).first()
+                        
+                        if not existing_phone:
+                            phone = Phone(
+                                contact_id=student.id,
+                                number=phone_number,
+                                type='personal',
+                                primary=True
+                            )
+                            db.session.add(phone)
 
                 success_count += 1
 
@@ -708,6 +740,12 @@ def import_students_from_salesforce():
 
         # Commit all changes
         db.session.commit()
+        
+        print(f"Student import complete: {success_count} successes, {error_count} errors")
+        if errors:
+            print("Student import errors:")
+            for error in errors:
+                print(f"  - {error}")
         
         return jsonify({
             'success': True,
