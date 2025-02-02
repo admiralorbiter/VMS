@@ -20,3 +20,13 @@ class User(db.Model, UserMixin):
         super().__init__(**kwargs)
         if 'is_admin' not in kwargs:
             self.is_admin = False
+
+    @classmethod
+    def find_by_username_or_email(cls, login):
+        """Find a user by either username or email"""
+        return cls.query.filter(
+            db.or_(
+                cls.username == login,
+                cls.email == login
+            )
+        ).first()

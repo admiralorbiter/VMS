@@ -11,13 +11,13 @@ auth_bp = Blueprint('auth', __name__)
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
+        user = User.find_by_username_or_email(form.username.data)
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
             flash('Logged in successfully.', 'success')
             return redirect(url_for('index'))  # Update to use main blueprint
         else:
-            flash('Invalid username or password.', 'danger')
+            flash('Invalid username/email or password.', 'danger')
     return render_template('login.html', form=form)
 
 @auth_bp.route('/logout')
