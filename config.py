@@ -26,7 +26,7 @@ class Config:
             raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 class DevelopmentConfig(Config):
-    DEBUG = False
+    DEBUG = True
     # Use absolute path for SQLite database with sqlite:/// protocol prefix
     db_path = os.path.join(
         os.path.abspath(os.path.dirname(__file__)), 

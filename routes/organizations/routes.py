@@ -19,10 +19,11 @@ def import_organizations():
         return render_template('organizations/import.html')
     
     try:
+        print(f"Starting import process...")
         success_count = 0
         error_count = 0
         errors = []
-
+        
         # Determine import type
         import_type = request.json.get('importType', 'organizations') if request.is_json else request.form.get('importType', 'organizations')
         
@@ -61,22 +62,28 @@ def import_organizations():
                                 org.last_activity_date = parse_date(row['LastActivityDate'])
                             
                             success_count += 1
+                            print(f"Successfully imported organization: {row.get('Name', '')}")
                         except Exception as e:
                             error_count += 1
-                            errors.append(f"Error processing organization: {str(e)}")
+                            error_msg = f"Error processing organization: {str(e)}"
+                            print(error_msg)
+                            errors.append(error_msg)
                             continue
                 
                 else:  # affiliations
                     for row in csv_data:
                         try:
+                            org_id = row.get('npe5__Organization__c')
+                            vol_id = row.get('npe5__Contact__c')
+                            
                             # Get the organization and volunteer by their Salesforce IDs
                             org = Organization.query.filter_by(
-                                salesforce_id=row.get('npe5__Organization__c')
+                                salesforce_id=org_id
                             ).first()
                             
                             # Use salesforce_individual_id instead of salesforce_id
                             volunteer = Volunteer.query.filter_by(
-                                salesforce_individual_id=row.get('npe5__Contact__c')
+                                salesforce_individual_id=vol_id
                             ).first()
 
                             if org and volunteer:
@@ -106,21 +113,48 @@ def import_organizations():
                                     vol_org.end_date = parse_date(row['npe5__EndDate__c'])
                                 
                                 success_count += 1
+                                print(f"Successfully imported affiliation for volunteer {vol_id} with organization {org_id}")
                             else:
                                 error_count += 1
                                 if not org:
-                                    errors.append(f"Organization with Salesforce ID {row.get('npe5__Organization__c')} not found")
+                                    missing_orgs.add(org_id)
                                 if not volunteer:
-                                    errors.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
+                                    missing_volunteers.add(vol_id)
                                 
                         except Exception as e:
                             error_count += 1
                             errors.append(f"Error processing affiliation: {str(e)}")
                             continue
 
+        # Print summary at the end
+        print(f"\nImport Summary:")
+        print(f"Successfully imported: {success_count}")
+        print(f"Total errors: {error_count}")
+        
+        if missing_orgs:
+            print(f"\nMissing Organizations ({len(missing_orgs)}):")
+            for org_id in sorted(missing_orgs):
+                print(f"- {org_id}")
+        
+        if missing_volunteers:
+            print(f"\nMissing Volunteers ({len(missing_volunteers)}):")
+            print(f"Total count: {len(missing_volunteers)}")  # Just show count to avoid overwhelming output
+            
+        if errors:
+            print("\nOther Errors:")
+            for error in errors:
+                print(f"- {error}")
+        
         # Commit all changes
         try:
             db.session.commit()
+            print(f"\nImport completed:")
+            print(f"Successfully imported: {success_count}")
+            print(f"Errors encountered: {error_count}")
+            if errors:
+                print("\nError details:")
+                for error in errors:
+                    print(f"- {error}")
             return jsonify({
                 'success': True,
                 'successCount': success_count,
@@ -344,8 +378,6 @@ def import_organizations_from_salesforce():
         print("Fetching organizations from Salesforce...")
         success_count = 0
         error_count = 0
-        affiliation_success = 0
-        affiliation_error = 0
         errors = []
 
         # Connect to Salesforce
@@ -356,7 +388,7 @@ def import_organizations_from_salesforce():
             domain='login'
         )
 
-        # First query: Get organizations
+        # Query organizations
         org_query = """
         SELECT Id, Name, Type, Description, ParentId, 
                BillingStreet, BillingCity, BillingState, 
@@ -395,12 +427,57 @@ def import_organizations_from_salesforce():
                     org.last_activity_date = parse_date(row['LastActivityDate'])
                 
                 success_count += 1
+                print(f"Successfully imported organization: {row.get('Name', '')}")
             except Exception as e:
                 error_count += 1
-                errors.append(f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}")
+                error_msg = f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}"
+                print(error_msg)
+                errors.append(error_msg)
                 continue
 
-        # Second query: Get affiliations
+        # Commit all changes
+        db.session.commit()
+        print(f"\nImport completed:")
+        print(f"Successfully imported: {success_count} organizations")
+        print(f"Errors encountered: {error_count}")
+        if errors:
+            print("\nError details:")
+            for error in errors:
+                print(f"- {error}")
+        return jsonify({
+            'success': True,
+            'message': f'Successfully processed {success_count} organizations with {error_count} errors',
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@organizations_bp.route('/organizations/import-affiliations-from-salesforce', methods=['POST'])
+@login_required
+def import_affiliations_from_salesforce():
+    try:
+        print("Fetching affiliations from Salesforce...")
+        affiliation_success = 0
+        affiliation_error = 0
+        errors = []
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Query affiliations
         affiliation_query = """
         SELECT Id, Name, npe5__Organization__c, npe5__Contact__c, 
                npe5__Role__c, npe5__Primary__c, npe5__Status__c, 
@@ -451,26 +528,35 @@ def import_organizations_from_salesforce():
                         vol_org.end_date = parse_date(row['npe5__EndDate__c'])
                     
                     affiliation_success += 1
+                    print(f"Successfully imported affiliation for volunteer {row.get('npe5__Contact__c')} with organization {row.get('npe5__Organization__c')}")
                 else:
                     affiliation_error += 1
+                    error_msgs = []
                     if not org:
-                        errors.append(f"Organization with Salesforce ID {row.get('npe5__Organization__c')} not found")
+                        error_msgs.append(f"Organization with Salesforce ID {row.get('npe5__Organization__c')} not found")
                     if not volunteer:
-                        errors.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
+                        error_msgs.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
+                    errors.extend(error_msgs)
+                    print("Error processing affiliation:", ", ".join(error_msgs))
 
             except Exception as e:
                 affiliation_error += 1
                 errors.append(f"Error processing affiliation: {str(e)}")
+                print(f"Error processing affiliation: {str(e)}")
                 continue
 
         # Commit all changes
         db.session.commit()
-        
+        print(f"\nAffiliation import completed:")
+        print(f"Successfully imported: {affiliation_success} affiliations")
+        print(f"Errors encountered: {affiliation_error}")
+        if errors:
+            print("\nError details:")
+            for error in errors:
+                print(f"- {error}")
         return jsonify({
             'success': True,
-            'message': (f'Successfully processed {success_count} organizations and '
-                       f'{affiliation_success} affiliations with '
-                       f'{error_count + affiliation_error} total errors'),
+            'message': f'Successfully processed {affiliation_success} affiliations with {affiliation_error} errors',
             'errors': errors
         })
 

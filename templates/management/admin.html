@@ -58,33 +58,122 @@
     <!-- Import Section -->
     <div class="card admin-card mt-4">
         <div class="card-body">
-            <h5 class="card-title">Import Data</h5>
-            <button onclick="importClasses()" class="btn admin-btn-import me-2">
-                <i class="fas fa-file-import"></i> Import Classes from Salesforce
-            </button>
-            <button onclick="importSchools()" class="btn admin-btn-import me-2">
-                <i class="fas fa-school"></i> Import Schools from Salesforce
-            </button>
-            <button onclick="importVolunteers()" class="btn admin-btn-import me-2">
-                <i class="fas fa-users"></i> Import Volunteers from Salesforce
-            </button>
-            <button onclick="importEvents()" class="btn admin-btn-import">
-                <i class="fas fa-calendar"></i> Import Events from Salesforce
-            </button>
-            <button onclick="importOrganizations()" class="btn admin-btn-import me-2">
-                <i class="fas fa-building"></i> Import Organizations from Salesforce
-            </button>
-            <button onclick="importTeachers()" class="btn admin-btn-import me-2">
-                <i class="fas fa-chalkboard-teacher"></i> Import Teachers from Salesforce
-            </button>
-            <button onclick="importStudents()" class="btn admin-btn-import me-2">
-                <i class="fas fa-user-graduate"></i> Import Students from Salesforce
-            </button>
-            <button onclick="importHistory()" class="btn admin-btn-import me-2">
-                <i class="fas fa-history"></i> Import History from Salesforce
-            </button>
+            <h5 class="card-title mb-0">Import Data from Salesforce</h5>
+            <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
+            <div class="import-grid">
+                <!-- 1. Organizations -->
+                <div class="import-item">
+                    <button onclick="importOrganizations()" class="btn admin-btn-import" id="importOrganizationsBtn">
+                        <i class="fas fa-building"></i>
+                        <span>1. Import Organizations</span>
+                    </button>
+                    <div class="import-status" id="importOrganizationsStatus"></div>
+                    <div class="import-progress" id="importOrganizationsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 2. Schools -->
+                <div class="import-item">
+                    <button onclick="importSchools()" class="btn admin-btn-import" id="importSchoolsBtn">
+                        <i class="fas fa-school"></i>
+                        <span>2. Import Schools</span>
+                    </button>
+                    <div class="import-status" id="importSchoolsStatus"></div>
+                    <div class="import-progress" id="importSchoolsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 3. Classes -->
+                <div class="import-item">
+                    <button onclick="importClasses()" class="btn admin-btn-import" id="importClassesBtn">
+                        <i class="fas fa-file-import"></i>
+                        <span>3. Import Classes</span>
+                    </button>
+                    <div class="import-status" id="importClassesStatus"></div>
+                    <div class="import-progress" id="importClassesProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 4. Teachers -->
+                <div class="import-item">
+                    <button onclick="importTeachers()" class="btn admin-btn-import" id="importTeachersBtn">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>4. Import Teachers</span>
+                    </button>
+                    <div class="import-status" id="importTeachersStatus"></div>
+                    <div class="import-progress" id="importTeachersProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 5. Students -->
+                <div class="import-item">
+                    <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>5. Import Students</span>
+                    </button>
+                    <div class="import-status" id="importStudentsStatus"></div>
+                    <div class="import-progress" id="importStudentsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 6. Volunteers -->
+                <div class="import-item">
+                    <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
+                        <i class="fas fa-users"></i>
+                        <span>6. Import Volunteers</span>
+                    </button>
+                    <div class="import-status" id="importVolunteersStatus"></div>
+                    <div class="import-progress" id="importVolunteersProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 6a. Volunteer-Organization Affiliations -->
+                <div class="import-item">
+                    <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
+                        <i class="fas fa-link"></i>
+                        <span>6a. Import Affiliations</span>
+                    </button>
+                    <div class="import-status" id="importAffiliationsStatus"></div>
+                    <div class="import-progress" id="importAffiliationsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 7. Events -->
+                <div class="import-item">
+                    <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
+                        <i class="fas fa-calendar"></i>
+                        <span>7. Import Events</span>
+                    </button>
+                    <div class="import-status" id="importEventsStatus"></div>
+                    <div class="import-progress" id="importEventsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- 8. History -->
+                <div class="import-item">
+                    <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
+                        <i class="fas fa-history"></i>
+                        <span>8. Import History</span>
+                    </button>
+                    <div class="import-status" id="importHistoryStatus"></div>
+                    <div class="import-progress" id="importHistoryProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- Users Table -->
     <div class="card admin-card mt-4">

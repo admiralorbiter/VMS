@@ -23,23 +23,158 @@
 
 .admin-btn-import,
 .btn.admin-btn-import {
-    background-color: var(--mint-green) !important;
-    color: var(--dark) !important;
-    padding: 0.4rem 0.8rem !important;
+    width: 100%;
+    background-color: var(--ucla-blue) !important;
+    color: var(--mint-green) !important;
+    padding: 1rem 1.5rem !important;
     border-radius: 8px !important;
     border: none !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 0.5rem !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 3px 0 #2a9d8f !important;
+    justify-content: flex-start !important;
+    gap: 1rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 3px 0 var(--delft-blue) !important;
     font-weight: 500 !important;
+    font-size: 1.1rem !important;
     cursor: pointer !important;
+    text-align: left !important;
 }
 
-.admin-btn-import:hover,
-.btn.admin-btn-import:hover {
-    background-color: #34c0af !important;
+.admin-btn-import i {
+    font-size: 1.4rem;
+    min-width: 1.4rem;
+    text-align: center;
+}
+
+.admin-btn-import:hover {
+    background-color: var(--delft-blue) !important;
     transform: translateY(1px);
-    box-shadow: 0 2px 0 #2a9d8f !important;
-} 
+    box-shadow: 0 2px 0 var(--delft-blue) !important;
+}
+
+.admin-btn-import.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.admin-btn-import.loading::after {
+    content: "";
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(233, 255, 249, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--mint-green);
+    animation: spin 1s ease-in-out infinite;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.import-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.import-item {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.import-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(29, 51, 84, 0.15);
+    border-color: var(--ucla-blue);
+}
+
+.import-status {
+    margin-top: 1rem;
+    font-size: 0.95rem;
+    color: var(--delft-blue);
+    text-align: left;
+    min-height: 24px;
+    padding: 0 0.5rem;
+}
+
+.import-progress {
+    margin-top: 0.75rem;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.import-progress.active {
+    opacity: 1;
+}
+
+.import-progress-bar {
+    height: 100%;
+    background: var(--ucla-blue);
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+.toast-container {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.toast {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 4px 12px rgba(29, 51, 84, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 300px;
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+    border-left: 4px solid;
+    transition: opacity 0.3s ease;
+}
+
+.toast.success {
+    border-color: var(--ucla-blue);
+}
+
+.toast.success i {
+    color: var(--ucla-blue);
+}
+
+.toast.error {
+    border-color: var(--poppy);
+}
+
+.toast.error i {
+    color: var(--poppy);
+}
+
+.toast i {
+    font-size: 1.25rem;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
