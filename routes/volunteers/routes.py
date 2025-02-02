@@ -617,6 +617,8 @@ def import_from_salesforce():
         return jsonify({'error': 'Unauthorized'}), 403
         
     try:
+        print("Starting volunteer import from Salesforce...")
+        
         # Define Salesforce query
         salesforce_query = """
         SELECT Id, AccountId, FirstName, LastName, MiddleName, 
@@ -654,10 +656,10 @@ def import_from_salesforce():
                 
                 if not volunteer:
                     volunteer = Volunteer()
-                    volunteer.salesforce_individual_id = row['Id']  # Only set this for new volunteers
+                    volunteer.salesforce_individual_id = row['Id']
                     db.session.add(volunteer)
                 
-                # Update volunteer fields (whether new or existing)
+                # Update volunteer fields
                 volunteer.salesforce_account_id = row['AccountId']
                 volunteer.first_name = (row.get('FirstName') or '').strip()
                 volunteer.last_name = (row.get('LastName') or '').strip()
@@ -720,13 +722,11 @@ def import_from_salesforce():
         # Commit all successful changes
         try:
             db.session.commit()
-            
-            # Print detailed results to console
-            print("\n=== Salesforce Import Results ===")
-            print(f"Total processed: {success_count + error_count}")
-            print(f"Successful imports: {success_count}")
-            print(f"Failed imports: {error_count}")
-            
+            print(f"\nImport complete - Created/Updated: {success_count}, Errors: {error_count}")
+            if errors:
+                print("\nErrors encountered:")
+                for error in errors:
+                    print(f"- {error['name']}: {error['error']}")
 
             return jsonify({
                 'success': True,
@@ -734,30 +734,20 @@ def import_from_salesforce():
             })
         except Exception as e:
             db.session.rollback()
-            print("\n=== Database Commit Error ===")
-            print(f"Error: {str(e)}")
-            print("Previously processed successfully:", len(processed_volunteers))
-            print("Previously encountered errors:", len(errors))
-            print("=============================\n")
             return jsonify({
                 'success': False,
                 'message': f'Database commit error: {str(e)}'
             }), 500
 
     except SalesforceAuthenticationFailed:
-        print("\n=== Salesforce Authentication Error ===")
-        print("Failed to authenticate with provided credentials")
-        print("=====================================\n")
+        print("Error: Failed to authenticate with Salesforce")
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce'
         }), 401
     except Exception as e:
-        print("\n=== Unexpected Error ===")
         print(f"Error: {str(e)}")
-        print("=====================\n")
         return jsonify({
             'success': False,
             'message': str(e)
         }), 500
-    

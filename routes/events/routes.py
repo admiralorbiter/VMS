@@ -644,6 +644,13 @@ def import_events_from_salesforce():
         # Commit all changes
         db.session.commit()
         
+        # Print summary and errors
+        print(f"\nSuccessfully processed {success_count} events and {participant_success} participants with {error_count + participant_error} total errors")
+        if errors:
+            print("\nErrors encountered:")
+            for error in errors:
+                print(f"- {error}")
+        
         return jsonify({
             'success': True,
             'message': (f'Successfully processed {success_count} events and '
@@ -653,11 +660,12 @@ def import_events_from_salesforce():
         })
 
     except SalesforceAuthenticationFailed:
+        print("Error: Failed to authenticate with Salesforce")
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce'
         }), 401
     except Exception as e:
         db.session.rollback()
-        print(f"Salesforce sync error: {str(e)}")
+        print(f"Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500

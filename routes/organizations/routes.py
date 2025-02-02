@@ -528,7 +528,6 @@ def import_affiliations_from_salesforce():
                         vol_org.end_date = parse_date(row['npe5__EndDate__c'])
                     
                     affiliation_success += 1
-                    print(f"Successfully imported affiliation for volunteer {row.get('npe5__Contact__c')} with organization {row.get('npe5__Organization__c')}")
                 else:
                     affiliation_error += 1
                     error_msgs = []
@@ -542,7 +541,6 @@ def import_affiliations_from_salesforce():
             except Exception as e:
                 affiliation_error += 1
                 errors.append(f"Error processing affiliation: {str(e)}")
-                print(f"Error processing affiliation: {str(e)}")
                 continue
 
         # Commit all changes

@@ -307,7 +307,7 @@ def import_history():
 @login_required
 def import_history_from_salesforce():
     try:
-        print("Fetching history from Salesforce...")
+        print("Starting history import from Salesforce...")
         success_count = 0
         error_count = 0
         errors = []
@@ -329,6 +329,7 @@ def import_history_from_salesforce():
         # Execute query
         result = sf.query_all(history_query)
         history_rows = result.get('records', [])
+        print(f"Found {len(history_rows)} history records in Salesforce")
 
         # Process each history record
         for row in history_rows:
@@ -378,6 +379,13 @@ def import_history_from_salesforce():
         # Commit all changes
         db.session.commit()
         
+        # Print summary and errors
+        print(f"\nSuccessfully processed {success_count} history records with {error_count} errors")
+        if errors:
+            print("\nErrors encountered:")
+            for error in errors:
+                print(f"- {error}")
+        
         return jsonify({
             'success': True,
             'message': f'Successfully processed {success_count} history records with {error_count} errors',
@@ -385,11 +393,12 @@ def import_history_from_salesforce():
         })
 
     except SalesforceAuthenticationFailed:
+        print("Error: Failed to authenticate with Salesforce")
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce'
         }), 401
     except Exception as e:
         db.session.rollback()
-        print(f"Salesforce sync error: {str(e)}")
+        print(f"Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500

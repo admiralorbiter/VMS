@@ -480,5 +480,32 @@ function importHistory() {
         });
     }
 }
+
+function importAffiliations() {
+    if (confirm('Are you sure you want to import volunteer-organization affiliations from Salesforce?')) {
+        fetch('/organizations/import-affiliations-from-salesforce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                // Show detailed error message
+                const errorMessage = data.message || data.error || 'Unknown error occurred';
+                console.error('Import error:', data);
+                alert(`Error importing affiliations: ${errorMessage}`);
+            }
+        })
+        .catch(error => {
+            console.error('Import error:', error);
+            alert(`Error importing affiliations: ${error.message}`);
+        });
+    }
+}
 </script>
-{% endblock %} 
+{% endblock %}
