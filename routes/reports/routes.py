@@ -508,44 +508,107 @@ def organization_thankyou_detail(org_id):
 @login_required
 def district_year_end():
     year = request.args.get('year', datetime.now().year)
+    print(f"Generating report for year: {year}")
     
-    # Get all districts from District model
     districts = District.query.order_by(District.name).all()
+    print(f"Found {len(districts)} districts")
+    
     district_stats = {}
     
-    # Create a mapping of variations to standardized names
-    district_name_variations = {
-        'GRANDVIEW C-4': ['Grandview C-4 School District', 'Grandview C-4', 'Grandview C4'],
-        'KANSAS CITY USD 500': ['Kansas City USD 500', 'Kansas City, Kansas Public Schools', 'KCK Public Schools'],
-        'HICKMAN MILLS C-1': ['Hickman Mills C-1', 'Hickman Mills', 'Hickman Mills School District'],
-        # Add more variations as needed
-    }
-    
     for district in districts:
-        print(f"Processing district: {district.name}")  # Debug log
+        print(f"\nProcessing district: {district.name}")
         
-        # Get all possible name variations for this district
-        name_variations = district_name_variations.get(district.name, [district.name])
-        name_variations = [name.upper() for name in name_variations]  # Convert all to uppercase
-        
-        # Count all events for this district using name variations
-        total_events = Event.query.filter(
-            Event.district_partner.in_(name_variations),
+        # Get all events for this district (both relationship and legacy)
+        events = Event.query.join(
+            event_districts
+        ).filter(
+            event_districts.c.district_id == district.id,
             extract('year', Event.start_date) == year
-        ).count()
+        ).union(
+            Event.query.filter(
+                Event.district_partner.ilike(f'%{district.name}%'),
+                extract('year', Event.start_date) == year
+            )
+        ).all()
 
-        print(f"Checking variations for {district.name}: {name_variations}")
-        print(f"Found {total_events} events")
-
-        district_stats[district.name] = {
+        # Initialize stats dictionary
+        stats = {
             'name': district.name,
-            'total_events': total_events
+            'district_code': district.district_code,
+            'total_events': len(events),
+            'total_students': 0,
+            'total_volunteers': 0,
+            'total_volunteer_hours': 0,
+            'event_types': {},
+            'schools_reached': set(),
+            'monthly_breakdown': {},
+            'career_clusters': set()
         }
 
+        for event in events:
+            # Count students
+            stats['total_students'] += event.attended_count or 0
+            
+            # Count volunteers and hours
+            for participation in event.volunteer_participations:
+                if participation.status == 'Attended':
+                    stats['total_volunteers'] += 1
+                    stats['total_volunteer_hours'] += participation.delivery_hours or 0
+            
+            # Track event types
+            event_type = event.type.value if event.type else 'unknown'
+            stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
+            
+            # Track schools
+            if event.school:
+                stats['schools_reached'].add(event.school)
+            
+            # Monthly breakdown
+            month = event.start_date.strftime('%B %Y')
+            if month not in stats['monthly_breakdown']:
+                stats['monthly_breakdown'][month] = {
+                    'events': 0,
+                    'students': 0,
+                    'volunteers': 0
+                }
+            stats['monthly_breakdown'][month]['events'] += 1
+            stats['monthly_breakdown'][month]['students'] += event.attended_count or 0
+            stats['monthly_breakdown'][month]['volunteers'] += len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            
+            # Track career clusters
+            if event.series:
+                stats['career_clusters'].add(event.series)
+
+        # Convert sets to counts
+        stats['schools_reached'] = len(stats['schools_reached'])
+        stats['career_clusters'] = len(stats['career_clusters'])
+        stats['total_volunteer_hours'] = round(stats['total_volunteer_hours'], 1)
+        
+        district_stats[district.name] = stats
+    
     return render_template(
         'reports/district_year_end.html',
         districts=district_stats,
         year=year,
         now=datetime.now()
     )
+
+def update_event_districts(event, district_names):
+    """Helper function to update event district relationships"""
+    # Clear existing relationships
+    event.districts = []
+    
+    for name in district_names:
+        # Try exact match first
+        district = District.query.filter(District.name.ilike(name)).first()
+        if district and district not in event.districts:
+            event.districts.append(district)
+            
+        # Update text field for backward compatibility
+        if event.district_partner:
+            current_districts = set(d.strip() for d in event.district_partner.split(','))
+            current_districts.add(name)
+            event.district_partner = ', '.join(current_districts)
+        else:
+            event.district_partner = name
 
