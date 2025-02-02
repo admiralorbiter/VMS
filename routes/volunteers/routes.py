@@ -466,63 +466,79 @@ def import_volunteers():
             success_count = 0
             error_count = 0
             errors = []
+            print("Starting volunteer import process...")
 
             if request.is_json and request.json.get('quickSync'):
-                # Handle quickSync with different encodings
+                print("Quick sync mode detected - using default CSV file")
                 default_file_path = os.path.join('data', 'Volunteers.csv')
                 if not os.path.exists(default_file_path):
+                    print(f"Error: Default CSV file not found at {default_file_path}")
                     return jsonify({'error': 'Default CSV file not found'}), 404
                 
-                # Try different encodings
                 encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'iso-8859-1']
                 for encoding in encodings:
                     try:
+                        print(f"Attempting to read file with encoding: {encoding}")
                         with open(default_file_path, 'r', encoding=encoding) as file:
                             csv_data = csv.DictReader(file)
                             for row in csv_data:
                                 success_count, error_count = process_volunteer_row(
                                     row, success_count, error_count, errors
                                 )
-                        break  # If successful, exit the encoding loop
+                        print(f"Successfully read file using encoding: {encoding}")
+                        break
                     except UnicodeDecodeError:
+                        print(f"Failed to decode with {encoding}")
                         continue
                 else:
+                    print("Error: Could not decode file with any known encoding")
                     return jsonify({'error': 'Could not decode file with any known encoding'}), 400
 
             else:
-                # Handle regular file upload with different encodings
+                print("Standard file upload mode detected")
                 if 'file' not in request.files:
+                    print("Error: No file uploaded")
                     return jsonify({'error': 'No file uploaded'}), 400
                 
                 file = request.files['file']
                 if file.filename == '':
+                    print("Error: No file selected")
                     return jsonify({'error': 'No file selected'}), 400
                 
                 if not file.filename.endswith('.csv'):
+                    print("Error: File must be a CSV")
                     return jsonify({'error': 'File must be a CSV'}), 400
 
-                # Read the file content once
                 file_content = file.read()
                 
-                # Try different encodings
                 encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'iso-8859-1']
                 for encoding in encodings:
                     try:
+                        print(f"Attempting to decode uploaded file with encoding: {encoding}")
                         stream = io.StringIO(file_content.decode(encoding), newline=None)
                         csv_data = csv.DictReader(stream)
                         for row in csv_data:
                             success_count, error_count = process_volunteer_row(
                                 row, success_count, error_count, errors
                             )
-                        break  # If successful, exit the encoding loop
+                        print(f"Successfully decoded file using encoding: {encoding}")
+                        break
                     except UnicodeDecodeError:
+                        print(f"Failed to decode uploaded file with {encoding}")
                         continue
                 else:
+                    print("Error: Could not decode uploaded file with any known encoding")
                     return jsonify({'error': 'Could not decode file with any known encoding'}), 400
 
-            # Commit all changes
             try:
                 db.session.commit()
+                print(f"Import completed successfully:")
+                print(f"- Successful imports: {success_count}")
+                print(f"- Failed imports: {error_count}")
+                if errors:
+                    print("Errors encountered:")
+                    for error in errors:
+                        print(f"  - {error}")
                 return jsonify({
                     'success': True,
                     'successCount': success_count,
@@ -535,8 +551,9 @@ def import_volunteers():
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
                 
         except Exception as e:
+            print(f"Unexpected error during import: {str(e)}")
             return jsonify({'error': str(e)}), 500
-
+    
 @volunteers_bp.route('/volunteers/purge', methods=['POST'])
 @login_required
 def purge_volunteers():
