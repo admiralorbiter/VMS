@@ -1,6 +1,6 @@
 from models import db
 from models.contact import Contact, RaceEthnicityEnum
-from sqlalchemy import Enum, String, Integer, Boolean, ForeignKey
+from sqlalchemy import Enum, String, Integer, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship
 
 class Student(Contact):
@@ -27,7 +27,7 @@ class Student(Contact):
                               backref='students',
                               primaryjoin="Student.class_salesforce_id==Class.salesforce_id")
     
-    racial_ethnic = db.Column(Enum(RaceEthnicityEnum))
+    racial_ethnic = db.Column(String(100), nullable=True)
     school_code = db.Column(String(50))
     ell_language = db.Column(String(50))
     gifted = db.Column(Boolean)

@@ -56,6 +56,20 @@ class ContactTypeEnum(FormEnum):
     personal = 'personal'
     professional = 'professional'
 
+class RaceEthnicityEnum(FormEnum):
+    unknown = 'Unknown'
+    american_indian = 'American Indian or Alaska Native'
+    asian = 'Asian'
+    black = 'Black or African American'
+    hispanic = 'Hispanic or Latino'
+    native_hawaiian = 'Native Hawaiian or Other Pacific Islander'
+    white = 'White'
+    multi_racial = 'Multi-racial'
+    bi_racial = 'Bi-racial'
+    two_or_more = 'Two or More Races'
+    prefer_not_to_say = 'Prefer not to say'
+    other = 'Other'
+
 # Base Contact Models
 class Contact(db.Model):
     """Base contact model that creates a real table"""
@@ -76,6 +90,7 @@ class Contact(db.Model):
     # Basic Info
     birthdate = db.Column(Date)
     gender = db.Column(Enum(GenderEnum))
+    race_ethnicity = db.Column(Enum(RaceEthnicityEnum), nullable=True)
     
     # Tracking
     last_email_date = db.Column(Date)
@@ -159,18 +174,6 @@ class EducationEnum(FormEnum):
     professional_degree = 'Professional Degree'
     some_college = 'Some College'
     technical_certification = 'Technical Certification'
-    other = 'Other'
-
-class RaceEthnicityEnum(FormEnum):
-    unknown = 'Unknown'
-    american_indian = 'American Indian or Alaska Native'
-    asian = 'Asian'
-    black = 'Black or African American'
-    hispanic = 'Hispanic or Latino' or 'Hispanic/Latino'
-    native_hawaiian = 'Native Hawaiian or Other Pacific Islander'
-    white = 'White'
-    two_or_more = 'Two or More Races'
-    prefer_not_to_say = 'Prefer not to say'
     other = 'Other'
 
 class LocalStatusEnum(FormEnum):

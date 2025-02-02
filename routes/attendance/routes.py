@@ -144,94 +144,93 @@ def process_student_data(df):
     errors = []
 
     try:
-        for _, row in df.iterrows():
-            try:
-                # Get required fields
-                first_name = str(row.get('FirstName', '')).strip()
-                last_name = str(row.get('LastName', '')).strip()
-                
-                # Track missing fields
-                missing_fields = []
-                if not first_name:
-                    missing_fields.append('FirstName')
-                if not last_name:
-                    missing_fields.append('LastName')
+        for index, row in df.iterrows():
+            # Get required fields
+            first_name = str(row.get('FirstName', '')).strip()
+            last_name = str(row.get('LastName', '')).strip()
+            
+            # Track missing fields
+            missing_fields = []
+            if not first_name:
+                missing_fields.append('FirstName')
+            if not last_name:
+                missing_fields.append('LastName')
 
-                if missing_fields:
-                    errors.append(f"Student {first_name} {last_name}: Missing required fields: {', '.join(missing_fields)}")
-                    continue
+            if missing_fields:
+                errors.append(f"Student {first_name} {last_name}: Missing required fields: {', '.join(missing_fields)}")
+                continue
 
-                # Check if student already exists
-                student = None
-                salesforce_id = str(row.get('Id', '')).strip()
-                student_id = str(row.get('Local_Student_ID__c', '')).strip()
-                
-                if salesforce_id:
-                    student = Student.query.filter_by(salesforce_individual_id=salesforce_id).first()
-                if not student and student_id:
-                    student = Student.query.filter_by(student_id=student_id).first()
-                
-                if not student:
-                    student = Student()
+            # Check if student already exists
+            salesforce_id = str(row.get('Id', '')).strip()
+            student_id = str(row.get('Local_Student_ID__c', '')).strip()
+            
+            existing_student = Student.query.filter_by(
+                salesforce_individual_id=salesforce_id
+            ).first()
 
-                # Update basic Contact fields
+            if existing_student:
+                student = existing_student
+            else:
+                student = Student()
                 student.salesforce_individual_id = salesforce_id
-                student.salesforce_account_id = str(row.get('AccountId', '')).strip() or None
-                student.first_name = first_name
-                student.middle_name = str(row.get('MiddleName', '')).strip() or None
-                student.last_name = last_name
-                
-                # Handle birthdate
-                if row.get('Birthdate'):
-                    student.birthdate = pd.to_datetime(row['Birthdate']).date()
+                student.salesforce_account_id = row.get('AccountId')
 
-                # Handle gender using GenderEnum
-                gender_value = row.get('Gender__c')
-                if gender_value:
-                    gender_key = gender_value.lower().replace(' ', '_')
-                    try:
-                        student.gender = GenderEnum[gender_key]
-                    except KeyError:
-                        errors.append(f"Student {first_name} {last_name}: Invalid gender value: {gender_value}")
+            # Update basic Contact fields
+            student.first_name = first_name
+            student.middle_name = str(row.get('MiddleName', '')).strip() or None
+            student.last_name = last_name
+            
+            # Handle birthdate
+            if row.get('Birthdate'):
+                student.birthdate = pd.to_datetime(row['Birthdate']).date()
 
-                # Handle racial/ethnic background
-                racial_ethnic = row.get('Racial_Ethnic_Background__c')
-                if racial_ethnic:
-                    racial_key = racial_ethnic.lower().replace(' ', '_').replace('/', '_')
-                    try:
-                        student.racial_ethnic = RaceEthnicityEnum[racial_key]
-                    except KeyError:
-                        errors.append(f"Student {first_name} {last_name}: Invalid racial/ethnic value: {racial_ethnic}")
+            # Handle gender using GenderEnum
+            gender_value = row.get('Gender__c')
+            if gender_value:
+                gender_key = gender_value.lower().replace(' ', '_')
+                try:
+                    student.gender = GenderEnum[gender_key]
+                except KeyError:
+                    errors.append(f"Student {first_name} {last_name}: Invalid gender value: {gender_value}")
 
-                # Update student-specific fields
-                student.student_id = student_id
-                student.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
-                student.class_id = str(row.get('Class__c', '')).strip() or None
-                student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
-                student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
+            # Handle racial/ethnic background
+            racial_ethnic = row.get('Racial_Ethnic_Background__c')
+            if racial_ethnic:
+                try:
+                    student.racial_ethnic = map_racial_ethnic_value(racial_ethnic)
+                except Exception as e:
+                    errors.append(f"Student {first_name} {last_name}: Error processing racial/ethnic value: {racial_ethnic} - {str(e)}")
 
-                # Handle class relationship
-                class_salesforce_id = str(row.get('Class__c', '')).strip()
-                if class_salesforce_id:
-                    # Check if the class exists
-                    class_obj = Class.query.filter_by(salesforce_id=class_salesforce_id).first()
-                    if class_obj:
-                        student.class_id = class_salesforce_id
-                    else:
-                        errors.append(f"Student {first_name} {last_name}: Referenced class {class_salesforce_id} not found")
+            # Update student-specific fields
+            student.student_id = student_id
+            student.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
+            student.class_id = str(row.get('Class__c', '')).strip() or None
+            student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
+            student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
 
-                # Add school relationship handling
-                school_salesforce_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip()
-                if school_salesforce_id:
-                    school = School.query.get(school_salesforce_id)
-                    if school:
-                        student.school_id = school_salesforce_id
-                    else:
-                        errors.append(f"Student {first_name} {last_name}: Referenced school {school_salesforce_id} not found")
+            # Handle class relationship
+            class_salesforce_id = str(row.get('Class__c', '')).strip()
+            if class_salesforce_id:
+                # Check if the class exists
+                class_obj = Class.query.filter_by(salesforce_id=class_salesforce_id).first()
+                if class_obj:
+                    student.class_id = class_salesforce_id
+                else:
+                    errors.append(f"Student {first_name} {last_name}: Referenced class {class_salesforce_id} not found")
 
-                # Save the student first to get an ID
-                db.session.add(student)
-                db.session.flush()  # This will assign an ID to the student
+            # Add school relationship handling
+            school_salesforce_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip()
+            if school_salesforce_id:
+                school = School.query.get(school_salesforce_id)
+                if school:
+                    student.school_id = school_salesforce_id
+                else:
+                    errors.append(f"Student {first_name} {last_name}: Referenced school {school_salesforce_id} not found")
+
+            try:
+                if not existing_student:
+                    db.session.add(student)
+                db.session.flush()  # Flush to get the student ID for relationships
 
                 # Handle email after student is saved
                 email_address = str(row.get('Email', '')).strip()
@@ -277,9 +276,10 @@ def process_student_data(df):
                 continue
 
         db.session.commit()
+        print(f"Import complete - Created/Updated: {success_count}, Errors: {len(errors)}")
         return {
             'status': 'success', 
-            'success': success_count, 
+            'message': f'Processed {success_count + len(errors)} students ({success_count} successful, {len(errors)} errors)',
             'errors': errors
         }
 
@@ -393,6 +393,17 @@ def process_teacher_data(df):
     except Exception as e:
         db.session.rollback()
         return {'status': 'error', 'message': str(e), 'errors': errors}
+
+def map_racial_ethnic_value(value):
+    """Clean and standardize racial/ethnic values from Salesforce."""
+    if not value:
+        return None
+        
+    # Clean the input
+    value = value.strip()
+    
+    # Return the cleaned value directly
+    return value
 
 @attendance.route('/attendance/purge', methods=['POST'])
 @login_required
@@ -618,7 +629,7 @@ def import_students_from_salesforce():
             domain='login'
         )
 
-        # Query for students
+        # Query for students (limit 10 for testing)
         student_query = """
         SELECT Id, AccountId, FirstName, LastName, MiddleName, Email, Phone,
                Local_Student_ID__c, Birthdate, Gender__c, Racial_Ethnic_Background__c,
@@ -634,131 +645,131 @@ def import_students_from_salesforce():
         print(f"Found {len(student_rows)} students in Salesforce")
 
         # Process each student
-        for row in student_rows:
+        for index, row in enumerate(student_rows):
             try:
                 # Get required fields
                 first_name = str(row.get('FirstName', '')).strip()
                 last_name = str(row.get('LastName', '')).strip()
-                student_id = str(row.get('Local_Student_ID__c', '')).strip()
 
-                # Check if student exists
-                student = None
-                if student_id:
-                    student = Student.query.filter_by(student_id=student_id).first()
-                
-                if not student and row.get('Id'):
-                    student = Student.query.filter_by(salesforce_individual_id=row['Id']).first()
+                if not first_name or not last_name:
+                    error_count += 1
+                    errors.append(f"Missing required name fields for student with Salesforce ID {row['Id']}")
+                    continue
 
-                # If still no student found, create new one
+                # Check if student exists by Salesforce ID
+                student = Student.query.filter_by(
+                    salesforce_individual_id=row['Id']
+                ).first()
+
                 if not student:
                     student = Student()
-                    db.session.add(student)
+                    student.salesforce_individual_id = row['Id']
+                    student.salesforce_account_id = row.get('AccountId')
 
                 # Update student fields
-                student.salesforce_individual_id = row['Id']
-                student.salesforce_account_id = row.get('AccountId')
                 student.first_name = first_name
                 student.last_name = last_name
-                student.middle_name = row.get('MiddleName', '')
-                student.type = 'student'
+                student.middle_name = str(row.get('MiddleName', '')).strip() or None
+                student.birthdate = pd.to_datetime(row['Birthdate']).date() if row.get('Birthdate') else None
+                student.student_id = str(row.get('Local_Student_ID__c', '')).strip() or None
+                student.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
+                student.class_id = str(row.get('Class__c', '')).strip() or None
+                student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
+                student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
 
-                # Handle birthdate
-                if row.get('Birthdate'):
-                    student.birthdate = pd.to_datetime(row['Birthdate']).date()
-
-                # Handle gender using GenderEnum
+                # Handle gender
                 gender_value = row.get('Gender__c')
                 if gender_value:
                     gender_key = gender_value.lower().replace(' ', '_')
                     try:
                         student.gender = GenderEnum[gender_key]
                     except KeyError:
-                        errors.append(f"Student {first_name} {last_name}: Invalid gender value: {gender_value}")
+                        errors.append(f"Invalid gender value for {first_name} {last_name}: {gender_value}")
 
                 # Handle racial/ethnic background
                 racial_ethnic = row.get('Racial_Ethnic_Background__c')
                 if racial_ethnic:
-                    racial_key = racial_ethnic.lower().replace(' ', '_').replace('/', '_')
                     try:
-                        student.racial_ethnic = RaceEthnicityEnum[racial_key]
-                    except KeyError:
-                        errors.append(f"Student {first_name} {last_name}: Invalid racial/ethnic value: {racial_ethnic}")
+                        student.racial_ethnic = map_racial_ethnic_value(racial_ethnic)
+                    except Exception as e:
+                        errors.append(f"Error processing racial/ethnic value for {first_name} {last_name}: {racial_ethnic}")
 
-                # Update student-specific fields
-                student.student_id = student_id
-                student.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
-                student.class_id = str(row.get('Class__c', '')).strip() or None
-                student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
-                student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
+                if not student.id:
+                    db.session.add(student)
+                db.session.commit()
 
-                # Handle email after student is saved
-                email_address = row.get('Email')
-                if email_address and isinstance(email_address, str):
-                    email_address = email_address.strip()
-                    if email_address:  # Check if non-empty after stripping
+                # Now handle email and phone with the valid student ID
+                try:
+                    # Handle email
+                    email_address = str(row.get('Email', '')).strip()
+                    if email_address:
                         existing_email = Email.query.filter_by(
                             contact_id=student.id,
-                            email=email_address,
-                            primary=True
+                            type='personal'
                         ).first()
                         
-                        if not existing_email:
-                            email = Email(
+                        if existing_email:
+                            existing_email.email = email_address
+                        else:
+                            email_record = Email(
                                 contact_id=student.id,
                                 email=email_address,
                                 type='personal',
                                 primary=True
                             )
-                            db.session.add(email)
+                            db.session.add(email_record)
 
-                # Handle phone
-                phone_number = row.get('Phone')
-                if phone_number and isinstance(phone_number, str):
-                    phone_number = phone_number.strip()
-                    if phone_number:  # Check if non-empty after stripping
+                    # Handle phone
+                    phone_number = str(row.get('Phone', '')).strip()
+                    if phone_number:
                         existing_phone = Phone.query.filter_by(
                             contact_id=student.id,
-                            number=phone_number,
-                            primary=True
+                            type='personal'
                         ).first()
                         
-                        if not existing_phone:
-                            phone = Phone(
+                        if existing_phone:
+                            existing_phone.number = phone_number
+                        else:
+                            phone_record = Phone(
                                 contact_id=student.id,
                                 number=phone_number,
                                 type='personal',
                                 primary=True
                             )
-                            db.session.add(phone)
+                            db.session.add(phone_record)
 
-                success_count += 1
+                    # Commit the email and phone records
+                    db.session.commit()
+                    success_count += 1
+
+                except Exception as e:
+                    db.session.rollback()
+                    errors.append(f"Error processing contact info for {first_name} {last_name}: {str(e)}")
+                    error_count += 1
 
             except Exception as e:
+                db.session.rollback()
+                errors.append(f"Error processing student {first_name} {last_name}: {str(e)}")
                 error_count += 1
-                errors.append(f"Error processing student {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
                 continue
 
-        # Commit all changes
-        db.session.commit()
-        
-        print(f"Student import complete: {success_count} successes, {error_count} errors")
+        print(f"\nImport complete - Created/Updated: {success_count}, Errors: {error_count}")
         if errors:
-            print("Student import errors:")
+            print("\nErrors encountered:")
             for error in errors:
-                print(f"  - {error}")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Successfully processed {success_count} students with {error_count} errors',
+                print(f"- {error}")
+                
+        return {
+            'status': 'success',
+            'message': f'Processed {len(student_rows)} students ({success_count} successful, {error_count} errors)',
             'errors': errors
-        })
+        }
 
-    except SalesforceAuthenticationFailed:
-        return jsonify({
-            'success': False,
-            'message': 'Failed to authenticate with Salesforce'
-        }), 401
     except Exception as e:
-        db.session.rollback()
-        print(f"Salesforce sync error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_msg = f"Fatal error: {str(e)}"
+        print(f"Error: {error_msg}")
+        return {
+            'status': 'error',
+            'message': error_msg,
+            'errors': errors
+        }

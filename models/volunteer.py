@@ -1,7 +1,6 @@
 from models import db
 from models.contact import (
-    Contact, EducationEnum, RaceEthnicityEnum, 
-    LocalStatusEnum, SkillSourceEnum
+    Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum
 )
 from sqlalchemy import Enum, Date, Integer, String, Text, ForeignKey, Float
 from sqlalchemy.orm import relationship, declared_attr
@@ -26,7 +25,6 @@ class Volunteer(Contact):
     # Additional Information
     education = db.Column(Enum(EducationEnum), nullable=True)
     local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown)
-    race_ethnicity = db.Column(Enum(RaceEthnicityEnum))
 
     # Volunteer Engagement Summary
     first_volunteer_date = db.Column(Date)
