@@ -14,14 +14,6 @@
             <a href="{{ url_for('events.add_event') }}" class="action-btn">
                 <i class="fa-solid fa-plus"></i> Create New Event
             </a>
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('events.import_events') }}" class="action-btn">
-                <i class="fa-solid fa-file-import"></i> Import Events
-            </a>
-            <button class="action-btn delete-btn purge-events-btn">
-                <i class="fa-solid fa-trash"></i> Purge Events
-            </button>
-            {% endif %}
         </div>
     </div>
 
