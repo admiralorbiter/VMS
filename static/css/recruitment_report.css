@@ -1,0 +1,140 @@
+/* Extends base styles.css */
+
+/* Layout adjustments */
+.recruitment-container {
+    display: grid;
+    grid-template-columns: 35% 65%; /* Adjust the ratio to give more space to the volunteer search */
+    gap: 2%; /* Adjust gap as needed */
+    width: 100%; /* Use full width */
+    margin: 0; /* Remove side margins */
+    padding: 20px; /* Add padding */
+}
+
+/* Events column styling */
+.events-column {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    padding: 1.5rem;
+}
+
+/* Volunteer search column styling */
+.volunteer-search-column {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    padding: 1.5rem;
+}
+
+/* Table header sorting styles */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 1.5rem !important;
+}
+
+.sortable::after {
+    content: '↕️';
+    position: absolute;
+    right: 0.5rem;
+    opacity: 0.5;
+}
+
+.sortable.asc::after {
+    content: '↑';
+    opacity: 1;
+}
+
+.sortable.desc::after {
+    content: '↓';
+    opacity: 1;
+}
+
+/* Search input styling */
+.search-container {
+    margin-bottom: 1.5rem;
+}
+
+.search-input {
+    width: 100%; /* Make the search input full width */
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: var(--ucla-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(70, 117, 153, 0.1);
+}
+
+/* Table improvements */
+.recruitment-table {
+    width: 100%; /* Ensure the table takes full width */
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1rem;
+}
+
+.recruitment-table th {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    padding: 1rem;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.recruitment-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+}
+
+.recruitment-table tbody tr:hover {
+    background-color: rgba(158, 216, 219, 0.1);
+}
+
+/* Badge styling */
+.skill-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    margin: 0.25rem;
+    white-space: nowrap;
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-needed {
+    background-color: var(--poppy);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .recruitment-container {
+        grid-template-columns: 1fr; /* Stack columns on smaller screens */
+        gap: 2rem;
+    }
+}
+
+/* Override styles for recruitment report */
+main {
+    max-width: 100%; /* Allow full width */
+    margin: 0; /* Remove auto margin */
+    padding: 20px; /* Keep padding for spacing */
+} 
