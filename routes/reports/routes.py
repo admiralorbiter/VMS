@@ -634,7 +634,10 @@ def recruitment_report():
 
     # Get the event type filter
     event_type_filter = request.args.get('event_type', '').strip()
-    exclude_dia = request.args.get('exclude_dia') == '1'
+    
+    # Fix: Handle exclude_dia value from both checkbox and hidden input
+    exclude_dia = request.args.get('exclude_dia')
+    exclude_dia = exclude_dia == '1' or exclude_dia == 'true' or exclude_dia == 'True'
 
     # Apply filters based on the event type and exclude DIA events if checked
     if event_type_filter:
