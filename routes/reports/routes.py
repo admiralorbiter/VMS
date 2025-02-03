@@ -626,11 +626,24 @@ def recruitment_report():
     # Get upcoming events that need volunteers from the UpcomingEvent model
     upcoming_events = UpcomingEvent.query.filter(
         UpcomingEvent.start_date >= datetime.now(),
-        UpcomingEvent.available_slots > UpcomingEvent.filled_volunteer_jobs  # Ensure there are available slots
-    ).order_by(UpcomingEvent.start_date).all()
-    
+        UpcomingEvent.available_slots > UpcomingEvent.filled_volunteer_jobs
+    ).order_by(UpcomingEvent.start_date)
+
     # Get the search query from the request
     search_query = request.args.get('search', '').strip().lower()
+
+    # Get the event type filter
+    event_type_filter = request.args.get('event_type', '').strip()
+    exclude_dia = request.args.get('exclude_dia') == '1'
+
+    # Apply filters based on the event type and exclude DIA events if checked
+    if event_type_filter:
+        upcoming_events = upcoming_events.filter(UpcomingEvent.event_type == event_type_filter)
+
+    if exclude_dia:
+        upcoming_events = upcoming_events.filter(~UpcomingEvent.event_type.like('DIA%'))
+
+    upcoming_events = upcoming_events.all()
 
     # Initialize volunteers_data as an empty list
     volunteers_data = []
@@ -684,21 +697,23 @@ def recruitment_report():
     for event in upcoming_events:
         events_data.append({
             'title': event.name,
-            'description': event.event_type,  # Assuming event_type is used as description
+            'description': event.event_type,
             'start_date': event.start_date,
             'type': event.event_type,
-            'location': event.registration_link,  # Assuming registration link is used as location
+            'location': event.registration_link,
             'total_slots': event.available_slots,
             'filled_slots': event.filled_volunteer_jobs,
             'remaining_slots': event.available_slots - event.filled_volunteer_jobs,
-            'skills_needed': [],  # Assuming skills are not part of UpcomingEvent model
-            'status': 'Upcoming'  # You can define status based on your logic
+            'skills_needed': [],
+            'status': 'Upcoming'
         })
 
     return render_template(
         'reports/recruitment_report.html',
         events=events_data,
         volunteers=volunteers_data,
-        search_query=search_query  # Pass the search query to the template
+        search_query=search_query,
+        event_types=[event.event_type for event in UpcomingEvent.query.distinct(UpcomingEvent.event_type)],
+        exclude_dia=exclude_dia
     )
 

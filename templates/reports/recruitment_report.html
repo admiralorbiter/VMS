@@ -8,9 +8,26 @@
 
 {% block content %}
 <div class="recruitment-container">
-    <!-- Upcoming Events Column -->
     <div class="events-column">
         <h3>Upcoming Unfilled Events</h3>
+        
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <form method="get" action="{{ url_for('report.recruitment_report') }}">
+                <select name="event_type" class="form-select">
+                    <option value="">All Event Types</option>
+                    {% for event_type in event_types %}
+                        <option value="{{ event_type }}">{{ event_type }}</option>
+                    {% endfor %}
+                </select>
+                <label>
+                    <input type="checkbox" name="exclude_dia" value="1" {% if exclude_dia %}checked{% endif %}>
+                    Exclude DIA Events
+                </label>
+                <button type="submit" class="btn btn-primary mt-2">Filter</button>
+            </form>
+        </div>
+
         <div class="table-responsive">
             <table class="recruitment-table">
                 <thead>
@@ -30,7 +47,7 @@
                             <br>
                             <small>{{ event.description }}</small>
                         </td>
-                        <td>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ event.start_date.strftime('%m-%d') }}</td>
                         <td>{{ event.type }}</td>
                         <td>
                             <div class="status-indicator status-needed"></div>
@@ -45,8 +62,6 @@
             </table>
         </div>
     </div>
-
-    <!-- Volunteer Search Column -->
     <div class="volunteer-search-column">
         <h3>Volunteer Search</h3>
         <div class="search-container">
