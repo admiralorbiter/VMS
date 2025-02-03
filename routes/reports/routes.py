@@ -656,7 +656,11 @@ def recruitment_report():
         # Split search query into words
         search_terms = search_query.split()
         
-        volunteers_query = Volunteer.query.filter(
+        volunteers_query = Volunteer.query.outerjoin(
+            Volunteer.volunteer_organizations
+        ).outerjoin(
+            VolunteerOrganization.organization
+        ).filter(
             db.or_(
                 # Search for full name across first and last name
                 db.and_(*[
@@ -667,14 +671,12 @@ def recruitment_report():
                 ]),
                 # Keep existing individual field searches
                 Volunteer.title.ilike(f'%{search_query}%'),
-                Volunteer.organization_name.ilike(f'%{search_query}%'),
+                Organization.name.ilike(f'%{search_query}%'),  # Search by organization name
                 Volunteer.skills.any(Skill.name.ilike(f'%{search_query}%'))
             )
         )
 
-        volunteers = volunteers_query.join(
-            EventParticipation
-        ).add_columns(
+        volunteers = volunteers_query.add_columns(
             db.func.count(EventParticipation.id).label('participation_count'),
             db.func.max(EventParticipation.event_id).label('last_event')
         ).group_by(Volunteer.id).all()
@@ -684,9 +686,12 @@ def recruitment_report():
             volunteers_data.append({
                 'id': volunteer.id,
                 'name': f"{volunteer.first_name} {volunteer.last_name}",
-                'email': next((email.email for email in volunteer.emails if email.primary), None),
+                'email': volunteer.primary_email,
                 'title': volunteer.title,
-                'organization': volunteer.organization_name,
+                'organization': {
+                    'name': volunteer.volunteer_organizations[0].organization.name if volunteer.volunteer_organizations else None,
+                    'id': volunteer.volunteer_organizations[0].organization.id if volunteer.volunteer_organizations else None
+                },
                 'participation_count': participation_count,
                 'skills': [skill.name for skill in volunteer.skills],
                 'industry': volunteer.industry,

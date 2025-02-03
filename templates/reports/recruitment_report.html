@@ -75,7 +75,7 @@
                        value="{{ search_query }}">
                 <input type="hidden" name="event_type" value="{{ event_type_filter }}">
                 <input type="hidden" name="exclude_dia" value="{{ exclude_dia }}">
-                <button type="submit" class="btn btn-primary mt-2">Search</button>
+                <button type="submit" class="btn btn-primary mt-2 btn-custom-primary">Search</button>
             </form>
         </div>
         <div class="table-responsive">
@@ -92,18 +92,33 @@
                     {% for volunteer in volunteers %}
                     <tr>
                         <td>
-                            <strong>{{ volunteer.name }}</strong>
+                            <strong>
+                                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">
+                                    {{ volunteer.name }}
+                                </a>
+                            </strong>
                             <br>
                             <small>{{ volunteer.title }}</small>
                             <br>
-                            <small>{{ volunteer.email }}</small>
+                            {% if volunteer.email %}
+                                <small>{{ volunteer.email }}</small>
+                            {% endif %}
                         </td>
                         <td>
-                            {{ volunteer.organization }}
+                            {% if volunteer.organization.id %}
+                                <a href="{{ url_for('organizations.view_organization', id=volunteer.organization.id) }}">
+                                    {{ volunteer.organization.name }}
+                                </a>
+                            {% else %}
+                                {{ volunteer.organization.name }}
+                            {% endif %}
                             <br>
-                            <small>{{ volunteer.industry }}</small>
+                            {% if volunteer.industry %}
+                                <small>{{ volunteer.industry }}</small>
+                            {% endif %}
                         </td>
                         <td>
+
                             {% for skill in volunteer.skills %}
                             <span class="skill-badge">{{ skill }}</span>
                             {% endfor %}

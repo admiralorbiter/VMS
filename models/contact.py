@@ -122,6 +122,17 @@ class Contact(db.Model):
             return f"https://prep-kc.lightning.force.com/lightning/r/Account/{self.salesforce_account_id}/view"
         return None
 
+    @property
+    def primary_email(self):
+        """Returns the primary email address for this contact, or None if not found."""
+        primary = self.emails.filter_by(primary=True).first()
+        return primary.email if primary else None
+
+    @property
+    def primary_email_object(self):
+        """Returns the primary email object for this contact, or None if not found."""
+        return self.emails.filter_by(primary=True).first()
+
 # Base Contact Info Models
 class Phone(db.Model):
     __tablename__ = 'phone'
