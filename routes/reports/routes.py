@@ -46,6 +46,13 @@ def reports():
             'icon': 'fa-solid fa-chart-pie',
             'url': '/reports/district/year-end',
             'category': 'District Reports'
+        },
+        {
+            'title': 'Recruitment Report',
+            'description': 'Shows upcoming unfilled events, volunteer search, and skill matching to industry/jobs.',
+            'icon': 'fa-solid fa-file-alt',
+            'url': '/reports/summary',
+            'category': 'General Reports'
         }
     ]
     
@@ -611,4 +618,76 @@ def update_event_districts(event, district_names):
             event.district_partner = ', '.join(current_districts)
         else:
             event.district_partner = name
+
+@report_bp.route('/reports/summary')
+@login_required
+def summary_report():
+    # Get upcoming events that need volunteers
+    upcoming_events = Event.query.filter(
+        Event.start_date >= datetime.now(),
+        Event.status != EventStatus.CANCELLED,
+        Event.status != EventStatus.COMPLETED
+    ).order_by(Event.start_date).all()
+    
+    # Get the search query from the request
+    search_query = request.args.get('search', '').strip().lower()
+
+    # Initialize volunteers_data as an empty list
+    volunteers_data = []
+
+    # Only query volunteers if there is a search query
+    if search_query:
+        volunteers_query = Volunteer.query.filter(
+            (Volunteer.first_name.ilike(f'%{search_query}%')) |
+            (Volunteer.last_name.ilike(f'%{search_query}%')) |
+            (Volunteer.title.ilike(f'%{search_query}%')) |
+            (Volunteer.organization_name.ilike(f'%{search_query}%'))
+        )
+
+        volunteers = volunteers_query.join(
+            EventParticipation
+        ).add_columns(
+            db.func.count(EventParticipation.id).label('participation_count'),
+            db.func.max(EventParticipation.event_id).label('last_event')
+        ).group_by(Volunteer.id).all()
+
+        # Populate volunteers_data based on the search results
+        for volunteer, participation_count, last_event in volunteers:
+            volunteers_data.append({
+                'id': volunteer.id,
+                'name': f"{volunteer.first_name} {volunteer.last_name}",
+                'email': next((email.email for email in volunteer.emails if email.primary), None),
+                'title': volunteer.title,
+                'organization': volunteer.organization_name,
+                'participation_count': participation_count,
+                'skills': [skill.name for skill in volunteer.skills],
+                'industry': volunteer.industry,
+                'last_mailchimp_date': volunteer.last_mailchimp_activity_date,
+                'last_volunteer_date': volunteer.last_volunteer_date,
+                'last_email_date': volunteer.last_email_date
+            })
+
+    # Prepare events_data as before
+    events_data = []
+    for event in upcoming_events:
+        filled_slots = len([p for p in event.volunteer_participations if p.status != 'Cancelled'])
+        events_data.append({
+            'title': event.title,
+            'description': event.description,
+            'start_date': event.start_date,
+            'type': event.type.value if event.type else 'Unknown',
+            'location': event.location,
+            'total_slots': event.volunteers_needed or 0,
+            'filled_slots': filled_slots,
+            'remaining_slots': (event.volunteers_needed or 0) - filled_slots if event.volunteers_needed else 0,
+            'skills_needed': [skill.name for skill in event.skills],
+            'status': event.status.value if event.status else 'Unknown'
+        })
+
+    return render_template(
+        'reports/recruitment_report.html',
+        events=events_data,
+        volunteers=volunteers_data,
+        search_query=search_query  # Pass the search query to the template
+    )
 

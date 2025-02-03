@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Recruitment Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Upcoming Events Column -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Upcoming Unfilled Events</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Slots</th>
+                                    <th>Skills Needed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in events %}
+                                {% if event.remaining_slots > 0 %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ event.title }}</strong>
+                                        <br>
+                                        <small>{{ event.description }}</small>
+                                    </td>
+                                    <td>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ event.type }}</td>
+                                    <td>
+                                        {{ event.filled_slots }}/{{ event.total_slots }}
+                                        <br>
+                                        <small class="text-danger">{{ event.remaining_slots }} needed</small>
+                                    </td>
+                                    <td>
+                                        {% for skill in event.skills_needed %}
+                                        <span class="badge bg-secondary">{{ skill }}</span>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Volunteer Search Column -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Volunteer Search</h3>
+                    <form method="get" action="{{ url_for('report.summary_report') }}">
+                        <input type="text" class="form-control" id="volunteerSearch" name="search" 
+                               placeholder="Search volunteers by name, skills, or organization..."
+                               value="{{ search_query }}">
+                        <button type="submit" class="btn btn-primary mt-2">Search</button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Volunteer</th>
+                                    <th>Organization</th>
+                                    <th>Skills</th>
+                                    <th>Last Activity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="volunteerTableBody">
+                                {% for volunteer in volunteers %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ volunteer.name }}</strong>
+                                        <br>
+                                        <small>{{ volunteer.title }}</small>
+                                        <br>
+                                        <small>{{ volunteer.email }}</small>
+                                    </td>
+                                    <td>
+                                        {{ volunteer.organization }}
+                                        <br>
+                                        <small>{{ volunteer.industry }}</small>
+                                    </td>
+                                    <td>
+                                        {% for skill in volunteer.skills %}
+                                        <span class="badge bg-primary">{{ skill }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            Last Volunteered: {{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date else 'Never' }}
+                                            <br>
+                                            Last Email: {{ volunteer.last_email_date.strftime('%Y-%m-%d') if volunteer.last_email_date else 'Never' }}
+                                            <br>
+                                            Last Mailchimp: {{ volunteer.last_mailchimp_date.strftime('%Y-%m-%d') if volunteer.last_mailchimp_date else 'Never' }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('volunteerSearch').addEventListener('keyup', function() {
+    const searchText = this.value.toLowerCase();
+    const rows = document.getElementById('volunteerTableBody').getElementsByTagName('tr');
+    
+    for (let row of rows) {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchText) ? '' : 'none';
+    }
+});
+</script>
+{% endblock %}

@@ -86,12 +86,38 @@
   - [x] Interactive Charts
   - [x] Statistical Summaries
   - [x] Trend Analysis
+- [ ] Event Recruitment Reports
+  - [ ] See upcoming unfilled events
+    - [ ] Event Title
+    - [ ] Event Description
+    - [ ] Event Date
+    - [ ] Event Location
+    - [ ] Event Skills Required
+    - [ ] Event Total Slots
+    - [ ] Event Slots Filled
+    - [ ] Event Slots Remaining
+    - [ ] Event Jobs Required
+  - [ ] Volunteer Search
+    - [ ] Volunteer Name
+    - [ ] Volunteer Email
+    - [ ] Volunteer Title
+    - [ ] Volunteer Organization
+    - [ ] Volunteer # of times volunteered
+    - [ ] Volunteer Skills
+    - [ ] Volunteer Job
+    - [ ] Volunteer Demographics
+    - [ ] Volunteer Last Mailchimp Date
+    - [ ] Volunteer Last Volunteer Date
+    - [ ] Volunteer Last Email or Contact Date
+  - [ ] Skill Matching to Industry/Jobs
+
 
 ## Additional Features
 
 ### Activity Tracking
 - [x] Activity Timeline
 - [x] Activity Types
+
   - [x] Email Communications
   - [x] Phone Calls
   - [x] Meetings
