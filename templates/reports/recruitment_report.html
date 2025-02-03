@@ -4,6 +4,7 @@
 
 {% block content %}
 <div class="container-fluid">
+    <h1>Recruitment Report</h1>
     <div class="row">
         <!-- Upcoming Events Column -->
         <div class="col-md-6">
@@ -20,7 +21,7 @@
                                     <th>Date</th>
                                     <th>Type</th>
                                     <th>Slots</th>
-                                    <th>Skills Needed</th>
+                                    <th>Skills Needed</th> <!-- Adjust this if necessary -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -40,7 +41,7 @@
                                         <small class="text-danger">{{ event.remaining_slots }} needed</small>
                                     </td>
                                     <td>
-                                        {% for skill in event.skills_needed %}
+                                        {% for skill in event.skills_needed %} <!-- Adjust this if necessary -->
                                         <span class="badge bg-secondary">{{ skill }}</span>
                                         {% endfor %}
                                     </td>
@@ -59,7 +60,7 @@
             <div class="card">
                 <div class="card-header">
                     <h3>Volunteer Search</h3>
-                    <form method="get" action="{{ url_for('report.summary_report') }}">
+                    <form method="get" action="{{ url_for('report.recruitment_report') }}">
                         <input type="text" class="form-control" id="volunteerSearch" name="search" 
                                placeholder="Search volunteers by name, skills, or organization..."
                                value="{{ search_query }}">

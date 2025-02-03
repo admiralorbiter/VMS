@@ -10,6 +10,7 @@ from models.volunteer import Volunteer, EventParticipation
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
 from models.district_model import District
+from models.upcoming_events import UpcomingEvent
 import json
 
 report_bp = Blueprint('report', __name__)
@@ -51,7 +52,7 @@ def reports():
             'title': 'Recruitment Report',
             'description': 'Shows upcoming unfilled events, volunteer search, and skill matching to industry/jobs.',
             'icon': 'fa-solid fa-file-alt',
-            'url': '/reports/summary',
+            'url': '/reports/recruitment',
             'category': 'General Reports'
         }
     ]
@@ -619,15 +620,14 @@ def update_event_districts(event, district_names):
         else:
             event.district_partner = name
 
-@report_bp.route('/reports/summary')
+@report_bp.route('/reports/recruitment')
 @login_required
-def summary_report():
-    # Get upcoming events that need volunteers
-    upcoming_events = Event.query.filter(
-        Event.start_date >= datetime.now(),
-        Event.status != EventStatus.CANCELLED,
-        Event.status != EventStatus.COMPLETED
-    ).order_by(Event.start_date).all()
+def recruitment_report():
+    # Get upcoming events that need volunteers from the UpcomingEvent model
+    upcoming_events = UpcomingEvent.query.filter(
+        UpcomingEvent.start_date >= datetime.now(),
+        UpcomingEvent.available_slots > UpcomingEvent.filled_volunteer_jobs  # Ensure there are available slots
+    ).order_by(UpcomingEvent.start_date).all()
     
     # Get the search query from the request
     search_query = request.args.get('search', '').strip().lower()
@@ -667,21 +667,20 @@ def summary_report():
                 'last_email_date': volunteer.last_email_date
             })
 
-    # Prepare events_data as before
+    # Prepare events_data based on UpcomingEvent model
     events_data = []
     for event in upcoming_events:
-        filled_slots = len([p for p in event.volunteer_participations if p.status != 'Cancelled'])
         events_data.append({
-            'title': event.title,
-            'description': event.description,
+            'title': event.name,
+            'description': event.event_type,  # Assuming event_type is used as description
             'start_date': event.start_date,
-            'type': event.type.value if event.type else 'Unknown',
-            'location': event.location,
-            'total_slots': event.volunteers_needed or 0,
-            'filled_slots': filled_slots,
-            'remaining_slots': (event.volunteers_needed or 0) - filled_slots if event.volunteers_needed else 0,
-            'skills_needed': [skill.name for skill in event.skills],
-            'status': event.status.value if event.status else 'Unknown'
+            'type': event.event_type,
+            'location': event.registration_link,  # Assuming registration link is used as location
+            'total_slots': event.available_slots,
+            'filled_slots': event.filled_volunteer_jobs,
+            'remaining_slots': event.available_slots - event.filled_volunteer_jobs,
+            'skills_needed': [],  # Assuming skills are not part of UpcomingEvent model
+            'status': 'Upcoming'  # You can define status based on your logic
         })
 
     return render_template(
