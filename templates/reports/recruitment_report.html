@@ -17,14 +17,15 @@
                 <select name="event_type" class="form-select">
                     <option value="">All Event Types</option>
                     {% for event_type in event_types %}
-                        <option value="{{ event_type }}">{{ event_type }}</option>
+                        <option value="{{ event_type[0] }}" {% if event_type[0] == event_type_filter %}selected{% endif %}>{{ event_type[0] }}</option>
                     {% endfor %}
                 </select>
                 <label>
                     <input type="checkbox" name="exclude_dia" value="1" {% if exclude_dia %}checked{% endif %}>
                     Exclude DIA Events
                 </label>
-                <button type="submit" class="btn btn-primary mt-2">Filter</button>
+                <input type="hidden" name="search" value="{{ search_query }}"> <!-- Preserve search query -->
+                <button type="submit" class="btn btn-primary mt-2 btn-custom-primary">Filter</button>
             </form>
         </div>
 
@@ -72,6 +73,8 @@
                        name="search" 
                        placeholder="Search volunteers by name, skills, or organization..."
                        value="{{ search_query }}">
+                <input type="hidden" name="event_type" value="{{ event_type_filter }}">
+                <input type="hidden" name="exclude_dia" value="{{ exclude_dia }}">
                 <button type="submit" class="btn btn-primary mt-2">Search</button>
             </form>
         </div>
@@ -121,33 +124,4 @@
         </div>
     </div>
 </div>
-
-<script>
-// Add sorting functionality
-document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-        const table = th.closest('table');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        const column = th.dataset.sort;
-        const isAsc = !th.classList.contains('asc');
-        
-        // Update sort indicators
-        table.querySelectorAll('th').forEach(header => {
-            header.classList.remove('asc', 'desc');
-        });
-        th.classList.add(isAsc ? 'asc' : 'desc');
-
-        // Sort rows
-        rows.sort((a, b) => {
-            const aValue = a.querySelector(`td:nth-child(${Array.from(th.parentNode.children).indexOf(th) + 1})`).textContent;
-            const bValue = b.querySelector(`td:nth-child(${Array.from(th.parentNode.children).indexOf(th) + 1})`).textContent;
-            return isAsc ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-        });
-
-        // Reorder rows
-        rows.forEach(row => tbody.appendChild(row));
-    });
-});
-</script>
 {% endblock %}

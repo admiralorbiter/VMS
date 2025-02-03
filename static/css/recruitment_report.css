@@ -137,4 +137,35 @@ main {
     max-width: 100%; /* Allow full width */
     margin: 0; /* Remove auto margin */
     padding: 20px; /* Keep padding for spacing */
+}
+
+/* Button Styles */
+.btn-custom {
+    padding: 0.5rem 1.5rem; /* Adjust padding */
+    border-radius: 6px; /* Rounded corners */
+    font-weight: bold; /* Bold text */
+    transition: all 0.2s ease; /* Smooth transition */
+    border: none; /* No border */
+    cursor: pointer; /* Pointer cursor */
+}
+
+.btn-custom-primary {
+    background-color: var(--ucla-blue); /* Primary button color */
+    color: var(--mint-green); /* Text color */
+}
+
+.btn-custom-primary:hover {
+    background-color: var(--delft-blue); /* Hover color */
+    color: var(--non-photo-blue); /* Text color on hover */
+}
+
+.btn-custom-secondary {
+    background-color: var(--poppy); /* Secondary button color */
+    color: var(--mint-green); /* Text color */
+}
+
+.btn-custom-secondary:hover {
+    background-color: #c13136; /* Hover color */
+    transform: translateY(1px); /* Slight lift effect */
+    box-shadow: 0 1px 0 #b53035; /* Shadow effect */
 } 

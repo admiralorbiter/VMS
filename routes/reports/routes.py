@@ -713,7 +713,7 @@ def recruitment_report():
         events=events_data,
         volunteers=volunteers_data,
         search_query=search_query,
-        event_types=[event.event_type for event in UpcomingEvent.query.distinct(UpcomingEvent.event_type)],
-        exclude_dia=exclude_dia
+        event_types=UpcomingEvent.query.with_entities(UpcomingEvent.event_type).distinct().all(),
+        exclude_dia=exclude_dia,
+        event_type_filter=event_type_filter
     )
-
