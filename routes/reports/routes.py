@@ -6,7 +6,7 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from models.event import db
 from models.teacher import Teacher
-from models.volunteer import Volunteer, EventParticipation
+from models.volunteer import Volunteer, EventParticipation, Skill
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
 from models.district_model import District
@@ -637,11 +637,23 @@ def recruitment_report():
 
     # Only query volunteers if there is a search query
     if search_query:
+        # Split search query into words
+        search_terms = search_query.split()
+        
         volunteers_query = Volunteer.query.filter(
-            (Volunteer.first_name.ilike(f'%{search_query}%')) |
-            (Volunteer.last_name.ilike(f'%{search_query}%')) |
-            (Volunteer.title.ilike(f'%{search_query}%')) |
-            (Volunteer.organization_name.ilike(f'%{search_query}%'))
+            db.or_(
+                # Search for full name across first and last name
+                db.and_(*[
+                    db.or_(
+                        Volunteer.first_name.ilike(f'%{term}%'),
+                        Volunteer.last_name.ilike(f'%{term}%')
+                    ) for term in search_terms
+                ]),
+                # Keep existing individual field searches
+                Volunteer.title.ilike(f'%{search_query}%'),
+                Volunteer.organization_name.ilike(f'%{search_query}%'),
+                Volunteer.skills.any(Skill.name.ilike(f'%{search_query}%'))
+            )
         )
 
         volunteers = volunteers_query.join(
