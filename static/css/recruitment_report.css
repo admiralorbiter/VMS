@@ -124,6 +124,21 @@
     background-color: var(--poppy);
 }
 
+/* Sign-up link styling */
+.sign-up-link {
+    margin-left: 8px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.sign-up-link:hover {
+    color: #0056b3;
+}
+
+.sign-up-link i {
+    font-size: 14px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1200px) {
     .recruitment-container {

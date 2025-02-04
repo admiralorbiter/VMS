@@ -45,6 +45,11 @@
                     <tr>
                         <td>
                             <strong>{{ event.title }}</strong>
+                            {% if event.registration_link and 'http' in event.registration_link %}
+                            <a href="{{ event.registration_link }}" target="_blank" class="sign-up-link" title="Sign up for this event">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                            {% endif %}
                             <br>
                             <small>{{ event.description }}</small>
                         </td>

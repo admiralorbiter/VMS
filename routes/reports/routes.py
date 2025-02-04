@@ -706,6 +706,14 @@ def recruitment_report():
     # Prepare events_data based on UpcomingEvent model
     events_data = []
     for event in upcoming_events:
+        # Extract the URL from the HTML anchor tag if it exists
+        registration_link = None
+        if event.registration_link and 'href=' in event.registration_link:
+            start = event.registration_link.find('href="') + 6
+            end = event.registration_link.find('"', start)
+            if start > 5 and end > start:  # ensure we found both quotes
+                registration_link = event.registration_link[start:end]
+        
         events_data.append({
             'title': event.name,
             'description': event.event_type,
@@ -716,7 +724,8 @@ def recruitment_report():
             'filled_slots': event.filled_volunteer_jobs,
             'remaining_slots': event.available_slots - event.filled_volunteer_jobs,
             'skills_needed': [],
-            'status': 'Upcoming'
+            'status': 'Upcoming',
+            'registration_link': registration_link
         })
 
     return render_template(
