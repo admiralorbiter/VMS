@@ -41,15 +41,12 @@
         <div class="profile-card personal-info">
             <div class="card-header">
                 <i class="fa-solid fa-user"></i>
-                <h2>Personal Information</h2>
+                <h2>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</h2>
             </div>
             <div class="card-content">
-                <div class="info-group">
-                    <label>Name</label>
-                    <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
-                </div>
-
+                <p>{{ volunteer.title }}</p>
                 <!-- Add Gender Info -->
+                {% if volunteer.gender %}
                 <div class="info-group">
                     <label>Gender</label>
                     <div class="gender-badge {{ volunteer.gender.value if volunteer.gender else 'unknown' }}">
@@ -71,8 +68,10 @@
                         <span>{{ volunteer.gender.value if volunteer.gender else 'Not Specified' }}</span>
                     </div>
                 </div>
+                {% endif %}
 
                 <!-- Add Race/Ethnicity Info -->
+                {% if volunteer.race_ethnicity and volunteer.race_ethnicity != 'Unknown' %}
                 <div class="info-group">
                     <label>Race/Ethnicity</label>
                     <div class="ethnicity-badge">
@@ -80,9 +79,10 @@
                         <span>{{ volunteer.race_ethnicity.replace('_', ' ').title() if volunteer.race_ethnicity else 'Not Specified' }}</span>
                     </div>
                 </div>
+                {% endif %}
 
+                <!-- Add Local Status Info -->
                 <div class="info-group">
-                    <label>Local Status</label>
                     <span class="status-badge {{ volunteer.local_status }}">
                         {% if volunteer.local_status == 'local' %}
                             <i class="fa-solid fa-check-circle"></i>
@@ -100,6 +100,56 @@
                     </span>
                 </div>
 
+                <!-- Email Activity -->
+                <div class="info-group">
+                    <label>Email Activity</label>
+                    <div class="mailchimp-info">
+                        {% if volunteer.last_email_date %}
+                        {% set days_since_email = (now.date() - volunteer.last_email_date).days %}
+                        <div class="activity-date">
+                            <div class="activity-info">
+                                <i class="fa-solid fa-envelope"></i>
+                                <span>
+                                    Last Email: {{ volunteer.last_email_date.strftime('%b %d, %Y') }}
+                                </span>
+                            </div>
+                            <div class="days-ago {{ 'recent' if days_since_email <= 30 else 'moderate' if days_since_email <= 90 else 'old' }}">
+                                {{ days_since_email }} days ago
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if volunteer.last_non_internal_email_date %}
+                        {% set days_since_external = (now.date() - volunteer.last_non_internal_email_date).days %}
+                        <div class="activity-date">
+                            <div class="activity-info">
+                                <i class="fa-solid fa-envelope-open-text"></i>
+                                <span>
+                                    Last External Email: {{ volunteer.last_non_internal_email_date.strftime('%b %d, %Y') }}
+                                </span>
+                            </div>
+                            <div class="days-ago {{ 'recent' if days_since_external <= 30 else 'moderate' if days_since_external <= 90 else 'old' }}">
+                                {{ days_since_external }} days ago
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if volunteer.last_mailchimp_activity_date %}
+                        {% set days_since_mailchimp = (now.date() - volunteer.last_mailchimp_activity_date).days %}
+                        <div class="activity-date">
+                            <div class="activity-info">
+                                <i class="fa-brands fa-mailchimp"></i>
+                                <span>
+                                    Last Mailchimp: {{ volunteer.last_mailchimp_activity_date.strftime('%b %d, %Y') }}
+                                </span>
+                            </div>
+                            <div class="days-ago {{ 'recent' if days_since_mailchimp <= 30 else 'moderate' if days_since_mailchimp <= 90 else 'old' }}">
+                                {{ days_since_mailchimp }} days ago
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Age Group -->
                 {% if volunteer.age_group and volunteer.age_group.value %}
                 <div class="info-group">
                     <label>Age Group</label>
@@ -107,6 +157,7 @@
                 </div>
                 {% endif %}
                 
+                <!-- Education Level -->
                 {% if volunteer.education_level and volunteer.education_level.value %}
                 <div class="info-group">
                     <label>Education Level</label>
@@ -149,31 +200,7 @@
                     {% endfor %}
                 </div>
 
-                <!-- Email Activity -->
-                <div class="info-group">
-                    <label>Email Activity</label>
-                    <div class="mailchimp-info">
-                        {% if volunteer.last_email_date %}
-                        <div class="activity-date">
-                            <i class="fa-solid fa-envelope"></i>
-                            Last Email: {{ volunteer.last_email_date.strftime('%Y-%m-%d') }}
-                        </div>
-                        {% endif %}
-                        {% if volunteer.last_non_internal_email_date %}
-                        <div class="activity-date">
-                            <i class="fa-solid fa-envelope-open-text"></i>
-                            Last External Email: {{ volunteer.last_non_internal_email_date.strftime('%Y-%m-%d') }}
-                        </div>
-                        {% endif %}
-                        {% if volunteer.last_mailchimp_activity_date %}
-                        <div class="activity-date">
-                            <i class="fa-brands fa-mailchimp"></i>
-                            Last Mailchimp: {{ volunteer.last_mailchimp_activity_date.strftime('%Y-%m-%d') }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-
+                <!-- Phone Numbers -->
                 <div class="contact-section">
                     <h3><i class="fa-solid fa-phone"></i> Phone Numbers</h3>
                     {% for phone in volunteer.phones %}
@@ -194,37 +221,44 @@
                 </div>
 
                 <!-- Address Information -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Addresses</h5>
-                    </div>
-                    <div class="card-body">
-                        {% for address in volunteer.addresses %}
-                        <div class="info-group">
-                            <label>
-                                {% if address.type.value == 'personal' %}
-                                    Home Address
-                                {% else %}
-                                    Work Address
-                                {% endif %}
-                                {% if address.primary %}
-                                    <span class="badge bg-primary">Primary</span>
-                                {% endif %}
-                            </label>
-                            <p class="mb-0">{{ address.address_line1 }}</p>
-                            {% if address.address_line2 %}
-                                <p class="mb-0">{{ address.address_line2 }}</p>
+                {% if volunteer.addresses %}
+                <div class="contact-section">
+                    <h3><i class="fa-solid fa-location-dot"></i> Addresses</h3>
+                    {% for address in volunteer.addresses %}
+                    <div class="contact-item address-item">
+                        <span class="contact-badge {{ address.type.value }}">
+                            {% if address.type.value == 'personal' %}
+                            <i class="fa-solid fa-house"></i>
+                            {% else %}
+                            <i class="fa-solid fa-building"></i>
                             {% endif %}
+                        </span>
+                        <div class="address-content">
+                            {% if address.address_line1 %}
+                            <p class="mb-0">{{ address.address_line1 }}</p>
+                            {% endif %}
+                            {% if address.address_line2 and address.address_line2.strip() %}
+                            <p class="mb-0">{{ address.address_line2 }}</p>
+                            {% endif %}
+                            {% if address.city or address.state or address.zip_code %}
                             <p class="mb-0">
-                                {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %} {{ address.zip_code }}
+                                {%- if address.city %}{{ address.city }}{% endif -%}
+                                {%- if address.city and address.state %}, {% endif -%}
+                                {%- if address.state %}{{ address.state }}{% endif -%}
+                                {%- if address.zip_code %} {{ address.zip_code }}{% endif -%}
                             </p>
-                            {% if address.country %}
-                                <p class="mb-0">{{ address.country }}</p>
+                            {% endif %}
+                            {% if address.country and address.country.strip() and address.country.lower() != 'united states' %}
+                            <p class="mb-0">{{ address.country }}</p>
                             {% endif %}
                         </div>
-                        {% endfor %}
+                        {% if address.primary %}
+                        <span class="primary-badge">Primary</span>
+                        {% endif %}
                     </div>
+                    {% endfor %}
                 </div>
+                {% endif %}
             </div>
         </div>
 

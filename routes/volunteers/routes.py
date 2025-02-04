@@ -399,7 +399,8 @@ def view_volunteer(id):
         phones=sorted(volunteer.phones, key=lambda x: x.primary, reverse=True),
         participation_stats=participation_stats,
         histories=histories,
-        org_relationships=org_relationships
+        org_relationships=org_relationships,
+        now=datetime.now()
     )
 
 @volunteers_bp.route('/volunteers/edit/<int:id>', methods=['GET', 'POST'])

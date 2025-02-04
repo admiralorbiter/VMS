@@ -105,6 +105,8 @@
     color: var(--delft-blue);
     margin-bottom: 0.5rem;
     font-weight: bold;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
 }
 
 .filter-actions {
@@ -273,6 +275,7 @@
     border-bottom: 2px solid var(--ucla-blue);
     display: flex;
     align-items: center;
+    gap: 1rem;
 }
 
 .form-grid {
@@ -1674,209 +1677,6 @@ main {
     color: var(--delft-blue);
     font-weight: 600;
     text-decoration: none;
-    font-size: 1.1rem;
-    margin-bottom: 0.25rem;
-}
-
-.org-name:hover {
-    color: var(--ucla-blue);
-}
-
-.org-details {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 0.5rem;
-}
-
-.org-role {
-    color: var(--ucla-blue);
-    font-size: 0.85rem;
-    background: rgba(70, 117, 153, 0.1);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    display: inline-flex;
-    align-items: center;
-}
-
-.org-status {
-    background: var(--poppy);
-    color: var(--mint-green);
-    padding: 0.25rem 0.75rem;
-    border-radius: 16px;
-    font-size: 0.85rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.org-dates {
-    display: flex;
-    gap: 1rem;
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--delft-blue);
-}
-
-.start-date, .end-date {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.start-date i, .end-date i {
-    color: var(--ucla-blue);
-    font-size: 0.9rem;
-}
-
-/* Primary Organization Indicator */
-.org-item.primary {
-    border-left-color: var(--poppy);
-    background: rgba(214, 64, 69, 0.05);
-}
-
-.primary-org-badge {
-    background: var(--poppy);
-    color: var(--mint-green);
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-left: 0.5rem;
-}
-
-/* Organization List Styling for View Page */
-.profile-card .organizations-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    max-height: 300px;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-}
-
-.profile-card .org-item {
-    background: rgba(158, 216, 219, 0.05);
-    border-radius: 8px;
-    padding: 1rem;
-    border-left: 4px solid var(--ucla-blue);
-    transition: all 0.2s ease;
-}
-
-.profile-card .org-name {
-    color: var(--delft-blue);
-    font-weight: 600;
-    text-decoration: none;
-    font-size: 1.1rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    margin: -0.25rem -0.5rem;
-    border-radius: 4px;
-    position: relative;
-}
-
-/* Link hover effects */
-.profile-card .org-name:hover {
-    color: var(--ucla-blue);
-    background: rgba(70, 117, 153, 0.1);
-}
-
-.profile-card .org-name::after {
-    content: '\f0c1'; /* Font Awesome link icon */
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    font-size: 0.9rem;
-    opacity: 0;
-    transform: translateX(-5px);
-    transition: all 0.2s ease;
-}
-
-.profile-card .org-name:hover::after {
-    opacity: 1;
-    transform: translateX(0);
-}
-
-/* Primary organization styling */
-.profile-card .org-item.primary {
-    border-left-color: var(--poppy);
-    background: rgba(214, 64, 69, 0.05);
-}
-
-.profile-card .org-item.primary:hover {
-    background: rgba(214, 64, 69, 0.08);
-}
-
-/* Header Actions Styling */
-.header-actions {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-}
-
-.edit-volunteer-btn, .back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1);
-}
-
-/* Edit Button */
-.edit-volunteer-btn {
-    background-color: var(--ucla-blue);
-    color: var(--mint-green);
-    border: none;
-}
-
-.edit-volunteer-btn:hover {
-    background-color: var(--delft-blue);
-    color: var(--mint-green);
-    transform: translateY(2px);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
-}
-
-/* Back Button */
-.back-btn {
-    background-color: var(--non-photo-blue);
-    color: var(--delft-blue);
-    border: 2px solid var(--delft-blue);
-}
-
-.back-btn:hover {
-    background-color: var(--delft-blue);
-    color: var(--mint-green);
-    transform: translateY(2px);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
-}
-
-/* Icon styling */
-.edit-volunteer-btn i, .back-btn i {
-    font-size: 0.9rem;
-}
-
-/* Update the organization and title container for better space usage */
-.org-title-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background: rgba(158, 216, 219, 0.05);  /* var(--non-photo-blue) with opacity */
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-}
-
-.org-name {
-    color: var(--delft-blue);
-    font-weight: 500;
-    text-decoration: none;
     margin-right: auto;  /* Push following elements to the right */
 }
 
@@ -2372,4 +2172,144 @@ main {
 
 .no-data i {
     font-size: 2rem;
+}
+
+.personal-info .card-content p:first-child {
+    color: var(--ucla-blue);
+    font-size: 1.1rem;
+    font-style: italic;
+    margin: 0.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+    opacity: 0.9;
+}
+
+.mailchimp-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.activity-date {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background-color: var(--mint-green);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.activity-date:hover {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.activity-date i {
+    color: var(--ucla-blue);
+    font-size: 1.1rem;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.activity-date span {
+    font-weight: 500;
+}
+
+.activity-date {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background-color: var(--mint-green);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    justify-content: space-between;
+}
+
+.days-ago {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    min-width: 80px;
+    text-align: center;
+}
+
+.days-ago.recent {
+    background-color: #e6ffe6;
+    color: #006600;
+}
+
+.days-ago.moderate {
+    background-color: #fff3e6;
+    color: #cc6600;
+}
+
+.days-ago.old {
+    background-color: #ffe6e6;
+    color: #cc0000;
+}
+
+/* Address Section Styles */
+.address-section {
+    margin-bottom: 2rem;
+}
+
+.address-section h3 {
+    color: var(--ucla-blue);
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.address-section h3 i {
+    color: var(--ucla-blue);
+    font-size: 1.1rem;
+}
+
+.address-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background-color: var(--mint-green);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.address-item:hover {
+    background-color: var(--non-photo-blue);
+}
+
+.address-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.address-badge i {
+    font-size: 1rem;
+}
+
+.address-content {
+    flex: 1;
+    font-size: 1rem;
+}
+
+.primary-address-badge {
+    background: var(--poppy);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
 }
