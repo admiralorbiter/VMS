@@ -658,7 +658,8 @@ def import_from_salesforce():
                npsp__Primary_Affiliation__c, Title, Department, Gender__c, 
                Birthdate, Last_Mailchimp_Email_Date__c, Last_Volunteer_Date__c, 
                Last_Email_Message__c, Volunteer_Recruitment_Notes__c, 
-               Volunteer_Skills__c, Volunteer_Skills_Text__c, 
+               Volunteer_Skills__c, Volunteer_Skills_Text__c,
+               Volunteer_Interests__c,
                Number_of_Attended_Volunteer_Sessions__c,
                Racial_Ethnic_Background__c,
                Last_Activity_Date__c,
@@ -889,6 +890,14 @@ def import_from_salesforce():
                     if volunteer.age_group != new_age_group:
                         volunteer.age_group = new_age_group
                         updates.append('age_group')
+
+                # Handle interests
+                interests_str = row.get('Volunteer_Interests__c')
+                if interests_str is not None:  # Only update if field exists in Salesforce data
+                    interests_str = interests_str.strip()
+                    if volunteer.interests != interests_str:
+                        volunteer.interests = interests_str
+                        updates.append('interests')
 
                 # Handle skills - only update if there are changes
                 if row.get('Volunteer_Skills__c') or row.get('Volunteer_Skills_Text__c'):

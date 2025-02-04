@@ -420,17 +420,32 @@
         <div class="profile-card skills-info">
             <div class="card-header">
                 <i class="fa-solid fa-star"></i>
-                <h2>Skills</h2>
+                <h2>Skills & Interests</h2>
             </div>
             <div class="card-content">
-                <div class="skills-grid">
-                    {% for skill in volunteer.skills %}
-                    <span class="skill-tag">
-                        <i class="fa-solid fa-check"></i>
-                        {{ skill.name }}
-                    </span>
-                    {% endfor %}
+                {% if volunteer.skills %}
+                <div class="info-group">
+                    <label>Skills</label>
+                    <div class="skills-list">
+                        {% for skill in volunteer.skills %}
+                        <span class="skill-badge">{{ skill.name }}</span>
+                        {% endfor %}
+                    </div>
                 </div>
+                {% endif %}
+
+                {% if volunteer.interests %}
+                <div class="info-group">
+                    <label>Interests</label>
+                    <div class="skills-list">
+                        {% for interest in volunteer.interests.split(';') %}
+                            {% if interest.strip() %}
+                            <span class="skill-badge interest">{{ interest.strip() }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 

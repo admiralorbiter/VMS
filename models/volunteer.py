@@ -71,6 +71,7 @@ class Volunteer(Contact):
     last_mailchimp_activity_date = db.Column(Date)
     mailchimp_history = db.Column(Text)
     admin_contacts = db.Column(String(200))
+    interests = db.Column(Text)  # Store volunteer interests as semicolon-separated text
 
     # Relationships need @declared_attr
     @declared_attr
