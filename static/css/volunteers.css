@@ -2281,3 +2281,95 @@ main {
     cursor: pointer;
     font-size: 1rem;
 }
+
+/* Connector Information Card */
+.connector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.connector-section {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.connector-section h3 {
+    color: var(--text-2);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.connector-section h3 i {
+    color: var(--primary);
+}
+
+.subscription-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.subscription-badge.active {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+}
+
+.subscription-badge.inactive {
+    background-color: var(--error-bg);
+    color: var(--error-text);
+}
+
+.subscription-badge.pending {
+    background-color: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+}
+
+.role-badge.signup {
+    background-color: var(--secondary-bg);
+    color: var(--secondary-text);
+}
+
+.profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.profile-link:hover {
+    text-decoration: underline;
+}
+
+.no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    color: var(--text-3);
+}
+
+.no-data i {
+    font-size: 2rem;
+}

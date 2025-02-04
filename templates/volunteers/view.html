@@ -264,6 +264,100 @@
             </div>
         </div>
 
+        <!-- Connector Information Card -->
+        <div class="profile-card connector-info">
+            <div class="card-header">
+                <i class="fa-solid fa-plug"></i>
+                <h2>Connector Information</h2>
+            </div>
+            <div class="card-content">
+                {% if volunteer.connector %}
+                <div class="connector-grid">
+                    <!-- Subscription Info -->
+                    <div class="connector-section">
+                        <h3><i class="fa-solid fa-certificate"></i> Subscription</h3>
+                        <div class="info-group">
+                            <label>Status</label>
+                            <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
+                                {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription }}
+                            </span>
+                        </div>
+                        {% if volunteer.connector.active_subscription_name %}
+                        <div class="info-group">
+                            <label>Subscription Name</label>
+                            <p>{{ volunteer.connector.active_subscription_name }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Role Info -->
+                    <div class="connector-section">
+                        <h3><i class="fa-solid fa-user-tag"></i> Roles</h3>
+                        {% if volunteer.connector.role %}
+                        <div class="info-group">
+                            <label>Current Role</label>
+                            <span class="role-badge">{{ volunteer.connector.role }}</span>
+                        </div>
+                        {% endif %}
+                        {% if volunteer.connector.signup_role %}
+                        <div class="info-group">
+                            <label>SignUp Role</label>
+                            <span class="role-badge signup">{{ volunteer.connector.signup_role }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Profile Info -->
+                    <div class="connector-section">
+                        <h3><i class="fa-solid fa-id-card"></i> Profile</h3>
+                        {% if volunteer.connector.user_auth_id %}
+                        <div class="info-group">
+                            <label>User ID</label>
+                            <p>{{ volunteer.connector.user_auth_id }}</p>
+                        </div>
+                        {% endif %}
+                        {% if volunteer.connector.profile_link %}
+                        <div class="info-group">
+                            <label>Profile Link</label>
+                            <a href="{{ volunteer.connector.profile_link }}" target="_blank" class="profile-link">
+                                <i class="fa-solid fa-external-link"></i> View Profile
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Activity Info -->
+                    <div class="connector-section">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Activity</h3>
+                        {% if volunteer.connector.joining_date %}
+                        <div class="info-group">
+                            <label>Joined</label>
+                            <p>{{ volunteer.connector.joining_date }}</p>
+                        </div>
+                        {% endif %}
+                        {% if volunteer.connector.last_login_datetime %}
+                        <div class="info-group">
+                            <label>Last Login</label>
+                            <p>{{ volunteer.connector.last_login_datetime }}</p>
+                        </div>
+                        {% endif %}
+                        {% if volunteer.connector.last_update_date %}
+                        <div class="info-group">
+                            <label>Last Updated</label>
+                            <p>{{ volunteer.connector.last_update_date.strftime('%Y-%m-%d') }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-data">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <p>No Connector data available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Skills Card -->
         <div class="profile-card skills-info">
             <div class="card-header">

@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request, render_template, flash, redirect,
 from flask_login import current_user, login_required
 from config import Config
 from models import db
-from models.volunteer import Volunteer, Skill, EventParticipation, Engagement, VolunteerSkill
+from models.volunteer import Volunteer, Skill, EventParticipation, Engagement, VolunteerSkill, ConnectorData, ConnectorSubscriptionEnum
 from models.contact import Email, ContactTypeEnum
 from models.event import Event
 from models.history import History
@@ -91,6 +91,39 @@ def process_volunteer_row(row, success_count, error_count, errors):
                     volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
                 except (ValueError, TypeError):
                     volunteer.times_volunteered = 0
+
+            # Handle Connector data
+            connector_data = {
+                'active_subscription': (row.get('Connector_Active_Subscription__c') or '').strip().upper() or 'NONE',
+                'active_subscription_name': (row.get('Connector_Active_Subscription_Name__c') or '').strip(),
+                'affiliations': (row.get('Connector_Affiliations__c') or '').strip(),
+                'industry': (row.get('Connector_Industry__c') or '').strip(),
+                'joining_date': (row.get('Connector_Joining_Date__c') or '').strip(),
+                'last_login_datetime': (row.get('Connector_Last_Login_Date_Time__c') or '').strip(),
+                'last_update_date': parse_date(row.get('Connector_Last_Update_Date__c')),
+                'profile_link': (row.get('Connector_Profile_Link__c') or '').strip(),
+                'role': (row.get('Connector_Role__c') or '').strip(),
+                'signup_role': (row.get('Connector_SignUp_Role__c') or '').strip(),
+                'user_auth_id': (row.get('Connector_User_ID__c') or '').strip()
+            }
+
+            # Create or update connector data
+            if not volunteer.connector:
+                volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
+                updates.append('connector_created')
+
+            # Update connector fields if they exist in Salesforce data
+            if connector_data['active_subscription'] in [e.name for e in ConnectorSubscriptionEnum]:
+                if volunteer.connector.active_subscription != ConnectorSubscriptionEnum[connector_data['active_subscription']]:
+                    volunteer.connector.active_subscription = ConnectorSubscriptionEnum[connector_data['active_subscription']]
+                    updates.append('connector_subscription')
+
+            for field, value in connector_data.items():
+                if field != 'active_subscription' and value:  # Skip active_subscription as it's handled above
+                    current_value = getattr(volunteer.connector, field)
+                    if current_value != value:
+                        setattr(volunteer.connector, field, value)
+                        updates.append(f'connector_{field}')
 
             return success_count + 1, error_count
                 
@@ -630,7 +663,18 @@ def import_from_salesforce():
                Racial_Ethnic_Background__c,
                Last_Activity_Date__c,
                First_Volunteer_Date__c,
-               Last_Non_Internal_Email_Activity__c
+               Last_Non_Internal_Email_Activity__c,
+               Connector_Active_Subscription__c,
+               Connector_Active_Subscription_Name__c,
+               Connector_Affiliations__c,
+               Connector_Industry__c,
+               Connector_Joining_Date__c,
+               Connector_Last_Login_Date_Time__c,
+               Connector_Last_Update_Date__c,
+               Connector_Profile_Link__c,
+               Connector_Role__c,
+               Connector_SignUp_Role__c,
+               Connector_User_ID__c
         FROM Contact
         WHERE Contact_Type__c = 'Volunteer'
         """
@@ -948,6 +992,39 @@ def import_from_salesforce():
 
                 if phone_changes:
                     updates.append('phones')
+
+                # Handle Connector data
+                connector_data = {
+                    'active_subscription': (row.get('Connector_Active_Subscription__c') or '').strip().upper() or 'NONE',
+                    'active_subscription_name': (row.get('Connector_Active_Subscription_Name__c') or '').strip(),
+                    'affiliations': (row.get('Connector_Affiliations__c') or '').strip(),
+                    'industry': (row.get('Connector_Industry__c') or '').strip(),
+                    'joining_date': (row.get('Connector_Joining_Date__c') or '').strip(),
+                    'last_login_datetime': (row.get('Connector_Last_Login_Date_Time__c') or '').strip(),
+                    'last_update_date': parse_date(row.get('Connector_Last_Update_Date__c')),
+                    'profile_link': (row.get('Connector_Profile_Link__c') or '').strip(),
+                    'role': (row.get('Connector_Role__c') or '').strip(),
+                    'signup_role': (row.get('Connector_SignUp_Role__c') or '').strip(),
+                    'user_auth_id': (row.get('Connector_User_ID__c') or '').strip()
+                }
+
+                # Create or update connector data
+                if not volunteer.connector:
+                    volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
+                    updates.append('connector_created')
+
+                # Update connector fields if they exist in Salesforce data
+                if connector_data['active_subscription'] in [e.name for e in ConnectorSubscriptionEnum]:
+                    if volunteer.connector.active_subscription != ConnectorSubscriptionEnum[connector_data['active_subscription']]:
+                        volunteer.connector.active_subscription = ConnectorSubscriptionEnum[connector_data['active_subscription']]
+                        updates.append('connector_subscription')
+
+                for field, value in connector_data.items():
+                    if field != 'active_subscription' and value:  # Skip active_subscription as it's handled above
+                        current_value = getattr(volunteer.connector, field)
+                        if current_value != value:
+                            setattr(volunteer.connector, field, value)
+                            updates.append(f'connector_{field}')
 
                 success_count += 1
                 status = 'Created' if is_new else 'Updated'

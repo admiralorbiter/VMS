@@ -1,10 +1,43 @@
 from models import db
 from models.contact import (
-    Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum
+    Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum,
+    FormEnum, Enum, ContactTypeEnum
 )
-from sqlalchemy import Enum, Date, Integer, String, Text, ForeignKey, Float
+from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float
 from sqlalchemy.orm import relationship, declared_attr
 from models.history import History
+
+class ConnectorSubscriptionEnum(FormEnum):
+    NONE = ''
+    ACTIVE = 'Active'
+    INACTIVE = 'Inactive'
+    PENDING = 'Pending'
+
+class ConnectorData(db.Model):
+    __tablename__ = 'connector_data'
+    
+    id = db.Column(Integer, primary_key=True)
+    volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
+    
+    # Subscription and Role Info
+    active_subscription = db.Column(Enum(ConnectorSubscriptionEnum), default=ConnectorSubscriptionEnum.NONE)
+    active_subscription_name = db.Column(String(255))
+    role = db.Column(String(20))
+    signup_role = db.Column(String(20))
+    
+    # Profile and Activity
+    profile_link = db.Column(String(1300))
+    affiliations = db.Column(Text)
+    industry = db.Column(String(255))
+    user_auth_id = db.Column(String(7), unique=True)
+    
+    # Dates
+    joining_date = db.Column(String(50))
+    last_login_datetime = db.Column(String(50))
+    last_update_date = db.Column(Date)
+    
+    # Define relationship back to volunteer
+    volunteer = relationship('Volunteer', back_populates='connector')
 
 class Volunteer(Contact):
     __tablename__ = 'volunteer'
@@ -70,6 +103,11 @@ class Volunteer(Contact):
     @declared_attr
     def event_participations(cls):
         return relationship('EventParticipation', backref='volunteer')
+
+    @declared_attr
+    def connector(cls):
+        return relationship('ConnectorData', uselist=False, back_populates='volunteer',
+                           cascade='all, delete-orphan')
 
     @property
     def total_times_volunteered(self):
