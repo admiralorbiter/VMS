@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request, render_template, flash, redirect,
 from flask_login import current_user, login_required
 from config import Config
 from models import db
-from models.volunteer import Volunteer, Skill, EventParticipation, Engagement
+from models.volunteer import Volunteer, Skill, EventParticipation, Engagement, VolunteerSkill
 from models.contact import Email, ContactTypeEnum
 from models.event import Event
 from models.history import History
@@ -658,59 +658,116 @@ def import_from_salesforce():
             try:
                 # Check if volunteer exists
                 volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Id']).first()
+                is_new = False
+                updates = []
                 
                 if not volunteer:
                     volunteer = Volunteer()
                     volunteer.salesforce_individual_id = row['Id']
                     db.session.add(volunteer)
+                    is_new = True
+                    updates.append('Created new volunteer')
                 
-                # Update volunteer fields
-                volunteer.salesforce_account_id = row['AccountId']
-                volunteer.first_name = (row.get('FirstName') or '').strip()
-                volunteer.last_name = (row.get('LastName') or '').strip()
-                volunteer.middle_name = (row.get('MiddleName') or '').strip()
-                volunteer.organization_name = (row.get('npsp__Primary_Affiliation__c') or '').strip()
-                volunteer.title = (row.get('Title') or '').strip()
-                volunteer.department = (row.get('Department') or '').strip()
+                # Update volunteer fields only if they've changed
+                if volunteer.salesforce_account_id != row['AccountId']:
+                    volunteer.salesforce_account_id = row['AccountId']
+                    updates.append('account_id')
+                
+                new_first_name = (row.get('FirstName') or '').strip()
+                if volunteer.first_name != new_first_name:
+                    volunteer.first_name = new_first_name
+                    updates.append('first_name')
+                
+                new_last_name = (row.get('LastName') or '').strip()
+                if volunteer.last_name != new_last_name:
+                    volunteer.last_name = new_last_name
+                    updates.append('last_name')
+                
+                new_middle_name = (row.get('MiddleName') or '').strip()
+                if volunteer.middle_name != new_middle_name:
+                    volunteer.middle_name = new_middle_name
+                    updates.append('middle_name')
+                
+                new_org_name = (row.get('npsp__Primary_Affiliation__c') or '').strip()
+                if volunteer.organization_name != new_org_name:
+                    volunteer.organization_name = new_org_name
+                    updates.append('organization')
+                
+                new_title = (row.get('Title') or '').strip()
+                if volunteer.title != new_title:
+                    volunteer.title = new_title
+                    updates.append('title')
+                
+                new_department = (row.get('Department') or '').strip()
+                if volunteer.department != new_department:
+                    volunteer.department = new_department
+                    updates.append('department')
 
                 # Handle gender enum
                 gender_str = (row.get('Gender__c') or '').lower().replace(' ', '_').strip()
                 if gender_str and gender_str in [e.name for e in GenderEnum]:
-                    volunteer.gender = GenderEnum[gender_str]
+                    if not volunteer.gender or volunteer.gender.name != gender_str:
+                        volunteer.gender = GenderEnum[gender_str]
+                        updates.append('gender')
 
                 # Handle dates
-                volunteer.birthdate = parse_date(row.get('Birthdate'))
-                volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c'))
-                volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c'))
-                volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c'))
-                volunteer.notes = (row.get('Volunteer_Recruitment_Notes__c') or '').strip()
+                new_birthdate = parse_date(row.get('Birthdate'))
+                if volunteer.birthdate != new_birthdate:
+                    volunteer.birthdate = new_birthdate
+                    updates.append('birthdate')
+                
+                new_mailchimp_date = parse_date(row.get('Last_Mailchimp_Email_Date__c'))
+                if volunteer.last_mailchimp_activity_date != new_mailchimp_date:
+                    volunteer.last_mailchimp_activity_date = new_mailchimp_date
+                    updates.append('mailchimp_date')
+                
+                new_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c'))
+                if volunteer.last_volunteer_date != new_volunteer_date:
+                    volunteer.last_volunteer_date = new_volunteer_date
+                    updates.append('volunteer_date')
+                
+                new_email_date = parse_date(row.get('Last_Email_Message__c'))
+                if volunteer.last_email_date != new_email_date:
+                    volunteer.last_email_date = new_email_date
+                    updates.append('email_date')
+                
+                new_notes = (row.get('Volunteer_Recruitment_Notes__c') or '').strip()
+                if volunteer.notes != new_notes:
+                    volunteer.notes = new_notes
+                    updates.append('notes')
 
-                # Handle skills
+                # Handle skills - only update if there are changes
                 if row.get('Volunteer_Skills__c') or row.get('Volunteer_Skills_Text__c'):
-                    skills = parse_skills(
+                    new_skills = parse_skills(
                         row.get('Volunteer_Skills_Text__c', ''),
                         row.get('Volunteer_Skills__c', '')
                     )
-                    
-                    # Clear existing skills
-                    volunteer.skills = []
-                    
-                    # Add new skills
-                    for skill_name in skills:
-                        skill = Skill.query.filter_by(name=skill_name).first()
-                        if not skill:
-                            skill = Skill(name=skill_name)
-                            db.session.add(skill)
-                        if skill not in volunteer.skills:
-                            volunteer.skills.append(skill)
+                    current_skills = {skill.name for skill in volunteer.skills}
+                    if set(new_skills) != current_skills:
+                        # Clear existing skills
+                        volunteer.skills = []
+                        # Add new skills
+                        for skill_name in new_skills:
+                            skill = Skill.query.filter_by(name=skill_name).first()
+                            if not skill:
+                                skill = Skill(name=skill_name)
+                                db.session.add(skill)
+                            if skill not in volunteer.skills:
+                                volunteer.skills.append(skill)
+                        updates.append('skills')
 
                 # Handle times_volunteered
                 if row.get('Number_of_Attended_Volunteer_Sessions__c'):
                     try:
-                        volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
+                        new_times = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
+                        if volunteer.times_volunteered != new_times:
+                            volunteer.times_volunteered = new_times
+                            updates.append('times_volunteered')
                     except (ValueError, TypeError):
-                        volunteer.times_volunteered = 0
-
+                        if volunteer.times_volunteered != 0:
+                            volunteer.times_volunteered = 0
+                            updates.append('times_volunteered')
+                
                 # Handle emails
                 email_fields = {
                     'npe01__WorkEmail__c': ContactTypeEnum.professional,
@@ -721,6 +778,7 @@ def import_from_salesforce():
                 
                 # Get preferred email type
                 preferred_email = row.get('npe01__Preferred_Email__c', '').lower()
+                email_changes = False
                 
                 # Process each email field
                 for email_field, email_type in email_fields.items():
@@ -752,9 +810,12 @@ def import_from_salesforce():
                             primary=is_primary
                         )
                         db.session.add(email)
+                        email_changes = True
                     else:
-                        # Update existing email type and primary status
-                        email.type = email_type
+                        # Update existing email type and primary status if changed
+                        if email.type != email_type:
+                            email.type = email_type
+                            email_changes = True
                         if is_primary and not email.primary:
                             # Set all other emails to non-primary
                             Email.query.filter_by(
@@ -762,6 +823,10 @@ def import_from_salesforce():
                                 primary=True
                             ).update({'primary': False})
                             email.primary = True
+                            email_changes = True
+
+                if email_changes:
+                    updates.append('emails')
 
                 # Handle phone numbers
                 phone_fields = {
@@ -773,6 +838,7 @@ def import_from_salesforce():
                 
                 # Get preferred phone type
                 preferred_phone = row.get('npe01__PreferredPhone__c', '').lower()
+                phone_changes = False
                 
                 # Process each phone field
                 for phone_field, phone_type in phone_fields.items():
@@ -804,9 +870,12 @@ def import_from_salesforce():
                             primary=is_primary
                         )
                         db.session.add(phone)
+                        phone_changes = True
                     else:
-                        # Update existing phone type and primary status
-                        phone.type = phone_type
+                        # Update existing phone type and primary status if changed
+                        if phone.type != phone_type:
+                            phone.type = phone_type
+                            phone_changes = True
                         if is_primary and not phone.primary:
                             # Set all other phones to non-primary
                             Phone.query.filter_by(
@@ -814,9 +883,15 @@ def import_from_salesforce():
                                 primary=True
                             ).update({'primary': False})
                             phone.primary = True
+                            phone_changes = True
+
+                if phone_changes:
+                    updates.append('phones')
 
                 success_count += 1
-                processed_volunteers.append(f"{volunteer.first_name} {volunteer.last_name}")
+                status = 'Created' if is_new else 'Updated'
+                if updates:
+                    processed_volunteers.append(f"{volunteer.first_name} {volunteer.last_name} ({status}: {', '.join(updates)})")
                 
             except Exception as e:
                 error_count += 1
@@ -837,9 +912,14 @@ def import_from_salesforce():
                 for error in errors:
                     print(f"- {error['name']}: {error['error']}")
 
+            if processed_volunteers:
+                print("\nVolunteers with changes:")
+                for volunteer in processed_volunteers:
+                    print(f"- {volunteer}")
+
             return jsonify({
                 'success': True,
-                'message': f'Successfully processed {success_count} volunteers with {error_count} errors'
+                'message': f'Successfully processed {success_count} volunteers ({len(processed_volunteers)} with changes) with {error_count} errors'
             })
         except Exception as e:
             db.session.rollback()

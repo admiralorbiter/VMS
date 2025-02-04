@@ -62,12 +62,9 @@ def import_organizations():
                                 org.last_activity_date = parse_date(row['LastActivityDate'])
                             
                             success_count += 1
-                            print(f"Successfully imported organization: {row.get('Name', '')}")
                         except Exception as e:
                             error_count += 1
-                            error_msg = f"Error processing organization: {str(e)}"
-                            print(error_msg)
-                            errors.append(error_msg)
+                            errors.append(f"Error processing organization: {str(e)}")
                             continue
                 
                 else:  # affiliations
@@ -113,13 +110,12 @@ def import_organizations():
                                     vol_org.end_date = parse_date(row['npe5__EndDate__c'])
                                 
                                 success_count += 1
-                                print(f"Successfully imported affiliation for volunteer {vol_id} with organization {org_id}")
                             else:
                                 error_count += 1
                                 if not org:
-                                    missing_orgs.add(org_id)
+                                    errors.append(f"Organization with Salesforce ID {org_id} not found")
                                 if not volunteer:
-                                    missing_volunteers.add(vol_id)
+                                    errors.append(f"Volunteer with Salesforce ID {vol_id} not found")
                                 
                         except Exception as e:
                             error_count += 1
@@ -130,20 +126,12 @@ def import_organizations():
         print(f"\nImport Summary:")
         print(f"Successfully imported: {success_count}")
         print(f"Total errors: {error_count}")
-        
-        if missing_orgs:
-            print(f"\nMissing Organizations ({len(missing_orgs)}):")
-            for org_id in sorted(missing_orgs):
-                print(f"- {org_id}")
-        
-        if missing_volunteers:
-            print(f"\nMissing Volunteers ({len(missing_volunteers)}):")
-            print(f"Total count: {len(missing_volunteers)}")  # Just show count to avoid overwhelming output
-            
         if errors:
-            print("\nOther Errors:")
-            for error in errors:
+            print("\nFirst 3 errors:")
+            for error in errors[:3]:
                 print(f"- {error}")
+            if len(errors) > 3:
+                print(f"... and {len(errors) - 3} more errors")
         
         # Commit all changes
         try:
@@ -427,12 +415,9 @@ def import_organizations_from_salesforce():
                     org.last_activity_date = parse_date(row['LastActivityDate'])
                 
                 success_count += 1
-                print(f"Successfully imported organization: {row.get('Name', '')}")
             except Exception as e:
                 error_count += 1
-                error_msg = f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}"
-                print(error_msg)
-                errors.append(error_msg)
+                errors.append(f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}")
                 continue
 
         # Commit all changes
@@ -441,9 +426,11 @@ def import_organizations_from_salesforce():
         print(f"Successfully imported: {success_count} organizations")
         print(f"Errors encountered: {error_count}")
         if errors:
-            print("\nError details:")
-            for error in errors:
+            print("\nFirst 3 errors:")
+            for error in errors[:3]:
                 print(f"- {error}")
+            if len(errors) > 3:
+                print(f"... and {len(errors) - 3} more errors")
         return jsonify({
             'success': True,
             'message': f'Successfully processed {success_count} organizations with {error_count} errors',
@@ -536,7 +523,6 @@ def import_affiliations_from_salesforce():
                     if not volunteer:
                         error_msgs.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
                     errors.extend(error_msgs)
-                    print("Error processing affiliation:", ", ".join(error_msgs))
 
             except Exception as e:
                 affiliation_error += 1
@@ -549,13 +535,15 @@ def import_affiliations_from_salesforce():
         print(f"Successfully imported: {affiliation_success} affiliations")
         print(f"Errors encountered: {affiliation_error}")
         if errors:
-            print("\nError details:")
-            for error in errors:
+            print("\nFirst 3 errors:")
+            for error in errors[:3]:
                 print(f"- {error}")
+            if len(errors) > 3:
+                print(f"... and {len(errors) - 3} more errors")
         return jsonify({
             'success': True,
             'message': f'Successfully processed {affiliation_success} affiliations with {affiliation_error} errors',
-            'errors': errors
+            'errors': errors[:3] if errors else []
         })
 
     except SalesforceAuthenticationFailed:
