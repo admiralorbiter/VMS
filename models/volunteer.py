@@ -3,7 +3,7 @@ from models.contact import (
     Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum,
     FormEnum, Enum, ContactTypeEnum
 )
-from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float
+from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime
 from sqlalchemy.orm import relationship, declared_attr
 from models.history import History
 
@@ -58,6 +58,7 @@ class Volunteer(Contact):
     # Additional Information
     education = db.Column(Enum(EducationEnum), nullable=True)
     local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown)
+    local_status_last_updated = db.Column(DateTime)
 
     # Volunteer Engagement Summary
     first_volunteer_date = db.Column(Date)
@@ -122,6 +123,60 @@ class Volunteer(Contact):
         ).order_by(
             History.activity_date.desc()
         ).all()
+
+    def calculate_local_status(self):
+        """Calculate local status based on primary or home address"""
+        try:
+            # KC metro area zip codes (first 3 digits)
+            kc_metro_prefixes = ('640', '641', '660', '661', '664', '665', '666')
+            # Broader region zip codes (first 3 digits) - includes more of MO and KS
+            region_prefixes = ('644', '645', '646', '670', '671', '672', '673', '674')
+            
+            def check_address_status(address):
+                """Helper function to check status for a single address"""
+                if not address or not address.zip_code:
+                    return None
+                    
+                zip_prefix = address.zip_code[:3]
+                
+                # Check if in KC metro area
+                if zip_prefix in kc_metro_prefixes:
+                    return LocalStatusEnum.local
+                    
+                # Check if in broader region
+                if zip_prefix in region_prefixes:
+                    return LocalStatusEnum.partial
+                    
+                # If has state but not in region
+                if address.state in ('MO', 'KS'):
+                    return LocalStatusEnum.partial
+                    
+                return LocalStatusEnum.non_local
+
+            # Try primary address first
+            primary_address = next((addr for addr in self.addresses if addr.primary), None)
+            status = check_address_status(primary_address)
+            if status:
+                return status
+
+            # If no valid primary address or it's non-local, try home address
+            home_address = next((addr for addr in self.addresses 
+                               if addr.type == ContactTypeEnum.personal), None)
+            if home_address and home_address != primary_address:
+                status = check_address_status(home_address)
+                if status:
+                    return status
+
+            # If we found any address but it was non-local
+            if primary_address or home_address:
+                return LocalStatusEnum.non_local
+                
+            # No valid addresses found
+            return LocalStatusEnum.unknown
+            
+        except Exception as e:
+            print(f"Error calculating local status: {str(e)}")
+            return LocalStatusEnum.unknown
 
 # Skill Model
 class Skill(db.Model):

@@ -84,13 +84,13 @@
                 <div class="info-group">
                     <label>Local Status</label>
                     <span class="status-badge {{ volunteer.local_status }}">
-                        {% if volunteer.local_status == 'true' %}
+                        {% if volunteer.local_status == 'local' %}
                             <i class="fa-solid fa-check-circle"></i>
                             <span>Local</span>
                         {% elif volunteer.local_status == 'partial' %}
                             <i class="fa-solid fa-adjust"></i>
                             <span>Partial</span>
-                        {% elif volunteer.local_status == 'false' %}
+                        {% elif volunteer.local_status == 'non_local' %}
                             <i class="fa-solid fa-times-circle"></i>
                             <span>Non-Local</span>
                         {% else %}

@@ -601,24 +601,24 @@
     font-weight: 500;
 }
 
-.status-badge.true {
-    background: rgba(75, 181, 67, 0.1);
-    color: #4BB543;
+.status-badge.local {
+    background-color: #e6ffe6;
+    color: #006600;
 }
 
 .status-badge.partial {
-    background: rgba(255, 187, 51, 0.1);
-    color: #FFBB33;
+    background-color: #fff3e6;
+    color: #995200;
 }
 
-.status-badge.false {
-    background: rgba(214, 64, 69, 0.1);
-    color: var(--poppy);
+.status-badge.non_local {
+    background-color: #ffe6e6;
+    color: #990000;
 }
 
 .status-badge.unknown {
-    background: rgba(158, 216, 219, 0.1);
-    color: var(--ucla-blue);
+    background-color: #f2f2f2;
+    color: #666666;
 }
 
 .status-badge i {

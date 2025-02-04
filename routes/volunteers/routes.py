@@ -16,6 +16,7 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from forms import VolunteerForm
 from sqlalchemy import or_, and_
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
+from datetime import datetime
 
 volunteers_bp = Blueprint('volunteers', __name__)
 
@@ -1227,4 +1228,42 @@ def import_from_salesforce():
         return jsonify({
             'success': False,
             'message': str(e)
+        }), 500
+
+@volunteers_bp.route('/volunteers/update-local-statuses', methods=['POST'])
+@login_required
+def update_local_statuses():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        print("Starting local status update for all volunteers...")
+        updated_count = 0
+        error_count = 0
+        
+        # Get all volunteers
+        volunteers = Volunteer.query.all()
+        
+        for volunteer in volunteers:
+            try:
+                new_status = volunteer.calculate_local_status()
+                if volunteer.local_status != new_status:
+                    volunteer.local_status = new_status
+                    volunteer.local_status_last_updated = datetime.utcnow()
+                    updated_count += 1
+            except Exception as e:
+                error_count += 1
+                print(f"Error updating local status for {volunteer.first_name} {volunteer.last_name}: {str(e)}")
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Updated {updated_count} volunteer statuses with {error_count} errors'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error updating local statuses: {str(e)}'
         }), 500

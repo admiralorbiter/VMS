@@ -92,10 +92,10 @@ class EducationEnum(FormEnum):
     OTHER = 'Other'
 
 class LocalStatusEnum(FormEnum):
-    true = 'true'
-    partial = 'partial'
-    false = 'false'
-    unknown = 'unknown'
+    local = 'local'          # Within KC metro
+    partial = 'partial'      # Within driving distance
+    non_local = 'non_local'  # Too far
+    unknown = 'unknown'      # No address data
 
 class SkillSourceEnum(FormEnum):
     job = 'job'

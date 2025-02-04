@@ -184,6 +184,24 @@
         </div>
     </div>
 
+    <!-- Volunteer Management Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Volunteer Management</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-grid gap-2">
+                        <button id="updateLocalStatus" class="btn btn-primary">
+                            <i class="fa-solid fa-location-dot"></i> Update Volunteer Local Statuses
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Purge Data Section -->
     <div class="card admin-card mt-4">
         <div class="card-body">
@@ -237,6 +255,37 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('updateLocalStatus').addEventListener('click', function() {
+    if (confirm('Are you sure you want to update local statuses for all volunteers? This may take a few moments.')) {
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+        
+        fetch('/volunteers/update-local-statuses', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error updating local statuses: ' + error);
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fa-solid fa-location-dot"></i> Update Volunteer Local Statuses';
+        });
+    }
+});
+</script>
 
 {% endblock %}
 
