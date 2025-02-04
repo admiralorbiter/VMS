@@ -221,6 +221,36 @@
             </div>
         </div>
 
+        <!-- Contact Preferences Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Contact Preferences</h5>
+            </div>
+            <div class="card-body">
+                {% if volunteer.do_not_call or volunteer.do_not_contact or volunteer.email_opt_out %}
+                <div class="alert alert-warning" role="alert">
+                    <h6 class="alert-heading">Contact Restrictions</h6>
+                    {% if volunteer.do_not_call %}
+                        <p class="mb-1"><i class="fas fa-phone-slash"></i> Do Not Call</p>
+                    {% endif %}
+                    {% if volunteer.do_not_contact %}
+                        <p class="mb-1"><i class="fas fa-user-slash"></i> Do Not Contact</p>
+                    {% endif %}
+                    {% if volunteer.email_opt_out %}
+                        <p class="mb-1"><i class="fas fa-envelope-slash"></i> Email Opt Out</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                {% if volunteer.email_bounced_date %}
+                <div class="info-group">
+                    <label>Last Email Bounce</label>
+                    <p>{{ volunteer.email_bounced_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Professional Information Card -->
         <div class="profile-card professional-info">
             <div class="card-header">

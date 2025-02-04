@@ -1,5 +1,5 @@
 from models import db
-from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey
+from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, declared_attr
 from enum import Enum as PyEnum
 
@@ -131,6 +131,12 @@ class Contact(db.Model):
     birthdate = db.Column(Date)
     gender = db.Column(Enum(GenderEnum))
     race_ethnicity = db.Column(Enum(RaceEthnicityEnum), nullable=True)
+    
+    # Contact Preferences
+    do_not_call = db.Column(Boolean, default=False)
+    do_not_contact = db.Column(Boolean, default=False)
+    email_opt_out = db.Column(Boolean, default=False)
+    email_bounced_date = db.Column(DateTime)
     
     # Tracking
     last_email_date = db.Column(Date)

@@ -665,6 +665,8 @@ def import_from_salesforce():
                First_Volunteer_Date__c,
                Last_Non_Internal_Email_Activity__c,
                Description, Highest_Level_of_Educational__c, Age_Group__c,
+               DoNotCall, npsp__Do_Not_Contact__c, HasOptedOutOfEmail,
+               EmailBouncedDate,
                Connector_Active_Subscription__c,
                Connector_Active_Subscription_Name__c,
                Connector_Affiliations__c,
@@ -917,6 +919,28 @@ def import_from_salesforce():
                             volunteer.times_volunteered = 0
                             updates.append('times_volunteered')
                 
+                # Handle contact preferences
+                new_do_not_call = bool(row.get('DoNotCall'))
+                if volunteer.do_not_call != new_do_not_call:
+                    volunteer.do_not_call = new_do_not_call
+                    updates.append('do_not_call')
+
+                new_do_not_contact = bool(row.get('npsp__Do_Not_Contact__c'))
+                if volunteer.do_not_contact != new_do_not_contact:
+                    volunteer.do_not_contact = new_do_not_contact
+                    updates.append('do_not_contact')
+
+                new_email_opt_out = bool(row.get('HasOptedOutOfEmail'))
+                if volunteer.email_opt_out != new_email_opt_out:
+                    volunteer.email_opt_out = new_email_opt_out
+                    updates.append('email_opt_out')
+
+                # Handle email bounce date
+                new_bounce_date = parse_date(row.get('EmailBouncedDate'))
+                if volunteer.email_bounced_date != new_bounce_date:
+                    volunteer.email_bounced_date = new_bounce_date
+                    updates.append('email_bounced_date')
+
                 # Handle emails
                 email_fields = {
                     'npe01__WorkEmail__c': ContactTypeEnum.professional,
