@@ -142,3 +142,6 @@
 ## Recent Fixes
 - [x] Import Volunteer Emails
 - [x] Import Volunteer Phone Numbers
+
+## Bugs
+- [ ] Volunteer Purge May not be working - When I purge volunteers and reimport I'm missing some data. Ie: My main account Jon Lane.

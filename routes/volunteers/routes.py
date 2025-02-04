@@ -572,18 +572,36 @@ def purge_volunteers():
         EventParticipation.query.filter(EventParticipation.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
         History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
         VolunteerOrganization.query.filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        # Before deleting volunteers:
+        Volunteer.query.delete()  # This should trigger cascades
+        # Also clean up:
+        Email.query.filter(Email.contact_id.notin_(Contact.query.with_entities(Contact.id))).delete()
+        Phone.query.filter(Phone.contact_id.notin_(Contact.query.with_entities(Contact.id))).delete()
+        db.session.commit()
+        # Clean up related records first
+        EventParticipation.query.filter(EventParticipation.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        VolunteerOrganization.query.filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
         
-        # Delete volunteers first
-        Volunteer.query.delete(synchronize_session=False)
+        # Clean up orphaned email and phone records
+        Email.query.filter(Email.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        Phone.query.filter(Phone.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
         
-        # Then delete the corresponding contact records
-        Contact.query.filter(Contact.type == 'volunteer').delete(synchronize_session=False)
+        # Delete volunteers and their contact records
+        Volunteer.query.filter(Volunteer.id.in_(volunteer_ids)).delete(synchronize_session=False)
+        Contact.query.filter(Contact.id.in_(volunteer_ids)).delete(synchronize_session=False)
         
         db.session.commit()
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'message': f'Successfully deleted {len(volunteer_ids)} volunteers and associated records'
+        })
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting volunteers: {str(e)}'
+        }), 500
     
 @volunteers_bp.route('/volunteers/delete/<int:id>', methods=['DELETE'])
 @login_required

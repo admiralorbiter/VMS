@@ -128,6 +128,25 @@
                     {% endfor %}
                 </div>
 
+                <!-- Email Activity -->
+                <div class="info-group">
+                    <label>Email Activity</label>
+                    <div class="mailchimp-info">
+                        {% if volunteer.last_email_date %}
+                        <div class="activity-date">
+                            <i class="fa-solid fa-envelope"></i>
+                            Last Email: {{ volunteer.last_email_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        {% endif %}
+                        {% if volunteer.last_mailchimp_activity_date %}
+                        <div class="activity-date">
+                            <i class="fa-brands fa-mailchimp"></i>
+                            Last Mailchimp: {{ volunteer.last_mailchimp_activity_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="contact-section">
                     <h3><i class="fa-solid fa-phone"></i> Phone Numbers</h3>
                     {% for phone in volunteer.phones %}
