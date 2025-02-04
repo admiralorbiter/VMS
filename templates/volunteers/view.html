@@ -52,23 +52,23 @@
                 <!-- Add Gender Info -->
                 <div class="info-group">
                     <label>Gender</label>
-                    <div class="gender-badge {{ volunteer.gender if volunteer.gender else 'unknown' }}">
-                        {% if volunteer.gender == 'male' %}
+                    <div class="gender-badge {{ volunteer.gender.value if volunteer.gender else 'unknown' }}">
+                        {% if volunteer.gender.value == 'Male' %}
                             <i class="fa-solid fa-mars"></i>
-                        {% elif volunteer.gender == 'female' %}
+                        {% elif volunteer.gender.value == 'Female' %}
                             <i class="fa-solid fa-venus"></i>
-                        {% elif volunteer.gender == 'non_binary' %}
+                        {% elif volunteer.gender.value == 'Non-binary' %}
                             <i class="fa-solid fa-venus-mars"></i>
-                        {% elif volunteer.gender == 'genderfluid' %}
+                        {% elif volunteer.gender.value == 'Genderfluid' %}
                             <i class="fa-solid fa-transgender-alt"></i>
-                        {% elif volunteer.gender == 'agender' %}
+                        {% elif volunteer.gender.value == 'Agender' %}
                             <i class="fa-solid fa-genderless"></i>
-                        {% elif volunteer.gender == 'transgender' %}
+                        {% elif volunteer.gender.value == 'Transgender' %}
                             <i class="fa-solid fa-transgender"></i>
                         {% else %}
                             <i class="fa-solid fa-circle-question"></i>
                         {% endif %}
-                        <span>{{ volunteer.gender.replace('_', ' ').title() if volunteer.gender else 'Not Specified' }}</span>
+                        <span>{{ volunteer.gender.value if volunteer.gender else 'Not Specified' }}</span>
                     </div>
                 </div>
 
