@@ -99,7 +99,13 @@
             <tbody>
                 {% for volunteer in volunteers %}
                 <tr>
-                    <td>{{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}</td>
+                    <td>
+                        {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}
+                        <br>
+                        {% if volunteer.volunteer.title %}
+                        <div class="org-title">{{ volunteer.volunteer.title }}</div>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if volunteer.organizations %}
                             {% for org_info in volunteer.organizations %}
@@ -109,8 +115,8 @@
                                             {{ org_info.organization.name }}
                                         </a>
                                     </div>
-                                    {% if org_info.organization.title %}
-                                        <div class="org-title">{{ org_info.organization.title }}</div>
+                                    {% if org_info.organization.name %}
+                                        <div class="org-title">{{ org_info.organization.name }}</div>
                                     {% endif %}
                                     {% if org_info.role %}
                                         <span class="org-role">{{ org_info.role }}</span>
