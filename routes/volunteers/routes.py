@@ -11,7 +11,7 @@ from models.contact import Email, ContactTypeEnum
 from models.event import Event
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
-from models.contact import Contact, Address, EducationEnum, Phone, LocalStatusEnum, RaceEthnicityEnum, GenderEnum
+from models.contact import Contact, Address, EducationEnum, Phone, LocalStatusEnum, RaceEthnicityEnum, GenderEnum, AgeGroupEnum
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from forms import VolunteerForm
 from sqlalchemy import or_, and_
@@ -664,6 +664,7 @@ def import_from_salesforce():
                Last_Activity_Date__c,
                First_Volunteer_Date__c,
                Last_Non_Internal_Email_Activity__c,
+               Description, Highest_Level_of_Educational__c, Age_Group__c,
                Connector_Active_Subscription__c,
                Connector_Active_Subscription_Name__c,
                Connector_Affiliations__c,
@@ -840,6 +841,49 @@ def import_from_salesforce():
                 if volunteer.notes != new_notes:
                     volunteer.notes = new_notes
                     updates.append('notes')
+
+                # Handle description
+                new_description = (row.get('Description') or '').strip()
+                if volunteer.description != new_description:
+                    volunteer.description = new_description
+                    updates.append('description')
+
+                # Handle education level
+                education_str = (row.get('Highest_Level_of_Educational__c') or '').strip()
+                if education_str:
+                    # Map Salesforce education values to our enum
+                    education_map = {
+                        'High School': EducationEnum.HIGH_SCHOOL,
+                        'Some College': EducationEnum.SOME_COLLEGE,
+                        'Associates Degree': EducationEnum.ASSOCIATES,
+                        'Bachelors Degree': EducationEnum.BACHELORS,
+                        'Masters Degree': EducationEnum.MASTERS,
+                        'Doctorate': EducationEnum.DOCTORATE,
+                        'Professional Degree': EducationEnum.PROFESSIONAL,
+                        'Other': EducationEnum.OTHER
+                    }
+                    new_education = education_map.get(education_str, EducationEnum.UNKNOWN)
+                    if volunteer.education_level != new_education:
+                        volunteer.education_level = new_education
+                        updates.append('education_level')
+
+                # Handle age group
+                age_str = (row.get('Age_Group__c') or '').strip()
+                if age_str:
+                    # Map Salesforce age groups to our enum
+                    age_map = {
+                        'Under 18': AgeGroupEnum.UNDER_18,
+                        '18-24': AgeGroupEnum.AGE_18_24,
+                        '25-34': AgeGroupEnum.AGE_25_34,
+                        '35-44': AgeGroupEnum.AGE_35_44,
+                        '45-54': AgeGroupEnum.AGE_45_54,
+                        '55-64': AgeGroupEnum.AGE_55_64,
+                        '65+': AgeGroupEnum.AGE_65_PLUS
+                    }
+                    new_age_group = age_map.get(age_str, AgeGroupEnum.UNKNOWN)
+                    if volunteer.age_group != new_age_group:
+                        volunteer.age_group = new_age_group
+                        updates.append('age_group')
 
                 # Handle skills - only update if there are changes
                 if row.get('Volunteer_Skills__c') or row.get('Volunteer_Skills_Text__c'):

@@ -70,6 +70,41 @@ class RaceEthnicityEnum(FormEnum):
     prefer_not_to_say = 'Prefer not to say'
     other = 'Other'
 
+class AgeGroupEnum(FormEnum):
+    UNKNOWN = ''
+    UNDER_18 = 'Under 18'
+    AGE_18_24 = '18-24'
+    AGE_25_34 = '25-34'
+    AGE_35_44 = '35-44'
+    AGE_45_54 = '45-54'
+    AGE_55_64 = '55-64'
+    AGE_65_PLUS = '65+'
+
+class EducationEnum(FormEnum):
+    UNKNOWN = ''
+    HIGH_SCHOOL = 'High School'
+    SOME_COLLEGE = 'Some College'
+    ASSOCIATES = 'Associates Degree'
+    BACHELORS = 'Bachelors Degree'
+    MASTERS = 'Masters Degree'
+    DOCTORATE = 'Doctorate'
+    PROFESSIONAL = 'Professional Degree'
+    OTHER = 'Other'
+
+class LocalStatusEnum(FormEnum):
+    true = 'true'
+    partial = 'partial'
+    false = 'false'
+    unknown = 'unknown'
+
+class SkillSourceEnum(FormEnum):
+    job = 'job'
+    organization = 'organization'
+    interest = 'interest'
+    previous_engagement = 'previous_engagement'
+    user_selected = 'user_selected'
+    admin_selected = 'admin_selected'
+
 # Base Contact Models
 class Contact(db.Model):
     """Base contact model that creates a real table"""
@@ -86,6 +121,11 @@ class Contact(db.Model):
     middle_name = db.Column(String(50), nullable=True)
     last_name = db.Column(String(50), nullable=False)
     suffix = db.Column(Enum(SuffixEnum), nullable=True)
+    
+    # Personal Information
+    description = db.Column(Text)
+    age_group = db.Column(Enum(AgeGroupEnum), default=AgeGroupEnum.UNKNOWN)
+    education_level = db.Column(Enum(EducationEnum), default=EducationEnum.UNKNOWN)
     
     # Basic Info
     birthdate = db.Column(Date)
@@ -173,30 +213,3 @@ class Address(db.Model):
     country = db.Column(String(50))
     type = db.Column(Enum(ContactTypeEnum))
     primary = db.Column(Boolean, default=False)
-
-# Volunteer-specific enums
-class EducationEnum(FormEnum):
-    none = ''
-    high_school = 'High School Diploma'
-    associate_degree = 'Associate Degree'
-    bachelors_degree = "Bachelor's Degree"
-    masters_degree = "Master's Degree"
-    doctorate_degree = 'Doctorate Degree'
-    professional_degree = 'Professional Degree'
-    some_college = 'Some College'
-    technical_certification = 'Technical Certification'
-    other = 'Other'
-
-class LocalStatusEnum(FormEnum):
-    true = 'true'
-    partial = 'partial'
-    false = 'false'
-    unknown = 'unknown'
-
-class SkillSourceEnum(FormEnum):
-    job = 'job'
-    organization = 'organization'
-    interest = 'interest'
-    previous_engagement = 'previous_engagement'
-    user_selected = 'user_selected'
-    admin_selected = 'admin_selected'

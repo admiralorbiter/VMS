@@ -99,6 +99,27 @@
                         {% endif %}
                     </span>
                 </div>
+
+                {% if volunteer.age_group and volunteer.age_group.value %}
+                <div class="info-group">
+                    <label>Age Group</label>
+                    <p>{{ volunteer.age_group.value }}</p>
+                </div>
+                {% endif %}
+                
+                {% if volunteer.education_level and volunteer.education_level.value %}
+                <div class="info-group">
+                    <label>Education Level</label>
+                    <p>{{ volunteer.education_level.value }}</p>
+                </div>
+                {% endif %}
+                
+                {% if volunteer.description %}
+                <div class="info-group">
+                    <label>Description</label>
+                    <p>{{ volunteer.description }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
