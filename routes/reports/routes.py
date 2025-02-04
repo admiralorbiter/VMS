@@ -660,6 +660,8 @@ def recruitment_report():
             Volunteer.volunteer_organizations
         ).outerjoin(
             VolunteerOrganization.organization
+        ).outerjoin(  # Add proper join to EventParticipation
+            EventParticipation, EventParticipation.volunteer_id == Volunteer.id
         ).filter(
             db.or_(
                 # Search for full name across first and last name
@@ -698,7 +700,7 @@ def recruitment_report():
                 'last_mailchimp_date': volunteer.last_mailchimp_activity_date,
                 'last_volunteer_date': volunteer.last_volunteer_date,
                 'last_email_date': volunteer.last_email_date,
-                'salesforce_account_url': volunteer.salesforce_account_url
+                'salesforce_contact_url': volunteer.salesforce_contact_url
             })
 
     # Prepare events_data based on UpcomingEvent model

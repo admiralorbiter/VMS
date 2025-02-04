@@ -96,9 +96,9 @@
                                 <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">
                                     {{ volunteer.name }}
                                 </a>
-                                {% if volunteer.salesforce_account_url %}
-                                <a href="{{ volunteer.salesforce_account_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Account">
-                                    <i class="fa-solid fa-building-user"></i>
+                                {% if volunteer.salesforce_contact_url %}
+                                <a href="{{ volunteer.salesforce_contact_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Contact">
+                                    <i class="fa-solid fa-cloud"></i>
                                 </a>
                                 {% endif %}
                             </strong>
