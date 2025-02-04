@@ -86,29 +86,29 @@
   - [x] Interactive Charts
   - [x] Statistical Summaries
   - [x] Trend Analysis
-- [ ] Event Recruitment Reports
-  - [ ] See upcoming unfilled events
-    - [ ] Event Title
-    - [ ] Event Description
-    - [ ] Event Date
-    - [ ] Event Location
-    - [ ] Event Skills Required
-    - [ ] Event Total Slots
-    - [ ] Event Slots Filled
-    - [ ] Event Slots Remaining
-    - [ ] Event Jobs Required
-  - [ ] Volunteer Search
-    - [ ] Volunteer Name
-    - [ ] Volunteer Email
-    - [ ] Volunteer Title
-    - [ ] Volunteer Organization
+- [x] Event Recruitment Report
+  - [x] See upcoming unfilled events
+    - [x] Event Title
+    - [x] Event Description
+    - [x] Event Date
+    - [x] Event Location
+    - [x] Event Skills Required
+    - [x] Event Total Slots
+    - [x] Event Slots Filled
+    - [x] Event Slots Remaining
+    - [x] Event Jobs Required
+  - [x] Volunteer Search
+    - [x] Volunteer Name
+    - [x] Volunteer Email
+    - [x] Volunteer Title
+    - [x] Volunteer Organization
     - [ ] Volunteer # of times volunteered
-    - [ ] Volunteer Skills
-    - [ ] Volunteer Job
+    - [x] Volunteer Skills
+    - [x] Volunteer Industry
     - [ ] Volunteer Demographics
-    - [ ] Volunteer Last Mailchimp Date
-    - [ ] Volunteer Last Volunteer Date
-    - [ ] Volunteer Last Email or Contact Date
+    - [x] Volunteer Last Mailchimp Date
+    - [x] Volunteer Last Volunteer Date
+    - [x] Volunteer Last Email or Contact Date
   - [ ] Skill Matching to Industry/Jobs
 
 
