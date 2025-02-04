@@ -29,6 +29,7 @@ class Volunteer(Contact):
     # Volunteer Engagement Summary
     first_volunteer_date = db.Column(Date)
     last_volunteer_date = db.Column(Date)
+    last_activity_date = db.Column(Date)
     times_volunteered = db.Column(Integer, default=0)
     additional_volunteer_count = db.Column(Integer, default=0)
 

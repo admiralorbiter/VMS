@@ -50,6 +50,7 @@ def process_volunteer_row(row, success_count, error_count, errors):
             
             # Handle dates
             volunteer.birthdate = parse_date(row.get('Birthdate', ''))
+            volunteer.first_volunteer_date = parse_date(row.get('First_Volunteer_Date__c', ''))
             volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c', ''))
             volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c', ''))
             volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c', ''))
@@ -625,7 +626,9 @@ def import_from_salesforce():
                Last_Email_Message__c, Volunteer_Recruitment_Notes__c, 
                Volunteer_Skills__c, Volunteer_Skills_Text__c, 
                Number_of_Attended_Volunteer_Sessions__c,
-               Racial_Ethnic_Background__c
+               Racial_Ethnic_Background__c,
+               Last_Activity_Date__c,
+               First_Volunteer_Date__c
         FROM Contact
         WHERE Contact_Type__c = 'Volunteer'
         """
@@ -757,6 +760,11 @@ def import_from_salesforce():
                     volunteer.birthdate = new_birthdate
                     updates.append('birthdate')
                 
+                new_first_volunteer_date = parse_date(row.get('First_Volunteer_Date__c'))
+                if volunteer.first_volunteer_date != new_first_volunteer_date:
+                    volunteer.first_volunteer_date = new_first_volunteer_date
+                    updates.append('first_volunteer_date')
+                
                 new_mailchimp_date = parse_date(row.get('Last_Mailchimp_Email_Date__c'))
                 if volunteer.last_mailchimp_activity_date != new_mailchimp_date:
                     volunteer.last_mailchimp_activity_date = new_mailchimp_date
@@ -766,6 +774,11 @@ def import_from_salesforce():
                 if volunteer.last_volunteer_date != new_volunteer_date:
                     volunteer.last_volunteer_date = new_volunteer_date
                     updates.append('volunteer_date')
+
+                new_activity_date = parse_date(row.get('Last_Activity_Date__c'))
+                if volunteer.last_activity_date != new_activity_date:
+                    volunteer.last_activity_date = new_activity_date
+                    updates.append('activity_date')
                 
                 new_email_date = parse_date(row.get('Last_Email_Message__c'))
                 if volunteer.last_email_date != new_email_date:

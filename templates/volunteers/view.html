@@ -293,6 +293,10 @@
                         <span class="stat-value">{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</span>
                     </div>
                     <div class="stat-item">
+                        <span class="stat-label">Last Activity</span>
+                        <span class="stat-value">{{ volunteer.last_activity_date.strftime('%Y-%m-%d') if volunteer.last_activity_date }}</span>
+                    </div>
+                    <div class="stat-item">
                         <span class="stat-label">Total Times</span>
                         <span class="stat-value">{{ volunteer.total_times_volunteered }}</span>
                     </div>
