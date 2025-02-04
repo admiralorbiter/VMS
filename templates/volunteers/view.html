@@ -193,30 +193,37 @@
                     {% endfor %}
                 </div>
 
-                <div class="contact-section">
-                    <h3><i class="fa-solid fa-location-dot"></i> Addresses</h3>
-                    {% for address in volunteer.addresses %}
-                    <div class="contact-item">
-                        <span class="contact-badge {{ address.type }}">
-                            {% if address.type == 'personal' %}
-                            <i class="fa-solid fa-house"></i>
-                            {% else %}
-                            <i class="fa-solid fa-building"></i>
-                            {% endif %}
-                        </span>
-                        <div class="address-details">
-                            <p>{{ address.address_line1 }}</p>
-                            {% if address.address_line2 %}
-                            <p>{{ address.address_line2 }}</p>
-                            {% endif %}
-                            <p>{{ address.city }}, {{ address.state }} {{ address.zip_code }}</p>
-                            <p>{{ address.country }}</p>
-                        </div>
-                        {% if address.primary %}
-                        <span class="primary-badge">Primary</span>
-                        {% endif %}
+                <!-- Address Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Addresses</h5>
                     </div>
-                    {% endfor %}
+                    <div class="card-body">
+                        {% for address in volunteer.addresses %}
+                        <div class="info-group">
+                            <label>
+                                {% if address.type.value == 'personal' %}
+                                    Home Address
+                                {% else %}
+                                    Work Address
+                                {% endif %}
+                                {% if address.primary %}
+                                    <span class="badge bg-primary">Primary</span>
+                                {% endif %}
+                            </label>
+                            <p class="mb-0">{{ address.address_line1 }}</p>
+                            {% if address.address_line2 %}
+                                <p class="mb-0">{{ address.address_line2 }}</p>
+                            {% endif %}
+                            <p class="mb-0">
+                                {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %} {{ address.zip_code }}
+                            </p>
+                            {% if address.country %}
+                                <p class="mb-0">{{ address.country }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>

@@ -667,6 +667,9 @@ def import_from_salesforce():
                Description, Highest_Level_of_Educational__c, Age_Group__c,
                DoNotCall, npsp__Do_Not_Contact__c, HasOptedOutOfEmail,
                EmailBouncedDate,
+               MailingAddress, npe01__Home_Address__c, npe01__Work_Address__c,
+               npe01__Other_Address__c, npe01__Primary_Address_Type__c,
+               npe01__Secondary_Address_Type__c,
                Connector_Active_Subscription__c,
                Connector_Active_Subscription_Name__c,
                Connector_Affiliations__c,
@@ -1060,6 +1063,78 @@ def import_from_salesforce():
 
                 if phone_changes:
                     updates.append('phones')
+
+                # Handle addresses
+                mailing_address = row.get('MailingAddress', {})
+                if isinstance(mailing_address, dict):
+                    # Find or create mailing address
+                    mailing = next((addr for addr in volunteer.addresses 
+                                  if addr.type == ContactTypeEnum.personal and addr.primary), None)
+                    if not mailing:
+                        mailing = Address(contact_id=volunteer.id, 
+                                        type=ContactTypeEnum.personal,
+                                        primary=True)
+                        volunteer.addresses.append(mailing)
+                        updates.append('mailing_address_created')
+
+                    # Update mailing address fields
+                    if mailing.address_line1 != mailing_address.get('street', ''):
+                        mailing.address_line1 = mailing_address.get('street', '')
+                        updates.append('mailing_street')
+                    if mailing.city != mailing_address.get('city', ''):
+                        mailing.city = mailing_address.get('city', '')
+                        updates.append('mailing_city')
+                    if mailing.state != mailing_address.get('state', ''):
+                        mailing.state = mailing_address.get('state', '')
+                        updates.append('mailing_state')
+                    if mailing.zip_code != mailing_address.get('postalCode', ''):
+                        mailing.zip_code = mailing_address.get('postalCode', '')
+                        updates.append('mailing_zip')
+                    if mailing.country != mailing_address.get('country', ''):
+                        mailing.country = mailing_address.get('country', '')
+                        updates.append('mailing_country')
+
+                # Handle work address if present
+                work_address = row.get('npe01__Work_Address__c', '')
+                if work_address:
+                    work = next((addr for addr in volunteer.addresses 
+                               if addr.type == ContactTypeEnum.professional), None)
+                    if not work:
+                        work = Address(contact_id=volunteer.id,
+                                     type=ContactTypeEnum.professional)
+                        volunteer.addresses.append(work)
+                        updates.append('work_address_created')
+                    
+                    # Parse work address string
+                    try:
+                        parts = work_address.split(',')
+                        if len(parts) >= 1:
+                            work.address_line1 = parts[0].strip()
+                        if len(parts) >= 2:
+                            work.city = parts[1].strip()
+                        if len(parts) >= 3:
+                            state_zip = parts[2].strip().split()
+                            if len(state_zip) >= 1:
+                                work.state = state_zip[0]
+                            if len(state_zip) >= 2:
+                                work.zip_code = state_zip[1]
+                        updates.append('work_address_updated')
+                    except Exception as e:
+                        print(f"Error parsing work address for {volunteer.first_name} {volunteer.last_name}: {str(e)}")
+
+                # Set address types based on primary/secondary preferences
+                primary_type = (row.get('npe01__Primary_Address_Type__c') or '').lower()
+                secondary_type = (row.get('npe01__Secondary_Address_Type__c') or '').lower()
+                
+                for addr in volunteer.addresses:
+                    is_home = addr.type == ContactTypeEnum.personal
+                    is_work = addr.type == ContactTypeEnum.professional
+                    
+                    # Set primary based on preference
+                    if (primary_type == 'home' and is_home) or (primary_type == 'work' and is_work):
+                        addr.primary = True
+                    elif (secondary_type == 'home' and is_home) or (secondary_type == 'work' and is_work):
+                        addr.primary = False
 
                 # Handle Connector data
                 connector_data = {
