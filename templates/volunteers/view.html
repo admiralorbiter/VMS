@@ -138,6 +138,12 @@
                             Last Email: {{ volunteer.last_email_date.strftime('%Y-%m-%d') }}
                         </div>
                         {% endif %}
+                        {% if volunteer.last_non_internal_email_date %}
+                        <div class="activity-date">
+                            <i class="fa-solid fa-envelope-open-text"></i>
+                            Last External Email: {{ volunteer.last_non_internal_email_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        {% endif %}
                         {% if volunteer.last_mailchimp_activity_date %}
                         <div class="activity-date">
                             <i class="fa-brands fa-mailchimp"></i>

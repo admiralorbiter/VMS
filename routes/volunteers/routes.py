@@ -54,6 +54,7 @@ def process_volunteer_row(row, success_count, error_count, errors):
             volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c', ''))
             volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c', ''))
             volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c', ''))
+            volunteer.last_non_internal_email_date = parse_date(row.get('Last_Non_Internal_Email_Activity__c', ''))
             volunteer.notes = row.get('Notes', '').strip()
 
             # Handle emails
@@ -628,7 +629,8 @@ def import_from_salesforce():
                Number_of_Attended_Volunteer_Sessions__c,
                Racial_Ethnic_Background__c,
                Last_Activity_Date__c,
-               First_Volunteer_Date__c
+               First_Volunteer_Date__c,
+               Last_Non_Internal_Email_Activity__c
         FROM Contact
         WHERE Contact_Type__c = 'Volunteer'
         """
@@ -784,6 +786,11 @@ def import_from_salesforce():
                 if volunteer.last_email_date != new_email_date:
                     volunteer.last_email_date = new_email_date
                     updates.append('email_date')
+                
+                new_non_internal_email_date = parse_date(row.get('Last_Non_Internal_Email_Activity__c'))
+                if volunteer.last_non_internal_email_date != new_non_internal_email_date:
+                    volunteer.last_non_internal_email_date = new_non_internal_email_date
+                    updates.append('non_internal_email_date')
                 
                 new_notes = (row.get('Volunteer_Recruitment_Notes__c') or '').strip()
                 if volunteer.notes != new_notes:
