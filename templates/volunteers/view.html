@@ -46,58 +46,59 @@
             <div class="card-content">
                 <p>{{ volunteer.title }}</p>
                 <!-- Add Gender Info -->
-                {% if volunteer.gender %}
-                <div class="info-group">
-                    <label>Gender</label>
-                    <div class="gender-badge {{ volunteer.gender.value if volunteer.gender else 'unknown' }}">
-                        {% if volunteer.gender.value == 'Male' %}
-                            <i class="fa-solid fa-mars"></i>
-                        {% elif volunteer.gender.value == 'Female' %}
-                            <i class="fa-solid fa-venus"></i>
-                        {% elif volunteer.gender.value == 'Non-binary' %}
-                            <i class="fa-solid fa-venus-mars"></i>
-                        {% elif volunteer.gender.value == 'Genderfluid' %}
-                            <i class="fa-solid fa-transgender-alt"></i>
-                        {% elif volunteer.gender.value == 'Agender' %}
-                            <i class="fa-solid fa-genderless"></i>
-                        {% elif volunteer.gender.value == 'Transgender' %}
-                            <i class="fa-solid fa-transgender"></i>
-                        {% else %}
-                            <i class="fa-solid fa-circle-question"></i>
-                        {% endif %}
-                        <span>{{ volunteer.gender.value if volunteer.gender else 'Not Specified' }}</span>
+                <div class="demographics-row">
+                    {% if volunteer.gender %}
+                    <div class="info-group">
+                        <label>Gender</label>
+                        <div class="gender-badge {{ volunteer.gender.value if volunteer.gender else 'unknown' }}">
+                            {% if volunteer.gender.value == 'Male' %}
+                                <i class="fa-solid fa-mars"></i>
+                            {% elif volunteer.gender.value == 'Female' %}
+                                <i class="fa-solid fa-venus"></i>
+                            {% elif volunteer.gender.value == 'Non-binary' %}
+                                <i class="fa-solid fa-venus-mars"></i>
+                            {% elif volunteer.gender.value == 'Genderfluid' %}
+                                <i class="fa-solid fa-transgender-alt"></i>
+                            {% elif volunteer.gender.value == 'Agender' %}
+                                <i class="fa-solid fa-genderless"></i>
+                            {% elif volunteer.gender.value == 'Transgender' %}
+                                <i class="fa-solid fa-transgender"></i>
+                            {% else %}
+                                <i class="fa-solid fa-circle-question"></i>
+                            {% endif %}
+                            <span>{{ volunteer.gender.value if volunteer.gender else 'Not Specified' }}</span>
+                        </div>
                     </div>
-                </div>
-                {% endif %}
+                    {% endif %}
 
-                <!-- Add Race/Ethnicity Info -->
-                {% if volunteer.race_ethnicity and volunteer.race_ethnicity != 'Unknown' %}
-                <div class="info-group">
-                    <label>Race/Ethnicity</label>
-                    <div class="ethnicity-badge">
-                        <i class="fa-solid fa-users"></i>
-                        <span>{{ volunteer.race_ethnicity.replace('_', ' ').title() if volunteer.race_ethnicity else 'Not Specified' }}</span>
+                    {% if volunteer.race_ethnicity and volunteer.race_ethnicity != 'Unknown' %}
+                    <div class="info-group">
+                        <label>Race/Ethnicity</label>
+                        <div class="ethnicity-badge">
+                            <i class="fa-solid fa-users"></i>
+                            <span>{{ volunteer.race_ethnicity.replace('_', ' ').title() if volunteer.race_ethnicity else 'Not Specified' }}</span>
+                        </div>
                     </div>
-                </div>
-                {% endif %}
+                    {% endif %}
 
-                <!-- Add Local Status Info -->
-                <div class="info-group">
-                    <span class="status-badge {{ volunteer.local_status }}">
-                        {% if volunteer.local_status == 'local' %}
-                            <i class="fa-solid fa-check-circle"></i>
-                            <span>Local</span>
-                        {% elif volunteer.local_status == 'partial' %}
-                            <i class="fa-solid fa-adjust"></i>
-                            <span>Partial</span>
-                        {% elif volunteer.local_status == 'non_local' %}
-                            <i class="fa-solid fa-times-circle"></i>
-                            <span>Non-Local</span>
-                        {% else %}
-                            <i class="fa-solid fa-question-circle"></i>
-                            <span>Unknown</span>
-                        {% endif %}
-                    </span>
+                    <div class="info-group">
+                        <label>Local Status</label>
+                        <span class="status-badge {{ volunteer.local_status }}">
+                            {% if volunteer.local_status == 'local' %}
+                                <i class="fa-solid fa-check-circle"></i>
+                                <span>Local</span>
+                            {% elif volunteer.local_status == 'partial' %}
+                                <i class="fa-solid fa-adjust"></i>
+                                <span>Partial</span>
+                            {% elif volunteer.local_status == 'non_local' %}
+                                <i class="fa-solid fa-times-circle"></i>
+                                <span>Non-Local</span>
+                            {% else %}
+                                <i class="fa-solid fa-question-circle"></i>
+                                <span>Unknown</span>
+                            {% endif %}
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Email Activity -->

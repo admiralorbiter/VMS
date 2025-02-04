@@ -2313,3 +2313,73 @@ main {
     border-radius: 12px;
     font-size: 0.8rem;
 }
+
+.demographics-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.demographics-row .info-group {
+    flex: 1;
+    min-width: 200px;
+    margin-bottom: 0;
+}
+
+.demographics-row .info-group label {
+    margin-bottom: 0.5rem;
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.gender-badge,
+.ethnicity-badge,
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    background-color: var(--mint-green);
+    color: var(--delft-blue);
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.gender-badge i,
+.ethnicity-badge i,
+.status-badge i {
+    color: var(--ucla-blue);
+    font-size: 1rem;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.status-badge.local {
+    background-color: #e6ffe6;
+    color: #006600;
+}
+
+.status-badge.local i {
+    color: #006600;
+}
+
+.status-badge.partial {
+    background-color: #fff3e6;
+    color: #cc6600;
+}
+
+.status-badge.partial i {
+    color: #cc6600;
+}
+
+.status-badge.non_local {
+    background-color: #ffe6e6;
+    color: #cc0000;
+}
+
+.status-badge.non_local i {
+    color: #cc0000;
+}
