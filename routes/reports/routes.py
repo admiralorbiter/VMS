@@ -697,7 +697,8 @@ def recruitment_report():
                 'industry': volunteer.industry,
                 'last_mailchimp_date': volunteer.last_mailchimp_activity_date,
                 'last_volunteer_date': volunteer.last_volunteer_date,
-                'last_email_date': volunteer.last_email_date
+                'last_email_date': volunteer.last_email_date,
+                'salesforce_account_url': volunteer.salesforce_account_url
             })
 
     # Prepare events_data based on UpcomingEvent model
