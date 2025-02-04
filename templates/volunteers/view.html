@@ -485,6 +485,21 @@
                 <h2>History</h2>
             </div>
             <div class="card-content">
+                <!-- Key Dates -->
+                <div class="info-group">
+                    <label>First Volunteer Date</label>
+                    <p>{{ volunteer.first_volunteer_date.strftime('%B %d, %Y') if volunteer.first_volunteer_date else 'Not recorded' }}</p>
+                </div>
+
+                <!-- Recruitment Notes -->
+                {% if volunteer.notes %}
+                <div class="info-group">
+                    <label>Recruitment Notes</label>
+                    <p>{{ volunteer.notes }}</p>
+                </div>
+                {% endif %}
+
+                <!-- History Timeline -->
                 {% if histories %}
                     <div class="history-filters">
                         <div class="history-filter" data-type="Email">
