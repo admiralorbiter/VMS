@@ -625,6 +625,8 @@ def import_from_salesforce():
         SELECT Id, AccountId, FirstName, LastName, MiddleName, Email,
                npe01__AlternateEmail__c, npe01__HomeEmail__c, 
                npe01__WorkEmail__c, npe01__Preferred_Email__c,
+               HomePhone, MobilePhone, npe01__WorkPhone__c, Phone,
+               npe01__PreferredPhone__c,
                npsp__Primary_Affiliation__c, Title, Department, Gender__c, 
                Birthdate, Last_Mailchimp_Email_Date__c, Last_Volunteer_Date__c, 
                Last_Email_Message__c, Volunteer_Recruitment_Notes__c, 
@@ -760,6 +762,58 @@ def import_from_salesforce():
                                 primary=True
                             ).update({'primary': False})
                             email.primary = True
+
+                # Handle phone numbers
+                phone_fields = {
+                    'npe01__WorkPhone__c': ContactTypeEnum.professional,
+                    'Phone': ContactTypeEnum.professional,  # Business Phone
+                    'HomePhone': ContactTypeEnum.personal,
+                    'MobilePhone': ContactTypeEnum.personal
+                }
+                
+                # Get preferred phone type
+                preferred_phone = row.get('npe01__PreferredPhone__c', '').lower()
+                
+                # Process each phone field
+                for phone_field, phone_type in phone_fields.items():
+                    phone_value = row.get(phone_field)
+                    if not phone_value:
+                        continue
+                        
+                    # Check if this should be the primary phone based on preference
+                    is_primary = False
+                    if preferred_phone:
+                        if (preferred_phone == 'work' and phone_field in ['npe01__WorkPhone__c', 'Phone']) or \
+                           (preferred_phone == 'home' and phone_field == 'HomePhone') or \
+                           (preferred_phone == 'mobile' and phone_field == 'MobilePhone'):
+                            is_primary = True
+                    elif phone_field == 'Phone':  # Default to business Phone as primary if no preference
+                        is_primary = True
+                    
+                    # Check if phone already exists
+                    phone = Phone.query.filter_by(
+                        contact_id=volunteer.id,
+                        number=phone_value
+                    ).first()
+                    
+                    if not phone:
+                        phone = Phone(
+                            contact_id=volunteer.id,
+                            number=phone_value,
+                            type=phone_type,
+                            primary=is_primary
+                        )
+                        db.session.add(phone)
+                    else:
+                        # Update existing phone type and primary status
+                        phone.type = phone_type
+                        if is_primary and not phone.primary:
+                            # Set all other phones to non-primary
+                            Phone.query.filter_by(
+                                contact_id=volunteer.id,
+                                primary=True
+                            ).update({'primary': False})
+                            phone.primary = True
 
                 success_count += 1
                 processed_volunteers.append(f"{volunteer.first_name} {volunteer.last_name}")

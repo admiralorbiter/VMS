@@ -141,3 +141,4 @@
 
 ## Recent Fixes
 - [x] Import Volunteer Emails
+- [x] Import Volunteer Phone Numbers
