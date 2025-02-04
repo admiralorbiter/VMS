@@ -5,15 +5,16 @@ import json
 from flask import Blueprint, jsonify, request, render_template, flash, redirect, url_for, abort
 from flask_login import current_user, login_required
 from config import Config
-from models import Volunteer, db
-from forms import VolunteerForm
-from sqlalchemy import or_, and_
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from models import db
+from models.volunteer import Volunteer, Skill, EventParticipation, Engagement
+from models.contact import Email, ContactTypeEnum
 from models.event import Event
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
-from models.contact import Contact, Address, EducationEnum, Email, GenderEnum, Phone, LocalStatusEnum, RaceEthnicityEnum
-from models.volunteer import Volunteer, Engagement, EventParticipation, Skill, VolunteerSkill
+from models.contact import Contact, Address, EducationEnum, Phone, LocalStatusEnum, RaceEthnicityEnum, GenderEnum
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from forms import VolunteerForm
+from sqlalchemy import or_, and_
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 
 volunteers_bp = Blueprint('volunteers', __name__)
@@ -423,10 +424,10 @@ def edit_volunteer(id):
             if request.form.get('email'):
                 Email.query.filter_by(contact_id=volunteer.id).delete()
                 email = Email(
+                    contact_id=volunteer.id,
                     email=request.form.get('email'),
                     type=request.form.get('email_type', 'personal'),
-                    primary=True,
-                    contact_id=volunteer.id
+                    primary=True
                 )
                 db.session.add(email)
 
@@ -434,10 +435,10 @@ def edit_volunteer(id):
             if request.form.get('phone'):
                 Phone.query.filter_by(contact_id=volunteer.id).delete()
                 phone = Phone(
+                    contact_id=volunteer.id,
                     number=request.form.get('phone'),
                     type=request.form.get('phone_type', 'personal'),
-                    primary=True,
-                    contact_id=volunteer.id
+                    primary=True
                 )
                 db.session.add(phone)
 
@@ -621,7 +622,9 @@ def import_from_salesforce():
         
         # Define Salesforce query
         salesforce_query = """
-        SELECT Id, AccountId, FirstName, LastName, MiddleName, 
+        SELECT Id, AccountId, FirstName, LastName, MiddleName, Email,
+               npe01__AlternateEmail__c, npe01__HomeEmail__c, 
+               npe01__WorkEmail__c, npe01__Preferred_Email__c,
                npsp__Primary_Affiliation__c, Title, Department, Gender__c, 
                Birthdate, Last_Mailchimp_Email_Date__c, Last_Volunteer_Date__c, 
                Last_Email_Message__c, Volunteer_Recruitment_Notes__c, 
@@ -705,6 +708,58 @@ def import_from_salesforce():
                         volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
                     except (ValueError, TypeError):
                         volunteer.times_volunteered = 0
+
+                # Handle emails
+                email_fields = {
+                    'npe01__WorkEmail__c': ContactTypeEnum.professional,
+                    'Email': ContactTypeEnum.personal,
+                    'npe01__HomeEmail__c': ContactTypeEnum.personal,
+                    'npe01__AlternateEmail__c': ContactTypeEnum.personal
+                }
+                
+                # Get preferred email type
+                preferred_email = row.get('npe01__Preferred_Email__c', '').lower()
+                
+                # Process each email field
+                for email_field, email_type in email_fields.items():
+                    email_value = row.get(email_field)
+                    if not email_value:
+                        continue
+                        
+                    # Check if this should be the primary email based on preference
+                    is_primary = False
+                    if preferred_email:
+                        if (preferred_email == 'work' and email_field == 'npe01__WorkEmail__c') or \
+                           (preferred_email == 'personal' and email_field in ['npe01__HomeEmail__c', 'Email']) or \
+                           (preferred_email == 'alternate' and email_field == 'npe01__AlternateEmail__c'):
+                            is_primary = True
+                    elif email_field == 'Email':  # Default to standard Email field as primary if no preference
+                        is_primary = True
+                    
+                    # Check if email already exists
+                    email = Email.query.filter_by(
+                        contact_id=volunteer.id,
+                        email=email_value
+                    ).first()
+                    
+                    if not email:
+                        email = Email(
+                            contact_id=volunteer.id,
+                            email=email_value,
+                            type=email_type,
+                            primary=is_primary
+                        )
+                        db.session.add(email)
+                    else:
+                        # Update existing email type and primary status
+                        email.type = email_type
+                        if is_primary and not email.primary:
+                            # Set all other emails to non-primary
+                            Email.query.filter_by(
+                                contact_id=volunteer.id,
+                                primary=True
+                            ).update({'primary': False})
+                            email.primary = True
 
                 success_count += 1
                 processed_volunteers.append(f"{volunteer.first_name} {volunteer.last_name}")
