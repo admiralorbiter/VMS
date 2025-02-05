@@ -44,6 +44,11 @@
                 <h2>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</h2>
             </div>
             <div class="card-content">
+                {% if volunteer.do_not_contact %}
+                <div class="alert alert-warning mb-3" role="alert">
+                    <i class="fas fa-user-slash"></i> <strong>Do Not Contact This Volunteer</strong>
+                </div>
+                {% endif %}
                 <p>{{ volunteer.title }}</p>
                 <!-- Add Gender Info -->
                 <div class="demographics-row">
@@ -147,6 +152,11 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% if volunteer.email_bounced_date %}
+                        <div class="alert alert-info mb-2">
+                            <i class="fas fa-exclamation-triangle"></i> Last email bounced on {{ volunteer.email_bounced_date.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -178,47 +188,64 @@
         <!-- Contact Information Card -->
         <div class="profile-card contact-info">
             <div class="card-header">
-                <i class="fa-solid fa-address-card"></i>
+                <i class="fa-solid fa-address-book"></i>
                 <h2>Contact Information</h2>
             </div>
             <div class="card-content">
-                <div class="contact-section">
-                    <h3><i class="fa-solid fa-envelope"></i> Email Addresses</h3>
-                    {% for email in volunteer.emails %}
-                    <div class="contact-item">
-                        <span class="contact-badge {{ email.type }}">
-                            {% if email.type == 'personal' %}
-                            <i class="fa-solid fa-user"></i>
-                            {% else %}
-                            <i class="fa-solid fa-briefcase"></i>
-                            {% endif %}
-                        </span>
-                        <span class="contact-value">{{ email.email }}</span>
-                        {% if email.primary %}
-                        <span class="primary-badge">Primary</span>
-                        {% endif %}
+                <!-- Email Addresses -->
+                <div class="info-group">
+                    <label>Email Addresses</label>
+                    {% if volunteer.email_opt_out %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-envelope-slash"></i> Email communications opted out
                     </div>
-                    {% endfor %}
+                    {% else %}
+                    <div class="email-list">
+                        {% for email in volunteer.emails %}
+                        <div class="contact-item">
+                            <span class="contact-badge {{ email.type }}">
+                                {% if email.type == 'personal' %}
+                                <i class="fa-solid fa-user"></i>
+                                {% else %}
+                                <i class="fa-solid fa-briefcase"></i>
+                                {% endif %}
+                            </span>
+                            <span class="contact-value">{{ email.email }}</span>
+                            {% if email.primary %}
+                            <span class="primary-badge">Primary</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Phone Numbers -->
-                <div class="contact-section">
-                    <h3><i class="fa-solid fa-phone"></i> Phone Numbers</h3>
-                    {% for phone in volunteer.phones %}
-                    <div class="contact-item">
-                        <span class="contact-badge {{ phone.type }}">
-                            {% if phone.type == 'personal' %}
-                            <i class="fa-solid fa-user"></i>
-                            {% else %}
-                            <i class="fa-solid fa-briefcase"></i>
-                            {% endif %}
-                        </span>
-                        <span class="contact-value">{{ phone.number }}</span>
-                        {% if phone.primary %}
-                        <span class="primary-badge">Primary</span>
-                        {% endif %}
+                <div class="info-group">
+                    <label>Phone Numbers</label>
+                    {% if volunteer.do_not_call %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-phone-slash"></i> Do not call this volunteer
                     </div>
-                    {% endfor %}
+                    {% else %}
+                    <div class="phone-list">
+                        {% for phone in volunteer.phones %}
+                        <div class="contact-item">
+                            <span class="contact-badge {{ phone.type }}">
+                                {% if phone.type == 'personal' %}
+                                <i class="fa-solid fa-user"></i>
+                                {% else %}
+                                <i class="fa-solid fa-briefcase"></i>
+                                {% endif %}
+                            </span>
+                            <span class="contact-value">{{ phone.number }}</span>
+                            {% if phone.primary %}
+                            <span class="primary-badge">Primary</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Address Information -->
@@ -258,36 +285,6 @@
                         {% endif %}
                     </div>
                     {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Contact Preferences Section -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Contact Preferences</h5>
-            </div>
-            <div class="card-body">
-                {% if volunteer.do_not_call or volunteer.do_not_contact or volunteer.email_opt_out %}
-                <div class="alert alert-warning" role="alert">
-                    <h6 class="alert-heading">Contact Restrictions</h6>
-                    {% if volunteer.do_not_call %}
-                        <p class="mb-1"><i class="fas fa-phone-slash"></i> Do Not Call</p>
-                    {% endif %}
-                    {% if volunteer.do_not_contact %}
-                        <p class="mb-1"><i class="fas fa-user-slash"></i> Do Not Contact</p>
-                    {% endif %}
-                    {% if volunteer.email_opt_out %}
-                        <p class="mb-1"><i class="fas fa-envelope-slash"></i> Email Opt Out</p>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-                {% if volunteer.email_bounced_date %}
-                <div class="info-group">
-                    <label>Last Email Bounce</label>
-                    <p>{{ volunteer.email_bounced_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
                 </div>
                 {% endif %}
             </div>
