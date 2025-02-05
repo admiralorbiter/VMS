@@ -150,9 +150,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const resultsHTML = data.map(skill => `
                 <div class="card result-card">
                     <div class="card-body">
-                        <h5 class="card-title">${skill.name || skill.title}</h5>
+                        <h5 class="card-title">${skill.name}</h5>
                         <p class="card-text">${skill.description || 'No description available'}</p>
-                        ${skill.id ? `<p class="card-text"><small class="text-muted">Skill ID: ${skill.id}</small></p>` : ''}
+                        <div class="mt-2">
+                            <p class="mb-1"><strong>Importance Score:</strong> ${skill.score.value}/100</p>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" role="progressbar" 
+                                     style="width: ${skill.score.value}%;" 
+                                     aria-valuenow="${skill.score.value}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    ${skill.score.value}%
+                                </div>
+                            </div>
+                        </div>
+                        ${skill.score.important ? 
+                            '<div class="mt-2"><span class="badge bg-success">Important Skill</span></div>' 
+                            : ''}
                     </div>
                 </div>
             `).join('');

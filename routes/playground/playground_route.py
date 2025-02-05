@@ -62,23 +62,33 @@ def search_skills():
     if not keyword:
         return jsonify([])
     
-    # O*NET Web Services URL for skills search
-    url = f'https://services.onetcenter.org/ws/online/skill_search?keyword={keyword}'
+    # First get matching occupations
+    url = f'https://services.onetcenter.org/ws/online/search?keyword={keyword}'
     
     try:
         headers = get_onet_headers()
         response = requests.get(url, headers=headers)
+        
         if response.status_code == 200:
             data = response.json()
-            skills = []
-            if 'skill' in data:
-                if isinstance(data['skill'], list):
-                    skills = data['skill']
-                else:
-                    skills = [data['skill']]
-            return jsonify(skills)
+            if 'occupation' in data:
+                occupations = data['occupation'] if isinstance(data['occupation'], list) else [data['occupation']]
+                if occupations:
+                    # Get the first occupation's code
+                    code = occupations[0].get('code')
+                    if code:
+                        # Get skills for this occupation
+                        skills_url = f'https://services.onetcenter.org/ws/online/occupations/{code}/details/skills'
+                        skills_response = requests.get(skills_url, headers=headers)
+                        
+                        if skills_response.status_code == 200:
+                            skills_data = skills_response.json()
+                            print("Skills data:", skills_data)  # Debug print
+                            return jsonify(skills_data.get('element', []))
+            
+            return jsonify([])
         else:
             return jsonify({'error': f'Error from O*NET API: {response.status_code}'}), 400
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error: {str(e)}")  # Add logging for debugging
         return jsonify({'error': str(e)}), 500
