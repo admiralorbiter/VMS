@@ -36,11 +36,16 @@ def admin():
 @auth_bp.route('/admin/users', methods=['POST'])
 @login_required
 def create_user():
+    if not current_user.is_admin:
+        flash('Permission denied', 'danger')
+        return redirect(url_for('auth.admin'))
+
     username = request.form.get('username')
     email = request.form.get('email')
     password = request.form.get('password')
+    security_level = request.form.get('security_level', type=int)
     
-    if not all([username, email, password]):
+    if not all([username, email, password, security_level is not None]):
         flash('All fields are required', 'danger')
         return redirect(url_for('auth.admin'))
     
@@ -52,10 +57,16 @@ def create_user():
         flash('Email already exists', 'danger')
         return redirect(url_for('auth.admin'))
     
+    # Ensure security level is valid and user has permission to create users at this level
+    if not (0 <= security_level <= 3) or security_level >= current_user.security_level:
+        flash('Invalid security level or insufficient permissions', 'danger')
+        return redirect(url_for('auth.admin'))
+    
     user = User(
         username=username,
         email=email,
-        password_hash=generate_password_hash(password)
+        password_hash=generate_password_hash(password),
+        security_level=security_level
     )
     
     try:

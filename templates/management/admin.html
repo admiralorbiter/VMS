@@ -23,6 +23,15 @@
                         <input type="password" name="password" class="form-control" placeholder="Password" required>
                     </div>
                     <div class="col-auto">
+                        <select name="security_level" class="form-select" required>
+                            <option value="" disabled selected>Select Role</option>
+                            <option value="0">User</option>
+                            <option value="1">Supervisor</option>
+                            <option value="2">Manager</option>
+                            <option value="3">Admin</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Add User
                         </button>
