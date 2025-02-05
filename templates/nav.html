@@ -33,13 +33,11 @@
               <a class="nav-link" href="/upcoming_event_management">Upcoming</a>
             </li>
             {% endif %}
-            {% if current_user.is_admin %}
             <li class="nav-item">
               <a class="nav-link" href="#" id="moreMenuToggle">
                 More <i class="fas fa-chevron-right"></i>
               </a>
             </li>
-            {% endif %}
             <li class="nav-item">
               <a class="nav-link" href="/logout">Logout</a>
             </li>
@@ -57,8 +55,10 @@
   <div class="side-nav-content">
     <ul class="side-nav-menu">
       <li><a href="/admin" class="side-nav-link">Admin</a></li>
+      {% if current_user.is_admin %}
       <li><a href="/history_table" class="side-nav-link">History</a></li>
       <li><a href="/schools" class="side-nav-link">Schools</a></li>
+      {% endif %}
       <!-- Add more items as needed -->
     </ul>
   </div>
