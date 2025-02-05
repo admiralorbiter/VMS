@@ -5,7 +5,7 @@
 {% block extra_css %}
 <style>
     .search-container {
-        max-width: 800px;
+        max-width: 1200px;
         margin: 2rem auto;
     }
     .search-box {
@@ -29,96 +29,167 @@
         color: #dc3545;
         margin: 1rem 0;
     }
+    .search-column {
+        padding: 0 1rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container search-container">
-    <h1 class="text-center mb-4">O*NET Occupation Search</h1>
+    <h1 class="text-center mb-4">O*NET Search</h1>
     
-    <div class="search-box">
-        <div class="input-group">
-            <input type="text" id="searchInput" class="form-control" placeholder="Search for occupations...">
-            <button class="btn btn-primary" id="searchButton">
-                <i class="fas fa-search"></i> Search
-            </button>
+    <div class="row">
+        <!-- Occupations Column -->
+        <div class="col-md-6 search-column">
+            <h2 class="text-center mb-3">Occupation Search</h2>
+            <div class="search-box">
+                <div class="input-group">
+                    <input type="text" id="occupationInput" class="form-control" placeholder="Search for occupations...">
+                    <button class="btn btn-primary" id="occupationButton">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
+            <div class="loading" id="occupationLoading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <div class="error-message" id="occupationError"></div>
+            <div id="occupationResults"></div>
+        </div>
+
+        <!-- Skills Column -->
+        <div class="col-md-6 search-column">
+            <h2 class="text-center mb-3">Skills Search</h2>
+            <div class="search-box">
+                <div class="input-group">
+                    <input type="text" id="skillInput" class="form-control" placeholder="Search for skills...">
+                    <button class="btn btn-primary" id="skillButton">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
+            <div class="loading" id="skillLoading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <div class="error-message" id="skillError"></div>
+            <div id="skillResults"></div>
         </div>
     </div>
-
-    <div class="loading">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-
-    <div class="error-message" id="errorMessage"></div>
-    
-    <div id="searchResults"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
-    const searchButton = document.getElementById('searchButton');
-    const searchResults = document.getElementById('searchResults');
-    const loading = document.querySelector('.loading');
-    const errorMessage = document.getElementById('errorMessage');
+    // Occupation Search
+    const occupationInput = document.getElementById('occupationInput');
+    const occupationButton = document.getElementById('occupationButton');
+    const occupationResults = document.getElementById('occupationResults');
+    const occupationLoading = document.getElementById('occupationLoading');
+    const occupationError = document.getElementById('occupationError');
 
-    async function searchONET(keyword) {
+    // Skills Search
+    const skillInput = document.getElementById('skillInput');
+    const skillButton = document.getElementById('skillButton');
+    const skillResults = document.getElementById('skillResults');
+    const skillLoading = document.getElementById('skillLoading');
+    const skillError = document.getElementById('skillError');
+
+    async function searchONET(keyword, type) {
+        const loading = type === 'occupation' ? occupationLoading : skillLoading;
+        const error = type === 'occupation' ? occupationError : skillError;
+        const results = type === 'occupation' ? occupationResults : skillResults;
+        const endpoint = type === 'occupation' ? 'search-onet' : 'search-skills';
+
         loading.style.display = 'block';
-        errorMessage.style.display = 'none';
-        searchResults.innerHTML = '';
+        error.style.display = 'none';
+        results.innerHTML = '';
 
         try {
-            const response = await fetch(`/playground/search-onet?keyword=${encodeURIComponent(keyword)}`);
+            const response = await fetch(`/playground/${endpoint}?keyword=${encodeURIComponent(keyword)}`);
             const data = await response.json();
 
             if (response.ok) {
-                displayResults(data);
+                displayResults(data, type);
             } else {
                 throw new Error(data.error || 'Failed to fetch results');
             }
         } catch (error) {
-            errorMessage.textContent = error.message;
-            errorMessage.style.display = 'block';
+            error.textContent = error.message;
+            error.style.display = 'block';
         } finally {
             loading.style.display = 'none';
         }
     }
 
-    function displayResults(data) {
+    function displayResults(data, type) {
+        const results = type === 'occupation' ? occupationResults : skillResults;
+        
         if (!data || data.length === 0) {
-            searchResults.innerHTML = '<p class="text-center">No results found</p>';
+            results.innerHTML = '<p class="text-center">No results found</p>';
             return;
         }
 
-        const resultsHTML = data.map(occupation => `
-            <div class="card result-card">
-                <div class="card-body">
-                    <h5 class="card-title">${occupation.title}</h5>
-                    <p class="card-text">${occupation.description || 'No description available'}</p>
-                    ${occupation.code ? `<p class="card-text"><small class="text-muted">O*NET-SOC Code: ${occupation.code}</small></p>` : ''}
+        if (type === 'occupation') {
+            const resultsHTML = data.map(occupation => `
+                <div class="card result-card">
+                    <div class="card-body">
+                        <h5 class="card-title">${occupation.title}</h5>
+                        <p class="card-text">${occupation.description || 'No description available'}</p>
+                        ${occupation.code ? `<p class="card-text"><small class="text-muted">O*NET-SOC Code: ${occupation.code}</small></p>` : ''}
+                    </div>
                 </div>
-            </div>
-        `).join('');
-
-        searchResults.innerHTML = resultsHTML;
+            `).join('');
+            results.innerHTML = resultsHTML;
+        } else {
+            const resultsHTML = data.map(skill => `
+                <div class="card result-card">
+                    <div class="card-body">
+                        <h5 class="card-title">${skill.name || skill.title}</h5>
+                        <p class="card-text">${skill.description || 'No description available'}</p>
+                        ${skill.id ? `<p class="card-text"><small class="text-muted">Skill ID: ${skill.id}</small></p>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            results.innerHTML = resultsHTML;
+        }
     }
 
-    searchButton.addEventListener('click', () => {
-        const keyword = searchInput.value.trim();
+    // Event Listeners for Occupation Search
+    occupationButton.addEventListener('click', () => {
+        const keyword = occupationInput.value.trim();
         if (keyword) {
-            searchONET(keyword);
+            searchONET(keyword, 'occupation');
         }
     });
 
-    searchInput.addEventListener('keypress', (e) => {
+    occupationInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            const keyword = searchInput.value.trim();
+            const keyword = occupationInput.value.trim();
             if (keyword) {
-                searchONET(keyword);
+                searchONET(keyword, 'occupation');
+            }
+        }
+    });
+
+    // Event Listeners for Skills Search
+    skillButton.addEventListener('click', () => {
+        const keyword = skillInput.value.trim();
+        if (keyword) {
+            searchONET(keyword, 'skills');
+        }
+    });
+
+    skillInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const keyword = skillInput.value.trim();
+            if (keyword) {
+                searchONET(keyword, 'skills');
             }
         }
     });
