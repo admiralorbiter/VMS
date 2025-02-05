@@ -146,6 +146,33 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% if pagination and pagination.pages > 1 %}
+            <nav aria-label="Volunteer search results pages" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('report.recruitment_report', page=pagination.prev_num, search=search_query, event_type=event_type_filter, exclude_dia=exclude_dia) }}">&laquo; Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('report.recruitment_report', page=page_num, search=search_query, event_type=event_type_filter, exclude_dia=exclude_dia) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('report.recruitment_report', page=pagination.next_num, search=search_query, event_type=event_type_filter, exclude_dia=exclude_dia) }}">Next &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
         </div>
     </div>
 </div>

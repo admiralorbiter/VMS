@@ -183,4 +183,35 @@ main {
     background-color: #c13136; /* Hover color */
     transform: translateY(1px); /* Slight lift effect */
     box-shadow: 0 1px 0 #b53035; /* Shadow effect */
-} 
+}
+
+/* Pagination Styles */
+.pagination {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.page-link {
+    color: #0056b3;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+}
+
+.page-link:hover {
+    color: #003d7a;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.page-item.active .page-link {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    color: white;
+}
+
+.page-item.disabled .page-link {
+    color: #6c757d;
+    pointer-events: none;
+    background-color: #fff;
+    border-color: #dee2e6;
+}

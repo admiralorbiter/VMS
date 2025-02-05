@@ -627,10 +627,12 @@ def recruitment_report():
     upcoming_events = UpcomingEvent.query.filter(
         UpcomingEvent.start_date >= datetime.now(),
         UpcomingEvent.available_slots > UpcomingEvent.filled_volunteer_jobs
-    ).order_by(UpcomingEvent.start_date)
+    ).order_by(UpcomingEvent.start_date).all()
 
     # Get the search query from the request
     search_query = request.args.get('search', '').strip().lower()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # Number of volunteers per page
 
     # Get the event type filter
     event_type_filter = request.args.get('event_type', '').strip()
@@ -639,17 +641,9 @@ def recruitment_report():
     exclude_dia = request.args.get('exclude_dia')
     exclude_dia = exclude_dia == '1' or exclude_dia == 'true' or exclude_dia == 'True'
 
-    # Apply filters based on the event type and exclude DIA events if checked
-    if event_type_filter:
-        upcoming_events = upcoming_events.filter(UpcomingEvent.event_type == event_type_filter)
-
-    if exclude_dia:
-        upcoming_events = upcoming_events.filter(~UpcomingEvent.event_type.like('DIA%'))
-
-    upcoming_events = upcoming_events.all()
-
-    # Initialize volunteers_data as an empty list
+    # Initialize volunteers_data and pagination as None
     volunteers_data = []
+    pagination = None
 
     # Only query volunteers if there is a search query
     if search_query:
@@ -660,31 +654,33 @@ def recruitment_report():
             Volunteer.volunteer_organizations
         ).outerjoin(
             VolunteerOrganization.organization
-        ).outerjoin(  # Add proper join to EventParticipation
+        ).outerjoin(
             EventParticipation, EventParticipation.volunteer_id == Volunteer.id
         ).filter(
             db.or_(
-                # Search for full name across first and last name
                 db.and_(*[
                     db.or_(
                         Volunteer.first_name.ilike(f'%{term}%'),
                         Volunteer.last_name.ilike(f'%{term}%')
                     ) for term in search_terms
                 ]),
-                # Keep existing individual field searches
                 Volunteer.title.ilike(f'%{search_query}%'),
-                Organization.name.ilike(f'%{search_query}%'),  # Search by organization name
+                Organization.name.ilike(f'%{search_query}%'),
                 Volunteer.skills.any(Skill.name.ilike(f'%{search_query}%'))
             )
         )
 
-        volunteers = volunteers_query.add_columns(
+        # Add pagination to the volunteers query
+        paginated_volunteers = volunteers_query.add_columns(
             db.func.count(EventParticipation.id).label('participation_count'),
             db.func.max(EventParticipation.event_id).label('last_event')
-        ).group_by(Volunteer.id).all()
+        ).group_by(Volunteer.id).paginate(page=page, per_page=per_page, error_out=False)
 
-        # Populate volunteers_data based on the search results
-        for volunteer, participation_count, last_event in volunteers:
+        # Store pagination object for template
+        pagination = paginated_volunteers
+
+        # Populate volunteers_data based on the paginated results
+        for volunteer, participation_count, last_event in paginated_volunteers.items:
             volunteers_data.append({
                 'id': volunteer.id,
                 'name': f"{volunteer.first_name} {volunteer.last_name}",
@@ -735,5 +731,7 @@ def recruitment_report():
         search_query=search_query,
         event_types=UpcomingEvent.query.with_entities(UpcomingEvent.event_type).distinct().all(),
         exclude_dia=exclude_dia,
-        event_type_filter=event_type_filter
+        event_type_filter=event_type_filter,
+        pagination=pagination,
+        page=page
     )
