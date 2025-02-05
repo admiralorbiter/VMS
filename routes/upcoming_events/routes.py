@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
@@ -15,11 +15,12 @@ upcoming_events_bp = Blueprint('upcoming_events', __name__)
 def sync_upcoming_events():
     try:
         today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
         
         # 1. Remove past events AND events with no available slots
         deleted_count = UpcomingEvent.query.filter(
             or_(
-                UpcomingEvent.start_date < today,  # Less than today (past events)
+                UpcomingEvent.start_date < yesterday,  # Less than yesterday (past events)
                 UpcomingEvent.available_slots <= 0  # No slots available
             )
         ).delete()
@@ -170,4 +171,3 @@ def dia_events_api():
             'success': False,
             'message': f'An unexpected error occurred: {str(e)}'
         }), 500
-
