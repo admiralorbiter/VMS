@@ -19,35 +19,17 @@ def create_accounts():
             print('Error: Email jlane@prepkc.org already exists.')
             sys.exit(1)
 
-        # Check if PrepKC account already exists
-        if User.query.filter_by(username='prepkcadmin').first():
-            print('Error: Username prepkcadmin already exists.')
-            sys.exit(1)
-
-        if User.query.filter_by(email='prepkc@gmail.com').first():
-            print('Error: Email prepkc@gmail.com already exists.')
-            sys.exit(1)
-
         new_admin = User(
             username=username,
             email=email,
             password_hash=generate_password_hash(password),
             is_admin=True
         )
-        print(f"Admin security level: {new_admin.security_level}")  # Debug print
-
-        prepkc_user = User(
-            username='prepkcadmin',
-            email='prepkc@gmail.com',
-            password_hash=generate_password_hash('Prepkc10000'),
-            is_admin=False
-        )
-        print(f"PrepKC security level: {prepkc_user.security_level}")  # Debug print
+        print(f"Admin security level: {new_admin.security_level}") 
 
         db.session.add(new_admin)
-        db.session.add(prepkc_user)
         db.session.commit()
-        print('Both accounts created successfully.')
+        print('Admin account created successfully.')
 
 if __name__ == '__main__':
     create_accounts()
