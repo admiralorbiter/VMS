@@ -2,7 +2,7 @@
     <div class="container-fluid">
       <div class="navbar-brand-container">
         <a class="navbar-brand" href="/">Polaris</a>
-        <small class="tagline">Our North Star</small>
+        <small class="tagline">Our North Star {{ current_user.security_level }}</small>
       </div>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -28,6 +28,11 @@
             <li class="nav-item">
               <a class="nav-link" href="/calendar">Calendar</a>
             </li>
+            {% if current_user.has_permission_level(SUPERVISOR) %}
+            <li class="nav-item">
+              <a class="nav-link" href="/upcoming_event_management">Upcoming</a>
+            </li>
+            {% endif %}
             {% if current_user.is_admin %}
             <li class="nav-item">
               <a class="nav-link" href="#" id="moreMenuToggle">
@@ -51,9 +56,6 @@
 <div class="side-nav-panel" id="sideNavPanel">
   <div class="side-nav-content">
     <ul class="side-nav-menu">
-      <li class="nav-item">
-        <a class="nav-link" href="/upcoming_event_management">Upcoming</a>
-      </li>
       <li><a href="/admin" class="side-nav-link">Admin</a></li>
       <li><a href="/history_table" class="side-nav-link">History</a></li>
       <li><a href="/schools" class="side-nav-link">Schools</a></li>

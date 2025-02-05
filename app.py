@@ -3,6 +3,7 @@
 from flask import Flask
 from flask_cors import CORS
 from models import db, User
+from models.user import SecurityLevel
 from flask_login import LoginManager
 from forms import LoginForm
 from routes.routes import init_routes
@@ -54,6 +55,17 @@ with app.app_context():
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+# Add SecurityLevel to Flask's template context
+@app.context_processor
+def inject_security_levels():
+    return {
+        'SecurityLevel': SecurityLevel,
+        'USER': SecurityLevel.USER,
+        'SUPERVISOR': SecurityLevel.SUPERVISOR,
+        'MANAGER': SecurityLevel.MANAGER,
+        'ADMIN': SecurityLevel.ADMIN
+    }
 
 # Initialize routes
 init_routes(app)

@@ -34,6 +34,7 @@ def create_accounts():
             password_hash=generate_password_hash(password),
             is_admin=True
         )
+        print(f"Admin security level: {new_admin.security_level}")  # Debug print
 
         prepkc_user = User(
             username='prepkcadmin',
@@ -41,6 +42,7 @@ def create_accounts():
             password_hash=generate_password_hash('Prepkc10000'),
             is_admin=False
         )
+        print(f"PrepKC security level: {prepkc_user.security_level}")  # Debug print
 
         db.session.add(new_admin)
         db.session.add(prepkc_user)

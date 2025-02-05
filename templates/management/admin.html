@@ -54,7 +54,7 @@
             </form>
         </div>
     </div>
-
+    {% if current_user.is_admin %}
     <!-- Import Section -->
     <div class="card admin-card mt-4">
         <div class="card-body">
@@ -218,7 +218,7 @@
             </div>
         </div>
     </div>
-
+    {% endif %}
     <!-- Toast Container for Notifications -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -243,9 +243,11 @@
                             <td>{{ user.email }}</td>
                             <td>{{ user.created_at|format_date }}</td>
                             <td>
+                                {% if user.is_admin %}
                                 <button onclick="deleteUser('{{ user.id }}')" class="btn admin-btn-danger btn-sm">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
