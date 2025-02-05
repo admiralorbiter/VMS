@@ -4,73 +4,58 @@
 {% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <h1>O*NET Career Explorer</h1>
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="form-group mb-3">
-                <div class="btn-group w-100 mb-3" role="group">
-                    <input type="radio" class="btn-check" name="searchType" id="jobSearch" value="job" checked>
-                    <label class="btn btn-outline-primary" for="jobSearch">Search by Job</label>
-                    
-                    <input type="radio" class="btn-check" name="searchType" id="skillSearch" value="skill">
-                    <label class="btn btn-outline-primary" for="skillSearch">Search by Skill</label>
-                </div>
-                
-                <div class="input-group">
-                    <input type="text" id="searchInput" class="form-control" placeholder="Enter job title or skill...">
-                    <button class="btn btn-primary" id="searchButton">Search</button>
-                </div>
-            </div>
+    <h1 class="mb-4">Job to Skills Profiler</h1>
+    
+    <!-- Search Section -->
+    <div class="search-section mb-4">
+        <div class="btn-group mb-3" role="group">
+            <input type="radio" class="btn-check" name="searchType" id="jobSearch" value="job" checked>
+            <label class="btn btn-outline-primary" for="jobSearch">Search by Job</label>
+            
+            <input type="radio" class="btn-check" name="searchType" id="skillSearch" value="skill">
+            <label class="btn btn-outline-primary" for="skillSearch">Search by Skill</label>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search for a job...">
+            <button class="btn btn-primary" type="button" id="searchButton">Search</button>
+        </div>
+    </div>
 
-            <!-- Search Results List -->
-            <div id="searchResultsList" class="mt-3">
-                <div class="list-group" id="jobList">
-                    <!-- Job results will be inserted here -->
-                </div>
-            </div>
+    <!-- Results List -->
+    <div id="searchResultsList" class="list-group mb-4"></div>
 
-            <!-- Detailed View -->
-            <div id="detailView" class="mt-3" style="display: none;">
-                <button class="btn btn-secondary mb-3" id="backToList">← Back to Results</button>
-                
-                <div id="jobTitle" class="h3 mb-4"></div>
-                
-                <ul class="nav nav-tabs" id="resultTabs" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overview">Overview</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="skills-tab" data-bs-toggle="tab" href="#skills">Skills</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="knowledge-tab" data-bs-toggle="tab" href="#knowledge">Knowledge</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="interests-tab" data-bs-toggle="tab" href="#interests">Interests</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="related-tab" data-bs-toggle="tab" href="#related">Related Jobs</a>
-                    </li>
-                </ul>
-                
-                <div class="tab-content mt-3">
-                    <div class="tab-pane fade show active" id="overview">
-                        <div id="overviewContent"></div>
-                    </div>
-                    <div class="tab-pane fade" id="skills">
-                        <div id="skillsContent"></div>
-                    </div>
-                    <div class="tab-pane fade" id="knowledge">
-                        <div id="knowledgeContent"></div>
-                    </div>
-                    <div class="tab-pane fade" id="interests">
-                        <div id="interestsContent"></div>
-                    </div>
-                    <div class="tab-pane fade" id="related">
-                        <div id="relatedContent"></div>
-                    </div>
-                </div>
-            </div>
+    <!-- Detail View -->
+    <div id="detailView" style="display: none;">
+        <button id="backToList" class="btn btn-secondary mb-3">← Back to Results</button>
+        <h2 id="jobTitle" class="mb-4"></h2>
+        
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" id="detailTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overviewContent">Overview</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="skills-tab" data-bs-toggle="tab" href="#skillsContent">Skills</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="knowledge-tab" data-bs-toggle="tab" href="#knowledgeContent">Knowledge</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="interests-tab" data-bs-toggle="tab" href="#interestsContent">Interests</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="related-tab" data-bs-toggle="tab" href="#relatedContent">Related Jobs</a>
+            </li>
+        </ul>
+        
+        <!-- Tab Content -->
+        <div class="tab-content mt-3">
+            <div class="tab-pane fade show active" id="overviewContent"></div>
+            <div class="tab-pane fade" id="skillsContent"></div>
+            <div class="tab-pane fade" id="knowledgeContent"></div>
+            <div class="tab-pane fade" id="interestsContent"></div>
+            <div class="tab-pane fade" id="relatedContent"></div>
         </div>
     </div>
 </div>
