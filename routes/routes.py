@@ -12,6 +12,7 @@ from routes.attendance.routes import attendance
 from routes.management.management import management_bp
 from routes.job_board.filters import init_filters
 from routes.calendar.routes import calendar_bp
+from routes.playground.playground_route import playground_bp
 
 
 def init_routes(app):
@@ -27,6 +28,7 @@ def init_routes(app):
     app.register_blueprint(attendance)
     app.register_blueprint(management_bp)
     app.register_blueprint(calendar_bp)
+    app.register_blueprint(playground_bp)
     init_filters(app)
 
     @app.route('/')

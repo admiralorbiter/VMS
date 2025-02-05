@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>O*NET Interest Profiler</h1>
+    <div class="card">
+        <div class="card-body">
+            <script 
+                src="https://services.onetcenter.org/embed/ip.js?client=prepkc">
+            </script>
+            <div class="embed-onet-ip"></div>
+        </div>
+    </div>
+</div>
+<p style="text-align: center"><a href="https://services.onetcenter.org/" title="This site incorporates information from O*NET Web Services. Click to learn more."><img src="https://www.onetcenter.org/image/link/onet-in-it.svg" style="width: 130px; height: 60px; border: none" alt="O*NET in-it"></a></p>
+<p>This site incorporates information from <a href="https://services.onetcenter.org/">O*NET Web Services</a> by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA). O*NET&reg; is a trademark of USDOL/ETA.</p>
+{% endblock %}
