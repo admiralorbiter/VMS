@@ -27,9 +27,11 @@
             {% endif %}
         </div>
         <div class="header-actions">
+            {% if current_user.is_admin %}
             <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.id) }}" class="btn edit-volunteer-btn">
                 <i class="fa-solid fa-pencil"></i> Edit
             </a>
+            {% endif %}
             <a href="{{ url_for('volunteers.volunteers') }}" class="btn back-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>
@@ -482,7 +484,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- History Card -->
         <div class="profile-card history-info">
             <div class="card-header">

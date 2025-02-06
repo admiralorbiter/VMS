@@ -165,6 +165,7 @@
                             <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn view-btn">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            {% if current_user.is_admin %}
                             <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn edit-btn">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -172,6 +173,7 @@
                                     data-volunteer-name="{{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
