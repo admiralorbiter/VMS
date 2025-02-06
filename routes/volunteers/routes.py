@@ -308,7 +308,7 @@ def add_volunteer():
         except Exception as e:
             db.session.rollback()
             flash(f'Error adding volunteer: {str(e)}', 'error')
-            return render_template('volunteers/add.html')
+
 
     return render_template('volunteers/add.html')
 
