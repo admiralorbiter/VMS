@@ -298,6 +298,10 @@
             </div>
             <div class="card-content">
                 <div class="org-info">
+                    <div class="info-group">
+                        <label>Title</label>
+                        <p class="org-title">{{ volunteer.title }}</p>
+                    </div>
                     {% if volunteer.organizations %}
                         <div class="info-group">
                             <label>Organizations</label>
@@ -338,17 +342,15 @@
                             <p class="org-name">{{ volunteer.organization_name }}</p>
                         </div>
                     {% endif %}
-                    <div class="info-group">
-                        <label>Title</label>
-                        <p class="org-title">{{ volunteer.title }}</p>
-                    </div>
-                    <div class="info-group">
-                        <label>Department</label>
-                        <p class="org-department">{{ volunteer.department }}</p>
-                    </div>
-                    <div class="info-group">
-                        <label>Industry</label>
-                        <p>{{ volunteer.industry }}</p>
+                    <div class="row">
+                        <div class="col info-group">
+                            <label>Department</label>
+                            <p class="org-department">{{ volunteer.department }}</p>
+                        </div>
+                        <div class="col info-group">
+                            <label>Industry</label>
+                            <p>{{ volunteer.industry }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -480,51 +482,7 @@
                 {% endif %}
             </div>
         </div>
-
-        <!-- Volunteer History Card -->
-        <div class="profile-card history-info">
-            <div class="card-header">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-                <h2>Volunteer History</h2>
-            </div>
-            <div class="card-content">
-                <div class="history-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">First Volunteered</span>
-                        <span class="stat-value">{{ volunteer.first_volunteer_date.strftime('%Y-%m-%d') if volunteer.first_volunteer_date }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Last Volunteered</span>
-                        <span class="stat-value">{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Last Activity</span>
-                        <span class="stat-value">{{ volunteer.last_activity_date.strftime('%Y-%m-%d') if volunteer.last_activity_date }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Total Times</span>
-                        <span class="stat-value">{{ volunteer.total_times_volunteered }}</span>
-                    </div>
-                </div>
-                
-                <div class="engagement-timeline">
-                    {% for engagement in volunteer.engagements %}
-                    <div class="engagement-item">
-                        <div class="engagement-date">
-                            {{ engagement.engagement_date.strftime('%Y-%m-%d') }}
-                        </div>
-                        <div class="engagement-details">
-                            <span class="engagement-type">{{ engagement.engagement_type }}</span>
-                            {% if engagement.notes %}
-                            <p class="engagement-notes">{{ engagement.notes }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
+        
         <!-- History Card -->
         <div class="profile-card history-info">
             <div class="card-header">
@@ -532,22 +490,60 @@
                 <h2>History</h2>
             </div>
             <div class="card-content">
-                <!-- Key Dates -->
-                <div class="info-group">
-                    <label>First Volunteer Date</label>
-                    <p>{{ volunteer.first_volunteer_date.strftime('%B %d, %Y') if volunteer.first_volunteer_date else 'Not recorded' }}</p>
+                <!-- Key Stats -->
+                <div class="history-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>First Volunteered</label>
+                            <p>{{ volunteer.first_volunteer_date.strftime('%b %d, %Y') if volunteer.first_volunteer_date else 'Not recorded' }}</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>Last Volunteered</label>
+                            <p>{{ volunteer.last_volunteer_date.strftime('%b %d, %Y') if volunteer.last_volunteer_date else 'Not recorded' }}</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>Last Activity</label>
+                            <p>{{ volunteer.last_activity_date.strftime('%b %d, %Y') if volunteer.last_activity_date else 'Never' }}</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>Total Times</label>
+                            <p>{{ volunteer.total_times_volunteered }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Recruitment Notes -->
                 {% if volunteer.notes %}
-                <div class="info-group">
+                <div class="info-group mt-4">
                     <label>Recruitment Notes</label>
-                    <p>{{ volunteer.notes }}</p>
+                    <div class="notes-card">
+                        <i class="fa-solid fa-note-sticky notes-icon"></i>
+                        <p>{{ volunteer.notes }}</p>
+                    </div>
                 </div>
                 {% endif %}
 
                 <!-- History Timeline -->
                 {% if histories %}
+                <div class="history-container mt-4">
                     <div class="history-filters">
                         <div class="history-filter" data-type="Email">
                             <i class="fa-solid fa-envelope"></i>
@@ -615,6 +611,7 @@
                         </div>
                         {% endfor %}
                     </div>
+                </div>
                 {% else %}
                     <div class="no-history">
                         <i class="fa-solid fa-clock"></i>
