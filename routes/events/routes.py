@@ -42,9 +42,23 @@ def process_event_row(row, success_count, error_count, errors):
         event.location = row.get('Location_Information__c', '')
         event.description = row.get('Description__c', '')
         event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
-        event.participant_count = int(row.get('Participant_Count_0__c', 0))
+        event.participant_count = int(float(row.get('Participant_Count_0__c', 0)) if row.get('Participant_Count_0__c') is not None else 0)
         event.last_sync_date = datetime.now()
+        event.additional_information = row.get('Additional_Information__c', '')
+        
+        # Safely convert numeric fields with better error handling
+        def safe_convert_to_int(value, default=0):
+            if value is None:
+                return default
+            try:
+                return int(float(value))
+            except (ValueError, TypeError):
+                print(f"Warning: Could not convert value: {value}, using default: {default}")
+                return default
 
+        event.total_requested_volunteer_jobs = safe_convert_to_int(row.get('Total_Requested_Volunteer_Jobs__c'))
+        event.available_slots = safe_convert_to_int(row.get('Available_Slots__c'))
+        
         # Update district handling
         district_name = row.get('District__c')
         if district_name and district_name in DISTRICT_MAPPINGS:
@@ -388,7 +402,7 @@ def import_events():
                         End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
                         Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
                         District__c, Legacy_Skill_Covered_for_the_Session__c, 
-                        Legacy_Skills_Needed__c, Requested_Skills__c
+                        Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c
                 FROM Session__c
                 WHERE CreatedDate >= LAST_N_MONTHS:120
                 ORDER BY Start_Date_and_Time__c ASC
@@ -607,20 +621,29 @@ def import_events_from_salesforce():
                 End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
                 Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
                 District__c, Legacy_Skill_Covered_for_the_Session__c, 
-                Legacy_Skills_Needed__c, Requested_Skills__c
+                Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
+                Total_Requested_Volunteer_Jobs__c, Available_Slots__c
         FROM Session__c
-        ORDER BY Start_Date_and_Time__c ASC
+        ORDER BY Start_Date_and_Time__c DESC
         """
 
         # Execute events query
         events_result = sf.query_all(events_query)
         events_rows = events_result.get('records', [])
 
+        status_counts = {}
+        
         # Process events
         for row in events_rows:
+            status = row.get('Session_Status__c', 'Unknown')
+            status_counts[status] = status_counts.get(status, 0) + 1
             success_count, error_count = process_event_row(
                 row, success_count, error_count, errors
             )
+        
+        print("\nEvents by status:")
+        for status, count in status_counts.items():
+            print(f"{status}: {count}")
 
         # Second query: Get participants
         participants_query = """

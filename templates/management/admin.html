@@ -224,6 +224,13 @@
                     </button>
                     <div class="purge-status" id="purgeVolunteersStatus"></div>
                 </div>
+                <div class="purge-item">
+                    <button onclick="purgeEvents()" class="btn admin-btn-danger" id="purgeEventsBtn">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Purge All Events</span>
+                    </button>
+                    <div class="purge-status" id="purgeEventsStatus"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -297,10 +304,6 @@ document.getElementById('updateLocalStatus').addEventListener('click', function(
     }
 });
 </script>
-
-{% endblock %}
-
-{% block extra_js %}
 <script>
 function deleteUser(userId) {
     console.log('Delete function called with userId:', userId);
@@ -463,32 +466,7 @@ function importOrganizations() {
         });
     }
 }
-function importOrganizations() {
-    if (confirm('Are you sure you want to import organizations from Salesforce?')) {
-        fetch('/organizations/import-from-salesforce', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                // Show detailed error message
-                const errorMessage = data.message || data.error || 'Unknown error occurred';
-                console.error('Import error:', data);
-                alert(`Error importing organizations: ${errorMessage}`);
-            }
-        })
-        .catch(error => {
-            console.error('Import error:', error);
-            alert(`Error importing organizations: ${error.message}`);
-        });
-    }
-}
+
 function importTeachers() {
     if (confirm('Are you sure you want to import teachers from Salesforce?')) {
         fetch('/attendance/import-from-salesforce', {
@@ -633,6 +611,35 @@ function purgeVolunteers() {
     .finally(() => {
         btn.disabled = false;
     });
+}
+
+function purgeEvents() {
+    if (confirm('WARNING: This will permanently delete ALL events and their participations. This action cannot be undone. Are you sure you want to continue?')) {
+        document.getElementById('purgeEventsBtn').disabled = true;
+        document.getElementById('purgeEventsBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Purging...';
+        
+        fetch('/events/purge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('All events have been successfully purged.');
+            } else {
+                alert('Error purging events: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error purging events: ' + error);
+        })
+        .finally(() => {
+            document.getElementById('purgeEventsBtn').disabled = false;
+            document.getElementById('purgeEventsBtn').innerHTML = '<i class="fas fa-trash-alt"></i> Purge All Events';
+        });
+    }
 }
 </script>
 {% endblock %}

@@ -122,19 +122,22 @@ class Event(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     participant_count = db.Column(db.Integer, default=0)
-    
-    # Virtual specific fields (new)
-    session_id = db.Column(db.String(255))      # Session ID from CSV
-    series = db.Column(db.String(255))          # Series or Career Cluster
-    duration = db.Column(db.Integer)            # Duration in minutes
+    additional_information = db.Column(db.Text)
+    session_id = db.Column(db.String(255))
+    series = db.Column(db.String(255))
+    duration = db.Column(db.Integer)
     registered_count = db.Column(db.Integer, default=0)
     attended_count = db.Column(db.Integer, default=0)
-    educators = db.Column(db.Text)              # To store educator names
-    educator_ids = db.Column(db.Text)           # To store educator IDs
-    school = db.Column(db.Text)                 # Changed to Text to store multiple schools
-    district_partner = db.Column(db.Text)       # Changed to Text to store multiple districts
-    professionals = db.Column(db.Text)          # To store professional names
-    professional_ids = db.Column(db.Text)       # To store professional IDs
+    educators = db.Column(db.Text)
+    educator_ids = db.Column(db.Text)
+    school = db.Column(db.Text)
+    district_partner = db.Column(db.Text)
+    professionals = db.Column(db.Text)
+    professional_ids = db.Column(db.Text)
+    available_slots = db.Column(db.Integer, default=0)  # Available_Slots__c
+    registration_link = db.Column(db.String(1300))  # Registration_Link__c
+    scheduled_participants_count = db.Column(db.Integer, default=0)  # Scheduled_Participants_Count__c
+    total_requested_volunteer_jobs = db.Column(db.Integer, default=0)  # Total_Requested_Volunteer_Jobs__c
     
     # Relationships
     volunteers = db.relationship('Volunteer', 

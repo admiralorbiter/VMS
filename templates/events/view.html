@@ -136,6 +136,29 @@
                     <label>Start Date & Time</label>
                     <p><i class="fa-solid fa-calendar-plus"></i> {{ event.start_date.strftime('%Y-%m-%d %H:%M') if event.start_date else 'Not set' }}</p>
                 </div>
+
+                <div class="info-item">
+                    <label>Available Slots</label>
+                    <p><i class="fa-solid fa-chair"></i> {{ event.available_slots or 0 }}</p>
+                </div>
+
+                <div class="info-item">
+                    <label>Scheduled Participants</label>
+                    <p><i class="fa-solid fa-users"></i> {{ event.scheduled_participants_count or 0 }}</p>
+                </div>
+
+                <div class="info-item">
+                    <label>Total Requested Volunteer Jobs</label>
+                    <p><i class="fa-solid fa-briefcase"></i> {{ event.total_requested_volunteer_jobs or 0 }}</p>
+                </div>
+
+                {% if event.registration_link %}
+                <div class="info-item">
+                    <label>Registration</label>
+                    <p><i class="fa-solid fa-link"></i> {{ event.registration_link|safe }}</p>
+                </div>
+                {% endif %}
+
                 <div class="info-item">
                     <label>End Date & Time</label>
                     <p><i class="fa-solid fa-calendar-check"></i> {{ event.end_date.strftime('%Y-%m-%d %H:%M') if event.end_date else 'Not set' }}</p>
@@ -146,6 +169,12 @@
                         {{ event.format.value|replace('_', ' ')|title }}
                     </p>
                 </div>
+                {% if event.additional_information %}
+                <div class="info-item full-width">
+                    <label>Additional Information</label>
+                    <div class="additional-info">{{ event.additional_information|safe }}</div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
