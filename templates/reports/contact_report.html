@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Event Contact Report{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-header">Event Contact Report</h1>
+    <p class="page-description">Select an upcoming event to view volunteer contact information.</p>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                    <th>Volunteers</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.title }}</td>
+                    <td>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ event.location }}</td>
+                    <td>{{ event.volunteer_count }}</td>
+                    <td>
+                        <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" 
+                           class="btn btn-primary btn-sm">View Contacts</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

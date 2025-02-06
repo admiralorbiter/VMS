@@ -54,6 +54,13 @@ def reports():
             'icon': 'fa-solid fa-file-alt',
             'url': '/reports/recruitment',
             'category': 'General Reports'
+        },
+        {
+            'title': 'Event Contact Report',
+            'description': 'View upcoming events and volunteer contact information.',
+            'icon': 'fa-solid fa-address-book',
+            'url': '/reports/contact',
+            'category': 'Event Management'
         }
     ]
     
@@ -735,3 +742,27 @@ def recruitment_report():
         pagination=pagination,
         page=page
     )
+
+@report_bp.route('/reports/contact')
+@login_required
+def contact_report():
+    # Get upcoming events
+    upcoming_events = Event.query.filter(
+        Event.start_date >= datetime.utcnow(),
+        Event.status != EventStatus.CANCELLED
+    ).order_by(Event.start_date).all()
+    
+    return render_template('reports/contact_report.html', 
+                         events=upcoming_events)
+
+@report_bp.route('/reports/contact/<int:event_id>')
+@login_required
+def contact_report_detail(event_id):
+    event = Event.query.get_or_404(event_id)
+    
+    # Get volunteers for this event with their contact information
+    volunteers = event.volunteers
+    
+    return render_template('reports/contact_report_detail.html',
+                         event=event,
+                         volunteers=volunteers)
