@@ -14,7 +14,7 @@
                     <th>Event</th>
                     <th>Date</th>
                     <th>Location</th>
-                    <th>Volunteers</th>
+                    <th>Total Sign Ups</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -23,8 +23,8 @@
                 <tr>
                     <td>{{ event.title }}</td>
                     <td>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>{{ event.location }}</td>
-                    <td>{{ event.volunteer_count }}</td>
+                    <td>{{ event.location or 'Not set' }}</td>
+                    <td>{{ event_stats[event.id]['volunteer_count'] }}</td>
                     <td>
                         <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" 
                            class="btn btn-primary btn-sm">View Contacts</a>

@@ -746,23 +746,49 @@ def recruitment_report():
 @report_bp.route('/reports/contact')
 @login_required
 def contact_report():
-    # Get upcoming events
+    # Get future events that are not completed or cancelled
     upcoming_events = Event.query.filter(
         Event.start_date >= datetime.utcnow(),
-        Event.status != EventStatus.CANCELLED
+        Event.status.in_([
+            EventStatus.CONFIRMED,
+        ])
     ).order_by(Event.start_date).all()
     
+    # Get participant counts for each event
+    event_stats = {}
+    for event in upcoming_events:
+        participations = event.volunteer_participations
+        event_stats[event.id] = {
+            'volunteer_count': len(participations),
+        }
+    
     return render_template('reports/contact_report.html', 
-                         events=upcoming_events)
+                         events=upcoming_events,
+                         event_stats=event_stats)
 
 @report_bp.route('/reports/contact/<int:event_id>')
 @login_required
 def contact_report_detail(event_id):
     event = Event.query.get_or_404(event_id)
     
-    # Get volunteers for this event with their contact information
-    volunteers = event.volunteers
+    # Get all participants for this event
+    participations = event.volunteer_participations
+    
+    # Group participants by status
+    participants_by_status = {
+        'Registered': [],
+        'Pending': [],
+        'Other': []
+    }
+    
+    for participation in participations:
+        if participation.status == 'Registered':
+            participants_by_status['Registered'].append(participation)
+        elif participation.status == 'Pending':
+            participants_by_status['Pending'].append(participation)
+        else:
+            participants_by_status['Other'].append(participation)
     
     return render_template('reports/contact_report_detail.html',
                          event=event,
-                         volunteers=volunteers)
+                         participants_by_status=participants_by_status)
