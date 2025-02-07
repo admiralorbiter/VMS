@@ -226,6 +226,65 @@
     </div>
     {% endif %}
 
+    <!-- Sign Ups Card - Only show if event is not completed -->
+    {% if event.status != 'COMPLETED' %}
+    <div class="event-card">
+        <div class="card-header">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <h2>Sign Ups</h2>
+        </div>
+        <div class="card-content">
+            {% if event.volunteer_participations %}
+                <div class="signups-grid">
+                    {% for participation in event.volunteer_participations %}
+                    <div class="signup-card">
+                        <div class="signup-info">
+                            <div class="signup-header">
+                                <span class="signup-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                <span class="signup-status {{ participation.status|lower }}">{{ participation.status }}</span>
+                            </div>
+                            <div class="signup-details">
+                                {% if participation.title %}
+                                <div class="detail-item">
+                                    <i class="fa-solid fa-briefcase"></i>
+                                    <span>{{ participation.title }}</span>
+                                </div>
+                                {% endif %}
+                                {% if participation.email %}
+                                <div class="detail-item">
+                                    <i class="fa-solid fa-envelope"></i>
+                                    <span>{{ participation.email }}</span>
+                                </div>
+                                {% endif %}
+                                {% if participation.age_group %}
+                                <div class="detail-item">
+                                    <i class="fa-solid fa-users"></i>
+                                    <span>{{ participation.age_group }}</span>
+                                </div>
+                                {% endif %}
+                                {% if participation.contact %}
+                                <div class="detail-item">
+                                    <i class="fa-solid fa-phone"></i>
+                                    <span>{{ participation.contact }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="signup-actions">
+                            <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-signups">No sign ups for this event yet.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Volunteers Card -->
     <div class="event-card">
         <div class="card-header">

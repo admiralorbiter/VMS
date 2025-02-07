@@ -647,7 +647,22 @@ def import_events_from_salesforce():
 
         # Second query: Get participants
         participants_query = """
-        SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c
+        SELECT 
+            Id,
+            Name,
+            Contact__c,
+            Session__c,
+            Status__c,
+            Delivery_Hours__c,
+            Age_Group__c,
+            Email__c,
+            Title__c,
+            Session__r.Name,
+            Session__r.Session_Type__c,
+            Session__r.Format__c,
+            Session__r.Start_Date_and_Time__c,
+            Session__r.End_Date_and_Time__c,
+            Session__r.Session_Status__c
         FROM Session_Participant__c
         WHERE Participant_Type__c = 'Volunteer'
         """

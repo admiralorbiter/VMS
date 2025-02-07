@@ -217,9 +217,16 @@ class EventParticipation(db.Model):
     id = db.Column(Integer, primary_key=True)
     volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
     event_id = db.Column(Integer, ForeignKey('event.id'), nullable=False)
-    status = db.Column(String(20), nullable=False)  # For storing Status__c values like 'Attended', 'No-Show', etc.
-    delivery_hours = db.Column(Float, nullable=True)  # For storing Delivery_Hours__c
-    salesforce_id = db.Column(String(18), unique=True)  # For storing the original Id from Salesforce
-
+    
+    # Fields from Salesforce Session_Participant__c
+    status = db.Column(String(20), nullable=False)
+    delivery_hours = db.Column(Float, nullable=True)
+    salesforce_id = db.Column(String(18), unique=True)
+    age_group = db.Column(String(50), nullable=True)
+    email = db.Column(String(255), nullable=True)
+    title = db.Column(String(100), nullable=True)
+    participant_type = db.Column(String(50), default='Volunteer')
+    contact = db.Column(String(255), nullable=True)
+    
     # Relationships
     event = relationship('Event', backref='volunteer_participations')

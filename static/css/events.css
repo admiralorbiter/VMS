@@ -306,15 +306,11 @@ td:nth-child(6) {
 .edit-btn {
     background-color: var(--ucla-blue);
     color: var(--mint-green);
-    border: none;
-    box-shadow: 0 3px 0 var(--delft-blue);
 }
 
 .back-btn {
     background-color: var(--non-photo-blue);
     color: var(--delft-blue);
-    border: none;
-    box-shadow: 0 3px 0 var(--ucla-blue);
 }
 
 .edit-btn:hover, .back-btn:hover {
@@ -1309,4 +1305,89 @@ th.sortable i {
     background-color: #c13136;
     transform: translateY(1px);
     box-shadow: 0 1px 0 #b53035;
+}
+
+/* Sign Ups Styles */
+.signups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.signup-card {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.signup-info {
+    flex: 1;
+}
+
+.signup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.signup-name {
+    font-weight: 600;
+    color: #24292e;
+}
+
+.signup-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.signup-status.registered {
+    background-color: #dcffe4;
+    color: #1a7f37;
+}
+
+.signup-status.pending {
+    background-color: #fff8c5;
+    color: #9a6700;
+}
+
+.signup-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #57606a;
+    font-size: 0.875rem;
+}
+
+.detail-item i {
+    width: 16px;
+    color: #57606a;
+}
+
+.signup-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e1e4e8;
+}
+
+.no-signups {
+    color: #57606a;
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
 }
