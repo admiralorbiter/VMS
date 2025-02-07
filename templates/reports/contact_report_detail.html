@@ -1,111 +1,153 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/contact_report.css') }}">
+{% endblock %}
+
 {% block title %}Event Contact Details{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="page-header mb-0">{{ event.title }}</h1>
-        <a href="{{ url_for('report.contact_report') }}" class="btn btn-outline-secondary">
+        <h1 class="mb-0">{{ event.title }}</h1>
+        <a href="{{ url_for('report.contact_report') }}" class="back-button">
             <i class="fa-solid fa-arrow-left"></i> Back to Events
         </a>
     </div>
     
-    <div class="event-details card mb-4">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <p class="mb-2"><i class="fa-solid fa-calendar"></i> <strong>Date:</strong></p>
-                    <p>{{ event.start_date.strftime('%Y-%m-%d %H:%M') }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p class="mb-2"><i class="fa-solid fa-location-dot"></i> <strong>Location:</strong></p>
-                    <p>{{ event.location or 'Not set' }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p class="mb-2"><i class="fa-solid fa-users"></i> <strong>Total Sign Ups:</strong></p>
-                    <p>{{ participants_by_status['Registered']|length + participants_by_status['Pending']|length + participants_by_status['Other']|length }}</p>
-                </div>
+    <div class="event-info">
+        <div class="row">
+            <div class="col-md-4">
+                <p class="mb-2"><i class="fa-solid fa-calendar"></i> <strong>Date:</strong></p>
+                <p class="mb-0">{{ event.start_date.strftime('%d-%m-%Y %H:%M') }}</p>
+            </div>
+            <div class="col-md-4">
+                <p class="mb-2"><i class="fa-solid fa-location-dot"></i> <strong>Location:</strong></p>
+                <p class="mb-0">{{ event.location or 'Not set' }}</p>
+            </div>
+            <div class="col-md-4">
+                <p class="mb-2"><i class="fa-solid fa-users"></i> <strong>Total Sign Ups:</strong></p>
+                <p class="mb-0">{{ participants_by_status['Registered']|length + participants_by_status['Pending']|length + participants_by_status['Other']|length }}</p>
             </div>
         </div>
     </div>
 
     {% for status, participants in participants_by_status.items() %}
     {% if participants %}
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h3 class="mb-0">
-                {% if status == 'Registered' %}
-                <i class="fa-solid fa-check text-success"></i>
-                {% elif status == 'Pending' %}
-                <i class="fa-solid fa-clock text-warning"></i>
-                {% else %}
-                <i class="fa-solid fa-question text-secondary"></i>
-                {% endif %}
-                {{ status }} Participants ({{ participants|length }})
-            </h3>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Title</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Age Group</th>
-                            <th>Organization</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for participant in participants %}
-                        {% set volunteer = participant.volunteer %}
-                        <tr>
-                            <td>
-                                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="text-decoration-none">
-                                    {{ volunteer.first_name }} {{ volunteer.last_name }}
-                                </a>
-                            </td>
-                            <td>
-                                {% if participant.title %}
-                                    {{ participant.title }}
-                                {% else %}
-                                    {{ volunteer.title or '' }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set email = volunteer.primary_email %}
-                                {% if email %}
-                                    <a href="mailto:{{ email }}">{{ email }}</a>
-                                {% else %}
-                                    {{ participant.email or '' }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {# Get primary phone if it exists #}
-                                {% set primary_phone = none %}
-                                {% for phone in volunteer.phones if phone.primary %}
-                                    {% set primary_phone = phone.number %}
-                                {% endfor %}
-                                {{ primary_phone or participant.contact or '' }}
-                            </td>
-                            <td>
-                                {% if participant.age_group %}
-                                    {{ participant.age_group }}
-                                {% else %}
-                                    {{ volunteer.age_group.value if volunteer.age_group else '' }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if volunteer.organizations %}
-                                    {{ volunteer.organizations[0].name }}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="participant-section">
+        <div class="card">
+            <div class="card-header">
+                <h3>
+                    <i class="status-icon fa-solid 
+                        {% if status == 'Registered' %}
+                        fa-check registered
+                        {% elif status == 'Pending' %}
+                        fa-clock pending
+                        {% else %}
+                        fa-question other
+                        {% endif %}">
+                    </i>
+                    {{ status }} Participants ({{ participants|length }})
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id, 
+                                                      sort='name', order='desc' if sort == 'name' and order == 'asc' else 'asc') }}"
+                                       class="text-decoration-none text-dark d-flex align-items-center">
+                                        Name
+                                        {% if sort == 'name' %}
+                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
+                                                      sort='title', order='desc' if sort == 'title' and order == 'asc' else 'asc') }}"
+                                       class="text-decoration-none text-dark d-flex align-items-center">
+                                        Title
+                                        {% if sort == 'title' %}
+                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
+                                                      sort='email', order='desc' if sort == 'email' and order == 'asc' else 'asc') }}"
+                                       class="text-decoration-none text-dark d-flex align-items-center">
+                                        Email
+                                        {% if sort == 'email' %}
+                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th>Phone</th>
+                                <th>
+                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
+                                                      sort='organization', order='desc' if sort == 'organization' and order == 'asc' else 'asc') }}"
+                                       class="text-decoration-none text-dark d-flex align-items-center">
+                                        Organization
+                                        {% if sort == 'organization' %}
+                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for participant in participants %}
+                            {% set volunteer = participant.volunteer %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">
+                                        {{ volunteer.first_name }} {{ volunteer.last_name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if participant.title %}
+                                        {{ participant.title }}
+                                    {% else %}
+                                        {{ volunteer.title or '' }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set email = volunteer.primary_email %}
+                                    {% if email %}
+                                        <a href="mailto:{{ email }}">{{ email }}</a>
+                                    {% else %}
+                                        {{ participant.email or '' }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set phone = volunteer.primary_phone %}
+                                    {% if phone %}
+                                        {{ phone }}
+                                    {% else %}
+                                        {{ participant.contact or '' }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if volunteer.organizations %}
+                                        {{ volunteer.organizations[0].name }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

@@ -179,6 +179,17 @@ class Contact(db.Model):
         """Returns the primary email object for this contact, or None if not found."""
         return self.emails.filter_by(primary=True).first()
 
+    @property
+    def primary_phone(self):
+        """Returns the primary phone number for this contact, or None if not found."""
+        primary = self.phones.filter_by(primary=True).first()
+        return primary.number if primary else None
+
+    @property
+    def primary_phone_object(self):
+        """Returns the primary phone object for this contact, or None if not found."""
+        return self.phones.filter_by(primary=True).first()
+
 # Base Contact Info Models
 class Phone(db.Model):
     __tablename__ = 'phone'

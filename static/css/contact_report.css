@@ -1,0 +1,232 @@
+/* Reports specific styling extending style.css */
+
+/* Event Contact Report List */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.event-contact-list {
+    margin-top: 2rem;
+}
+
+.event-contact-list .table {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+}
+
+.event-contact-list .table th {
+    background-color: var(--delft-blue);
+    color: white;
+    border: none;
+}
+
+.event-contact-list .btn-view {
+    display: inline-block;
+    background-color: #5c87b2;
+    color: #ffffff !important;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none !important;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.event-contact-list .btn-view:hover {
+    background-color: #4a6d8c;
+    color: #ffffff !important;
+}
+
+.event-contact-list .btn-view i {
+    margin-right: 6px;
+}
+
+/* Table Styles */
+.table {
+    width: 100%;
+    margin-bottom: 1rem;
+    background-color: white;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 600;
+    padding: 12px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.table tbody td {
+    padding: 12px;
+    vertical-align: middle;
+    border-top: 1px solid #dee2e6;
+    color: #212529;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Links in tables */
+.table a {
+    color: var(--ucla-blue);
+    text-decoration: none;
+}
+
+.table a:hover {
+    text-decoration: underline;
+}
+
+/* Event Info */
+.event-info {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.event-info i {
+    color: var(--ucla-blue);
+    width: 20px;
+    margin-right: 8px;
+}
+
+.event-info p {
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+/* Participant Section */
+.participant-section {
+    margin-bottom: 2rem;
+}
+
+.participant-section .card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.participant-section .card-header {
+    background-color: white;
+    border-bottom: 2px solid var(--non-photo-blue);
+    padding: 1rem 1.5rem;
+}
+
+.participant-section .card-header h3 {
+    color: var(--delft-blue);
+    font-size: 1.1rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Status Icons */
+.status-icon {
+    margin-right: 0.75rem;
+    font-size: 1rem;
+}
+
+.status-icon.registered {
+    color: #28a745;
+}
+
+.status-icon.pending {
+    color: #ffc107;
+}
+
+.status-icon.other {
+    color: #6c757d;
+}
+
+/* Back Button */
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    color: var(--delft-blue);
+    text-decoration: none;
+    padding: 8px 16px;
+    border: 1px solid var(--delft-blue);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.back-button i {
+    margin-right: 8px;
+}
+
+.back-button:hover {
+    background-color: var(--delft-blue);
+    color: white;
+    text-decoration: none;
+}
+
+/* Search Styles */
+.input-group {
+    max-width: 500px;
+}
+
+.input-group .form-control {
+    border-left: none;
+}
+
+.input-group-text {
+    background-color: white;
+    border-right: none;
+}
+
+.input-group .btn {
+    margin-left: -1px;
+}
+
+/* Sorting Styles */
+.table th a {
+    color: #495057;
+    font-weight: 600;
+}
+
+.table th a:hover {
+    color: var(--ucla-blue);
+}
+
+.table th a i {
+    font-size: 0.875rem;
+}
+
+.table th a .fa-sort {
+    opacity: 0.3;
+}
+
+.table th a:hover .fa-sort {
+    opacity: 0.7;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .event-info .row > div {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Page title */
+h1 {
+    color: var(--delft-blue);
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+}
