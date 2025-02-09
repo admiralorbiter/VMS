@@ -11,6 +11,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
 from models.district_model import District
 from models.upcoming_events import UpcomingEvent
+from models.user import User
 import json
 
 report_bp = Blueprint('report', __name__)
@@ -836,9 +837,12 @@ def contact_report_detail(event_id):
                 key=lambda p: p.volunteer.organizations[0].name if p.volunteer.organizations else '',
                 reverse=(order == 'desc')
             )
+    # Add these lines to provide necessary data for emergency features
+    users = User.query.all()  # Or filter to only relevant users
     
     return render_template('reports/contact_report_detail.html',
                          event=event,
                          participants_by_status=participants_by_status,
                          sort=sort,
-                         order=order)
+                         order=order,
+                         users=users)

@@ -98,14 +98,16 @@ class EventFormat(str, Enum):
     VIRTUAL = 'virtual'
 
 class EventStatus(str, Enum):
-    COMPLETED = 'Completed'
-    CONFIRMED = 'Confirmed'
-    CANCELLED = 'Cancelled'
-    REQUESTED = 'Requested'
     DRAFT = 'Draft'
     PUBLISHED = 'Published'
+    CANCELLED = 'Cancelled'
+    COMPLETED = 'Completed'
+    EMERGENCY_CANCELLATION = 'Emergency Cancellation'
+    REQUESTED = 'Requested'
+    CONFIRMED = 'Confirmed'
 
 class Event(db.Model):
+    __tablename__ = 'event'
 
     id = db.Column(db.Integer, primary_key=True)
     salesforce_id = db.Column(String(18), unique=True, nullable=True)
@@ -138,6 +140,12 @@ class Event(db.Model):
     registration_link = db.Column(db.String(1300))  # Registration_Link__c
     scheduled_participants_count = db.Column(db.Integer, default=0)  # Scheduled_Participants_Count__c
     total_requested_volunteer_jobs = db.Column(db.Integer, default=0)  # Total_Requested_Volunteer_Jobs__c
+    
+    # Emergency cancellation fields
+    emergency_status = db.Column(db.Boolean, default=False)
+    emergency_declared_at = db.Column(db.DateTime, nullable=True)
+    emergency_declared_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    emergency_declared_by = db.relationship('User', foreign_keys=[emergency_declared_by_id])
     
     # Relationships
     volunteers = db.relationship('Volunteer', 

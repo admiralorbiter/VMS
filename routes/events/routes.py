@@ -1,12 +1,13 @@
 import csv
 import os
 from flask import Blueprint, app, jsonify, request, render_template, flash, redirect, url_for, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 from config import Config
 from models import db
 from models.district_model import District
 from models.event import Event, EventType, EventStatus, EventFormat
 from models.volunteer import EventParticipation, Skill, Volunteer
+from models.emergency_contact import EmergencyContactAssignment
 from datetime import datetime, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
@@ -707,3 +708,75 @@ def import_events_from_salesforce():
         db.session.rollback()
         print(f"Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@events_bp.route('/emergency_cancel/<int:event_id>', methods=['POST'])
+@login_required
+def emergency_cancel(event_id):
+    event = Event.query.get_or_404(event_id)
+    event.status = EventStatus.EMERGENCY_CANCELLATION
+    event.emergency_status = True
+    event.emergency_declared_at = datetime.utcnow()
+    event.emergency_declared_by_id = current_user.id
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@events_bp.route('/assign_emergency_contact', methods=['POST'])
+@login_required
+def assign_emergency_contact():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No JSON data received'}), 400
+            
+        required_fields = ['event_id', 'user_id', 'contact_method']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'status': 'error', 'message': f'Missing required field: {field}'}), 400
+        
+        # Check if event exists
+        event = Event.query.get_or_404(data['event_id'])
+        
+        # Check for existing assignment
+        existing = EmergencyContactAssignment.query.filter_by(
+            event_id=data['event_id'],
+            volunteer_id=data['user_id']
+        ).first()
+        
+        if existing:
+            # Update existing assignment
+            existing.assigned_user_id = current_user.id
+            existing.contact_method = data['contact_method']
+            existing.is_completed = False
+            existing.completed_at = None
+            db.session.commit()
+        else:
+            # Create new assignment
+            assignment = EmergencyContactAssignment(
+                event_id=data['event_id'],
+                assigned_user_id=current_user.id,
+                volunteer_id=data['user_id'],
+                contact_method=data['contact_method']
+            )
+            db.session.add(assignment)
+            db.session.commit()
+        
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in assign_emergency_contact: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@events_bp.route('/complete_emergency_contact/<int:assignment_id>', methods=['POST'])
+@login_required
+def complete_emergency_contact(assignment_id):
+    try:
+        assignment = EmergencyContactAssignment.query.get_or_404(assignment_id)
+        assignment.is_completed = True
+        assignment.completed_at = datetime.utcnow()
+        assignment.notes = request.json.get('notes', '')
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in complete_emergency_contact: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500

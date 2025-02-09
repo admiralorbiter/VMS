@@ -1,10 +1,28 @@
 /* Reports specific styling extending style.css */
 
+/* Override main container max-width */
+main {
+    max-width: none !important;
+    margin: 0 20px;
+    padding: 20px;
+}
+
 /* Event Contact Report List */
 .container {
-    max-width: 1200px;
+    max-width: none !important;
     margin: 0 auto;
     padding: 20px;
+}
+
+/* Table container styles */
+.table-responsive {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.participant-section .card {
+    margin: 20px 0;
 }
 
 .event-contact-list {

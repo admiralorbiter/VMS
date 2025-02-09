@@ -2,6 +2,199 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/contact_report.css') }}">
+<style>
+    .emergency-banner {
+        margin: 20px 0;
+        padding: 10px 20px;
+        border-radius: 4px;
+    }
+    .emergency-active {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+    }
+    .contact-status {
+        font-size: 0.9em;
+        padding: 0.25em 0.6em;
+        border-radius: 3px;
+        margin-left: 8px;
+    }
+    .contact-pending {
+        background-color: #ffc107;
+        color: #000;
+    }
+    .contact-completed {
+        background-color: #28a745;
+        color: #fff;
+    }
+    .contact-method-select {
+        width: auto;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    .emergency-section {
+        margin: 20px 0;
+        padding: 20px;
+        border: 2px solid #dc3545;
+        border-radius: 8px;
+    }
+    .emergency-contacts {
+        margin-top: 20px;
+    }
+    .contact-assignment {
+        background: #f8f9fa;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+    }
+    .contact-assignment.completed {
+        background: #d4edda;
+    }
+    .emergency-contact-cell {
+        min-width: 300px;
+    }
+    .contact-info {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+    }
+    .contact-details {
+        margin-bottom: 10px;
+    }
+    .contact-person {
+        margin-bottom: 5px;
+    }
+    .contact-method {
+        color: #666;
+        font-size: 0.9em;
+    }
+    .contact-actions {
+        text-align: right;
+    }
+    .contact-status.completed {
+        color: #28a745;
+        font-weight: 500;
+    }
+    .contact-notes {
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 5px;
+        font-style: italic;
+    }
+    .contact-assignment-form {
+        background: #fff3cd;
+        padding: 10px;
+        border-radius: 6px;
+    }
+    .contact-method-selection {
+        margin: 10px 0;
+    }
+    .form-check-inline {
+        margin-right: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function declareEmergency(eventId) {
+    if (!confirm('Are you sure you want to declare an emergency cancellation? This will initiate the emergency contact process.')) {
+        return;
+    }
+    
+    fetch(`{{ url_for('events.emergency_cancel', event_id=0) }}`.replace('0', eventId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert('Error declaring emergency: ' + error);
+    });
+}
+
+function assignContact(eventId, userId) {
+    console.log('assignContact called with:', eventId, userId);
+    const radioSelector = `input[name="contact-method-${userId}"]:checked`;
+    const selectedRadio = document.querySelector(radioSelector);
+    console.log('Radio selector:', radioSelector);
+    console.log('Selected radio:', selectedRadio);
+    
+    if (!selectedRadio) {
+        alert('Please select a contact method');
+        return;
+    }
+    
+    const selectedMethod = selectedRadio.value;
+    console.log('Selected method:', selectedMethod);
+    
+    const requestData = {
+        event_id: parseInt(eventId),
+        user_id: parseInt(userId),
+        contact_method: selectedMethod
+    };
+    console.log('Sending request with data:', requestData);
+    
+    fetch('{{ url_for('events.assign_emergency_contact') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.status === 'success') {
+            // Add a small delay before reload to ensure console logs are visible
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error assigning contact: ' + error);
+    });
+}
+
+function markContactComplete(assignmentId) {
+    const notes = prompt('Enter any notes about the contact:');
+    if (notes === null) return;
+    
+    fetch(`{{ url_for('events.complete_emergency_contact', assignment_id=0) }}`.replace('0', assignmentId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes: notes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert('Error marking contact as complete: ' + error);
+    });
+}
+</script>
 {% endblock %}
 
 {% block title %}Event Contact Details{% endblock %}
@@ -14,7 +207,24 @@
             <i class="fa-solid fa-arrow-left"></i> Back to Events
         </a>
     </div>
-    
+
+    {% if current_user.has_permission_level(SecurityLevel.SUPERVISOR) %}
+        {% if not event.emergency_status %}
+        <div class="emergency-banner alert-danger">
+            <button class="btn btn-danger" onclick="declareEmergency({{ event.id }})">
+                <i class="fa-solid fa-exclamation-circle"></i> Declare Emergency Cancellation
+            </button>
+            <small class="ms-3 text-muted">Use only in case of emergency (e.g., snow storm)</small>
+        </div>
+        {% else %}
+        <div class="emergency-banner emergency-active">
+            <i class="fa-solid fa-exclamation-circle"></i> 
+            Emergency Status Active - Declared by {{ event.emergency_declared_by.username }} 
+            at {{ event.emergency_declared_at.strftime('%Y-%m-%d %H:%M') }}
+        </div>
+        {% endif %}
+    {% endif %}
+
     <div class="event-info">
         <div class="row">
             <div class="col-md-4">
@@ -37,91 +247,29 @@
     <div class="participant-section">
         <div class="card">
             <div class="card-header">
-                <h3>
-                    <i class="status-icon fa-solid 
-                        {% if status == 'Registered' %}
-                        fa-check registered
-                        {% elif status == 'Pending' %}
-                        fa-clock pending
-                        {% else %}
-                        fa-question other
-                        {% endif %}">
-                    </i>
-                    {{ status }} Participants ({{ participants|length }})
-                </h3>
+                <h3>{{ status }} Participants ({{ participants|length }})</h3>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>
-                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id, 
-                                                      sort='name', order='desc' if sort == 'name' and order == 'asc' else 'asc') }}"
-                                       class="text-decoration-none text-dark d-flex align-items-center">
-                                        Name
-                                        {% if sort == 'name' %}
-                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
-                                        {% else %}
-                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
-                                        {% endif %}
-                                    </a>
-                                </th>
-                                <th>
-                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
-                                                      sort='title', order='desc' if sort == 'title' and order == 'asc' else 'asc') }}"
-                                       class="text-decoration-none text-dark d-flex align-items-center">
-                                        Title
-                                        {% if sort == 'title' %}
-                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
-                                        {% else %}
-                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
-                                        {% endif %}
-                                    </a>
-                                </th>
-                                <th>
-                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
-                                                      sort='email', order='desc' if sort == 'email' and order == 'asc' else 'asc') }}"
-                                       class="text-decoration-none text-dark d-flex align-items-center">
-                                        Email
-                                        {% if sort == 'email' %}
-                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
-                                        {% else %}
-                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
-                                        {% endif %}
-                                    </a>
-                                </th>
+                                <th>Name</th>
+                                <th>Title</th>
+                                <th>Email</th>
                                 <th>Phone</th>
-                                <th>
-                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
-                                                      sort='organization', order='desc' if sort == 'organization' and order == 'asc' else 'asc') }}"
-                                       class="text-decoration-none text-dark d-flex align-items-center">
-                                        Organization
-                                        {% if sort == 'organization' %}
-                                            <i class="fa-solid fa-sort-{{ 'down' if order == 'asc' else 'up' }} ms-2"></i>
-                                        {% else %}
-                                            <i class="fa-solid fa-sort ms-2 text-muted"></i>
-                                        {% endif %}
-                                    </a>
-                                </th>
+                                <th>Organization</th>
+                                {% if event.emergency_status %}
+                                <th>Emergency Contact Status</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for participant in participants %}
                             {% set volunteer = participant.volunteer %}
                             <tr>
-                                <td>
-                                    <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">
-                                        {{ volunteer.first_name }} {{ volunteer.last_name }}
-                                    </a>
-                                </td>
-                                <td>
-                                    {% if participant.title %}
-                                        {{ participant.title }}
-                                    {% else %}
-                                        {{ volunteer.title or '' }}
-                                    {% endif %}
-                                </td>
+                                <td>{{ volunteer.first_name }} {{ volunteer.last_name }}</td>
+                                <td>{{ participant.title or volunteer.title }}</td>
                                 <td>
                                     {% set email = volunteer.primary_email %}
                                     {% if email %}
@@ -138,11 +286,90 @@
                                         {{ participant.contact or '' }}
                                     {% endif %}
                                 </td>
-                                <td>
-                                    {% if volunteer.organizations %}
-                                        {{ volunteer.organizations[0].name }}
+                                <td>{{ volunteer.organizations[0].name if volunteer.organizations else '' }}</td>
+                                {% if event.emergency_status %}
+                                <td class="emergency-contact-cell">
+                                    {% set assignment = volunteer.emergency_assignment %}
+                                    {% if assignment %}
+                                        <div class="contact-info">
+                                            <div class="contact-details">
+                                                <div class="contact-person">
+                                                    <strong>Contact:</strong> {{ volunteer.first_name }} {{ volunteer.last_name }}
+                                                </div>
+                                                <div class="contact-method">
+                                                    <strong>Via:</strong> 
+                                                    {% if assignment.contact_method == 'email' %}
+                                                        <i class="fa-solid fa-envelope"></i> {{ volunteer.email }}
+                                                    {% elif assignment.contact_method == 'phone' %}
+                                                        <i class="fa-solid fa-phone"></i> {{ volunteer.phone }}
+                                                    {% else %}
+                                                        <i class="fa-solid fa-envelope"></i> {{ volunteer.email }}<br>
+                                                        <i class="fa-solid fa-phone"></i> {{ volunteer.phone }}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            {% if not assignment.is_completed %}
+                                            <div class="contact-actions">
+                                                <button class="btn btn-outline-success btn-sm" 
+                                                        onclick="markContactComplete({{ assignment.id }})">
+                                                    <i class="fa-solid fa-check"></i> Confirm Contact Made
+                                                </button>
+                                            </div>
+                                            {% else %}
+                                            <div class="contact-status completed">
+                                                <i class="fa-solid fa-check-circle"></i> 
+                                                Contacted at {{ assignment.completed_at.strftime('%H:%M') }}
+                                                {% if assignment.notes %}
+                                                <div class="contact-notes">
+                                                    <i class="fa-solid fa-comment"></i> {{ assignment.notes }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <div class="contact-assignment-form">
+                                            <div class="contact-person">
+                                                Will contact: {{ volunteer.first_name }} {{ volunteer.last_name }}
+                                            </div>
+                                            <div class="contact-method-selection">
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="contact-method-{{ volunteer.id }}" 
+                                                           id="email-{{ volunteer.id }}" 
+                                                           value="email" checked>
+                                                    <label class="form-check-label" for="email-{{ volunteer.id }}">
+                                                        <i class="fa-solid fa-envelope"></i> Email
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="contact-method-{{ volunteer.id }}" 
+                                                           id="phone-{{ volunteer.id }}" 
+                                                           value="phone">
+                                                    <label class="form-check-label" for="phone-{{ volunteer.id }}">
+                                                        <i class="fa-solid fa-phone"></i> Phone
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="contact-method-{{ volunteer.id }}" 
+                                                           id="both-{{ volunteer.id }}" 
+                                                           value="both">
+                                                    <label class="form-check-label" for="both-{{ volunteer.id }}">
+                                                        <i class="fa-solid fa-envelope"></i>+<i class="fa-solid fa-phone"></i> Both
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm mt-2" 
+                                                    onclick="assignContact({{ event.id }}, {{ volunteer.id }})">
+                                                <i class="fa-solid fa-user-plus"></i> Assign Me to Contact
+                                            </button>
+                                        </div>
                                     {% endif %}
                                 </td>
+                                {% endif %}
                             </tr>
                             {% endfor %}
                         </tbody>
