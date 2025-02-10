@@ -14,6 +14,7 @@ def copy_users():
     Ensures timestamps are in UTC format.
     """
     # Connect to both old and new databases
+    
     old_conn = sqlite3.connect(OLD_DB_PATH)
     new_conn = sqlite3.connect(NEW_DB_PATH)
 
