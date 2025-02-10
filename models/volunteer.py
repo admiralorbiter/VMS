@@ -214,10 +214,11 @@ class Engagement(db.Model):
 class EventParticipation(db.Model):
     __tablename__ = 'event_participation'
     
-    # Add indexes for frequently queried columns
+    # Add composite index for common queries
     __table_args__ = (
         db.Index('idx_event_participation_status', 'status'),
         db.Index('idx_event_participation_volunteer_event', 'volunteer_id', 'event_id'),
+        db.Index('idx_event_participation_sorting', 'event_id', 'status', 'volunteer_id')
     )
     
     id = db.Column(Integer, primary_key=True)

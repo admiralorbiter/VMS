@@ -264,45 +264,30 @@ function markContactComplete(assignmentId) {
                         </thead>
                         <tbody>
                             {% for participant in participants %}
-                            {% set volunteer = participant.volunteer %}
                             <tr>
-                                <td>{{ volunteer.first_name }} {{ volunteer.last_name }}</td>
-                                <td>{{ participant.title or volunteer.title }}</td>
-                                <td>
-                                    {% set email = volunteer.primary_email %}
-                                    {% if email %}
-                                        <a href="mailto:{{ email }}">{{ email }}</a>
-                                    {% else %}
-                                        {{ participant.email or '' }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% set phone = volunteer.primary_phone %}
-                                    {% if phone %}
-                                        {{ phone }}
-                                    {% else %}
-                                        {{ participant.contact or '' }}
-                                    {% endif %}
-                                </td>
-                                <td>{{ volunteer.organizations[0].name if volunteer.organizations else '' }}</td>
+                                <td>{{ participant.volunteer.first_name }} {{ participant.volunteer.last_name }}</td>
+                                <td>{{ participant.volunteer.title }}</td>
+                                <td>{{ participant.volunteer.email }}</td>
+                                <td>{{ participant.volunteer.phone }}</td>
+                                <td>{{ participant.volunteer.organization }}</td>
                                 {% if event.emergency_status %}
                                 <td class="emergency-contact-cell">
-                                    {% set assignment = volunteer.emergency_assignment %}
+                                    {% set assignment = participant.volunteer.emergency_assignment %}
                                     {% if assignment %}
                                         <div class="contact-info">
                                             <div class="contact-details">
                                                 <div class="contact-person">
-                                                    <strong>Contact:</strong> {{ volunteer.first_name }} {{ volunteer.last_name }}
+                                                    <strong>Contact:</strong> {{ participant.volunteer.first_name }} {{ participant.volunteer.last_name }}
                                                 </div>
                                                 <div class="contact-method">
                                                     <strong>Via:</strong> 
                                                     {% if assignment.contact_method == 'email' %}
-                                                        <i class="fa-solid fa-envelope"></i> {{ volunteer.email }}
+                                                        <i class="fa-solid fa-envelope"></i> {{ participant.volunteer.email }}
                                                     {% elif assignment.contact_method == 'phone' %}
-                                                        <i class="fa-solid fa-phone"></i> {{ volunteer.phone }}
+                                                        <i class="fa-solid fa-phone"></i> {{ participant.volunteer.phone }}
                                                     {% else %}
-                                                        <i class="fa-solid fa-envelope"></i> {{ volunteer.email }}<br>
-                                                        <i class="fa-solid fa-phone"></i> {{ volunteer.phone }}
+                                                        <i class="fa-solid fa-envelope"></i> {{ participant.volunteer.email }}<br>
+                                                        <i class="fa-solid fa-phone"></i> {{ participant.volunteer.phone }}
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -329,39 +314,39 @@ function markContactComplete(assignmentId) {
                                     {% else %}
                                         <div class="contact-assignment-form">
                                             <div class="contact-person">
-                                                Will contact: {{ volunteer.first_name }} {{ volunteer.last_name }}
+                                                Will contact: {{ participant.volunteer.first_name }} {{ participant.volunteer.last_name }}
                                             </div>
                                             <div class="contact-method-selection">
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" 
-                                                           name="contact-method-{{ volunteer.id }}" 
-                                                           id="email-{{ volunteer.id }}" 
+                                                           name="contact-method-{{ participant.volunteer.id }}" 
+                                                           id="email-{{ participant.volunteer.id }}" 
                                                            value="email" checked>
-                                                    <label class="form-check-label" for="email-{{ volunteer.id }}">
+                                                    <label class="form-check-label" for="email-{{ participant.volunteer.id }}">
                                                         <i class="fa-solid fa-envelope"></i> Email
                                                     </label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" 
-                                                           name="contact-method-{{ volunteer.id }}" 
-                                                           id="phone-{{ volunteer.id }}" 
+                                                           name="contact-method-{{ participant.volunteer.id }}" 
+                                                           id="phone-{{ participant.volunteer.id }}" 
                                                            value="phone">
-                                                    <label class="form-check-label" for="phone-{{ volunteer.id }}">
+                                                    <label class="form-check-label" for="phone-{{ participant.volunteer.id }}">
                                                         <i class="fa-solid fa-phone"></i> Phone
                                                     </label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" 
-                                                           name="contact-method-{{ volunteer.id }}" 
-                                                           id="both-{{ volunteer.id }}" 
+                                                           name="contact-method-{{ participant.volunteer.id }}" 
+                                                           id="both-{{ participant.volunteer.id }}" 
                                                            value="both">
-                                                    <label class="form-check-label" for="both-{{ volunteer.id }}">
+                                                    <label class="form-check-label" for="both-{{ participant.volunteer.id }}">
                                                         <i class="fa-solid fa-envelope"></i>+<i class="fa-solid fa-phone"></i> Both
                                                     </label>
                                                 </div>
                                             </div>
                                             <button class="btn btn-primary btn-sm mt-2" 
-                                                    onclick="assignContact({{ event.id }}, {{ volunteer.id }})">
+                                                    onclick="assignContact({{ event.id }}, {{ participant.volunteer.id }})">
                                                 <i class="fa-solid fa-user-plus"></i> Assign Me to Contact
                                             </button>
                                         </div>
