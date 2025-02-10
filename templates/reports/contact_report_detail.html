@@ -208,21 +208,19 @@ function markContactComplete(assignmentId) {
         </a>
     </div>
 
-    {% if current_user.has_permission_level(SecurityLevel.SUPERVISOR) %}
-        {% if not event.emergency_status %}
-        <div class="emergency-banner alert-danger">
-            <button class="btn btn-danger" onclick="declareEmergency({{ event.id }})">
-                <i class="fa-solid fa-exclamation-circle"></i> Declare Emergency Cancellation
-            </button>
-            <small class="ms-3 text-muted">Use only in case of emergency (e.g., snow storm)</small>
-        </div>
-        {% else %}
-        <div class="emergency-banner emergency-active">
-            <i class="fa-solid fa-exclamation-circle"></i> 
-            Emergency Status Active - Declared by {{ event.emergency_declared_by.username }} 
-            at {{ event.emergency_declared_at.strftime('%Y-%m-%d %H:%M') }}
-        </div>
-        {% endif %}
+    {% if not event.emergency_status %}
+    <div class="emergency-banner alert-danger">
+        <button class="btn btn-danger" onclick="declareEmergency({{ event.id }})">
+            <i class="fa-solid fa-exclamation-circle"></i> Declare Emergency Cancellation
+        </button>
+        <small class="ms-3 text-muted">Use only in case of emergency (e.g., snow storm)</small>
+    </div>
+    {% else %}
+    <div class="emergency-banner emergency-active">
+        <i class="fa-solid fa-exclamation-circle"></i> 
+        Emergency Status Active - Declared by {{ event.emergency_declared_by.username }} 
+        at {{ event.emergency_declared_at.strftime('%Y-%m-%d %H:%M') }}
+    </div>
     {% endif %}
 
     <div class="event-info">
