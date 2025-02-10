@@ -790,23 +790,45 @@ def contact_report():
 @report_bp.route('/reports/contact/<int:event_id>')
 @login_required
 def contact_report_detail(event_id):
-    event = Event.query.get_or_404(event_id)
-    
     # Get sort parameters
     sort = request.args.get('sort', 'name')
     order = request.args.get('order', 'asc')
     
-    # Get all participants for this event
-    participations = event.volunteer_participations
+    # Get event with a single query including all needed relationships
+    event = Event.query.options(
+        db.joinedload(Event.volunteer_participations)
+        .joinedload(EventParticipation.volunteer)
+        .joinedload(Volunteer.organizations)
+    ).get_or_404(event_id)
     
-    # Group participants by status
+    # Pre-sort key functions
+    sort_keys = {
+        'name': lambda p: f"{p.volunteer.first_name} {p.volunteer.last_name}",
+        'title': lambda p: p.title or p.volunteer.title or '',
+        'email': lambda p: p.volunteer.primary_email or '',
+        'organization': lambda p: p.volunteer.organizations[0].name if p.volunteer.organizations else ''
+    }
+    
+    # Group and sort participants in a single pass
     participants_by_status = {
         'Registered': [],
         'Pending': [],
         'Other': []
     }
     
-    for participation in participations:
+    # Get sort key function
+    sort_key = sort_keys.get(sort, sort_keys['name'])
+    reverse_order = (order == 'desc')
+    
+    # Single pass through participations for both grouping and sorting
+    sorted_participations = sorted(
+        event.volunteer_participations,
+        key=sort_key,
+        reverse=reverse_order
+    )
+    
+    # Group pre-sorted participants
+    for participation in sorted_participations:
         if participation.status == 'Registered':
             participants_by_status['Registered'].append(participation)
         elif participation.status == 'Pending':
@@ -814,35 +836,8 @@ def contact_report_detail(event_id):
         else:
             participants_by_status['Other'].append(participation)
     
-    # Sort participants in each group
-    for status in participants_by_status:
-        participants = participants_by_status[status]
-        if sort == 'name':
-            participants.sort(
-                key=lambda p: f"{p.volunteer.first_name} {p.volunteer.last_name}",
-                reverse=(order == 'desc')
-            )
-        elif sort == 'title':
-            participants.sort(
-                key=lambda p: p.title or p.volunteer.title or '',
-                reverse=(order == 'desc')
-            )
-        elif sort == 'email':
-            participants.sort(
-                key=lambda p: p.volunteer.primary_email or '',
-                reverse=(order == 'desc')
-            )
-        elif sort == 'organization':
-            participants.sort(
-                key=lambda p: p.volunteer.organizations[0].name if p.volunteer.organizations else '',
-                reverse=(order == 'desc')
-            )
-    # Add these lines to provide necessary data for emergency features
-    users = User.query.all()  # Or filter to only relevant users
-    
     return render_template('reports/contact_report_detail.html',
                          event=event,
                          participants_by_status=participants_by_status,
                          sort=sort,
-                         order=order,
-                         users=users)
+                         order=order)

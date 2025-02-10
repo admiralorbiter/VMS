@@ -213,12 +213,16 @@ class Engagement(db.Model):
 # Event Participation Model
 class EventParticipation(db.Model):
     __tablename__ = 'event_participation'
-
+    
+    # Add indexes for frequently queried columns
+    __table_args__ = (
+        db.Index('idx_event_participation_status', 'status'),
+        db.Index('idx_event_participation_volunteer_event', 'volunteer_id', 'event_id'),
+    )
+    
     id = db.Column(Integer, primary_key=True)
     volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
     event_id = db.Column(Integer, ForeignKey('event.id'), nullable=False)
-    
-    # Fields from Salesforce Session_Participant__c
     status = db.Column(String(20), nullable=False)
     delivery_hours = db.Column(Float, nullable=True)
     salesforce_id = db.Column(String(18), unique=True)
