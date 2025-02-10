@@ -751,10 +751,10 @@ def contact_report():
     sort = request.args.get('sort', 'start_date')
     order = request.args.get('order', 'asc')
 
-    # Base query for future events that are not completed or cancelled
+    # Base query for future events that are confirmed
     query = Event.query.filter(
-        Event.start_date >= datetime.utcnow(),
-        Event.status.in_([EventStatus.CONFIRMED])
+        Event.start_date >= datetime.utcnow(),  # Only future events
+        Event.status == EventStatus.CONFIRMED
     )
     
     # Apply search if provided
