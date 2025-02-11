@@ -81,7 +81,7 @@
                 {% for event in events %}
                 <tr>
                     <td>{{ event.title }}</td>
-                    <td>{{ event.start_date.strftime('%d-%m-%Y %H:%M') }}</td>
+                    <td>{{ event.start_date.strftime('%m-%d | %H:%M') }}</td>
                     <td>{{ event.location or 'Not set' }}</td>
                     <td>{{ event_stats[event.id]['volunteer_count'] }}</td>
                     <td class="text-center">

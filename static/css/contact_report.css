@@ -19,7 +19,7 @@
 
 .event-contact-list .table th {
     background-color: var(--delft-blue);
-    color: white;
+    color: var(--ucla-blue);
     border: none;
 }
 
@@ -45,46 +45,270 @@
     margin-right: 6px;
 }
 
-/* Table Styles */
-.table {
-    width: 100%;
-    margin-bottom: 1rem;
+/* Search Bar Styling */
+.input-group {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--non-photo-blue);
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
+    overflow: hidden;
+}
+
+.input-group-text {
     background-color: white;
+    border: none;
+    border-right: 1px solid var(--non-photo-blue);
+    color: var(--ucla-blue);
+    padding: 0.75rem;
+}
+
+.input-group .form-control {
+    border: none;
+    padding: 0.75rem 1rem;
+    color: var(--delft-blue);
+}
+
+.input-group .form-control::placeholder {
+    color: #8898aa;
+}
+
+.input-group .btn-primary {
+    background-color: var(--ucla-blue);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    color: var(--mint-green);
+    font-weight: 600;
+    box-shadow: 0 3px 0 var(--delft-blue);
+    transition: all 0.2s ease;
+}
+
+.input-group .btn-primary:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+.input-group .btn-outline-secondary {
+    border: none;
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    box-shadow: 0 3px 0 #b53035;
+    transition: all 0.2s ease;
+}
+
+.input-group .btn-outline-secondary:hover {
+    background-color: #b53035;
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #b53035;
+}
+
+/* Table Container */
+.table-responsive {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    padding: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* Table Styling */
+.table {
+    margin-bottom: 0;
     border-collapse: separate;
     border-spacing: 0;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 100%;
 }
 
 .table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    color: #495057;
+    background-color: var(--delft-blue);
+    color: var(--ucla-blue);
     font-weight: 600;
-    padding: 12px;
+    padding: 1.25rem 1rem;
     font-size: 0.9rem;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+    position: relative;
 }
 
-.table tbody td {
-    padding: 12px;
-    vertical-align: middle;
-    border-top: 1px solid #dee2e6;
-    color: #212529;
+.table thead th:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--non-photo-blue);
+    opacity: 0.3;
+}
+
+.table thead th a {
+    color: var(--ucla-blue) !important;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s ease;
+    font-weight: 700;
+}
+
+.table thead th a:hover {
+    color: var(--non-photo-blue) !important;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
 }
 
 .table tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: rgba(158, 216, 219, 0.1);
 }
 
-/* Links in tables */
-.table a {
+.table tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+/* Table Links */
+.table td a {
     color: var(--ucla-blue);
     text-decoration: none;
+    font-weight: 500;
+    position: relative;
+    display: inline-block;
 }
 
-.table a:hover {
+.table td a:hover {
+    color: var(--delft-blue);
+}
+
+.table td a:after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 1px;
+    bottom: -2px;
+    left: 0;
+    background-color: var(--delft-blue);
+    transition: width 0.2s ease;
+}
+
+.table td a:hover:after {
+    width: 100%;
+}
+
+/* Email Links */
+.table td a[href^="mailto:"] {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.table td a[href^="mailto:"]:hover {
+    color: var(--delft-blue);
     text-decoration: underline;
+}
+
+/* Column Widths */
+.table th:nth-child(2) {
+    width: 15%; /* Title column */
+}
+
+.table th:nth-child(3) {
+    width: 35%; /* Email column */
+}
+
+.table th:nth-child(4) {
+    width: 15%; /* Phone column */
+}
+
+/* Date Column */
+td:nth-child(2) {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9rem;
+    color: var(--ucla-blue);
+    white-space: nowrap;
+}
+
+/* Location Column */
+td:nth-child(3) {
+    color: var(--delft-blue);
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Total Sign Ups Column */
+td:nth-child(4) {
+    font-weight: 600;
+    color: var(--ucla-blue);
+    text-align: center;
+}
+
+/* View Button */
+.btn-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green) !important;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none !important;
+    box-shadow: 0 3px 0 var(--delft-blue);
+    transition: all 0.2s ease;
+}
+
+.btn-view:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue) !important;
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--delft-blue);
+}
+
+.btn-view i {
+    font-size: 0.875rem;
+}
+
+/* Sort Icons */
+.fa-sort {
+    margin-left: 0.5rem;
+    opacity: 0.6;
+    color: var(--non-photo-blue);
+}
+
+.fa-sort-up,
+.fa-sort-down {
+    margin-left: 0.5rem;
+    color: var(--non-photo-blue);
+    opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        padding: 0.5rem;
+    }
+    
+    .table thead th,
+    .table tbody td {
+        padding: 0.75rem;
+    }
+    
+    td:nth-child(3) {
+        max-width: 150px;
+    }
+    
+    .input-group {
+        flex-wrap: nowrap;
+    }
 }
 
 /* Event Info */
@@ -154,74 +378,27 @@
 .back-button {
     display: inline-flex;
     align-items: center;
-    color: var(--delft-blue);
+    gap: 0.5rem;
+    color: var(--ucla-blue);
     text-decoration: none;
-    padding: 8px 16px;
-    border: 1px solid var(--delft-blue);
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.back-button i {
-    margin-right: 8px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
 }
 
 .back-button:hover {
-    background-color: var(--delft-blue);
-    color: white;
-    text-decoration: none;
+    color: var(--delft-blue);
+    background-color: rgba(158, 216, 219, 0.1);
 }
 
-/* Search Styles */
-.input-group {
-    max-width: 500px;
-}
-
-.input-group .form-control {
-    border-left: none;
-}
-
-.input-group-text {
-    background-color: white;
-    border-right: none;
-}
-
-.input-group .btn {
-    margin-left: -1px;
-}
-
-/* Sorting Styles */
-.table th a {
-    color: #495057;
-    font-weight: 600;
-}
-
-.table th a:hover {
-    color: var(--ucla-blue);
-}
-
-.table th a i {
+.back-button i {
     font-size: 0.875rem;
+    transition: transform 0.2s ease;
 }
 
-.table th a .fa-sort {
-    opacity: 0.3;
-}
-
-.table th a:hover .fa-sort {
-    opacity: 0.7;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .table-responsive {
-        margin: 0;
-        padding: 0;
-    }
-    
-    .event-info .row > div {
-        margin-bottom: 1rem;
-    }
+.back-button:hover i {
+    transform: translateX(-3px);
 }
 
 /* Page title */
@@ -229,4 +406,55 @@ h1 {
     color: var(--delft-blue);
     margin-bottom: 1.5rem;
     font-size: 2rem;
+}
+
+/* Column Widths for Contact Report Detail */
+.participant-section .table th:nth-child(1) {
+    width: 20%; /* Name column */
+}
+
+.participant-section .table th:nth-child(2) {
+    width: 25%; /* Title column */
+}
+
+.participant-section .table th:nth-child(3) {
+    width: 35%; /* Email column */
+}
+
+.participant-section .table th:nth-child(4) {
+    width: 20%; /* Phone column */
+}
+
+/* Make sure table cells respect the width */
+.participant-section .table td {
+    max-width: 0; /* This helps with text-overflow */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Specific styling for title column to ensure proper wrapping */
+.participant-section .table td:nth-child(2) {
+    min-width: 150px; /* Ensure minimum readability */
+    hyphens: auto;
+}
+
+/* Keep email addresses from breaking in the middle */
+.participant-section .table td:nth-child(3) {
+    word-break: keep-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Keep phone numbers from breaking */
+.participant-section .table td:nth-child(4) {
+    white-space: nowrap;
+}
+
+/* Allow title to wrap if needed on very small screens */
+@media (max-width: 576px) {
+    .participant-section .table td:nth-child(2) {
+        white-space: normal;
+    }
 }
