@@ -800,18 +800,15 @@ def contact_report_detail(event_id):
     
     # Group participants by status
     participants_by_status = {
-        'Registered': [],
-        'Pending': [],
-        'Other': []
+        'Scheduled': [],
+        'Unscheduled': []
     }
     
     for participation in participations:
-        if participation.status == 'Registered':
-            participants_by_status['Registered'].append(participation)
-        elif participation.status == 'Pending':
-            participants_by_status['Pending'].append(participation)
+        if participation.status == 'Scheduled':
+            participants_by_status['Scheduled'].append(participation)
         else:
-            participants_by_status['Other'].append(participation)
+            participants_by_status['Unscheduled'].append(participation)
     
     # Sort participants in each group
     for status in participants_by_status:

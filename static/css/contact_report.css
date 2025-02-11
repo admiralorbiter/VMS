@@ -356,6 +356,65 @@ td:nth-child(4) {
     align-items: center;
 }
 
+/* Participant Sections */
+.participant-section {
+    margin-bottom: 2rem;
+}
+
+.participant-section .card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.participant-section .card-header {
+    background: var(--delft-blue);
+    padding: 1rem 1.5rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.participant-section .card-header h3 {
+    color: var(--mint-green);
+    font-size: 1.25rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Scheduled Section */
+.participant-section .card-header.scheduled {
+    background: var(--ucla-blue);
+    border-bottom: 3px solid var(--delft-blue);
+}
+
+.participant-section .card-header.scheduled .status-icon {
+    color: var(--mint-green);
+}
+
+/* Unscheduled Section */
+.participant-section .unscheduled-section {
+    background-color: #f8f9fa;
+}
+
+.participant-section .card-header.unscheduled {
+    background: var(--poppy);
+    border-bottom: 3px solid #b53035;
+}
+
+.participant-section .card-header.unscheduled .status-icon {
+    color: var(--mint-green);
+}
+
+.participant-section .unscheduled-section .table {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+/* Status Icons */
+.status-icon {
+    font-size: 1.1rem;
+}
+
 /* Status Icons */
 .status-icon {
     margin-right: 0.75rem;
