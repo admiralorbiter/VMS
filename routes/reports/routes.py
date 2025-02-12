@@ -1,17 +1,17 @@
-from flask import Blueprint, render_template, request, flash
+from flask import Blueprint, render_template, request, flash, jsonify
 from flask_login import login_required
 from sqlalchemy import extract
 from models.event import Event, EventType, EventStatus
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from models.event import db
 from models.school_model import School
 from models.teacher import Teacher
+from models.upcoming_events import UpcomingEvent
 from models.volunteer import Volunteer, EventParticipation, Skill
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
 from models.district_model import District
-from models.upcoming_events import UpcomingEvent
+from models.reports import DistrictYearEndReport
+from models import db  # Import db from models instead of creating new instance
 import json
 
 report_bp = Blueprint('report', __name__)
@@ -525,8 +525,40 @@ def organization_thankyou_detail(org_id):
 def district_year_end():
     year = int(request.args.get('year', datetime.now().year))
     
-    districts = District.query.order_by(District.name).all()
+    # Get cached reports for the year
+    cached_reports = DistrictYearEndReport.query.filter_by(year=year).all()
+    district_stats = {report.district.name: report.report_data for report in cached_reports}
+    
+    if not district_stats:
+        # If no cached data exists, generate it
+        district_stats = generate_district_stats(year)
+        cache_district_stats(year, district_stats)
+    
+    return render_template(
+        'reports/district_year_end.html',
+        districts=district_stats,
+        year=year,
+        now=datetime.now(),
+        last_updated=min(report.last_updated for report in cached_reports) if cached_reports else None
+    )
+
+@report_bp.route('/reports/district/year-end/refresh', methods=['POST'])
+@login_required
+def refresh_district_year_end():
+    """Refresh the cached district year-end report data"""
+    year = int(request.args.get('year', datetime.now().year))
+    
+    try:
+        district_stats = generate_district_stats(year)
+        cache_district_stats(year, district_stats)
+        return jsonify({'success': True, 'message': f'Successfully refreshed data for {year}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def generate_district_stats(year):
+    """Generate district statistics"""
     district_stats = {}
+    districts = District.query.order_by(District.name).all()
     
     for district in districts:
         # Get all schools for this district
@@ -536,12 +568,10 @@ def district_year_end():
         # Query events using both relationships and text matching
         events = Event.query.filter(
             db.or_(
-                Event.districts.contains(district),  # Check direct district relationship
-                Event.school.in_([school.id for school in schools]),  # Check school relationship
-                # Check text fields with school names
+                Event.districts.contains(district),
+                Event.school.in_([school.id for school in schools]),
                 *[Event.title.ilike(f"%{school.name}%") for school in schools],
                 *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
-                # Also check district name variations
                 Event.district_partner.ilike(f"%{district.name}%"),
                 Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%"),
                 Event.district_partner.ilike(f"%{district.name.replace(' Public Schools', '')}%")
@@ -549,7 +579,7 @@ def district_year_end():
             extract('year', Event.start_date) == year,
             Event.status == EventStatus.COMPLETED
         ).distinct().all()
-
+        
         # Initialize stats dictionary
         stats = {
             'name': district.name,
@@ -563,26 +593,21 @@ def district_year_end():
             'monthly_breakdown': {},
             'career_clusters': set()
         }
-
+        
+        # Calculate statistics
         for event in events:
-            # Count students
             stats['total_students'] += event.attended_count or 0
-            
-            # Count volunteers and hours
             for participation in event.volunteer_participations:
                 if participation.status == 'Attended':
                     stats['total_volunteers'] += 1
                     stats['total_volunteer_hours'] += participation.delivery_hours or 0
             
-            # Track event types
             event_type = event.type.value if event.type else 'unknown'
             stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
             
-            # Track schools
             if event.school:
                 stats['schools_reached'].add(event.school)
             
-            # Monthly breakdown
             month = event.start_date.strftime('%B %Y')
             if month not in stats['monthly_breakdown']:
                 stats['monthly_breakdown'][month] = {
@@ -594,10 +619,9 @@ def district_year_end():
             stats['monthly_breakdown'][month]['students'] += event.attended_count or 0
             stats['monthly_breakdown'][month]['volunteers'] += len([p for p in event.volunteer_participations if p.status == 'Attended'])
             
-            # Track career clusters
             if event.series:
                 stats['career_clusters'].add(event.series)
-
+        
         # Convert sets to counts
         stats['schools_reached'] = len(stats['schools_reached'])
         stats['career_clusters'] = len(stats['career_clusters'])
@@ -605,12 +629,26 @@ def district_year_end():
         
         district_stats[district.name] = stats
     
-    return render_template(
-        'reports/district_year_end.html',
-        districts=district_stats,
-        year=year,
-        now=datetime.now()
-    )
+    return district_stats
+
+def cache_district_stats(year, district_stats):
+    """Save district statistics to the cache table"""
+    for district_name, stats in district_stats.items():
+        district = District.query.filter_by(name=district_name).first()
+        if district:
+            # Update or create cache entry
+            report = DistrictYearEndReport.query.filter_by(
+                district_id=district.id,
+                year=year
+            ).first() or DistrictYearEndReport(
+                district_id=district.id,
+                year=year
+            )
+            report.report_data = stats
+            report.last_updated = datetime.utcnow()
+            db.session.add(report)
+    
+    db.session.commit()
 
 def update_event_districts(event, district_names):
     """Helper function to update event district relationships"""
