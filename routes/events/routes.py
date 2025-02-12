@@ -42,7 +42,7 @@ def process_event_row(row, success_count, error_count, errors):
         event.location = row.get('Location_Information__c', '')
         event.description = row.get('Description__c', '')
         event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
-        event.participant_count = int(float(row.get('Participant_Count_0__c', 0)) if row.get('Participant_Count_0__c') is not None else 0)
+        event.participant_count = int(float(row.get('Non_Scheduled_Students_Count__c', 0)) if row.get('Non_Scheduled_Students_Count__c') is not None else 0)
         event.last_sync_date = datetime.now()
         event.additional_information = row.get('Additional_Information__c', '')
         
@@ -400,7 +400,7 @@ def import_events():
                 salesforce_query = """
                 SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
                         End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
-                        Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
+                        Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
                         District__c, Legacy_Skill_Covered_for_the_Session__c, 
                         Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c
                 FROM Session__c
@@ -619,7 +619,7 @@ def import_events_from_salesforce():
         events_query = """
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
                 End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
-                Description__c, Cancellation_Reason__c, Participant_Count_0__c, 
+                Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
                 District__c, Legacy_Skill_Covered_for_the_Session__c, 
                 Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
                 Total_Requested_Volunteer_Jobs__c, Available_Slots__c
