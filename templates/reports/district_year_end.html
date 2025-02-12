@@ -9,19 +9,32 @@
 {% block content %}
 <div class="year-end-container">
     <div class="report-header">
-        <h1>District Year-End Report {{ year }}</h1>
+        <h1>District Year-End Report {{ school_year }}</h1>
         <div class="year-filter">
-            <form method="get" action="{{ url_for('report.district_year_end') }}">
-                <select name="year" onchange="this.form.submit()">
-                    {% for y in range(now.year, 2020, -1) %}
-                    <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+            <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
+                <select name="school_year" onchange="updateReport(this)">
+                    {% for y in school_years %}
+                    <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                        {{ y[:2] }}-{{ y[2:] }} School Year
+                    </option>
                     {% endfor %}
                 </select>
             </form>
         </div>
+        {% if last_updated %}
+        <div class="last-updated">
+            Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
+        </div>
+        {% endif %}
     </div>
 
-    <div class="districts-grid">
+    <div id="loadingIndicator" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="districts-grid" id="districtsContainer">
         {% for district_name, stats in districts.items() %}
         <div class="district-card">
             <div class="district-header">
@@ -87,4 +100,42 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+function updateReport(select) {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const districtsContainer = document.getElementById('districtsContainer');
+    
+    loadingIndicator.style.display = 'block';
+    districtsContainer.style.opacity = '0.5';
+    
+    // Submit the form
+    select.form.submit();
+}
+
+// Show loading indicator when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    loadingIndicator.style.display = 'block';
+});
+
+// Hide loading indicator when content is loaded
+window.addEventListener('load', function() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const districtsContainer = document.getElementById('districtsContainer');
+    loadingIndicator.style.display = 'none';
+    districtsContainer.style.opacity = '1';
+});
+</script>
+
+<style>
+#loadingIndicator {
+    text-align: center;
+    padding: 20px;
+}
+
+.districts-grid {
+    transition: opacity 0.3s ease;
+}
+</style>
 {% endblock %} 

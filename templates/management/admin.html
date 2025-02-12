@@ -787,7 +787,15 @@ function refreshDistrictReport() {
     btn.disabled = true;
     status.textContent = 'Refreshing report cache...';
     
-    fetch('/reports/district/year-end/refresh', {
+    // Get current school year
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1; // JavaScript months are 0-based
+    const schoolYear = month < 6 ? 
+        `${(year-1).toString().slice(-2)}${year.toString().slice(-2)}` : 
+        `${year.toString().slice(-2)}${(year+1).toString().slice(-2)}`;
+    
+    fetch(`/reports/district/year-end/refresh?school_year=${schoolYear}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -797,7 +805,7 @@ function refreshDistrictReport() {
     .then(data => {
         if (data.success) {
             status.textContent = 'Successfully refreshed report cache';
-            showToast('Success', 'Report cache has been refreshed', 'success');
+            showToast('Success', `Report cache has been refreshed for ${schoolYear.slice(0,2)}-${schoolYear.slice(2)} school year`, 'success');
         } else {
             throw new Error(data.error || 'Failed to refresh report cache');
         }

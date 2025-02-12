@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, flash, jsonify
 from flask_login import login_required
 from sqlalchemy import extract
 from models.event import Event, EventType, EventStatus
-from datetime import datetime
+from datetime import datetime, timedelta
 from models.school_model import School
 from models.teacher import Teacher
 from models.upcoming_events import UpcomingEvent
@@ -520,24 +520,55 @@ def organization_thankyou_detail(org_id):
         now=datetime.now()
     )
 
+def get_current_school_year():
+    """
+    Returns the current school year in 'YYZZ' format (e.g., '2324' for 2023-24).
+    If before June 1st, returns current academic year.
+    If after June 1st, returns next academic year.
+    """
+    today = datetime.now()
+    if today.month < 6:  # Before June
+        return f"{str(today.year-1)[-2:]}{str(today.year)[-2:]}"
+    return f"{str(today.year)[-2:]}{str(today.year+1)[-2:]}"
+
+def get_school_year_date_range(school_year):
+    """
+    Returns start and end dates for a school year.
+    school_year format: '2324' for 2023-2024 school year
+    """
+    year = int(school_year[:2]) + 2000
+    start_date = datetime(year, 6, 1)  # June 1st of start year
+    end_date = datetime(year + 1, 5, 31)  # May 31st of end year
+    return start_date, end_date
+
 @report_bp.route('/reports/district/year-end')
 @login_required
 def district_year_end():
-    year = int(request.args.get('year', datetime.now().year))
+    # Get school year from query params or default to current
+    school_year = request.args.get('school_year', get_current_school_year())
+    print(f"Requested school year: {school_year}")  # Debug log
     
-    # Get cached reports for the year
-    cached_reports = DistrictYearEndReport.query.filter_by(year=year).all()
+    # Get cached reports for the school year
+    cached_reports = DistrictYearEndReport.query.filter_by(school_year=school_year).all()
+    print(f"Found {len(cached_reports)} cached reports")  # Debug log
+    
     district_stats = {report.district.name: report.report_data for report in cached_reports}
     
     if not district_stats:
-        # If no cached data exists, generate it
-        district_stats = generate_district_stats(year)
-        cache_district_stats(year, district_stats)
+        print("No cached data found, generating new stats")  # Debug log
+        district_stats = generate_district_stats(school_year)
+        cache_district_stats(school_year, district_stats)
+    
+    # Generate list of school years (from 2020-21 to current+1)
+    current_year = int(get_current_school_year()[:2])
+    school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+    school_years.reverse()  # Most recent first
     
     return render_template(
         'reports/district_year_end.html',
         districts=district_stats,
-        year=year,
+        school_year=school_year,
+        school_years=school_years,
         now=datetime.now(),
         last_updated=min(report.last_updated for report in cached_reports) if cached_reports else None
     )
@@ -546,19 +577,23 @@ def district_year_end():
 @login_required
 def refresh_district_year_end():
     """Refresh the cached district year-end report data"""
-    year = int(request.args.get('year', datetime.now().year))
+    school_year = request.args.get('school_year', get_current_school_year())
     
     try:
-        district_stats = generate_district_stats(year)
-        cache_district_stats(year, district_stats)
-        return jsonify({'success': True, 'message': f'Successfully refreshed data for {year}'})
+        district_stats = generate_district_stats(school_year)
+        cache_district_stats(school_year, district_stats)
+        return jsonify({
+            'success': True, 
+            'message': f'Successfully refreshed data for {school_year[:2]}-{school_year[2:]} school year'
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def generate_district_stats(year):
-    """Generate district statistics"""
+def generate_district_stats(school_year):
+    """Generate district statistics for a school year"""
     district_stats = {}
     districts = District.query.order_by(District.name).all()
+    start_date, end_date = get_school_year_date_range(school_year)
     
     for district in districts:
         # Get all schools for this district
@@ -576,7 +611,8 @@ def generate_district_stats(year):
                 Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%"),
                 Event.district_partner.ilike(f"%{district.name.replace(' Public Schools', '')}%")
             ),
-            extract('year', Event.start_date) == year,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
             Event.status == EventStatus.COMPLETED
         ).distinct().all()
         
@@ -631,7 +667,7 @@ def generate_district_stats(year):
     
     return district_stats
 
-def cache_district_stats(year, district_stats):
+def cache_district_stats(school_year, district_stats):
     """Save district statistics to the cache table"""
     for district_name, stats in district_stats.items():
         district = District.query.filter_by(name=district_name).first()
@@ -639,10 +675,10 @@ def cache_district_stats(year, district_stats):
             # Update or create cache entry
             report = DistrictYearEndReport.query.filter_by(
                 district_id=district.id,
-                year=year
+                school_year=school_year  # Changed from year to school_year
             ).first() or DistrictYearEndReport(
                 district_id=district.id,
-                year=year
+                school_year=school_year  # Changed from year to school_year
             )
             report.report_data = stats
             report.last_updated = datetime.utcnow()
