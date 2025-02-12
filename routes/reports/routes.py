@@ -5,6 +5,7 @@ from models.event import Event, EventType, EventStatus
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from models.event import db
+from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer, EventParticipation, Skill
 from models.organization import Organization, VolunteerOrganization
@@ -522,29 +523,32 @@ def organization_thankyou_detail(org_id):
 @report_bp.route('/reports/district/year-end')
 @login_required
 def district_year_end():
-    year = request.args.get('year', datetime.now().year)
-    print(f"Generating report for year: {year}")
+    year = int(request.args.get('year', datetime.now().year))
     
     districts = District.query.order_by(District.name).all()
-    print(f"Found {len(districts)} districts")
-    
     district_stats = {}
     
     for district in districts:
-        print(f"\nProcessing district: {district.name}")
+        # Get all schools for this district
+        schools = School.query.filter_by(district_id=district.id).all()
+        school_names = [school.name for school in schools]
         
-        # Get all events for this district (both relationship and legacy)
-        events = Event.query.join(
-            event_districts
-        ).filter(
-            event_districts.c.district_id == district.id,
-            extract('year', Event.start_date) == year
-        ).union(
-            Event.query.filter(
-                Event.district_partner.ilike(f'%{district.name}%'),
-                extract('year', Event.start_date) == year
-            )
-        ).all()
+        # Query events using both relationships and text matching
+        events = Event.query.filter(
+            db.or_(
+                Event.districts.contains(district),  # Check direct district relationship
+                Event.school.in_([school.id for school in schools]),  # Check school relationship
+                # Check text fields with school names
+                *[Event.title.ilike(f"%{school.name}%") for school in schools],
+                *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
+                # Also check district name variations
+                Event.district_partner.ilike(f"%{district.name}%"),
+                Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%"),
+                Event.district_partner.ilike(f"%{district.name.replace(' Public Schools', '')}%")
+            ),
+            extract('year', Event.start_date) == year,
+            Event.status == EventStatus.COMPLETED
+        ).distinct().all()
 
         # Initialize stats dictionary
         stats = {
