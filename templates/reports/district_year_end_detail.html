@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}{{ district.name }} Year-End Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="district-detail-container">
+    <div class="header-section">
+        <div class="back-nav">
+            <a href="{{ url_for('report.district_year_end', school_year=school_year) }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Districts
+            </a>
+        </div>
+        <h1>{{ district.name }}</h1>
+        <div class="school-year">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_events }}</div>
+            <div class="stat-label">Total Events</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_students }}</div>
+            <div class="stat-label">Students Reached</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_volunteers }}</div>
+            <div class="stat-label">Volunteers Engaged</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
+            <div class="stat-label">Volunteer Hours</div>
+        </div>
+    </div>
+
+    <!-- Event Type Breakdown -->
+    <div class="breakdown-section">
+        <h2>Event Types</h2>
+        <div class="event-types-grid">
+            {% for type, count in stats.event_types.items() %}
+            <div class="event-type-card">
+                <div class="type-count">{{ count }}</div>
+                <div class="type-name">{{ type }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Monthly Breakdown -->
+    <div class="monthly-section">
+        <h2>Monthly Activity</h2>
+        {% for month, data in events_by_month.items() %}
+        <div class="month-card">
+            <div class="month-header">
+                <h3>{{ month }}</h3>
+                <div class="month-stats">
+                    <span>{{ data.events|length }} Events</span>
+                    <span>{{ data.total_students }} Students</span>
+                    <span>{{ data.total_volunteers }} Volunteers</span>
+                    <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
+                </div>
+            </div>
+            
+            <div class="events-table-wrapper">
+                <table class="events-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Event</th>
+                            <th>Type</th>
+                            <th>Location</th>
+                            <th>Students</th>
+                            <th>Volunteers</th>
+                            <th>Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in data.events %}
+                        <tr>
+                            <td>{{ event.date }}</td>
+                            <td>{{ event.time }}</td>
+                            <td>{{ event.title }}</td>
+                            <td>{{ event.type }}</td>
+                            <td>{{ event.school or event.location }}</td>
+                            <td>{{ event.students }}</td>
+                            <td>{{ event.volunteers }}</td>
+                            <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

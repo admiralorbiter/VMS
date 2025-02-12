@@ -917,3 +917,96 @@ def contact_report_detail(event_id):
                          participants_by_status=participants_by_status,
                          sort=sort,
                          order=order)
+
+@report_bp.route('/reports/district/year-end/<district_name>')
+@login_required
+def district_year_end_detail(district_name):
+    """Show detailed year-end report for a specific district"""
+    school_year = request.args.get('school_year', get_current_school_year())
+    
+    # Get district
+    district = District.query.filter_by(name=district_name).first_or_404()
+    
+    # Try to get cached data first
+    cached_report = DistrictYearEndReport.query.filter_by(
+        district_id=district.id,
+        school_year=school_year
+    ).first()
+    
+    if cached_report:
+        stats = cached_report.report_data
+    else:
+        # Generate stats for just this district
+        stats = generate_district_stats(school_year, district_id=district.id)[district_name]
+    
+    # Get all events for this district within the school year
+    start_date, end_date = get_school_year_date_range(school_year)
+    
+    # Update the query to use the correct field name 'school'
+    events = (Event.query
+        .outerjoin(School, Event.school == School.id)  # Changed from school_id to school
+        .filter(
+            Event.start_date.between(start_date, end_date),
+            db.or_(
+                Event.districts.contains(district),
+                Event.school.in_([school.id for school in district.schools]),
+                *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
+                *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
+                Event.district_partner.ilike(f"%{district.name}%"),
+                Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
+            )
+        )
+        .order_by(Event.start_date)
+        .all())
+
+    # Organize events by month
+    events_by_month = {}
+    for event in events:
+        month = event.start_date.strftime('%B %Y')
+        if month not in events_by_month:
+            events_by_month[month] = {
+                'events': [],
+                'total_students': 0,
+                'total_volunteers': 0,
+                'total_volunteer_hours': 0
+            }
+        
+        # Get volunteer stats for this event
+        volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+        volunteer_hours = sum(p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended')
+        
+        # Get school name safely
+        school_name = None
+        if hasattr(event, 'school') and event.school is not None:
+            if isinstance(event.school, School):
+                school_name = event.school.name
+            elif isinstance(event.school, str):
+                # If it's a string ID, try to get the school name
+                school = School.query.get(event.school)
+                school_name = school.name if school else None
+        
+        events_by_month[month]['events'].append({
+            'id': event.id,
+            'title': event.title,
+            'date': event.start_date.strftime('%m/%d/%Y'),
+            'time': event.start_date.strftime('%I:%M %p'),
+            'type': event.type.value if event.type else 'Unknown',
+            'students': event.attended_count or 0,
+            'volunteers': volunteer_count,
+            'volunteer_hours': round(volunteer_hours, 1),
+            'school': school_name,
+            'location': event.location or 'Virtual'
+        })
+        
+        events_by_month[month]['total_students'] += event.attended_count or 0
+        events_by_month[month]['total_volunteers'] += volunteer_count
+        events_by_month[month]['total_volunteer_hours'] += volunteer_hours
+
+    return render_template(
+        'reports/district_year_end_detail.html',
+        district=district,
+        school_year=school_year,
+        stats=stats,
+        events_by_month=events_by_month,
+        total_events=len(events)
+    )

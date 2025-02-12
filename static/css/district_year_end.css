@@ -52,15 +52,23 @@
 
 .district-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .district-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(29, 51, 84, 0.2);
+}
+
+.district-link {
+    display: block;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: var(--delft-blue);
 }
 
 .district-header {
@@ -68,81 +76,77 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid var(--non-photo-blue);
 }
 
 .district-header h2 {
-    color: var(--delft-blue);
     margin: 0;
     font-size: 1.5rem;
+    color: var(--ucla-blue);
     font-weight: 600;
 }
 
 .district-code {
-    color: var(--ucla-blue);
-    font-size: 0.9rem;
-    background: rgba(70, 117, 153, 0.1);
+    background-color: var(--non-photo-blue);
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
+    font-size: 0.9rem;
+    color: var(--delft-blue);
 }
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
 .stat-box {
-    background: var(--mint-green);
-    padding: 1.25rem;
+    background-color: rgba(158, 216, 219, 0.1);
+    padding: 1rem;
     border-radius: 8px;
     text-align: center;
-    transition: transform 0.2s ease;
-}
-
-.stat-box:hover {
-    transform: translateY(-2px);
 }
 
 .stat-box.primary {
-    background: var(--ucla-blue);
-    color: white;
-    grid-column: span 2;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
 }
 
 .stat-value {
     font-size: 1.8rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    color: inherit;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
 }
 
 .stat-label {
     font-size: 0.9rem;
-    color: inherit;
-    opacity: 0.9;
+    color: var(--delft-blue);
+}
+
+.stat-box.primary .stat-label {
+    color: var(--mint-green);
 }
 
 .detail-sections {
-    border-top: 1px solid var(--non-photo-blue);
-    padding-top: 1.5rem;
+    margin-top: 1.5rem;
 }
 
 .detail-section {
-    margin-bottom: 1.5rem;
+    background-color: rgba(158, 216, 219, 0.05);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
 }
 
 .detail-section h3 {
-    color: var(--delft-blue);
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
+    color: var(--ucla-blue);
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
 }
 
 .event-types {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 0.75rem;
 }
 
@@ -150,67 +154,71 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1rem;
-    background: var(--mint-green);
+    padding: 0.5rem 0.75rem;
+    background-color: white;
     border-radius: 6px;
+    border: 1px solid var(--non-photo-blue);
 }
 
 .type-name {
     color: var(--delft-blue);
-    font-weight: 500;
+    font-size: 0.9rem;
 }
 
 .type-count {
-    background: var(--ucla-blue);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.9rem;
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
 }
 
 .monthly-breakdown {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .month-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
-    background: var(--mint-green);
+    padding: 0.5rem;
+    background-color: white;
     border-radius: 6px;
+    border: 1px solid var(--non-photo-blue);
 }
 
 .month-name {
-    color: var(--delft-blue);
+    color: var(--ucla-blue);
     font-weight: 500;
 }
 
 .month-stats {
     display: flex;
     gap: 1rem;
-    color: var(--ucla-blue);
+    color: var(--delft-blue);
     font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
-    .districts-grid {
-        grid-template-columns: 1fr;
-    }
-    
     .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .event-types {
         grid-template-columns: 1fr;
     }
     
-    .stat-box.primary {
-        grid-column: span 1;
+    .month-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
     
     .month-stats {
         flex-direction: column;
-        gap: 0.5rem;
-        text-align: right;
+        gap: 0.25rem;
     }
 } 

@@ -37,65 +37,67 @@
     <div class="districts-grid" id="districtsContainer">
         {% for district_name, stats in districts.items() %}
         <div class="district-card">
-            <div class="district-header">
-                <h2>{{ stats.name }}</h2>
-                {% if stats.district_code %}
-                <span class="district-code">Code: {{ stats.district_code }}</span>
-                {% endif %}
-            </div>
+            <a href="{{ url_for('report.district_year_end_detail', district_name=district_name, school_year=school_year) }}" class="district-link">
+                <div class="district-header">
+                    <h2>{{ stats.name }}</h2>
+                    {% if stats.district_code %}
+                    <span class="district-code">Code: {{ stats.district_code }}</span>
+                    {% endif %}
+                </div>
 
-            <div class="stats-grid">
-                <div class="stat-box primary">
-                    <div class="stat-value">{{ stats.total_events }}</div>
-                    <div class="stat-label">Total Events</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">{{ stats.total_students }}</div>
-                    <div class="stat-label">Students Reached</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">{{ stats.total_volunteers }}</div>
-                    <div class="stat-label">Volunteers Engaged</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
-                    <div class="stat-label">Volunteer Hours</div>
-                </div>
-            </div>
-
-            <div class="detail-sections">
-                {% if stats.event_types %}
-                <div class="detail-section">
-                    <h3>Event Types</h3>
-                    <div class="event-types">
-                        {% for type, count in stats.event_types.items() %}
-                        <div class="event-type">
-                            <span class="type-name">{{ type|replace('_', ' ')|title }}</span>
-                            <span class="type-count">{{ count }}</span>
-                        </div>
-                        {% endfor %}
+                <div class="stats-grid">
+                    <div class="stat-box primary">
+                        <div class="stat-value">{{ stats.total_events }}</div>
+                        <div class="stat-label">Total Events</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ stats.total_students }}</div>
+                        <div class="stat-label">Students Reached</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ stats.total_volunteers }}</div>
+                        <div class="stat-label">Volunteers Engaged</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
+                        <div class="stat-label">Volunteer Hours</div>
                     </div>
                 </div>
-                {% endif %}
 
-                {% if stats.monthly_breakdown %}
-                <div class="detail-section">
-                    <h3>Monthly Activity</h3>
-                    <div class="monthly-breakdown">
-                        {% for month, data in stats.monthly_breakdown.items() %}
-                        <div class="month-row">
-                            <span class="month-name">{{ month }}</span>
-                            <div class="month-stats">
-                                <span>{{ data.events }} events</span>
-                                <span>{{ data.students }} students</span>
-                                <span>{{ data.volunteers }} volunteers</span>
+                <div class="detail-sections">
+                    {% if stats.event_types %}
+                    <div class="detail-section">
+                        <h3>Event Types</h3>
+                        <div class="event-types">
+                            {% for type, count in stats.event_types.items() %}
+                            <div class="event-type">
+                                <span class="type-name">{{ type|replace('_', ' ')|title }}</span>
+                                <span class="type-count">{{ count }}</span>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
+                    {% endif %}
+
+                    {% if stats.monthly_breakdown %}
+                    <div class="detail-section">
+                        <h3>Monthly Activity</h3>
+                        <div class="monthly-breakdown">
+                            {% for month, data in stats.monthly_breakdown.items() %}
+                            <div class="month-row">
+                                <span class="month-name">{{ month }}</span>
+                                <div class="month-stats">
+                                    <span>{{ data.events }} events</span>
+                                    <span>{{ data.students }} students</span>
+                                    <span>{{ data.volunteers }} volunteers</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
-            </div>
+            </a>
         </div>
         {% endfor %}
     </div>
