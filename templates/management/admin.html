@@ -69,6 +69,19 @@
         <div class="card-body">
             <h5 class="card-title mb-0">Import Data from Salesforce</h5>
             <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
+            
+            <!-- Add Import All button -->
+            <div class="mb-4">
+                <button onclick="importAllSequentially()" class="btn admin-btn-import" id="importAllBtn">
+                    <i class="fas fa-download"></i>
+                    <span>Import All Data Sequentially</span>
+                </button>
+                <div class="import-status" id="importAllStatus"></div>
+                <div class="import-progress" id="importAllProgress">
+                    <div class="import-progress-bar"></div>
+                </div>
+            </div>
+
             <div class="import-grid">
                 <!-- 1. Organizations -->
                 <div class="import-item">
@@ -640,6 +653,115 @@ function purgeEvents() {
             document.getElementById('purgeEventsBtn').innerHTML = '<i class="fas fa-trash-alt"></i> Purge All Events';
         });
     }
+}
+
+async function importAllSequentially() {
+    const importAllBtn = document.getElementById('importAllBtn');
+    const importAllStatus = document.getElementById('importAllStatus');
+    const importAllProgress = document.getElementById('importAllProgress');
+    const progressBar = importAllProgress.querySelector('.import-progress-bar');
+    
+    // Define the import sequence with routes and button IDs
+    const importSequence = [
+        { route: '/organizations/import-from-salesforce', name: 'Organizations', btnId: 'importOrganizationsBtn' },
+        { route: '/management/import-schools', name: 'Schools', btnId: 'importSchoolsBtn' },
+        { route: '/management/import-classes', name: 'Classes', btnId: 'importClassesBtn' },
+        { route: '/attendance/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
+        { route: '/attendance/import-students-from-salesforce', name: 'Students', btnId: 'importStudentsBtn' },
+        { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
+        { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
+        { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
+        { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' }
+    ];
+
+    // Disable all import buttons
+    importSequence.forEach(item => {
+        const btn = document.getElementById(item.btnId);
+        if (btn) btn.disabled = true;
+    });
+
+    // Disable the main import button
+    importAllBtn.disabled = true;
+    importAllProgress.classList.add('active');
+    
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < importSequence.length; i++) {
+        const item = importSequence[i];
+        const progress = ((i) / importSequence.length) * 100;
+        progressBar.style.width = `${progress}%`;
+        
+        importAllStatus.textContent = `Importing ${item.name}...`;
+        
+        try {
+            const response = await fetch(item.route, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                successCount++;
+                const btn = document.getElementById(item.btnId);
+                if (btn) {
+                    btn.style.backgroundColor = 'var(--ucla-blue)';
+                    btn.style.opacity = '0.7';
+                }
+            } else {
+                errorCount++;
+                throw new Error(data.message || data.error || `Failed to import ${item.name}`);
+            }
+        } catch (error) {
+            console.error(`Error importing ${item.name}:`, error);
+            errorCount++;
+        }
+    }
+
+    // Complete the progress bar
+    progressBar.style.width = '100%';
+    
+    // Update final status
+    importAllStatus.textContent = `Import complete: ${successCount} successful, ${errorCount} failed`;
+    
+    // Re-enable all buttons
+    importSequence.forEach(item => {
+        const btn = document.getElementById(item.btnId);
+        if (btn) btn.disabled = false;
+    });
+    importAllBtn.disabled = false;
+
+    // Show completion toast
+    showToast(
+        errorCount === 0 ? 'Success' : 'Complete with Errors',
+        `Import sequence completed: ${successCount} successful, ${errorCount} failed`,
+        errorCount === 0 ? 'success' : 'error'
+    );
+}
+
+// Add this helper function if you don't already have it
+function showToast(title, message, type = 'success') {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <div>
+            <strong>${title}</strong>
+            <div>${message}</div>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Remove toast after 5 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
 }
 </script>
 {% endblock %}
