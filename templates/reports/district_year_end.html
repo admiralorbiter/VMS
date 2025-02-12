@@ -10,16 +10,21 @@
 <div class="year-end-container">
     <div class="report-header">
         <h1>District Year-End Report {{ school_year }}</h1>
-        <div class="year-filter">
-            <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
-                <select name="school_year" onchange="updateReport(this)">
-                    {% for y in school_years %}
-                    <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
-                        {{ y[:2] }}-{{ y[2:] }} School Year
-                    </option>
-                    {% endfor %}
-                </select>
-            </form>
+        <div class="header-controls">
+            <div class="year-filter">
+                <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
+                    <select name="school_year" onchange="updateReport(this)">
+                        {% for y in school_years %}
+                        <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                            {{ y[:2] }}-{{ y[2:] }} School Year
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            <button onclick="refreshData()" class="refresh-button">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
         </div>
         {% if last_updated %}
         <div class="last-updated">
@@ -128,6 +133,51 @@ window.addEventListener('load', function() {
     loadingIndicator.style.display = 'none';
     districtsContainer.style.opacity = '1';
 });
+
+function refreshData() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const districtsContainer = document.getElementById('districtsContainer');
+    const refreshButton = document.querySelector('.refresh-button');
+    
+    // Disable the refresh button and show loading state
+    refreshButton.disabled = true;
+    refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    loadingIndicator.style.display = 'block';
+    districtsContainer.style.opacity = '0.5';
+
+    // Get the current school year from the select
+    const schoolYear = document.querySelector('select[name="school_year"]').value;
+    
+    // Make the refresh API call
+    fetch(`{{ url_for('report.refresh_district_year_end') }}?school_year=${schoolYear}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to show updated data
+            window.location.reload();
+        } else {
+            alert('Error refreshing data: ' + data.error);
+            // Reset the button state
+            refreshButton.disabled = false;
+            refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Data';
+            loadingIndicator.style.display = 'none';
+            districtsContainer.style.opacity = '1';
+        }
+    })
+    .catch(error => {
+        alert('Error refreshing data: ' + error);
+        // Reset the button state
+        refreshButton.disabled = false;
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Data';
+        loadingIndicator.style.display = 'none';
+        districtsContainer.style.opacity = '1';
+    });
+}
 </script>
 
 <style>
@@ -138,6 +188,43 @@ window.addEventListener('load', function() {
 
 .districts-grid {
     transition: opacity 0.3s ease;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.refresh-button {
+    background-color: var(--ucla-blue);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.refresh-button:hover {
+    background-color: var(--delft-blue);
+}
+
+.refresh-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.fa-spin {
+    animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 </style>
 {% endblock %} 

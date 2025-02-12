@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, flash, jsonify
 from flask_login import login_required
 from sqlalchemy import extract
-from models.event import Event, EventType, EventStatus
+from models.event import Event, EventAttendance, EventType, EventStatus
 from datetime import datetime, timedelta
 from models.school_model import School
 from models.teacher import Teacher
@@ -580,13 +580,20 @@ def refresh_district_year_end():
     school_year = request.args.get('school_year', get_current_school_year())
     
     try:
+        # Delete existing cached reports for this school year
+        DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+        db.session.commit()
+        
+        # Generate new stats
         district_stats = generate_district_stats(school_year)
         cache_district_stats(school_year, district_stats)
+        
         return jsonify({
             'success': True, 
             'message': f'Successfully refreshed data for {school_year[:2]}-{school_year[2:]} school year'
         })
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_district_stats(school_year):
@@ -595,10 +602,12 @@ def generate_district_stats(school_year):
     districts = District.query.order_by(District.name).all()
     start_date, end_date = get_school_year_date_range(school_year)
     
+    # Define event types to exclude
+    excluded_event_types = ['virtual_session', 'connector_session']
+    
     for district in districts:
         # Get all schools for this district
         schools = School.query.filter_by(district_id=district.id).all()
-        school_names = [school.name for school in schools]
         
         # Query events using both relationships and text matching
         events = Event.query.filter(
@@ -613,7 +622,8 @@ def generate_district_stats(school_year):
             ),
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            Event.status == EventStatus.COMPLETED
+            Event.status == EventStatus.COMPLETED,
+            ~Event.type.in_([EventType(t) for t in excluded_event_types])
         ).distinct().all()
         
         # Initialize stats dictionary
@@ -632,14 +642,18 @@ def generate_district_stats(school_year):
         
         # Calculate statistics
         for event in events:
-            stats['total_students'] += event.attended_count or 0
+            # Use participant_count instead of attended_count
+            student_count = event.participant_count or 0
+            stats['total_students'] += student_count
+            
             for participation in event.volunteer_participations:
                 if participation.status == 'Attended':
                     stats['total_volunteers'] += 1
                     stats['total_volunteer_hours'] += participation.delivery_hours or 0
             
             event_type = event.type.value if event.type else 'unknown'
-            stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
+            if event_type not in excluded_event_types:
+                stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
             
             if event.school:
                 stats['schools_reached'].add(event.school)
@@ -652,7 +666,7 @@ def generate_district_stats(school_year):
                     'volunteers': 0
                 }
             stats['monthly_breakdown'][month]['events'] += 1
-            stats['monthly_breakdown'][month]['students'] += event.attended_count or 0
+            stats['monthly_breakdown'][month]['students'] += student_count
             stats['monthly_breakdown'][month]['volunteers'] += len([p for p in event.volunteer_participations if p.status == 'Attended'])
             
             if event.series:
@@ -937,16 +951,21 @@ def district_year_end_detail(district_name):
         stats = cached_report.report_data
     else:
         # Generate stats for just this district
-        stats = generate_district_stats(school_year, district_id=district.id)[district_name]
+        stats = generate_district_stats(school_year)[district_name]
     
     # Get all events for this district within the school year
     start_date, end_date = get_school_year_date_range(school_year)
     
-    # Update the query to use the correct field name 'school'
+    # Define event types to exclude
+    excluded_event_types = ['virtual_session', 'connector_session']
+    
+    # Update the query to include EventAttendance
     events = (Event.query
-        .outerjoin(School, Event.school == School.id)  # Changed from school_id to school
+        .outerjoin(School, Event.school == School.id)
+        .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
         .filter(
             Event.start_date.between(start_date, end_date),
+            ~Event.type.in_([EventType(t) for t in excluded_event_types]),
             db.or_(
                 Event.districts.contains(district),
                 Event.school.in_([school.id for school in district.schools]),
@@ -971,6 +990,13 @@ def district_year_end_detail(district_name):
                 'total_volunteer_hours': 0
             }
         
+        # Get attendance count from EventAttendance if available
+        student_count = 0
+        if hasattr(event, 'attendance') and event.attendance:
+            student_count = event.attendance.total_attendance
+        else:
+            student_count = event.participant_count or 0
+            
         # Get volunteer stats for this event
         volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
         volunteer_hours = sum(p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended')
@@ -981,7 +1007,6 @@ def district_year_end_detail(district_name):
             if isinstance(event.school, School):
                 school_name = event.school.name
             elif isinstance(event.school, str):
-                # If it's a string ID, try to get the school name
                 school = School.query.get(event.school)
                 school_name = school.name if school else None
         
@@ -991,14 +1016,14 @@ def district_year_end_detail(district_name):
             'date': event.start_date.strftime('%m/%d/%Y'),
             'time': event.start_date.strftime('%I:%M %p'),
             'type': event.type.value if event.type else 'Unknown',
-            'students': event.attended_count or 0,
+            'students': student_count,
             'volunteers': volunteer_count,
             'volunteer_hours': round(volunteer_hours, 1),
             'school': school_name,
             'location': event.location or 'Virtual'
         })
         
-        events_by_month[month]['total_students'] += event.attended_count or 0
+        events_by_month[month]['total_students'] += student_count
         events_by_month[month]['total_volunteers'] += volunteer_count
         events_by_month[month]['total_volunteer_hours'] += volunteer_hours
 
