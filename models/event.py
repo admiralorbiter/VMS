@@ -104,6 +104,7 @@ class EventStatus(str, Enum):
     REQUESTED = 'Requested'
     DRAFT = 'Draft'
     PUBLISHED = 'Published'
+    NO_SHOW = 'No Show'
 
 class Event(db.Model):
 

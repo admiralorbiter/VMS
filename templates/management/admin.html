@@ -193,10 +193,10 @@
 
                 <!-- 9. Virtual Events -->
                 <div class="import-item">
-                    <a href="{{ url_for('virtual.import_virtual') }}" class="btn admin-btn-import" id="importVirtualBtn">
+                    <button onclick="importVirtualEvents()" class="btn admin-btn-import" id="importVirtualBtn">
                         <i class="fas fa-video"></i>
                         <span>9. Import Virtual Events</span>
-                    </a>
+                    </button>
                     <div class="import-status" id="importVirtualStatus"></div>
                     <div class="import-progress" id="importVirtualProgress">
                         <div class="import-progress-bar"></div>
@@ -817,6 +817,44 @@ function refreshDistrictReport() {
     .finally(() => {
         btn.disabled = false;
     });
+}
+
+function importVirtualEvents() {
+    if (confirm('Are you sure you want to import virtual events from the Google Sheet?')) {
+        const btn = document.getElementById('importVirtualBtn');
+        const status = document.getElementById('importVirtualStatus');
+        const progress = document.getElementById('importVirtualProgress');
+        
+        btn.disabled = true;
+        status.textContent = 'Importing...';
+        
+        fetch('/virtual/import-sheet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                status.textContent = `Import completed: ${data.successCount} successful, ${data.warningCount} warnings, ${data.errorCount} errors`;
+                if (data.errors && data.errors.length > 0) {
+                    console.log('Import errors:', data.errors);
+                }
+                showToast('Success', `Import completed successfully with ${data.successCount} records`, 'success');
+            } else {
+                throw new Error(data.error || 'Failed to import virtual events');
+            }
+        })
+        .catch(error => {
+            console.error('Import error:', error);
+            status.textContent = `Error: ${error.message}`;
+            showToast('Error', `Failed to import virtual events: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            btn.disabled = false;
+        });
+    }
 }
 </script>
 {% endblock %}
