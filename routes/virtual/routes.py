@@ -283,13 +283,15 @@ def import_sheet():
         if not sheet_id:
             raise ValueError("Google Sheet ID not configured")
         
+        # Force academic year to 2024 for this specific import
+        academic_start_year = 2024  # Hardcode for 2024-2025 academic year
+        
+        current_app.logger.info(f"Importing sheet for academic year: {academic_start_year}-{academic_start_year + 1}")
+        
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-        # Skip the first 5 rows which contain color coding information
         df = pd.read_csv(csv_url, skiprows=5)
 
-        success_count = 0
-        warning_count = 0
-        error_count = 0
+        success_count = warning_count = error_count = 0
         errors = []
 
         for index, row in df.iterrows():
@@ -300,12 +302,23 @@ def import_sheet():
                 if pd.isna(row_dict.get('Status')) and pd.isna(row_dict.get('Date')):
                     continue
 
-                # Create Event object for each row
-                event = Event()
-                event.type = EventType.VIRTUAL_SESSION
+                # Handle status - convert float/nan to string safely
+                status = str(row_dict.get('Status', '')).lower().strip() if not pd.isna(row_dict.get('Status')) else ''
+                
+                # Check if event already exists by session link
+                session_link = str(row_dict.get('Session Link', '')) if not pd.isna(row_dict.get('Session Link')) else ''
+                existing_event = None
+                if session_link:
+                    existing_event = Event.query.filter_by(registration_link=session_link).first()
 
-                # Handle status
-                status = str(row_dict.get('Status', '')).lower().strip()
+                if existing_event:
+                    event = existing_event
+                else:
+                    event = Event()
+                    event.type = EventType.VIRTUAL_SESSION
+                    event.format = 'IN_PERSON'
+
+                # Set event status
                 if status in ['teacher no-show', 'teacher cancelation']:
                     event.status = 'No Show'
                 elif status == 'simulcast':
@@ -316,25 +329,39 @@ def import_sheet():
                     event.status = 'Draft'
 
                 # Set basic event details
-                event.title = row_dict.get('Session Title')
-                event.district_partner = row_dict.get('District')
-                event.registration_link = row_dict.get('Session Link')
+                event.title = str(row_dict.get('Session Title', '')) if not pd.isna(row_dict.get('Session Title')) else ''
+                event.district_partner = str(row_dict.get('District', '')) if not pd.isna(row_dict.get('District')) else ''
+                event.registration_link = session_link
 
-                # Parse date and time if available
-                date_str = str(row_dict.get('Date', '')).strip()
-                time_str = str(row_dict.get('Time', '')).strip()
-                if date_str and time_str and status != 'simulcast':
-                    try:
-                        date_parts = date_str.split('/')
-                        current_year = datetime.now().year
-                        full_date_str = f"{date_parts[0]}/{date_parts[1]}/{current_year} {time_str}"
-                        event.start_date = datetime.strptime(full_date_str, '%m/%d/%Y %I:%M %p')
-                    except Exception as e:
-                        errors.append(f"Row {index + 2}: Date/time parsing error - {str(e)}")
-                        continue
+                # Parse date and time if available and not simulcast
+                if status != 'simulcast':
+                    date_str = str(row_dict.get('Date', '')) if not pd.isna(row_dict.get('Date')) else ''
+                    time_str = str(row_dict.get('Time', '')) if not pd.isna(row_dict.get('Time')) else ''
+                    
+                    if date_str and time_str:
+                        try:
+                            date_parts = date_str.split('/')
+                            month = int(date_parts[0])
+                            day = int(date_parts[1])
+                            
+                            # For 2024-2025 academic year:
+                            # If month is 6-12, use 2024
+                            # If month is 1-5, use 2025
+                            year = academic_start_year + (1 if month < 6 else 0)
+                            
+                            if not pd.isna(time_str):
+                                full_date_str = f"{month}/{day}/{year} {time_str}"
+                                event.start_date = datetime.strptime(full_date_str, '%m/%d/%Y %I:%M %p')
+                                current_app.logger.debug(f"Parsed date/time: {event.start_date}")
+                        except Exception as e:
+                            errors.append(f"Row {index + 2}: Date/time parsing error - {str(e)}")
+                            continue
+                else:
+                    # For simulcast events, set a default date if required
+                    event.start_date = datetime.now()
 
                 # Handle presenter
-                presenter_name = row_dict.get('Presenter', '').strip()
+                presenter_name = str(row_dict.get('Presenter', '')) if not pd.isna(row_dict.get('Presenter')) else ''
                 if presenter_name:
                     name_parts = presenter_name.split(' ', 1)
                     if len(name_parts) >= 2:
@@ -342,42 +369,25 @@ def import_sheet():
                         volunteer = Volunteer.query.filter(
                             Volunteer.first_name == first_name,
                             Volunteer.last_name == last_name
-                        ).first() or Volunteer(
-                            first_name=first_name,
-                            last_name=last_name,
-                            organization_name=row_dict.get('Organization')
-                        )
+                        ).first()
+                        
+                        if not volunteer:
+                            volunteer = Volunteer(
+                                first_name=first_name,
+                                last_name=last_name,
+                                organization_name=str(row_dict.get('Organization', '')) if not pd.isna(row_dict.get('Organization')) else ''
+                            )
+                            db.session.add(volunteer)
+                            db.session.flush()
+                        
                         if volunteer not in event.volunteers:
                             event.volunteers.append(volunteer)
 
-                # Handle teacher
-                teacher_name = row_dict.get('Teacher Name', '').strip()
-                if teacher_name:
-                    name_parts = teacher_name.split(' ', 1)
-                    if len(name_parts) >= 2:
-                        first_name, last_name = name_parts[0], name_parts[1]
-                        teacher = Volunteer.query.filter(
-                            Volunteer.first_name == first_name,
-                            Volunteer.last_name == last_name
-                        ).first() or Volunteer(
-                            first_name=first_name,
-                            last_name=last_name,
-                            organization_name=row_dict.get('School Name')
-                        )
-                        
-                        # Create participation record
-                        participation = EventParticipation(
-                            volunteer=teacher,
-                            event=event,
-                            status=event.status
-                        )
-                        db.session.add(participation)
-
-                db.session.add(event)
-                success_count += 1
+                if not existing_event:
+                    db.session.add(event)
                 
-                # Commit after each successful row
                 db.session.commit()
+                success_count += 1
 
             except Exception as row_error:
                 error_count += 1

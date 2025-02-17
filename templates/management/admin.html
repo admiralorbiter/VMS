@@ -828,11 +828,20 @@ function importVirtualEvents() {
         btn.disabled = true;
         status.textContent = 'Importing...';
         
+        // Get current date to determine academic year
+        const today = new Date();
+        const month = today.getMonth() + 1; // JavaScript months are 0-based
+        const year = today.getFullYear();
+        const academicYear = month < 8 ? year : year;
+        
         fetch('/virtual/import-sheet', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                academic_year: academicYear
+            })
         })
         .then(response => response.json())
         .then(data => {
@@ -840,6 +849,9 @@ function importVirtualEvents() {
                 status.textContent = `Import completed: ${data.successCount} successful, ${data.warningCount} warnings, ${data.errorCount} errors`;
                 if (data.errors && data.errors.length > 0) {
                     console.log('Import errors:', data.errors);
+                    // Display errors in the status
+                    const errorList = data.errors.join('\n');
+                    status.innerHTML = `${status.textContent}<br><small class="text-danger">${errorList}</small>`;
                 }
                 showToast('Success', `Import completed successfully with ${data.successCount} records`, 'success');
             } else {
