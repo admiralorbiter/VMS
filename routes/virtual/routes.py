@@ -283,118 +283,106 @@ def import_sheet():
         if not sheet_id:
             raise ValueError("Google Sheet ID not configured")
         
-        # Force academic year to 2024 for this specific import
-        academic_start_year = 2024  # Hardcode for 2024-2025 academic year
-        
+        academic_start_year = 2024  # Hardcoded academic year for 2024-2025
         current_app.logger.info(f"Importing sheet for academic year: {academic_start_year}-{academic_start_year + 1}")
         
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-        df = pd.read_csv(csv_url, skiprows=5)
-
+        df = pd.read_csv(csv_url, skiprows=5)  # Adjust if header row changes
+        
         success_count = warning_count = error_count = 0
         errors = []
+
+        def parse_date_time(date_str, time_str):
+            try:
+                if pd.isna(date_str) or pd.isna(time_str) or "nan" in time_str.lower():
+                    return None, "Invalid date format"
+                date_parts = date_str.split('/')
+                if len(date_parts) != 2:
+                    return None, "Invalid date format"
+                
+                month, day = int(date_parts[0]), int(date_parts[1])
+                year = academic_start_year + (1 if month < 6 else 0)
+                full_date_str = f"{month}/{day}/{year} {time_str}"
+                return datetime.strptime(full_date_str, '%m/%d/%Y %I:%M %p'), None
+            except Exception as e:
+                return None, str(e)
+
+        def get_or_create_volunteer(name, organization):
+            if not name:
+                return None
+            
+            name_parts = name.split(' ', 1)
+            if len(name_parts) < 2:
+                return None
+            
+            first_name, last_name = name_parts[0], name_parts[1]
+            volunteer = Volunteer.query.filter(
+                Volunteer.first_name.ilike(first_name),
+                Volunteer.last_name.ilike(last_name)
+            ).first()
+            
+            if not volunteer:
+                volunteer = Volunteer(
+                    first_name=first_name,
+                    last_name=last_name,
+                    organization_name=organization or ''
+                )
+                db.session.add(volunteer)
+                db.session.flush()
+            return volunteer
 
         for index, row in df.iterrows():
             try:
                 row_dict = row.to_dict()
                 
-                # Skip completely empty rows
                 if pd.isna(row_dict.get('Status')) and pd.isna(row_dict.get('Date')):
                     continue
-
-                # Handle status - convert float/nan to string safely
-                status = str(row_dict.get('Status', '')).lower().strip() if not pd.isna(row_dict.get('Status')) else ''
                 
-                # Check if event already exists by session link
-                session_link = str(row_dict.get('Session Link', '')) if not pd.isna(row_dict.get('Session Link')) else ''
-                existing_event = None
-                if session_link:
-                    existing_event = Event.query.filter_by(registration_link=session_link).first()
-
-                if existing_event:
-                    event = existing_event
-                else:
-                    event = Event()
-                    event.type = EventType.VIRTUAL_SESSION
-                    event.format = 'IN_PERSON'
-
-                # Set event status
-                if status in ['teacher no-show', 'teacher cancelation']:
-                    event.status = 'No Show'
-                elif status == 'simulcast':
-                    event.status = 'Simulcast'
-                elif status == 'successfully completed':
-                    event.status = 'Completed'
-                else:
-                    event.status = 'Draft'
-
-                # Set basic event details
-                event.title = str(row_dict.get('Session Title', '')) if not pd.isna(row_dict.get('Session Title')) else ''
-                event.district_partner = str(row_dict.get('District', '')) if not pd.isna(row_dict.get('District')) else ''
+                status = str(row_dict.get('Status', '')).strip().lower()
+                session_link = str(row_dict.get('Session Link', '')).strip()
+                existing_event = Event.query.filter_by(registration_link=session_link).first() if session_link else None
+                
+                event = existing_event if existing_event else Event(type=EventType.VIRTUAL_SESSION)
+                event.status = {
+                    'teacher no-show': 'No Show',
+                    'teacher cancelation': 'No Show',
+                    'simulcast': 'Simulcast',
+                    'successfully completed': 'Completed'
+                }.get(status, 'Draft')
+                
+                event.title = str(row_dict.get('Session Title', '')).strip()
+                event.district_partner = str(row_dict.get('District', '')).strip()
                 event.registration_link = session_link
-
-                # Parse date and time if available and not simulcast
+                
                 if status != 'simulcast':
-                    date_str = str(row_dict.get('Date', '')) if not pd.isna(row_dict.get('Date')) else ''
-                    time_str = str(row_dict.get('Time', '')) if not pd.isna(row_dict.get('Time')) else ''
-                    
-                    if date_str and time_str:
-                        try:
-                            date_parts = date_str.split('/')
-                            month = int(date_parts[0])
-                            day = int(date_parts[1])
-                            
-                            # For 2024-2025 academic year:
-                            # If month is 6-12, use 2024
-                            # If month is 1-5, use 2025
-                            year = academic_start_year + (1 if month < 6 else 0)
-                            
-                            if not pd.isna(time_str):
-                                full_date_str = f"{month}/{day}/{year} {time_str}"
-                                event.start_date = datetime.strptime(full_date_str, '%m/%d/%Y %I:%M %p')
-                                current_app.logger.debug(f"Parsed date/time: {event.start_date}")
-                        except Exception as e:
-                            errors.append(f"Row {index + 2}: Date/time parsing error - {str(e)}")
-                            continue
+                    date_str = str(row_dict.get('Date', '')).strip()
+                    time_str = str(row_dict.get('Time', '')).strip()
+                    event.start_date, error_msg = parse_date_time(date_str, time_str)
+                    if not event.start_date:
+                        errors.append(f"Row {index + 2}: Date/time parsing error - {error_msg}")
+                        continue
                 else:
-                    # For simulcast events, set a default date if required
-                    event.start_date = datetime.now()
-
-                # Handle presenter
-                presenter_name = str(row_dict.get('Presenter', '')) if not pd.isna(row_dict.get('Presenter')) else ''
-                if presenter_name:
-                    name_parts = presenter_name.split(' ', 1)
-                    if len(name_parts) >= 2:
-                        first_name, last_name = name_parts[0], name_parts[1]
-                        volunteer = Volunteer.query.filter(
-                            Volunteer.first_name == first_name,
-                            Volunteer.last_name == last_name
-                        ).first()
-                        
-                        if not volunteer:
-                            volunteer = Volunteer(
-                                first_name=first_name,
-                                last_name=last_name,
-                                organization_name=str(row_dict.get('Organization', '')) if not pd.isna(row_dict.get('Organization')) else ''
-                            )
-                            db.session.add(volunteer)
-                            db.session.flush()
-                        
-                        if volunteer not in event.volunteers:
-                            event.volunteers.append(volunteer)
-
+                    event.start_date = datetime(academic_start_year, 8, 1)
+                
+                presenter_name = str(row_dict.get('Presenter', '')).strip()
+                organization_name = str(row_dict.get('Organization', '')).strip() or None
+                
+                volunteer = get_or_create_volunteer(presenter_name, organization_name)
+                if volunteer and not existing_event:
+                    event.volunteers = [volunteer]
+                
                 if not existing_event:
                     db.session.add(event)
                 
                 db.session.commit()
                 success_count += 1
-
+            
             except Exception as row_error:
                 error_count += 1
                 errors.append(f"Row {index + 2}: Error processing row: {str(row_error)}")
                 db.session.rollback()
                 continue
-
+        
         return jsonify({
             'success': True,
             'successCount': success_count,
@@ -402,7 +390,7 @@ def import_sheet():
             'errorCount': error_count,
             'errors': errors
         })
-
+    
     except Exception as e:
         db.session.rollback()
         current_app.logger.error("Sheet import failed", exc_info=True)

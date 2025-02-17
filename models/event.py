@@ -105,6 +105,7 @@ class EventStatus(str, Enum):
     DRAFT = 'Draft'
     PUBLISHED = 'Published'
     NO_SHOW = 'No Show'
+    SIMULCAST = 'Simulcast'
 
 class Event(db.Model):
 
