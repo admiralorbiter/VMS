@@ -154,7 +154,7 @@ class Event(db.Model):
     attended_count = db.Column(db.Integer, default=0)
     educators = db.Column(db.Text)
     educator_ids = db.Column(db.Text)
-    school = db.Column(db.Integer, db.ForeignKey('school.id'), index=True)
+    school = db.Column(db.String(18), db.ForeignKey('school.id'), index=True)
     district_partner = db.Column(db.String(255), index=True)
     professionals = db.Column(db.Text)
     professional_ids = db.Column(db.Text)

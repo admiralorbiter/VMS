@@ -12,6 +12,7 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
 
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
+from models.school_model import School
 
 events_bp = Blueprint('events', __name__)
 
@@ -31,7 +32,7 @@ def process_event_row(row, success_count, error_count, errors):
             event = Event()
             db.session.add(event)
         
-        # Update event fields (handles both new and existing events)
+        # Update basic event fields
         event.salesforce_id = row.get('Id', '').strip()
         event.title = row.get('Name', '').strip()
         event.type = map_session_type(row.get('Session_Type__c', ''))
@@ -43,29 +44,40 @@ def process_event_row(row, success_count, error_count, errors):
         event.description = row.get('Description__c', '')
         event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
         event.participant_count = int(float(row.get('Non_Scheduled_Students_Count__c', 0)) if row.get('Non_Scheduled_Students_Count__c') is not None else 0)
-        event.last_sync_date = datetime.now()
         event.additional_information = row.get('Additional_Information__c', '')
         
-        # Safely convert numeric fields with better error handling
+        # Handle numeric fields
         def safe_convert_to_int(value, default=0):
             if value is None:
                 return default
             try:
                 return int(float(value))
             except (ValueError, TypeError):
-                print(f"Warning: Could not convert value: {value}, using default: {default}")
                 return default
 
         event.total_requested_volunteer_jobs = safe_convert_to_int(row.get('Total_Requested_Volunteer_Jobs__c'))
         event.available_slots = safe_convert_to_int(row.get('Available_Slots__c'))
         
-        # Update district handling
+        # Handle School relationship (using Salesforce ID)
+        school_id = row.get('School__c')
+        if school_id:
+            school = School.query.get(school_id)
+            if school:
+                event.school = school_id  # Store the Salesforce ID
+                # If school has a district, add it to event's districts
+                if school.district and school.district not in event.districts:
+                    event.districts.append(school.district)
+        
+        # Handle District relationship (if no school or school without district)
         district_name = row.get('District__c')
         if district_name and district_name in DISTRICT_MAPPINGS:
             mapped_name = DISTRICT_MAPPINGS[district_name]
             district = District.query.filter_by(name=mapped_name).first()
             if district and district not in event.districts:
                 event.districts.append(district)
+                
+        # Store original district name for reference
+        event.district_partner = district_name if district_name else None
 
         # Handle skills
         skills_covered = parse_event_skills(row.get('Legacy_Skill_Covered_for_the_Session__c', ''))
@@ -80,22 +92,19 @@ def process_event_row(row, success_count, error_count, errors):
         
         # Only process new skills
         new_skill_names = all_skills - existing_skill_names
-        
-        # Add only new skills
         for skill_name in new_skill_names:
             skill = Skill.query.filter_by(name=skill_name).first()
             if not skill:
                 skill = Skill(name=skill_name)
                 db.session.add(skill)
-            if skill not in event.skills:  # Double-check to prevent duplicates
+            if skill not in event.skills:
                 event.skills.append(skill)
 
         return success_count + (1 if is_new else 0), error_count
             
     except Exception as e:
         db.session.rollback()
-        print(f"Error processing event row: {str(e)}")
-        errors.append(f"Error processing row: {str(e)}")
+        errors.append(f"Error processing event {row.get('Id', 'unknown')}: {str(e)}")
         return success_count, error_count + 1
     
 def process_participation_row(row, success_count, error_count, errors):
@@ -620,7 +629,7 @@ def import_events_from_salesforce():
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
                 End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
                 Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
-                District__c, Legacy_Skill_Covered_for_the_Session__c, 
+                District__c, School__c, Legacy_Skill_Covered_for_the_Session__c, 
                 Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
                 Total_Requested_Volunteer_Jobs__c, Available_Slots__c
         FROM Session__c
