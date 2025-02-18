@@ -237,45 +237,47 @@
             {% if event.volunteer_participations %}
                 <div class="signups-grid">
                     {% for participation in event.volunteer_participations %}
-                    <div class="signup-card">
-                        <div class="signup-info">
-                            <div class="signup-header">
-                                <span class="signup-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                <span class="signup-status {{ participation.status|lower }}">{{ participation.status }}</span>
+                        {% if participation.volunteer %}  <!-- Only show if volunteer exists -->
+                        <div class="signup-card">
+                            <div class="signup-info">
+                                <div class="signup-header">
+                                    <span class="signup-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                    <span class="signup-status {{ participation.status|lower }}">{{ participation.status }}</span>
+                                </div>
+                                <div class="signup-details">
+                                    {% if participation.title %}
+                                    <div class="detail-item">
+                                        <i class="fa-solid fa-briefcase"></i>
+                                        <span>{{ participation.title }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if participation.email %}
+                                    <div class="detail-item">
+                                        <i class="fa-solid fa-envelope"></i>
+                                        <span>{{ participation.email }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if participation.age_group %}
+                                    <div class="detail-item">
+                                        <i class="fa-solid fa-users"></i>
+                                        <span>{{ participation.age_group }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if participation.contact %}
+                                    <div class="detail-item">
+                                        <i class="fa-solid fa-phone"></i>
+                                        <span>{{ participation.contact }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <div class="signup-details">
-                                {% if participation.title %}
-                                <div class="detail-item">
-                                    <i class="fa-solid fa-briefcase"></i>
-                                    <span>{{ participation.title }}</span>
-                                </div>
-                                {% endif %}
-                                {% if participation.email %}
-                                <div class="detail-item">
-                                    <i class="fa-solid fa-envelope"></i>
-                                    <span>{{ participation.email }}</span>
-                                </div>
-                                {% endif %}
-                                {% if participation.age_group %}
-                                <div class="detail-item">
-                                    <i class="fa-solid fa-users"></i>
-                                    <span>{{ participation.age_group }}</span>
-                                </div>
-                                {% endif %}
-                                {% if participation.contact %}
-                                <div class="detail-item">
-                                    <i class="fa-solid fa-phone"></i>
-                                    <span>{{ participation.contact }}</span>
-                                </div>
-                                {% endif %}
+                            <div class="signup-actions">
+                                <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                    <i class="fa-solid fa-eye"></i> View
+                                </a>
                             </div>
                         </div>
-                        <div class="signup-actions">
-                            <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                <i class="fa-solid fa-eye"></i> View
-                            </a>
-                        </div>
-                    </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
             {% else %}
@@ -300,17 +302,19 @@
                         {% if participation_stats['Attended'] %}
                             <div class="volunteers-grid">
                                 {% for participation in participation_stats['Attended'] %}
-                                <div class="volunteer-card">
-                                    <div class="volunteer-info">
-                                        <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                        {% if participation.delivery_hours %}
-                                        <span class="volunteer-hours">{{ participation.delivery_hours }} hours</span>
-                                        {% endif %}
+                                    {% if participation.volunteer %}  <!-- Only show if volunteer exists -->
+                                    <div class="volunteer-card">
+                                        <div class="volunteer-info">
+                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                            {% if participation.delivery_hours %}
+                                            <span class="volunteer-hours">{{ participation.delivery_hours }} hours</span>
+                                            {% endif %}
+                                        </div>
+                                        <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
                                     </div>
-                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </div>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
                         {% endif %}
@@ -322,14 +326,16 @@
                         {% if participation_stats['No-Show'] %}
                             <div class="volunteers-grid">
                                 {% for participation in participation_stats['No-Show'] %}
-                                <div class="volunteer-card no-show">
-                                    <div class="volunteer-info">
-                                        <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                    {% if participation.volunteer %}  <!-- Only show if volunteer exists -->
+                                    <div class="volunteer-card no-show">
+                                        <div class="volunteer-info">
+                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                        </div>
+                                        <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
                                     </div>
-                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </div>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
                         {% endif %}
@@ -341,14 +347,16 @@
                         {% if participation_stats['Cancelled'] %}
                             <div class="volunteers-grid">
                                 {% for participation in participation_stats['Cancelled'] %}
-                                <div class="volunteer-card cancelled">
-                                    <div class="volunteer-info">
-                                        <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                    {% if participation.volunteer %}  <!-- Only show if volunteer exists -->
+                                    <div class="volunteer-card cancelled">
+                                        <div class="volunteer-info">
+                                            <span class="volunteer-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                        </div>
+                                        <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
                                     </div>
-                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-volunteer-btn">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </div>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
                         {% endif %}

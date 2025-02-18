@@ -107,6 +107,28 @@ class EventStatus(str, Enum):
     NO_SHOW = 'No Show'
     SIMULCAST = 'Simulcast'
 
+    @classmethod
+    def map_status(cls, status_str):
+        if not status_str:
+            return cls.DRAFT
+            
+        status_str = status_str.lower().strip()
+        status_mapping = {
+            'teacher no-show': cls.NO_SHOW,
+            'teacher cancelation': cls.NO_SHOW,
+            'simulcast': cls.SIMULCAST,
+            'successfully completed': cls.COMPLETED,
+            'completed': cls.COMPLETED,
+            'confirmed': cls.CONFIRMED,
+            'cancelled': cls.CANCELLED,
+            'canceled': cls.CANCELLED,
+            'published': cls.PUBLISHED,
+            'requested': cls.REQUESTED,
+            'draft': cls.DRAFT,
+        }
+        
+        return status_mapping.get(status_str, cls.DRAFT)
+
 class Event(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
