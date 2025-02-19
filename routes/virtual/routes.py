@@ -19,6 +19,7 @@ from sqlalchemy import func
 import re
 from models.history import History
 import hashlib
+from models.contact import Contact
 
 virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 
@@ -99,8 +100,8 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                     
                     # Try to find existing volunteer
                     volunteer = Volunteer.query.filter(
-                        Volunteer.first_name == first_name,
-                        Volunteer.last_name == last_name
+                        func.lower(Volunteer.first_name) == func.lower(first_name),
+                        func.lower(Volunteer.last_name) == func.lower(last_name)
                     ).first()
 
                     if not volunteer:
@@ -129,8 +130,8 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                 
                 # Try to find existing volunteer (teacher)
                 volunteer = Volunteer.query.filter(
-                    Volunteer.first_name == first_name,
-                    Volunteer.last_name == last_name
+                    func.lower(Volunteer.first_name) == func.lower(first_name),
+                    func.lower(Volunteer.last_name) == func.lower(last_name)
                 ).first()
 
                 if not volunteer:
@@ -470,14 +471,7 @@ def import_sheet():
                         if not pd.isna(row.get('Teacher Name')):
                             first_name, last_name = clean_name(row['Teacher Name'])
                             if first_name and last_name:
-                                school_name = clean_string_value(row.get('School Name'))
-                                district_name = clean_string_value(row.get('District'))  # Get district from data
-                                
-                                # Get or create school with district
-                                if school_name:
-                                    school = get_or_create_school(school_name, get_or_create_district(district_name))
-                                
-                                # Create or update teacher
+                                # Get or create teacher with proper Contact handling
                                 teacher = Teacher.query.filter(
                                     func.lower(Teacher.first_name) == func.lower(first_name),
                                     func.lower(Teacher.last_name) == func.lower(last_name)
@@ -487,21 +481,39 @@ def import_sheet():
                                     teacher = Teacher(
                                         first_name=first_name,
                                         last_name=last_name,
-                                        school_id=school.id if school else None
+                                        middle_name=''
                                     )
                                     db.session.add(teacher)
-                                    db.session.flush()
+                                    db.session.flush()  # Ensure teacher has ID
+                                
+                                # Handle school association
+                                school_name = clean_string_value(row.get('School Name'))
+                                district_name = clean_string_value(row.get('District'))
+                                if school_name:
+                                    school = get_or_create_school(school_name, get_or_create_district(district_name))
+                                    teacher.school_id = school.id
                         
-                        # Process presenter
+                        # Process presenter/volunteer
                         if not pd.isna(row.get('Presenter')):
                             first_name, last_name = clean_name(row['Presenter'])
                             if first_name and last_name:
+                                # Get or create volunteer with proper Contact handling
+                                volunteer = Volunteer.query.filter(
+                                    func.lower(Volunteer.first_name) == func.lower(first_name),
+                                    func.lower(Volunteer.last_name) == func.lower(last_name)
+                                ).first()
+                                
+                                if not volunteer:
+                                    volunteer = Volunteer(
+                                        first_name=first_name,
+                                        last_name=last_name,
+                                        middle_name=''
+                                    )
+                                    db.session.add(volunteer)
+                                    db.session.flush()  # Ensure volunteer has ID
+                                
+                                # Handle organization
                                 org_name = clean_string_value(row.get('Organization'))
-                                
-                                # Initialize org variable
-                                org = None
-                                
-                                # Get or create organization if name exists
                                 if org_name:
                                     org = Organization.query.filter(
                                         func.lower(Organization.name) == func.lower(org_name)
@@ -513,25 +525,9 @@ def import_sheet():
                                             type='Business'
                                         )
                                         db.session.add(org)
-                                        db.session.flush()  # Ensure org has ID
-                                
-                                # Create or update volunteer
-                                volunteer = Volunteer.query.filter(
-                                    func.lower(Volunteer.first_name) == func.lower(first_name),
-                                    func.lower(Volunteer.last_name) == func.lower(last_name)
-                                ).first()
-                                
-                                if not volunteer:
-                                    volunteer = Volunteer(
-                                        first_name=first_name,
-                                        last_name=last_name
-                                    )
-                                    db.session.add(volunteer)
-                                    db.session.flush()
-                                
-                                # Only create VolunteerOrganization if org exists
-                                if org and volunteer:
-                                    # Check if relationship already exists
+                                        db.session.flush()
+                                    
+                                    # Create volunteer-organization link if not exists
                                     vol_org = VolunteerOrganization.query.filter_by(
                                         volunteer_id=volunteer.id,
                                         organization_id=org.id
@@ -539,12 +535,16 @@ def import_sheet():
                                     
                                     if not vol_org:
                                         vol_org = VolunteerOrganization(
-                                            volunteer_id=volunteer.id,
-                                            organization_id=org.id,
+                                            volunteer=volunteer,
+                                            organization=org,
                                             role='Presenter',
-                                            status='Current'
+                                            is_primary=True
                                         )
                                         db.session.add(vol_org)
+                                
+                                # Link volunteer to event if not already linked
+                                if volunteer not in event.volunteers:
+                                    event.volunteers.append(volunteer)
                     
                     db.session.commit()
                     success_count += 1
