@@ -153,7 +153,7 @@ def import_schools():
         # Process districts
         for row in district_rows:
             try:
-                existing_district = District.query.filter_by(id=row['Id']).first()
+                existing_district = District.query.filter_by(salesforce_id=row['Id']).first()
                 
                 if existing_district:
                     # Update existing district
@@ -162,7 +162,7 @@ def import_schools():
                 else:
                     # Create new district
                     new_district = District(
-                        id=row['Id'],
+                        salesforce_id=row['Id'],
                         name=row['Name'],
                         district_code=row['School_Code_External_ID__c']
                     )
@@ -172,7 +172,7 @@ def import_schools():
             except Exception as e:
                 district_errors.append(f"Error processing district {row.get('Name')}: {str(e)}")
 
-        # Commit district changes before processing schools
+        # Commit district changes
         db.session.commit()
         
         print(f"District import complete: {district_success} successes, {len(district_errors)} errors")
@@ -200,10 +200,14 @@ def import_schools():
             try:
                 existing_school = School.query.filter_by(id=row['Id']).first()
                 
+                # Find the district using salesforce_id
+                district = District.query.filter_by(salesforce_id=row['ParentId']).first()
+                
                 if existing_school:
                     # Update existing school
                     existing_school.name = row['Name']
-                    existing_school.district_id = row['ParentId']
+                    existing_school.district_id = district.id if district else None
+                    existing_school.salesforce_district_id = row['ParentId']
                     existing_school.normalized_name = row['Connector_Account_Name__c']
                     existing_school.school_code = row['School_Code_External_ID__c']
                 else:
@@ -211,7 +215,8 @@ def import_schools():
                     new_school = School(
                         id=row['Id'],
                         name=row['Name'],
-                        district_id=row['ParentId'],
+                        district_id=district.id if district else None,
+                        salesforce_district_id=row['ParentId'],
                         normalized_name=row['Connector_Account_Name__c'],
                         school_code=row['School_Code_External_ID__c']
                     )
@@ -221,7 +226,7 @@ def import_schools():
             except Exception as e:
                 school_errors.append(f"Error processing school {row.get('Name')}: {str(e)}")
 
-        # Commit all changes
+        # Commit school changes
         db.session.commit()
         
         print(f"School import complete: {school_success} successes, {len(school_errors)} errors")
@@ -280,7 +285,7 @@ def import_districts():
         for row in sf_rows:
             try:
                 # Check if district exists
-                existing_district = District.query.filter_by(id=row['Id']).first()
+                existing_district = District.query.filter_by(salesforce_id=row['Id']).first()
                 
                 if existing_district:
                     # Update existing district
@@ -289,7 +294,7 @@ def import_districts():
                 else:
                     # Create new district
                     new_district = District(
-                        id=row['Id'],
+                        salesforce_id=row['Id'],
                         name=row['Name'],
                         district_code=row['School_Code_External_ID__c']
                     )

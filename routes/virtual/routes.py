@@ -18,6 +18,7 @@ from os import getenv
 from sqlalchemy import func
 import re
 from models.history import History
+import hashlib
 
 virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 
@@ -321,12 +322,19 @@ def parse_datetime(date_str, time_str):
             
         # Parse date
         date_parts = date_str.split('/')
+        current_month = datetime.now().month
+        
         if len(date_parts) == 2:
             month, day = map(int, date_parts)
-            year = datetime.now().year
-            # If month is less than current month, assume next year
-            if month < datetime.now().month:
-                year += 1
+            # If current month is June or later (≥6):
+            #   - Dates July-Dec (≥7) are 2024
+            #   - Dates Jan-June (1-6) are 2025
+            # If current month is before June (<6):
+            #   - All dates are 2024
+            if current_month >= 6:
+                year = 2024 if month >= 7 else 2025
+            else:
+                year = 2024
         elif len(date_parts) == 3:
             month, day, year = map(int, date_parts)
             if year < 100:
@@ -467,21 +475,7 @@ def import_sheet():
                                 
                                 # Get or create school with district
                                 if school_name:
-                                    school = School.query.filter(
-                                        func.lower(School.name) == func.lower(school_name)
-                                    ).first()
-                                    
-                                    if not school:
-                                        # Get or create district
-                                        district = get_or_create_district(district_name)
-                                        
-                                        school = School(
-                                            name=school_name,
-                                            normalized_name=school_name.lower(),
-                                            district_id=district.id  # Set the district_id
-                                        )
-                                        db.session.add(school)
-                                        db.session.flush()
+                                    school = get_or_create_school(school_name, get_or_create_district(district_name))
                                 
                                 # Create or update teacher
                                 teacher = Teacher.query.filter(
@@ -576,3 +570,56 @@ def import_sheet():
             'success': False,
             'error': str(e)
         }), 400
+
+def clean_time_string(time_str):
+    """Clean and validate time string"""
+    if not time_str:
+        return None
+    # Remove duplicate AM/PM
+    time_str = time_str.replace(' PM PM', ' PM').replace(' AM AM', ' AM')
+    try:
+        return datetime.strptime(time_str, '%I:%M %p')
+    except ValueError:
+        current_app.logger.warning(f"Invalid time format: {time_str}")
+        return None
+
+def generate_school_id(name):
+    """Generate a unique ID for virtual schools that matches Salesforce length"""
+    timestamp = datetime.now().strftime('%y%m%d')
+    name_hash = hashlib.sha256(name.lower().encode()).hexdigest()[:8]  # Increased to 8 chars
+    base_id = f"VRT{timestamp}{name_hash}"  # Removed underscores to save space
+    
+    # Ensure exactly 18 characters
+    base_id = base_id[:18].ljust(18, '0')
+    
+    # Check if ID exists and append counter if needed
+    counter = 1
+    new_id = base_id
+    while School.query.filter_by(id=new_id).first():
+        counter_str = str(counter).zfill(2)
+        new_id = (base_id[:-2] + counter_str)  # Replace last 2 chars with counter
+        counter += 1
+    
+    return new_id
+
+def get_or_create_school(name, district=None):
+    """Get or create school by name with improved district handling"""
+    if not name:
+        return None
+    
+    school = School.query.filter(
+        func.lower(School.name) == func.lower(name)
+    ).first()
+    
+    if not school:
+        school = School(
+            id=generate_school_id(name),
+            name=name,
+            district_id=district.id if district else None,
+            normalized_name=name.lower(),
+            salesforce_district_id=district.salesforce_id if district and district.salesforce_id else None
+        )
+        db.session.add(school)
+        db.session.flush()
+    
+    return school
