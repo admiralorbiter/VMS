@@ -33,7 +33,8 @@ class School(db.Model):
     #   allowing for further filtering and efficient counting
     district = db.relationship(
         'District',
-        backref=db.backref('schools', lazy='dynamic')
+        backref=db.backref('schools', lazy='dynamic', cascade='all, delete-orphan'),
+        cascade='all, delete'
     )
     
     def __repr__(self):
