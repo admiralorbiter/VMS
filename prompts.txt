@@ -10,6 +10,13 @@
     
     Suggest the best fix for the root cause based on the synthesized analysis with **Minimal Required Changes:** and explain why you are confident. or what testing is further necessary and print staements or simialr to do that. (Note: Not every identified issue requires a fix.)
 
+Please review the following Flask Python code and add comprehensive inline comments that explain each section in a way that both students and collaborators can easily understand. For each function, route, and key operation, include:
+
+A brief description of its purpose and how it fits into the overall application.
+Explanations of input parameters, return values, and any significant logic.
+Context on Flask-specific features, such as decorators, request handling, and responses.
+Notes on potential edge cases or important implementation details.
+Ensure the comments are clear, beginner-friendly, and encourage good coding practices."
 
 
     Prompt 1: “Model-by-Model Deep Dive”
