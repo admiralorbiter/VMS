@@ -65,6 +65,13 @@ class User(db.Model, UserMixin):
         Usage:
             new_user = User(username='john', email='john@example.com', is_admin=True)
         """
+        # Set timestamps if not provided
+        now = datetime.now(timezone.utc)
+        if 'created_at' not in kwargs:
+            kwargs['created_at'] = now
+        if 'updated_at' not in kwargs:
+            kwargs['updated_at'] = now
+            
         is_admin_value = kwargs.pop('is_admin', False)  # Extract is_admin before super().__init__
         super().__init__(**kwargs)
         if 'security_level' not in kwargs:

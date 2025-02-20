@@ -45,7 +45,7 @@ Prompt 2: “Safe Refactoring with Regression Testing”
 
 Test Suite Review and Enhancement:
 
-Identify and list all tests related to model functionality and relationships.
+Identify and list all tests related to the model functionality and relationships.
 Ask: “Do my tests cover all edge cases and relationship interactions?”
 Plan to write additional tests for any untested interactions.
 Migration and Backwards Compatibility:
