@@ -113,3 +113,64 @@ def test_school_cascade_delete(app):
         
         # Verify school was deleted
         assert db.session.get(School, school_id) is None 
+
+def test_school_salesforce_district_id_mismatch(app):
+    """Test handling of mismatched salesforce_district_id"""
+    with app.app_context():
+        district = District(
+            name='Test District',
+            salesforce_id='0015f00000JVZsFAAX'
+        )
+        db.session.add(district)
+        db.session.commit()
+        
+        school = School(
+            id='0015f00000TEST456',
+            name='Mismatch Test School',
+            district_id=district.id,
+            salesforce_district_id='DIFFERENT_ID'  # Mismatched ID
+        )
+        db.session.add(school)
+        db.session.commit()
+        
+        assert school.district_id == district.id
+        assert school.salesforce_district_id != district.salesforce_id
+        
+        # Cleanup
+        db.session.delete(school)
+        db.session.delete(district)
+        db.session.commit()
+
+def test_multiple_schools_per_district(app):
+    """Test adding multiple schools to one district"""
+    with app.app_context():
+        district = District(
+            name='Multi-School District',
+            salesforce_id='0015f00000MULTI01'
+        )
+        db.session.add(district)
+        db.session.commit()
+        
+        # Add multiple schools
+        schools = []
+        for i in range(3):
+            school = School(
+                id=f'0015f00000TEST{i}',
+                name=f'School {i}',
+                district_id=district.id,
+                salesforce_district_id=district.salesforce_id
+            )
+            schools.append(school)
+            db.session.add(school)
+        db.session.commit()
+        
+        # Verify relationships
+        assert district.schools.count() == 3
+        for school in schools:
+            assert school.district_id == district.id
+        
+        # Cleanup
+        for school in schools:
+            db.session.delete(school)
+        db.session.delete(district)
+        db.session.commit() 

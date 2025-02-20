@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from models.district_model import District
 from models import db
+from models.school_model import School
 
 def test_new_district(app):
     """Test creating a new district"""
@@ -119,4 +120,66 @@ def test_district_code_format(app):
             assert district.district_code == code
             
             db.session.delete(district)
-            db.session.commit() 
+            db.session.commit()
+
+def test_district_schools_query(app):
+    """Test querying schools relationship"""
+    with app.app_context():
+        district = District(
+            name='Query Test District',
+            salesforce_id='0015f00000QUERY01'
+        )
+        db.session.add(district)
+        db.session.commit()
+        
+        # Add schools with different names
+        schools = [
+            School(id='0015f00000TST1', name='Alpha School', district_id=district.id),
+            School(id='0015f00000TST2', name='Beta School', district_id=district.id),
+            School(id='0015f00000TST3', name='Gamma School', district_id=district.id)
+        ]
+        for school in schools:
+            db.session.add(school)
+        db.session.commit()
+        
+        # Test filtering
+        alpha_schools = district.schools.filter(School.name.like('Alpha%')).all()
+        assert len(alpha_schools) == 1
+        assert alpha_schools[0].name == 'Alpha School'
+        
+        # Test ordering
+        ordered_schools = district.schools.order_by(School.name).all()
+        assert ordered_schools[0].name == 'Alpha School'
+        assert ordered_schools[-1].name == 'Gamma School'
+        
+        # Cleanup
+        for school in schools:
+            db.session.delete(school)
+        db.session.delete(district)
+        db.session.commit()
+
+def test_district_null_salesforce_id(app):
+    """Test district with null salesforce_id"""
+    with app.app_context():
+        district = District(name='No Salesforce ID District')
+        db.session.add(district)
+        db.session.commit()
+        
+        assert district.salesforce_id is None
+        
+        # Add a school
+        school = School(
+            id='0015f00000NULLTST',
+            name='School with No SF District',
+            district_id=district.id
+        )
+        db.session.add(school)
+        db.session.commit()
+        
+        assert school.district_id == district.id
+        assert school.salesforce_district_id is None
+        
+        # Cleanup
+        db.session.delete(school)
+        db.session.delete(district)
+        db.session.commit() 
