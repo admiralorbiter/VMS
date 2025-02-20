@@ -111,20 +111,17 @@ def process_volunteer_row(row, success_count, error_count, errors):
             # Create or update connector data
             if not volunteer.connector:
                 volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
-                updates.append('connector_created')
 
             # Update connector fields if they exist in Salesforce data
             if connector_data['active_subscription'] in [e.name for e in ConnectorSubscriptionEnum]:
                 if volunteer.connector.active_subscription != ConnectorSubscriptionEnum[connector_data['active_subscription']]:
                     volunteer.connector.active_subscription = ConnectorSubscriptionEnum[connector_data['active_subscription']]
-                    updates.append('connector_subscription')
 
             for field, value in connector_data.items():
                 if field != 'active_subscription' and value:  # Skip active_subscription as it's handled above
                     current_value = getattr(volunteer.connector, field)
                     if current_value != value:
                         setattr(volunteer.connector, field, value)
-                        updates.append(f'connector_{field}')
 
             return success_count + 1, error_count
                 
@@ -493,80 +490,6 @@ def edit_volunteer(id):
                          RaceEthnicityEnum=RaceEthnicityEnum,
                          LocalStatusEnum=LocalStatusEnum)
 
-@volunteers_bp.route('/volunteers/import', methods=['GET', 'POST'])
-@login_required
-def import_volunteers():
-        if request.method == 'GET':
-            return render_template('volunteers/import.html')
-        
-        try:
-            success_count = 0
-            error_count = 0
-            errors = []
-            
-            if request.is_json and request.json.get('quickSync'):
-                default_file_path = os.path.join('data', 'Volunteers.csv')
-                if not os.path.exists(default_file_path):
-                    return jsonify({'error': 'Default CSV file not found'}), 404
-                
-                encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'iso-8859-1']
-                for encoding in encodings:
-                    try:
-                        with open(default_file_path, 'r', encoding=encoding) as file:
-                            csv_data = csv.DictReader(file)
-                            for row in csv_data:
-                                success_count, error_count = process_volunteer_row(
-                                    row, success_count, error_count, errors
-                                )
-                        break
-                    except UnicodeDecodeError:
-                        continue
-                else:
-                    return jsonify({'error': 'Could not decode file with any known encoding'}), 400
-
-            else:
-                if 'file' not in request.files:
-                    return jsonify({'error': 'No file uploaded'}), 400
-                
-                file = request.files['file']
-                if file.filename == '':
-                    return jsonify({'error': 'No file selected'}), 400
-                
-                if not file.filename.endswith('.csv'):
-                    return jsonify({'error': 'File must be a CSV'}), 400
-
-                file_content = file.read()
-                
-                encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'iso-8859-1']
-                for encoding in encodings:
-                    try:
-                        stream = io.StringIO(file_content.decode(encoding), newline=None)
-                        csv_data = csv.DictReader(stream)
-                        for row in csv_data:
-                            success_count, error_count = process_volunteer_row(
-                                row, success_count, error_count, errors
-                            )
-                        break
-                    except UnicodeDecodeError:
-                        continue
-                else:
-                    return jsonify({'error': 'Could not decode file with any known encoding'}), 400
-
-            try:
-                db.session.commit()
-                return jsonify({
-                    'success': True,
-                    'successCount': success_count,
-                    'errorCount': error_count,
-                    'errors': errors
-                })
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({'error': f'Database error: {str(e)}'}), 500
-                
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
 @volunteers_bp.route('/volunteers/purge', methods=['POST'])
 @login_required
 def purge_volunteers():
@@ -704,6 +627,43 @@ def import_from_salesforce():
         error_count = 0
         errors = []
         processed_volunteers = []
+
+        # Add comprehensive education mapping
+        education_mapping = {
+            # Exact matches
+            'BACHELORS': 'BACHELORS_DEGREE',
+            'MASTERS': 'MASTERS',
+            'DOCTORATE': 'DOCTORATE',
+            
+            # Common variations
+            'BACHELOR': 'BACHELORS_DEGREE',
+            'BACHELOR\'S': 'BACHELORS_DEGREE',
+            'BACHELORS DEGREE': 'BACHELORS_DEGREE',
+            'MASTER': 'MASTERS',
+            'MASTER\'S': 'MASTERS',
+            'MASTERS DEGREE': 'MASTERS',
+            'PHD': 'DOCTORATE',
+            'PH.D': 'DOCTORATE',
+            'PH.D.': 'DOCTORATE',
+            'DOCTORAL': 'DOCTORATE',
+            
+            # New Salesforce specific values
+            'HIGH SCHOOL DIPLOMA OR GED': 'HIGH_SCHOOL',
+            'ADVANCED PROFESSIONAL DEGREE': 'PROFESSIONAL',
+            'PREFER NOT TO ANSWER': 'UNKNOWN',
+            
+            # Other credentials
+            'CERTIFICATE': 'OTHER',
+            'CERTIFICATION': 'OTHER',
+            'ASSOCIATE': 'ASSOCIATES',
+            'ASSOCIATES': 'ASSOCIATES',
+            'ASSOCIATE\'S': 'ASSOCIATES',
+            'HIGH SCHOOL': 'HIGH_SCHOOL',
+            'GED': 'HIGH_SCHOOL',
+            'SOME COLLEGE': 'SOME_COLLEGE',
+            'PROFESSIONAL': 'PROFESSIONAL',
+            'PROFESSIONAL DEGREE': 'PROFESSIONAL'
+        }
 
         # Process each row from Salesforce
         for row in sf_rows:
@@ -856,24 +816,32 @@ def import_from_salesforce():
                     volunteer.description = new_description
                     updates.append('description')
 
-                # Handle education level
+                # Handle education level with robust mapping
                 education_str = (row.get('Highest_Level_of_Educational__c') or '').strip()
                 if education_str:
-                    # Map Salesforce education values to our enum
-                    education_map = {
-                        'High School': EducationEnum.HIGH_SCHOOL,
-                        'Some College': EducationEnum.SOME_COLLEGE,
-                        'Associates Degree': EducationEnum.ASSOCIATES,
-                        'Bachelors Degree': EducationEnum.BACHELORS,
-                        'Masters Degree': EducationEnum.MASTERS,
-                        'Doctorate': EducationEnum.DOCTORATE,
-                        'Professional Degree': EducationEnum.PROFESSIONAL,
-                        'Other': EducationEnum.OTHER
-                    }
-                    new_education = education_map.get(education_str, EducationEnum.UNKNOWN)
-                    if volunteer.education_level != new_education:
-                        volunteer.education_level = new_education
-                        updates.append('education_level')
+                    try:
+                        # Normalize the string (uppercase, remove special chars)
+                        normalized_education = education_str.upper().replace('.', '').replace('-', ' ')
+                        
+                        # Try direct mapping first
+                        enum_value = education_mapping.get(normalized_education)
+                        
+                        if enum_value and enum_value in [e.name for e in EducationEnum]:
+                            if not volunteer.education or volunteer.education.name != enum_value:
+                                volunteer.education = EducationEnum[enum_value]
+                                updates.append('education')
+                        else:
+                            # Log unmatched values for future mapping updates
+                            print(f"Unmatched education value: {education_str}")
+                            # Set to UNKNOWN for unmatched values
+                            volunteer.education = EducationEnum.UNKNOWN
+                            updates.append('education')
+                            
+                    except (ValueError, KeyError) as e:
+                        print(f"Error mapping education value '{education_str}': {str(e)}")
+                        # Set to UNKNOWN if mapping fails
+                        volunteer.education = EducationEnum.UNKNOWN
+                        updates.append('education')
 
                 # Handle age group
                 age_str = (row.get('Age_Group__c') or '').strip()

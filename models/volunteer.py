@@ -4,7 +4,7 @@ from models.contact import (
     FormEnum, Enum, ContactTypeEnum
 )
 from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, validates
 from models.history import History
 
 class ConnectorSubscriptionEnum(FormEnum):
@@ -46,7 +46,8 @@ class Volunteer(Contact):
     
     __mapper_args__ = {
         'polymorphic_identity': 'volunteer',
-        'confirm_deleted_rows': False
+        'confirm_deleted_rows': False,
+        'inherit_condition': id == Contact.id
     }
     
     # Organization Information
@@ -75,18 +76,19 @@ class Volunteer(Contact):
     interests = db.Column(Text)  # Store volunteer interests as semicolon-separated text
 
     # Relationships need @declared_attr
-    @declared_attr
-    def engagements(cls):
-        return relationship('Engagement', backref='volunteer', lazy='dynamic')
+    engagements = relationship(
+        'Engagement',
+        backref='volunteer',
+        lazy='dynamic',
+        cascade="all, delete-orphan"
+    )
 
-    @declared_attr
-    def organizations(cls):
-        return relationship(
-            'Organization',
-            secondary='volunteer_organization',
-            back_populates='volunteers',
-            overlaps="volunteer_organizations"
-        )
+    organizations = db.relationship(
+        'Organization',
+        secondary='volunteer_organization',
+        back_populates='volunteers',
+        overlaps="volunteer_organizations"
+    )
 
     @declared_attr
     def volunteer_organizations(cls):
@@ -108,8 +110,13 @@ class Volunteer(Contact):
 
     @declared_attr
     def connector(cls):
-        return relationship('ConnectorData', uselist=False, back_populates='volunteer',
-                           cascade='all, delete-orphan')
+        return relationship(
+            "ConnectorData",
+            uselist=False,
+            back_populates="volunteer",
+            cascade="all, delete-orphan",
+            single_parent=True
+        )
 
     @property
     def total_times_volunteered(self):
@@ -129,11 +136,10 @@ class Volunteer(Contact):
         try:
             # KC metro area zip codes (first 3 digits)
             kc_metro_prefixes = ('640', '641', '660', '661', '664', '665', '666')
-            # Broader region zip codes (first 3 digits) - includes more of MO and KS
+            # Broader region zip codes (first 3 digits)
             region_prefixes = ('644', '645', '646', '670', '671', '672', '673', '674')
             
             def check_address_status(address):
-                """Helper function to check status for a single address"""
                 if not address or not address.zip_code:
                     return None
                     
@@ -143,15 +149,12 @@ class Volunteer(Contact):
                 if zip_prefix in kc_metro_prefixes:
                     return LocalStatusEnum.local
                     
-                # Check if in broader region
-                if zip_prefix in region_prefixes:
-                    return LocalStatusEnum.partial
+                # If zip is not in KC metro or region, it's non-local
+                if zip_prefix not in region_prefixes:
+                    return LocalStatusEnum.non_local
                     
-                # If has state but not in region
-                if address.state in ('MO', 'KS'):
-                    return LocalStatusEnum.partial
-                    
-                return LocalStatusEnum.non_local
+                # If we get here, it's in the broader region
+                return LocalStatusEnum.partial
 
             # Try primary address first
             primary_address = next((addr for addr in self.addresses if addr.primary), None)
@@ -159,24 +162,32 @@ class Volunteer(Contact):
             if status:
                 return status
 
-            # If no valid primary address or it's non-local, try home address
+            # If no valid primary address, try home address
             home_address = next((addr for addr in self.addresses 
                                if addr.type == ContactTypeEnum.personal), None)
             if home_address and home_address != primary_address:
                 status = check_address_status(home_address)
                 if status:
                     return status
-
-            # If we found any address but it was non-local
-            if primary_address or home_address:
-                return LocalStatusEnum.non_local
-                
+            
             # No valid addresses found
             return LocalStatusEnum.unknown
             
         except Exception as e:
             print(f"Error calculating local status: {str(e)}")
             return LocalStatusEnum.unknown
+
+    @validates('times_volunteered', 'additional_volunteer_count')
+    def validate_counts(self, key, value):
+        if value < 0:
+            raise ValueError(f"{key} cannot be negative")
+        return value
+
+    @validates('education')
+    def validate_education(self, key, value):
+        if value and not isinstance(value, EducationEnum):
+            raise ValueError(f"Education must be an EducationEnum value")
+        return value
 
 # Skill Model
 class Skill(db.Model):

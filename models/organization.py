@@ -53,6 +53,10 @@ class Organization(db.Model):
 class VolunteerOrganization(db.Model):
     __tablename__ = 'volunteer_organization'
     
+    __mapper_args__ = {
+        'confirm_deleted_rows': False
+    }
+    
     volunteer_id = db.Column(Integer, 
                            ForeignKey('volunteer.id', ondelete='CASCADE'), 
                            primary_key=True)

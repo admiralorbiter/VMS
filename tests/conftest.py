@@ -224,20 +224,24 @@ def test_volunteer(app):
             title='Software Engineer',
             department='Engineering',
             industry='Technology',
-            education=EducationEnum.bachelors_degree,
-            local_status=LocalStatusEnum.true,
+            education=EducationEnum.BACHELORS_DEGREE,
+            local_status=LocalStatusEnum.local,
             race_ethnicity=RaceEthnicityEnum.white
         )
         db.session.add(volunteer)
         db.session.commit()
         
+        volunteer_id = volunteer.id  # Store ID
         yield volunteer
         
-        # Clean up
-        existing = db.session.get(Volunteer, volunteer.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+        # Modified cleanup
+        try:
+            existing = db.session.get(Volunteer, volunteer_id)
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+        except:
+            db.session.rollback()
 
 @pytest.fixture
 def test_skill(app):

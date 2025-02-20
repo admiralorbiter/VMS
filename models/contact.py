@@ -85,7 +85,7 @@ class EducationEnum(FormEnum):
     HIGH_SCHOOL = 'High School'
     SOME_COLLEGE = 'Some College'
     ASSOCIATES = 'Associates Degree'
-    BACHELORS = 'Bachelors Degree'
+    BACHELORS_DEGREE = "Bachelor's Degree"
     MASTERS = 'Masters Degree'
     DOCTORATE = 'Doctorate'
     PROFESSIONAL = 'Professional Degree'
