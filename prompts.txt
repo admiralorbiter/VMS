@@ -41,6 +41,8 @@ Documentation & Consistency:
 
 Ensure that each model is documented, including the purpose of each field and relationship.
 Ask: “Is there any redundancy or conflicting definitions between models?”
+
+
 Prompt 2: “Safe Refactoring with Regression Testing”
 
 Test Suite Review and Enhancement:
