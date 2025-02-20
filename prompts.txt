@@ -21,9 +21,9 @@ Ensure the comments are clear, beginner-friendly, and encourage good coding prac
 
     Prompt 1: “Model-by-Model Deep Dive”
 
-Review Each Model’s Structure:
+Review The Model’s Structure:
 
-List out each model and its fields.
+List out the model and its fields.
 Check that data types, constraints (like nullable, unique, etc.), and indexes are correctly defined.
 Verify that any default values or validations are still relevant.
 Examine Relationships:
