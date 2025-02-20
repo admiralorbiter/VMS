@@ -177,6 +177,11 @@ def volunteers():
     ).outerjoin(
         attended_count_subq,
         Volunteer.id == attended_count_subq.c.volunteer_id
+    ).outerjoin(
+        VolunteerOrganization
+    ).outerjoin(
+        Organization,
+        VolunteerOrganization.organization_id == Organization.id
     )
 
     # Apply filters
@@ -334,6 +339,16 @@ def add_volunteer():
                     contact_id=volunteer.id
                 )
                 db.session.add(phone)
+
+            # When creating/importing a volunteer with organization info
+            if request.form.get('organization_name'):
+                vol_org = VolunteerOrganization.link_volunteer_to_org(
+                    volunteer=volunteer,
+                    org_name=request.form.get('organization_name'),
+                    role=request.form.get('role'),
+                    is_primary=True
+                )
+                db.session.flush()
 
             db.session.commit()
             return redirect(url_for('volunteers.volunteers'))

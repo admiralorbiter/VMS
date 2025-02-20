@@ -1,6 +1,6 @@
 - **Identify Possible Issues:**
     
-    Analyze the problem and list up to 5–6 potential underlying causes. 
+    Analyze the problem and list up to 5–6 potential underlying and root causes. 
     
 - **Synthesize Findings:**
     
@@ -8,7 +8,9 @@
     
 - **Propose Solutions:**
     
-    Suggest the best fix based on the synthesized analysis with **Minimal Required Changes:**. (Note: Not every identified issue requires a fix.)
+    Suggest the best fix for the root cause based on the synthesized analysis with **Minimal Required Changes:** and explain why you are confident. or what testing is further necessary and print staements or simialr to do that. (Note: Not every identified issue requires a fix.)
+
+
 
     Prompt 1: “Model-by-Model Deep Dive”
 

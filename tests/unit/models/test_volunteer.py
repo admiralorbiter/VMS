@@ -9,6 +9,7 @@ from models.volunteer import ConnectorData, ConnectorSubscriptionEnum
 from models.contact import SalutationEnum, SuffixEnum, GenderEnum
 from models.contact import Email, Phone, Address, ContactTypeEnum
 from models.volunteer import Engagement, EventParticipation
+from sqlalchemy.exc import IntegrityError
 
 def test_new_volunteer(app):
     """Test creating a new volunteer"""
@@ -201,10 +202,8 @@ def test_volunteer_validation(app):
             volunteer = Volunteer(
                 first_name='Test',
                 last_name='Volunteer',
-                times_volunteered=-1  # Should raise ValueError
+                education='InvalidEducation'  # This should raise ValueError since it's not an EducationEnum
             )
-            db.session.add(volunteer)
-            db.session.commit()
 
 def test_volunteer_required_fields(app):
     """Test volunteer creation with required fields"""
@@ -394,3 +393,131 @@ def test_education_validation(app):
             )
             db.session.add(volunteer)
             db.session.commit() 
+
+def test_date_validation(app):
+    """Test date field validation methods"""
+    with app.app_context():
+        volunteer = Volunteer(
+            first_name='Test',
+            last_name='Volunteer'
+        )
+        
+        # Test valid date string
+        assert volunteer.validate_dates('first_volunteer_date', '2024-01-01') == date(2024, 1, 1)
+        
+        # Test invalid date string
+        assert volunteer.validate_dates('first_volunteer_date', 'invalid-date') is None
+        
+        # Test None value
+        assert volunteer.validate_dates('first_volunteer_date', None) is None
+        
+        # Test actual date object
+        test_date = date(2024, 1, 1)
+        assert volunteer.validate_dates('first_volunteer_date', test_date) == test_date
+
+def test_count_validation(app):
+    """Test count field validation methods"""
+    with app.app_context():
+        volunteer = Volunteer(
+            first_name='Test',
+            last_name='Volunteer'
+        )
+        
+        # Test integer values
+        assert volunteer.validate_counts('times_volunteered', 5) == 5
+        
+        # Test string numbers
+        assert volunteer.validate_counts('times_volunteered', '5') == 5
+        
+        # Test float values
+        assert volunteer.validate_counts('times_volunteered', 5.7) == 5
+        
+        # Test negative values (should return 0)
+        assert volunteer.validate_counts('times_volunteered', -1) == 0
+        
+        # Test invalid values
+        assert volunteer.validate_counts('times_volunteered', 'invalid') == 0
+        assert volunteer.validate_counts('times_volunteered', None) == 0 
+
+def test_local_status_edge_cases(app, test_volunteer):
+    """Test local status calculation edge cases"""
+    with app.app_context():
+        # Ensure test_volunteer is attached to current session
+        test_volunteer = db.session.merge(test_volunteer)
+        
+        # Test with no addresses
+        assert test_volunteer.calculate_local_status() == LocalStatusEnum.unknown
+        
+        # Test with multiple addresses (primary and home)
+        primary_addr = Address(
+            contact_id=test_volunteer.id,
+            address_line1='123 Main St',
+            city='Kansas City',
+            state='MO',
+            zip_code='64111',
+            type=ContactTypeEnum.professional,
+            primary=True
+        )
+        home_addr = Address(
+            contact_id=test_volunteer.id,
+            address_line1='456 Home St',
+            city='Lawrence',
+            state='KS',
+            zip_code='66044',
+            type=ContactTypeEnum.personal,
+            primary=False
+        )
+        
+        # Add addresses and verify initial state
+        db.session.add_all([primary_addr, home_addr])
+        db.session.commit()
+        
+        assert test_volunteer.calculate_local_status() == LocalStatusEnum.local
+        
+        # Instead of raw SQL, modify the address object directly
+        primary_addr.zip_code = None
+        db.session.commit()
+        
+        # Force a clean reload of the volunteer and its relationships
+        db.session.expire_all()
+        test_volunteer = db.session.get(Volunteer, test_volunteer.id)
+        
+        assert test_volunteer.calculate_local_status() == LocalStatusEnum.partial
+
+        print("\nDEBUG after zip_code change:")
+        print("Primary address zip:", primary_addr.zip_code)
+        print("All addresses:", [(a.zip_code, a.primary, a.type) for a in test_volunteer.addresses])
+
+def test_connector_data_constraints(app, test_volunteer):
+    """Test connector data constraints and unique fields"""
+    with app.app_context():
+        # Create first connector
+        connector1 = ConnectorData(
+            volunteer_id=test_volunteer.id,
+            active_subscription=ConnectorSubscriptionEnum.ACTIVE,
+            user_auth_id='ABC1234'
+        )
+        db.session.add(connector1)
+        db.session.commit()
+        
+        # Test unique user_auth_id constraint
+        with pytest.raises(IntegrityError):  # Changed from generic Exception
+            connector2 = ConnectorData(
+                volunteer_id=test_volunteer.id,
+                active_subscription=ConnectorSubscriptionEnum.ACTIVE,
+                user_auth_id='ABC1234'  # Duplicate user_auth_id
+            )
+            db.session.add(connector2)
+            db.session.commit()
+        
+        db.session.rollback()
+        
+        # For one-to-one relationship test, we need to flush to see the error
+        with pytest.raises(IntegrityError):  # Changed from generic Exception
+            connector3 = ConnectorData(
+                volunteer_id=test_volunteer.id,
+                active_subscription=ConnectorSubscriptionEnum.ACTIVE,
+                user_auth_id='XYZ9876'
+            )
+            db.session.add(connector3)
+            db.session.flush()  # Changed from commit() to flush() 

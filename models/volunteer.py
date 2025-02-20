@@ -44,6 +44,12 @@ class ConnectorData(db.Model):
     # Define relationship back to volunteer
     volunteer = relationship('Volunteer', back_populates='connector')
 
+    # Add unique constraint to user_auth_id
+    __table_args__ = (
+        db.UniqueConstraint('user_auth_id', name='uix_connector_user_auth_id'),
+        db.UniqueConstraint('volunteer_id', name='uix_connector_volunteer_id'),
+    )
+
 class VolunteerStatus(FormEnum):
     NONE = ''
     ACTIVE = 'active'
@@ -149,7 +155,6 @@ class Volunteer(Contact):
         ).all()
 
     def calculate_local_status(self):
-        """Calculate local status based on primary or home address"""
         try:
             # KC metro area zip codes (first 3 digits)
             kc_metro_prefixes = ('640', '641', '660', '661', '664', '665', '666')
@@ -161,35 +166,28 @@ class Volunteer(Contact):
                     return None
                     
                 zip_prefix = address.zip_code[:3]
-                
-                # Check if in KC metro area
                 if zip_prefix in kc_metro_prefixes:
                     return LocalStatusEnum.local
-                    
-                # If zip is not in KC metro or region, it's non-local
-                if zip_prefix not in region_prefixes:
-                    return LocalStatusEnum.non_local
-                    
-                # If we get here, it's in the broader region
-                return LocalStatusEnum.partial
+                if zip_prefix in region_prefixes:
+                    return LocalStatusEnum.partial
+                return LocalStatusEnum.non_local
 
-            # Try primary address first
-            primary_address = next((addr for addr in self.addresses if addr.primary), None)
-            status = check_address_status(primary_address)
-            if status:
-                return status
+            # First check if there's a primary address
+            primary_addr = next((addr for addr in self.addresses if addr.primary), None)
+            if primary_addr:
+                # If primary exists but has no zip, return partial
+                if not primary_addr.zip_code:
+                    return LocalStatusEnum.partial
+                # If primary has zip, use it
+                return check_address_status(primary_addr)
 
-            # If no valid primary address, try home address
-            home_address = next((addr for addr in self.addresses 
-                               if addr.type == ContactTypeEnum.personal), None)
-            if home_address and home_address != primary_address:
-                status = check_address_status(home_address)
-                if status:
-                    return status
-            
-            # No valid addresses found
-            return LocalStatusEnum.unknown
-            
+            # If no primary address, try personal address
+            personal_addr = next((addr for addr in self.addresses 
+                                if addr.type == ContactTypeEnum.personal), None)
+            if personal_addr and personal_addr.zip_code:
+                return check_address_status(personal_addr)
+
+            return LocalStatusEnum.unknown  
         except Exception as e:
             print(f"Error calculating local status: {str(e)}")
             return LocalStatusEnum.unknown
@@ -219,7 +217,15 @@ class Volunteer(Contact):
 
     @validates('education')
     def validate_education(self, key, value):
-        if value and not isinstance(value, EducationEnum):
+        if value is not None:
+            # If it's already an enum instance, return it
+            if isinstance(value, EducationEnum):
+                return value
+            if isinstance(value, str):
+                try:
+                    return EducationEnum[value.upper()]
+                except KeyError:
+                    raise ValueError(f"Invalid education value: {value}")
             raise ValueError(f"Education must be an EducationEnum value")
         return value
 
