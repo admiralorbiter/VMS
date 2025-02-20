@@ -1,0 +1,55 @@
+- **Identify Possible Issues:**
+    
+    Analyze the problem and list up to 5–6 potential underlying causes. 
+    
+- **Synthesize Findings:**
+    
+    Review and synthesize these possible issues to highlight the most likely causes. 
+    
+- **Propose Solutions:**
+    
+    Suggest the best fix based on the synthesized analysis with **Minimal Required Changes:**. (Note: Not every identified issue requires a fix.)
+
+    Prompt 1: “Model-by-Model Deep Dive”
+
+Review Each Model’s Structure:
+
+List out each model and its fields.
+Check that data types, constraints (like nullable, unique, etc.), and indexes are correctly defined.
+Verify that any default values or validations are still relevant.
+Examine Relationships:
+
+For every foreign key, one-to-many, many-to-many, or one-to-one relationship, ask:
+Are the relationships defined with the correct cascade rules and backref/back_populates options?
+Is the direction of the relationship clear and consistent with your application’s logic?
+Do the join conditions accurately reflect your business logic?
+Assess Integrity and Constraints:
+
+Confirm that constraints (e.g., uniqueness, composite keys) are properly set up.
+Review any custom validation logic attached to your models.
+Ask: “Does the model enforce data integrity both at the database level and in the application layer?”
+Documentation & Consistency:
+
+Ensure that each model is documented, including the purpose of each field and relationship.
+Ask: “Is there any redundancy or conflicting definitions between models?”
+Prompt 2: “Safe Refactoring with Regression Testing”
+
+Test Suite Review and Enhancement:
+
+Identify and list all tests related to model functionality and relationships.
+Ask: “Do my tests cover all edge cases and relationship interactions?”
+Plan to write additional tests for any untested interactions.
+Migration and Backwards Compatibility:
+
+Before making changes, create a detailed migration plan (using tools like Flask-Migrate) to handle schema changes.
+Ask: “Will these changes break any current queries or behaviors? How can I simulate or roll back if issues arise?”
+Document strategies for data migration if existing data needs to be transformed.
+Incremental Changes:
+
+Refactor one model (or one set of related models) at a time.
+After each change, run the full test suite and manually verify key functionality.
+Ask: “What did I change, why, and how can I verify that no previous functionality has been affected?”
+Peer Review and Code Comments:
+
+Consider a code review process for each model update.
+Use inline comments to note any decisions or assumptions made during the refactor.

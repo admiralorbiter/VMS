@@ -6,6 +6,7 @@ from models.contact import (
 from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime
 from sqlalchemy.orm import relationship, declared_attr, validates
 from models.history import History
+from datetime import date, datetime
 
 class ConnectorSubscriptionEnum(FormEnum):
     NONE = ''
@@ -20,7 +21,7 @@ class ConnectorData(db.Model):
     volunteer_id = db.Column(Integer, ForeignKey('volunteer.id'), nullable=False)
     
     # Subscription and Role Info
-    active_subscription = db.Column(Enum(ConnectorSubscriptionEnum), default=ConnectorSubscriptionEnum.NONE)
+    active_subscription = db.Column(Enum(ConnectorSubscriptionEnum), default=ConnectorSubscriptionEnum.NONE, index=True)
     active_subscription_name = db.Column(String(255))
     role = db.Column(String(20))
     signup_role = db.Column(String(20))
@@ -36,8 +37,18 @@ class ConnectorData(db.Model):
     last_login_datetime = db.Column(String(50))
     last_update_date = db.Column(Date)
     
+    # Add timestamps
+    created_at = db.Column(DateTime, nullable=True)
+    updated_at = db.Column(DateTime, nullable=True)
+    
     # Define relationship back to volunteer
     volunteer = relationship('Volunteer', back_populates='connector')
+
+class VolunteerStatus(FormEnum):
+    NONE = ''
+    ACTIVE = 'active'
+    INACTIVE = 'inactive'
+    ON_HOLD = 'on_hold'
 
 class Volunteer(Contact):
     __tablename__ = 'volunteer'
@@ -50,6 +61,9 @@ class Volunteer(Contact):
         'inherit_condition': id == Contact.id
     }
     
+    # Remove check constraints that could block imports
+    __table_args__ = ()
+    
     # Organization Information
     organization_name = db.Column(String(100))
     title = db.Column(String(50))
@@ -58,14 +72,14 @@ class Volunteer(Contact):
 
     # Additional Information
     education = db.Column(Enum(EducationEnum), nullable=True)
-    local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown)
+    local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown, index=True)
     local_status_last_updated = db.Column(DateTime)
 
     # Volunteer Engagement Summary
     first_volunteer_date = db.Column(Date)
-    last_volunteer_date = db.Column(Date)
+    last_volunteer_date = db.Column(Date, index=True)
     last_non_internal_email_date = db.Column(Date)
-    last_activity_date = db.Column(Date)
+    last_activity_date = db.Column(Date, index=True)
     times_volunteered = db.Column(Integer, default=0)
     additional_volunteer_count = db.Column(Integer, default=0)
 
@@ -74,6 +88,9 @@ class Volunteer(Contact):
     mailchimp_history = db.Column(Text)
     admin_contacts = db.Column(String(200))
     interests = db.Column(Text)  # Store volunteer interests as semicolon-separated text
+
+    # Volunteer Status
+    status = db.Column(Enum(VolunteerStatus), default=VolunteerStatus.ACTIVE, index=True)
 
     # Relationships need @declared_attr
     engagements = relationship(
@@ -177,17 +194,41 @@ class Volunteer(Contact):
             print(f"Error calculating local status: {str(e)}")
             return LocalStatusEnum.unknown
 
+    @validates('first_volunteer_date', 'last_volunteer_date', 'last_activity_date')
+    def validate_dates(self, key, value):
+        if not value:  # Handle empty strings and None
+            return None
+        if isinstance(value, str):
+            try:
+                value = datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                print(f"Warning: Invalid date format for {key}: {value}")
+                return None
+        return value
+
     @validates('times_volunteered', 'additional_volunteer_count')
     def validate_counts(self, key, value):
-        if value < 0:
-            raise ValueError(f"{key} cannot be negative")
-        return value
+        if not value:  # Handle empty strings and None
+            return 0
+        try:
+            value = int(float(value))  # Handle string numbers and floats
+            return max(0, value)
+        except (ValueError, TypeError):
+            print(f"Warning: Invalid {key} value: {value}")
+            return 0
 
     @validates('education')
     def validate_education(self, key, value):
         if value and not isinstance(value, EducationEnum):
             raise ValueError(f"Education must be an EducationEnum value")
         return value
+
+    # Add data cleaning for Salesforce imports
+    @classmethod
+    def from_salesforce(cls, data):
+        # Convert empty strings to None
+        cleaned = {k: (None if v == "" else v) for k, v in data.items()}
+        return cls(**cleaned)
 
 # Skill Model
 class Skill(db.Model):
