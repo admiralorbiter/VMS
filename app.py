@@ -37,19 +37,20 @@ if not os.path.exists(instance_path):
 
 # Only create tables if they don't exist
 with app.app_context():
-    # Create all tables
-    db.create_all()
-    
-    # Verify tables were created
+    # Check if database exists and has tables
     inspector = db.inspect(db.engine)
-    expected_tables = ['event', 'event_volunteers', 'event_districts', 'event_skills', 'event_participation']
     existing_tables = inspector.get_table_names()
     
-    missing_tables = [table for table in expected_tables if table not in existing_tables]
-    if missing_tables:
-        print(f"Warning: Missing tables detected: {missing_tables}")
-        # Try to create missing tables specifically
+    if not existing_tables:
+        # Database is empty, create all tables
         db.create_all()
+        print("Database initialized with all tables.")
+    else:
+        # Check for any missing expected tables
+        expected_tables = ['event', 'event_volunteers', 'event_districts', 'event_skills', 'event_participation']
+        missing_tables = [table for table in expected_tables if table not in existing_tables]
+        if missing_tables:
+            print(f"Warning: Missing tables detected: {missing_tables}")
 
 # User loader callback for Flask-Login
 @login_manager.user_loader
