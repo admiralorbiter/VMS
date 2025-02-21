@@ -2,6 +2,7 @@ from models import db
 from sqlalchemy import Enum, Date, Boolean, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, declared_attr
 from enum import Enum as PyEnum
+from datetime import date
 
 # Base Enum Class
 class FormEnum(str, PyEnum):
@@ -120,25 +121,32 @@ class Contact(db.Model):
     """Base contact model that all other contact types inherit from (e.g., Volunteer, Teacher).
     Stores common contact information and relationships shared by all contact types.
     
+    This is a SQLAlchemy model that uses inheritance - other contact types (like Volunteer)
+    will inherit all these fields and relationships automatically.
+    
     Key Relationships:
-    - phones: One-to-many with Phone model
-    - emails: One-to-many with Email model
-    - addresses: One-to-many with Address model
+    - phones: One-to-many with Phone model (one contact can have many phone numbers)
+    - emails: One-to-many with Email model (one contact can have many email addresses) 
+    - addresses: One-to-many with Address model (one contact can have many physical addresses)
     """
     __tablename__ = 'contact'
     
+    # Primary key - every contact gets a unique ID number
     id = db.Column(Integer, primary_key=True)
-    type = db.Column(String(50))  # Stores the type of contact for polymorphic identity
+    # This field helps SQLAlchemy know what type of contact this is (e.g., 'volunteer', 'teacher')
+    type = db.Column(String(50))
     
-    # External System IDs
+    # External IDs for Salesforce integration
+    # The unique=True ensures no two contacts can have the same Salesforce Individual ID
     salesforce_individual_id = db.Column(String(18), unique=True, nullable=True)
     salesforce_account_id = db.Column(String(18), nullable=True)
     
-    # Name Components
+    # Basic contact information - notice how some fields are nullable=False (required)
+    # while others are nullable=True (optional)
     salutation = db.Column(Enum(SalutationEnum), nullable=True)
-    first_name = db.Column(String(50), nullable=False)
-    middle_name = db.Column(String(50), nullable=True)
-    last_name = db.Column(String(50), nullable=False)
+    first_name = db.Column(String(50), nullable=False)  # Required field
+    middle_name = db.Column(String(50), nullable=True)  # Optional field
+    last_name = db.Column(String(50), nullable=False)   # Required field
     suffix = db.Column(Enum(SuffixEnum), nullable=True)
     
     # Demographic Information
@@ -166,21 +174,23 @@ class Contact(db.Model):
         'confirm_deleted_rows': False        # Prevents deletion confirmation checks
     }
 
-    # Relationship definitions with cascade delete enabled
+    # These relationship definitions tell SQLAlchemy how contacts are connected to their
+    # phone numbers, emails, and addresses. The 'cascade' parameter ensures that when
+    # a contact is deleted, all their related information is also deleted.
     phones = relationship('Phone', 
-                        backref='contact',
-                        lazy='dynamic',
-                        cascade='all, delete-orphan')  # Deletes related phones when contact is deleted
+                        backref='contact',  # This creates a .contact property on Phone objects
+                        lazy='dynamic',     # Lazy loading - only fetches data when accessed
+                        cascade='all, delete-orphan')  # Automatically deletes related phones when contact is deleted
     
     emails = relationship('Email',
                         backref='contact',
                         lazy='dynamic',
-                        cascade='all, delete-orphan')  # Deletes related emails when contact is deleted
+                        cascade='all, delete-orphan')
     
     addresses = relationship('Address',
                           backref='contact',
                           lazy='dynamic',
-                          cascade='all, delete-orphan')  # Deletes related addresses when contact is deleted
+                          cascade='all, delete-orphan')
 
     @property
     def salesforce_contact_url(self):
@@ -219,18 +229,100 @@ class Contact(db.Model):
         """Returns the primary phone object for this contact, or None if not found."""
         return self.phones.filter_by(primary=True).first()
 
+    def validate_email_primary_status(self):
+        """Ensures only one email is marked as primary"""
+        primary_count = self.emails.filter_by(primary=True).count()
+        if primary_count > 1:
+            raise ValueError("Contact cannot have multiple primary emails")
+            
+    def validate_phone_primary_status(self):
+        """Ensures only one phone is marked as primary"""
+        primary_count = self.phones.filter_by(primary=True).count()
+        if primary_count > 1:
+            raise ValueError("Contact cannot have multiple primary phones")
+
+    @property
+    def full_name(self):
+        """Returns formatted full name with optional middle name"""
+        if self.middle_name:
+            return f"{self.first_name} {self.middle_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name}"
+    
+    @property
+    def formal_name(self):
+        """Returns formal name with salutation and suffix if present"""
+        name_parts = []
+        if self.salutation and self.salutation != SalutationEnum.none:
+            name_parts.append(self.salutation.value)
+        name_parts.append(self.full_name)
+        if self.suffix and self.suffix != SuffixEnum.none:
+            name_parts.append(self.suffix.value)
+        return " ".join(name_parts)
+
+    @property
+    def age(self):
+        """Calculate age based on birthdate"""
+        if not self.birthdate:
+            return None
+        today = date.today()
+        return today.year - self.birthdate.year - (
+            (today.month, today.day) < (self.birthdate.month, self.birthdate.day)
+        )
+
+    @property
+    def has_valid_email(self):
+        """Check if contact has at least one valid email"""
+        return (
+            self.emails.count() > 0 
+            and not self.email_opt_out 
+            and not self.email_bounced_date
+        )
+    
+    @property
+    def has_valid_phone(self):
+        """Check if contact has at least one valid phone"""
+        return self.phones.count() > 0 and not self.do_not_call
+    
+    @property
+    def is_contactable(self):
+        """Check if contact can be contacted through any means"""
+        return not self.do_not_contact and (self.has_valid_email or self.has_valid_phone)
+
+    @property
+    def primary_address(self):
+        """Returns the primary address object for this contact"""
+        return self.addresses.filter_by(primary=True).first()
+    
+    @property
+    def formatted_primary_address(self):
+        """Returns formatted string of primary address"""
+        addr = self.primary_address
+        if not addr:
+            return None
+            
+        parts = [addr.address_line1]
+        if addr.address_line2:
+            parts.append(addr.address_line2)
+        parts.append(f"{addr.city}, {addr.state} {addr.zip_code}")
+        if addr.country and addr.country.upper() != 'USA':
+            parts.append(addr.country)
+        return "\n".join(parts)
+
 # Base Contact Info Models
 class Phone(db.Model):
     """Stores phone numbers associated with contacts.
-    Supports multiple numbers per contact with primary flag.
+    Each Phone record belongs to exactly one Contact (many-to-one relationship).
+    A contact can have multiple phone numbers, but only one can be marked as primary.
     """
     __tablename__ = 'phone'
 
     id = db.Column(Integer, primary_key=True)
+    # This foreign key connects each phone number to its contact
+    # The nullable=False means every phone number must belong to a contact
     contact_id = db.Column(Integer, ForeignKey('contact.id'), nullable=False)
     number = db.Column(String(20))
-    type = db.Column(Enum(ContactTypeEnum))     # personal or professional
-    primary = db.Column(Boolean, default=False)  # indicates preferred number
+    type = db.Column(Enum(ContactTypeEnum))     # Uses the enum defined above
+    primary = db.Column(Boolean, default=False)  # Only one phone per contact should be primary
 
 class Email(db.Model):
     """Stores email addresses associated with contacts.

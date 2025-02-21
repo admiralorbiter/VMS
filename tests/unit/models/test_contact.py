@@ -1,5 +1,5 @@
 import pytest
-from datetime import date
+from datetime import date, datetime
 from models.contact import Contact, Phone, Email, Address, SalutationEnum, SuffixEnum, GenderEnum, ContactTypeEnum
 from models import db
 
@@ -139,4 +139,119 @@ def test_address_with_line2(app):
         assert saved_address.address_line2 == 'Apt 789'
         
         db.session.delete(contact)
-        db.session.commit() 
+        db.session.commit()
+
+def test_name_properties(test_contact):
+    """Test full_name and formal_name properties"""
+    # Test full name without middle name
+    assert test_contact.full_name == 'John Doe'
+    
+    # Test full name with middle name
+    test_contact.middle_name = 'Michael'
+    assert test_contact.full_name == 'John Michael Doe'
+    
+    # Test formal name with all components
+    assert test_contact.formal_name == 'Mr. John Michael Doe Jr.'
+    
+    # Test formal name without optional components
+    test_contact.salutation = SalutationEnum.none
+    test_contact.suffix = SuffixEnum.none
+    assert test_contact.formal_name == 'John Michael Doe'
+
+def test_age_calculation(test_contact):
+    """Test age property calculation"""
+    # Test with a known birthdate
+    test_contact.birthdate = date(1990, 1, 1)
+    expected_age = date.today().year - 1990
+    
+    # Adjust for birthdate not yet reached this year
+    if date.today().month < 1 or (date.today().month == 1 and date.today().day < 1):
+        expected_age -= 1
+    
+    assert test_contact.age == expected_age
+    
+    # Test with no birthdate
+    test_contact.birthdate = None
+    assert test_contact.age is None
+
+def test_contact_status_properties(test_contact):
+    """Test contact status properties"""
+    # Test valid email conditions
+    assert test_contact.has_valid_email is True
+    test_contact.email_opt_out = True
+    assert test_contact.has_valid_email is False
+    test_contact.email_opt_out = False
+    test_contact.email_bounced_date = datetime.now()
+    assert test_contact.has_valid_email is False
+    
+    # Test valid phone conditions
+    assert test_contact.has_valid_phone is True
+    test_contact.do_not_call = True
+    assert test_contact.has_valid_phone is False
+    
+    # Test overall contactable status
+    test_contact.do_not_call = False
+    test_contact.email_bounced_date = None
+    assert test_contact.is_contactable is True
+    test_contact.do_not_contact = True
+    assert test_contact.is_contactable is False
+
+def test_address_formatting(test_contact):
+    """Test address formatting properties"""
+    # Test primary address retrieval
+    primary_addr = test_contact.primary_address
+    assert primary_addr is not None
+    assert primary_addr.primary is True
+    
+    # Test US address formatting
+    expected_us_format = "123 Main St\nKansas City, MO 64111"
+    assert test_contact.formatted_primary_address == expected_us_format
+    
+    # Test international address formatting
+    primary_addr.country = 'Canada'
+    expected_intl_format = "123 Main St\nKansas City, MO 64111\nCanada"
+    assert test_contact.formatted_primary_address == expected_intl_format
+    
+    # Test address with line2
+    primary_addr.address_line2 = 'Suite 100'
+    expected_with_line2 = "123 Main St\nSuite 100\nKansas City, MO 64111\nCanada"
+    assert test_contact.formatted_primary_address == expected_with_line2
+    
+    # Test with no primary address
+    test_contact.addresses = []
+    assert test_contact.formatted_primary_address is None
+
+def test_primary_validation(app):
+    """Test validation of primary email and phone numbers"""
+    with app.app_context():
+        contact = Contact(
+            type='contact',
+            first_name='Test',
+            last_name='Validation'
+        )
+        
+        # First add the contact to the session
+        db.session.add(contact)
+        
+        # Add multiple primary emails
+        email1 = Email(email='test1@example.com', primary=True)
+        email2 = Email(email='test2@example.com', primary=True)
+        contact.emails.append(email1)
+        contact.emails.append(email2)
+        
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="Contact cannot have multiple primary emails"):
+            contact.validate_email_primary_status()
+        
+        # Add multiple primary phones
+        phone1 = Phone(number='123-456-7890', primary=True)
+        phone2 = Phone(number='098-765-4321', primary=True)
+        contact.phones.append(phone1)
+        contact.phones.append(phone2)
+        
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="Contact cannot have multiple primary phones"):
+            contact.validate_phone_primary_status()
+            
+        # Clean up
+        db.session.rollback() 
