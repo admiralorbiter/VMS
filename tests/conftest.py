@@ -129,36 +129,47 @@ def test_contact(app):
         db.session.commit()
 
 @pytest.fixture
-def test_class(app):
+def test_school(app):
+    """Fixture for creating a test school"""
+    with app.app_context():
+        school = School(
+            id='a015f000004XNa7AAG',
+            name='Test School'
+        )
+        db.session.add(school)
+        db.session.commit()
+        
+        # Get a fresh instance from the session
+        school = db.session.get(School, school.id)
+        yield school
+        
+        # Cleanup
+        db.session.delete(school)
+        db.session.commit()
+
+@pytest.fixture
+def test_class(app, test_school):
     """Fixture for creating a test class"""
     with app.app_context():
-        from models.class_model import Class
+        # Refresh test_school in the current session
+        school = db.session.merge(test_school)
         
-        # Debug: Print test_class details before creation
         test_class = Class(
             salesforce_id='a005f000003XNa7AAG',
             name='Test Class 2024',
-            school_salesforce_id='a015f000004XNa7AAG',
+            school_salesforce_id=school.id,
             class_year=2024
         )
         db.session.add(test_class)
         db.session.commit()
         
-        # Verify the class was created using salesforce_id
-        created_class = db.session.query(Class).filter_by(
-            salesforce_id=test_class.salesforce_id
-        ).first()
-        assert created_class is not None
-        
+        # Get fresh instance
+        test_class = db.session.get(Class, test_class.id)
         yield test_class
         
-        # Clean up
-        existing = db.session.query(Class).filter_by(
-            salesforce_id=test_class.salesforce_id
-        ).first()
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+        # Cleanup
+        db.session.delete(test_class)
+        db.session.commit()
 
 @pytest.fixture
 def test_district(app):
@@ -341,27 +352,6 @@ def test_history(app, test_volunteer):
         
         # Clean up
         existing = db.session.get(History, history.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
-
-@pytest.fixture
-def test_school(app, test_district):
-    """Fixture for creating a test school"""
-    with app.app_context():
-        school = School(
-            id='0015f00000TEST123',
-            name='Test School',
-            normalized_name='TEST SCHOOL',
-            school_code='4045',
-            district_id=test_district.id
-        )
-        db.session.add(school)
-        db.session.commit()
-        yield school
-        
-        # Clean up
-        existing = db.session.get(School, school.id)
         if existing:
             db.session.delete(existing)
             db.session.commit()

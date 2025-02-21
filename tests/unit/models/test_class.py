@@ -2,6 +2,7 @@ import pytest
 from datetime import datetime
 from models.class_model import Class
 from models import db
+import sqlalchemy as sa
 
 def test_new_class(test_class):
     """Test creating a new class"""
@@ -14,8 +15,8 @@ def test_new_class(test_class):
 
 def test_class_repr(test_class):
     """Test the string representation of a class"""
-    assert str(test_class) == '<Class Test Class 2024>'
-    assert repr(test_class) == '<Class Test Class 2024>'
+    assert str(test_class) == f'<Class Test Class 2024 (2024)>'
+    assert repr(test_class) == f'<Class Test Class 2024 (2024)>'
 
 def test_class_timestamps(app):
     """Test that timestamps are automatically set"""
@@ -47,6 +48,60 @@ def test_class_timestamps(app):
         # Cleanup
         db.session.delete(new_class)
         db.session.commit()
+
+def test_relationship_school(app, test_class):
+    """Test the relationship with School model"""
+    with app.app_context():
+        assert test_class.school is not None
+        assert test_class.school.id == test_class.school_salesforce_id
+
+def test_student_count_property(app, test_class):
+    """Test the student_count property"""
+    with app.app_context():
+        print(f"\nDebug - students relationship type: {type(test_class.students)}")
+        print(f"Debug - students count method available: {hasattr(test_class.students, 'count')}")
+        assert test_class.student_count == 0
+
+def test_salesforce_url_property(test_class):
+    """Test the salesforce_url property"""
+    expected_url = f"https://prep-kc.lightning.force.com/lightning/r/Class__c/{test_class.salesforce_id}/view"
+    assert test_class.salesforce_url == expected_url
+
+    # Use a new session to test with None salesforce_id
+    with db.session.no_autoflush:
+        test_class_none = Class(
+            name='Test Class No SF',
+            school_salesforce_id='a015f000004XNa7AAG',
+            class_year=2024
+        )
+        assert test_class_none.salesforce_url is None
+
+def test_to_dict_method(test_class):
+    """Test the to_dict serialization method"""
+    class_dict = test_class.to_dict()
+    
+    assert class_dict['id'] == test_class.id
+    assert class_dict['salesforce_id'] == test_class.salesforce_id
+    assert class_dict['name'] == test_class.name
+    assert class_dict['school_salesforce_id'] == test_class.school_salesforce_id
+    assert class_dict['class_year'] == test_class.class_year
+    assert class_dict['student_count'] == test_class.student_count
+    assert class_dict['created_at'] == test_class.created_at.isoformat()
+    assert class_dict['updated_at'] == test_class.updated_at.isoformat()
+
+def test_index_creation(app):
+    """Test that indexes are properly created"""
+    with app.app_context():
+        # Get table indexes
+        inspector = db.inspect(db.engine)
+        indexes = inspector.get_indexes('class')
+        
+        # Check for specific indexes
+        index_names = [idx['name'] for idx in indexes]
+        assert 'ix_class_salesforce_id' in index_names  # Index on salesforce_id
+        assert 'ix_class_name' in index_names  # Index on name
+        assert 'ix_class_school_salesforce_id' in index_names  # Index on school_salesforce_id
+        assert 'idx_class_year_school' in index_names  # Composite index
 
 @pytest.mark.parametrize('invalid_data', [
     {
@@ -115,4 +170,17 @@ def test_class_year_validation(app):
             
             # Cleanup
             db.session.delete(valid_class)
+            db.session.commit()
+
+def test_school_foreign_key_constraint(app):
+    """Test that the foreign key constraint works"""
+    with app.app_context():
+        with pytest.raises(sa.exc.IntegrityError):  # Use SQLAlchemy's IntegrityError
+            invalid_class = Class(
+                salesforce_id='a005f000003XNa9AAG',
+                name='Invalid School Class',
+                school_salesforce_id='nonexistent_id',
+                class_year=2024
+            )
+            db.session.add(invalid_class)
             db.session.commit() 
