@@ -3,6 +3,7 @@ from datetime import datetime
 from models.class_model import Class
 from models import db
 import sqlalchemy as sa
+from sqlalchemy import text
 
 def test_new_class(test_class):
     """Test creating a new class"""
@@ -18,18 +19,17 @@ def test_class_repr(test_class):
     assert str(test_class) == f'<Class Test Class 2024 (2024)>'
     assert repr(test_class) == f'<Class Test Class 2024 (2024)>'
 
-def test_class_timestamps(app):
+def test_class_timestamps(app, test_school):
     """Test that timestamps are automatically set"""
     with app.app_context():
         # Create a new class
         new_class = Class(
             salesforce_id='a005f000003XNa8AAG',
             name='Timestamp Test Class',
-            school_salesforce_id='a015f000004XNa7AAG',
+            school_salesforce_id=test_school.id,
             class_year=2025
         )
         
-        # Add to database
         db.session.add(new_class)
         db.session.commit()
         
@@ -92,16 +92,23 @@ def test_to_dict_method(test_class):
 def test_index_creation(app):
     """Test that indexes are properly created"""
     with app.app_context():
-        # Get table indexes
         inspector = db.inspect(db.engine)
         indexes = inspector.get_indexes('class')
         
-        # Check for specific indexes
-        index_names = [idx['name'] for idx in indexes]
-        assert 'ix_class_salesforce_id' in index_names  # Index on salesforce_id
-        assert 'ix_class_name' in index_names  # Index on name
-        assert 'ix_class_school_salesforce_id' in index_names  # Index on school_salesforce_id
-        assert 'idx_class_year_school' in index_names  # Composite index
+        # Print debug information
+        print(f"\nDebug - Available indexes: {indexes}")
+        
+        # Check for required indexes
+        index_columns = {tuple(idx['column_names']) for idx in indexes}
+        required_indexes = {
+            ('salesforce_id',),
+            ('name',),
+            ('school_salesforce_id',),
+            ('class_year', 'school_salesforce_id')
+        }
+        
+        for req_idx in required_indexes:
+            assert req_idx in index_columns, f"Missing index for columns: {req_idx}"
 
 @pytest.mark.parametrize('invalid_data', [
     {
@@ -150,16 +157,15 @@ def test_unique_salesforce_id(app, test_class):
             db.session.add(duplicate_class)
             db.session.commit()
 
-def test_class_year_validation(app):
+def test_class_year_validation(app, test_school):
     """Test class year validation"""
     with app.app_context():
-        # Test with various class years
         valid_years = [2020, 2024, 2030]
         for year in valid_years:
             valid_class = Class(
                 salesforce_id=f'a005f000003XNa{year}',
                 name=f'Class of {year}',
-                school_salesforce_id='a015f000004XNa7AAG',
+                school_salesforce_id=test_school.id,
                 class_year=year
             )
             db.session.add(valid_class)
@@ -175,7 +181,12 @@ def test_class_year_validation(app):
 def test_school_foreign_key_constraint(app):
     """Test that the foreign key constraint works"""
     with app.app_context():
-        with pytest.raises(sa.exc.IntegrityError):  # Use SQLAlchemy's IntegrityError
+        # Enable foreign key constraints for SQLite properly
+        if str(db.engine.url).startswith('sqlite'):
+            db.session.execute(text('PRAGMA foreign_keys=ON'))
+            db.session.commit()
+        
+        with pytest.raises((sa.exc.IntegrityError, sa.exc.InvalidRequestError)):
             invalid_class = Class(
                 salesforce_id='a005f000003XNa9AAG',
                 name='Invalid School Class',

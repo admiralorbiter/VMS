@@ -1,6 +1,6 @@
 from models import db
-from datetime import datetime
-from sqlalchemy import Index
+from datetime import datetime, UTC
+from sqlalchemy import Index, text
 from sqlalchemy.orm import relationship
 
 class Class(db.Model):
@@ -22,36 +22,28 @@ class Class(db.Model):
     
     # Primary key and external identifiers
     id = db.Column(db.Integer, primary_key=True)
-    salesforce_id = db.Column(db.String(18), unique=True, nullable=False, index=True)  # Added index for faster lookups
+    salesforce_id = db.Column(db.String(18), unique=True, nullable=False, index=True)
     
     # Core class information
-    name = db.Column(db.String(255), nullable=False, index=True)  # Added index for name searches
-    school_salesforce_id = db.Column(db.String(18), db.ForeignKey('school.id'), nullable=False, index=True)  # Added ForeignKey constraint
+    name = db.Column(db.String(255), nullable=False, index=True)
+    school_salesforce_id = db.Column(db.String(18), db.ForeignKey('school.id'), nullable=False, index=True)
     class_year = db.Column(db.Integer, nullable=False)  # Academic year number
     
     # Audit timestamps
     # WARNING: These fields are used by data sync processes - do not modify timestamp behavior
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     # Explicit relationship with School model
-    school = db.relationship(
+    school = relationship(
         'School',
         backref=db.backref('classes', lazy='dynamic'),
         foreign_keys=[school_salesforce_id]
     )
 
-    # Explicitly define the students relationship here
-    students = relationship(
-        'Student',
-        primaryjoin="Student.class_salesforce_id == Class.salesforce_id",
-        lazy='dynamic',  # Ensures count() works
-        viewonly=True    # Since it's also defined in Student model
-    )
-
-    # Composite index for common queries
+    # Keep only the composite index in __table_args__
     __table_args__ = (
-        Index('idx_class_year_school', class_year, school_salesforce_id),
+        Index('idx_class_year_school', 'class_year', 'school_salesforce_id'),
     )
 
     def __repr__(self):
@@ -61,10 +53,8 @@ class Class(db.Model):
     @property
     def student_count(self):
         """Returns the count of students in this class"""
-        try:
-            return self.students.count() if self.students else 0
-        except Exception:
-            return 0  # Fallback for any issues
+        from models.student import Student  # Import here to avoid circular imports
+        return Student.query.filter_by(class_salesforce_id=self.salesforce_id).count()
 
     @property
     def salesforce_url(self):
@@ -90,6 +80,11 @@ class Class(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+    # Add helper method for future use
+    def get_active_students(self):
+        """Returns query of currently enrolled students"""
+        return self.students.filter_by(active=True)
 
     # TODO: Consider adding relationships:
     # - Back reference to students (currently defined in Student model) 

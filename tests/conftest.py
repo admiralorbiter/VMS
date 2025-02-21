@@ -20,14 +20,27 @@ from models.volunteer import Volunteer, Skill, VolunteerSkill, Engagement, Event
 from models.contact import EducationEnum, LocalStatusEnum, SkillSourceEnum
 from models.history import History
 from models.organization import Organization
+from sqlalchemy import text
 
 @pytest.fixture
 def app():
     flask_app.config.from_object(TestingConfig)
     
     with flask_app.app_context():
+        # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax
+        with db.engine.connect() as conn:
+            conn.execute(text('PRAGMA foreign_keys=ON'))
+            conn.commit()
+        
+        # Create all tables
         db.create_all()
+        
+        # Verify tables were created
+        inspector = db.inspect(db.engine)
+        print("\nDebug - Created tables:", inspector.get_table_names())
+        
         yield flask_app
+        
         db.session.remove()
         db.drop_all()
 
@@ -130,20 +143,18 @@ def test_contact(app):
 
 @pytest.fixture
 def test_school(app):
-    """Fixture for creating a test school"""
+    """Create a test school"""
     with app.app_context():
         school = School(
-            id='a015f000004XNa7AAG',
-            name='Test School'
+            id='a015f000004XNa7AAG',  # This matches the ID used in Class tests
+            name='Test School',
+            # Add other required fields for your School model
         )
         db.session.add(school)
         db.session.commit()
         
-        # Get a fresh instance from the session
-        school = db.session.get(School, school.id)
         yield school
         
-        # Cleanup
         db.session.delete(school)
         db.session.commit()
 
