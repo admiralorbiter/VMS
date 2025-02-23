@@ -556,3 +556,12 @@ class Event(db.Model):
         """Add volunteer to event if not already present"""
         if volunteer not in self.volunteers:
             self.volunteers.append(volunteer)
+
+class EventTeacher(db.Model):
+    """Association table for Event-Teacher many-to-many relationship"""
+    __tablename__ = 'event_teacher'
+    
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), primary_key=True)
+    status = db.Column(db.String(50))  # For tracking individual teacher status
+    is_simulcast = db.Column(db.Boolean, default=False)
