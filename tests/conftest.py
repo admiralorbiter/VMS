@@ -4,7 +4,7 @@ from models import db
 from config import TestingConfig
 from models.user import User
 from werkzeug.security import generate_password_hash
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from models.contact import *
 from models.class_model import Class
 from models.district_model import District
@@ -146,15 +146,17 @@ def test_school(app):
     """Create a test school"""
     with app.app_context():
         school = School(
-            id='a015f000004XNa7AAG',  # This matches the ID used in Class tests
-            name='Test School',
-            # Add other required fields for your School model
+            id='TEST001',
+            name='Test School'
         )
         db.session.add(school)
         db.session.commit()
         
+        # Get fresh instance from session
+        school = db.session.get(School, 'TEST001')
         yield school
         
+        # Cleanup
         db.session.delete(school)
         db.session.commit()
 
@@ -184,36 +186,41 @@ def test_class(app, test_school):
 
 @pytest.fixture
 def test_district(app):
-    """Fixture for creating a test district"""
+    """Create a test district"""
     with app.app_context():
         district = District(
-            id='0015f00000JVZsFAAX',
-            name='Test School District',
-            district_code='4045'
+            salesforce_id='DIST001',  # Use salesforce_id for string identifier
+            name='Test District'
         )
         db.session.add(district)
         db.session.commit()
+        
         yield district
+        
+        # Simple cleanup
         db.session.delete(district)
         db.session.commit()
 
 @pytest.fixture
-def test_event(app):
-    """Fixture for creating a test event"""
+def test_event(app, test_school, test_district):
+    """Create a test event"""
     with app.app_context():
         event = Event(
             title='Test Event',
-            description='Test Description',
             type=EventType.IN_PERSON,
-            start_date=datetime.now(),
-            end_date=datetime.now() + timedelta(hours=2),
+            start_date=datetime.now(timezone.utc),
+            end_date=datetime.now(timezone.utc) + timedelta(hours=2),
             status=EventStatus.DRAFT,
-            format=EventFormat.IN_PERSON,
-            volunteers_needed=5
+            school='TEST001',  # Use direct ID
+            district_partner=test_district.id,
+            volunteers_needed=5,  # Explicitly set this
+            format=EventFormat.IN_PERSON  # Add required format
         )
         db.session.add(event)
         db.session.commit()
         
+        # Refresh to ensure all attributes are loaded
+        db.session.refresh(event)
         yield event
         
         # Clean up
@@ -618,4 +625,12 @@ def test_calendar_events(app):
             existing = db.session.get(Event, event.id)
             if existing:
                 db.session.delete(existing)
-        db.session.commit() 
+        db.session.commit()
+
+@pytest.fixture
+def new_session(app):
+    """Create a new session bound to the test database"""
+    with app.app_context():
+        session = db.Session(bind=db.engine)
+        yield session
+        session.close() 

@@ -19,22 +19,27 @@ events_bp = Blueprint('events', __name__)
 def process_event_row(row, success_count, error_count, errors):
     """Process a single event row from CSV/Salesforce data"""
     try:
-        # Check if event exists by salesforce_id
-        event = None
-        if row.get('Id'):
-            event = Event.query.filter_by(salesforce_id=row['Id']).first()
-        
-        # Track if this is an update or new record
+        # Get or create event
+        event_id = row.get('Id')
+        event = Event.query.filter_by(salesforce_id=event_id).first()
         is_new = event is None
         
-        # If event doesn't exist, create new one
         if not event:
-            event = Event()
+            # Ensure required fields for new events
+            if not row.get('Name'):  # Title is required by validation
+                raise ValueError("Event name/title is required")
+                
+            event = Event(
+                title=row.get('Name', '').strip(),  # Ensure title is not empty
+                salesforce_id=event_id
+            )
             db.session.add(event)
         
+        # Update event fields
+        if row.get('Name'):  # Only update if name exists
+            event.title = row.get('Name').strip()
+        
         # Update basic event fields
-        event.salesforce_id = row.get('Id', '').strip()
-        event.title = row.get('Name', '').strip()
         event.type = map_session_type(row.get('Session_Type__c', ''))
         event.format = map_event_format(row.get('Format__c', ''))
         event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or datetime(2000, 1, 1)
@@ -100,6 +105,7 @@ def process_event_row(row, success_count, error_count, errors):
             if skill not in event.skills:
                 event.skills.append(skill)
 
+        db.session.flush()  # Flush to catch validation errors early
         return success_count + (1 if is_new else 0), error_count
             
     except Exception as e:
@@ -362,6 +368,13 @@ def edit_event(id):
             skill_ids = request.form.getlist('skills[]')
             skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
             event.skills = skills
+            
+            # Update volunteers (if present in form)
+            if 'volunteers[]' in request.form:
+                volunteer_ids = request.form.getlist('volunteers[]')
+                volunteers = Volunteer.query.filter(Volunteer.id.in_(volunteer_ids)).all()
+                for volunteer in volunteers:
+                    event.add_volunteer(volunteer)  # Use add_volunteer instead of direct append
             
             db.session.commit()
             flash('Event updated successfully!', 'success')

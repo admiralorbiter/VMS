@@ -1,4 +1,5 @@
 from models import db
+from models.utils import get_utc_now
 from datetime import datetime
 
 class History(db.Model):
@@ -15,9 +16,9 @@ class History(db.Model):
     activity_type = db.Column(db.String(100), index=True)
     activity_date = db.Column(db.DateTime)
     activity_status = db.Column(db.String(50), index=True)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     completed_at = db.Column(db.DateTime)
-    last_modified_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    last_modified_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     is_deleted = db.Column(db.Boolean, default=False)
     email_message_id = db.Column(db.String(255), nullable=True)
     salesforce_id = db.Column(db.String(18), unique=True, nullable=True)
