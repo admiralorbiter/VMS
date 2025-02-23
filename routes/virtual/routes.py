@@ -21,6 +21,7 @@ from models.history import History
 import hashlib
 from models.contact import Contact
 from models.event import EventTeacher
+from models.contact import ContactTypeEnum
 
 virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 
@@ -81,21 +82,36 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
         # Handle presenter information
         if row.get('Presenter'):
             presenter_name = row.get('Presenter').strip()
-            event.presenter_name = presenter_name
-            event.presenter_organization = row.get('Organization')
-            event.presenter_location_type = row.get('Presenter Location')
-
-            # Create or update volunteer record for presenter
             name_parts = presenter_name.split(' ', 1)
             if len(name_parts) >= 2:
                 first_name, last_name = name_parts[0], name_parts[1]
+                
+                # Find or create volunteer for presenter
                 volunteer = Volunteer.query.filter(
                     func.lower(Volunteer.first_name) == func.lower(first_name),
                     func.lower(Volunteer.last_name) == func.lower(last_name)
-                ).first() or Volunteer(first_name=first_name, last_name=last_name)
+                ).first()
                 
-                if volunteer not in event.volunteers:
-                    event.volunteers.append(volunteer)
+                if not volunteer:
+                    # Create new volunteer/contact for presenter
+                    volunteer = Volunteer(
+                        first_name=first_name,
+                        last_name=last_name,
+                        organization_name=row.get('Organization'),
+                        contact_type=ContactTypeEnum.PRESENTER  # Add this enum value if needed
+                    )
+                    db.session.add(volunteer)
+                    db.session.flush()
+
+                # Create event participation record for presenter
+                participation = EventParticipation(
+                    volunteer_id=volunteer.id,
+                    event_id=event.id,
+                    participant_type='Presenter',
+                    status='Confirmed',
+                    title=row.get('Session Title')
+                )
+                db.session.add(participation)
 
         # Handle teacher information
         if row.get('Teacher Name'):
