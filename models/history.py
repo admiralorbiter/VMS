@@ -3,6 +3,7 @@ from models import db
 from models.utils import get_utc_now
 from datetime import datetime, UTC
 from enum import Enum
+from sqlalchemy import event
 
 class HistoryType(Enum):
     """Enum for categorizing different types of history records"""
@@ -48,9 +49,11 @@ class History(db.Model):
     # Timestamp Fields - Track record lifecycle
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
     completed_at = db.Column(db.DateTime)                    # When the activity was completed
-    last_modified_at = db.Column(db.DateTime, 
-                               default=get_utc_now, 
-                               onupdate=get_utc_now)         # Auto-updates on any change
+    last_modified_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC)  # Change from get_utc_now to lambda
+    )
     
     # Status and Integration Fields
     is_deleted = db.Column(db.Boolean, default=False, index=True)        # Soft delete flag
@@ -141,8 +144,8 @@ class History(db.Model):
             'history_type': self.history_type,
             'is_deleted': self.is_deleted,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'created_by': self.created_by.username if self.created_by else None,
+            'updated_at': self.last_modified_at.isoformat() if self.last_modified_at else None,
+            'created_by': self.created_by.username if self.created_by and self.created_by.username else None,
             'metadata': self.additional_metadata
         }
 
@@ -163,6 +166,6 @@ class History(db.Model):
     def history_type_enum(self, value):
         """Set history_type from enum value"""
         if isinstance(value, HistoryType):
-            self.history_type = value.value
+            self.history_type = value.value.lower()
         elif isinstance(value, str):
-            self.history_type = value
+            self.history_type = value.lower()
