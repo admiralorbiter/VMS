@@ -1,7 +1,14 @@
 from . import db
 from datetime import datetime, timezone
+from sqlalchemy.orm import validates
+import re
 
 class UpcomingEvent(db.Model):
+    """
+    Represents an upcoming event synchronized from Salesforce.
+    Handles the display of events on the website and tracks volunteer registration status.
+    """
+    
     __tablename__ = 'upcoming_events'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -10,12 +17,13 @@ class UpcomingEvent(db.Model):
     available_slots = db.Column(db.Integer)
     filled_volunteer_jobs = db.Column(db.Integer)
     date_and_time = db.Column(db.String(100))  # Storing as string since format is "MM/DD/YYYY HH:MM AM/PM to HH:MM AM/PM"
-    event_type = db.Column(db.String(50))
+    event_type = db.Column(db.String(50), index=True)
     registration_link = db.Column(db.Text)
     display_on_website = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    start_date = db.Column(db.DateTime)
+    start_date = db.Column(db.DateTime, index=True)
+    status = db.Column(db.String(20), default='active')
 
     def to_dict(self):
         """Convert event to dictionary for JSON serialization"""
@@ -31,11 +39,53 @@ class UpcomingEvent(db.Model):
             'Start_Date__c': self.start_date.isoformat() if self.start_date else None
         }
 
+    @validates('available_slots', 'filled_volunteer_jobs')
+    def validate_slots(self, key, value):
+        """Ensure slot counts are non-negative integers"""
+        if value is not None:
+            try:
+                # Handle string or float inputs from Salesforce
+                value = int(float(str(value)))
+                if value < 0:
+                    raise ValueError(f"{key} cannot be negative")
+            except (ValueError, TypeError):
+                raise ValueError(f"{key} must be a valid number")
+        return value
+
+    @validates('registration_link')
+    def validate_url(self, key, value):
+        """
+        Validate and extract URL from registration link.
+        Handles both raw URLs and HTML anchor tags.
+        """
+        if not value:
+            return value
+        
+        # If it's an HTML anchor tag, extract the href
+        if value.startswith('<a') and 'href=' in value:
+            href_match = re.search(r'href=[\'"]?([^\'" >]+)', value)
+            if href_match:
+                value = href_match.group(1)
+        
+        # Validate the URL
+        if not value.startswith(('http://', 'https://')):
+            raise ValueError("Registration link must be a valid URL")
+        
+        return value
+
     @classmethod
     def upsert_from_salesforce(cls, sf_data):
         """
         Update or insert event data from Salesforce.
-        Returns tuple of (new_records_count, updated_records_count)
+        
+        Args:
+            sf_data (list): List of dictionaries containing Salesforce event data
+            
+        Returns:
+            tuple: (new_records_count, updated_records_count)
+            
+        Raises:
+            ValueError: If required fields are missing or invalid
         """
         new_count = 0
         updated_count = 0

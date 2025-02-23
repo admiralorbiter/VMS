@@ -17,16 +17,20 @@ def sync_upcoming_events():
         today = datetime.now().date()
         yesterday = today - timedelta(days=1)
         
-        # 1. Remove past events AND events with no available slots
+        # Add logging for deletion
+        print("Starting sync process...")
+        
         deleted_count = UpcomingEvent.query.filter(
             or_(
-                UpcomingEvent.start_date < yesterday,  # Less than yesterday (past events)
-                UpcomingEvent.available_slots <= 0  # No slots available
+                UpcomingEvent.start_date < yesterday,
+                UpcomingEvent.available_slots <= 0
             )
         ).delete()
         db.session.commit()
+        print(f"Deleted {deleted_count} past/filled events")
 
-        # 2. Connect to Salesforce and query
+        # Salesforce connection
+        print("Connecting to Salesforce...")
         sf = Salesforce(
             username=Config.SF_USERNAME,
             password=Config.SF_PASSWORD,
@@ -34,6 +38,8 @@ def sync_upcoming_events():
             domain='login'
         )
 
+        # Query execution
+        print("Executing Salesforce query...")
         query = """
             SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
                 Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
@@ -45,8 +51,14 @@ def sync_upcoming_events():
         """
         result = sf.query(query)
         events = result.get('records', [])
+        print(f"Retrieved {len(events)} events from Salesforce")
+        
+        # Print first event for debugging
+        if events:
+            print("Sample event data:", events[0])
 
-        # 3. Update database with new events
+        # Update database
+        print("Updating database...")
         new_count, updated_count = UpcomingEvent.upsert_from_salesforce(events)
         
         return jsonify({
@@ -54,16 +66,21 @@ def sync_upcoming_events():
             'new_count': new_count,
             'updated_count': updated_count,
             'deleted_count': deleted_count,
-            'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} removed (past or filled)'
+            'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} removed'
         })
 
     except SalesforceAuthenticationFailed as e:
+        print(f"Salesforce Authentication Error: {str(e)}")
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce'
         }), 401
 
     except Exception as e:
+        import traceback
+        print(f"Sync Error: {str(e)}")
+        print("Full traceback:")
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
             'message': f'An unexpected error occurred: {str(e)}'
