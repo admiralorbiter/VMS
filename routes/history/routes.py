@@ -6,7 +6,7 @@ from models.event import Event
 from models.history import History
 from models import db
 from sqlalchemy import or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from config import Config
 
@@ -311,6 +311,7 @@ def import_history_from_salesforce():
         success_count = 0
         error_count = 0
         errors = []
+        skipped_count = 0
 
         # Connect to Salesforce
         sf = Salesforce(
@@ -320,85 +321,114 @@ def import_history_from_salesforce():
             domain='login'
         )
 
-        # Query for history
+        # Fixed SOQL Query - removed SQL comment style
         history_query = """
-        SELECT Id, Subject, Description, Type, Status, ActivityDate, WhoId, WhatId
-        FROM Task
+            SELECT Id, Subject, Description, Type, Status, 
+                   ActivityDate, WhoId, WhatId
+            FROM Task 
+            WHERE WhoId != null
         """
 
-        # Execute query
         result = sf.query_all(history_query)
         history_rows = result.get('records', [])
         print(f"Found {len(history_rows)} history records in Salesforce")
 
-        # Process each history record
-        for row in history_rows:
-            try:
-                # Check if history exists
-                history = History.query.filter_by(salesforce_id=row['Id']).first()
-                if not history:
-                    history = History()
-                    db.session.add(history)
+        # Use no_autoflush to prevent premature flushing
+        with db.session.no_autoflush:
+            for row in history_rows:
+                try:
+                    # First check if we have a valid volunteer
+                    if not row.get('WhoId'):
+                        skipped_count += 1
+                        continue
 
-                # Update history fields
-                history.salesforce_id = row['Id']
-                history.summary = row.get('Subject', '')
-                history.description = row.get('Description', '')
-                history.activity_type = row.get('Type', '')
-                history.activity_status = row.get('Status', '')
-                
-                # Handle activity date
-                if row.get('ActivityDate'):
-                    history.activity_date = parse_date(row['ActivityDate'])
-                else:
-                    history.activity_date = datetime.now()
-
-                # Handle volunteer relationship
-                if row.get('WhoId'):
                     volunteer = Volunteer.query.filter_by(
                         salesforce_individual_id=row['WhoId']
                     ).first()
-                    if volunteer:
-                        history.volunteer_id = volunteer.id
 
-                # Handle event relationship
-                if row.get('WhatId'):
-                    event = Event.query.filter_by(
-                        salesforce_id=row['WhatId']
-                    ).first()
-                    if event:
-                        history.event_id = event.id
+                    if not volunteer:
+                        skipped_count += 1
+                        errors.append(f"Skipped record {row.get('Subject', 'Unknown')}: No matching volunteer found")
+                        continue
 
-                success_count += 1
+                    # Check if history exists
+                    history = History.query.filter_by(salesforce_id=row['Id']).first()
+                    
+                    # Handle activity date before creating new record
+                    activity_date = parse_date(row.get('ActivityDate')) or datetime.now(UTC)
+                    
+                    if not history:
+                        history = History(
+                            volunteer_id=volunteer.id,
+                            activity_date=activity_date,
+                            history_type='note'  # Default type
+                        )
+                        db.session.add(history)
 
+                    # Update history fields with proper type conversion
+                    history.salesforce_id = row['Id']
+                    history.summary = row.get('Subject', '')
+                    history.description = row.get('Description', '')
+                    history.activity_type = row.get('Type', '')
+                    history.activity_status = row.get('Status', '')
+                    history.activity_date = activity_date
+
+                    # Map Salesforce type to history_type
+                    sf_type = (row.get('Type', '') or '').lower()
+                    if sf_type in ['email', 'call']:
+                        history.history_type = 'activity'
+                    elif sf_type in ['status_update']:
+                        history.history_type = 'status_change'
+                    else:
+                        history.history_type = 'note'
+
+                    # Handle event relationship
+                    if row.get('WhatId'):
+                        event = Event.query.filter_by(
+                            salesforce_id=row['WhatId']
+                        ).first()
+                        if event:
+                            history.event_id = event.id
+
+                    success_count += 1
+
+                    # Commit every 100 records
+                    if success_count % 100 == 0:
+                        db.session.commit()
+                        print(f"Processed {success_count} records...")
+
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"Error processing record {row.get('Subject', 'Unknown')}: {str(e)}")
+                    continue
+
+            # Final commit
+            try:
+                db.session.commit()
             except Exception as e:
-                error_count += 1
-                errors.append(f"Error processing history record {row.get('Subject', 'Unknown')}: {str(e)}")
-                continue
+                db.session.rollback()
+                return jsonify({
+                    'success': False,
+                    'message': f'Error during final commit: {str(e)}',
+                    'processed': success_count,
+                    'errors': errors
+                }), 500
 
-        # Commit all changes
-        db.session.commit()
-        
-        # Print summary and errors
-        print(f"\nSuccessfully processed {success_count} history records with {error_count} errors")
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors:
-                print(f"- {error}")
-        
         return jsonify({
             'success': True,
-            'message': f'Successfully processed {success_count} history records with {error_count} errors',
-            'errors': errors
+            'message': f'Successfully processed {success_count} history records',
+            'stats': {
+                'success': success_count,
+                'errors': error_count,
+                'skipped': skipped_count
+            },
+            'errors': errors[:100]
         })
 
     except SalesforceAuthenticationFailed:
-        print("Error: Failed to authenticate with Salesforce")
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce'
         }), 401
     except Exception as e:
-        db.session.rollback()
-        print(f"Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
