@@ -649,6 +649,7 @@ def import_students_from_salesforce():
                npsp__Primary_Affiliation__c, Class__c, Legacy_Grade__c, Current_Grade__c
         FROM Contact
         WHERE Contact_Type__c = 'Student'
+        Limit 100
         """
 
         # Execute query
