@@ -22,6 +22,8 @@ from models.history import History
 from models.organization import Organization
 from sqlalchemy import text
 
+pytest_plugins = ['pytest_mock']
+
 @pytest.fixture
 def app():
     flask_app.config.from_object(TestingConfig)

@@ -3,6 +3,10 @@ from models.upcoming_events import UpcomingEvent
 from models import db
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import or_
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from app import init_scheduler
+import time
 
 def test_new_upcoming_event(app):
     """Test creating a new upcoming event"""
@@ -141,8 +145,8 @@ def test_past_events_deletion(app):
         db.session.add(future_event)
         db.session.commit()
 
-        # Delete past events
-        yesterday = datetime.now().date() - timedelta(days=1)
+        # Convert datetime to date for comparison
+        yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         deleted_count = UpcomingEvent.query.filter(
             or_(
                 UpcomingEvent.start_date < yesterday,
@@ -242,11 +246,11 @@ def test_event_visibility_and_deletion_rules(app):
             db.session.add(event)
         db.session.commit()
 
-        # Test deletion rules
-        yesterday = datetime.now().date() - timedelta(days=1)
+        # Use timezone-aware datetime consistently
+        yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         deleted_count = UpcomingEvent.query.filter(
             or_(
-                UpcomingEvent.start_date < yesterday,
+                UpcomingEvent.start_date < yesterday,  # Compare timezone-aware datetimes
                 UpcomingEvent.available_slots <= 0
             )
         ).delete()
@@ -292,4 +296,80 @@ def test_visibility_toggle(app):
 
         # Cleanup
         db.session.delete(event)
-        db.session.commit() 
+        db.session.commit()
+
+def test_scheduler_initialization(app):
+    """Test that scheduler initializes correctly with sync job"""
+    with app.app_context():
+        scheduler = init_scheduler(app)
+        
+        # Verify scheduler is running
+        assert scheduler.running == True
+        
+        # Verify sync job is added
+        jobs = scheduler.get_jobs()
+        assert len(jobs) == 1
+        
+        job = jobs[0]
+        assert job.id == 'sync_upcoming_events'
+        assert job.name == 'Sync upcoming events from Salesforce'
+        assert isinstance(job.trigger, IntervalTrigger)
+        assert job.trigger.interval.total_seconds() == app.config['SYNC_INTERVAL'] * 3600  # Convert hours to seconds
+        
+        # Cleanup
+        scheduler.shutdown()
+
+def test_scheduler_execution(app, mocker):
+    """Test that scheduler executes sync job"""
+    with app.app_context():
+        # Update mock path to match where the function is actually called from
+        mock_sync = mocker.patch('app.sync_upcoming_events')
+        mock_sync.return_value = {
+            'success': True,
+            'new_count': 1,
+            'updated_count': 0,
+            'deleted_count': 0
+        }
+        
+        # Initialize scheduler with test config
+        scheduler = init_scheduler(app)
+        
+        # Wait briefly for job to execute
+        time.sleep(0.1)
+        
+        # Verify sync was called
+        assert mock_sync.called
+        
+        # Cleanup
+        scheduler.shutdown()
+
+def test_scheduler_error_handling(app, mocker):
+    """Test scheduler handles sync errors gracefully"""
+    with app.app_context():
+        # Fix mock path to match app.py
+        mock_sync = mocker.patch('app.sync_upcoming_events')
+        mock_sync.side_effect = Exception("Test error")
+        
+        app.config['SYNC_INTERVAL'] = 0.001
+        scheduler = init_scheduler(app)
+        
+        time.sleep(0.1)
+        
+        assert mock_sync.called
+        assert scheduler.running == True
+        
+        scheduler.shutdown()
+
+def test_scheduler_timezone(app):
+    """Test scheduler respects timezone configuration"""
+    with app.app_context():
+        scheduler = init_scheduler(app)
+        
+        # Use str() to get timezone name
+        assert str(scheduler.timezone) == app.config['SCHEDULER_TIMEZONE']
+        
+        job = scheduler.get_jobs()[0]
+        assert str(job.trigger.timezone) == app.config['SCHEDULER_TIMEZONE']
+        
+        # Cleanup
+        scheduler.shutdown() 

@@ -11,3 +11,5 @@ python-dotenv
 psycopg2-binary
 flask-cors
 pandas>=2.0.0
+apscheduler
+pytest-mock

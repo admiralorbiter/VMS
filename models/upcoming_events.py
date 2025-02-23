@@ -93,13 +93,12 @@ class UpcomingEvent(db.Model):
         for record in sf_data:
             existing = cls.query.filter_by(salesforce_id=record['Id']).first()
             
-            # Parse the start date string into a datetime object
-            start_date = None
+            # Make start_date timezone-aware
             if record['Start_Date__c']:
                 try:
                     start_date = datetime.strptime(record['Start_Date__c'], '%Y-%m-%d')
+                    start_date = start_date.replace(tzinfo=timezone.utc)
                 except ValueError:
-                    # Handle any date parsing errors
                     print(f"Warning: Could not parse date {record['Start_Date__c']} for session {record['Id']}")
             
             event_data = {

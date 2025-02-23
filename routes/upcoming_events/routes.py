@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, render_template, request
+from datetime import datetime, timedelta, timezone
+from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 import simple_salesforce
@@ -12,10 +12,16 @@ from models.upcoming_events import UpcomingEvent
 upcoming_events_bp = Blueprint('upcoming_events', __name__)
 
 @upcoming_events_bp.route('/sync_upcoming_events', methods=['POST'])
+def sync_upcoming_events_endpoint():
+    """HTTP endpoint for manual sync trigger"""
+    result = sync_upcoming_events()
+    return jsonify(result)
+
 def sync_upcoming_events():
+    """Sync upcoming events from Salesforce"""
     try:
         today = datetime.now().date()
-        yesterday = today - timedelta(days=1)
+        yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         
         # Add logging for deletion
         print("Starting sync process...")
@@ -61,30 +67,18 @@ def sync_upcoming_events():
         print("Updating database...")
         new_count, updated_count = UpcomingEvent.upsert_from_salesforce(events)
         
-        return jsonify({
+        return {
             'success': True,
             'new_count': new_count,
             'updated_count': updated_count,
-            'deleted_count': deleted_count,
-            'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} removed'
-        })
-
-    except SalesforceAuthenticationFailed as e:
-        print(f"Salesforce Authentication Error: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': 'Failed to authenticate with Salesforce'
-        }), 401
-
+            'deleted_count': deleted_count
+        }
     except Exception as e:
-        import traceback
-        print(f"Sync Error: {str(e)}")
-        print("Full traceback:")
-        print(traceback.format_exc())
-        return jsonify({
+        print(f"Scheduler sync error: {str(e)}")
+        return {
             'success': False,
-            'message': f'An unexpected error occurred: {str(e)}'
-        }), 500
+            'error': str(e)
+        }
 
 @upcoming_events_bp.route('/volunteer_signup')
 def volunteer_signup():
