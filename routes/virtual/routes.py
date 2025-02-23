@@ -80,6 +80,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                     current_app.logger.error(f"Date/time parsing error: {e}")
 
         # Handle presenter information
+        volunteer_id = None
         if row.get('Presenter'):
             presenter_name = row.get('Presenter').strip()
             name_parts = presenter_name.split(' ', 1)
@@ -93,19 +94,20 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                 ).first()
                 
                 if not volunteer:
-                    # Create new volunteer/contact for presenter
                     volunteer = Volunteer(
                         first_name=first_name,
                         last_name=last_name,
                         organization_name=row.get('Organization'),
-                        contact_type=ContactTypeEnum.PRESENTER  # Add this enum value if needed
+                        contact_type=ContactTypeEnum.PRESENTER
                     )
                     db.session.add(volunteer)
                     db.session.flush()
-
-                # Create event participation record for presenter
+                
+                volunteer_id = volunteer.id
+                
+                # Create event participation record
                 participation = EventParticipation(
-                    volunteer_id=volunteer.id,
+                    volunteer_id=volunteer_id,
                     event_id=event.id,
                     participant_type='Presenter',
                     status='Confirmed',
@@ -157,6 +159,10 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                         is_simulcast=is_simulcast
                     )
                     db.session.add(event_teacher)
+
+        # Set volunteer_id for history creation (only if we have a presenter)
+        if volunteer_id:
+            event._volunteer_id = volunteer_id
 
         db.session.add(event)
         db.session.commit()
@@ -534,16 +540,6 @@ def import_sheet():
                     if existing_event:
                         event = existing_event
                         event.start_date = event_datetime
-                        # Add history record for update
-                        history = History(
-                            event_id=event.id,
-                            action='UPDATE',
-                            summary=f'Updated virtual session: {title}',
-                            activity_type='Virtual Session Update',
-                            activity_date=datetime.now(),
-                            activity_status='Completed'
-                        )
-                        db.session.add(history)
                     else:
                         event = Event(
                             title=clean_string_value(title),
@@ -551,7 +547,6 @@ def import_sheet():
                             type=EventType.VIRTUAL_SESSION,
                             status=EventStatus.map_status(clean_status(group.iloc[0].get('Status')))
                         )
-                        db.session.add(event)
                     
                     # Process each row in group (multiple teachers/presenters)
                     for _, row in group.iterrows():
