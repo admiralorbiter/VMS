@@ -1,5 +1,5 @@
 from models import db
-from models.contact import Contact, Phone, GenderEnum
+from models.contact import Contact, ContactTypeEnum, Email, Phone, GenderEnum
 from sqlalchemy import String, Integer, Boolean, ForeignKey, Date, DateTime, Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship, declared_attr, validates
 from datetime import datetime, UTC
@@ -69,12 +69,11 @@ class Teacher(Contact):
     )
 
     @validates('connector_role')
-    def validate_connector_role(self, key, role):
-        """Validate connector role values"""
-        valid_roles = ['lead', 'assistant', 'substitute']
-        if role and role.lower() not in valid_roles:
-            raise ValueError(f"Invalid connector role. Must be one of: {valid_roles}")
-        return role.lower() if role else None
+    def validate_connector_role(self, key, value):
+        """Ensure connector role is properly capitalized"""
+        if value:
+            return value.capitalize()
+        return value
 
     @validates('salesforce_contact_id')
     def validate_salesforce_id(self, key, value):
@@ -103,11 +102,22 @@ class Teacher(Contact):
         self.middle_name = ''  # Explicitly set to empty string
         self.school_id = data.get('npsp__Primary_Affiliation__c', '')
         self.gender = data.get('Gender__c', None)
+        if 'Department' in data:
+            self.department = data['Department']
+        
+        # Connector fields
+        if 'Connector_Role__c' in data:
+            self.connector_role = data['Connector_Role__c']
+        if 'Connector_Active__c' in data:
+            self.connector_active = data['Connector_Active__c']
+        if 'Connector_Start_Date__c' in data:
+            self.connector_start_date = data['Connector_Start_Date__c']
+        if 'Connector_End_Date__c' in data:
+            self.connector_end_date = data['Connector_End_Date__c']
         
         # Phone
         phone_number = data.get('Phone')
         if phone_number:
-            # Check if phone already exists
             existing_phone = Phone.query.filter_by(
                 contact_id=self.id,
                 number=phone_number,
@@ -121,6 +131,25 @@ class Teacher(Contact):
                     primary=True
                 )
                 db.session.add(phone)
+        
+        # Email
+        email_address = data.get('Email')
+        if email_address:
+            # Check if email already exists
+            existing_email = Email.query.filter_by(
+                contact_id=self.id,
+                email=email_address,
+                primary=True
+            ).first()
+            
+            if not existing_email:
+                email = Email(
+                    contact_id=self.id,
+                    email=email_address,
+                    type=ContactTypeEnum.personal,
+                    primary=True
+                )
+                db.session.add(email)
         
         # Email tracking
         if data.get('Last_Email_Message__c'):
