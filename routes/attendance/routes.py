@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from models import db
 from models.student import Student
-from models.teacher import Teacher
+from models.teacher import Teacher, TeacherStatus
 from models.contact import Email, Phone, GenderEnum, RaceEthnicityEnum
 from models.class_model import Class
 from models.school_model import School
@@ -345,9 +345,17 @@ def process_teacher_data(df):
                         db.session.add(email)
 
                 # Update teacher fields
-                teacher.school_id = str(row.get('npsp__Primary_Affiliation__c', '')).strip() or None
-                teacher.department = str(row.get('Department', '')).strip() or None
-                
+                teacher.salesforce_individual_id = row['Id']
+                teacher.salesforce_account_id = row.get('AccountId')
+                teacher.first_name = row.get('FirstName', '')
+                teacher.last_name = row.get('LastName', '')
+                teacher.school_id = row.get('npsp__Primary_Affiliation__c')
+                teacher.department = row.get('Department')
+
+                # Set default status for new teachers
+                if not teacher.status:
+                    teacher.status = TeacherStatus.ACTIVE
+
                 # Handle gender using GenderEnum
                 gender_value = row.get('Gender__c')
                 if gender_value:
@@ -486,6 +494,7 @@ def import_teachers_from_salesforce():
                Phone, Last_Email_Message__c, Last_Mailchimp_Email_Date__c
         FROM Contact
         WHERE Contact_Type__c = 'Teacher'
+        Limit 100
         """
 
         # Execute query
@@ -508,6 +517,10 @@ def import_teachers_from_salesforce():
                 teacher.last_name = row.get('LastName', '')
                 teacher.school_id = row.get('npsp__Primary_Affiliation__c')
                 teacher.department = row.get('Department')
+
+                # Set default status for new teachers
+                if not teacher.status:
+                    teacher.status = TeacherStatus.ACTIVE
 
                 # Handle gender using GenderEnum
                 gender_value = row.get('Gender__c')

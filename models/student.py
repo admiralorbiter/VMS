@@ -21,6 +21,16 @@ class Student(Contact):
     school_id = db.Column(String(18), db.ForeignKey('school.id'))  # References School.id (Salesforce ID)
     class_salesforce_id = db.Column(String(18), db.ForeignKey('class.salesforce_id'))  # References Class.salesforce_id
     
+    # Add teacher relationship with explicit foreign key path
+    teacher_id = db.Column(Integer, ForeignKey('teacher.id'), nullable=True)
+    
+    # Specify which foreign key to use for the relationship
+    teacher = db.relationship(
+        'Teacher', 
+        backref=db.backref('students', lazy='dynamic'),
+        foreign_keys=[teacher_id]  # Explicitly tell SQLAlchemy which foreign key to use
+    )
+    
     # Relationships
     school = db.relationship('School', backref='students')
     class_ref = db.relationship('Class', 
