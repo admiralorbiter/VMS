@@ -16,6 +16,7 @@ class Student(Contact):
     __tablename__ = 'student'
     
     id = db.Column(Integer, ForeignKey('contact.id'), primary_key=True)
+    active = db.Column(db.Boolean, default=True)
     
     __mapper_args__ = {
         'polymorphic_identity': 'student',
@@ -97,6 +98,20 @@ class Student(Contact):
         db.Index('idx_student_school_grade', 'school_id', 'current_grade'),
     )
 
+    @validates('first_name', 'last_name')
+    def validate_required_fields(self, key, value):
+        """Validate required fields are not empty"""
+        if not value or not value.strip():
+            raise ValueError(f"{key} is required and cannot be empty")
+        return value.strip()
+
+    @validates('current_grade')
+    def validate_grade(self, key, grade):
+        """Validate grade is within acceptable range"""
+        if grade is not None and not (0 <= grade <= 12):
+            raise ValueError("Grade must be between 0 and 12")
+        return grade
+
     def __repr__(self):
         """String representation of the Student model"""
         return f'<Student {self.student_id}: {self.get_full_name()}>'
@@ -105,9 +120,3 @@ class Student(Contact):
     def get_full_name(self):
         """Returns the student's full name from Contact parent class"""
         return f"{self.first_name} {self.last_name}"
-
-    @validates('current_grade')
-    def validate_grade(self, key, grade):
-        if grade is not None and not (0 <= grade <= 12):
-            raise ValueError("Grade must be between 0 and 12")
-        return grade
