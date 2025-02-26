@@ -567,6 +567,22 @@ def import_sheet():
                                 db.session.add(teacher)
                                 db.session.flush()  # Ensure teacher has ID
                             
+                            # Create EventTeacher registration
+                            event_teacher = EventTeacher.query.filter_by(
+                                event_id=event.id,
+                                teacher_id=teacher.id
+                            ).first()
+                            
+                            if not event_teacher:
+                                event_teacher = EventTeacher(
+                                    event_id=event.id,
+                                    teacher_id=teacher.id,
+                                    status='registered',  # Initial status
+                                    is_simulcast=False,  # Default to False
+                                    attendance_confirmed_at=None  # Will be set when attendance is confirmed
+                                )
+                                db.session.add(event_teacher)
+                            
                             # Handle school association
                             school_name = clean_string_value(row.get('School Name'))
                             district_name = clean_string_value(row.get('District'))

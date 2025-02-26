@@ -240,6 +240,20 @@ class Event(db.Model):
         backref=db.backref('events', lazy='dynamic')
     )
 
+    # Enhanced teacher tracking
+    teacher_registrations = db.relationship(
+        'EventTeacher',
+        back_populates='event',
+        cascade='all, delete-orphan'
+    )
+    
+    teachers = db.relationship(
+        'Teacher',
+        secondary='event_teacher',
+        back_populates='events',
+        viewonly=True  # Use teacher_registrations for modifications
+    )
+
     # TODO: Consider adding validation methods:
     # - Ensure end_date is after start_date
     # - Validate attendance counts don't exceed capacity
@@ -578,11 +592,38 @@ class Event(db.Model):
         
         return participation
 
+    @property
+    def confirmed_teacher_count(self):
+        """Get count of teachers who have confirmed attendance"""
+        return EventTeacher.query.filter(
+            EventTeacher.event_id == self.id,
+            EventTeacher.attendance_confirmed_at.isnot(None)
+        ).count()
+    
+    @property
+    def registered_teacher_count(self):
+        """Get count of registered teachers"""
+        return len(self.teacher_registrations)
+
 class EventTeacher(db.Model):
-    """Association table for Event-Teacher many-to-many relationship"""
+    """Association table for Event-Teacher many-to-many relationship with attendance tracking"""
     __tablename__ = 'event_teacher'
     
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), primary_key=True)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), primary_key=True)
-    status = db.Column(db.String(50))  # For tracking individual teacher status
+    
+    # Enhanced tracking fields
+    status = db.Column(db.String(50), default='registered')  # registered, attended, no_show, cancelled
     is_simulcast = db.Column(db.Boolean, default=False)
+    attendance_confirmed_at = db.Column(db.DateTime(timezone=True))
+    notes = db.Column(db.Text)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime(timezone=True), 
+                          default=lambda: datetime.now(timezone.utc),
+                          onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    event = db.relationship('Event', back_populates='teacher_registrations')
+    teacher = db.relationship('Teacher', back_populates='event_registrations')

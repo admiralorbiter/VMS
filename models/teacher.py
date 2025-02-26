@@ -61,6 +61,20 @@ class Teacher(Contact):
         onupdate=lambda: datetime.now(UTC)
     )
 
+    # Enhanced event tracking
+    event_registrations = db.relationship(
+        'EventTeacher',
+        back_populates='teacher',
+        cascade='all, delete-orphan'
+    )
+    
+    events = db.relationship(
+        'Event',
+        secondary='event_teacher',
+        back_populates='teachers',
+        viewonly=True  # Use event_registrations for modifications
+    )
+    
     __table_args__ = (
         db.CheckConstraint('connector_end_date >= connector_start_date',
                           name='check_date_range'),
@@ -156,3 +170,17 @@ class Teacher(Contact):
             self.last_email_message = data.get('Last_Email_Message__c')
         if data.get('Last_Mailchimp_Email_Date__c'):
             self.last_mailchimp_date = data.get('Last_Mailchimp_Email_Date__c')
+
+    @property
+    def upcoming_events(self):
+        """Get teacher's upcoming events"""
+        now = datetime.now(UTC)
+        return [reg.event for reg in self.event_registrations 
+                if reg.event.start_date > now]
+    
+    @property
+    def past_events(self):
+        """Get teacher's past events"""
+        now = datetime.now(UTC)
+        return [reg.event for reg in self.event_registrations 
+                if reg.event.start_date <= now]
