@@ -622,20 +622,8 @@ def import_sheet():
                                     )
                                     db.session.add(vol_org)
 
-                            # Create explicit EventParticipation instead of using volunteers relationship
-                            participation = EventParticipation.query.filter_by(
-                                volunteer_id=volunteer.id,
-                                event_id=event.id
-                            ).first()
-
-                            if not participation:
-                                participation = EventParticipation(
-                                    volunteer_id=volunteer.id,
-                                    event_id=event.id,
-                                    participant_type='Presenter',
-                                    status='Confirmed'
-                                )
-                                db.session.add(participation)
+                            # Use the event's add_volunteer method instead of creating participation directly
+                            event.add_volunteer(volunteer, participant_type='Presenter', status='Confirmed')
 
                 db.session.commit()
                 success_count += 1

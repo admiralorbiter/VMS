@@ -6,6 +6,7 @@ import pytz
 from sqlalchemy.orm import validates
 
 from models import db
+from models.volunteer import EventParticipation
 
 # Define the association table first
 event_volunteers = db.Table('event_volunteers',
@@ -485,8 +486,8 @@ class Event(db.Model):
                         )
                         db.session.add(vol_org)
 
-                # Use add_volunteer instead of direct append
-                self.add_volunteer(volunteer)
+                # Update to specify participant type
+                self.add_volunteer(volunteer, participant_type='Professional', status='Confirmed')
 
     def validate_dates(self):
         """Ensure event dates are valid"""
@@ -552,10 +553,30 @@ class Event(db.Model):
             raise ValueError("Event title cannot be empty")
         return value
 
-    def add_volunteer(self, volunteer):
-        """Add volunteer to event if not already present"""
+    def add_volunteer(self, volunteer, participant_type='Volunteer', status='Confirmed'):
+        """
+        Add volunteer to event and create participation record
+        """
+        # Add to many-to-many relationship if not present
         if volunteer not in self.volunteers:
             self.volunteers.append(volunteer)
+        
+        # Create or update EventParticipation
+        participation = EventParticipation.query.filter_by(
+            volunteer_id=volunteer.id,
+            event_id=self.id
+        ).first()
+        
+        if not participation:
+            participation = EventParticipation(
+                volunteer_id=volunteer.id,
+                event_id=self.id,
+                participant_type=participant_type,
+                status=status
+            )
+            db.session.add(participation)
+        
+        return participation
 
 class EventTeacher(db.Model):
     """Association table for Event-Teacher many-to-many relationship"""
