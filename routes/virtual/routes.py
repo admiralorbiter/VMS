@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required
 import csv
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, UTC
 from flask import current_app
 from models.district_model import District
 from models.event import db, Event, EventType, EventStatus
@@ -498,6 +498,12 @@ def get_or_create_district(name):
     
     return district
 
+def safe_str(value):
+    """Safely convert a value to string, handling NaN and None"""
+    if pd.isna(value):
+        return ''
+    return str(value)
+
 @virtual_bp.route('/import-sheet', methods=['POST'])
 @login_required
 def import_sheet():
@@ -547,100 +553,48 @@ def import_sheet():
                     db.session.add(event)
                     db.session.flush()
 
+                # Process all teachers in the group
                 for _, row in group.iterrows():
-                    # Process teacher
-                    if not pd.isna(row.get('Teacher Name')):
-                        first_name, last_name = clean_name(row['Teacher Name'])
-                        if first_name and last_name:
-                            # Get or create teacher with proper Contact handling
-                            teacher = Teacher.query.filter(
-                                func.lower(Teacher.first_name) == func.lower(first_name),
-                                func.lower(Teacher.last_name) == func.lower(last_name)
-                            ).first()
-                            
-                            if not teacher:
-                                teacher = Teacher(
-                                    first_name=first_name,
-                                    last_name=last_name,
-                                    middle_name=''
-                                )
-                                db.session.add(teacher)
-                                db.session.flush()  # Ensure teacher has ID
-                            
-                            # Create EventTeacher registration
-                            event_teacher = EventTeacher.query.filter_by(
-                                event_id=event.id,
-                                teacher_id=teacher.id
-                            ).first()
-                            
-                            if not event_teacher:
-                                event_teacher = EventTeacher(
-                                    event_id=event.id,
-                                    teacher_id=teacher.id,
-                                    status='registered',  # Initial status
-                                    is_simulcast=False,  # Default to False
-                                    attendance_confirmed_at=None  # Will be set when attendance is confirmed
-                                )
-                                db.session.add(event_teacher)
-                            
-                            # Handle school association
-                            school_name = clean_string_value(row.get('School Name'))
-                            district_name = clean_string_value(row.get('District'))
-                            if school_name:
-                                school = get_or_create_school(school_name, get_or_create_district(district_name))
-                                teacher.school_id = school.id
+                    teacher_name = row.get('Teacher Name')
+                    if pd.isna(teacher_name) or not str(teacher_name).strip():
+                        continue
                         
-                    # Process presenter/volunteer
-                    if not pd.isna(row.get('Presenter')):
-                        first_name, last_name = clean_name(row['Presenter'])
-                        if first_name and last_name:
-                            volunteer = Volunteer.query.filter(
-                                func.lower(Volunteer.first_name) == func.lower(first_name),
-                                func.lower(Volunteer.last_name) == func.lower(last_name)
-                            ).first()
-
-                            if not volunteer:
-                                volunteer = Volunteer(
-                                    first_name=first_name,
-                                    last_name=last_name,
-                                    middle_name=''
-                                )
-                                db.session.add(volunteer)
-                                db.session.flush()
-
-                            # Handle organization
-                            org_name = clean_string_value(row.get('Organization'))
-                            if org_name:
-                                org = Organization.query.filter(
-                                    func.lower(Organization.name) == func.lower(org_name)
-                                ).first()
-                                
-                                if not org:
-                                    org = Organization(
-                                        name=org_name,
-                                        type='Business'
-                                    )
-                                    db.session.add(org)
-                                    db.session.flush()
-                                
-                                # Create volunteer-organization link if not exists
-                                vol_org = VolunteerOrganization.query.filter_by(
-                                    volunteer_id=volunteer.id,
-                                    organization_id=org.id
-                                ).first()
-                                
-                                if not vol_org:
-                                    vol_org = VolunteerOrganization(
-                                        volunteer=volunteer,
-                                        organization=org,
-                                        role='Presenter',
-                                        is_primary=True
-                                    )
-                                    db.session.add(vol_org)
-
-                            # Use the event's add_volunteer method instead of creating participation directly
-                            event.add_volunteer(volunteer, participant_type='Presenter', status='Confirmed')
-
+                    # Get or create teacher
+                    first_name, last_name = clean_name(teacher_name)
+                    teacher = Teacher.query.filter(
+                        func.lower(Teacher.first_name) == func.lower(first_name),
+                        func.lower(Teacher.last_name) == func.lower(last_name)
+                    ).first()
+                    
+                    if not teacher:
+                        teacher = Teacher(
+                            first_name=first_name,
+                            last_name=last_name,
+                            school_id=safe_str(row.get('School Name', '')).strip()
+                        )
+                        db.session.add(teacher)
+                        db.session.flush()
+                    
+                    # Safely handle status
+                    status_str = safe_str(row.get('Status', '')).strip().lower()
+                    status = EventStatus.map_status(status_str)
+                    
+                    # Create EventTeacher registration
+                    event_teacher = EventTeacher.query.filter_by(
+                        event_id=event.id,
+                        teacher_id=teacher.id
+                    ).first()
+                    
+                    if not event_teacher:
+                        event_teacher = EventTeacher(
+                            event_id=event.id,
+                            teacher_id=teacher.id,
+                            status=status,
+                            is_simulcast=(status_str == 'simulcast'),
+                            attendance_confirmed_at=datetime.now(UTC) if status == EventStatus.COMPLETED else None
+                        )
+                        db.session.add(event_teacher)
+                
                 db.session.commit()
                 success_count += 1
 

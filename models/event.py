@@ -118,7 +118,7 @@ class EventStatus(str, Enum):
         status_str = status_str.lower().strip()
         status_mapping = {
             'teacher no-show': cls.NO_SHOW,
-            'teacher cancelation': cls.NO_SHOW,
+            'teacher cancelation': cls.CANCELLED,
             'simulcast': cls.SIMULCAST,
             'successfully completed': cls.COMPLETED,
             'completed': cls.COMPLETED,
@@ -128,6 +128,10 @@ class EventStatus(str, Enum):
             'published': cls.PUBLISHED,
             'requested': cls.REQUESTED,
             'draft': cls.DRAFT,
+            'count': cls.CONFIRMED,  # Map 'count' to confirmed
+            'technical difficulties': cls.NO_SHOW,
+            'local professional no-show': cls.NO_SHOW,
+            'pathful professional no-show': cls.NO_SHOW
         }
         
         return status_mapping.get(status_str, cls.DRAFT)

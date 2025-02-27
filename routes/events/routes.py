@@ -13,6 +13,7 @@ from sqlalchemy.sql import func
 
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 from models.school_model import School
+from models.event import EventTeacher
 
 events_bp = Blueprint('events', __name__)
 
@@ -322,10 +323,14 @@ def view_event(id):
     # Get participations with volunteers
     participations = EventParticipation.query.filter_by(event_id=id).all()
     
+    # Get all event teachers with their statuses
+    event_teachers = EventTeacher.query.filter_by(event_id=id).all()
+    
     # Group participations by status
     participation_stats = {
+        'Registered': [],
         'Attended': [],
-        'No-Show': [],
+        'No Show': [],
         'Cancelled': []
     }
     
@@ -342,7 +347,8 @@ def view_event(id):
         event=event,
         volunteer_count=len(event.volunteers),
         participation_stats=participation_stats,
-        volunteers=event.volunteers  # Keep existing volunteer list for backward compatibility
+        volunteers=event.volunteers,
+        event_teachers=event_teachers  # Pass all event teachers to template
     )
 
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])
