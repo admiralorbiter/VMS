@@ -375,19 +375,23 @@ def get_event(event_id):
         }), 400
 
 def clean_name(name):
-    """Standardize and clean name fields"""
-    if not name or pd.isna(name):
-        return None, None
+    """Enhanced name cleaning function"""
+    if not name:
+        return '', ''
     
-    # Remove special characters and extra spaces
-    name = re.sub(r'[^\w\s-]', '', str(name))
-    name = ' '.join(name.split())
+    # Split name into parts
+    parts = name.strip().split()
     
-    # Split into first and last name
-    parts = name.split(' ', 1)
-    if len(parts) == 2:
-        return parts[0].strip(), parts[1].strip()
-    return parts[0].strip(), None
+    if len(parts) == 0:
+        return '', ''
+    elif len(parts) == 1:
+        return parts[0], ''
+    elif len(parts) == 2:
+        return parts[0], parts[1]
+    else:
+        # For names with more than 2 parts, treat first part as first name
+        # and remaining parts as last name
+        return parts[0], ' '.join(parts[1:])
 
 def standardize_organization(org_name):
     """Standardize organization names"""
@@ -504,6 +508,24 @@ def safe_str(value):
         return ''
     return str(value)
 
+def map_status(status_str):
+    """Enhanced status mapping"""
+    status_str = safe_str(status_str).strip().lower()
+    
+    # Add mappings for additional status values
+    status_mapping = {
+        'simulcast': EventStatus.SIMULCAST,
+        'technical difficulties': EventStatus.NO_SHOW,
+        'count': EventStatus.CONFIRMED,
+        'local professional no-show': EventStatus.NO_SHOW,
+        'pathful professional no-show': EventStatus.NO_SHOW,
+        'teacher no-show': EventStatus.NO_SHOW,
+        'teacher cancelation': EventStatus.CANCELLED,
+        'successfully completed': EventStatus.COMPLETED
+    }
+    
+    return status_mapping.get(status_str, EventStatus.DRAFT)
+
 @virtual_bp.route('/import-sheet', methods=['POST'])
 @login_required
 def import_sheet():
@@ -515,50 +537,62 @@ def import_sheet():
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         df = pd.read_csv(csv_url, skiprows=5)
         
+        # First, create a mapping of session titles to their datetime
+        session_datetimes = {}
+        for _, row in df.iterrows():
+            title = clean_string_value(row.get('Session Title'))
+            date_str = row.get('Date')
+            time_str = row.get('Time')
+            
+            if title and not pd.isna(date_str) and not pd.isna(time_str):
+                event_datetime = parse_datetime(date_str, time_str)
+                if event_datetime:
+                    session_datetimes[title] = event_datetime
+        
+        # Now process all rows, using the stored datetime for simulcast entries
         success_count = warning_count = error_count = 0
         errors = []
+        processed_events = {}  # Keep track of created events
         
-        # Group by unique events
-        event_groups = df.groupby(['Session Title', 'Date', 'Time'])
-        
-        for (title, date_str, time_str), group in event_groups:
+        for _, row in df.iterrows():
             try:
-                if pd.isna(title) or not title.strip():
-                    warning_count += 1
-                    errors.append(f"Skipped: Missing title for date {date_str}")
+                title = clean_string_value(row.get('Session Title'))
+                if not title:
                     continue
                 
-                event_datetime = parse_datetime(date_str, time_str)
+                # Get the datetime for this session
+                event_datetime = session_datetimes.get(title)
                 if not event_datetime:
                     warning_count += 1
-                    errors.append(f"Skipped: Invalid date/time for {title}")
+                    errors.append(f"Skipped: No valid datetime found for {title}")
                     continue
-
-                existing_event = Event.query.filter(
-                    func.lower(Event.title) == func.lower(title.strip()),
-                    func.date(Event.start_date) == event_datetime.date(),
-                    Event.type == EventType.VIRTUAL_SESSION
-                ).first()
-
-                if existing_event:
-                    event = existing_event
-                    event.start_date = event_datetime
+                
+                # Get or create event
+                event_key = (title, event_datetime.date())
+                if event_key in processed_events:
+                    event = processed_events[event_key]
                 else:
-                    event = Event(
-                        title=clean_string_value(title),
-                        start_date=event_datetime,
-                        type=EventType.VIRTUAL_SESSION,
-                        status=EventStatus.map_status(clean_status(group.iloc[0].get('Status')))
-                    )
-                    db.session.add(event)
-                    db.session.flush()
-
-                # Process all teachers in the group
-                for _, row in group.iterrows():
-                    teacher_name = row.get('Teacher Name')
-                    if pd.isna(teacher_name) or not str(teacher_name).strip():
-                        continue
-                        
+                    event = Event.query.filter(
+                        func.lower(Event.title) == func.lower(title.strip()),
+                        func.date(Event.start_date) == event_datetime.date(),
+                        Event.type == EventType.VIRTUAL_SESSION
+                    ).first()
+                    
+                    if not event:
+                        event = Event(
+                            title=title,
+                            start_date=event_datetime,
+                            type=EventType.VIRTUAL_SESSION,
+                            status=EventStatus.map_status(clean_status(row.get('Status')))
+                        )
+                        db.session.add(event)
+                        db.session.flush()
+                    
+                    processed_events[event_key] = event
+                
+                # Process teacher if present
+                teacher_name = row.get('Teacher Name')
+                if not pd.isna(teacher_name) and str(teacher_name).strip():
                     # Get or create teacher
                     first_name, last_name = clean_name(teacher_name)
                     teacher = Teacher.query.filter(
@@ -567,19 +601,26 @@ def import_sheet():
                     ).first()
                     
                     if not teacher:
+                        school_name = safe_str(row.get('School Name'))
+                        district_name = safe_str(row.get('District'))
+                        
+                        # Get or create district and school
+                        district = get_or_create_district(district_name)
+                        school = get_or_create_school(school_name, district)
+                        
                         teacher = Teacher(
                             first_name=first_name,
                             last_name=last_name,
-                            school_id=safe_str(row.get('School Name', '')).strip()
+                            school_id=school.id if school else None
                         )
                         db.session.add(teacher)
                         db.session.flush()
                     
-                    # Safely handle status
-                    status_str = safe_str(row.get('Status', '')).strip().lower()
+                    # Create or update EventTeacher registration
+                    status_str = safe_str(row.get('Status')).lower()
+                    is_simulcast = status_str == 'simulcast'
                     status = EventStatus.map_status(status_str)
                     
-                    # Create EventTeacher registration
                     event_teacher = EventTeacher.query.filter_by(
                         event_id=event.id,
                         teacher_id=teacher.id
@@ -590,7 +631,7 @@ def import_sheet():
                             event_id=event.id,
                             teacher_id=teacher.id,
                             status=status,
-                            is_simulcast=(status_str == 'simulcast'),
+                            is_simulcast=is_simulcast,
                             attendance_confirmed_at=datetime.now(UTC) if status == EventStatus.COMPLETED else None
                         )
                         db.session.add(event_teacher)
@@ -600,10 +641,10 @@ def import_sheet():
 
             except Exception as e:
                 error_count += 1
-                errors.append(f"Error processing {title}: {str(e)}")
+                errors.append(f"Error processing row: {str(e)}")
                 db.session.rollback()
                 current_app.logger.error(f"Import error: {e}", exc_info=True)
-                
+        
         return jsonify({
             'success': True,
             'successCount': success_count,
