@@ -308,14 +308,14 @@ def add_volunteer():
         except Exception as e:
             db.session.rollback()
             flash(f'Error adding volunteer: {str(e)}', 'error')
+            return render_template('volunteers/add_volunteer.html')
 
-
-    return render_template('volunteers/add.html')
+    return render_template('volunteers/add_volunteer.html')
 
 @volunteers_bp.route('/volunteers/view/<int:id>')
 @login_required
 def view_volunteer(id):
-    volunteer = db.session.get(Volunteer, id)
+    volunteer = db.session.query(Volunteer).get(id)  # Volunteer must be retrieved correctly (Added ".get(id)")
     if not volunteer:
         abort(404)
     
