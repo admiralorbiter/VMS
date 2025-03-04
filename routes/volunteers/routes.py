@@ -256,6 +256,7 @@ def volunteers():
 @volunteers_bp.route('/volunteers/add', methods=['GET', 'POST'])
 @login_required
 def add_volunteer():
+
     if request.method == 'POST':
         try:
             # Create and add volunteer first
