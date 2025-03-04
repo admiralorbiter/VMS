@@ -256,7 +256,7 @@ def volunteers():
 @volunteers_bp.route('/volunteers/add', methods=['GET', 'POST'])
 @login_required
 def add_volunteer():
-
+    form = VolunteerForm()
     if request.method == 'POST':
         try:
             # Create and add volunteer first
@@ -311,7 +311,7 @@ def add_volunteer():
             flash(f'Error adding volunteer: {str(e)}', 'error')
             return render_template('volunteers/add_volunteer.html')
 
-    return render_template('volunteers/add_volunteer.html')
+    return render_template('volunteers/add_volunteer.html', form = form)
 
 @volunteers_bp.route('/volunteers/view/<int:id>')
 @login_required
