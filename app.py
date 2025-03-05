@@ -10,11 +10,7 @@ from routes.routes import init_routes
 from config import DevelopmentConfig, ProductionConfig
 from dotenv import load_dotenv
 import os
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from datetime import datetime, timezone
-
-from routes.upcoming_events.routes import sync_recent_salesforce_data
+from datetime import datetime, timezone  # Keep this as it might be used elsewhere
 
 # Load environment variables from .env file first
 load_dotenv()
@@ -40,42 +36,6 @@ instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instan
 if not os.path.exists(instance_path):
     os.makedirs(instance_path)
 
-# Move sync_upcoming_events definition BEFORE init_scheduler
-def sync_upcoming_events():
-    """Sync upcoming events from Salesforce"""
-    with app.app_context():
-        from routes.upcoming_events.routes import sync_upcoming_events as route_sync
-        return route_sync()
-
-def init_scheduler(app):
-    """Initialize the scheduler for automated tasks"""
-    scheduler = BackgroundScheduler(timezone=app.config['SCHEDULER_TIMEZONE'])
-    
-    # Add existing sync job with immediate execution
-    scheduler.add_job(
-        func=sync_upcoming_events,
-        trigger=IntervalTrigger(hours=app.config['SYNC_INTERVAL']),
-        id='sync_upcoming_events',
-        name='Sync upcoming events from Salesforce',
-        replace_existing=True,
-        next_run_time=datetime.now(timezone.utc)  # Immediate execution for upcoming events
-    )
-    
-    # Add new daily sync job for all Salesforce data (no immediate execution)
-    scheduler.add_job(
-        func=sync_recent_salesforce_data,
-        trigger='cron',
-        hour=1,  # Run at 1 AM
-        minute=0,
-        id='sync_all_salesforce_data',
-        name='Sync all Salesforce data',
-        replace_existing=True
-        # No next_run_time parameter, so it will only run on schedule
-    )
-    
-    scheduler.start()
-    return scheduler
-
 # Only create tables if they don't exist
 with app.app_context():
     # Check if database exists and has tables
@@ -92,10 +52,6 @@ with app.app_context():
         missing_tables = [table for table in expected_tables if table not in existing_tables]
         if missing_tables:
             print(f"Warning: Missing tables detected: {missing_tables}")
-
-    # Initialize scheduler
-    scheduler = init_scheduler(app)
-    app.config['SCHEDULER'] = scheduler  # Store for shutdown handling
 
 # User loader callback for Flask-Login
 @login_manager.user_loader

@@ -15,13 +15,6 @@ class Config:
     SF_SECURITY_TOKEN = os.environ.get('SF_SECURITY_TOKEN')
     SYNC_AUTH_TOKEN = os.environ.get('SYNC_AUTH_TOKEN')
 
-    # Scheduler settings
-    SCHEDULER_API_ENABLED = True
-    SCHEDULER_TIMEZONE = "America/Chicago"
-    
-    # How often to sync upcoming events (in hours)
-    SYNC_INTERVAL = int(os.environ.get('SYNC_INTERVAL', 24))
-
     def __init__(self):
         self.validate_config()
 
