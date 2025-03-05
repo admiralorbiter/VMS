@@ -421,19 +421,13 @@ def parse_datetime(date_str, time_str):
             
         # Parse date
         date_parts = date_str.split('/')
-        current_month = datetime.now().month
         
         if len(date_parts) == 2:
             month, day = map(int, date_parts)
-            # If current month is June or later (≥6):
-            #   - Dates July-Dec (≥7) are 2024
-            #   - Dates Jan-June (1-6) are 2025
-            # If current month is before June (<6):
-            #   - All dates are 2024
-            if current_month >= 6:
-                year = 2024 if month >= 7 else 2025
-            else:
-                year = 2024
+            # Simplified year logic:
+            # Months 1-6 -> 2025
+            # Months 7-12 -> 2024
+            year = 2024 if month >= 7 else 2025
         elif len(date_parts) == 3:
             month, day, year = map(int, date_parts)
             if year < 100:
