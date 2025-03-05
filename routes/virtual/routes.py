@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required
 import csv
 from io import StringIO
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from flask import current_app
 from models.district_model import District
 from models.event import db, Event, EventType, EventStatus
@@ -72,7 +72,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                     date_str = row.get('Date')
                     time_str = row.get('Time', '')
                     date_parts = date_str.split('/')
-                    current_year = datetime.now().year
+                    current_year = datetime.now(timezone.utc).year
                     event.date = datetime.strptime(f"{date_parts[0]}/{date_parts[1]}/{current_year}", '%m/%d/%Y').date()
                     if time_str:
                         event.start_time = datetime.strptime(time_str, '%I:%M %p').time()
@@ -626,7 +626,7 @@ def import_sheet():
                             teacher_id=teacher.id,
                             status=status,
                             is_simulcast=is_simulcast,
-                            attendance_confirmed_at=datetime.now(UTC) if status == EventStatus.COMPLETED else None
+                            attendance_confirmed_at=datetime.now(timezone.utc) if status == EventStatus.COMPLETED else None
                         )
                         db.session.add(event_teacher)
                 
@@ -669,7 +669,7 @@ def clean_time_string(time_str):
 
 def generate_school_id(name):
     """Generate a unique ID for virtual schools that matches Salesforce length"""
-    timestamp = datetime.now().strftime('%y%m%d')
+    timestamp = datetime.now(timezone.utc).strftime('%y%m%d')
     name_hash = hashlib.sha256(name.lower().encode()).hexdigest()[:8]  # Increased to 8 chars
     base_id = f"VRT{timestamp}{name_hash}"  # Removed underscores to save space
     
