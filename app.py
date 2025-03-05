@@ -14,6 +14,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timezone
 
+from routes.upcoming_events.routes import sync_recent_salesforce_data
+
 # Load environment variables from .env file first
 load_dotenv()
 
@@ -49,14 +51,26 @@ def init_scheduler(app):
     """Initialize the scheduler for automated tasks"""
     scheduler = BackgroundScheduler(timezone=app.config['SCHEDULER_TIMEZONE'])
     
-    # Add sync job with immediate first run for testing
+    # Add existing sync job with immediate execution
     scheduler.add_job(
         func=sync_upcoming_events,
         trigger=IntervalTrigger(hours=app.config['SYNC_INTERVAL']),
         id='sync_upcoming_events',
         name='Sync upcoming events from Salesforce',
         replace_existing=True,
-        next_run_time=datetime.now(timezone.utc)  # Add this line for immediate execution
+        next_run_time=datetime.now(timezone.utc)  # Immediate execution for upcoming events
+    )
+    
+    # Add new daily sync job for all Salesforce data (no immediate execution)
+    scheduler.add_job(
+        func=sync_recent_salesforce_data,
+        trigger='cron',
+        hour=1,  # Run at 1 AM
+        minute=0,
+        id='sync_all_salesforce_data',
+        name='Sync all Salesforce data',
+        replace_existing=True
+        # No next_run_time parameter, so it will only run on schedule
     )
     
     scheduler.start()

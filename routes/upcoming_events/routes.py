@@ -182,3 +182,43 @@ def dia_events_api():
             'success': False,
             'message': f'An unexpected error occurred: {str(e)}'
         }), 500
+
+def sync_recent_salesforce_data():
+    """Sync all data from Salesforce sequentially"""
+    import_sequence = [
+        ('/organizations/import-from-salesforce', 'Organizations'),
+        ('/management/import-schools', 'Schools'),
+        ('/management/import-classes', 'Classes'),
+        ('/volunteers/import-from-salesforce', 'Volunteers'),
+        ('/organizations/import-affiliations-from-salesforce', 'Affiliations'),
+        ('/events/import-from-salesforce', 'Events'),
+        ('/history/import-from-salesforce', 'History')
+    ]
+    
+    success_count = 0
+    error_count = 0
+    results = []
+    
+    for route, name in import_sequence:
+        try:
+            # Create a request context since we're in a background task
+            with current_app.test_client() as client:
+                response = client.post(route)
+                data = response.get_json()
+                
+                if data.get('success'):
+                    success_count += 1
+                    results.append(f"Successfully imported {name}")
+                else:
+                    error_count += 1
+                    results.append(f"Failed to import {name}: {data.get('error', 'Unknown error')}")
+        except Exception as e:
+            error_count += 1
+            results.append(f"Error importing {name}: {str(e)}")
+    
+    return {
+        'success': error_count == 0,
+        'success_count': success_count,
+        'error_count': error_count,
+        'details': results
+    }
