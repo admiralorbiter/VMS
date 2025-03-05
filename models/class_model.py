@@ -1,5 +1,5 @@
 from models import db
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from sqlalchemy import Index, text
 from sqlalchemy.orm import relationship
 
@@ -31,8 +31,8 @@ class Class(db.Model):
     
     # Audit timestamps
     # WARNING: These fields are used by data sync processes - do not modify timestamp behavior
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Explicit relationship with School model
     school = relationship(

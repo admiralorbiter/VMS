@@ -1,7 +1,7 @@
 from sqlalchemy.orm import validates
 from models import db
 from models.utils import get_utc_now
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from enum import Enum
 from sqlalchemy import event
 
@@ -47,12 +47,12 @@ class History(db.Model):
     activity_status = db.Column(db.String(50), index=True)   # Current status of the activity
     
     # Timestamp Fields - Track record lifecycle
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime)                    # When the activity was completed
     last_modified_at = db.Column(
         db.DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC)  # Change from get_utc_now to lambda
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
     
     # Status and Integration Fields
@@ -103,7 +103,7 @@ class History(db.Model):
     def __init__(self, **kwargs):
         """Initialize history record with validation"""
         if 'activity_date' not in kwargs:
-            kwargs['activity_date'] = datetime.now(UTC)
+            kwargs['activity_date'] = datetime.now(timezone.utc)
         super().__init__(**kwargs)
 
     @validates('notes')
@@ -116,14 +116,14 @@ class History(db.Model):
     def soft_delete(self, user_id=None):
         """Soft delete the history record"""
         self.is_deleted = True
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)
         self.updated_by_id = user_id
         return self
 
     def restore(self, user_id=None):
         """Restore a soft-deleted history record"""
         self.is_deleted = False
-        self.updated_at = datetime.now(UTC)
+        self.updated_at = datetime.now(timezone.utc)
         self.updated_by_id = user_id
         return self
 
@@ -132,7 +132,7 @@ class History(db.Model):
         """Check if history record is from the last 30 days"""
         if not self.activity_date:
             return False
-        return (datetime.now(UTC) - self.activity_date).days <= 30
+        return (datetime.now(timezone.utc) - self.activity_date).days <= 30
 
     def to_dict(self):
         """Convert history record to dictionary for API responses"""

@@ -2,7 +2,7 @@ from models import db
 from models.contact import Contact, ContactTypeEnum, Email, Phone, GenderEnum
 from sqlalchemy import String, Integer, Boolean, ForeignKey, Date, DateTime, Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship, declared_attr, validates
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from functools import cached_property
 from enum import Enum
 
@@ -54,11 +54,11 @@ class Teacher(Contact):
     salesforce_school_id = db.Column(String(18), ForeignKey('school.id'), nullable=True)
     
     # Metadata
-    created_at = db.Column(DateTime, default=lambda: datetime.now(UTC))
+    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         DateTime, 
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC)
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # Enhanced event tracking
@@ -102,7 +102,7 @@ class Teacher(Contact):
         if value not in TeacherStatus:
             raise ValueError(f"Invalid status. Must be one of: {list(TeacherStatus)}")
         if hasattr(self, 'status') and self.status != value:
-            self.status_change_date = datetime.now(UTC)
+            self.status_change_date = datetime.now(timezone.utc)
         return value
 
     def __repr__(self):
@@ -174,13 +174,13 @@ class Teacher(Contact):
     @property
     def upcoming_events(self):
         """Get teacher's upcoming events"""
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         return [reg.event for reg in self.event_registrations 
                 if reg.event.start_date > now]
     
     @property
     def past_events(self):
         """Get teacher's past events"""
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         return [reg.event for reg in self.event_registrations 
                 if reg.event.start_date <= now]

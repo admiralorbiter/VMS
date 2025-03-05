@@ -6,7 +6,7 @@ from models.event import Event
 from models.history import History
 from models import db
 from sqlalchemy import or_
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timezone, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from config import Config
 
@@ -123,9 +123,9 @@ def add_history():
             summary=data.get('summary'),
             description=data.get('description'),
             activity_type=data.get('activity_type'),
-            activity_date=datetime.now(),
+            activity_date=datetime.now(timezone.utc),
             activity_status=data.get('activity_status', 'Completed'),
-            completed_at=datetime.now() if data.get('activity_status') == 'Completed' else None,
+            completed_at=datetime.now(timezone.utc) if data.get('activity_status') == 'Completed' else None,
             email_message_id=data.get('email_message_id')
         )
         
@@ -202,7 +202,7 @@ def import_history():
                             history.description = row.get('Description', '')
                             history.activity_type = row.get('Type', '')
                             history.activity_status = row.get('Status', '')
-                            history.activity_date = parse_date(row.get('ActivityDate')) or datetime.now()
+                            history.activity_date = parse_date(row.get('ActivityDate')) or datetime.now(timezone.utc)
                             history.email_message_id = row.get('EmailMessageId')
                             
                             # Handle volunteer relationship
@@ -261,7 +261,7 @@ def import_history():
                     history.description = row.get('Description', '')
                     history.activity_type = row.get('Type', '')
                     history.activity_status = row.get('Status', '')
-                    history.activity_date = parse_date(row.get('ActivityDate')) or datetime.now()
+                    history.activity_date = parse_date(row.get('ActivityDate')) or datetime.now(timezone.utc)
                     history.email_message_id = row.get('EmailMessageId')
                     
                     # Handle volunteer relationship
@@ -355,7 +355,7 @@ def import_history_from_salesforce():
                     history = History.query.filter_by(salesforce_id=row['Id']).first()
                     
                     # Handle activity date before creating new record
-                    activity_date = parse_date(row.get('ActivityDate')) or datetime.now(UTC)
+                    activity_date = parse_date(row.get('ActivityDate')) or datetime.now(timezone.utc)
                     
                     if not history:
                         history = History(

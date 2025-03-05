@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timezone, timedelta
 from models.history import History, HistoryType
 from models import db
 from models.event import Event
@@ -22,7 +22,7 @@ def test_new_history(app, test_event, test_volunteer):
                 summary='Test summary',
                 description='Test description',
                 activity_type='Test Activity',
-                activity_date=datetime.now(UTC),
+                activity_date=datetime.now(timezone.utc),
                 activity_status='Completed',
                 history_type='note',
                 salesforce_id='a005f000003XNa7AAG',
@@ -61,7 +61,7 @@ def test_history_type_enum_conversion(app, test_volunteer):
     with app.app_context():
         history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC)
+            activity_date=datetime.now(timezone.utc)
         )
         
         # Test setting via enum
@@ -85,14 +85,14 @@ def test_history_validation(app, test_volunteer):
         with pytest.raises(ValueError):
             history = History(
                 volunteer_id=test_volunteer.id,
-                activity_date=datetime.now(UTC),
+                activity_date=datetime.now(timezone.utc),
                 notes=""  # Should raise error
             )
 
         # Test missing volunteer_id
         with pytest.raises(Exception):
             history = History(
-                activity_date=datetime.now(UTC)
+                activity_date=datetime.now(timezone.utc)
             )
             db.session.add(history)
             db.session.flush()
@@ -103,14 +103,14 @@ def test_is_recent_property(app, test_volunteer):
         # Test recent history
         recent_history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC)
+            activity_date=datetime.now(timezone.utc)
         )
         assert recent_history.is_recent is True
 
         # Test old history
         old_history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC) - timedelta(days=31)
+            activity_date=datetime.now(timezone.utc) - timedelta(days=31)
         )
         assert old_history.is_recent is False
 
@@ -119,7 +119,7 @@ def test_to_dict_method(app, test_volunteer, test_user):
     with app.app_context():
         history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC),
+            activity_date=datetime.now(timezone.utc),
             notes="Test notes",
             history_type="note",
             created_by_id=test_user.id,
@@ -142,7 +142,7 @@ def test_soft_delete_and_restore(app, test_volunteer, test_user):
     with app.app_context():
         history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC)
+            activity_date=datetime.now(timezone.utc)
         )
         
         # Test soft delete
@@ -162,7 +162,7 @@ def test_history_with_null_optional_fields(app, test_volunteer):
     with app.app_context():
         history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC)
+            activity_date=datetime.now(timezone.utc)
         )
         db.session.add(history)
         db.session.flush()
@@ -177,7 +177,7 @@ def test_history_type_case_sensitivity(app, test_volunteer):
     with app.app_context():
         history = History(
             volunteer_id=test_volunteer.id,
-            activity_date=datetime.now(UTC)
+            activity_date=datetime.now(timezone.utc)
         )
         
         # Test different case variations

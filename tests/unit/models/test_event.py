@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import datetime, timedelta, timezone
 from models.event import (
     Event, EventComment, EventType, EventFormat, EventStatus, 
     CancellationReason, AttendanceStatus, EventAttendance
@@ -114,7 +114,7 @@ def test_event_attendance(app, test_event):
             attendance = EventAttendance(
                 event_id=test_event.id,
                 status=AttendanceStatus.COMPLETED,
-                last_taken=datetime.now(UTC)
+                last_taken=datetime.now(timezone.utc)
             )
             
             db.session.add(attendance)
@@ -150,7 +150,7 @@ def test_event_properties(test_event):
     {
         'description': 'Test Description',
         'type': EventType.IN_PERSON,
-        'start_date': datetime.now(UTC),
+        'start_date': datetime.now(timezone.utc),
         # Missing required title
     },
     {
