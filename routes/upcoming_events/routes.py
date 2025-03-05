@@ -222,3 +222,9 @@ def sync_recent_salesforce_data():
         'error_count': error_count,
         'details': results
     }
+
+@upcoming_events_bp.route('/sync_recent_salesforce_data', methods=['POST'])
+def sync_recent_salesforce_data_endpoint():
+    """HTTP endpoint for full data sync trigger"""
+    result = sync_recent_salesforce_data()
+    return jsonify(result)
