@@ -156,14 +156,14 @@ def dia_events_api():
 
         # Query for DIA events
         query = """
-            SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
-                Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
-                Display_on_Website__c, Start_Date__c 
-            FROM Session__c 
-            WHERE Start_Date__c > TODAY 
-            AND Session_Type__c = 'DIA - Classroom Speaker'
-            AND Available_slots__c > 0
-            ORDER BY Start_Date__c ASC
+        SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
+            Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
+            Display_on_Website__c, Start_Date__c 
+        FROM Session__c 
+        WHERE Start_Date__c > TODAY 
+        AND Session_Type__c LIKE '%DIA%'
+        AND Available_slots__c > 0
+        ORDER BY Start_Date__c ASC
         """
         result = sf.query(query)
         events = result.get('records', [])
