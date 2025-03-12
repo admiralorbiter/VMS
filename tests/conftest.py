@@ -4,7 +4,7 @@ from models import db
 from config import TestingConfig
 from models.user import User
 from werkzeug.security import generate_password_hash
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from models.contact import *
 from models.class_model import Class
 from models.district_model import District
@@ -20,14 +20,29 @@ from models.volunteer import Volunteer, Skill, VolunteerSkill, Engagement, Event
 from models.contact import EducationEnum, LocalStatusEnum, SkillSourceEnum
 from models.history import History
 from models.organization import Organization
+from sqlalchemy import text
+
+pytest_plugins = ['pytest_mock']
 
 @pytest.fixture
 def app():
     flask_app.config.from_object(TestingConfig)
     
     with flask_app.app_context():
+        # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax
+        with db.engine.connect() as conn:
+            conn.execute(text('PRAGMA foreign_keys=ON'))
+            conn.commit()
+        
+        # Create all tables
         db.create_all()
+        
+        # Verify tables were created
+        inspector = db.inspect(db.engine)
+        print("\nDebug - Created tables:", inspector.get_table_names())
+        
         yield flask_app
+        
         db.session.remove()
         db.drop_all()
 
@@ -129,69 +144,85 @@ def test_contact(app):
         db.session.commit()
 
 @pytest.fixture
-def test_class(app):
+def test_school(app):
+    """Create a test school"""
+    with app.app_context():
+        school = School(
+            id='TEST001',
+            name='Test School'
+        )
+        db.session.add(school)
+        db.session.commit()
+        
+        # Get fresh instance from session
+        school = db.session.get(School, 'TEST001')
+        yield school
+        
+        # Cleanup
+        db.session.delete(school)
+        db.session.commit()
+
+@pytest.fixture
+def test_class(app, test_school):
     """Fixture for creating a test class"""
     with app.app_context():
-        from models.class_model import Class
+        # Refresh test_school in the current session
+        school = db.session.merge(test_school)
         
-        # Debug: Print test_class details before creation
         test_class = Class(
             salesforce_id='a005f000003XNa7AAG',
             name='Test Class 2024',
-            school_salesforce_id='a015f000004XNa7AAG',
+            school_salesforce_id=school.id,
             class_year=2024
         )
         db.session.add(test_class)
         db.session.commit()
         
-        # Verify the class was created using salesforce_id
-        created_class = db.session.query(Class).filter_by(
-            salesforce_id=test_class.salesforce_id
-        ).first()
-        assert created_class is not None
-        
+        # Get fresh instance
+        test_class = db.session.get(Class, test_class.id)
         yield test_class
         
-        # Clean up
-        existing = db.session.query(Class).filter_by(
-            salesforce_id=test_class.salesforce_id
-        ).first()
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+        # Cleanup
+        db.session.delete(test_class)
+        db.session.commit()
 
 @pytest.fixture
 def test_district(app):
-    """Fixture for creating a test district"""
+    """Create a test district"""
     with app.app_context():
         district = District(
-            id='0015f00000JVZsFAAX',
-            name='Test School District',
-            district_code='4045'
+            salesforce_id='DIST001',  # Use salesforce_id for string identifier
+            name='Test District'
         )
         db.session.add(district)
         db.session.commit()
+        
         yield district
+        
+        # Simple cleanup
         db.session.delete(district)
         db.session.commit()
 
 @pytest.fixture
-def test_event(app):
-    """Fixture for creating a test event"""
+def test_event(app, test_school, test_district):
+    """Create a test event"""
     with app.app_context():
         event = Event(
             title='Test Event',
-            description='Test Description',
             type=EventType.IN_PERSON,
-            start_date=datetime.now(),
-            end_date=datetime.now() + timedelta(hours=2),
+            start_date=datetime.now(timezone.utc),
+            end_date=datetime.now(timezone.utc) + timedelta(hours=2),
             status=EventStatus.DRAFT,
-            format=EventFormat.IN_PERSON,
-            volunteers_needed=5
+            school='TEST001',  # Use direct ID
+            district_partner=test_district.id,
+            volunteers_needed=5,  # Explicitly set this
+            format=EventFormat.IN_PERSON  # Add required format
         )
         db.session.add(event)
         db.session.commit()
         
+        # Refresh to ensure all attributes are loaded
+        db.session.refresh(event)
         yield event
         
         # Clean up
@@ -224,20 +255,24 @@ def test_volunteer(app):
             title='Software Engineer',
             department='Engineering',
             industry='Technology',
-            education=EducationEnum.bachelors_degree,
-            local_status=LocalStatusEnum.true,
+            education=EducationEnum.BACHELORS_DEGREE,
+            local_status=LocalStatusEnum.local,
             race_ethnicity=RaceEthnicityEnum.white
         )
         db.session.add(volunteer)
         db.session.commit()
         
+        volunteer_id = volunteer.id  # Store ID
         yield volunteer
         
-        # Clean up
-        existing = db.session.get(Volunteer, volunteer.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+        # Modified cleanup
+        try:
+            existing = db.session.get(Volunteer, volunteer_id)
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+        except:
+            db.session.rollback()
 
 @pytest.fixture
 def test_skill(app):
@@ -337,27 +372,6 @@ def test_history(app, test_volunteer):
         
         # Clean up
         existing = db.session.get(History, history.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
-
-@pytest.fixture
-def test_school(app, test_district):
-    """Fixture for creating a test school"""
-    with app.app_context():
-        school = School(
-            id='0015f00000TEST123',
-            name='Test School',
-            normalized_name='TEST SCHOOL',
-            school_code='4045',
-            district_id=test_district.id
-        )
-        db.session.add(school)
-        db.session.commit()
-        yield school
-        
-        # Clean up
-        existing = db.session.get(School, school.id)
         if existing:
             db.session.delete(existing)
             db.session.commit()
@@ -613,4 +627,12 @@ def test_calendar_events(app):
             existing = db.session.get(Event, event.id)
             if existing:
                 db.session.delete(existing)
-        db.session.commit() 
+        db.session.commit()
+
+@pytest.fixture
+def new_session(app):
+    """Create a new session bound to the test database"""
+    with app.app_context():
+        session = db.Session(bind=db.engine)
+        yield session
+        session.close() 

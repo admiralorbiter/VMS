@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, render_template, request
+from datetime import datetime, timedelta, timezone
+from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 import simple_salesforce
@@ -12,21 +12,31 @@ from models.upcoming_events import UpcomingEvent
 upcoming_events_bp = Blueprint('upcoming_events', __name__)
 
 @upcoming_events_bp.route('/sync_upcoming_events', methods=['POST'])
+def sync_upcoming_events_endpoint():
+    """HTTP endpoint for manual sync trigger"""
+    result = sync_upcoming_events()
+    return jsonify(result)
+
 def sync_upcoming_events():
+    """Sync upcoming events from Salesforce"""
     try:
         today = datetime.now().date()
-        yesterday = today - timedelta(days=1)
+        yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         
-        # 1. Remove past events AND events with no available slots
+        # Add logging for deletion
+        print("Starting sync process...")
+        
         deleted_count = UpcomingEvent.query.filter(
             or_(
-                UpcomingEvent.start_date < yesterday,  # Less than yesterday (past events)
-                UpcomingEvent.available_slots <= 0  # No slots available
+                UpcomingEvent.start_date < yesterday,
+                UpcomingEvent.available_slots <= 0
             )
         ).delete()
         db.session.commit()
+        print(f"Deleted {deleted_count} past/filled events")
 
-        # 2. Connect to Salesforce and query
+        # Salesforce connection
+        print("Connecting to Salesforce...")
         sf = Salesforce(
             username=Config.SF_USERNAME,
             password=Config.SF_PASSWORD,
@@ -34,6 +44,8 @@ def sync_upcoming_events():
             domain='login'
         )
 
+        # Query execution
+        print("Executing Salesforce query...")
         query = """
             SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
                 Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
@@ -45,29 +57,28 @@ def sync_upcoming_events():
         """
         result = sf.query(query)
         events = result.get('records', [])
+        print(f"Retrieved {len(events)} events from Salesforce")
+        
+        # Print first event for debugging
+        if events:
+            print("Sample event data:", events[0])
 
-        # 3. Update database with new events
+        # Update database
+        print("Updating database...")
         new_count, updated_count = UpcomingEvent.upsert_from_salesforce(events)
         
-        return jsonify({
+        return {
             'success': True,
             'new_count': new_count,
             'updated_count': updated_count,
-            'deleted_count': deleted_count,
-            'message': f'Successfully synced: {new_count} new, {updated_count} updated, {deleted_count} removed (past or filled)'
-        })
-
-    except SalesforceAuthenticationFailed as e:
-        return jsonify({
-            'success': False,
-            'message': 'Failed to authenticate with Salesforce'
-        }), 401
-
+            'deleted_count': deleted_count
+        }
     except Exception as e:
-        return jsonify({
+        print(f"Scheduler sync error: {str(e)}")
+        return {
             'success': False,
-            'message': f'An unexpected error occurred: {str(e)}'
-        }), 500
+            'error': str(e)
+        }
 
 @upcoming_events_bp.route('/volunteer_signup')
 def volunteer_signup():
@@ -145,14 +156,14 @@ def dia_events_api():
 
         # Query for DIA events
         query = """
-            SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
-                Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
-                Display_on_Website__c, Start_Date__c 
-            FROM Session__c 
-            WHERE Start_Date__c > TODAY 
-            AND Session_Type__c = 'DIA - Classroom Speaker'
-            AND Available_slots__c > 0
-            ORDER BY Start_Date__c ASC
+        SELECT Id, Name, Available_slots__c, Filled_Volunteer_Jobs__c, 
+            Date_and_Time_for_Cal__c, Session_Type__c, Registration_Link__c, 
+            Display_on_Website__c, Start_Date__c 
+        FROM Session__c 
+        WHERE Start_Date__c > TODAY 
+        AND Session_Type__c LIKE '%DIA%'
+        AND Available_slots__c > 0
+        ORDER BY Start_Date__c ASC
         """
         result = sf.query(query)
         events = result.get('records', [])
@@ -171,3 +182,49 @@ def dia_events_api():
             'success': False,
             'message': f'An unexpected error occurred: {str(e)}'
         }), 500
+
+def sync_recent_salesforce_data():
+    """Sync all data from Salesforce sequentially"""
+    import_sequence = [
+        ('/organizations/import-from-salesforce', 'Organizations'),
+        ('/management/import-schools', 'Schools'),
+        ('/management/import-classes', 'Classes'),
+        ('/volunteers/import-from-salesforce', 'Volunteers'),
+        ('/organizations/import-affiliations-from-salesforce', 'Affiliations'),
+        ('/events/import-from-salesforce', 'Events'),
+        ('/history/import-from-salesforce', 'History')
+    ]
+    
+    success_count = 0
+    error_count = 0
+    results = []
+    
+    for route, name in import_sequence:
+        try:
+            # Create a request context since we're in a background task
+            with current_app.test_client() as client:
+                response = client.post(route)
+                data = response.get_json()
+                
+                if data.get('success'):
+                    success_count += 1
+                    results.append(f"Successfully imported {name}")
+                else:
+                    error_count += 1
+                    results.append(f"Failed to import {name}: {data.get('error', 'Unknown error')}")
+        except Exception as e:
+            error_count += 1
+            results.append(f"Error importing {name}: {str(e)}")
+    
+    return {
+        'success': error_count == 0,
+        'success_count': success_count,
+        'error_count': error_count,
+        'details': results
+    }
+
+@upcoming_events_bp.route('/sync_recent_salesforce_data', methods=['POST'])
+def sync_recent_salesforce_data_endpoint():
+    """HTTP endpoint for full data sync trigger"""
+    result = sync_recent_salesforce_data()
+    return jsonify(result)

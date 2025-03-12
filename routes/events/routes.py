@@ -13,28 +13,34 @@ from sqlalchemy.sql import func
 
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 from models.school_model import School
+from models.event import EventTeacher
 
 events_bp = Blueprint('events', __name__)
 
 def process_event_row(row, success_count, error_count, errors):
     """Process a single event row from CSV/Salesforce data"""
     try:
-        # Check if event exists by salesforce_id
-        event = None
-        if row.get('Id'):
-            event = Event.query.filter_by(salesforce_id=row['Id']).first()
-        
-        # Track if this is an update or new record
+        # Get or create event
+        event_id = row.get('Id')
+        event = Event.query.filter_by(salesforce_id=event_id).first()
         is_new = event is None
         
-        # If event doesn't exist, create new one
         if not event:
-            event = Event()
+            # Ensure required fields for new events
+            if not row.get('Name'):  # Title is required by validation
+                raise ValueError("Event name/title is required")
+                
+            event = Event(
+                title=row.get('Name', '').strip(),  # Ensure title is not empty
+                salesforce_id=event_id
+            )
             db.session.add(event)
         
+        # Update event fields
+        if row.get('Name'):  # Only update if name exists
+            event.title = row.get('Name').strip()
+        
         # Update basic event fields
-        event.salesforce_id = row.get('Id', '').strip()
-        event.title = row.get('Name', '').strip()
         event.type = map_session_type(row.get('Session_Type__c', ''))
         event.format = map_event_format(row.get('Format__c', ''))
         event.start_date = parse_date(row.get('Start_Date_and_Time__c')) or datetime(2000, 1, 1)
@@ -100,6 +106,7 @@ def process_event_row(row, success_count, error_count, errors):
             if skill not in event.skills:
                 event.skills.append(skill)
 
+        db.session.flush()  # Flush to catch validation errors early
         return success_count + (1 if is_new else 0), error_count
             
     except Exception as e:
@@ -316,10 +323,14 @@ def view_event(id):
     # Get participations with volunteers
     participations = EventParticipation.query.filter_by(event_id=id).all()
     
+    # Get all event teachers with their statuses
+    event_teachers = EventTeacher.query.filter_by(event_id=id).all()
+    
     # Group participations by status
     participation_stats = {
+        'Registered': [],
         'Attended': [],
-        'No-Show': [],
+        'No Show': [],
         'Cancelled': []
     }
     
@@ -336,7 +347,8 @@ def view_event(id):
         event=event,
         volunteer_count=len(event.volunteers),
         participation_stats=participation_stats,
-        volunteers=event.volunteers  # Keep existing volunteer list for backward compatibility
+        volunteers=event.volunteers,
+        event_teachers=event_teachers  # Pass all event teachers to template
     )
 
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])
@@ -362,6 +374,13 @@ def edit_event(id):
             skill_ids = request.form.getlist('skills[]')
             skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
             event.skills = skills
+            
+            # Update volunteers (if present in form)
+            if 'volunteers[]' in request.form:
+                volunteer_ids = request.form.getlist('volunteers[]')
+                volunteers = Volunteer.query.filter(Volunteer.id.in_(volunteer_ids)).all()
+                for volunteer in volunteers:
+                    event.add_volunteer(volunteer)  # Use add_volunteer instead of direct append
             
             db.session.commit()
             flash('Event updated successfully!', 'success')

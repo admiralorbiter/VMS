@@ -175,6 +175,34 @@
                     <div class="additional-info">{{ event.additional_information|safe }}</div>
                 </div>
                 {% endif %}
+
+                {% if event_teachers %}
+                <div class="info-item full-width">
+                    <label>Teachers</label>
+                    <div class="teachers-grid">
+                        {% for event_teacher in event_teachers %}
+                        <div class="teacher-card">
+                            <p>
+                                <i class="fa-solid fa-chalkboard-user"></i>
+                                {{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}
+                                {% if event_teacher.teacher.school %}
+                                <span class="school-name">
+                                    <i class="fa-solid fa-school"></i> {{ event_teacher.teacher.school.name }}
+                                </span>
+                                {% endif %}
+                            </p>
+                            <div class="teacher-status {{ event_teacher.status|lower }}">
+                                {% if event_teacher.is_simulcast %}
+                                    <i class="fa-solid fa-video"></i> Simulcast
+                                {% else %}
+                                    <i class="fa-solid fa-circle-check"></i> {{ event_teacher.status|title }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
