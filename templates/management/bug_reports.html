@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Bug Reports</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Page</th>
+                            <th>Reported By</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr class="{{ 'table-success' if report.resolved else '' }}">
+                            <td>
+                                {% if report.type == BugReportType.BUG %}
+                                    <span class="badge bg-danger">Bug</span>
+                                {% elif report.type == BugReportType.DATA_ERROR %}
+                                    <span class="badge bg-warning">Data Error</span>
+                                {% else %}
+                                    <span class="badge bg-info">Other</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ report.description }}</td>
+                            <td>
+                                <a href="{{ report.page_url }}" target="_blank" title="{{ report.page_url }}">
+                                    {{ report.page_title or report.page_url|truncate(30) }}
+                                </a>
+                            </td>
+                            <td>{{ report.submitted_by.username }}</td>
+                            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if report.resolved %}
+                                    <span class="badge bg-success">Resolved</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Open</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not report.resolved %}
+                                <button class="btn btn-sm btn-success" 
+                                        onclick="resolveReport({{ report.id }})">
+                                    Resolve
+                                </button>
+                                {% else %}
+                                <small class="text-muted">
+                                    Resolved by {{ report.resolved_by.username }}
+                                    <br>
+                                    {{ report.resolved_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if report.resolution_notes %}
+                        <tr class="table-light">
+                            <td colspan="7">
+                                <strong>Resolution Notes:</strong> {{ report.resolution_notes }}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resolution Modal -->
+<div class="modal fade" id="resolutionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resolve Bug Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="resolutionForm">
+                    <div class="mb-3">
+                        <label class="form-label">Resolution Notes</label>
+                        <textarea class="form-control" name="notes" rows="3" 
+                                placeholder="Optional: Add any notes about how this was resolved..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitResolution()">Mark as Resolved</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentReportId = null;
+const modal = new bootstrap.Modal(document.getElementById('resolutionModal'));
+
+function resolveReport(reportId) {
+    currentReportId = reportId;
+    modal.show();
+}
+
+function submitResolution() {
+    const form = document.getElementById('resolutionForm');
+    const formData = new FormData(form);
+    
+    fetch(`/bug-reports/${currentReportId}/resolve`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error resolving report: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+</script>
+{% endblock %} 

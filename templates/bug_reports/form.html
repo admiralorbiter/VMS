@@ -24,7 +24,7 @@
                     placeholder="Please provide any details that would help us understand and fix the issue..."></textarea>
         </div>
         
-        <div id="bugReportResponse"></div>
+        <div id="bugReportResponse" class="mb-3"></div>
         
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -48,13 +48,30 @@ document.addEventListener('htmx:afterSwap', function(evt) {
     }
 });
 
-// Handle form submission
-document.getElementById('bugReportForm')?.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.successful) {
-        setTimeout(function() {
-            var modal = bootstrap.Modal.getInstance(document.getElementById('bugReportModal'));
-            modal?.hide();
-        }, 2000);
+// Handle form submission response
+document.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.target.id === 'bugReportForm') {
+        const response = JSON.parse(evt.detail.xhr.response);
+        const responseDiv = document.getElementById('bugReportResponse');
+        
+        if (evt.detail.successful) {
+            responseDiv.innerHTML = `
+                <div class="alert alert-success">
+                    ${response.message}
+                </div>
+            `;
+            // Close modal after success
+            setTimeout(function() {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('bugReportModal'));
+                modal?.hide();
+            }, 2000);
+        } else {
+            responseDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    ${response.message}
+                </div>
+            `;
+        }
     }
 });
 </script> 

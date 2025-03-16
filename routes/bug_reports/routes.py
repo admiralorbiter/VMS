@@ -16,11 +16,24 @@ def get_form():
 def submit_report():
     """Handle bug report submission"""
     try:
+        # Get form data with defaults
+        report_type = request.form.get('type', BugReportType.BUG)
+        description = request.form.get('description')
+        page_url = request.form.get('page_url', '')
+        page_title = request.form.get('page_title', '')
+
+        if not description:
+            return jsonify({
+                'success': False,
+                'message': 'Description is required'
+            }), 400
+
+        # Create new bug report
         report = BugReport(
-            type=int(request.form.get('type', BugReportType.BUG)),
-            description=request.form.get('description'),
-            page_url=request.referrer or request.form.get('page_url', ''),
-            page_title=request.form.get('page_title', ''),
+            type=int(report_type),
+            description=description,
+            page_url=page_url,
+            page_title=page_title,
             submitted_by_id=current_user.id
         )
         
@@ -31,9 +44,15 @@ def submit_report():
             'success': True,
             'message': 'Thank you for your report. We will look into this.'
         })
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        # Log the error for debugging (you should have proper logging set up)
+        print(f"Error submitting bug report: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while submitting your report. Please try again.'
+        }), 500
 
 @bug_reports_bp.route('/bug-reports')
 @login_required

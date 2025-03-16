@@ -8,6 +8,8 @@ from config import Config
 from models.class_model import Class
 from models.school_model import School
 from models.district_model import District
+from models.bug_report import BugReport, BugReportType
+from datetime import datetime, timezone
 
 management_bp = Blueprint('management', __name__)
 
@@ -363,3 +365,33 @@ def delete_district(district_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@management_bp.route('/bug-reports')
+@login_required
+def bug_reports():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.index'))
+    
+    # Get all bug reports, newest first
+    reports = BugReport.query.order_by(BugReport.created_at.desc()).all()
+    return render_template('management/bug_reports.html', reports=reports, BugReportType=BugReportType)
+
+@management_bp.route('/bug-reports/<int:report_id>/resolve', methods=['POST'])
+@login_required
+def resolve_bug_report(report_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        report = BugReport.query.get_or_404(report_id)
+        report.resolved = True
+        report.resolved_by_id = current_user.id
+        report.resolved_at = datetime.now(timezone.utc)
+        report.resolution_notes = request.form.get('notes', '')
+        
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

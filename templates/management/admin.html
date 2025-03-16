@@ -259,6 +259,16 @@
             <div class="import-status" id="refreshDistrictReportStatus"></div>
         </div>
     </div>
+
+    <!-- System Management -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">System Management</h5>
+            <a href="{{ url_for('management.bug_reports') }}" class="btn btn-primary">
+                <i class="fas fa-bug"></i> View Bug Reports
+            </a>
+        </div>
+    </div>
     {% endif %}
     <!-- Toast Container for Notifications -->
     <div class="toast-container" id="toastContainer"></div>
