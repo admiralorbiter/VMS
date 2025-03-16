@@ -164,6 +164,14 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
         if volunteer_id:
             event._volunteer_id = volunteer_id
 
+        # Add district association here
+        district_name = row.get('District')  # Get district name from the CSV row
+        if district_name:
+            district = get_or_create_district(district_name)  # This function either finds existing district or creates new one
+            event.district_partner = district_name  # Set the text field
+            if district not in event.districts:  # Add to the relationship if not already there
+                event.districts.append(district)
+
         db.session.add(event)
         db.session.commit()
         success_count += 1
@@ -629,6 +637,14 @@ def import_sheet():
                             attendance_confirmed_at=datetime.now(timezone.utc) if status == EventStatus.COMPLETED else None
                         )
                         db.session.add(event_teacher)
+                
+                # Add district association here
+                district_name = row.get('District')  # Get district name from the CSV row
+                if district_name:
+                    district = get_or_create_district(district_name)  # This function either finds existing district or creates new one
+                    event.district_partner = district_name  # Set the text field
+                    if district not in event.districts:  # Add to the relationship if not already there
+                        event.districts.append(district)
                 
                 db.session.commit()
                 success_count += 1

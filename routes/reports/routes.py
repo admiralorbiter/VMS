@@ -578,15 +578,27 @@ def district_year_end():
 def refresh_district_year_end():
     """Refresh the cached district year-end report data"""
     school_year = request.args.get('school_year', get_current_school_year())
+    print(f"Starting refresh for school year: {school_year}")  # Debug log
     
     try:
         # Delete existing cached reports for this school year
-        DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+        deleted_count = DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+        print(f"Deleted {deleted_count} existing cache entries")  # Debug log
         db.session.commit()
         
         # Generate new stats
         district_stats = generate_district_stats(school_year)
+        print(f"Generated new stats for {len(district_stats)} districts")  # Debug log
+        
+        # Debug log event types for each district
+        for district_name, stats in district_stats.items():
+            print(f"District {district_name} event types: {stats['event_types']}")
+            event_count = sum(stats['event_types'].values())
+            print(f"Total events for {district_name}: {event_count}")
+        
+        # Cache the stats
         cache_district_stats(school_year, district_stats)
+        print("Successfully cached new stats")  # Debug log
         
         return jsonify({
             'success': True, 
@@ -594,6 +606,7 @@ def refresh_district_year_end():
         })
     except Exception as e:
         db.session.rollback()
+        print(f"Error during refresh: {str(e)}")  # Debug log
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_district_stats(school_year):
@@ -601,16 +614,20 @@ def generate_district_stats(school_year):
     district_stats = {}
     districts = District.query.order_by(District.name).all()
     start_date, end_date = get_school_year_date_range(school_year)
+    print(f"Date range: {start_date} to {end_date}")  # Debug log
     
-    # Define event types to exclude
-    excluded_event_types = ['virtual_session', 'connector_session']
+    # Remove or modify excluded event types to keep virtual sessions
+    excluded_event_types = ['connector_session']
+    print(f"Excluded event types: {excluded_event_types}")  # Debug log
     
     for district in districts:
+        print(f"\nProcessing district: {district.name}")  # Debug log
         # Get all schools for this district
         schools = School.query.filter_by(district_id=district.id).all()
+        print(f"Found {len(schools)} schools for district")  # Debug log
         
         # Query events using both relationships and text matching
-        events = Event.query.filter(
+        events_query = Event.query.filter(
             db.or_(
                 Event.districts.contains(district),
                 Event.school.in_([school.id for school in schools]),
@@ -624,7 +641,20 @@ def generate_district_stats(school_year):
             Event.start_date <= end_date,
             Event.status == EventStatus.COMPLETED,
             ~Event.type.in_([EventType(t) for t in excluded_event_types])
-        ).distinct().all()
+        )
+        
+        # Debug log the SQL query
+        print(f"SQL Query: {events_query}")
+        
+        events = events_query.distinct().all()
+        print(f"Found {len(events)} total events")  # Debug log
+        
+        # Debug log event types
+        event_types_found = {}
+        for event in events:
+            event_type = event.type.value if event.type else 'unknown'
+            event_types_found[event_type] = event_types_found.get(event_type, 0) + 1
+        print(f"Event types found: {event_types_found}")  # Debug log
         
         # Initialize stats dictionary
         stats = {
@@ -634,7 +664,7 @@ def generate_district_stats(school_year):
             'total_students': 0,
             'total_volunteers': 0,
             'total_volunteer_hours': 0,
-            'event_types': {},
+            'event_types': event_types_found,
             'schools_reached': set(),
             'monthly_breakdown': {},
             'career_clusters': set()
@@ -650,10 +680,6 @@ def generate_district_stats(school_year):
                 if participation.status == 'Attended':
                     stats['total_volunteers'] += 1
                     stats['total_volunteer_hours'] += participation.delivery_hours or 0
-            
-            event_type = event.type.value if event.type else 'unknown'
-            if event_type not in excluded_event_types:
-                stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
             
             if event.school:
                 stats['schools_reached'].add(event.school)
@@ -956,8 +982,8 @@ def district_year_end_detail(district_name):
     # Get all events for this district within the school year
     start_date, end_date = get_school_year_date_range(school_year)
     
-    # Define event types to exclude
-    excluded_event_types = ['virtual_session', 'connector_session']
+    # Define event types to exclude - remove virtual_session from exclusion
+    excluded_event_types = ['connector_session']
     
     # Update the query to include EventAttendance
     events = (Event.query
