@@ -34,6 +34,15 @@
             </li>
             {% endif %}
             <li class="nav-item">
+              <a class="nav-link" href="#" 
+                 hx-get="/bug-report/form"
+                 hx-target="#bugReportModal"
+                 hx-trigger="click"
+                 hx-swap="innerHTML">
+                <i class="fas fa-bug"></i>
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" href="#" id="moreMenuToggle">
                 More <i class="fas fa-chevron-right"></i>
               </a>
@@ -62,5 +71,9 @@
       <!-- Add more items as needed -->
     </ul>
   </div>
+</div>
+  
+<div id="bugReportModal" class="modal" tabindex="-1">
+  <!-- Modal content will be loaded here -->
 </div>
   
