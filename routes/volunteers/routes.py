@@ -623,7 +623,7 @@ def import_from_salesforce():
                Connector_SignUp_Role__c,
                Connector_User_ID__c
         FROM Contact
-        WHERE Contact_Type__c = 'Volunteer'
+        WHERE Contact_Type__c = 'Volunteer' or Contact_Type__c=''
         """
 
         # Connect to Salesforce

@@ -484,7 +484,6 @@ def import_teachers_from_salesforce():
                Phone, Last_Email_Message__c, Last_Mailchimp_Email_Date__c
         FROM Contact
         WHERE Contact_Type__c = 'Teacher'
-        Limit 100
         """
 
         # Execute query
