@@ -395,3 +395,26 @@ def resolve_bug_report(report_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@management_bp.route('/bug-reports/<int:report_id>', methods=['DELETE'])
+@login_required
+def delete_bug_report(report_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        report = BugReport.query.get_or_404(report_id)
+        db.session.delete(report)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@management_bp.route('/bug-reports/<int:report_id>/resolve-form')
+@login_required
+def get_resolve_form(report_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    return render_template('management/resolve_form.html', report_id=report_id)
