@@ -1,0 +1,117 @@
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">{{ form_title }}</h5>
+        <button type="button" class="btn-close" 
+                hx-get="/management/client-projects/cancel" 
+                hx-target="#projectFormContainer"
+                hx-swap="innerHTML"></button>
+    </div>
+    <div class="card-body">
+        <form hx-post="{{ form_action }}" hx-target="#projectFormContainer" hx-swap="outerHTML">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" required>
+                        <option value="">Select Status</option>
+                        {% for status in ProjectStatus %}
+                        <option value="{{ status.value }}" {% if project and project.status == status.value %}selected{% endif %}>
+                            {{ status.value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Teacher</label>
+                    <input type="text" name="teacher" class="form-control" required
+                           value="{{ project.teacher if project else '' }}">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">District</label>
+                    <input type="text" name="district" class="form-control" required
+                           value="{{ project.district if project else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Organization</label>
+                    <input type="text" name="organization" class="form-control" required
+                           value="{{ project.organization if project else '' }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Project Title</label>
+                <input type="text" name="project_title" class="form-control" required
+                       value="{{ project.project_title if project else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Project Description</label>
+                <textarea name="project_description" class="form-control" rows="3" required>{{ project.project_description if project else '' }}</textarea>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Project Dates</label>
+                    <input type="text" name="project_dates" class="form-control" required
+                           value="{{ project.project_dates if project else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Number of Students</label>
+                    <input type="number" name="number_of_students" class="form-control" required
+                           value="{{ project.number_of_students if project else '' }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Primary Contacts (Name and Hours)</label>
+                <div id="contactsContainer">
+                    {% if project and project.primary_contacts %}
+                        {% for contact in project.primary_contacts %}
+                        <div class="input-group mb-2">
+                            <input type="text" name="contact_names[]" class="form-control" placeholder="Contact Name" 
+                                   value="{{ contact.name }}" required>
+                            <input type="number" name="contact_hours[]" class="form-control" placeholder="Hours" 
+                                   value="{{ contact.hours }}" required>
+                            <button type="button" class="btn btn-danger" onclick="removeContact(this)">Remove</button>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="input-group mb-2">
+                            <input type="text" name="contact_names[]" class="form-control" placeholder="Contact Name" required>
+                            <input type="number" name="contact_hours[]" class="form-control" placeholder="Hours" required>
+                            <button type="button" class="btn btn-danger" onclick="removeContact(this)">Remove</button>
+                        </div>
+                    {% endif %}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addContact()">Add Contact</button>
+            </div>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">Save Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function addContact() {
+    const container = document.getElementById('contactsContainer');
+    const newContact = document.createElement('div');
+    newContact.className = 'input-group mb-2';
+    newContact.innerHTML = `
+        <input type="text" name="contact_names[]" class="form-control" placeholder="Contact Name" required>
+        <input type="number" name="contact_hours[]" class="form-control" placeholder="Hours" required>
+        <button type="button" class="btn btn-danger" onclick="removeContact(this)">Remove</button>
+    `;
+    container.appendChild(newContact);
+}
+
+function removeContact(button) {
+    const container = document.getElementById('contactsContainer');
+    if (container.children.length > 1) {
+        button.closest('.input-group').remove();
+    }
+}
+</script> 
