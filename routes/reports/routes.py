@@ -50,11 +50,11 @@ def reports():
             'category': 'District Reports'
         },
         {
-            'title': 'Recruitment Report',
-            'description': 'Shows upcoming unfilled events, volunteer search, and skill matching to industry/jobs.',
-            'icon': 'fa-solid fa-file-alt',
+            'title': 'Recruitment Tools',
+            'description': 'Access various tools for volunteer recruitment and event matching.',
+            'icon': 'fa-solid fa-users',
             'url': '/reports/recruitment',
-            'category': 'General Reports'
+            'category': 'Recruitment'
         },
         {
             'title': 'Event Contact Report',
@@ -747,7 +747,32 @@ def update_event_districts(event, district_names):
 
 @report_bp.route('/reports/recruitment')
 @login_required
-def recruitment_report():
+def recruitment_tools():
+    # Define available recruitment tools
+    recruitment_tools = [
+        {
+            'title': 'Quick Recruitment Tool',
+            'description': 'View upcoming unfilled events and search volunteers by skills and availability.',
+            'icon': 'fa-solid fa-bolt',
+            'url': '/reports/recruitment/quick',
+            'category': 'Recruitment'
+        },
+        # Add more tools here as needed
+        # {
+        #     'title': 'Advanced Matching',
+        #     'description': 'AI-powered volunteer matching based on skills and preferences.',
+        #     'icon': 'fa-solid fa-brain',
+        #     'url': '/reports/recruitment/matching',
+        #     'category': 'Recruitment'
+        # },
+    ]
+    
+    return render_template('reports/recruitment_tools.html', tools=recruitment_tools)
+
+# Rename the existing recruitment route to quick_recruitment
+@report_bp.route('/reports/recruitment/quick')
+@login_required
+def quick_recruitment():
     # Get upcoming events that need volunteers from the UpcomingEvent model
     upcoming_events = UpcomingEvent.query.filter(
         UpcomingEvent.start_date >= datetime.now(),
