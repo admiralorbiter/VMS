@@ -1,12 +1,12 @@
 from flask import Blueprint, render_template, request, flash, jsonify
 from flask_login import login_required
-from sqlalchemy import extract
+from sqlalchemy import any_, extract
 from models.event import Event, EventAttendance, EventType, EventStatus
 from datetime import datetime, timedelta
 from models.school_model import School
 from models.teacher import Teacher
 from models.upcoming_events import UpcomingEvent
-from models.volunteer import Volunteer, EventParticipation, Skill
+from models.volunteer import Volunteer, EventParticipation, Skill, VolunteerSkill
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
 from models.district_model import District
@@ -748,7 +748,6 @@ def update_event_districts(event, district_names):
 @report_bp.route('/reports/recruitment')
 @login_required
 def recruitment_tools():
-    # Define available recruitment tools
     recruitment_tools = [
         {
             'title': 'Quick Recruitment Tool',
@@ -757,14 +756,13 @@ def recruitment_tools():
             'url': '/reports/recruitment/quick',
             'category': 'Recruitment'
         },
-        # Add more tools here as needed
-        # {
-        #     'title': 'Advanced Matching',
-        #     'description': 'AI-powered volunteer matching based on skills and preferences.',
-        #     'icon': 'fa-solid fa-brain',
-        #     'url': '/reports/recruitment/matching',
-        #     'category': 'Recruitment'
-        # },
+        {
+            'title': 'Advanced Volunteer Search',
+            'description': 'Search volunteers using multiple filters including skills, past events, and volunteer history.',
+            'icon': 'fa-solid fa-search',
+            'url': '/reports/recruitment/search',
+            'category': 'Recruitment'
+        }
     ]
     
     return render_template('reports/recruitment_tools.html', tools=recruitment_tools)
@@ -1085,4 +1083,90 @@ def district_year_end_detail(district_name):
         stats=stats,
         events_by_month=events_by_month,
         total_events=len(events)
+    )
+
+@report_bp.route('/reports/recruitment/search')
+@login_required
+def recruitment_search():
+    # Get search query, pagination, and sorting parameters
+    search_query = request.args.get('search', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # Number of volunteers per page
+    sort_by = request.args.get('sort', 'name')  # Default sort by name
+    order = request.args.get('order', 'asc')  # Default ascending order
+    
+    # Base query joining necessary tables
+    query = Volunteer.query.outerjoin(
+        VolunteerOrganization
+    ).outerjoin(
+        Organization
+    ).outerjoin(
+        VolunteerSkill
+    ).outerjoin(
+        Skill
+    ).outerjoin(
+        EventParticipation
+    ).outerjoin(
+        Event
+    )
+    
+    # Apply search if provided
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Volunteer.first_name.ilike(f'%{search_query}%'),
+                Volunteer.last_name.ilike(f'%{search_query}%'),
+                Organization.name.ilike(f'%{search_query}%'),
+                Skill.name.ilike(f'%{search_query}%'),
+                Event.title.ilike(f'%{search_query}%')
+            )
+        )
+    
+    # Apply sorting
+    if sort_by == 'name':
+        if order == 'asc':
+            query = query.order_by(Volunteer.first_name, Volunteer.last_name)
+        else:
+            query = query.order_by(db.desc(Volunteer.first_name), db.desc(Volunteer.last_name))
+    elif sort_by == 'organization':
+        if order == 'asc':
+            query = query.order_by(Organization.name)
+        else:
+            query = query.order_by(db.desc(Organization.name))
+    elif sort_by == 'last_email':
+        if order == 'asc':
+            query = query.order_by(Volunteer.last_non_internal_email_date)
+        else:
+            query = query.order_by(db.desc(Volunteer.last_non_internal_email_date))
+    elif sort_by == 'last_volunteer':
+        if order == 'asc':
+            query = query.order_by(Volunteer.last_volunteer_date)
+        else:
+            query = query.order_by(db.desc(Volunteer.last_volunteer_date))
+    elif sort_by == 'times_volunteered':
+        subquery = db.session.query(
+            EventParticipation.volunteer_id,
+            db.func.count(EventParticipation.id).label('volunteer_count')
+        ).group_by(EventParticipation.volunteer_id).subquery()
+        
+        query = query.outerjoin(
+            subquery, Volunteer.id == subquery.c.volunteer_id
+        ).order_by(
+            db.desc(subquery.c.volunteer_count) if order == 'desc' else subquery.c.volunteer_count
+        )
+    
+    # Add pagination
+    pagination = query.distinct().paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    return render_template(
+        'reports/recruitment_search.html',
+        volunteers=pagination.items,
+        search_query=search_query,
+        pagination=pagination,
+        sort_by=sort_by,
+        order=order
     )

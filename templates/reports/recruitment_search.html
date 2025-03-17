@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Recruitment Search{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+.search-container {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+.skill-badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    margin: 0.2em;
+    font-size: 0.85em;
+    font-weight: 500;
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+.table th {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+}
+
+.search-hint {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-top: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recruitment-search-container">
+    <h1>Volunteer Recruitment Search</h1>
+    
+    <!-- Search Form -->
+    <div class="search-container">
+        <form method="get" action="{{ url_for('report.recruitment_search') }}" class="search-form">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="search">Search Volunteers</label>
+                        <input type="text" 
+                               id="search" 
+                               name="search" 
+                               class="form-control"
+                               value="{{ search_query }}"
+                               placeholder="Search by name, skills, organization, or past event titles...">
+                        <div class="search-hint">
+                            Search across volunteer names, skills, organizations, and past event titles
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    <a href="{{ url_for('report.recruitment_search') }}" class="btn btn-secondary ml-2">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Table -->
+    <div class="table-responsive mt-4">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>
+                        <a href="{{ url_for('report.recruitment_search', 
+                                           search=search_query, 
+                                           sort='name', 
+                                           order='desc' if sort_by == 'name' and order == 'asc' else 'asc') }}" 
+                                               class="text-dark">
+                            Name
+                            {% if sort_by == 'name' %}
+                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('report.recruitment_search', 
+                                           search=search_query, 
+                                           sort='organization', 
+                                           order='desc' if sort_by == 'organization' and order == 'asc' else 'asc') }}"
+                                               class="text-dark">
+                            Organization/Affiliation
+                            {% if sort_by == 'organization' %}
+                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>Skills</th>
+                    <th>
+                        <a href="{{ url_for('report.recruitment_search', 
+                                           search=search_query, 
+                                           sort='last_email', 
+                                           order='desc' if sort_by == 'last_email' and order == 'asc' else 'asc') }}"
+                                               class="text-dark">
+                            Last Non-Internal Email
+                            {% if sort_by == 'last_email' %}
+                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('report.recruitment_search', 
+                                           search=search_query, 
+                                           sort='last_volunteer', 
+                                           order='desc' if sort_by == 'last_volunteer' and order == 'asc' else 'asc') }}"
+                                               class="text-dark">
+                            Last Volunteer Date
+                            {% if sort_by == 'last_volunteer' %}
+                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('report.recruitment_search', 
+                                           search=search_query, 
+                                           sort='times_volunteered', 
+                                           order='desc' if sort_by == 'times_volunteered' and order == 'asc' else 'asc') }}"
+                                               class="text-dark">
+                            # of Times Volunteered
+                            {% if sort_by == 'times_volunteered' %}
+                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for volunteer in volunteers %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">
+                            {{ volunteer.full_name }}
+                        </a>
+                        {% if volunteer.salesforce_contact_url %}
+                        <a href="{{ volunteer.salesforce_contact_url }}" 
+                           class="btn btn-sm action-btn salesforce-btn" 
+                           target="_blank" 
+                           title="Salesforce Contact">
+                            <i class="fa-solid fa-cloud"></i>
+                        </a>
+                        {% endif %}
+                        {% if volunteer.title %}
+                        <br>
+                        <small class="text-muted">{{ volunteer.title }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for org in volunteer.organizations %}
+                        <div>{{ org.name }}</div>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for skill in volunteer.skills %}
+                        <span class="skill-badge">{{ skill.name }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>{{ volunteer.last_non_internal_email_date.strftime('%Y-%m-%d') if volunteer.last_non_internal_email_date }}</td>
+                    <td>{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</td>
+                    <td>{{ volunteer.total_times_volunteered }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add this after the table -->
+    <div class="mt-4">
+        {% if pagination and pagination.pages > 1 %}
+        <nav aria-label="Volunteer search results pages">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" 
+                       href="{{ url_for('report.recruitment_search', 
+                                        page=pagination.prev_num, 
+                                        search=search_query,
+                                        sort=sort_by,
+                                        order=order) }}">
+                        &laquo; Previous
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" 
+                               href="{{ url_for('report.recruitment_search', 
+                                                page=page_num, 
+                                                search=search_query,
+                                                sort=sort_by,
+                                                order=order) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" 
+                       href="{{ url_for('report.recruitment_search', 
+                                        page=pagination.next_num, 
+                                        search=search_query,
+                                        sort=sort_by,
+                                        order=order) }}">
+                        Next &raquo;
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        
+        <div class="text-center text-muted mt-2">
+            Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
