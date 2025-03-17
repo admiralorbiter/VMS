@@ -1048,7 +1048,7 @@ def district_year_end_detail(district_name):
             
         # Get volunteer stats for this event
         volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
-        volunteer_hours = sum(p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended')
+        volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
         
         # Get school name safely
         school_name = None
@@ -1094,6 +1094,7 @@ def recruitment_search():
     per_page = 20
     sort_by = request.args.get('sort', 'name')
     order = request.args.get('order', 'asc')
+    search_mode = request.args.get('search_mode', 'wide')  # Default to wide search
     
     # Base query joining necessary tables
     query = Volunteer.query.outerjoin(
@@ -1115,17 +1116,32 @@ def recruitment_search():
         # Split search query into terms and remove empty strings
         search_terms = [term.strip() for term in search_query.split() if term.strip()]
         
-        # For each search term, create a filter condition that checks all fields
-        for term in search_terms:
-            query = query.filter(
-                db.or_(
-                    Volunteer.first_name.ilike(f'%{term}%'),
-                    Volunteer.last_name.ilike(f'%{term}%'),
-                    Organization.name.ilike(f'%{term}%'),
-                    Skill.name.ilike(f'%{term}%'),
-                    Event.title.ilike(f'%{term}%')
+        if search_mode == 'wide':
+            # OR mode: Match any term across all fields
+            search_conditions = []
+            for term in search_terms:
+                search_conditions.append(
+                    db.or_(
+                        Volunteer.first_name.ilike(f'%{term}%'),
+                        Volunteer.last_name.ilike(f'%{term}%'),
+                        Organization.name.ilike(f'%{term}%'),
+                        Skill.name.ilike(f'%{term}%'),
+                        Event.title.ilike(f'%{term}%')
+                    )
                 )
-            )
+            query = query.filter(db.or_(*search_conditions))
+        else:
+            # Narrow mode: Must match all terms
+            for term in search_terms:
+                query = query.filter(
+                    db.or_(
+                        Volunteer.first_name.ilike(f'%{term}%'),
+                        Volunteer.last_name.ilike(f'%{term}%'),
+                        Organization.name.ilike(f'%{term}%'),
+                        Skill.name.ilike(f'%{term}%'),
+                        Event.title.ilike(f'%{term}%')
+                    )
+                )
     
     # Apply sorting
     if sort_by == 'name':
@@ -1173,5 +1189,6 @@ def recruitment_search():
         search_query=search_query,
         pagination=pagination,
         sort_by=sort_by,
-        order=order
+        order=order,
+        search_mode=search_mode  # Pass the search mode to the template
     )
