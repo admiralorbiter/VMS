@@ -7,7 +7,10 @@
                 hx-swap="innerHTML"></button>
     </div>
     <div class="card-body">
-        <form hx-post="{{ form_action }}" hx-target="#projectFormContainer" hx-swap="outerHTML">
+        <form hx-post="{{ form_action }}" 
+              hx-target="#mainContainer"
+              hx-swap="innerHTML"
+              hx-push-url="true">
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Status</label>

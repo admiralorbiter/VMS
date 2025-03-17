@@ -58,7 +58,11 @@ def create():
         db.session.add(project)
         db.session.commit()
         
-        return redirect(url_for('client_projects.index'))
+        # Return just the table partial
+        projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
+        return render_template('management/partials/project_table.html', 
+                             projects=projects,
+                             ProjectStatus=ProjectStatus)
     
     except Exception as e:
         db.session.rollback()
@@ -105,7 +109,11 @@ def update(project_id):
         
         db.session.commit()
         
-        return redirect(url_for('client_projects.index'))
+        # Return just the table partial
+        projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
+        return render_template('management/partials/project_table.html', 
+                             projects=projects,
+                             ProjectStatus=ProjectStatus)
     
     except Exception as e:
         db.session.rollback()
