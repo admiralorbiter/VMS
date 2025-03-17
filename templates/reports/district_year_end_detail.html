@@ -4,6 +4,29 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}">
+<style>
+    .event-type-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .event-type-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .event-type-card.selected {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .event-types-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -100,4 +123,8 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/district_year_end_detail.js') }}"></script>
 {% endblock %} 
