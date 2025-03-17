@@ -16,8 +16,8 @@
             <li class="nav-item">
               <a class="nav-link" href="/events">Events</a>
             </li>
-            <li class="nav-item"></li>
-              <a class="nav-link" href="/organizations">Orgs</a>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('client_projects.index') }}">Client Projects</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="/reports">Reports</a>
@@ -67,7 +67,7 @@
       {% if current_user.is_admin %}
       <li><a href="/history_table" class="side-nav-link">History</a></li>
       <li><a href="/schools" class="side-nav-link">Schools</a></li>
-      <li><a href="/client-connected-projects" class="side-nav-link">Client Projects</a></li>
+      <li><a href="{{ url_for('client_projects.index') }}" class="side-nav-link">Client Projects</a></li>
       {% endif %}
       <!-- Add more items as needed -->
     </ul>
