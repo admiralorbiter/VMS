@@ -1091,9 +1091,9 @@ def recruitment_search():
     # Get search query, pagination, and sorting parameters
     search_query = request.args.get('search', '').strip()
     page = request.args.get('page', 1, type=int)
-    per_page = 20  # Number of volunteers per page
-    sort_by = request.args.get('sort', 'name')  # Default sort by name
-    order = request.args.get('order', 'asc')  # Default ascending order
+    per_page = 20
+    sort_by = request.args.get('sort', 'name')
+    order = request.args.get('order', 'asc')
     
     # Base query joining necessary tables
     query = Volunteer.query.outerjoin(
@@ -1112,15 +1112,20 @@ def recruitment_search():
     
     # Apply search if provided
     if search_query:
-        query = query.filter(
-            db.or_(
-                Volunteer.first_name.ilike(f'%{search_query}%'),
-                Volunteer.last_name.ilike(f'%{search_query}%'),
-                Organization.name.ilike(f'%{search_query}%'),
-                Skill.name.ilike(f'%{search_query}%'),
-                Event.title.ilike(f'%{search_query}%')
+        # Split search query into terms and remove empty strings
+        search_terms = [term.strip() for term in search_query.split() if term.strip()]
+        
+        # For each search term, create a filter condition that checks all fields
+        for term in search_terms:
+            query = query.filter(
+                db.or_(
+                    Volunteer.first_name.ilike(f'%{term}%'),
+                    Volunteer.last_name.ilike(f'%{term}%'),
+                    Organization.name.ilike(f'%{term}%'),
+                    Skill.name.ilike(f'%{term}%'),
+                    Event.title.ilike(f'%{term}%')
+                )
             )
-        )
     
     # Apply sorting
     if sort_by == 'name':
