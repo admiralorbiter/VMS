@@ -30,7 +30,7 @@
             </thead>
             <tbody>
                 {% for project in projects %}
-                <tr>
+                <tr id="project-{{ project.id }}">
                     <td>{{ project.status }}</td>
                     <td>{{ project.teacher }}</td>
                     <td>{{ project.district }}</td>
@@ -56,7 +56,7 @@
                         <button class="btn btn-sm btn-danger"
                                 hx-delete="{{ url_for('client_projects.delete', project_id=project.id) }}"
                                 hx-confirm="Are you sure you want to delete this project?"
-                                hx-target="closest tr"
+                                hx-target="#project-{{ project.id }}"
                                 hx-swap="outerHTML">
                             Delete
                         </button>

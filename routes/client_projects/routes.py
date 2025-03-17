@@ -13,7 +13,7 @@ def index():
         return redirect(url_for('main.index'))
     
     projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
-    return render_template('management/client_connected_projects.html', 
+    return render_template('client_connected_projects/client_connected_projects.html', 
                          projects=projects,
                          ProjectStatus=ProjectStatus)
 
@@ -23,7 +23,7 @@ def form():
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
-    return render_template('management/client_project_form.html',
+    return render_template('client_connected_projects/client_project_form.html',
                          form_title='Add New Project',
                          form_action='/management/client-projects/create',
                          project=None,
@@ -60,7 +60,7 @@ def create():
         
         # Return just the table partial
         projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
-        return render_template('management/partials/project_table.html', 
+        return render_template('client_connected_projects/partials/project_table.html', 
                              projects=projects,
                              ProjectStatus=ProjectStatus)
     
@@ -75,7 +75,7 @@ def edit_form(project_id):
         return jsonify({'error': 'Unauthorized'}), 403
     
     project = ClientProject.query.get_or_404(project_id)
-    return render_template('management/client_project_form.html',
+    return render_template('client_connected_projects/client_project_form.html',
                          form_title='Edit Project',
                          form_action=f'/management/client-projects/{project_id}/update',
                          project=project,
@@ -111,7 +111,7 @@ def update(project_id):
         
         # Return just the table partial
         projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
-        return render_template('management/partials/project_table.html', 
+        return render_template('client_connected_projects/partials/project_table.html', 
                              projects=projects,
                              ProjectStatus=ProjectStatus)
     
@@ -129,7 +129,8 @@ def delete(project_id):
         project = ClientProject.query.get_or_404(project_id)
         db.session.delete(project)
         db.session.commit()
-        return '', 204
+        # Instead of returning empty response, return a trigger to remove the row
+        return "", 200, {"HX-Trigger": "projectDeleted"}
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
