@@ -5,6 +5,7 @@ from models import db
 from models.pathways import Pathway
 from config import Config
 from models.event import Event
+from models.contact import Contact
 
 pathways_bp = Blueprint('pathways', __name__, url_prefix='/pathways')
 
@@ -107,6 +108,82 @@ def import_pathways_from_salesforce():
         return jsonify({
             'success': True,
             'message': f'Successfully processed {success_count} pathways with {error_count} errors',
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        print("Error: Failed to authenticate with Salesforce")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@pathways_bp.route('/import-participants-from-salesforce', methods=['POST'])
+@login_required
+def import_pathway_participants_from_salesforce():
+    try:
+        print("Fetching pathway participant data from Salesforce...")
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Query pathway participants from Salesforce
+        pathway_participants_query = """
+        SELECT Contact__c, Pathway__c
+        FROM Pathway_Participant__c
+        """
+        
+        participants_result = sf.query_all(pathway_participants_query)
+        participant_rows = participants_result.get('records', [])
+
+        # Process pathway-participant relationships
+        for row in participant_rows:
+            try:
+                pathway = Pathway.query.filter_by(salesforce_id=row['Pathway__c']).first()
+                contact = Contact.query.filter_by(salesforce_individual_id=row['Contact__c']).first()
+
+                if pathway and contact:
+                    # Add contact to pathway's contacts if not already present
+                    if contact not in pathway.contacts:
+                        pathway.contacts.append(contact)
+                        success_count += 1
+                else:
+                    error_msg = f"Could not find {'pathway' if not pathway else 'contact'} for relationship: Pathway={row['Pathway__c']}, Contact={row['Contact__c']}"
+                    errors.append(error_msg)
+                    print(error_msg)
+                    error_count += 1
+
+            except Exception as e:
+                error_count += 1
+                error_msg = f"Error processing pathway-participant relationship: {str(e)}"
+                errors.append(error_msg)
+                print(error_msg)
+
+        # Commit all changes
+        db.session.commit()
+        
+        # Print summary
+        print(f"\nSuccessfully processed {success_count} pathway participants with {error_count} errors")
+        if errors:
+            print("\nErrors encountered:")
+            for error in errors:
+                print(f"- {error}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully processed {success_count} pathway participants with {error_count} errors',
             'errors': errors
         })
 

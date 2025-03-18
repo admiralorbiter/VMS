@@ -203,6 +203,18 @@
                     </div>
                 </div>
 
+                <!-- 9a. Pathway Participants -->
+                <div class="import-item">
+                    <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
+                        <i class="fas fa-users"></i>
+                        <span>9a. Import Pathway Participants</span>
+                    </button>
+                    <div class="import-status" id="importPathwayParticipantsStatus"></div>
+                    <div class="import-progress" id="importPathwayParticipantsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
                 <!-- 10. Virtual Events -->
                 <div class="import-item">
                     <button onclick="importVirtualEvents()" class="btn admin-btn-import" id="importVirtualBtn">
@@ -904,6 +916,49 @@ function importPathways() {
     
     // Make the API call
     fetch('/pathways/import-from-salesforce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = data.message;
+            status.style.color = 'green';
+        } else {
+            status.textContent = data.message || 'Import failed';
+            status.style.color = 'red';
+        }
+        
+        // Show errors if any
+        if (data.errors && data.errors.length > 0) {
+            console.log('Import errors:', data.errors);
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Import failed: ' + error.message;
+        status.style.color = 'red';
+        console.error('Import error:', error);
+    })
+    .finally(() => {
+        button.disabled = false;
+        progress.style.display = 'none';
+    });
+}
+
+function importPathwayParticipants() {
+    // Disable the button and show loading state
+    const button = document.getElementById('importPathwayParticipantsBtn');
+    const status = document.getElementById('importPathwayParticipantsStatus');
+    const progress = document.getElementById('importPathwayParticipantsProgress');
+    
+    button.disabled = true;
+    status.textContent = 'Importing pathway participants...';
+    progress.style.display = 'block';
+    
+    // Make the API call
+    fetch('/pathways/import-participants-from-salesforce', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
