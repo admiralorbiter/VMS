@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Pathway Detail - {{ pathway.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-road"></i>
+                {{ pathway.name }}
+            </h1>
+
+            <!-- Summary Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Events</h5>
+                            <p class="card-text display-4">{{ pathway.events.count() }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Contacts</h5>
+                            <p class="card-text display-4">{{ pathway.contacts.count() }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Active Events</h5>
+                            <p class="card-text display-4">{{ active_events|length }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Attendance</h5>
+                            <p class="card-text display-4">{{ total_attendance }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Table -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Events</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Event Name</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Registered</th>
+                                    <th>Attended</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in pathway.events %}
+                                <tr>
+                                    <td>{{ event.start_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ event.title }}</td>
+                                    <td>{{ event.type.value }}</td>
+                                    <td>{{ event.status.value }}</td>
+                                    <td>{{ event.registered_count }}</td>
+                                    <td>{{ event.attended_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacts Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Contacts</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Events Attended</th>
+                                    <th>Last Event Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contact in pathway.contacts %}
+                                <tr>
+                                    <td>{{ contact.full_name }}</td>
+                                    <td>{{ contact.primary_email }}</td>
+                                    <td>{{ contact.events|length }}</td>
+                                    <td>{{ contact.last_event_date.strftime('%Y-%m-%d') if contact.last_event_date else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

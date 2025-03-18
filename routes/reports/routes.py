@@ -12,6 +12,7 @@ from models.event import event_districts
 from models.district_model import District
 from models.reports import DistrictYearEndReport
 from models import db  # Import db from models instead of creating new instance
+from models.pathways import Pathway
 import json
 
 report_bp = Blueprint('report', __name__)
@@ -62,6 +63,13 @@ def reports():
             'icon': 'fa-solid fa-address-book',
             'url': '/reports/contact',
             'category': 'Event Management'
+        },
+        {
+            'title': 'Pathway Report',
+            'description': 'View pathway statistics including student participation, events, and contact engagement.',
+            'icon': 'fa-solid fa-road',
+            'url': '/reports/pathways',
+            'category': 'Program Reports'
         }
     ]
     
@@ -1007,7 +1015,7 @@ def district_year_end_detail(district_name):
     
     # Define event types to exclude - remove virtual_session from exclusion
     excluded_event_types = ['connector_session']
-    
+
     # Update the query to include EventAttendance
     events = (Event.query
         .outerjoin(School, Event.school == School.id)
@@ -1192,3 +1200,47 @@ def recruitment_search():
         order=order,
         search_mode=search_mode  # Pass the search mode to the template
     )
+
+@report_bp.route('/reports/pathways')
+@login_required
+def pathways_report():
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    selected_year = int(request.args.get('year', datetime.now().year))
+    
+    # Base query
+    query = Pathway.query
+    
+    # Apply search filter if provided
+    if search:
+        query = query.filter(Pathway.name.ilike(f'%{search}%'))
+    
+    # Get all pathways
+    pathways = query.all()
+    
+    # Get current year for the year filter dropdown
+    current_year = datetime.now().year
+    
+    return render_template('reports/pathways.html',
+                         pathways=pathways,
+                         search=search,
+                         selected_year=selected_year,
+                         current_year=current_year)
+
+@report_bp.route('/reports/pathways/<int:pathway_id>')
+@login_required
+def pathway_detail(pathway_id):
+    # Get the pathway
+    pathway = Pathway.query.get_or_404(pathway_id)
+    
+    # Get active events (not completed or cancelled)
+    active_events = [event for event in pathway.events 
+                    if event.status not in [EventStatus.COMPLETED, EventStatus.CANCELLED]]
+    
+    # Calculate total attendance
+    total_attendance = sum(event.attended_count or 0 for event in pathway.events)
+    
+    return render_template('reports/pathway_detail.html',
+                         pathway=pathway,
+                         active_events=active_events,
+                         total_attendance=total_attendance)
