@@ -4,6 +4,7 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from models import db
 from models.pathways import Pathway
 from config import Config
+from models.event import Event
 
 pathways_bp = Blueprint('pathways', __name__, url_prefix='/pathways')
 
@@ -30,7 +31,7 @@ def import_pathways_from_salesforce():
         FROM Pathway__c
         """
 
-        # Execute query
+        # Execute pathway query
         pathways_result = sf.query_all(pathways_query)
         pathway_rows = pathways_result.get('records', [])
 
@@ -59,7 +60,41 @@ def import_pathways_from_salesforce():
                 errors.append(error_msg)
                 print(error_msg)
 
-        # Commit all changes
+        # Commit pathways
+        db.session.commit()
+
+        # Now query the Pathway_Session__c relationships
+        pathway_sessions_query = """
+        SELECT Session__c, Pathway__c
+        FROM Pathway_Session__c
+        """
+        
+        pathway_sessions_result = sf.query_all(pathway_sessions_query)
+        pathway_session_rows = pathway_sessions_result.get('records', [])
+
+        # Process pathway-session relationships
+        for row in pathway_session_rows:
+            try:
+                pathway = Pathway.query.filter_by(salesforce_id=row['Pathway__c']).first()
+                event = Event.query.filter_by(salesforce_id=row['Session__c']).first()
+
+                if pathway and event:
+                    # Add event to pathway's events if not already present
+                    if event not in pathway.events:
+                        pathway.events.append(event)
+                else:
+                    error_msg = f"Could not find {'pathway' if not pathway else 'event'} for relationship: Pathway={row['Pathway__c']}, Session={row['Session__c']}"
+                    errors.append(error_msg)
+                    print(error_msg)
+                    error_count += 1
+
+            except Exception as e:
+                error_count += 1
+                error_msg = f"Error processing pathway-session relationship: {str(e)}"
+                errors.append(error_msg)
+                print(error_msg)
+
+        # Commit relationships
         db.session.commit()
         
         # Print summary
