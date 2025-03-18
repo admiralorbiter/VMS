@@ -2,13 +2,37 @@
     <h2>Client Connected Projects</h2>
     
     <div class="mb-3">
-        <button class="btn btn-primary" 
+        <button class="btn btn-primary me-2" 
                 hx-get="{{ url_for('client_projects.form') }}"
                 hx-target="#projectFormContainer"
                 hx-swap="innerHTML">
             Add New Project
         </button>
+        
+        <button class="btn btn-secondary me-2"
+                hx-post="{{ url_for('client_projects.import_sheet') }}"
+                hx-target="#mainContainer"
+                hx-swap="innerHTML"
+                hx-indicator="#loading">
+            Import from Sheet
+        </button>
+
+        <!-- Add Google Sheet Link -->
+        <a href="https://docs.google.com/spreadsheets/d/{{ config.get('CLIENT_PROJECTS_SHEET_ID') }}/edit" 
+           target="_blank" 
+           class="btn btn-outline-secondary"
+           title="Open Google Sheet">
+            <i class="fas fa-table"></i>
+            View Sheet
+        </a>
+        
+        <span id="loading" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </span>
     </div>
+
+    <!-- Success/Error Alert Container -->
+    <div id="alertContainer"></div>
 
     <!-- Form container for HTMX to load the form into -->
     <div id="projectFormContainer"></div>
@@ -66,4 +90,47 @@
             </tbody>
         </table>
     </div>
-</div> 
+</div>
+
+<script>
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.pathInfo.requestPath.includes('import-sheet')) {
+            const response = JSON.parse(evt.detail.xhr.response);
+            
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${response.success ? 'success' : 'danger'} alert-dismissible fade show`;
+            
+            // Set alert content
+            if (response.success) {
+                alert.innerHTML = `
+                    Successfully imported ${response.successCount} projects.<br>
+                    Warnings: ${response.warningCount}<br>
+                    Errors: ${response.errorCount}
+                    ${response.errors.length > 0 ? '<br>Errors:<br>' + response.errors.join('<br>') : ''}
+                `;
+                
+                // Update the table content with the new HTML
+                document.getElementById('mainContainer').innerHTML = response.html;
+            } else {
+                alert.innerHTML = `Import failed: ${response.error}`;
+            }
+            
+            // Add dismiss button
+            alert.innerHTML += `
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Clear any existing alerts and add the new one
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            // Auto-dismiss after 10 seconds
+            setTimeout(() => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 150);
+            }, 10000);
+        }
+    });
+</script> 
