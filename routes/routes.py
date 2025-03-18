@@ -15,6 +15,7 @@ from routes.calendar.routes import calendar_bp
 from routes.playground.playground_route import playground_bp
 from routes.bug_reports.routes import bug_reports_bp
 from routes.client_projects.routes import client_projects_bp
+from routes.pathways.routes_pathways import pathways_bp
 
 def init_routes(app):
     app.register_blueprint(auth_bp)
@@ -32,6 +33,7 @@ def init_routes(app):
     app.register_blueprint(playground_bp)
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
+    app.register_blueprint(pathways_bp)
     init_filters(app)
 
     @app.route('/')

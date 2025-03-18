@@ -7,7 +7,7 @@ from config import Config
 
 pathways_bp = Blueprint('pathways', __name__, url_prefix='/pathways')
 
-@pathways_bp.route('/pathways/import-from-salesforce', methods=['POST'])
+@pathways_bp.route('/import-from-salesforce', methods=['POST'])
 @login_required
 def import_pathways_from_salesforce():
     try:
