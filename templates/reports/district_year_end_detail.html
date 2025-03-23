@@ -169,6 +169,34 @@
                             </div>
                         </div>
                     </div>
+                    {% if school_data.events %}
+                    <div class="events-table-wrapper">
+                        <table class="events-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Event</th>
+                                    <th>Type</th>
+                                    <th>Students</th>
+                                    <th>Volunteers</th>
+                                    <th>Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in school_data.events|sort(attribute='date') %}
+                                <tr>
+                                    <td>{{ event.date }}</td>
+                                    <td>{{ event.title }}</td>
+                                    <td>{{ event.type }}</td>
+                                    <td>{{ event.students }}</td>
+                                    <td>{{ event.volunteers }}</td>
+                                    <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
