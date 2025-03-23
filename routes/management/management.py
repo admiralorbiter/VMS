@@ -11,6 +11,8 @@ from models.district_model import District
 from models.bug_report import BugReport, BugReportType
 from datetime import datetime, timezone
 from models.client_project_model import ClientProject, ProjectStatus
+import pandas as pd
+from flask import current_app
 
 management_bp = Blueprint('management', __name__)
 
@@ -238,11 +240,15 @@ def import_schools():
             for error in school_errors:
                 print(f"  - {error}")
         
+        # After successful school import, update school levels
+        level_update_response = update_school_levels()
+        
         return jsonify({
             'success': True,
             'message': f'Successfully processed {district_success} districts and {school_success} schools',
             'district_errors': district_errors,
-            'school_errors': school_errors
+            'school_errors': school_errors,
+            'level_update': level_update_response.json if hasattr(level_update_response, 'json') else None
         })
 
     except SalesforceAuthenticationFailed:
@@ -335,7 +341,13 @@ def schools():
     
     districts = District.query.order_by(District.name).all()
     schools = School.query.order_by(School.name).all()
-    return render_template('management/schools.html', districts=districts, schools=schools)
+    sheet_id = os.getenv('SCHOOL_MAPPING_GOOGLE_SHEET')
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}" if sheet_id else None
+    
+    return render_template('management/schools.html', 
+                         districts=districts, 
+                         schools=schools,
+                         sheet_url=sheet_url)
 
 @management_bp.route('/management/schools/<school_id>', methods=['DELETE'])
 @login_required
@@ -419,3 +431,65 @@ def get_resolve_form(report_id):
         return jsonify({'error': 'Unauthorized'}), 403
     
     return render_template('management/resolve_form.html', report_id=report_id)
+
+@management_bp.route('/management/update-school-levels', methods=['POST'])
+@login_required
+def update_school_levels():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        sheet_id = os.getenv('SCHOOL_MAPPING_GOOGLE_SHEET')
+        if not sheet_id:
+            raise ValueError("School mapping Google Sheet ID not configured")
+        
+        # Try primary URL format
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+        
+        try:
+            df = pd.read_csv(csv_url)
+        except Exception as e:
+            current_app.logger.error(f"Failed to read CSV: {str(e)}")
+            # Try alternative URL format
+            csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+            df = pd.read_csv(csv_url)
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        # Process each row
+        for _, row in df.iterrows():
+            try:
+                # Skip rows without an ID or Level
+                if pd.isna(row['Id']) or pd.isna(row['Level']):
+                    continue
+                
+                # Find the school by Salesforce ID
+                school = School.query.get(row['Id'])
+                if school:
+                    school.level = row['Level'].strip()
+                    success_count += 1
+                else:
+                    error_count += 1
+                    errors.append(f"School not found with ID: {row['Id']}")
+            
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Error processing school {row.get('Id')}: {str(e)}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully updated {success_count} schools with {error_count} errors',
+            'errors': errors
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error("School level update failed", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400

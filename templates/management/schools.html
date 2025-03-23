@@ -60,12 +60,25 @@
     <div class="row">
         <div class="col">
             <div class="admin-card p-4">
-                <h3 class="card-title">Schools</h3>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="card-title mb-0">Schools</h3>
+                    <div class="d-flex gap-2">
+                        <button onclick="updateSchoolLevels()" class="btn btn-link" title="Refresh School Levels">
+                            <i class="fas fa-sync-alt fa-lg"></i>
+                        </button>
+                        {% if sheet_url %}
+                        <a href="{{ sheet_url }}" target="_blank" class="btn btn-link" title="Open School Mapping Sheet">
+                            <i class="fas fa-table fa-lg"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Level</th>
                                 <th>District</th>
                                 <th>School Code</th>
                                 <th>Actions</th>
@@ -75,6 +88,7 @@
                             {% for school in schools %}
                             <tr>
                                 <td>{{ school.name }}</td>
+                                <td>{{ school.level }}</td>
                                 <td>{{ school.district.name if school.district else 'N/A' }}</td>
                                 <td>{{ school.school_code }}</td>
                                 <td>
@@ -179,6 +193,39 @@ function deleteDistrict(districtId) {
             alert('An error occurred while deleting the district');
         });
     }
+}
+
+function updateSchoolLevels() {
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    
+    // Add spinning animation
+    icon.classList.add('fa-spin');
+    button.disabled = true;
+    
+    fetch('/management/update-school-levels', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to update school levels'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating school levels');
+    })
+    .finally(() => {
+        // Remove spinning animation if page hasn't reloaded
+        icon.classList.remove('fa-spin');
+        button.disabled = false;
+    });
 }
 </script>
 {% endblock %}
