@@ -221,4 +221,69 @@
         flex-direction: column;
         gap: 0.25rem;
     }
+}
+
+/* Add new styles for the view toggle */
+.view-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.view-toggle-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--non-photo-blue);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--delft-blue);
+    transition: all 0.2s ease;
+}
+
+.view-toggle-button.active {
+    background: var(--ucla-blue);
+    color: white;
+    border-color: var(--ucla-blue);
+}
+
+/* School view styles */
+.schools-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.school-group {
+    margin-bottom: 1.5rem;
+}
+
+.school-group-header {
+    font-size: 1.1rem;
+    color: var(--ucla-blue);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 2px solid var(--non-photo-blue);
+}
+
+.school-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid var(--non-photo-blue);
+    margin-bottom: 0.5rem;
+}
+
+.school-name {
+    color: var(--ucla-blue);
+    font-weight: 500;
+}
+
+.school-stats {
+    display: flex;
+    gap: 1rem;
+    color: var(--delft-blue);
+    font-size: 0.9rem;
 } 

@@ -74,57 +74,155 @@
         </div>
     </div>
 
-    <!-- Monthly Breakdown -->
-    <div class="monthly-section">
-        <h2>Monthly Activity</h2>
-        {% for month, data in events_by_month.items() %}
-        <div class="month-card">
-            <div class="month-header">
-                <h3>{{ month }}</h3>
-                <div class="month-stats">
-                    <span>{{ data.events|length }} Events</span>
-                    <span>{{ data.total_students }} Students</span>
-                    <span>{{ data.total_volunteers }} Volunteers</span>
-                    <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
-                </div>
-            </div>
-            
-            <div class="events-table-wrapper">
-                <table class="events-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Event</th>
-                            <th>Type</th>
-                            <th>Location</th>
-                            <th>Students</th>
-                            <th>Volunteers</th>
-                            <th>Hours</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for event in data.events %}
-                        <tr>
-                            <td>{{ event.date }}</td>
-                            <td>{{ event.time }}</td>
-                            <td>{{ event.title }}</td>
-                            <td>{{ event.type }}</td>
-                            <td>{{ event.school or event.location }}</td>
-                            <td>{{ event.students }}</td>
-                            <td>{{ event.volunteers }}</td>
-                            <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Activity Breakdown -->
+    <div class="activity-breakdown">
+        <div class="activity-header">
+            <h2>Activity Breakdown</h2>
+            <div class="view-toggle">
+                <button class="view-toggle-button" data-view="monthly">
+                    <i class="fas fa-calendar-alt"></i> Monthly
+                </button>
+                <button class="view-toggle-button" data-view="schools">
+                    <i class="fas fa-school"></i> By School
+                </button>
             </div>
         </div>
-        {% endfor %}
+
+        <!-- Monthly view -->
+        <div id="monthly-view" class="view-content">
+            {% for month, data in events_by_month.items() %}
+            <div class="month-card">
+                <div class="month-header">
+                    <h3>{{ month }}</h3>
+                    <div class="month-stats">
+                        <span>{{ data.events|length }} Events</span>
+                        <span>{{ data.total_students }} Students</span>
+                        <span>{{ data.total_volunteers }} Volunteers</span>
+                        <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
+                    </div>
+                </div>
+                
+                <div class="events-table-wrapper">
+                    <table class="events-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Type</th>
+                                <th>Location</th>
+                                <th>Students</th>
+                                <th>Volunteers</th>
+                                <th>Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in data.events %}
+                            <tr>
+                                <td>{{ event.date }}</td>
+                                <td>{{ event.time }}</td>
+                                <td>{{ event.title }}</td>
+                                <td>{{ event.type }}</td>
+                                <td>{{ event.school or event.location }}</td>
+                                <td>{{ event.students }}</td>
+                                <td>{{ event.volunteers }}</td>
+                                <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Schools view -->
+        <div id="schools-view" class="view-content">
+            {% for level in ['High', 'Middle', 'Elementary', None] %}
+            {% set level_schools = schools_by_level.get(level, []) %}
+            {% if level_schools %}
+            <div class="school-group">
+                <div class="school-group-header">
+                    <i class="fas fa-{% if level == 'High' %}graduation-cap{% elif level == 'Middle' %}book{% elif level == 'Elementary' %}pencil-alt{% else %}school{% endif %}"></i>
+                    {{ level if level else 'Other' }} Schools
+                </div>
+                {% for school_data in level_schools %}
+                <div class="school-card">
+                    <div class="school-header">
+                        <div class="school-name">{{ school_data.name }}</div>
+                        <div class="school-stats">
+                            <div class="school-stat">
+                                <i class="fas fa-calendar-check"></i>
+                                {{ school_data.events|length }} Events
+                            </div>
+                            <div class="school-stat">
+                                <i class="fas fa-user-graduate"></i>
+                                {{ school_data.total_students }} Students
+                            </div>
+                            <div class="school-stat">
+                                <i class="fas fa-users"></i>
+                                {{ school_data.total_volunteers }} Volunteers
+                            </div>
+                            <div class="school-stat">
+                                <i class="fas fa-clock"></i>
+                                {{ "%.1f"|format(school_data.total_volunteer_hours) }} Hours
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/district_year_end_detail.js') }}"></script>
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.view-toggle-button');
+    const monthlyView = document.getElementById('monthly-view');
+    const schoolsView = document.getElementById('schools-view');
+
+    function switchView(viewType) {
+        // Update button states
+        toggleButtons.forEach(btn => {
+            if (btn.dataset.view === viewType) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Handle view transitions
+        if (viewType === 'monthly') {
+            schoolsView.classList.remove('visible');
+            setTimeout(() => {
+                monthlyView.classList.add('visible');
+                schoolsView.style.display = 'none';
+                monthlyView.style.display = 'block';
+            }, 300);
+        } else {
+            monthlyView.classList.remove('visible');
+            setTimeout(() => {
+                schoolsView.classList.add('visible');
+                monthlyView.style.display = 'none';
+                schoolsView.style.display = 'block';
+            }, 300);
+        }
+    }
+
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            switchView(this.dataset.view);
+        });
+    });
+
+    // Initialize the view (default to monthly)
+    switchView('monthly');
+});
+</script>
 {% endblock %} 

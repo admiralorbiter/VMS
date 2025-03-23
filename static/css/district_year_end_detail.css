@@ -212,6 +212,159 @@
     background-color: rgba(158, 216, 219, 0.1);
 }
 
+/* Activity Breakdown Section */
+.activity-breakdown {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
+    border: 1px solid var(--non-photo-blue);
+    margin-bottom: 2rem;
+}
+
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.activity-header h2 {
+    color: var(--delft-blue);
+    font-size: 1.5rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.view-toggle-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--non-photo-blue);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--delft-blue);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.view-toggle-button i {
+    font-size: 1rem;
+}
+
+.view-toggle-button.active {
+    background: var(--ucla-blue);
+    color: white;
+    border-color: var(--ucla-blue);
+}
+
+.view-toggle-button:hover:not(.active) {
+    background: var(--non-photo-blue);
+}
+
+/* School Level Groups */
+.school-group {
+    margin-bottom: 2rem;
+}
+
+.school-group:last-child {
+    margin-bottom: 0;
+}
+
+.school-group-header {
+    color: var(--ucla-blue);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--non-photo-blue);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.school-group-header i {
+    font-size: 1rem;
+}
+
+/* School Cards */
+.school-card {
+    background: white;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.school-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.1);
+}
+
+.school-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.school-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.school-stats {
+    display: flex;
+    gap: 2rem;
+    color: var(--delft-blue);
+    font-size: 0.9rem;
+}
+
+.school-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.school-stat i {
+    color: var(--ucla-blue);
+    font-size: 1rem;
+}
+
+/* View Toggle Transitions */
+.view-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.view-content.visible {
+    display: block;
+    opacity: 1;
+}
+
+/* Ensure smooth transition between views */
+#monthly-view.visible,
+#schools-view.visible {
+    display: block;
+    opacity: 1;
+}
+
+#monthly-view:not(.visible),
+#schools-view:not(.visible) {
+    display: none;
+    opacity: 0;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
     .district-detail-container {
@@ -234,5 +387,25 @@
 
     .event-types-grid {
         grid-template-columns: 1fr;
+    }
+
+    .school-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .school-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .view-toggle {
+        width: 100%;
+    }
+
+    .view-toggle-button {
+        flex: 1;
+        justify-content: center;
     }
 } 

@@ -1084,12 +1084,74 @@ def district_year_end_detail(district_name):
         events_by_month[month]['total_volunteers'] += volunteer_count
         events_by_month[month]['total_volunteer_hours'] += volunteer_hours
 
+    # Organize events by school
+    schools_by_level = {
+        'High': [],
+        'Middle': [],
+        'Elementary': [],
+        None: []  # For schools without a level
+    }
+    
+    # Get all schools in the district
+    district_schools = School.query.filter_by(district_id=district.id).all()
+    
+    # Create a mapping of school IDs to their data
+    school_data = {}
+    for school in district_schools:
+        school_data[school.id] = {
+            'name': school.name,
+            'level': school.level,
+            'events': [],
+            'total_students': 0,
+            'total_volunteers': 0,
+            'total_volunteer_hours': 0
+        }
+    
+    # Process events for each school
+    for event in events:
+        school_id = event.school if isinstance(event.school, str) else None
+        if school_id in school_data:
+            school = school_data[school_id]
+            
+            # Get attendance and volunteer data
+            student_count = event.participant_count or 0
+            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+            
+            # Add event data
+            school['events'].append({
+                'id': event.id,
+                'title': event.title,
+                'date': event.start_date.strftime('%m/%d/%Y'),
+                'students': student_count,
+                'volunteers': volunteer_count,
+                'volunteer_hours': volunteer_hours
+            })
+            
+            # Update totals
+            school['total_students'] += student_count
+            school['total_volunteers'] += volunteer_count
+            school['total_volunteer_hours'] += volunteer_hours
+    
+    # Organize schools by level
+    for school_id, data in school_data.items():
+        school = School.query.get(school_id)
+        level = school.level if school else None
+        if level not in schools_by_level:
+            level = None
+        schools_by_level[level].append(data)
+    
+    # Sort schools within each level by name
+    for level in schools_by_level:
+        schools_by_level[level].sort(key=lambda x: x['name'])
+
     return render_template(
         'reports/district_year_end_detail.html',
         district=district,
         school_year=school_year,
         stats=stats,
         events_by_month=events_by_month,
+        schools_by_level=schools_by_level,
         total_events=len(events)
     )
 
