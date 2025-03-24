@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from models import db
@@ -152,7 +153,7 @@ def import_sheet():
         return jsonify({'error': 'Unauthorized'}), 403
 
     try:
-        sheet_id = getenv('CLIENT_PROJECTS_SHEET_ID')
+        sheet_id = os.getenv('CLIENT_PROJECTS_SHEET_ID')
         if not sheet_id:
             raise ValueError("Google Sheet ID not configured")
         
