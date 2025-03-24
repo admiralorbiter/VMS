@@ -14,6 +14,7 @@ from models.reports import DistrictYearEndReport
 from models import db  # Import db from models instead of creating new instance
 from models.pathways import Pathway
 import json
+import pytz
 
 report_bp = Blueprint('report', __name__)
 
@@ -572,13 +573,21 @@ def district_year_end():
     school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
     school_years.reverse()  # Most recent first
     
+    # Convert UTC time to Central time for display
+    last_updated = None
+    if cached_reports:
+        utc_time = min(report.last_updated for report in cached_reports)
+        # Convert to Central time (UTC-6 or UTC-5 depending on daylight savings)
+        central = pytz.timezone('America/Chicago')
+        last_updated = utc_time.replace(tzinfo=pytz.UTC).astimezone(central)
+    
     return render_template(
         'reports/district_year_end.html',
         districts=district_stats,
         school_year=school_year,
         school_years=school_years,
         now=datetime.now(),
-        last_updated=min(report.last_updated for report in cached_reports) if cached_reports else None
+        last_updated=last_updated
     )
 
 @report_bp.route('/reports/district/year-end/refresh', methods=['POST'])
