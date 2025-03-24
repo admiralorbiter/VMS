@@ -13,16 +13,20 @@ from datetime import datetime, timezone
 from models.client_project_model import ClientProject, ProjectStatus
 import pandas as pd
 from flask import current_app
+from models.user import User, SecurityLevel
+from werkzeug.security import generate_password_hash
 
 management_bp = Blueprint('management', __name__)
 
 @management_bp.route('/admin')
 @login_required
 def admin():
-    if not current_user.is_admin:
-        flash('Access denied. Admin privileges required.', 'error')
+    if not current_user.security_level >= SecurityLevel.SUPERVISOR:
+        flash('Access denied. Supervisor or higher privileges required.', 'error')
         return redirect(url_for('main.index'))
-    return render_template('management/admin.html')
+    
+    users = User.query.all()
+    return render_template('management/admin.html', users=users)
 
 @management_bp.route('/admin/import', methods=['POST'])
 @login_required
@@ -493,3 +497,64 @@ def update_school_levels():
             'success': False,
             'error': str(e)
         }), 400
+
+@management_bp.route('/management/users/<int:user_id>/edit', methods=['GET'])
+@login_required
+def edit_user_form(user_id):
+    """Route to render the user edit modal"""
+    if not current_user.is_admin and not current_user.security_level >= SecurityLevel.SUPERVISOR:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Check if current user has permission to edit this user
+    if not current_user.can_manage_user(user) and current_user.id != user_id:
+        return jsonify({'error': 'Unauthorized to edit this user'}), 403
+        
+    return render_template('management/user_edit_modal.html', user=user)
+
+@management_bp.route('/management/users/<int:user_id>', methods=['PUT'])
+@login_required
+def update_user(user_id):
+    """Route to handle the user update form submission"""
+    if not current_user.is_admin and not current_user.security_level >= SecurityLevel.SUPERVISOR:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Check if current user has permission to edit this user
+    if not current_user.can_manage_user(user) and current_user.id != user_id:
+        return jsonify({'error': 'Unauthorized to edit this user'}), 403
+    
+    # Get form data
+    email = request.form.get('email')
+    security_level = int(request.form.get('security_level', 0))
+    new_password = request.form.get('new_password')
+    
+    # If not admin, restrict ability to escalate privileges
+    if not current_user.is_admin and security_level > current_user.security_level:
+        return jsonify({'error': 'Cannot assign security level higher than your own'}), 403
+    
+    # Update user
+    user.email = email
+    
+    # Regular users should only be able to update their own security level if they're an admin
+    if current_user.is_admin or current_user.security_level > user.security_level:
+        user.security_level = security_level
+    
+    # Update password if provided
+    if new_password:
+        user.password_hash = generate_password_hash(new_password)
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': 'User updated successfully'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

@@ -1,6 +1,86 @@
 {% extends "base.html" %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+    /* Custom Modal Styles */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: none;
+    }
+    
+    .modal-backdrop.show {
+        display: block;
+    }
+    
+    .modal-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        z-index: 1010;
+        max-width: 500px;
+        width: 90%;
+        display: none;
+    }
+    
+    .modal-container.show {
+        display: block;
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+    }
+    
+    .modal-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .form-group label {
+        font-weight: bold;
+    }
+    
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+    }
+    .modal-container.show {
+        display: block;
+    }
+</style>
 {% endblock %}
 {% block content %}
 <div class="container mt-4">
@@ -307,6 +387,7 @@
                         <tr>
                             <th>Username</th>
                             <th>Email</th>
+                            <th>Security Level</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -316,8 +397,29 @@
                         <tr>
                             <td>{{ user.username }}</td>
                             <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.security_level == SecurityLevel.USER %}
+                                    <span class="badge bg-secondary">User</span>
+                                {% elif user.security_level == SecurityLevel.SUPERVISOR %}
+                                    <span class="badge bg-info">Supervisor</span>
+                                {% elif user.security_level == SecurityLevel.MANAGER %}
+                                    <span class="badge bg-primary">Manager</span>
+                                {% elif user.security_level == SecurityLevel.ADMIN %}
+                                    <span class="badge bg-danger">Admin</span>
+                                {% endif %}
+                            </td>
                             <td>{{ user.created_at|format_date }}</td>
                             <td>
+                                <!-- Add the Edit button with htmx -->
+                                <button 
+                                    hx-get="/management/users/{{ user.id }}/edit"
+                                    hx-target="#userEditModal"
+                                    hx-trigger="click"
+                                    class="btn btn-primary btn-sm me-2"
+                                    _="on click add .show to #modalBackdrop">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                
                                 {% if current_user.can_manage_user(user) %}
                                 <button onclick="deleteUser('{{ user.id }}')" class="btn admin-btn-danger btn-sm">
                                     <i class="fas fa-trash"></i> Delete
@@ -332,6 +434,10 @@
         </div>
     </div>
 </div>
+
+<!-- Simple Modal for User Editing -->
+<div id="modalBackdrop" class="modal-backdrop" _="on click if target.id is 'modalBackdrop' remove .show from me"></div>
+<div id="userEditModal" class="modal-container"></div>
 
 <script>
 document.getElementById('updateLocalStatus').addEventListener('click', function() {
@@ -989,5 +1095,21 @@ function importPathwayParticipants() {
         progress.style.display = 'none';
     });
 }
+
+// Add this to existing scripts
+document.body.addEventListener('htmx:afterRequest', function(event) {
+    if (event.detail.target.matches('.modal-form') && event.detail.xhr.status === 200) {
+        const response = JSON.parse(event.detail.xhr.responseText);
+        showToast('Success', response.message, 'success');
+        setTimeout(() => window.location.reload(), 1000); // Reload after 1 second
+    } else if (event.detail.target.matches('.modal-form') && event.detail.xhr.status !== 200) {
+        try {
+            const response = JSON.parse(event.detail.xhr.responseText);
+            showToast('Error', response.error || 'Failed to update user', 'error');
+        } catch(e) {
+            showToast('Error', 'Failed to update user', 'error');
+        }
+    }
+});
 </script>
 {% endblock %}
