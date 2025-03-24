@@ -318,7 +318,7 @@
                             <td>{{ user.email }}</td>
                             <td>{{ user.created_at|format_date }}</td>
                             <td>
-                                {% if user.is_admin %}
+                                {% if current_user.can_manage_user(user) %}
                                 <button onclick="deleteUser('{{ user.id }}')" class="btn admin-btn-danger btn-sm">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
