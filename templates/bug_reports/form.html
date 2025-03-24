@@ -50,27 +50,18 @@ document.addEventListener('htmx:afterSwap', function(evt) {
 
 // Handle form submission response
 document.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.target.id === 'bugReportForm') {
+    if (evt.detail.target.id === 'bugReportResponse') {
         const response = JSON.parse(evt.detail.xhr.response);
-        const responseDiv = document.getElementById('bugReportResponse');
         
-        if (evt.detail.successful) {
-            responseDiv.innerHTML = `
-                <div class="alert alert-success">
-                    ${response.message}
-                </div>
-            `;
+        if (response.success) {
             // Close modal after success
             setTimeout(function() {
-                var modal = bootstrap.Modal.getInstance(document.getElementById('bugReportModal'));
-                modal?.hide();
-            }, 2000);
-        } else {
-            responseDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    ${response.message}
-                </div>
-            `;
+                const modal = document.getElementById('bugReportModal');
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            }, 1500);
         }
     }
 });
