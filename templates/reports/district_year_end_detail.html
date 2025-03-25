@@ -66,7 +66,7 @@
         <h2>Event Types</h2>
         <div class="event-types-grid">
             {% for type, count in stats.event_types.items() %}
-            <div class="event-type-card">
+            <div class="event-type-card" data-type="{{ type }}">
                 <div class="type-count">{{ count }}</div>
                 <div class="type-name">{{ type }}</div>
             </div>
@@ -84,6 +84,9 @@
                 </button>
                 <button class="view-toggle-button" data-view="schools">
                     <i class="fas fa-school"></i> By School
+                </button>
+                <button class="view-toggle-button active" data-view="all-types">
+                    <i class="fas fa-th-large"></i> All Types
                 </button>
             </div>
         </div>
@@ -214,16 +217,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButtons = document.querySelectorAll('.view-toggle-button');
     const monthlyView = document.getElementById('monthly-view');
     const schoolsView = document.getElementById('schools-view');
+    const eventTypeCards = document.querySelectorAll('.event-type-card');
+    let currentView = 'monthly';
+    let selectedEventType = null;
 
     function switchView(viewType) {
         // Update button states
         toggleButtons.forEach(btn => {
-            if (btn.dataset.view === viewType) {
+            if (btn.dataset.view === viewType || (btn.dataset.view === 'all-types' && viewType === currentView)) {
                 btn.classList.add('active');
             } else {
                 btn.classList.remove('active');
             }
         });
+
+        // Reset to all types if clicking the "All Types" button
+        if (viewType === 'all-types') {
+            clearEventTypeFilter();
+            viewType = currentView; // Keep current view (monthly or schools)
+        } else {
+            currentView = viewType; // Update current view
+        }
 
         // Handle view transitions
         if (viewType === 'monthly') {
@@ -243,9 +257,163 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function filterByEventType(eventType) {
+        // Reset previous selection
+        eventTypeCards.forEach(card => card.classList.remove('selected'));
+        
+        if (eventType === null) {
+            // Show all events and reset everything
+            document.querySelectorAll('.events-table tbody tr').forEach(row => {
+                row.style.display = '';
+            });
+            updateAllStats();
+            return;
+        }
+        
+        // Select the card
+        document.querySelector(`.event-type-card[data-type="${eventType}"]`).classList.add('selected');
+        
+        // Filter monthly view
+        document.querySelectorAll('#monthly-view .events-table tbody tr').forEach(row => {
+            const typeCell = row.querySelector('td:nth-child(4)');
+            if (typeCell && typeCell.textContent.trim() === eventType) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Filter school view - keep schools visible but filter their events
+        document.querySelectorAll('#schools-view .school-card').forEach(card => {
+            // Always keep the school card visible
+            card.style.display = '';
+            
+            // Filter the events within this school
+            const eventRows = card.querySelectorAll('.events-table tbody tr');
+            let visibleEvents = 0;
+            
+            eventRows.forEach(row => {
+                const typeCell = row.querySelector('td:nth-child(3)'); // Type is in the 3rd column
+                if (typeCell && typeCell.textContent.trim() === eventType) {
+                    row.style.display = '';
+                    visibleEvents++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update this school's event count
+            const eventCountElement = card.querySelector('.school-stat:first-child');
+            if (eventCountElement) {
+                eventCountElement.innerHTML = `<i class="fas fa-calendar-check"></i> ${visibleEvents} Events`;
+            }
+            
+            // Update other stats based on visible events
+            let totalStudents = 0;
+            let totalVolunteers = 0;
+            let totalHours = 0;
+            
+            eventRows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    totalStudents += parseInt(row.querySelector('td:nth-child(4)').textContent) || 0;
+                    totalVolunteers += parseInt(row.querySelector('td:nth-child(5)').textContent) || 0;
+                    totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
+                }
+            });
+            
+            // Update school stats
+            const statsElements = card.querySelectorAll('.school-stat');
+            if (statsElements.length >= 4) {
+                statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
+                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteers`;
+                statsElements[3].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
+            }
+        });
+        
+        // Update monthly view stats
+        document.querySelectorAll('#monthly-view .month-card').forEach(card => {
+            const visibleEvents = Array.from(card.querySelectorAll('tbody tr')).filter(row => 
+                row.style.display !== 'none'
+            ).length;
+            
+            const statsElement = card.querySelector('.month-stats');
+            if (statsElement) {
+                const firstStat = statsElement.querySelector('span:first-child');
+                if (firstStat) {
+                    firstStat.textContent = `${visibleEvents} Events`;
+                }
+            }
+        });
+    }
+    
+    function updateAllStats() {
+        // Reset all stats to their original values
+        document.querySelectorAll('.school-card').forEach(card => {
+            const eventRows = card.querySelectorAll('.events-table tbody tr');
+            const totalEvents = eventRows.length;
+            
+            // Reset event count
+            const eventCountElement = card.querySelector('.school-stat:first-child');
+            if (eventCountElement) {
+                eventCountElement.innerHTML = `<i class="fas fa-calendar-check"></i> ${totalEvents} Events`;
+            }
+            
+            // Calculate and reset other stats
+            let totalStudents = 0;
+            let totalVolunteers = 0;
+            let totalHours = 0;
+            
+            eventRows.forEach(row => {
+                totalStudents += parseInt(row.querySelector('td:nth-child(4)').textContent) || 0;
+                totalVolunteers += parseInt(row.querySelector('td:nth-child(5)').textContent) || 0;
+                totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
+            });
+            
+            // Update school stats
+            const statsElements = card.querySelectorAll('.school-stat');
+            if (statsElements.length >= 4) {
+                statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
+                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteers`;
+                statsElements[3].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
+            }
+        });
+        
+        // Reset monthly view stats
+        document.querySelectorAll('.month-card').forEach(card => {
+            const totalEvents = card.querySelectorAll('tbody tr').length;
+            const statsElement = card.querySelector('.month-stats');
+            if (statsElement) {
+                const firstStat = statsElement.querySelector('span:first-child');
+                if (firstStat) {
+                    firstStat.textContent = `${totalEvents} Events`;
+                }
+            }
+        });
+    }
+
+    function clearEventTypeFilter() {
+        selectedEventType = null;
+        eventTypeCards.forEach(card => card.classList.remove('selected'));
+        filterByEventType(null);
+    }
+
     toggleButtons.forEach(button => {
         button.addEventListener('click', function() {
             switchView(this.dataset.view);
+        });
+    });
+    
+    // Add click handlers to event type cards
+    eventTypeCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const type = this.dataset.type;
+            if (selectedEventType === type) {
+                // Clicking the same type again clears the filter
+                clearEventTypeFilter();
+            } else {
+                selectedEventType = type;
+                filterByEventType(type);
+            }
         });
     });
 

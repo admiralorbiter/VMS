@@ -1143,11 +1143,12 @@ def district_year_end_detail(district_name):
             volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
             volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
             
-            # Add event data
+            # Add event data - Add type to the event data
             school['events'].append({
                 'id': event.id,
                 'title': event.title,
                 'date': event.start_date.strftime('%m/%d/%Y'),
+                'type': event.type.value if event.type else 'Unknown',
                 'students': student_count,
                 'volunteers': volunteer_count,
                 'volunteer_hours': volunteer_hours
