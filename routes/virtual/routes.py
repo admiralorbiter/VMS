@@ -534,7 +534,7 @@ def import_sheet():
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         df = pd.read_csv(csv_url, skiprows=5)
         
-        # First, create a mapping of session titles to their datetime
+        # Modify the session_datetimes creation to handle multiple dates per title
         session_datetimes = {}
         for _, row in df.iterrows():
             title = clean_string_value(row.get('Session Title'))
@@ -544,7 +544,12 @@ def import_sheet():
             if title and not pd.isna(date_str) and not pd.isna(time_str):
                 event_datetime = parse_datetime(date_str, time_str)
                 if event_datetime:
-                    session_datetimes[title] = event_datetime
+                    # Store as a list of dates for each title
+                    if title not in session_datetimes:
+                        session_datetimes[title] = {}
+                    # Use date as key to handle multiple dates for same title
+                    date_key = event_datetime.date().isoformat()
+                    session_datetimes[title][date_key] = event_datetime
         
         # Now process all rows, using the stored datetime for simulcast entries
         success_count = warning_count = error_count = 0
@@ -557,11 +562,28 @@ def import_sheet():
                 if not title:
                     continue
                 
-                # Get the datetime for this session
-                event_datetime = session_datetimes.get(title)
-                if not event_datetime:
+                # Get the date string from the current row
+                date_str = row.get('Date')
+                if pd.isna(date_str):
                     warning_count += 1
-                    errors.append(f"Skipped: No valid datetime found for {title}")
+                    errors.append(f"Skipped: No date for {title}")
+                    continue
+                
+                # Parse the date to match the format used as key
+                parsed_date = parse_datetime(date_str, row.get('Time'))
+                if not parsed_date:
+                    warning_count += 1
+                    errors.append(f"Skipped: Invalid date/time for {title}")
+                    continue
+                
+                date_key = parsed_date.date().isoformat()
+                
+                # Get the datetime specific to this title and date
+                if title in session_datetimes and date_key in session_datetimes[title]:
+                    event_datetime = session_datetimes[title][date_key]
+                else:
+                    warning_count += 1
+                    errors.append(f"Skipped: No valid datetime found for {title} on {date_key}")
                     continue
                 
                 # Get or create event
