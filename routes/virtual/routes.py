@@ -6,7 +6,7 @@ from io import StringIO
 from datetime import datetime, timezone
 from flask import current_app
 from models.district_model import District
-from models.event import db, Event, EventType, EventStatus
+from models.event import db, Event, EventType, EventStatus, EventFormat
 from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from models.teacher import Teacher
@@ -480,16 +480,11 @@ def clean_status(status):
 
 def get_or_create_district(name):
     """Get or create district by name"""
-    if not name:
-        # Get or create a default district for schools without one
-        district = District.query.filter_by(name='Unknown District').first()
-        if not district:
-            district = District(
-                name='Unknown District'
-            )
-            db.session.add(district)
-            db.session.flush()
-        return district
+    # Handle null/empty/nan values
+    if pd.isna(name) or not name or name.strip() == '':
+        name = 'Unknown District'
+    else:
+        name = str(name).strip()
     
     district = District.query.filter(
         func.lower(District.name) == func.lower(name)
@@ -584,18 +579,76 @@ def import_sheet():
                         event = Event(
                             title=title,
                             start_date=event_datetime,
+                            end_date=event_datetime.replace(hour=event_datetime.hour+1),  # Default to 1 hour duration
+                            duration=60,  # Set default duration to 60 minutes
                             type=EventType.VIRTUAL_SESSION,
-                            status=EventStatus.map_status(clean_status(row.get('Status')))
+                            format=EventFormat.VIRTUAL,
+                            status=EventStatus.map_status(clean_status(row.get('Status'))),
+                            session_id=row.get('Session Link', '').split('/')[-1] if row.get('Session Link') else None
                         )
                         db.session.add(event)
                         db.session.flush()
                     
                     processed_events[event_key] = event
                 
+                # Update completed session metrics
+                status_str = safe_str(row.get('Status')).lower()
+                status = EventStatus.map_status(status_str)
+                
+                if status == EventStatus.COMPLETED:
+                    # Update event metrics
+                    event.participant_count = 20  # Set student count to 20
+                    event.registered_count = 20  # Set registered count to match
+                    event.attended_count = 20  # Set attended count to match
+                    event.volunteers_needed = 1  # Set volunteers needed to 1
+                    
+                    # Make sure duration is set
+                    if not event.duration:
+                        event.duration = 60  # Default to 60 minutes
+                    
+                    # Handle presenter/volunteer
+                    presenter_name = row.get('Presenter')
+                    if presenter_name:
+                        first_name, last_name = clean_name(presenter_name)
+                        volunteer = Volunteer.query.filter(
+                            func.lower(Volunteer.first_name) == func.lower(first_name),
+                            func.lower(Volunteer.last_name) == func.lower(last_name)
+                        ).first()
+                        
+                        if volunteer:
+                            # Create or update participation record
+                            participation = EventParticipation.query.filter_by(
+                                event_id=event.id,
+                                volunteer_id=volunteer.id
+                            ).first()
+                            
+                            if not participation:
+                                # Check if hours field exists in EventParticipation model
+                                participation_data = {
+                                    'event_id': event.id,
+                                    'volunteer_id': volunteer.id,
+                                    'participant_type': 'Presenter',
+                                    'status': 'Completed'
+                                }
+                                
+                                # Try to add hours if the model has that field
+                                try:
+                                    participation = EventParticipation(**participation_data)
+                                    # Attempt to set hours attribute - this will fail if the field doesn't exist
+                                    setattr(participation, 'hours', 1)
+                                except Exception as e:
+                                    current_app.logger.warning(f"Could not set hours on EventParticipation: {e}")
+                                    participation = EventParticipation(**participation_data)
+                                
+                                db.session.add(participation)
+                            
+                            # Add volunteer to event's volunteers list if not already there
+                            if volunteer not in event.volunteers:
+                                event.volunteers.append(volunteer)
+                
                 # Process teacher if present
                 teacher_name = row.get('Teacher Name')
                 if not pd.isna(teacher_name) and str(teacher_name).strip():
-                    # Get or create teacher
                     first_name, last_name = clean_name(teacher_name)
                     teacher = Teacher.query.filter(
                         func.lower(Teacher.first_name) == func.lower(first_name),
@@ -619,10 +672,7 @@ def import_sheet():
                         db.session.flush()
                     
                     # Create or update EventTeacher registration
-                    status_str = safe_str(row.get('Status')).lower()
                     is_simulcast = status_str == 'simulcast'
-                    status = EventStatus.map_status(status_str)
-                    
                     event_teacher = EventTeacher.query.filter_by(
                         event_id=event.id,
                         teacher_id=teacher.id
@@ -638,12 +688,12 @@ def import_sheet():
                         )
                         db.session.add(event_teacher)
                 
-                # Add district association here
-                district_name = row.get('District')  # Get district name from the CSV row
-                if district_name:
-                    district = get_or_create_district(district_name)  # This function either finds existing district or creates new one
-                    event.district_partner = district_name  # Set the text field
-                    if district not in event.districts:  # Add to the relationship if not already there
+                # Add district association
+                district_name = row.get('District')
+                if district_name and not pd.isna(district_name):
+                    district = get_or_create_district(district_name)
+                    event.district_partner = district_name
+                    if district not in event.districts:
                         event.districts.append(district)
                 
                 db.session.commit()

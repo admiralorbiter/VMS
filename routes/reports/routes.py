@@ -689,14 +689,27 @@ def generate_district_stats(school_year):
         
         # Calculate statistics
         for event in events:
-            # Use participant_count instead of attended_count
-            student_count = event.participant_count or 0
+            # Get attendance count from EventAttendance if available, or attended_count for virtual sessions
+            student_count = 0
+            if hasattr(event, 'attendance') and event.attendance:
+                student_count = event.attendance.total_attendance
+            elif event.type == EventType.VIRTUAL_SESSION and event.attended_count:
+                student_count = event.attended_count
+            else:
+                student_count = event.participant_count or 0
+            
             stats['total_students'] += student_count
             
+            # Track volunteer participation
+            volunteer_count = 0
+            volunteer_hours = 0
             for participation in event.volunteer_participations:
                 if participation.status == 'Attended':
-                    stats['total_volunteers'] += 1
-                    stats['total_volunteer_hours'] += participation.delivery_hours or 0
+                    volunteer_count += 1
+                    volunteer_hours += participation.delivery_hours or 0
+            
+            stats['total_volunteers'] += volunteer_count
+            stats['total_volunteer_hours'] += volunteer_hours
             
             if event.school:
                 stats['schools_reached'].add(event.school)
@@ -710,7 +723,7 @@ def generate_district_stats(school_year):
                 }
             stats['monthly_breakdown'][month]['events'] += 1
             stats['monthly_breakdown'][month]['students'] += student_count
-            stats['monthly_breakdown'][month]['volunteers'] += len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            stats['monthly_breakdown'][month]['volunteers'] += volunteer_count
             
             if event.series:
                 stats['career_clusters'].add(event.series)
@@ -1025,12 +1038,13 @@ def district_year_end_detail(district_name):
     # Define event types to exclude - remove virtual_session from exclusion
     excluded_event_types = ['connector_session']
 
-    # Update the query to include EventAttendance
+    # Update the query to include EventAttendance and status filter
     events = (Event.query
         .outerjoin(School, Event.school == School.id)
         .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
         .filter(
             Event.start_date.between(start_date, end_date),
+            Event.status == EventStatus.COMPLETED,
             ~Event.type.in_([EventType(t) for t in excluded_event_types]),
             db.or_(
                 Event.districts.contains(district),
@@ -1056,10 +1070,12 @@ def district_year_end_detail(district_name):
                 'total_volunteer_hours': 0
             }
         
-        # Get attendance count from EventAttendance if available
+        # Get attendance count from EventAttendance if available, or attended_count for virtual sessions
         student_count = 0
         if hasattr(event, 'attendance') and event.attendance:
             student_count = event.attendance.total_attendance
+        elif event.type == EventType.VIRTUAL_SESSION and event.attended_count:
+            student_count = event.attended_count
         else:
             student_count = event.participant_count or 0
             
