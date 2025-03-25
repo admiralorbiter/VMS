@@ -46,6 +46,27 @@ def reports():
             'icon': 'fa-solid fa-chart-pie',
             'url': '/reports/district/year-end',
             'category': 'District Reports'
+        },
+        {
+            'title': 'Recruitment Report',
+            'description': 'Shows upcoming unfilled events, volunteer search, and skill matching to industry/jobs.',
+            'icon': 'fa-solid fa-file-alt',
+            'url': '/reports/recruitment',
+            'category': 'General Reports'
+        },
+        {
+            'title': 'Event Contact Report',
+            'description': 'View upcoming events and volunteer contact information.',
+            'icon': 'fa-solid fa-address-book',
+            'url': '/reports/contact',
+            'category': 'Event Management'
+        },
+        {
+            'title': 'New Skills Summary Report',
+            'description': 'View new skills learned by students in events.',
+            'icon': 'fa-solid fa-graduation-cap',
+            'url': '/reports/',
+            'category': 'Student Learning'
         }
     ]
     
@@ -288,6 +309,13 @@ def virtual_usage_district(district_name):
         monthly_stats=sorted_stats,
         current_filters=current_filters
     )
+
+
+
+
+
+
+
 
 @report_bp.route('/reports/volunteer/thankyou')
 @login_required
