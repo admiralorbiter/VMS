@@ -33,27 +33,24 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
     try:
         db.session.rollback()
         
-        # Debug logging
-        current_app.logger.debug(f"Processing row: {row}")
-        
         # Skip empty rows
         if not any(row.values()):
-            warning_count += 1
-            errors.append(f"Row {success_count + warning_count + error_count}: Skipped - Empty row")
             return success_count, warning_count, error_count
 
-        # Handle simulcast entries
-        is_simulcast = row.get('Status', '').lower() == 'simulcast'
+        # Get status early to determine processing logic
+        status_str = safe_str(row.get('Status', '')).lower()
+        is_simulcast = status_str == 'simulcast'
         
-        # Extract session ID and find/create event
-        session_id = None
-        if row.get('Session Link'):
-            try:
-                session_id = row['Session Link'].split('/')[-1]
-            except Exception as e:
-                current_app.logger.error(f"Error extracting session ID: {e}")
+        # For simulcast entries or entries without dates, we only process teacher data
+        if is_simulcast or not row.get('Date'):
+            # Only process teacher information
+            if row.get('Teacher Name'):
+                process_teacher_data(row, is_simulcast)
+                success_count += 1
+            return success_count, warning_count, error_count
 
-        # Find existing event or create new one
+        # For regular entries, proceed with full processing
+        session_id = extract_session_id(row.get('Session Link'))
         event = Event.query.filter_by(session_id=session_id).first() if session_id else None
         
         if not event:
@@ -61,171 +58,39 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
             event.session_id = session_id
             event.title = row.get('Session Title')
             event.type = EventType.VIRTUAL_SESSION
-            event.status = EventStatus.map_status(row.get('Status', ''))
+            event.status = EventStatus.map_status(status_str)
             event.topic = row.get('Topic/Theme')
             event.session_type = row.get('Session Type')
             event.session_link = row.get('Session Link')
             
             # Set date/time for new events
-            if not is_simulcast and row.get('Date'):
-                try:
-                    date_str = row.get('Date')
-                    time_str = row.get('Time', '')
+            try:
+                date_str = row.get('Date')
+                time_str = row.get('Time', '')
+                if date_str:
                     date_parts = date_str.split('/')
                     current_year = datetime.now(timezone.utc).year
                     event.date = datetime.strptime(f"{date_parts[0]}/{date_parts[1]}/{current_year}", '%m/%d/%Y').date()
                     if time_str:
                         event.start_time = datetime.strptime(time_str, '%I:%M %p').time()
-                except ValueError as e:
-                    current_app.logger.error(f"Date/time parsing error: {e}")
+            except ValueError as e:
+                error_count += 1
+                errors.append(f"Error parsing date/time for {event.title}: {str(e)}")
+                return success_count, warning_count, error_count
 
         # Handle presenter information
-        volunteer_id = None
-        presenter_name = row.get('Presenter')
-        presenter_org = standardize_organization(row.get('Organization', ''))
-        
-        if presenter_name and not pd.isna(presenter_name):
-            presenter_name = str(presenter_name).strip()
-            first_name, last_name = clean_name(presenter_name)
-            
-            # Only proceed if we have at least a first name
-            if first_name:
-                # First try exact match on first and last name (case-insensitive)
-                volunteer = Volunteer.query.filter(
-                    func.lower(Volunteer.first_name) == func.lower(first_name),
-                    func.lower(Volunteer.last_name) == func.lower(last_name)
-                ).first()
-                
-                # If no exact match and we have a last name, try partial matching
-                if not volunteer and last_name:
-                    volunteer = Volunteer.query.filter(
-                        Volunteer.first_name.ilike(f"{first_name}%"),
-                        Volunteer.last_name.ilike(f"{last_name}%")
-                    ).first()
-                
-                # Create new volunteer if not found
-                if not volunteer:
-                    current_app.logger.info(f"Creating new volunteer: {first_name} {last_name}")
-                    volunteer = Volunteer(
-                        first_name=first_name,
-                        last_name=last_name,
-                        middle_name='',
-                        organization_name=presenter_org if not pd.isna(presenter_org) else None
-                    )
-                    db.session.add(volunteer)
-                    db.session.flush()
-                
-                # Create or update participation record
-                participation = EventParticipation.query.filter_by(
-                    event_id=event.id,
-                    volunteer_id=volunteer.id
-                ).first()
-                
-                if not participation:
-                    # Define participation data
-                    participation_data = {
-                        'event_id': event.id,
-                        'volunteer_id': volunteer.id,
-                        'participant_type': 'Presenter',
-                        'status': 'Completed' if status == EventStatus.COMPLETED else 'Confirmed'
-                    }
-                    
-                    # Try to set delivery_hours if that field exists
-                    try:
-                        participation = EventParticipation(**participation_data)
-                        if hasattr(EventParticipation, 'delivery_hours'):
-                            participation.delivery_hours = event.duration / 60 if event.duration else 1
-                    except Exception as e:
-                        current_app.logger.warning(f"Could not set hours on EventParticipation: {e}")
-                        participation = EventParticipation(**participation_data)
-                    
-                    db.session.add(participation)
-                
-                # Before adding new volunteer to event's volunteers list, clear existing ones
-                if not is_simulcast:  # Only clear for non-simulcast events
-                    event.volunteers = []  # Clear existing volunteer associations
-                    if hasattr(event, 'professionals'):
-                        event.professionals = ''  # Clear text-based professionals field
-                    if hasattr(event, 'professional_ids'):
-                        event.professional_ids = ''  # Clear professional IDs field
-                
-                # Add volunteer to event's volunteers list if not already there
-                if volunteer not in event.volunteers:
-                    event.volunteers.append(volunteer)
-                
-                # Also update text-based fields for backwards compatibility
-                if hasattr(event, 'professionals'):
-                    current_profs = []
-                    if event.professionals:
-                        current_profs = [p.strip() for p in event.professionals.split(';') if p.strip()]
-                    prof_name = f"{volunteer.first_name} {volunteer.last_name}"
-                    if prof_name not in current_profs:
-                        current_profs.append(prof_name)
-                        event.professionals = '; '.join(current_profs)
-                
-                if hasattr(event, 'professional_ids'):
-                    current_ids = []
-                    if event.professional_ids:
-                        current_ids = [id.strip() for id in event.professional_ids.split(';') if id.strip()]
-                    if str(volunteer.id) not in current_ids:
-                        current_ids.append(str(volunteer.id))
-                        event.professional_ids = '; '.join(current_ids)
+        process_presenter(row, event, is_simulcast)
 
         # Handle teacher information
         if row.get('Teacher Name'):
-            teacher_name = row.get('Teacher Name').strip()
-            name_parts = teacher_name.split(' ', 1)
-            if len(name_parts) >= 2:
-                first_name, last_name = name_parts[0], name_parts[1]
-                
-                # Find or create teacher
-                teacher = Teacher.query.filter(
-                    func.lower(Teacher.first_name) == func.lower(first_name),
-                    func.lower(Teacher.last_name) == func.lower(last_name)
-                ).first()
-                
-                if not teacher:
-                    teacher = Teacher(
-                        first_name=first_name,
-                        last_name=last_name,
-                        middle_name=''
-                    )
-                    
-                    # Handle school association
-                    school_name = row.get('School Name')
-                    district_name = row.get('District')
-                    if school_name:
-                        school = get_or_create_school(school_name, get_or_create_district(district_name))
-                        teacher.school_id = school.id
-                    
-                    db.session.add(teacher)
-                    db.session.flush()
+            process_teacher_for_event(row, event, is_simulcast)
 
-                # Create teacher participation record
-                event_teacher = EventTeacher.query.filter_by(
-                    event_id=event.id,
-                    teacher_id=teacher.id
-                ).first()
-                
-                if not event_teacher:
-                    event_teacher = EventTeacher(
-                        event_id=event.id,
-                        teacher_id=teacher.id,
-                        status=row.get('Status'),
-                        is_simulcast=row.get('Status', '').lower() == 'simulcast'
-                    )
-                    db.session.add(event_teacher)
-
-        # Set volunteer_id for history creation (only if we have a presenter)
-        if volunteer_id:
-            event._volunteer_id = volunteer_id
-
-        # Add district association here
-        district_name = row.get('District')  # Get district name from the CSV row
+        # Add district association
+        district_name = row.get('District')
         if district_name:
-            district = get_or_create_district(district_name)  # This function either finds existing district or creates new one
-            event.district_partner = district_name  # Set the text field
-            if district not in event.districts:  # Add to the relationship if not already there
+            district = get_or_create_district(district_name)
+            event.district_partner = district_name
+            if district not in event.districts:
                 event.districts.append(district)
 
         db.session.add(event)
@@ -234,11 +99,204 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
         
     except Exception as e:
         error_count += 1
-        errors.append(f"Error processing row: {str(e)}")
+        title = row.get('Session Title', 'Unknown session')
+        errors.append(f"Error processing {title}: {str(e)}")
         db.session.rollback()
         current_app.logger.error(f"Import error: {e}", exc_info=True)
     
     return success_count, warning_count, error_count
+
+def process_teacher_data(row, is_simulcast=False):
+    """Helper function to process just teacher data for simulcast/dateless entries"""
+    if not row.get('Teacher Name'):
+        return
+        
+    teacher_name = row.get('Teacher Name').strip()
+    name_parts = teacher_name.split(' ', 1)
+    if len(name_parts) >= 2:
+        first_name, last_name = name_parts[0], name_parts[1]
+        
+        # Find or create teacher
+        teacher = Teacher.query.filter(
+            func.lower(Teacher.first_name) == func.lower(first_name),
+            func.lower(Teacher.last_name) == func.lower(last_name)
+        ).first()
+        
+        if not teacher:
+            teacher = Teacher(
+                first_name=first_name,
+                last_name=last_name,
+                middle_name=''
+            )
+            
+            # Handle school association
+            school_name = row.get('School Name')
+            district_name = row.get('District')
+            if school_name:
+                school = get_or_create_school(school_name, get_or_create_district(district_name))
+                teacher.school_id = school.id
+            
+            db.session.add(teacher)
+            db.session.commit()
+
+def process_presenter(row, event, is_simulcast):
+    """Helper function to process presenter data"""
+    volunteer_id = None
+    presenter_name = row.get('Presenter')
+    presenter_org = standardize_organization(row.get('Organization', ''))
+    
+    if presenter_name and not pd.isna(presenter_name):
+        presenter_name = str(presenter_name).strip()
+        first_name, last_name = clean_name(presenter_name)
+        
+        # Only proceed if we have at least a first name
+        if first_name:
+            volunteer = find_or_create_volunteer(first_name, last_name, presenter_org)
+            
+            if volunteer:
+                # Create or update participation record
+                create_participation(event, volunteer, event.status)
+                
+                # Handle volunteer association
+                update_volunteer_association(event, volunteer, is_simulcast)
+
+def find_or_create_volunteer(first_name, last_name, organization=None):
+    """Find an existing volunteer or create a new one"""
+    # First try exact match on first and last name (case-insensitive)
+    volunteer = Volunteer.query.filter(
+        func.lower(Volunteer.first_name) == func.lower(first_name),
+        func.lower(Volunteer.last_name) == func.lower(last_name)
+    ).first()
+    
+    # If no exact match and we have a last name, try partial matching
+    if not volunteer and last_name:
+        volunteer = Volunteer.query.filter(
+            Volunteer.first_name.ilike(f"{first_name}%"),
+            Volunteer.last_name.ilike(f"{last_name}%")
+        ).first()
+    
+    # Create new volunteer if not found
+    if not volunteer:
+        current_app.logger.info(f"Creating new volunteer: {first_name} {last_name}")
+        volunteer = Volunteer(
+            first_name=first_name,
+            last_name=last_name,
+            middle_name='',
+            organization_name=organization if not pd.isna(organization) else None
+        )
+        db.session.add(volunteer)
+        db.session.flush()
+    
+    return volunteer
+
+def create_participation(event, volunteer, status):
+    """Create or update participation record"""
+    participation = EventParticipation.query.filter_by(
+        event_id=event.id,
+        volunteer_id=volunteer.id
+    ).first()
+    
+    if not participation:
+        # Define participation data
+        participation_data = {
+            'event_id': event.id,
+            'volunteer_id': volunteer.id,
+            'participant_type': 'Presenter',
+            'status': 'Completed' if status == EventStatus.COMPLETED else 'Confirmed'
+        }
+        
+        # Try to set delivery_hours if that field exists
+        try:
+            participation = EventParticipation(**participation_data)
+            if hasattr(EventParticipation, 'delivery_hours'):
+                participation.delivery_hours = event.duration / 60 if event.duration else 1
+        except Exception as e:
+            current_app.logger.warning(f"Could not set hours on EventParticipation: {e}")
+            participation = EventParticipation(**participation_data)
+        
+        db.session.add(participation)
+
+def update_volunteer_association(event, volunteer, is_simulcast):
+    """Update volunteer associations for an event"""
+    # Before adding new volunteer to event's volunteers list, clear existing ones
+    if not is_simulcast:  # Only clear for non-simulcast events
+        event.volunteers = []  # Clear existing volunteer associations
+        if hasattr(event, 'professionals'):
+            event.professionals = ''  # Clear text-based professionals field
+        if hasattr(event, 'professional_ids'):
+            event.professional_ids = ''  # Clear professional IDs field
+    
+    # Add volunteer to event's volunteers list if not already there
+    if volunteer not in event.volunteers:
+        event.volunteers.append(volunteer)
+    
+    # Also update text-based fields for backwards compatibility
+    update_legacy_fields(event, volunteer)
+
+def update_legacy_fields(event, volunteer):
+    """Update legacy text-based fields for backward compatibility"""
+    if hasattr(event, 'professionals'):
+        current_profs = []
+        if event.professionals:
+            current_profs = [p.strip() for p in event.professionals.split(';') if p.strip()]
+        prof_name = f"{volunteer.first_name} {volunteer.last_name}"
+        if prof_name not in current_profs:
+            current_profs.append(prof_name)
+            event.professionals = '; '.join(current_profs)
+    
+    if hasattr(event, 'professional_ids'):
+        current_ids = []
+        if event.professional_ids:
+            current_ids = [id.strip() for id in event.professional_ids.split(';') if id.strip()]
+        if str(volunteer.id) not in current_ids:
+            current_ids.append(str(volunteer.id))
+            event.professional_ids = '; '.join(current_ids)
+
+def process_teacher_for_event(row, event, is_simulcast):
+    """Process teacher data for a specific event"""
+    teacher_name = row.get('Teacher Name').strip()
+    name_parts = teacher_name.split(' ', 1)
+    if len(name_parts) >= 2:
+        first_name, last_name = name_parts[0], name_parts[1]
+        
+        # Find or create teacher
+        teacher = Teacher.query.filter(
+            func.lower(Teacher.first_name) == func.lower(first_name),
+            func.lower(Teacher.last_name) == func.lower(last_name)
+        ).first()
+        
+        if not teacher:
+            teacher = Teacher(
+                first_name=first_name,
+                last_name=last_name,
+                middle_name=''
+            )
+            
+            # Handle school association
+            school_name = row.get('School Name')
+            district_name = row.get('District')
+            if school_name:
+                school = get_or_create_school(school_name, get_or_create_district(district_name))
+                teacher.school_id = school.id
+            
+            db.session.add(teacher)
+            db.session.flush()
+
+        # Create teacher participation record
+        event_teacher = EventTeacher.query.filter_by(
+            event_id=event.id,
+            teacher_id=teacher.id
+        ).first()
+        
+        if not event_teacher:
+            event_teacher = EventTeacher(
+                event_id=event.id,
+                teacher_id=teacher.id,
+                status=row.get('Status'),
+                is_simulcast=is_simulcast,
+                attendance_confirmed_at=datetime.now(timezone.utc) if event.status == EventStatus.COMPLETED else None
+            )
+            db.session.add(event_teacher)
 
 @virtual_bp.route('/import', methods=['GET', 'POST'])
 @login_required
@@ -619,6 +677,9 @@ def import_sheet():
         
         # Modify the session_datetimes creation to handle multiple dates per title
         session_datetimes = {}
+        events_by_title = {}  # Keep track of events by title to group simulcast entries
+        
+        # First pass - gather all sessions with valid dates
         for _, row in df.iterrows():
             title = clean_string_value(row.get('Session Title'))
             date_str = row.get('Date')
@@ -641,23 +702,49 @@ def import_sheet():
         
         for _, row in df.iterrows():
             try:
+                # Get the status early to determine processing logic
+                status_str = safe_str(row.get('Status', '')).lower()
+                is_simulcast = status_str == 'simulcast'
                 title = clean_string_value(row.get('Session Title'))
+                
                 if not title:
                     continue
+                
+                # For simulcast entries that don't have a date/time, try to find a matching event
+                if is_simulcast and (pd.isna(row.get('Date')) or pd.isna(row.get('Time'))):
+                    # Find an existing event with the same title
+                    if title in events_by_title:
+                        # Found a matching event, process teacher data
+                        if row.get('Teacher Name'):
+                            event = events_by_title[title]
+                            process_teacher_for_event(row, event, is_simulcast)
+                            db.session.commit()
+                            success_count += 1
+                        continue
+                    # Otherwise, we'll process it below if we find a date
                 
                 # Get the date string from the current row
                 date_str = row.get('Date')
                 if pd.isna(date_str):
-                    warning_count += 1
-                    errors.append(f"Skipped: No date for {title}")
-                    continue
+                    # If it's a simulcast, we might find a matching event later, so just skip
+                    if is_simulcast:
+                        continue
+                    else:
+                        # For non-simulcast, we need a date
+                        process_teacher_data(row, is_simulcast)
+                        success_count += 1
+                        continue
                 
                 # Parse the date to match the format used as key
                 parsed_date = parse_datetime(date_str, row.get('Time'))
                 if not parsed_date:
-                    warning_count += 1
-                    errors.append(f"Skipped: Invalid date/time for {title}")
-                    continue
+                    # Again, for simulcast we can skip, for others we process teacher data only
+                    if is_simulcast:
+                        continue
+                    else:
+                        process_teacher_data(row, is_simulcast)
+                        success_count += 1
+                        continue
                 
                 date_key = parsed_date.date().isoformat()
                 
@@ -665,9 +752,19 @@ def import_sheet():
                 if title in session_datetimes and date_key in session_datetimes[title]:
                     event_datetime = session_datetimes[title][date_key]
                 else:
-                    warning_count += 1
-                    errors.append(f"Skipped: No valid datetime found for {title} on {date_key}")
-                    continue
+                    # If no datetime found but it's a simulcast, we can still process it
+                    if is_simulcast:
+                        # Find any event with this title to associate with
+                        if title in events_by_title:
+                            event = events_by_title[title]
+                            process_teacher_for_event(row, event, is_simulcast)
+                            db.session.commit()
+                            success_count += 1
+                        continue
+                    else:
+                        process_teacher_data(row, is_simulcast)
+                        success_count += 1
+                        continue
                 
                 # Get or create event
                 event_key = (title, event_datetime.date())
@@ -695,13 +792,11 @@ def import_sheet():
                         db.session.flush()
                     
                     processed_events[event_key] = event
+                    # Store the event by title for later simulcast entries
+                    events_by_title[title] = event
                 
                 # Update completed session metrics
-                status_str = safe_str(row.get('Status')).lower()
-                status = EventStatus.map_status(status_str)
-                
-                # Set default metrics for completed events
-                if status == EventStatus.COMPLETED:
+                if status_str == 'successfully completed':
                     # Update event metrics
                     event.participant_count = 20  # Set student count to 20
                     event.registered_count = 20  # Set registered count to match
@@ -712,9 +807,10 @@ def import_sheet():
                     if not event.duration:
                         event.duration = 60  # Default to 60 minutes
                 
-                # Handle presenter/volunteer - MOVED OUTSIDE THE STATUS CONDITION
+                # Handle presenter/volunteer
                 presenter_name = row.get('Presenter')
                 presenter_org = row.get('Organization', '')
+                
                 if presenter_name and not pd.isna(presenter_name):
                     presenter_name = str(presenter_name).strip()
                     first_name, last_name = clean_name(presenter_name)
@@ -758,7 +854,7 @@ def import_sheet():
                                 'event_id': event.id,
                                 'volunteer_id': volunteer.id,
                                 'participant_type': 'Presenter',
-                                'status': 'Completed' if status == EventStatus.COMPLETED else 'Confirmed'
+                                'status': 'Completed' if status_str == 'successfully completed' else 'Confirmed'
                             }
                             
                             # Try to set delivery_hours if that field exists
@@ -803,46 +899,8 @@ def import_sheet():
                                 event.professional_ids = '; '.join(current_ids)
                 
                 # Process teacher if present
-                teacher_name = row.get('Teacher Name')
-                if not pd.isna(teacher_name) and str(teacher_name).strip():
-                    first_name, last_name = clean_name(teacher_name)
-                    teacher = Teacher.query.filter(
-                        func.lower(Teacher.first_name) == func.lower(first_name),
-                        func.lower(Teacher.last_name) == func.lower(last_name)
-                    ).first()
-                    
-                    if not teacher:
-                        school_name = safe_str(row.get('School Name'))
-                        district_name = safe_str(row.get('District'))
-                        
-                        # Get or create district and school
-                        district = get_or_create_district(district_name)
-                        school = get_or_create_school(school_name, district)
-                        
-                        teacher = Teacher(
-                            first_name=first_name,
-                            last_name=last_name,
-                            school_id=school.id if school else None
-                        )
-                        db.session.add(teacher)
-                        db.session.flush()
-                    
-                    # Create or update EventTeacher registration
-                    is_simulcast = status_str == 'simulcast'
-                    event_teacher = EventTeacher.query.filter_by(
-                        event_id=event.id,
-                        teacher_id=teacher.id
-                    ).first()
-                    
-                    if not event_teacher:
-                        event_teacher = EventTeacher(
-                            event_id=event.id,
-                            teacher_id=teacher.id,
-                            status=status,
-                            is_simulcast=is_simulcast,
-                            attendance_confirmed_at=datetime.now(timezone.utc) if status == EventStatus.COMPLETED else None
-                        )
-                        db.session.add(event_teacher)
+                if row.get('Teacher Name'):
+                    process_teacher_for_event(row, event, is_simulcast)
                 
                 # Add district association
                 district_name = row.get('District')
@@ -855,15 +913,10 @@ def import_sheet():
                 db.session.commit()
                 success_count += 1
 
-                # Add this right after assigning a presenter to an event
-                # DEBUGGING
-                current_app.logger.info(
-                    f"Added presenter '{presenter_name}' to event '{event.title}' (date: {event_datetime.date().isoformat()})"
-                )
-
             except Exception as e:
                 error_count += 1
-                errors.append(f"Error processing row: {str(e)}")
+                title = row.get('Session Title', 'Unknown session')
+                errors.append(f"Error processing row for '{title}': {str(e)}")
                 db.session.rollback()
                 current_app.logger.error(f"Import error: {e}", exc_info=True)
         
