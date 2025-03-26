@@ -82,7 +82,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
         process_presenter(row, event, is_simulcast)
 
         # Handle teacher information
-        if row.get('Teacher Name'):
+        if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
             process_teacher_for_event(row, event, is_simulcast)
 
         # Add district association
@@ -108,10 +108,10 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
 
 def process_teacher_data(row, is_simulcast=False):
     """Helper function to process just teacher data for simulcast/dateless entries"""
-    if not row.get('Teacher Name'):
+    if not row.get('Teacher Name') or pd.isna(row.get('Teacher Name')):
         return
         
-    teacher_name = row.get('Teacher Name').strip()
+    teacher_name = safe_str(row.get('Teacher Name'))
     name_parts = teacher_name.split(' ', 1)
     if len(name_parts) >= 2:
         first_name, last_name = name_parts[0], name_parts[1]
@@ -146,7 +146,7 @@ def process_presenter(row, event, is_simulcast):
     presenter_org = standardize_organization(row.get('Organization', ''))
     
     if presenter_name and not pd.isna(presenter_name):
-        presenter_name = str(presenter_name).strip()
+        presenter_name = safe_str(presenter_name)
         first_name, last_name = clean_name(presenter_name)
         
         # Only proceed if we have at least a first name
@@ -254,7 +254,11 @@ def update_legacy_fields(event, volunteer):
 
 def process_teacher_for_event(row, event, is_simulcast):
     """Process teacher data for a specific event"""
-    teacher_name = row.get('Teacher Name').strip()
+    # Check if teacher name exists and is not a NaN value
+    if not row.get('Teacher Name') or pd.isna(row.get('Teacher Name')):
+        return
+        
+    teacher_name = safe_str(row.get('Teacher Name'))
     name_parts = teacher_name.split(' ', 1)
     if len(name_parts) >= 2:
         first_name, last_name = name_parts[0], name_parts[1]
@@ -611,6 +615,9 @@ def clean_string_value(value):
     """Convert any value to string safely"""
     if pd.isna(value) or value is None:
         return ''
+    # Handle float or numeric values
+    if isinstance(value, (float, int)):
+        return str(value)
     return str(value).strip()
 
 def clean_status(status):
@@ -715,11 +722,11 @@ def import_sheet():
                     # Find an existing event with the same title
                     if title in events_by_title:
                         # Found a matching event, process teacher data
-                        if row.get('Teacher Name'):
-                            event = events_by_title[title]
+                        event = events_by_title[title]
+                        if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
                             process_teacher_for_event(row, event, is_simulcast)
-                            db.session.commit()
-                            success_count += 1
+                        db.session.commit()
+                        success_count += 1
                         continue
                     # Otherwise, we'll process it below if we find a date
                 
@@ -730,10 +737,11 @@ def import_sheet():
                     if is_simulcast:
                         continue
                     else:
-                        # For non-simulcast, we need a date
-                        process_teacher_data(row, is_simulcast)
-                        success_count += 1
-                        continue
+                        # For non-simulcast with no date but has a teacher, just process teacher data
+                        if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
+                            process_teacher_data(row, is_simulcast)
+                            success_count += 1
+                    continue
                 
                 # Parse the date to match the format used as key
                 parsed_date = parse_datetime(date_str, row.get('Time'))
@@ -742,9 +750,10 @@ def import_sheet():
                     if is_simulcast:
                         continue
                     else:
-                        process_teacher_data(row, is_simulcast)
-                        success_count += 1
-                        continue
+                        if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
+                            process_teacher_data(row, is_simulcast)
+                            success_count += 1
+                    continue
                 
                 date_key = parsed_date.date().isoformat()
                 
@@ -757,14 +766,16 @@ def import_sheet():
                         # Find any event with this title to associate with
                         if title in events_by_title:
                             event = events_by_title[title]
-                            process_teacher_for_event(row, event, is_simulcast)
-                            db.session.commit()
-                            success_count += 1
+                            if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
+                                process_teacher_for_event(row, event, is_simulcast)
+                                db.session.commit()
                         continue
                     else:
-                        process_teacher_data(row, is_simulcast)
-                        success_count += 1
-                        continue
+                        # For regular entries with no matching datetime, skip if we can't make sense of it
+                        if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
+                            process_teacher_data(row, is_simulcast)
+                            success_count += 1
+                    continue
                 
                 # Get or create event
                 event_key = (title, event_datetime.date())
@@ -785,7 +796,7 @@ def import_sheet():
                             duration=60,  # Set default duration to 60 minutes
                             type=EventType.VIRTUAL_SESSION,
                             format=EventFormat.VIRTUAL,
-                            status=EventStatus.map_status(clean_status(row.get('Status'))),
+                            status=EventStatus.map_status(status_str),
                             session_id=extract_session_id(row.get('Session Link'))  # Use the safer function
                         )
                         db.session.add(event)
@@ -806,13 +817,14 @@ def import_sheet():
                     # Make sure duration is set
                     if not event.duration:
                         event.duration = 60  # Default to 60 minutes
-                
-                # Handle presenter/volunteer
+
+                # Handle presenter/volunteer - this section was incorrectly indented
                 presenter_name = row.get('Presenter')
                 presenter_org = row.get('Organization', '')
-                
+
                 if presenter_name and not pd.isna(presenter_name):
-                    presenter_name = str(presenter_name).strip()
+                    # Make sure to use safe_str to prevent 'float' object has no attribute 'strip' errors
+                    presenter_name = safe_str(presenter_name)
                     first_name, last_name = clean_name(presenter_name)
                     
                     # Only proceed if we have at least a first name
@@ -837,7 +849,7 @@ def import_sheet():
                                 first_name=first_name,
                                 last_name=last_name,
                                 middle_name='',
-                                organization_name=presenter_org if not pd.isna(presenter_org) else None
+                                organization_name=safe_str(presenter_org) if not pd.isna(presenter_org) else None
                             )
                             db.session.add(volunteer)
                             db.session.flush()
@@ -879,7 +891,7 @@ def import_sheet():
                         # Add volunteer to event's volunteers list if not already there
                         if volunteer not in event.volunteers:
                             event.volunteers.append(volunteer)
-                        
+                
                         # Also update text-based fields for backwards compatibility
                         if hasattr(event, 'professionals'):
                             current_profs = []
@@ -899,12 +911,12 @@ def import_sheet():
                                 event.professional_ids = '; '.join(current_ids)
                 
                 # Process teacher if present
-                if row.get('Teacher Name'):
+                if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
                     process_teacher_for_event(row, event, is_simulcast)
                 
                 # Add district association
-                district_name = row.get('District')
-                if district_name and not pd.isna(district_name):
+                district_name = safe_str(row.get('District'))
+                if district_name:
                     district = get_or_create_district(district_name)
                     event.district_partner = district_name
                     if district not in event.districts:
@@ -915,10 +927,10 @@ def import_sheet():
 
             except Exception as e:
                 error_count += 1
-                title = row.get('Session Title', 'Unknown session')
+                title = clean_string_value(row.get('Session Title'))
                 errors.append(f"Error processing row for '{title}': {str(e)}")
                 db.session.rollback()
-                current_app.logger.error(f"Import error: {e}", exc_info=True)
+                current_app.logger.error(f"Import error for '{title}': {e}", exc_info=True)
         
         return jsonify({
             'success': True,
