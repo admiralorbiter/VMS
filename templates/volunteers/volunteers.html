@@ -133,8 +133,7 @@
                         {% endif %}
                     </td>
                     <td class="text-center">
-                        {{ (volunteer.volunteer.times_volunteered if volunteer.volunteer.times_volunteered else 0) +
-                           (volunteer.attended_count if volunteer.attended_count else 0) + 
+                        {{ (volunteer.attended_count if volunteer.attended_count else 0) + 
                            (volunteer.volunteer.additional_volunteer_count if volunteer.volunteer.additional_volunteer_count else 0) }}
                     </td>
                     <td>
