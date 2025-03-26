@@ -367,24 +367,71 @@ def view_volunteer(id):
     if not volunteer:
         abort(404)
     
-    # Get participations and group by status
+    # Get all participations for this volunteer, including virtual events
     participations = EventParticipation.query.filter_by(volunteer_id=id).join(
         Event, EventParticipation.event_id == Event.id
     ).all()
     
+    # Define status mapping for various event types and status values
+    status_mapping = {
+        # Standard statuses
+        'Attended': 'Attended',
+        'Completed': 'Attended',
+        'No-Show': 'No-Show',
+        'No Show': 'No-Show', 
+        'Cancelled': 'Cancelled',
+        'Canceled': 'Cancelled',
+        
+        # Virtual-specific statuses
+        'successfully completed': 'Attended',
+        'simulcast': 'Attended',
+        'technical difficulties': 'No-Show',
+        'local professional no-show': 'No-Show',
+        'pathful professional no-show': 'No-Show',
+        'teacher no-show': 'No-Show',
+        'teacher cancelation': 'Cancelled',
+        'Confirmed': 'Attended',  # Could be pending or attended depending on your business logic
+    }
+    
+    # Initialize participation stats with empty lists
     participation_stats = {
         'Attended': [],
         'No-Show': [],
         'Cancelled': []
     }
     
+    # Process each participation record
     for participation in participations:
+        # Get status from participation record, fall back to event status
         status = participation.status
-        if status in participation_stats:
-            participation_stats[status].append({
+        
+        # If status isn't directly usable, try mapping it
+        if status not in participation_stats:
+            # Try using the mapping, default to 'Attended' if not found
+            mapped_status = status_mapping.get(status, 'Attended')
+            
+            # If still not valid, try lowercased version (handle case sensitivity)
+            if mapped_status not in participation_stats and status:
+                mapped_status = status_mapping.get(status.lower(), 'Attended')
+        else:
+            mapped_status = status
+            
+        # Get the event date, handling virtual events that might store date differently
+        event_date = None
+        if participation.event.start_date:
+            event_date = participation.event.start_date
+        elif hasattr(participation.event, 'date') and participation.event.date:
+            event_date = participation.event.date
+        else:
+            # If no date available, create a default date to avoid errors
+            event_date = datetime.now()
+            
+        # Add to appropriate category
+        if mapped_status in participation_stats:
+            participation_stats[mapped_status].append({
                 'event': participation.event,
                 'delivery_hours': participation.delivery_hours,
-                'date': participation.event.start_date if participation.event.start_date else participation.event.date  # Handle both date fields
+                'date': event_date
             })
     
     # Sort each list by date
