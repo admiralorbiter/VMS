@@ -633,7 +633,7 @@ def generate_district_stats(school_year):
     start_date, end_date = get_school_year_date_range(school_year)
     print(f"Date range: {start_date} to {end_date}")  # Debug log
     
-    # Remove or modify excluded event types to keep virtual sessions
+    # Only exclude connector sessions
     excluded_event_types = ['connector_session']
     print(f"Excluded event types: {excluded_event_types}")  # Debug log
     
@@ -659,9 +659,6 @@ def generate_district_stats(school_year):
             Event.status == EventStatus.COMPLETED,
             ~Event.type.in_([EventType(t) for t in excluded_event_types])
         )
-        
-        # Debug log the SQL query
-        print(f"SQL Query: {events_query}")
         
         events = events_query.distinct().all()
         print(f"Found {len(events)} total events")  # Debug log
@@ -689,49 +686,80 @@ def generate_district_stats(school_year):
         
         # Calculate statistics
         for event in events:
-            # Get attendance count from EventAttendance if available, or attended_count for virtual sessions
+            # Get student count based on event type
             student_count = 0
-            if hasattr(event, 'attendance') and event.attendance:
+            if event.type == EventType.VIRTUAL_SESSION:
+                student_count = event.attended_count or 0
+            elif hasattr(event, 'attendance') and event.attendance:
                 student_count = event.attendance.total_attendance
-            elif event.type == EventType.VIRTUAL_SESSION and event.attended_count:
-                student_count = event.attended_count
             else:
                 student_count = event.participant_count or 0
             
             stats['total_students'] += student_count
             
-            # Track volunteer participation
-            volunteer_count = 0
-            volunteer_hours = 0
-            for participation in event.volunteer_participations:
-                if participation.status == 'Attended':
-                    volunteer_count += 1
-                    volunteer_hours += participation.delivery_hours or 0
+            # Track volunteer participation with improved counting for virtual events
+            if event.type == EventType.VIRTUAL_SESSION:
+                # For virtual sessions, count all volunteers with Completed or Successfully Completed status
+                volunteer_participations = EventParticipation.query.filter(
+                    EventParticipation.event_id == event.id,
+                    EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+                ).all()
+                
+                # If we found participations, use them
+                if volunteer_participations:
+                    volunteer_count = len(volunteer_participations)
+                    volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+                else:
+                    # If no participations but the event is completed, assume 1 volunteer and 1 hour
+                    volunteer_count = 1
+                    volunteer_hours = 1.0
+            else:
+                # For non-virtual events, use the standard attendance counting
+                volunteer_participations = EventParticipation.query.filter(
+                    EventParticipation.event_id == event.id,
+                    EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+                ).all()
+                
+                volunteer_count = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            
+            # Add debug info for virtual events
+            if event.type == EventType.VIRTUAL_SESSION:
+                print(f"Virtual event: '{event.title}', Volunteers: {volunteer_count}, Hours: {volunteer_hours}")
             
             stats['total_volunteers'] += volunteer_count
             stats['total_volunteer_hours'] += volunteer_hours
             
+            # Track schools and career clusters
             if event.school:
                 stats['schools_reached'].add(event.school)
+            if event.series:
+                stats['career_clusters'].add(event.series)
             
+            # Monthly breakdown
             month = event.start_date.strftime('%B %Y')
             if month not in stats['monthly_breakdown']:
                 stats['monthly_breakdown'][month] = {
                     'events': 0,
                     'students': 0,
-                    'volunteers': 0
+                    'volunteers': 0,
+                    'volunteer_hours': 0
                 }
             stats['monthly_breakdown'][month]['events'] += 1
             stats['monthly_breakdown'][month]['students'] += student_count
             stats['monthly_breakdown'][month]['volunteers'] += volunteer_count
-            
-            if event.series:
-                stats['career_clusters'].add(event.series)
+            stats['monthly_breakdown'][month]['volunteer_hours'] += volunteer_hours
         
-        # Convert sets to counts
+        # Convert sets to counts and round hours
         stats['schools_reached'] = len(stats['schools_reached'])
         stats['career_clusters'] = len(stats['career_clusters'])
         stats['total_volunteer_hours'] = round(stats['total_volunteer_hours'], 1)
+        
+        # Round monthly volunteer hours
+        for month in stats['monthly_breakdown']:
+            stats['monthly_breakdown'][month]['volunteer_hours'] = round(
+                stats['monthly_breakdown'][month]['volunteer_hours'], 1
+            )
         
         district_stats[district.name] = stats
     
@@ -1072,16 +1100,30 @@ def district_year_end_detail(district_name):
         
         # Get attendance count from EventAttendance if available, or attended_count for virtual sessions
         student_count = 0
-        if hasattr(event, 'attendance') and event.attendance:
+        if event.type == EventType.VIRTUAL_SESSION:
+            student_count = event.attended_count or 0
+        elif hasattr(event, 'attendance') and event.attendance:
             student_count = event.attendance.total_attendance
-        elif event.type == EventType.VIRTUAL_SESSION and event.attended_count:
-            student_count = event.attended_count
         else:
             student_count = event.participant_count or 0
             
-        # Get volunteer stats for this event
-        volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
-        volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+        # Get volunteer stats for this event with special handling for virtual events
+        if event.type == EventType.VIRTUAL_SESSION:
+            # For virtual sessions, count all volunteers with Completed or Successfully Completed status
+            volunteer_participations = [p for p in event.volunteer_participations 
+                                      if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            
+            if volunteer_participations:
+                volunteer_count = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            else:
+                # If no participations but the event is completed, assume 1 volunteer and 1 hour
+                volunteer_count = 1
+                volunteer_hours = 1.0
+        else:
+            # For non-virtual events, use the standard attendance counting
+            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
         
         # Get school name safely
         school_name = None
