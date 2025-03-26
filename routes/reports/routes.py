@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, jsonify
+from flask import Blueprint, render_template, request, flash, jsonify, make_response, send_file
 from flask_login import login_required
 from sqlalchemy import any_, extract
 from models.event import Event, EventAttendance, EventType, EventStatus
@@ -15,6 +15,9 @@ from models import db  # Import db from models instead of creating new instance
 from models.pathways import Pathway
 import json
 import pytz
+import pandas as pd
+import io
+import xlsxwriter
 
 report_bp = Blueprint('report', __name__)
 
@@ -1374,3 +1377,146 @@ def pathway_detail(pathway_id):
                          pathway=pathway,
                          active_events=active_events,
                          total_attendance=total_attendance)
+
+@report_bp.route('/reports/district/year-end/<district_name>/excel')
+@login_required
+def district_year_end_excel(district_name):
+    """Generate Excel file for district year-end report"""
+    school_year = request.args.get('school_year', get_current_school_year())
+    
+    # Get district
+    district = District.query.filter_by(name=district_name).first_or_404()
+    
+    # Get date range for school year
+    start_date, end_date = get_school_year_date_range(school_year)
+    
+    # Define event types to exclude
+    excluded_event_types = ['connector_session']
+
+    # Query events for this district in the given school year
+    events = (Event.query
+        .outerjoin(School, Event.school == School.id)
+        .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
+        .filter(
+            Event.start_date.between(start_date, end_date),
+            Event.status == EventStatus.COMPLETED,
+            ~Event.type.in_([EventType(t) for t in excluded_event_types]),
+            db.or_(
+                Event.districts.contains(district),
+                Event.school.in_([school.id for school in district.schools]),
+                *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
+                *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
+                Event.district_partner.ilike(f"%{district.name}%"),
+                Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
+            )
+        )
+        .order_by(Event.start_date)
+        .all())
+    
+    # Prepare data for Excel
+    data = []
+    for event in events:
+        # Get student count
+        student_count = 0
+        if event.type == EventType.VIRTUAL_SESSION:
+            student_count = event.attended_count or 0
+        elif hasattr(event, 'attendance') and event.attendance:
+            student_count = event.attendance.total_attendance
+        else:
+            student_count = event.participant_count or 0
+            
+        # Get volunteer stats
+        if event.type == EventType.VIRTUAL_SESSION:
+            volunteer_participations = [p for p in event.volunteer_participations 
+                                      if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            
+            if volunteer_participations:
+                volunteer_count = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            else:
+                # If no participations but event is completed, assume 1 volunteer and 1 hour
+                volunteer_count = 1
+                volunteer_hours = 1.0
+        else:
+            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+        
+        # Get school info
+        school_name = None
+        school_level = None
+        if hasattr(event, 'school') and event.school is not None:
+            if isinstance(event.school, School):
+                school_name = event.school.name
+                school_level = event.school.level
+            elif isinstance(event.school, str):
+                school = School.query.get(event.school)
+                if school:
+                    school_name = school.name
+                    school_level = school.level
+        
+        # Add event data
+        data.append({
+            'Date': event.start_date.strftime('%m/%d/%Y'),
+            'Time': event.start_date.strftime('%I:%M %p'),
+            'Event': event.title,
+            'Type': event.type.value if event.type else 'Unknown',
+            'Location': event.location or 'Virtual',
+            'Students': student_count,
+            'Volunteers': volunteer_count,
+            'Hours': round(volunteer_hours, 1),
+            'School': school_name or 'N/A',
+            'Level': school_level or 'N/A'
+        })
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    
+    # Write data to Excel
+    df.to_excel(writer, sheet_name='Events', index=False)
+    
+    # Get the xlsxwriter workbook and worksheet objects
+    workbook = writer.book
+    worksheet = writer.sheets['Events']
+    
+    # Add some formatting
+    header_format = workbook.add_format({
+        'bold': True,
+        'text_wrap': True,
+        'valign': 'top',
+        'bg_color': '#D6E9F8',
+        'border': 1
+    })
+    
+    # Write the column headers with the defined format
+    for col_num, value in enumerate(df.columns.values):
+        worksheet.write(0, col_num, value, header_format)
+        
+    # Set column widths
+    worksheet.set_column('A:A', 12)  # Date
+    worksheet.set_column('B:B', 10)  # Time
+    worksheet.set_column('C:C', 30)  # Event
+    worksheet.set_column('D:D', 15)  # Type
+    worksheet.set_column('E:E', 20)  # Location
+    worksheet.set_column('F:F', 10)  # Students
+    worksheet.set_column('G:G', 10)  # Volunteers
+    worksheet.set_column('H:H', 10)  # Hours
+    worksheet.set_column('I:I', 25)  # School
+    worksheet.set_column('J:J', 15)  # Level
+    
+    # Close the writer and output the Excel file
+    writer.close()
+    output.seek(0)
+    
+    # Generate filename
+    filename = f"{district_name.replace(' ', '_')}_{school_year}_Year_End_Report.xlsx"
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        download_name=filename,
+        as_attachment=True
+    )

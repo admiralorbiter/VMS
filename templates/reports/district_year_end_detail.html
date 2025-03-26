@@ -26,6 +26,26 @@
         gap: 1rem;
         margin: 1rem 0;
     }
+
+    .download-button {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        transition: background-color 0.2s ease;
+    }
+    
+    .download-button:hover {
+        background-color: #218838;
+        color: white;
+        text-decoration: none;
+    }
 </style>
 {% endblock %}
 
@@ -88,6 +108,9 @@
                 <button class="view-toggle-button active" data-view="all-types">
                     <i class="fas fa-th-large"></i> All Types
                 </button>
+                <a href="{{ url_for('report.district_year_end_excel', district_name=district.name, school_year=school_year) }}" class="download-button">
+                    <i class="fas fa-file-excel"></i> Download Excel
+                </a>
             </div>
         </div>
 
