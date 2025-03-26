@@ -2704,3 +2704,68 @@ main {
     transform: translateX(4px);
     box-shadow: 0 2px 4px rgba(29, 51, 84, 0.1);
 }
+
+/* Event type badges */
+.event-type {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    margin-left: 0.5rem;
+    background-color: #f0f0f0;
+    white-space: nowrap;
+}
+
+.event-type i {
+    margin-right: 0.3rem;
+}
+
+/* Specific styling for different event types */
+.event-type.virtual_session {
+    background-color: #e1f5fe;
+    color: #0288d1;
+}
+
+.event-type.in_person {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.event-type.career_jumping {
+    background-color: #fff8e1;
+    color: #ffa000;
+}
+
+.event-type.connector_session {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+/* Improve event details layout */
+.event-details {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.event-location {
+    color: #666;
+}
+
+/* Ensure proper spacing in the event info section */
+.event-info {
+    flex: 1;
+    min-width: 0; /* Ensures proper text truncation */
+    padding-right: 0.5rem;
+}
+
+.event-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

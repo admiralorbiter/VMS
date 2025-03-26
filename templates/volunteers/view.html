@@ -659,7 +659,26 @@
                             </div>
                             <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
                                 <div class="event-title">{{ event.event.title }}</div>
-                                <div class="event-location">{{ event.event.location }}</div>
+                                <div class="event-details">
+                                    {% if event.event.location %}
+                                    <span class="event-location">{{ event.event.location }}</span>
+                                    {% endif %}
+                                    
+                                    <!-- Display event type with appropriate icon -->
+                                    <span class="event-type {{ event.event.type }}">
+                                        {% if event.event.type == 'virtual_session' %}
+                                            <i class="fa-solid fa-video"></i> Virtual
+                                        {% elif event.event.type == 'in_person' %}
+                                            <i class="fa-solid fa-user-group"></i> In-Person
+                                        {% elif event.event.type == 'career_jumping' %}
+                                            <i class="fa-solid fa-briefcase"></i> Career Jumping
+                                        {% elif event.event.type == 'connector_session' %}
+                                            <i class="fa-solid fa-plug"></i> Connector
+                                        {% else %}
+                                            <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
+                                        {% endif %}
+                                    </span>
+                                </div>
                             </a>
                             {% if event.delivery_hours %}
                             <div class="event-hours">
