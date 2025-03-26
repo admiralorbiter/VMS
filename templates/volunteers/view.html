@@ -678,6 +678,11 @@
                                             <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
                                         {% endif %}
                                     </span>
+                                    
+                                    <!-- Add status display -->
+                                    <span class="event-status {{ event.event.status|lower }}">
+                                        {{ event.event.status }}
+                                    </span>
                                 </div>
                             </a>
                             {% if event.delivery_hours %}

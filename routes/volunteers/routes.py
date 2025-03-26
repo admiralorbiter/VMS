@@ -165,7 +165,11 @@ def volunteers():
         EventParticipation.volunteer_id,
         db.func.count(EventParticipation.id).label('attended_count')
     ).filter(
-        EventParticipation.status == 'Attended'
+        or_(
+            EventParticipation.status == 'Attended',
+            EventParticipation.status == 'Completed',
+            EventParticipation.status == 'Successfully Completed'
+        )
     ).group_by(
         EventParticipation.volunteer_id
     ).subquery()

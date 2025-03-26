@@ -3,7 +3,7 @@ from models.contact import (
     Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum,
     FormEnum, Enum, ContactTypeEnum
 )
-from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime
+from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime, or_
 from sqlalchemy.orm import relationship, declared_attr, validates
 from models.history import History
 from datetime import date, datetime
@@ -142,8 +142,21 @@ class Volunteer(Contact):
 
     @property
     def total_times_volunteered(self):
-        """Calculates total volunteer sessions including manual adjustments"""
-        return self.times_volunteered + self.additional_volunteer_count
+        """Count that includes actual event participations and manual adjustments"""
+        from sqlalchemy import or_
+        
+        # Get count of participations with all relevant statuses
+        participation_count = EventParticipation.query.filter(
+            EventParticipation.volunteer_id == self.id,
+            or_(
+                EventParticipation.status == 'Attended',
+                EventParticipation.status == 'Completed', 
+                EventParticipation.status == 'Successfully Completed'
+            )
+        ).count()
+        
+        # Add only the manual adjustment (don't add times_volunteered to avoid double counting)
+        return participation_count + self.additional_volunteer_count
 
     @property
     def active_histories(self):
