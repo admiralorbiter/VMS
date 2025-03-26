@@ -141,6 +141,14 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                     
                     db.session.add(participation)
                 
+                # Before adding new volunteer to event's volunteers list, clear existing ones
+                if not is_simulcast:  # Only clear for non-simulcast events
+                    event.volunteers = []  # Clear existing volunteer associations
+                    if hasattr(event, 'professionals'):
+                        event.professionals = ''  # Clear text-based professionals field
+                    if hasattr(event, 'professional_ids'):
+                        event.professional_ids = ''  # Clear professional IDs field
+                
                 # Add volunteer to event's volunteers list if not already there
                 if volunteer not in event.volunteers:
                     event.volunteers.append(volunteer)
@@ -763,6 +771,14 @@ def import_sheet():
                                 participation = EventParticipation(**participation_data)
                             
                             db.session.add(participation)
+                        
+                        # Before adding new volunteer to event's volunteers list, clear existing ones
+                        if not is_simulcast:  # Only clear for non-simulcast events
+                            event.volunteers = []  # Clear existing volunteer associations
+                            if hasattr(event, 'professionals'):
+                                event.professionals = ''  # Clear text-based professionals field
+                            if hasattr(event, 'professional_ids'):
+                                event.professional_ids = ''  # Clear professional IDs field
                         
                         # Add volunteer to event's volunteers list if not already there
                         if volunteer not in event.volunteers:
