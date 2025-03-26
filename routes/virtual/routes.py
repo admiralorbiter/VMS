@@ -81,39 +81,87 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
 
         # Handle presenter information
         volunteer_id = None
-        if row.get('Presenter'):
-            presenter_name = row.get('Presenter').strip()
-            name_parts = presenter_name.split(' ', 1)
-            if len(name_parts) >= 2:
-                first_name, last_name = name_parts[0], name_parts[1]
-                
-                # Find or create volunteer for presenter
+        presenter_name = row.get('Presenter')
+        presenter_org = standardize_organization(row.get('Organization', ''))
+        
+        if presenter_name and not pd.isna(presenter_name):
+            presenter_name = str(presenter_name).strip()
+            first_name, last_name = clean_name(presenter_name)
+            
+            # Only proceed if we have at least a first name
+            if first_name:
+                # First try exact match on first and last name (case-insensitive)
                 volunteer = Volunteer.query.filter(
                     func.lower(Volunteer.first_name) == func.lower(first_name),
                     func.lower(Volunteer.last_name) == func.lower(last_name)
                 ).first()
                 
+                # If no exact match and we have a last name, try partial matching
+                if not volunteer and last_name:
+                    volunteer = Volunteer.query.filter(
+                        Volunteer.first_name.ilike(f"{first_name}%"),
+                        Volunteer.last_name.ilike(f"{last_name}%")
+                    ).first()
+                
+                # Create new volunteer if not found
                 if not volunteer:
+                    current_app.logger.info(f"Creating new volunteer: {first_name} {last_name}")
                     volunteer = Volunteer(
                         first_name=first_name,
                         last_name=last_name,
-                        organization_name=row.get('Organization'),
-                        contact_type=ContactTypeEnum.PRESENTER
+                        middle_name='',
+                        organization_name=presenter_org if not pd.isna(presenter_org) else None
                     )
                     db.session.add(volunteer)
                     db.session.flush()
                 
-                volunteer_id = volunteer.id
-                
-                # Create event participation record
-                participation = EventParticipation(
-                    volunteer_id=volunteer_id,
+                # Create or update participation record
+                participation = EventParticipation.query.filter_by(
                     event_id=event.id,
-                    participant_type='Presenter',
-                    status='Confirmed',
-                    title=row.get('Session Title')
-                )
-                db.session.add(participation)
+                    volunteer_id=volunteer.id
+                ).first()
+                
+                if not participation:
+                    # Define participation data
+                    participation_data = {
+                        'event_id': event.id,
+                        'volunteer_id': volunteer.id,
+                        'participant_type': 'Presenter',
+                        'status': 'Completed' if status == EventStatus.COMPLETED else 'Confirmed'
+                    }
+                    
+                    # Try to set delivery_hours if that field exists
+                    try:
+                        participation = EventParticipation(**participation_data)
+                        if hasattr(EventParticipation, 'delivery_hours'):
+                            participation.delivery_hours = event.duration / 60 if event.duration else 1
+                    except Exception as e:
+                        current_app.logger.warning(f"Could not set hours on EventParticipation: {e}")
+                        participation = EventParticipation(**participation_data)
+                    
+                    db.session.add(participation)
+                
+                # Add volunteer to event's volunteers list if not already there
+                if volunteer not in event.volunteers:
+                    event.volunteers.append(volunteer)
+                
+                # Also update text-based fields for backwards compatibility
+                if hasattr(event, 'professionals'):
+                    current_profs = []
+                    if event.professionals:
+                        current_profs = [p.strip() for p in event.professionals.split(';') if p.strip()]
+                    prof_name = f"{volunteer.first_name} {volunteer.last_name}"
+                    if prof_name not in current_profs:
+                        current_profs.append(prof_name)
+                        event.professionals = '; '.join(current_profs)
+                
+                if hasattr(event, 'professional_ids'):
+                    current_ids = []
+                    if event.professional_ids:
+                        current_ids = [id.strip() for id in event.professional_ids.split(';') if id.strip()]
+                    if str(volunteer.id) not in current_ids:
+                        current_ids.append(str(volunteer.id))
+                        event.professional_ids = '; '.join(current_ids)
 
         # Handle teacher information
         if row.get('Teacher Name'):
@@ -156,7 +204,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
                         event_id=event.id,
                         teacher_id=teacher.id,
                         status=row.get('Status'),
-                        is_simulcast=is_simulcast
+                        is_simulcast=row.get('Status', '').lower() == 'simulcast'
                     )
                     db.session.add(event_teacher)
 
@@ -383,23 +431,29 @@ def get_event(event_id):
         }), 400
 
 def clean_name(name):
-    """Enhanced name cleaning function"""
-    if not name:
+    """More robust name cleaning function"""
+    if not name or pd.isna(name):
         return '', ''
     
+    name = str(name).strip()
+    
+    # Handle common prefixes
+    prefixes = ['mr.', 'mrs.', 'ms.', 'dr.', 'prof.']
+    for prefix in prefixes:
+        if name.lower().startswith(prefix):
+            name = name[len(prefix):].strip()
+    
     # Split name into parts
-    parts = name.strip().split()
+    parts = [p for p in name.split() if p]
     
     if len(parts) == 0:
         return '', ''
     elif len(parts) == 1:
         return parts[0], ''
-    elif len(parts) == 2:
-        return parts[0], parts[1]
     else:
-        # For names with more than 2 parts, treat first part as first name
-        # and remaining parts as last name
-        return parts[0], ' '.join(parts[1:])
+        # For simplicity in matching, use first part as first name
+        # and last part as last name (helps match with database)
+        return parts[0], parts[-1]
 
 def standardize_organization(org_name):
     """Standardize organization names"""
@@ -416,54 +470,75 @@ def standardize_organization(org_name):
     return replacements.get(org_name.upper(), org_name)
 
 def parse_datetime(date_str, time_str):
-    """Parse date and time strings into datetime object"""
+    """More robust date/time parsing function"""
     try:
+        # Handle missing or NaN values
         if pd.isna(date_str) or pd.isna(time_str):
             return None
             
-        # Convert to string if numeric
+        # Convert numeric values to strings
         if isinstance(date_str, (int, float)):
             date_str = str(int(date_str))
         if isinstance(time_str, (int, float)):
             time_str = str(int(time_str))
             
-        # Parse date
-        date_parts = date_str.split('/')
+        # Clean up the date and time strings
+        date_str = str(date_str).strip()
+        time_str = str(time_str).strip()
         
-        if len(date_parts) == 2:
-            month, day = map(int, date_parts)
-            # Simplified year logic:
-            # Months 1-6 -> 2025
-            # Months 7-12 -> 2024
-            year = 2024 if month >= 7 else 2025
-        elif len(date_parts) == 3:
-            month, day, year = map(int, date_parts)
-            if year < 100:
-                year += 2000
-        else:
+        # Parse date - try multiple formats
+        date_obj = None
+        
+        # Try different date formats
+        date_formats = ['%m/%d/%Y', '%m/%d/%y', '%m-%d-%Y', '%m-%d-%y', '%Y-%m-%d']
+        for fmt in date_formats:
+            try:
+                date_obj = datetime.strptime(date_str, fmt).date()
+                break
+            except ValueError:
+                continue
+        
+        # If all formats failed, try parsing MM/DD format with current year
+        if not date_obj and '/' in date_str:
+            parts = date_str.split('/')
+            if len(parts) == 2:
+                try:
+                    month, day = map(int, parts)
+                    current_year = datetime.now().year
+                    date_obj = datetime(current_year, month, day).date()
+                except (ValueError, IndexError):
+                    pass
+        
+        # If still no date, return None
+        if not date_obj:
             return None
             
-        # Parse time
-        time_str = time_str.strip().upper()
-        try:
-            # Try 24-hour format
-            time = datetime.strptime(time_str, '%H:%M').time()
-        except ValueError:
+        # Parse time - try multiple formats
+        time_obj = None
+        time_formats = ['%I:%M %p', '%H:%M', '%I:%M%p', '%I%p']
+        
+        # Standardize AM/PM notation
+        time_str = (time_str.replace('am', ' AM')
+                   .replace('pm', ' PM')
+                   .replace('AM', ' AM')
+                   .replace('PM', ' PM')
+                   .replace('  ', ' '))
+        
+        for fmt in time_formats:
             try:
-                # Try 12-hour format with AM/PM
-                time = datetime.strptime(time_str, '%I:%M %p').time()
+                time_obj = datetime.strptime(time_str, fmt).time()
+                break
             except ValueError:
-                # Try adding AM/PM based on hour
-                hour = int(time_str.split(':')[0])
-                if hour < 8:  # Assume PM for early hours
-                    time_str += ' PM'
-                else:
-                    time_str += ' AM'
-                time = datetime.strptime(time_str, '%I:%M %p').time()
-                
-        return datetime.combine(datetime(year, month, day).date(), time)
+                continue
+        
+        # If time parsing failed, use default time (9:00 AM)
+        if not time_obj:
+            time_obj = datetime.strptime('9:00 AM', '%I:%M %p').time()
+        
+        # Combine date and time
+        return datetime.combine(date_obj, time_obj)
     except Exception as e:
-        current_app.logger.error(f"DateTime parsing error: {e}")
+        current_app.logger.warning(f"DateTime parsing error: {e} for date: '{date_str}', time: '{time_str}'")
         return None
 
 def clean_string_value(value):
@@ -501,7 +576,7 @@ def get_or_create_district(name):
 
 def safe_str(value):
     """Safely convert a value to string, handling NaN and None"""
-    if pd.isna(value):
+    if pd.isna(value) or value is None:
         return ''
     return str(value)
 
@@ -601,12 +676,12 @@ def import_sheet():
                         event = Event(
                             title=title,
                             start_date=event_datetime,
-                            end_date=event_datetime.replace(hour=event_datetime.hour+1),  # Default to 1 hour duration
+                            end_date=event_datetime.replace(hour=event_datetime.hour+1) if event_datetime else None,
                             duration=60,  # Set default duration to 60 minutes
                             type=EventType.VIRTUAL_SESSION,
                             format=EventFormat.VIRTUAL,
                             status=EventStatus.map_status(clean_status(row.get('Status'))),
-                            session_id=row.get('Session Link', '').split('/')[-1] if row.get('Session Link') else None
+                            session_id=extract_session_id(row.get('Session Link'))  # Use the safer function
                         )
                         db.session.add(event)
                         db.session.flush()
@@ -617,6 +692,7 @@ def import_sheet():
                 status_str = safe_str(row.get('Status')).lower()
                 status = EventStatus.map_status(status_str)
                 
+                # Set default metrics for completed events
                 if status == EventStatus.COMPLETED:
                     # Update event metrics
                     event.participant_count = 20  # Set student count to 20
@@ -627,46 +703,88 @@ def import_sheet():
                     # Make sure duration is set
                     if not event.duration:
                         event.duration = 60  # Default to 60 minutes
+                
+                # Handle presenter/volunteer - MOVED OUTSIDE THE STATUS CONDITION
+                presenter_name = row.get('Presenter')
+                presenter_org = row.get('Organization', '')
+                if presenter_name and not pd.isna(presenter_name):
+                    presenter_name = str(presenter_name).strip()
+                    first_name, last_name = clean_name(presenter_name)
                     
-                    # Handle presenter/volunteer
-                    presenter_name = row.get('Presenter')
-                    if presenter_name:
-                        first_name, last_name = clean_name(presenter_name)
+                    # Only proceed if we have at least a first name
+                    if first_name:
+                        # First try exact match on first and last name (case-insensitive)
                         volunteer = Volunteer.query.filter(
                             func.lower(Volunteer.first_name) == func.lower(first_name),
                             func.lower(Volunteer.last_name) == func.lower(last_name)
                         ).first()
                         
-                        if volunteer:
-                            # Create or update participation record
-                            participation = EventParticipation.query.filter_by(
-                                event_id=event.id,
-                                volunteer_id=volunteer.id
+                        # If no exact match and we have a last name, try partial matching
+                        if not volunteer and last_name:
+                            volunteer = Volunteer.query.filter(
+                                Volunteer.first_name.ilike(f"{first_name}%"),
+                                Volunteer.last_name.ilike(f"{last_name}%")
                             ).first()
+                        
+                        # Create new volunteer if not found
+                        if not volunteer:
+                            current_app.logger.info(f"Creating new volunteer: {first_name} {last_name}")
+                            volunteer = Volunteer(
+                                first_name=first_name,
+                                last_name=last_name,
+                                middle_name='',
+                                organization_name=presenter_org if not pd.isna(presenter_org) else None
+                            )
+                            db.session.add(volunteer)
+                            db.session.flush()
+                        
+                        # Create or update participation record
+                        participation = EventParticipation.query.filter_by(
+                            event_id=event.id,
+                            volunteer_id=volunteer.id
+                        ).first()
+                        
+                        if not participation:
+                            # Define participation data
+                            participation_data = {
+                                'event_id': event.id,
+                                'volunteer_id': volunteer.id,
+                                'participant_type': 'Presenter',
+                                'status': 'Completed' if status == EventStatus.COMPLETED else 'Confirmed'
+                            }
                             
-                            if not participation:
-                                # Check if hours field exists in EventParticipation model
-                                participation_data = {
-                                    'event_id': event.id,
-                                    'volunteer_id': volunteer.id,
-                                    'participant_type': 'Presenter',
-                                    'status': 'Completed'
-                                }
-                                
-                                # Try to add hours if the model has that field
-                                try:
-                                    participation = EventParticipation(**participation_data)
-                                    # Attempt to set hours attribute - this will fail if the field doesn't exist
-                                    setattr(participation, 'hours', 1)
-                                except Exception as e:
-                                    current_app.logger.warning(f"Could not set hours on EventParticipation: {e}")
-                                    participation = EventParticipation(**participation_data)
-                                
-                                db.session.add(participation)
+                            # Try to set delivery_hours if that field exists
+                            try:
+                                participation = EventParticipation(**participation_data)
+                                if hasattr(EventParticipation, 'delivery_hours'):
+                                    participation.delivery_hours = event.duration / 60 if event.duration else 1
+                            except Exception as e:
+                                current_app.logger.warning(f"Could not set hours on EventParticipation: {e}")
+                                participation = EventParticipation(**participation_data)
                             
-                            # Add volunteer to event's volunteers list if not already there
-                            if volunteer not in event.volunteers:
-                                event.volunteers.append(volunteer)
+                            db.session.add(participation)
+                        
+                        # Add volunteer to event's volunteers list if not already there
+                        if volunteer not in event.volunteers:
+                            event.volunteers.append(volunteer)
+                        
+                        # Also update text-based fields for backwards compatibility
+                        if hasattr(event, 'professionals'):
+                            current_profs = []
+                            if event.professionals:
+                                current_profs = [p.strip() for p in event.professionals.split(';') if p.strip()]
+                            prof_name = f"{volunteer.first_name} {volunteer.last_name}"
+                            if prof_name not in current_profs:
+                                current_profs.append(prof_name)
+                                event.professionals = '; '.join(current_profs)
+                        
+                        if hasattr(event, 'professional_ids'):
+                            current_ids = []
+                            if event.professional_ids:
+                                current_ids = [id.strip() for id in event.professional_ids.split(';') if id.strip()]
+                            if str(volunteer.id) not in current_ids:
+                                current_ids.append(str(volunteer.id))
+                                event.professional_ids = '; '.join(current_ids)
                 
                 # Process teacher if present
                 teacher_name = row.get('Teacher Name')
@@ -720,6 +838,12 @@ def import_sheet():
                 
                 db.session.commit()
                 success_count += 1
+
+                # Add this right after assigning a presenter to an event
+                # DEBUGGING
+                current_app.logger.info(
+                    f"Added presenter '{presenter_name}' to event '{event.title}' (date: {event_datetime.date().isoformat()})"
+                )
 
             except Exception as e:
                 error_count += 1
@@ -795,3 +919,22 @@ def get_or_create_school(name, district=None):
         db.session.flush()
     
     return school
+
+def extract_session_id(session_link):
+    """Safely extract session ID from link with type checking"""
+    try:
+        if pd.isna(session_link) or session_link is None:
+            return None
+            
+        # Convert float to string if needed
+        if isinstance(session_link, (int, float)):
+            return str(int(session_link))
+            
+        # If it's a URL, extract the last part
+        link_str = str(session_link).strip()
+        if '/' in link_str:
+            return link_str.split('/')[-1]
+        return link_str
+    except Exception as e:
+        current_app.logger.warning(f"Error extracting session ID: {e} from {session_link}")
+        return None
