@@ -65,12 +65,18 @@ def reports():
             'title': 'New Skills Summary Report',
             'description': 'View new skills learned by students in events.',
             'icon': 'fa-solid fa-graduation-cap',
-            'url': '/reports/',
+            'url': '/reports/NewSkillsReports',
             'category': 'Student Learning'
         }
     ]
     
     return render_template('reports/reports.html', reports=available_reports)
+
+@report_bp.route('/reports/NewSkillsReports.html')
+@login_required
+def Skillreport():  
+    return render_template('reports/NewSkillsReports.html')
+
 
 @report_bp.route('/reports/virtual/usage')
 @login_required
@@ -309,13 +315,6 @@ def virtual_usage_district(district_name):
         monthly_stats=sorted_stats,
         current_filters=current_filters
     )
-
-
-
-
-
-
-
 
 @report_bp.route('/reports/volunteer/thankyou')
 @login_required
