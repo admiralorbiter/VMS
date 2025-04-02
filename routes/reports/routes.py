@@ -17,6 +17,9 @@ report_bp = Blueprint('report', __name__)
 @report_bp.route('/reports')
 @login_required
 def reports():
+    year = request.args.get('year', datetime.now().year)
+    year=year,
+    now=datetime.now()
     # Define available reports
     available_reports = [
         {
@@ -65,7 +68,7 @@ def reports():
             'title': 'New Skills Summary Report',
             'description': 'View new skills learned by students in events.',
             'icon': 'fa-solid fa-graduation-cap',
-            'url': '/reports/NewSkillsReports',
+            'url': '/reports/NewSkillsReports.html',
             'category': 'Student Learning'
         }
     ]
@@ -75,6 +78,9 @@ def reports():
 @report_bp.route('/reports/NewSkillsReports.html')
 @login_required
 def Skillreport():  
+    year = request.args.get('year', datetime.now().year) 
+    year=year,
+    now=datetime.now()
     return render_template('reports/NewSkillsReports.html')
 
 

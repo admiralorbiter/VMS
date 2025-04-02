@@ -1,1 +1,41 @@
-Hello World
+
+{% extends "base.html" %}
+
+{% block title %}New Skills Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/NewSkillsReports.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="thankyou-container">
+    <h1 class="page-header">New Skills Report</h1>
+    
+    <div class="filters">
+        <form method="GET" class="year-filter">
+            <label for="year">Year:</label>
+            <select name="year" id="year" onchange="this.form.submit()">
+                
+                <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+                
+            </select>
+        </form>
+    </div>
+  
+    <div class="organization-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Skills</th>
+                    <th>Skills Learned</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 
