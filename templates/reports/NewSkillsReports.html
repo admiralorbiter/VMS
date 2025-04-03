@@ -12,10 +12,14 @@
     <h1 class="page-header">New Skills Report</h1>
     
     <div class="filters">
-        <form method="GET" class="year-filter">
-            <label for="year">Year:</label>
-            <select name="year" id="year" onchange="this.form.submit()">
-                
+        
+                <label for="years">Filter by year:</label>
+                <select id="year" name="yearlist" form="yearform">
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
                 <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
                 
             </select>
