@@ -660,30 +660,82 @@ function importTeachers() {
 }
 
 function importStudents() {
-    if (confirm('Are you sure you want to import students from Salesforce?')) {
-        fetch('/attendance/import-students-from-salesforce', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                // Show detailed error message
-                const errorMessage = data.message || data.error || 'Unknown error occurred';
-                console.error('Import error:', data);
-                alert(`Error importing students: ${errorMessage}`);
-            }
-        })
-        .catch(error => {
-            console.error('Import error:', error);
-            alert(`Error importing students: ${error.message}`);
-        });
+    if (!confirm('Are you sure you want to import students from Salesforce? This may take several minutes.')) {
+        return;
     }
+
+    const btn = document.getElementById('importStudentsBtn');
+    const status = document.getElementById('importStudentsStatus');
+    const progress = document.getElementById('importStudentsProgress');
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Starting student import...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+
+    let totalRecords = 0;
+    let processedCount = 0;
+    const chunkSize = 5000; // Reduced to 5000 to stay within Salesforce limits
+
+    async function processChunk(lastId = null) {
+        try {
+            const response = await fetch('/attendance/import-students-from-salesforce', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    chunk_size: chunkSize,
+                    last_id: lastId
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.status === 'error') {
+                throw new Error(data.message);
+            }
+
+            // Update progress
+            totalRecords = data.total_records;
+            processedCount += data.processed_count;
+            const progressPercent = (processedCount / totalRecords) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            
+            // Update status
+            status.textContent = `Processed ${processedCount.toLocaleString()} of ${totalRecords.toLocaleString()} records`;
+
+            // If there are errors, log them to console
+            if (data.errors && data.errors.length > 0) {
+                console.log('Import errors:', data.errors);
+            }
+
+            // If not complete, process next chunk
+            if (!data.is_complete && data.next_id) {
+                await processChunk(data.next_id);
+            } else {
+                // Import complete
+                status.textContent = `Import complete: Processed ${processedCount.toLocaleString()} records`;
+                showToast('Success', `Student import completed successfully`, 'success');
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            status.textContent = `Error: ${error.message}`;
+            showToast('Error', `Failed to import students: ${error.message}`, 'error');
+            btn.disabled = false;
+            console.error('Import error:', error);
+        }
+    }
+
+    // Start processing with first chunk
+    processChunk().catch(error => {
+        status.textContent = `Fatal error: ${error.message}`;
+        showToast('Error', `Failed to import students: ${error.message}`, 'error');
+        btn.disabled = false;
+        console.error('Import error:', error);
+    });
 }
 
 function importHistory() {

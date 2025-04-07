@@ -618,11 +618,11 @@ def import_teachers_from_salesforce():
 @login_required
 def import_students_from_salesforce():
     try:
-        print("Starting student import from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
-
+        chunk_size = request.json.get('chunk_size', 2000)  # Reduced to 2000 to stay within limits
+        last_id = request.json.get('last_id', None)  # Use ID-based pagination instead of offset
+        
+        print(f"Starting student import from Salesforce (chunk_size: {chunk_size}, last_id: {last_id})...")
+        
         # Connect to Salesforce
         sf = Salesforce(
             username=Config.SF_USERNAME,
@@ -631,42 +631,61 @@ def import_students_from_salesforce():
             domain='login'
         )
 
-        # Query for students (limit 10 for testing)
-        student_query = """
+        # First, get total count
+        count_query = """
+        SELECT COUNT(Id) total
+        FROM Contact 
+        WHERE Contact_Type__c = 'Student'
+        """
+        result = sf.query(count_query)
+        total_records = result['records'][0]['total']
+        
+        # Query for students using ID-based pagination
+        base_query = """
         SELECT Id, AccountId, FirstName, LastName, MiddleName, Email, Phone,
                Local_Student_ID__c, Birthdate, Gender__c, Racial_Ethnic_Background__c,
                npsp__Primary_Affiliation__c, Class__c, Legacy_Grade__c, Current_Grade__c
         FROM Contact
         WHERE Contact_Type__c = 'Student'
-        Limit 100
+        {where_clause}
+        ORDER BY Id
+        LIMIT {limit}
         """
 
-        # Execute query
-        print("Fetching students from Salesforce...")
-        result = sf.query_all(student_query)
+        # Add WHERE clause for ID-based pagination
+        where_clause = f"AND Id > '{last_id}'" if last_id else ""
+        query = base_query.format(where_clause=where_clause, limit=chunk_size)
+        
+        print(f"Fetching students from Salesforce (chunk_size: {chunk_size}, last_id: {last_id})...")
+        result = sf.query(query)
         student_rows = result.get('records', [])
-        print(f"Found {len(student_rows)} students in Salesforce")
-
-        # Process each student
-        for index, row in enumerate(student_rows):
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        processed_ids = []
+        
+        # Process chunk
+        for row in student_rows:
             try:
                 # Get required fields
                 first_name = str(row.get('FirstName', '')).strip()
                 last_name = str(row.get('LastName', '')).strip()
+                sf_id = row['Id']
 
                 if not first_name or not last_name:
                     error_count += 1
-                    errors.append(f"Missing required name fields for student with Salesforce ID {row['Id']}")
+                    errors.append(f"Missing required name fields for student with Salesforce ID {sf_id}")
                     continue
 
                 # Check if student exists by Salesforce ID
                 student = Student.query.filter_by(
-                    salesforce_individual_id=row['Id']
+                    salesforce_individual_id=sf_id
                 ).first()
 
                 if not student:
                     student = Student()
-                    student.salesforce_individual_id = row['Id']
+                    student.salesforce_individual_id = sf_id
                     student.salesforce_account_id = row.get('AccountId')
 
                 # Update student fields
@@ -699,9 +718,11 @@ def import_students_from_salesforce():
 
                 if not student.id:
                     db.session.add(student)
+                
+                # Commit each student individually to prevent large transaction blocks
                 db.session.commit()
 
-                # Now handle email and phone with the valid student ID
+                # Handle contact info
                 try:
                     # Handle email
                     email_address = str(row.get('Email', '')).strip()
@@ -741,9 +762,10 @@ def import_students_from_salesforce():
                             )
                             db.session.add(phone_record)
 
-                    # Commit the email and phone records
+                    # Commit contact info
                     db.session.commit()
                     success_count += 1
+                    processed_ids.append(sf_id)
 
                 except Exception as e:
                     db.session.rollback()
@@ -752,20 +774,29 @@ def import_students_from_salesforce():
 
             except Exception as e:
                 db.session.rollback()
-                errors.append(f"Error processing student {first_name} {last_name}: {str(e)}")
+                errors.append(f"Error processing student {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
                 error_count += 1
                 continue
 
-        print(f"\nImport complete - Created/Updated: {success_count}, Errors: {error_count}")
+        # Get the last processed ID for the next chunk
+        next_id = processed_ids[-1] if processed_ids else None
+        is_complete = len(student_rows) < chunk_size  # If we got fewer records than chunk_size, we're done
+
+        print(f"\nChunk complete - Created/Updated: {success_count}, Errors: {error_count}")
         if errors:
             print("\nErrors encountered:")
-            for error in errors:
+            for error in errors[:10]:  # Show first 10 errors
                 print(f"- {error}")
                 
         return {
             'status': 'success',
-            'message': f'Processed {len(student_rows)} students ({success_count} successful, {error_count} errors)',
-            'errors': errors
+            'message': f'Processed chunk of {len(student_rows)} students ({success_count} successful, {error_count} errors)',
+            'total_records': total_records,
+            'processed_count': len(processed_ids),
+            'next_id': next_id if not is_complete else None,
+            'is_complete': is_complete,
+            'errors': errors[:100],  # Limit error list size in response
+            'processed_ids': processed_ids
         }
 
     except Exception as e:
@@ -774,5 +805,5 @@ def import_students_from_salesforce():
         return {
             'status': 'error',
             'message': error_msg,
-            'errors': errors
+            'errors': [str(e)]
         }
