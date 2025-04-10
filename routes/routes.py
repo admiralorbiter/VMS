@@ -16,6 +16,7 @@ from routes.playground.playground_route import playground_bp
 from routes.bug_reports.routes import bug_reports_bp
 from routes.client_projects.routes import client_projects_bp
 from routes.pathways.routes_pathways import pathways_bp
+from routes.auth.api import api_bp
 
 def init_routes(app):
     app.register_blueprint(auth_bp)
@@ -34,8 +35,9 @@ def init_routes(app):
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
     app.register_blueprint(pathways_bp)
+    app.register_blueprint(api_bp, url_prefix='/api/v1')
     init_filters(app)
-
+    
     @app.route('/')
     def index():
         return render_template('index.html')

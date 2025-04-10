@@ -1,7 +1,9 @@
 from enum import IntEnum
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from . import db
 from flask_login import UserMixin
+import secrets
+import uuid
 
 class SecurityLevel(IntEnum):
     """
@@ -32,6 +34,8 @@ class User(db.Model, UserMixin):
         security_level: User's security level (USER, SUPERVISOR, MANAGER, ADMIN)
         created_at: Timestamp of user creation (auto-set to UTC)
         updated_at: Timestamp of last update (auto-updates)
+        api_token: Token for API authentication
+        token_expiry: Expiration timestamp for the token
     """
     __tablename__ = 'users'  # Explicitly naming the table is a best practice
     
@@ -51,6 +55,10 @@ class User(db.Model, UserMixin):
     
     # Role-based access control
     security_level = db.Column(db.Integer, default=SecurityLevel.USER, nullable=False)
+    
+    # API Authentication
+    api_token = db.Column(db.String(64), unique=True, index=True)
+    token_expiry = db.Column(db.DateTime)
     
     # Audit timestamps - automatically track creation and updates
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -128,6 +136,85 @@ class User(db.Model, UserMixin):
                 cls.email == login
             )
         ).first()
+
+    def generate_api_token(self, expiration=30):
+        """
+        Generate a secure API token for this user.
+        
+        Args:
+            expiration: Token validity in days (default: 30)
+            
+        Returns:
+            The generated token
+        """
+        token = secrets.token_hex(32)  # 64 characters hex string
+        self.api_token = token
+        self.token_expiry = datetime.now(timezone.utc) + timedelta(days=expiration)
+        db.session.commit()
+        return token
+    
+    def check_api_token(self, token):
+        """
+        Check if the provided token is valid for this user.
+        
+        Args:
+            token: The token to validate
+            
+        Returns:
+            Boolean indicating if token is valid
+        """
+        if not self.api_token or not self.token_expiry:
+            return False
+        
+        if self.api_token != token:
+            return False
+        
+        # Convert token_expiry to UTC if it's naive
+        if self.token_expiry.tzinfo is None:
+            self.token_expiry = self.token_expiry.replace(tzinfo=timezone.utc)
+            
+        if datetime.now(timezone.utc) > self.token_expiry:
+            return False
+            
+        return True
+        
+    def revoke_api_token(self):
+        """
+        Revoke the current API token.
+        """
+        self.api_token = None
+        self.token_expiry = None
+        db.session.commit()
+    
+    @classmethod
+    def find_by_api_token(cls, token):
+        """
+        Find a user by their API token.
+        
+        Args:
+            token: The API token to search for
+            
+        Returns:
+            User instance or None if not found
+        """
+        return cls.query.filter_by(api_token=token).first()
+    
+    def to_dict(self):
+        """
+        Convert user object to dictionary for API responses.
+        Includes password hash for system synchronization.
+        """
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'security_level': self.security_level,
+            'password_hash': self.password_hash,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
 
     def __str__(self):
         """String representation of the user."""
