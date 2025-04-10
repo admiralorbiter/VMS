@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Active Bug Reports</h2>
+    
+    <div class="card mb-5">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Page</th>
+                            <th>Reported By</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports if not report.resolved %}
+                        <tr>
+                            <td>
+                                {% if report.type == BugReportType.BUG %}
+                                    <span class="badge bg-danger">Bug</span>
+                                {% elif report.type == BugReportType.DATA_ERROR %}
+                                    <span class="badge bg-warning">Data Error</span>
+                                {% else %}
+                                    <span class="badge bg-info">Other</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ report.description }}</td>
+                            <td>
+                                <a href="{{ report.page_url }}" target="_blank" title="{{ report.page_url }}">
+                                    {{ report.page_title or report.page_url|truncate(30) }}
+                                </a>
+                            </td>
+                            <td>{{ report.submitted_by.username }}</td>
+                            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-success" 
+                                            hx-get="/bug-reports/{{ report.id }}/resolve-form"
+                                            hx-target="#modalContent"
+                                            hx-trigger="click">
+                                        <i class="fas fa-check"></i> Resolve
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" 
+                                            onclick="deleteReport({{ report.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <h2>Resolved Bug Reports</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Resolution Notes</th>
+                            <th>Resolved By</th>
+                            <th>Resolved Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports if report.resolved %}
+                        <tr class="table-success">
+                            <td>
+                                {% if report.type == BugReportType.BUG %}
+                                    <span class="badge bg-danger">Bug</span>
+                                {% elif report.type == BugReportType.DATA_ERROR %}
+                                    <span class="badge bg-warning">Data Error</span>
+                                {% else %}
+                                    <span class="badge bg-info">Other</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ report.description }}
+                                <br>
+                                <small>
+                                    <a href="{{ report.page_url }}" target="_blank" class="text-muted">
+                                        {{ report.page_title or report.page_url|truncate(30) }}
+                                    </a>
+                                </small>
+                            </td>
+                            <td>{{ report.resolution_notes }}</td>
+                            <td>{{ report.resolved_by.username }}</td>
+                            <td>{{ report.resolved_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="deleteReport({{ report.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal container for HTMX -->
+<div id="modalContent"></div>
+
+<script>
+function deleteReport(reportId) {
+    if (confirm('Are you sure you want to delete this bug report? This action cannot be undone.')) {
+        fetch(`/bug-reports/${reportId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error deleting report: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+
+// Listen for the modal being added to the page
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'modalContent') {
+        // Find and show the modal
+        const modal = new bootstrap.Modal(document.querySelector('#resolveModal'));
+        modal.show();
+    }
+});
+</script>
+{% endblock %} 

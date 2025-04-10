@@ -16,9 +16,6 @@
             <li class="nav-item">
               <a class="nav-link" href="/events">Events</a>
             </li>
-            <li class="nav-item"></li>
-              <a class="nav-link" href="/organizations">Orgs</a>
-            </li>
             <li class="nav-item">
               <a class="nav-link" href="/reports">Reports</a>
             </li>
@@ -58,9 +55,23 @@
       {% if current_user.is_admin %}
       <li><a href="/history_table" class="side-nav-link">History</a></li>
       <li><a href="/schools" class="side-nav-link">Schools</a></li>
+      <li><a href="{{ url_for('client_projects.index') }}" class="side-nav-link">Client Projects</a></li>
       {% endif %}
+      <li class="nav-item">
+        <a class="nav-link" href="#" 
+           hx-get="/bug-report/form"
+           hx-target="#bugReportModal"
+           hx-trigger="click"
+           hx-swap="innerHTML">
+          <i class="fas fa-bug"></i>
+        </a>
+      </li>
       <!-- Add more items as needed -->
     </ul>
   </div>
+</div>
+  
+<div id="bugReportModal" class="modal" tabindex="-1">
+  <!-- Modal content will be loaded here -->
 </div>
   

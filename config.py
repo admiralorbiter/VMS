@@ -14,6 +14,8 @@ class Config:
     SF_PASSWORD = os.environ.get('SF_PASSWORD')
     SF_SECURITY_TOKEN = os.environ.get('SF_SECURITY_TOKEN')
     SYNC_AUTH_TOKEN = os.environ.get('SYNC_AUTH_TOKEN')
+    CLIENT_PROJECTS_SHEET_ID = os.environ.get('CLIENT_PROJECTS_SHEET_ID')
+    SCHOOL_MAPPING_GOOGLE_SHEET = os.environ.get('SCHOOL_MAPPING_GOOGLE_SHEET')
 
     def __init__(self):
         self.validate_config()

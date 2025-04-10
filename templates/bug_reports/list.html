@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Bug Reports</h2>
+  
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Page</th>
+          <th>Reported By</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for report in reports %}
+        <tr>
+          <td>{{ report.type.name }}</td>
+          <td>{{ report.description }}</td>
+          <td>
+            <a href="{{ report.page_url }}" target="_blank">
+              {{ report.page_title or report.page_url }}
+            </a>
+          </td>
+          <td>{{ report.submitted_by.username }}</td>
+          <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>
+            {% if report.resolved %}
+            <span class="badge bg-success">Resolved</span>
+            {% else %}
+            <span class="badge bg-warning">Open</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not report.resolved %}
+            <button class="btn btn-sm btn-success"
+                    hx-post="/bug-report/{{ report.id }}/resolve"
+                    hx-confirm="Mark this report as resolved?">
+              Resolve
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %} 

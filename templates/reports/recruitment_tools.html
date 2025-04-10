@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Recruitment Tools{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+    <h1 class="page-header">Recruitment Tools</h1>
+    <p class="page-description">
+        Select a recruitment tool to help match volunteers with upcoming events and opportunities.
+    </p>
+
+    <div class="reports-grid">
+        {% for tool in tools %}
+        <a href="{{ tool.url }}" class="report-card">
+            <div class="report-header">
+                <div class="report-icon">
+                    <i class="{{ tool.icon }}"></i>
+                </div>
+                <h2 class="report-title">{{ tool.title }}</h2>
+            </div>
+            <p class="report-description">{{ tool.description }}</p>
+            <span class="report-category">{{ tool.category }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

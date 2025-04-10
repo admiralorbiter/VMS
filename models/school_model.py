@@ -27,6 +27,9 @@ class School(db.Model):
     normalized_name = db.Column(db.String(255))  # Standardized name for consistent searching
     school_code = db.Column(db.String(255))  # External reference code
     
+    # Add the new level field
+    level = db.Column(db.String(50))  # Can store values like 'High', 'Elementary', 'Middle', etc.
+    
     # Relationship definition for both models
     # - backref creates a 'schools' property on District model
     # - lazy='dynamic' makes district.schools return a query object instead of a list

@@ -3,6 +3,7 @@
 import sqlite3
 import os
 from datetime import datetime, timezone
+from models.user import db, User
 
 OLD_DB_PATH = os.path.join("instance", "old.db")
 NEW_DB_PATH = os.path.join("instance", "your_database.db")

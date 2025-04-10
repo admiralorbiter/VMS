@@ -1,18 +1,23 @@
-from flask import Blueprint, render_template, request, flash, jsonify
+from flask import Blueprint, render_template, request, flash, jsonify, make_response, send_file
 from flask_login import login_required
-from sqlalchemy import extract
+from sqlalchemy import any_, extract
 from models.event import Event, EventAttendance, EventType, EventStatus
 from datetime import datetime, timedelta
 from models.school_model import School
 from models.teacher import Teacher
 from models.upcoming_events import UpcomingEvent
-from models.volunteer import Volunteer, EventParticipation, Skill
+from models.volunteer import Volunteer, EventParticipation, Skill, VolunteerSkill
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts
 from models.district_model import District
 from models.reports import DistrictYearEndReport
 from models import db  # Import db from models instead of creating new instance
+from models.pathways import Pathway
 import json
+import pytz
+import pandas as pd
+import io
+import xlsxwriter
 
 report_bp = Blueprint('report', __name__)
 
@@ -50,11 +55,11 @@ def reports():
             'category': 'District Reports'
         },
         {
-            'title': 'Recruitment Report',
-            'description': 'Shows upcoming unfilled events, volunteer search, and skill matching to industry/jobs.',
-            'icon': 'fa-solid fa-file-alt',
+            'title': 'Recruitment Tools',
+            'description': 'Access various tools for volunteer recruitment and event matching.',
+            'icon': 'fa-solid fa-users',
             'url': '/reports/recruitment',
-            'category': 'General Reports'
+            'category': 'Recruitment'
         },
         {
             'title': 'Event Contact Report',
@@ -62,6 +67,13 @@ def reports():
             'icon': 'fa-solid fa-address-book',
             'url': '/reports/contact',
             'category': 'Event Management'
+        },
+        {
+            'title': 'Pathway Report',
+            'description': 'View pathway statistics including student participation, events, and contact engagement.',
+            'icon': 'fa-solid fa-road',
+            'url': '/reports/pathways',
+            'category': 'Program Reports'
         }
     ]
     
@@ -564,13 +576,21 @@ def district_year_end():
     school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
     school_years.reverse()  # Most recent first
     
+    # Convert UTC time to Central time for display
+    last_updated = None
+    if cached_reports:
+        utc_time = min(report.last_updated for report in cached_reports)
+        # Convert to Central time (UTC-6 or UTC-5 depending on daylight savings)
+        central = pytz.timezone('America/Chicago')
+        last_updated = utc_time.replace(tzinfo=pytz.UTC).astimezone(central)
+    
     return render_template(
         'reports/district_year_end.html',
         districts=district_stats,
         school_year=school_year,
         school_years=school_years,
         now=datetime.now(),
-        last_updated=min(report.last_updated for report in cached_reports) if cached_reports else None
+        last_updated=last_updated
     )
 
 @report_bp.route('/reports/district/year-end/refresh', methods=['POST'])
@@ -578,15 +598,27 @@ def district_year_end():
 def refresh_district_year_end():
     """Refresh the cached district year-end report data"""
     school_year = request.args.get('school_year', get_current_school_year())
+    print(f"Starting refresh for school year: {school_year}")  # Debug log
     
     try:
         # Delete existing cached reports for this school year
-        DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+        deleted_count = DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+        print(f"Deleted {deleted_count} existing cache entries")  # Debug log
         db.session.commit()
         
         # Generate new stats
         district_stats = generate_district_stats(school_year)
+        print(f"Generated new stats for {len(district_stats)} districts")  # Debug log
+        
+        # Debug log event types for each district
+        for district_name, stats in district_stats.items():
+            print(f"District {district_name} event types: {stats['event_types']}")
+            event_count = sum(stats['event_types'].values())
+            print(f"Total events for {district_name}: {event_count}")
+        
+        # Cache the stats
         cache_district_stats(school_year, district_stats)
+        print("Successfully cached new stats")  # Debug log
         
         return jsonify({
             'success': True, 
@@ -594,6 +626,7 @@ def refresh_district_year_end():
         })
     except Exception as e:
         db.session.rollback()
+        print(f"Error during refresh: {str(e)}")  # Debug log
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_district_stats(school_year):
@@ -601,16 +634,20 @@ def generate_district_stats(school_year):
     district_stats = {}
     districts = District.query.order_by(District.name).all()
     start_date, end_date = get_school_year_date_range(school_year)
+    print(f"Date range: {start_date} to {end_date}")  # Debug log
     
-    # Define event types to exclude
-    excluded_event_types = ['virtual_session', 'connector_session']
+    # Only exclude connector sessions
+    excluded_event_types = ['connector_session']
+    print(f"Excluded event types: {excluded_event_types}")  # Debug log
     
     for district in districts:
+        print(f"\nProcessing district: {district.name}")  # Debug log
         # Get all schools for this district
         schools = School.query.filter_by(district_id=district.id).all()
+        print(f"Found {len(schools)} schools for district")  # Debug log
         
         # Query events using both relationships and text matching
-        events = Event.query.filter(
+        events_query = Event.query.filter(
             db.or_(
                 Event.districts.contains(district),
                 Event.school.in_([school.id for school in schools]),
@@ -624,7 +661,17 @@ def generate_district_stats(school_year):
             Event.start_date <= end_date,
             Event.status == EventStatus.COMPLETED,
             ~Event.type.in_([EventType(t) for t in excluded_event_types])
-        ).distinct().all()
+        )
+        
+        events = events_query.distinct().all()
+        print(f"Found {len(events)} total events")  # Debug log
+        
+        # Debug log event types
+        event_types_found = {}
+        for event in events:
+            event_type = event.type.value if event.type else 'unknown'
+            event_types_found[event_type] = event_types_found.get(event_type, 0) + 1
+        print(f"Event types found: {event_types_found}")  # Debug log
         
         # Initialize stats dictionary
         stats = {
@@ -634,7 +681,7 @@ def generate_district_stats(school_year):
             'total_students': 0,
             'total_volunteers': 0,
             'total_volunteer_hours': 0,
-            'event_types': {},
+            'event_types': event_types_found,
             'schools_reached': set(),
             'monthly_breakdown': {},
             'career_clusters': set()
@@ -642,40 +689,80 @@ def generate_district_stats(school_year):
         
         # Calculate statistics
         for event in events:
-            # Use participant_count instead of attended_count
-            student_count = event.participant_count or 0
+            # Get student count based on event type
+            student_count = 0
+            if event.type == EventType.VIRTUAL_SESSION:
+                student_count = event.attended_count or 0
+            elif hasattr(event, 'attendance') and event.attendance:
+                student_count = event.attendance.total_attendance
+            else:
+                student_count = event.participant_count or 0
+            
             stats['total_students'] += student_count
             
-            for participation in event.volunteer_participations:
-                if participation.status == 'Attended':
-                    stats['total_volunteers'] += 1
-                    stats['total_volunteer_hours'] += participation.delivery_hours or 0
+            # Track volunteer participation with improved counting for virtual events
+            if event.type == EventType.VIRTUAL_SESSION:
+                # For virtual sessions, count all volunteers with Completed or Successfully Completed status
+                volunteer_participations = EventParticipation.query.filter(
+                    EventParticipation.event_id == event.id,
+                    EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+                ).all()
+                
+                # If we found participations, use them
+                if volunteer_participations:
+                    volunteer_count = len(volunteer_participations)
+                    volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+                else:
+                    # If no participations but the event is completed, assume 1 volunteer and 1 hour
+                    volunteer_count = 1
+                    volunteer_hours = 1.0
+            else:
+                # For non-virtual events, use the standard attendance counting
+                volunteer_participations = EventParticipation.query.filter(
+                    EventParticipation.event_id == event.id,
+                    EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+                ).all()
+                
+                volunteer_count = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
             
-            event_type = event.type.value if event.type else 'unknown'
-            if event_type not in excluded_event_types:
-                stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
+            # Add debug info for virtual events
+            if event.type == EventType.VIRTUAL_SESSION:
+                print(f"Virtual event: '{event.title}', Volunteers: {volunteer_count}, Hours: {volunteer_hours}")
             
+            stats['total_volunteers'] += volunteer_count
+            stats['total_volunteer_hours'] += volunteer_hours
+            
+            # Track schools and career clusters
             if event.school:
                 stats['schools_reached'].add(event.school)
+            if event.series:
+                stats['career_clusters'].add(event.series)
             
+            # Monthly breakdown
             month = event.start_date.strftime('%B %Y')
             if month not in stats['monthly_breakdown']:
                 stats['monthly_breakdown'][month] = {
                     'events': 0,
                     'students': 0,
-                    'volunteers': 0
+                    'volunteers': 0,
+                    'volunteer_hours': 0
                 }
             stats['monthly_breakdown'][month]['events'] += 1
             stats['monthly_breakdown'][month]['students'] += student_count
-            stats['monthly_breakdown'][month]['volunteers'] += len([p for p in event.volunteer_participations if p.status == 'Attended'])
-            
-            if event.series:
-                stats['career_clusters'].add(event.series)
+            stats['monthly_breakdown'][month]['volunteers'] += volunteer_count
+            stats['monthly_breakdown'][month]['volunteer_hours'] += volunteer_hours
         
-        # Convert sets to counts
+        # Convert sets to counts and round hours
         stats['schools_reached'] = len(stats['schools_reached'])
         stats['career_clusters'] = len(stats['career_clusters'])
         stats['total_volunteer_hours'] = round(stats['total_volunteer_hours'], 1)
+        
+        # Round monthly volunteer hours
+        for month in stats['monthly_breakdown']:
+            stats['monthly_breakdown'][month]['volunteer_hours'] = round(
+                stats['monthly_breakdown'][month]['volunteer_hours'], 1
+            )
         
         district_stats[district.name] = stats
     
@@ -721,7 +808,30 @@ def update_event_districts(event, district_names):
 
 @report_bp.route('/reports/recruitment')
 @login_required
-def recruitment_report():
+def recruitment_tools():
+    recruitment_tools = [
+        {
+            'title': 'Quick Recruitment Tool',
+            'description': 'View upcoming unfilled events and search volunteers by skills and availability.',
+            'icon': 'fa-solid fa-bolt',
+            'url': '/reports/recruitment/quick',
+            'category': 'Recruitment'
+        },
+        {
+            'title': 'Advanced Volunteer Search',
+            'description': 'Search volunteers using multiple filters including skills, past events, and volunteer history.',
+            'icon': 'fa-solid fa-search',
+            'url': '/reports/recruitment/search',
+            'category': 'Recruitment'
+        }
+    ]
+    
+    return render_template('reports/recruitment_tools.html', tools=recruitment_tools)
+
+# Rename the existing recruitment route to quick_recruitment
+@report_bp.route('/reports/recruitment/quick')
+@login_required
+def quick_recruitment():
     # Get upcoming events that need volunteers from the UpcomingEvent model
     upcoming_events = UpcomingEvent.query.filter(
         UpcomingEvent.start_date >= datetime.now(),
@@ -956,15 +1066,16 @@ def district_year_end_detail(district_name):
     # Get all events for this district within the school year
     start_date, end_date = get_school_year_date_range(school_year)
     
-    # Define event types to exclude
-    excluded_event_types = ['virtual_session', 'connector_session']
-    
-    # Update the query to include EventAttendance
+    # Define event types to exclude - remove virtual_session from exclusion
+    excluded_event_types = ['connector_session']
+
+    # Update the query to include EventAttendance and status filter
     events = (Event.query
         .outerjoin(School, Event.school == School.id)
         .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
         .filter(
             Event.start_date.between(start_date, end_date),
+            Event.status == EventStatus.COMPLETED,
             ~Event.type.in_([EventType(t) for t in excluded_event_types]),
             db.or_(
                 Event.districts.contains(district),
@@ -990,16 +1101,32 @@ def district_year_end_detail(district_name):
                 'total_volunteer_hours': 0
             }
         
-        # Get attendance count from EventAttendance if available
+        # Get attendance count from EventAttendance if available, or attended_count for virtual sessions
         student_count = 0
-        if hasattr(event, 'attendance') and event.attendance:
+        if event.type == EventType.VIRTUAL_SESSION:
+            student_count = event.attended_count or 0
+        elif hasattr(event, 'attendance') and event.attendance:
             student_count = event.attendance.total_attendance
         else:
             student_count = event.participant_count or 0
             
-        # Get volunteer stats for this event
-        volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
-        volunteer_hours = sum(p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended')
+        # Get volunteer stats for this event with special handling for virtual events
+        if event.type == EventType.VIRTUAL_SESSION:
+            # For virtual sessions, count all volunteers with Completed or Successfully Completed status
+            volunteer_participations = [p for p in event.volunteer_participations 
+                                      if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            
+            if volunteer_participations:
+                volunteer_count = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            else:
+                # If no participations but the event is completed, assume 1 volunteer and 1 hour
+                volunteer_count = 1
+                volunteer_hours = 1.0
+        else:
+            # For non-virtual events, use the standard attendance counting
+            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
         
         # Get school name safely
         school_name = None
@@ -1027,11 +1154,369 @@ def district_year_end_detail(district_name):
         events_by_month[month]['total_volunteers'] += volunteer_count
         events_by_month[month]['total_volunteer_hours'] += volunteer_hours
 
+    # Organize events by school
+    schools_by_level = {
+        'High': [],
+        'Middle': [],
+        'Elementary': [],
+        None: []  # For schools without a level
+    }
+    
+    # Get all schools in the district
+    district_schools = School.query.filter_by(district_id=district.id).all()
+    
+    # Create a mapping of school IDs to their data
+    school_data = {}
+    for school in district_schools:
+        school_data[school.id] = {
+            'name': school.name,
+            'level': school.level,
+            'events': [],
+            'total_students': 0,
+            'total_volunteers': 0,
+            'total_volunteer_hours': 0
+        }
+    
+    # Process events for each school
+    for event in events:
+        school_id = event.school if isinstance(event.school, str) else None
+        if school_id in school_data:
+            school = school_data[school_id]
+            
+            # Get attendance and volunteer data
+            student_count = event.participant_count or 0
+            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+            
+            # Add event data - Add type to the event data
+            school['events'].append({
+                'id': event.id,
+                'title': event.title,
+                'date': event.start_date.strftime('%m/%d/%Y'),
+                'type': event.type.value if event.type else 'Unknown',
+                'students': student_count,
+                'volunteers': volunteer_count,
+                'volunteer_hours': volunteer_hours
+            })
+            
+            # Update totals
+            school['total_students'] += student_count
+            school['total_volunteers'] += volunteer_count
+            school['total_volunteer_hours'] += volunteer_hours
+    
+    # Organize schools by level
+    for school_id, data in school_data.items():
+        school = School.query.get(school_id)
+        level = school.level if school else None
+        if level not in schools_by_level:
+            level = None
+        schools_by_level[level].append(data)
+    
+    # Sort schools within each level by name
+    for level in schools_by_level:
+        schools_by_level[level].sort(key=lambda x: x['name'])
+
     return render_template(
         'reports/district_year_end_detail.html',
         district=district,
         school_year=school_year,
         stats=stats,
         events_by_month=events_by_month,
+        schools_by_level=schools_by_level,
         total_events=len(events)
+    )
+
+@report_bp.route('/reports/recruitment/search')
+@login_required
+def recruitment_search():
+    # Get search query, pagination, and sorting parameters
+    search_query = request.args.get('search', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    sort_by = request.args.get('sort', 'name')
+    order = request.args.get('order', 'asc')
+    search_mode = request.args.get('search_mode', 'wide')  # Default to wide search
+    
+    # Base query joining necessary tables
+    query = Volunteer.query.outerjoin(
+        VolunteerOrganization
+    ).outerjoin(
+        Organization
+    ).outerjoin(
+        VolunteerSkill
+    ).outerjoin(
+        Skill
+    ).outerjoin(
+        EventParticipation
+    ).outerjoin(
+        Event
+    )
+    
+    # Apply search if provided
+    if search_query:
+        # Split search query into terms and remove empty strings
+        search_terms = [term.strip() for term in search_query.split() if term.strip()]
+        
+        if search_mode == 'wide':
+            # OR mode: Match any term across all fields
+            search_conditions = []
+            for term in search_terms:
+                search_conditions.append(
+                    db.or_(
+                        Volunteer.first_name.ilike(f'%{term}%'),
+                        Volunteer.last_name.ilike(f'%{term}%'),
+                        Organization.name.ilike(f'%{term}%'),
+                        Skill.name.ilike(f'%{term}%'),
+                        Event.title.ilike(f'%{term}%')
+                    )
+                )
+            query = query.filter(db.or_(*search_conditions))
+        else:
+            # Narrow mode: Must match all terms
+            for term in search_terms:
+                query = query.filter(
+                    db.or_(
+                        Volunteer.first_name.ilike(f'%{term}%'),
+                        Volunteer.last_name.ilike(f'%{term}%'),
+                        Organization.name.ilike(f'%{term}%'),
+                        Skill.name.ilike(f'%{term}%'),
+                        Event.title.ilike(f'%{term}%')
+                    )
+                )
+    
+    # Apply sorting
+    if sort_by == 'name':
+        if order == 'asc':
+            query = query.order_by(Volunteer.first_name, Volunteer.last_name)
+        else:
+            query = query.order_by(db.desc(Volunteer.first_name), db.desc(Volunteer.last_name))
+    elif sort_by == 'organization':
+        if order == 'asc':
+            query = query.order_by(Organization.name)
+        else:
+            query = query.order_by(db.desc(Organization.name))
+    elif sort_by == 'last_email':
+        if order == 'asc':
+            query = query.order_by(Volunteer.last_non_internal_email_date)
+        else:
+            query = query.order_by(db.desc(Volunteer.last_non_internal_email_date))
+    elif sort_by == 'last_volunteer':
+        if order == 'asc':
+            query = query.order_by(Volunteer.last_volunteer_date)
+        else:
+            query = query.order_by(db.desc(Volunteer.last_volunteer_date))
+    elif sort_by == 'times_volunteered':
+        subquery = db.session.query(
+            EventParticipation.volunteer_id,
+            db.func.count(EventParticipation.id).label('volunteer_count')
+        ).group_by(EventParticipation.volunteer_id).subquery()
+        
+        query = query.outerjoin(
+            subquery, Volunteer.id == subquery.c.volunteer_id
+        ).order_by(
+            db.desc(subquery.c.volunteer_count) if order == 'desc' else subquery.c.volunteer_count
+        )
+    
+    # Add pagination
+    pagination = query.distinct().paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    return render_template(
+        'reports/recruitment_search.html',
+        volunteers=pagination.items,
+        search_query=search_query,
+        pagination=pagination,
+        sort_by=sort_by,
+        order=order,
+        search_mode=search_mode  # Pass the search mode to the template
+    )
+
+@report_bp.route('/reports/pathways')
+@login_required
+def pathways_report():
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    selected_year = int(request.args.get('year', datetime.now().year))
+    
+    # Base query
+    query = Pathway.query
+    
+    # Apply search filter if provided
+    if search:
+        query = query.filter(Pathway.name.ilike(f'%{search}%'))
+    
+    # Get all pathways
+    pathways = query.all()
+    
+    # Get current year for the year filter dropdown
+    current_year = datetime.now().year
+    
+    return render_template('reports/pathways.html',
+                         pathways=pathways,
+                         search=search,
+                         selected_year=selected_year,
+                         current_year=current_year)
+
+@report_bp.route('/reports/pathways/<int:pathway_id>')
+@login_required
+def pathway_detail(pathway_id):
+    # Get the pathway
+    pathway = Pathway.query.get_or_404(pathway_id)
+    
+    # Get active events (not completed or cancelled)
+    active_events = [event for event in pathway.events 
+                    if event.status not in [EventStatus.COMPLETED, EventStatus.CANCELLED]]
+    
+    # Calculate total attendance
+    total_attendance = sum(event.attended_count or 0 for event in pathway.events)
+    
+    return render_template('reports/pathway_detail.html',
+                         pathway=pathway,
+                         active_events=active_events,
+                         total_attendance=total_attendance)
+
+@report_bp.route('/reports/district/year-end/<district_name>/excel')
+@login_required
+def district_year_end_excel(district_name):
+    """Generate Excel file for district year-end report"""
+    school_year = request.args.get('school_year', get_current_school_year())
+    
+    # Get district
+    district = District.query.filter_by(name=district_name).first_or_404()
+    
+    # Get date range for school year
+    start_date, end_date = get_school_year_date_range(school_year)
+    
+    # Define event types to exclude
+    excluded_event_types = ['connector_session']
+
+    # Query events for this district in the given school year
+    events = (Event.query
+        .outerjoin(School, Event.school == School.id)
+        .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
+        .filter(
+            Event.start_date.between(start_date, end_date),
+            Event.status == EventStatus.COMPLETED,
+            ~Event.type.in_([EventType(t) for t in excluded_event_types]),
+            db.or_(
+                Event.districts.contains(district),
+                Event.school.in_([school.id for school in district.schools]),
+                *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
+                *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
+                Event.district_partner.ilike(f"%{district.name}%"),
+                Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
+            )
+        )
+        .order_by(Event.start_date)
+        .all())
+    
+    # Prepare data for Excel
+    data = []
+    for event in events:
+        # Get student count
+        student_count = 0
+        if event.type == EventType.VIRTUAL_SESSION:
+            student_count = event.attended_count or 0
+        elif hasattr(event, 'attendance') and event.attendance:
+            student_count = event.attendance.total_attendance
+        else:
+            student_count = event.participant_count or 0
+            
+        # Get volunteer stats
+        if event.type == EventType.VIRTUAL_SESSION:
+            volunteer_participations = [p for p in event.volunteer_participations 
+                                      if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            
+            if volunteer_participations:
+                volunteer_count = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            else:
+                # If no participations but event is completed, assume 1 volunteer and 1 hour
+                volunteer_count = 1
+                volunteer_hours = 1.0
+        else:
+            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+        
+        # Get school info
+        school_name = None
+        school_level = None
+        if hasattr(event, 'school') and event.school is not None:
+            if isinstance(event.school, School):
+                school_name = event.school.name
+                school_level = event.school.level
+            elif isinstance(event.school, str):
+                school = School.query.get(event.school)
+                if school:
+                    school_name = school.name
+                    school_level = school.level
+        
+        # Add event data
+        data.append({
+            'Date': event.start_date.strftime('%m/%d/%Y'),
+            'Time': event.start_date.strftime('%I:%M %p'),
+            'Event': event.title,
+            'Type': event.type.value if event.type else 'Unknown',
+            'Location': event.location or 'Virtual',
+            'Students': student_count,
+            'Volunteers': volunteer_count,
+            'Hours': round(volunteer_hours, 1),
+            'School': school_name or 'N/A',
+            'Level': school_level or 'N/A'
+        })
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    
+    # Write data to Excel
+    df.to_excel(writer, sheet_name='Events', index=False)
+    
+    # Get the xlsxwriter workbook and worksheet objects
+    workbook = writer.book
+    worksheet = writer.sheets['Events']
+    
+    # Add some formatting
+    header_format = workbook.add_format({
+        'bold': True,
+        'text_wrap': True,
+        'valign': 'top',
+        'bg_color': '#D6E9F8',
+        'border': 1
+    })
+    
+    # Write the column headers with the defined format
+    for col_num, value in enumerate(df.columns.values):
+        worksheet.write(0, col_num, value, header_format)
+        
+    # Set column widths
+    worksheet.set_column('A:A', 12)  # Date
+    worksheet.set_column('B:B', 10)  # Time
+    worksheet.set_column('C:C', 30)  # Event
+    worksheet.set_column('D:D', 15)  # Type
+    worksheet.set_column('E:E', 20)  # Location
+    worksheet.set_column('F:F', 10)  # Students
+    worksheet.set_column('G:G', 10)  # Volunteers
+    worksheet.set_column('H:H', 10)  # Hours
+    worksheet.set_column('I:I', 25)  # School
+    worksheet.set_column('J:J', 15)  # Level
+    
+    # Close the writer and output the Excel file
+    writer.close()
+    output.seek(0)
+    
+    # Generate filename
+    filename = f"{district_name.replace(' ', '_')}_{school_year}_Year_End_Report.xlsx"
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        download_name=filename,
+        as_attachment=True
     )

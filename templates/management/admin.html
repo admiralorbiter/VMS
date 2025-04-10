@@ -1,6 +1,86 @@
 {% extends "base.html" %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+    /* Custom Modal Styles */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: none;
+    }
+    
+    .modal-backdrop.show {
+        display: block;
+    }
+    
+    .modal-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        z-index: 1010;
+        max-width: 500px;
+        width: 90%;
+        display: none;
+    }
+    
+    .modal-container.show {
+        display: block;
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+    }
+    
+    .modal-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .form-group label {
+        font-weight: bold;
+    }
+    
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+    }
+    .modal-container.show {
+        display: block;
+    }
+</style>
 {% endblock %}
 {% block content %}
 <div class="container mt-4">
@@ -191,11 +271,35 @@
                     </div>
                 </div>
 
-                <!-- 9. Virtual Events -->
+                <!-- 9. Pathways -->
+                <div class="import-item">
+                    <button onclick="importPathways()" class="btn admin-btn-import" id="importPathwaysBtn">
+                        <i class="fas fa-road"></i>
+                        <span>9. Import Pathways</span>
+                    </button>
+                    <div class="import-status" id="importPathwaysStatus"></div>
+                    <div class="import-progress" id="importPathwaysProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- 9a. Pathway Participants -->
+                <div class="import-item">
+                    <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
+                        <i class="fas fa-users"></i>
+                        <span>9a. Import Pathway Participants</span>
+                    </button>
+                    <div class="import-status" id="importPathwayParticipantsStatus"></div>
+                    <div class="import-progress" id="importPathwayParticipantsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- 10. Virtual Events -->
                 <div class="import-item">
                     <button onclick="importVirtualEvents()" class="btn admin-btn-import" id="importVirtualBtn">
                         <i class="fas fa-video"></i>
-                        <span>9. Import Virtual Events</span>
+                        <span>10. Import Virtual Events</span>
                     </button>
                     <div class="import-status" id="importVirtualStatus"></div>
                     <div class="import-progress" id="importVirtualProgress">
@@ -259,6 +363,16 @@
             <div class="import-status" id="refreshDistrictReportStatus"></div>
         </div>
     </div>
+
+    <!-- System Management -->
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">System Management</h5>
+            <a href="{{ url_for('management.bug_reports') }}" class="btn btn-primary">
+                <i class="fas fa-bug"></i> View Bug Reports
+            </a>
+        </div>
+    </div>
     {% endif %}
     <!-- Toast Container for Notifications -->
     <div class="toast-container" id="toastContainer"></div>
@@ -273,6 +387,7 @@
                         <tr>
                             <th>Username</th>
                             <th>Email</th>
+                            <th>Security Level</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -282,9 +397,30 @@
                         <tr>
                             <td>{{ user.username }}</td>
                             <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.security_level == SecurityLevel.USER %}
+                                    <span class="badge bg-secondary">User</span>
+                                {% elif user.security_level == SecurityLevel.SUPERVISOR %}
+                                    <span class="badge bg-info">Supervisor</span>
+                                {% elif user.security_level == SecurityLevel.MANAGER %}
+                                    <span class="badge bg-primary">Manager</span>
+                                {% elif user.security_level == SecurityLevel.ADMIN %}
+                                    <span class="badge bg-danger">Admin</span>
+                                {% endif %}
+                            </td>
                             <td>{{ user.created_at|format_date }}</td>
                             <td>
-                                {% if user.is_admin %}
+                                <!-- Add the Edit button with htmx -->
+                                <button 
+                                    hx-get="/management/users/{{ user.id }}/edit"
+                                    hx-target="#userEditModal"
+                                    hx-trigger="click"
+                                    class="btn btn-primary btn-sm me-2"
+                                    _="on click add .show to #modalBackdrop">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                
+                                {% if current_user.can_manage_user(user) %}
                                 <button onclick="deleteUser('{{ user.id }}')" class="btn admin-btn-danger btn-sm">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
@@ -298,6 +434,10 @@
         </div>
     </div>
 </div>
+
+<!-- Simple Modal for User Editing -->
+<div id="modalBackdrop" class="modal-backdrop" _="on click if target.id is 'modalBackdrop' remove .show from me"></div>
+<div id="userEditModal" class="modal-container"></div>
 
 <script>
 document.getElementById('updateLocalStatus').addEventListener('click', function() {
@@ -520,30 +660,82 @@ function importTeachers() {
 }
 
 function importStudents() {
-    if (confirm('Are you sure you want to import students from Salesforce?')) {
-        fetch('/attendance/import-students-from-salesforce', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                // Show detailed error message
-                const errorMessage = data.message || data.error || 'Unknown error occurred';
-                console.error('Import error:', data);
-                alert(`Error importing students: ${errorMessage}`);
-            }
-        })
-        .catch(error => {
-            console.error('Import error:', error);
-            alert(`Error importing students: ${error.message}`);
-        });
+    if (!confirm('Are you sure you want to import students from Salesforce? This may take several minutes.')) {
+        return;
     }
+
+    const btn = document.getElementById('importStudentsBtn');
+    const status = document.getElementById('importStudentsStatus');
+    const progress = document.getElementById('importStudentsProgress');
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Starting student import...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+
+    let totalRecords = 0;
+    let processedCount = 0;
+    const chunkSize = 5000; // Reduced to 5000 to stay within Salesforce limits
+
+    async function processChunk(lastId = null) {
+        try {
+            const response = await fetch('/attendance/import-students-from-salesforce', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    chunk_size: chunkSize,
+                    last_id: lastId
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.status === 'error') {
+                throw new Error(data.message);
+            }
+
+            // Update progress
+            totalRecords = data.total_records;
+            processedCount += data.processed_count;
+            const progressPercent = (processedCount / totalRecords) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            
+            // Update status
+            status.textContent = `Processed ${processedCount.toLocaleString()} of ${totalRecords.toLocaleString()} records`;
+
+            // If there are errors, log them to console
+            if (data.errors && data.errors.length > 0) {
+                console.log('Import errors:', data.errors);
+            }
+
+            // If not complete, process next chunk
+            if (!data.is_complete && data.next_id) {
+                await processChunk(data.next_id);
+            } else {
+                // Import complete
+                status.textContent = `Import complete: Processed ${processedCount.toLocaleString()} records`;
+                showToast('Success', `Student import completed successfully`, 'success');
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            status.textContent = `Error: ${error.message}`;
+            showToast('Error', `Failed to import students: ${error.message}`, 'error');
+            btn.disabled = false;
+            console.error('Import error:', error);
+        }
+    }
+
+    // Start processing with first chunk
+    processChunk().catch(error => {
+        status.textContent = `Fatal error: ${error.message}`;
+        showToast('Error', `Failed to import students: ${error.message}`, 'error');
+        btn.disabled = false;
+        console.error('Import error:', error);
+    });
 }
 
 function importHistory() {
@@ -683,7 +875,8 @@ async function importAllSequentially() {
         { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
         { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
         { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
-        { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' }
+        { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' },
+        { route: '/pathways/import-from-salesforce', name: 'Pathways', btnId: 'importPathwaysBtn' }
     ];
 
     // Disable all import buttons
@@ -868,5 +1061,107 @@ function importVirtualEvents() {
         });
     }
 }
+
+function importPathways() {
+    // Disable the button and show loading state
+    const button = document.getElementById('importPathwaysBtn');
+    const status = document.getElementById('importPathwaysStatus');
+    const progress = document.getElementById('importPathwaysProgress');
+    
+    button.disabled = true;
+    status.textContent = 'Importing pathways...';
+    progress.style.display = 'block';
+    
+    // Make the API call
+    fetch('/pathways/import-from-salesforce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = data.message;
+            status.style.color = 'green';
+        } else {
+            status.textContent = data.message || 'Import failed';
+            status.style.color = 'red';
+        }
+        
+        // Show errors if any
+        if (data.errors && data.errors.length > 0) {
+            console.log('Import errors:', data.errors);
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Import failed: ' + error.message;
+        status.style.color = 'red';
+        console.error('Import error:', error);
+    })
+    .finally(() => {
+        button.disabled = false;
+        progress.style.display = 'none';
+    });
+}
+
+function importPathwayParticipants() {
+    // Disable the button and show loading state
+    const button = document.getElementById('importPathwayParticipantsBtn');
+    const status = document.getElementById('importPathwayParticipantsStatus');
+    const progress = document.getElementById('importPathwayParticipantsProgress');
+    
+    button.disabled = true;
+    status.textContent = 'Importing pathway participants...';
+    progress.style.display = 'block';
+    
+    // Make the API call
+    fetch('/pathways/import-participants-from-salesforce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = data.message;
+            status.style.color = 'green';
+        } else {
+            status.textContent = data.message || 'Import failed';
+            status.style.color = 'red';
+        }
+        
+        // Show errors if any
+        if (data.errors && data.errors.length > 0) {
+            console.log('Import errors:', data.errors);
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Import failed: ' + error.message;
+        status.style.color = 'red';
+        console.error('Import error:', error);
+    })
+    .finally(() => {
+        button.disabled = false;
+        progress.style.display = 'none';
+    });
+}
+
+// Add this to existing scripts
+document.body.addEventListener('htmx:afterRequest', function(event) {
+    if (event.detail.target.matches('.modal-form') && event.detail.xhr.status === 200) {
+        const response = JSON.parse(event.detail.xhr.responseText);
+        showToast('Success', response.message, 'success');
+        setTimeout(() => window.location.reload(), 1000); // Reload after 1 second
+    } else if (event.detail.target.matches('.modal-form') && event.detail.xhr.status !== 200) {
+        try {
+            const response = JSON.parse(event.detail.xhr.responseText);
+            showToast('Error', response.error || 'Failed to update user', 'error');
+        } catch(e) {
+            showToast('Error', 'Failed to update user', 'error');
+        }
+    }
+});
 </script>
 {% endblock %}
