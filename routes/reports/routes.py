@@ -719,17 +719,27 @@ def generate_district_stats(school_year):
         # Build the query conditions for this district
         query_conditions = [
             Event.districts.contains(primary_district),
-            Event.school.in_([school.id for school in schools]),
-            *[Event.title.ilike(f"%{school.name}%") for school in schools],
-            *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
-            Event.district_partner.ilike(f"%{primary_district.name}%")
+            Event.school.in_([school.id for school in schools])
         ]
-        
-        # Add conditions for any aliases
+
+        # Add title and district_partner conditions
+        title_conditions = [Event.title.ilike(f"%{school.name}%") for school in schools]
+        district_partner_conditions = [
+            Event.district_partner.ilike(f"%{school.name}%") for school in schools
+        ]
+        district_partner_conditions.append(Event.district_partner.ilike(f"%{primary_district.name}%"))
+
+        # Add alias conditions
         if 'aliases' in mapping:
             for alias in mapping['aliases']:
-                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
-        
+                district_partner_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+
+        # Combine all conditions
+        query_conditions.extend([
+            db.or_(*title_conditions) if title_conditions else True,
+            db.or_(*district_partner_conditions) if district_partner_conditions else True
+        ])
+
         # Query events using the conditions
         events_query = Event.query.filter(
             db.or_(*query_conditions),
@@ -1127,6 +1137,10 @@ def district_year_end_detail(district_name):
     # Get district
     district = District.query.filter_by(name=district_name).first_or_404()
     
+    # Get the district's mapping info
+    district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
+                            if mapping['name'] == district_name), None)
+    
     # Try to get cached data first
     cached_report = DistrictYearEndReport.query.filter_by(
         district_id=district.id,
@@ -1145,6 +1159,21 @@ def district_year_end_detail(district_name):
     # Define event types to exclude - remove virtual_session from exclusion
     excluded_event_types = ['connector_session']
 
+    # Base conditions
+    query_conditions = [
+        Event.districts.contains(district),
+        Event.school.in_([school.id for school in district.schools]),
+        *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
+        *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
+        Event.district_partner.ilike(f"%{district.name}%"),
+        Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
+    ]
+
+    # Add alias conditions if they exist
+    if district_mapping and 'aliases' in district_mapping:
+        for alias in district_mapping['aliases']:
+            query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+
     # Update the query to include EventAttendance and status filter
     events = (Event.query
         .outerjoin(School, Event.school == School.id)
@@ -1153,14 +1182,7 @@ def district_year_end_detail(district_name):
             Event.start_date.between(start_date, end_date),
             Event.status == EventStatus.COMPLETED,
             ~Event.type.in_([EventType(t) for t in excluded_event_types]),
-            db.or_(
-                Event.districts.contains(district),
-                Event.school.in_([school.id for school in district.schools]),
-                *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
-                *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
-                Event.district_partner.ilike(f"%{district.name}%"),
-                Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
-            )
+            db.or_(*query_conditions)
         )
         .order_by(Event.start_date)
         .all())
