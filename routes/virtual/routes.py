@@ -809,9 +809,9 @@ def import_sheet():
                 # Update completed session metrics
                 if status_str == 'successfully completed':
                     # Update event metrics
-                    event.participant_count = 20  # Set student count to 20
-                    event.registered_count = 20  # Set registered count to match
-                    event.attended_count = 20  # Set attended count to match
+                    event.participant_count = 0  # Set student count to 20
+                    event.registered_count = 0  # Set registered count to match
+                    event.attended_count = 0  # Set attended count to match
                     event.volunteers_needed = 1  # Set volunteers needed to 1
                     
                     # Make sure duration is set
