@@ -21,6 +21,63 @@ import xlsxwriter
 
 report_bp = Blueprint('report', __name__)
 
+# District mapping configuration
+DISTRICT_MAPPING = {
+    # Districts to show
+    '0015f00000JU4opAAD': {  # Grandview School District
+        'name': 'Grandview School District',
+        'district_code': '48074',
+        'merge_with': None,
+        'show': True,
+        'aliases': [
+            'Grandview',
+        ]
+    },
+    '0015f00000JU4pVAAT': {  # Kansas City Kansas Public Schools
+        'name': 'Kansas City Kansas Public Schools',
+        'district_code': '48078',
+        'merge_with': None,
+        'show': True,
+        'aliases': [
+            'Kansas City Kansas School District',
+            'KANSAS CITY USD 500',
+            'KCKPS (KS)'
+        ]
+    },
+    '0015f00000JU9ZEAA1': {  # Allen Village - District
+        'name': 'Allen Village - District',
+        'district_code': '48909',
+        'merge_with': None,
+        'show': True
+    },
+    '0015f00000JU9ZFAA1': {  # Hickman Mills School District
+        'name': 'Hickman Mills School District',
+        'district_code': '48072',
+        'merge_with': None,
+        'show': True,
+        'aliases': ['Hickman Mills']
+    },
+    '0015f00000JVaPKAA1': {  # GUADALUPE CENTERS SCHOOLS
+        'name': 'GUADALUPE CENTERS SCHOOLS',
+        'district_code': '48902',
+        'merge_with': None,
+        'show': True
+    },
+    '0015f00000KvuZTAAZ': {  # Center School District
+        'name': 'Center School District',
+        'district_code': '48080',
+        'merge_with': None,
+        'show': True
+    },
+    '0015f00000KxHwVAAV': {  # Kansas City Public Schools (MO)
+        'name': 'Kansas City Public Schools (MO)',
+        'district_code': None,
+        'merge_with': None,
+        'show': True,
+        'aliases': ['KCPS (MO)']
+    }
+}
+
 @report_bp.route('/reports')
 @login_required
 def reports():
@@ -632,7 +689,6 @@ def refresh_district_year_end():
 def generate_district_stats(school_year):
     """Generate district statistics for a school year"""
     district_stats = {}
-    districts = District.query.order_by(District.name).all()
     start_date, end_date = get_school_year_date_range(school_year)
     print(f"Date range: {start_date} to {end_date}")  # Debug log
     
@@ -640,23 +696,43 @@ def generate_district_stats(school_year):
     excluded_event_types = ['connector_session']
     print(f"Excluded event types: {excluded_event_types}")  # Debug log
     
-    for district in districts:
-        print(f"\nProcessing district: {district.name}")  # Debug log
+    # Get all districts from the database
+    all_districts = District.query.order_by(District.name).all()
+    
+    # Process each district in our mapping
+    for salesforce_id, mapping in DISTRICT_MAPPING.items():
+        if not mapping['show']:
+            continue
+            
+        print(f"\nProcessing district: {mapping['name']}")  # Debug log
+        
+        # Find the primary district record
+        primary_district = next((d for d in all_districts if d.salesforce_id == salesforce_id), None)
+        if not primary_district:
+            print(f"Warning: Primary district {mapping['name']} not found in database")
+            continue
+            
         # Get all schools for this district
-        schools = School.query.filter_by(district_id=district.id).all()
+        schools = School.query.filter_by(district_id=primary_district.id).all()
         print(f"Found {len(schools)} schools for district")  # Debug log
         
-        # Query events using both relationships and text matching
+        # Build the query conditions for this district
+        query_conditions = [
+            Event.districts.contains(primary_district),
+            Event.school.in_([school.id for school in schools]),
+            *[Event.title.ilike(f"%{school.name}%") for school in schools],
+            *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
+            Event.district_partner.ilike(f"%{primary_district.name}%")
+        ]
+        
+        # Add conditions for any aliases
+        if 'aliases' in mapping:
+            for alias in mapping['aliases']:
+                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+        
+        # Query events using the conditions
         events_query = Event.query.filter(
-            db.or_(
-                Event.districts.contains(district),
-                Event.school.in_([school.id for school in schools]),
-                *[Event.title.ilike(f"%{school.name}%") for school in schools],
-                *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
-                Event.district_partner.ilike(f"%{district.name}%"),
-                Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%"),
-                Event.district_partner.ilike(f"%{district.name.replace(' Public Schools', '')}%")
-            ),
+            db.or_(*query_conditions),
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             Event.status == EventStatus.COMPLETED,
@@ -675,8 +751,8 @@ def generate_district_stats(school_year):
         
         # Initialize stats dictionary
         stats = {
-            'name': district.name,
-            'district_code': district.district_code,
+            'name': mapping['name'],
+            'district_code': mapping['district_code'],
             'total_events': len(events),
             'total_students': 0,
             'total_volunteers': 0,
@@ -764,7 +840,7 @@ def generate_district_stats(school_year):
                 stats['monthly_breakdown'][month]['volunteer_hours'], 1
             )
         
-        district_stats[district.name] = stats
+        district_stats[mapping['name']] = stats
     
     return district_stats
 
@@ -1125,8 +1201,13 @@ def district_year_end_detail(district_name):
                 volunteer_hours = 1.0
         else:
             # For non-virtual events, use the standard attendance counting
-            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
-            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_participations = EventParticipation.query.filter(
+                EventParticipation.event_id == event.id,
+                EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+            ).all()
+            
+            volunteer_count = len(volunteer_participations)
+            volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
         
         # Get school name safely
         school_name = None
