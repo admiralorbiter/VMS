@@ -540,73 +540,95 @@ def standardize_organization(org_name):
     return replacements.get(org_name.upper(), org_name)
 
 def parse_datetime(date_str, time_str):
-    """More robust date/time parsing function"""
+    """Parse date and time strings using academic year logic"""
     try:
         # Handle missing or NaN values
         if pd.isna(date_str) or pd.isna(time_str):
             return None
             
-        # Convert numeric values to strings
-        if isinstance(date_str, (int, float)):
-            date_str = str(int(date_str))
-        if isinstance(time_str, (int, float)):
-            time_str = str(int(time_str))
-            
-        # Clean up the date and time strings
-        date_str = str(date_str).strip()
-        time_str = str(time_str).strip()
+        # Convert numeric values to strings and clean them
+        date_str = str(date_str).strip() if not pd.isna(date_str) else ''
+        time_str = str(time_str).strip() if not pd.isna(time_str) else ''
         
-        # Parse date - try multiple formats
-        date_obj = None
-        
-        # Try different date formats
-        date_formats = ['%m/%d/%Y', '%m/%d/%y', '%m-%d-%Y', '%m-%d-%y', '%Y-%m-%d']
-        for fmt in date_formats:
-            try:
-                date_obj = datetime.strptime(date_str, fmt).date()
-                break
-            except ValueError:
-                continue
-        
-        # If all formats failed, try parsing MM/DD format with current year
-        if not date_obj and '/' in date_str:
-            parts = date_str.split('/')
-            if len(parts) == 2:
-                try:
-                    month, day = map(int, parts)
-                    current_year = datetime.now().year
-                    date_obj = datetime(current_year, month, day).date()
-                except (ValueError, IndexError):
-                    pass
-        
-        # If still no date, return None
-        if not date_obj:
+        if not date_str:
             return None
             
-        # Parse time - try multiple formats
-        time_obj = None
-        time_formats = ['%I:%M %p', '%H:%M', '%I:%M%p', '%I%p']
-        
-        # Standardize AM/PM notation
-        time_str = (time_str.replace('am', ' AM')
-                   .replace('pm', ' PM')
-                   .replace('AM', ' AM')
-                   .replace('PM', ' PM')
-                   .replace('  ', ' '))
-        
-        for fmt in time_formats:
+        # Parse the month and day
+        try:
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) >= 2:
+                    month = int(parts[0])
+                    day = int(parts[1])
+                else:
+                    return None
+            else:
+                return None
+                
+            # Validate month and day
+            if not (1 <= month <= 12) or not (1 <= day <= 31):
+                return None
+                
+            # Get current date for comparison
+            current_date = datetime.now(timezone.utc)
+            
+            # Determine academic year
+            # If we're in or after June, use current year for fall semester (months 6-12)
+            # and next year for spring semester (months 1-5)
+            # If we're before June, use previous year for fall semester and current year for spring
+            if current_date.month >= 6:
+                year = current_date.year if month >= 6 else current_date.year + 1
+            else:
+                year = current_date.year - 1 if month >= 6 else current_date.year
+                
+            # Create the date object with validation
             try:
-                time_obj = datetime.strptime(time_str, fmt).time()
-                break
+                date_obj = datetime(year, month, day).date()
             except ValueError:
-                continue
-        
-        # If time parsing failed, use default time (9:00 AM)
-        if not time_obj:
-            time_obj = datetime.strptime('9:00 AM', '%I:%M %p').time()
-        
-        # Combine date and time
-        return datetime.combine(date_obj, time_obj)
+                # Handle invalid dates like 9/31
+                return None
+                
+            # Parse time with multiple format support
+            time_obj = None
+            
+            # Clean up time string
+            time_str = (time_str.replace('am', ' AM')
+                       .replace('pm', ' PM')
+                       .replace('AM', ' AM')
+                       .replace('PM', ' PM')
+                       .replace('  ', ' ')
+                       .strip())
+            
+            # Try different time formats
+            time_formats = [
+                '%I:%M %p',  # 11:30 AM
+                '%H:%M',     # 13:30
+                '%I:%M%p',   # 11:30AM
+                '%I%p',      # 11AM
+                '%H:%M:%S'   # 13:30:00
+            ]
+            
+            for fmt in time_formats:
+                try:
+                    if 'M' in fmt:  # If format expects AM/PM
+                        if ' AM' not in time_str.upper() and ' PM' not in time_str.upper():
+                            continue
+                    time_obj = datetime.strptime(time_str, fmt).time()
+                    break
+                except ValueError:
+                    continue
+            
+            # If time parsing failed, use default time (9:00 AM)
+            if not time_obj:
+                time_obj = datetime.strptime('9:00 AM', '%I:%M %p').time()
+            
+            # Combine date and time
+            return datetime.combine(date_obj, time_obj)
+            
+        except (ValueError, IndexError, TypeError) as e:
+            current_app.logger.warning(f"Date parsing error: {e} for date: '{date_str}'")
+            return None
+            
     except Exception as e:
         current_app.logger.warning(f"DateTime parsing error: {e} for date: '{date_str}', time: '{time_str}'")
         return None
