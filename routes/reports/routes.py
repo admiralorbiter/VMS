@@ -766,12 +766,16 @@ def generate_district_stats(school_year):
             'total_events': len(events),
             'total_students': 0,
             'total_volunteers': 0,
+            'unique_volunteers': set(),  # Track unique volunteer IDs
             'total_volunteer_hours': 0,
             'event_types': event_types_found,
             'schools_reached': set(),
             'monthly_breakdown': {},
             'career_clusters': set()
         }
+        
+        # Monthly unique volunteer tracking
+        monthly_unique_volunteers = {}
         
         # Calculate statistics
         for event in events:
@@ -798,10 +802,15 @@ def generate_district_stats(school_year):
                 if volunteer_participations:
                     volunteer_count = len(volunteer_participations)
                     volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+                    
+                    # Track unique volunteers
+                    for p in volunteer_participations:
+                        stats['unique_volunteers'].add(p.volunteer_id)
                 else:
                     # If no participations but the event is completed, assume 1 volunteer and 1 hour
                     volunteer_count = 1
                     volunteer_hours = 1.0
+                    # We can't track unique volunteers in this case
             else:
                 # For non-virtual events, use the standard attendance counting
                 volunteer_participations = EventParticipation.query.filter(
@@ -811,6 +820,10 @@ def generate_district_stats(school_year):
                 
                 volunteer_count = len(volunteer_participations)
                 volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+                
+                # Track unique volunteers
+                for p in volunteer_participations:
+                    stats['unique_volunteers'].add(p.volunteer_id)
             
             # Add debug info for virtual events
             if event.type == EventType.VIRTUAL_SESSION:
@@ -832,20 +845,35 @@ def generate_district_stats(school_year):
                     'events': 0,
                     'students': 0,
                     'volunteers': 0,
-                    'volunteer_hours': 0
+                    'volunteer_hours': 0,
+                    'unique_volunteers': set()  # Track unique volunteers by month
                 }
+            
+            # Update monthly stats
             stats['monthly_breakdown'][month]['events'] += 1
             stats['monthly_breakdown'][month]['students'] += student_count
             stats['monthly_breakdown'][month]['volunteers'] += volunteer_count
             stats['monthly_breakdown'][month]['volunteer_hours'] += volunteer_hours
+            
+            # Track unique volunteers by month
+            for p in volunteer_participations:
+                stats['monthly_breakdown'][month]['unique_volunteers'].add(p.volunteer_id)
         
         # Convert sets to counts and round hours
+        stats['unique_volunteer_count'] = len(stats['unique_volunteers'])
+        del stats['unique_volunteers']  # Remove the set to avoid JSON serialization issues
+        
         stats['schools_reached'] = len(stats['schools_reached'])
         stats['career_clusters'] = len(stats['career_clusters'])
         stats['total_volunteer_hours'] = round(stats['total_volunteer_hours'], 1)
         
-        # Round monthly volunteer hours
+        # Process monthly data
         for month in stats['monthly_breakdown']:
+            # Convert unique volunteer sets to counts
+            stats['monthly_breakdown'][month]['unique_volunteer_count'] = len(stats['monthly_breakdown'][month]['unique_volunteers'])
+            del stats['monthly_breakdown'][month]['unique_volunteers']  # Remove the set
+            
+            # Round volunteer hours
             stats['monthly_breakdown'][month]['volunteer_hours'] = round(
                 stats['monthly_breakdown'][month]['volunteer_hours'], 1
             )
@@ -1128,7 +1156,7 @@ def contact_report_detail(event_id):
                          sort=sort,
                          order=order)
 
-@report_bp.route('/reports/district/year-end/<district_name>')
+@report_bp.route('/reports/district/year-end/detail/<district_name>')
 @login_required
 def district_year_end_detail(district_name):
     """Show detailed year-end report for a specific district"""
@@ -1187,6 +1215,9 @@ def district_year_end_detail(district_name):
         .order_by(Event.start_date)
         .all())
 
+    # Set to track unique volunteer IDs
+    unique_volunteers = set()
+    
     # Organize events by month
     events_by_month = {}
     for event in events:
@@ -1196,7 +1227,8 @@ def district_year_end_detail(district_name):
                 'events': [],
                 'total_students': 0,
                 'total_volunteers': 0,
-                'total_volunteer_hours': 0
+                'total_volunteer_hours': 0,
+                'unique_volunteers': set()  # Track unique volunteers per month
             }
         
         # Get attendance count from EventAttendance if available, or attended_count for virtual sessions
@@ -1217,10 +1249,16 @@ def district_year_end_detail(district_name):
             if volunteer_participations:
                 volunteer_count = len(volunteer_participations)
                 volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+                
+                # Track unique volunteers overall and per month
+                for p in volunteer_participations:
+                    unique_volunteers.add(p.volunteer_id)
+                    events_by_month[month]['unique_volunteers'].add(p.volunteer_id)
             else:
                 # If no participations but the event is completed, assume 1 volunteer and 1 hour
                 volunteer_count = 1
                 volunteer_hours = 1.0
+                # Cannot track unique volunteers in this case
         else:
             # For non-virtual events, use the standard attendance counting
             volunteer_participations = EventParticipation.query.filter(
@@ -1230,6 +1268,11 @@ def district_year_end_detail(district_name):
             
             volunteer_count = len(volunteer_participations)
             volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            
+            # Track unique volunteers
+            for p in volunteer_participations:
+                unique_volunteers.add(p.volunteer_id)
+                events_by_month[month]['unique_volunteers'].add(p.volunteer_id)
         
         # Get school name safely
         school_name = None
@@ -1257,7 +1300,12 @@ def district_year_end_detail(district_name):
         events_by_month[month]['total_volunteers'] += volunteer_count
         events_by_month[month]['total_volunteer_hours'] += volunteer_hours
 
-    # Organize events by school
+    # Calculate unique volunteer count per month
+    for month, data in events_by_month.items():
+        data['unique_volunteer_count'] = len(data['unique_volunteers'])
+        del data['unique_volunteers']  # Remove set before passing to template
+    
+    # Organize events by school (keeping the existing code)
     schools_by_level = {
         'High': [],
         'Middle': [],
@@ -1268,7 +1316,7 @@ def district_year_end_detail(district_name):
     # Get all schools in the district
     district_schools = School.query.filter_by(district_id=district.id).all()
     
-    # Create a mapping of school IDs to their data
+    # Create a mapping of school IDs to their data with unique volunteer tracking
     school_data = {}
     for school in district_schools:
         school_data[school.id] = {
@@ -1277,7 +1325,8 @@ def district_year_end_detail(district_name):
             'events': [],
             'total_students': 0,
             'total_volunteers': 0,
-            'total_volunteer_hours': 0
+            'total_volunteer_hours': 0,
+            'unique_volunteers': set()  # Track unique volunteers per school
         }
     
     # Process events for each school
@@ -1288,8 +1337,13 @@ def district_year_end_detail(district_name):
             
             # Get attendance and volunteer data
             student_count = event.participant_count or 0
-            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
-            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_participations = [p for p in event.volunteer_participations if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            volunteer_count = len(volunteer_participations)
+            volunteer_hours = sum([p.delivery_hours or 0 for p in volunteer_participations])
+            
+            # Track unique volunteers per school
+            for p in volunteer_participations:
+                school['unique_volunteers'].add(p.volunteer_id)
             
             # Add event data - Add type to the event data
             school['events'].append({
@@ -1306,6 +1360,11 @@ def district_year_end_detail(district_name):
             school['total_students'] += student_count
             school['total_volunteers'] += volunteer_count
             school['total_volunteer_hours'] += volunteer_hours
+    
+    # Calculate unique volunteer count per school
+    for school_id, data in school_data.items():
+        data['unique_volunteer_count'] = len(data['unique_volunteers'])
+        del data['unique_volunteers']  # Remove set before passing to template
     
     # Organize schools by level
     for school_id, data in school_data.items():
@@ -1326,7 +1385,8 @@ def district_year_end_detail(district_name):
         stats=stats,
         events_by_month=events_by_month,
         schools_by_level=schools_by_level,
-        total_events=len(events)
+        total_events=len(events),
+        unique_volunteer_count=len(unique_volunteers)
     )
 
 @report_bp.route('/reports/recruitment/search')
@@ -1541,8 +1601,13 @@ def district_year_end_excel(district_name):
                 volunteer_count = 1
                 volunteer_hours = 1.0
         else:
-            volunteer_count = len([p for p in event.volunteer_participations if p.status == 'Attended'])
-            volunteer_hours = sum([p.delivery_hours or 0 for p in event.volunteer_participations if p.status == 'Attended'])
+            volunteer_participations = EventParticipation.query.filter(
+                EventParticipation.event_id == event.id,
+                EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+            ).all()
+            
+            volunteer_count = len(volunteer_participations)
+            volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
         
         # Get school info
         school_name = None
@@ -1553,9 +1618,7 @@ def district_year_end_excel(district_name):
                 school_level = event.school.level
             elif isinstance(event.school, str):
                 school = School.query.get(event.school)
-                if school:
-                    school_name = school.name
-                    school_level = school.level
+                school_name = school.name if school else None
         
         # Add event data
         data.append({

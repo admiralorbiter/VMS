@@ -73,7 +73,8 @@
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ stats.total_volunteers }}</div>
-            <div class="stat-label">Volunteers Engaged</div>
+            <div class="stat-label">Volunteers</div>
+            <div class="stat-sublabel">{{ stats.unique_volunteer_count }} unique</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
@@ -123,7 +124,8 @@
                     <div class="month-stats">
                         <span>{{ data.events|length }} Events</span>
                         <span>{{ data.total_students }} Students</span>
-                        <span>{{ data.total_volunteers }} Volunteers</span>
+                        <span>{{ data.total_volunteers }} Volunteer Engagements</span>
+                        <span>{{ data.unique_volunteer_count }} Unique Volunteers</span>
                         <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
                     </div>
                 </div>
@@ -187,7 +189,11 @@
                             </div>
                             <div class="school-stat">
                                 <i class="fas fa-users"></i>
-                                {{ school_data.total_volunteers }} Volunteers
+                                {{ school_data.total_volunteers }} Volunteer Engagements
+                            </div>
+                            <div class="school-stat">
+                                <i class="fas fa-user-friends"></i>
+                                {{ school_data.unique_volunteer_count }} Unique Volunteers
                             </div>
                             <div class="school-stat">
                                 <i class="fas fa-clock"></i>
@@ -348,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const statsElements = card.querySelectorAll('.school-stat');
             if (statsElements.length >= 4) {
                 statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
-                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteers`;
+                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteer Engagements`;
                 statsElements[3].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
             }
         });
@@ -396,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const statsElements = card.querySelectorAll('.school-stat');
             if (statsElements.length >= 4) {
                 statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
-                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteers`;
+                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteer Engagements`;
                 statsElements[3].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
             }
         });
