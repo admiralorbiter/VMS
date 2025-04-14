@@ -768,7 +768,6 @@ def import_sheet():
                             event = events_by_title[title]
                             if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
                                 process_teacher_for_event(row, event, is_simulcast)
-                                db.session.commit()
                         continue
                     else:
                         # For regular entries with no matching datetime, skip if we can't make sense of it
@@ -806,6 +805,39 @@ def import_sheet():
                     # Store the event by title for later simulcast entries
                     events_by_title[title] = event
                 
+                # Handle district associations
+                district_name = safe_str(row.get('District'))
+                if district_name:
+                    # Direct district association
+                    district = get_or_create_district(district_name)
+                    event.district_partner = district_name
+                    if district not in event.districts:
+                        event.districts.append(district)
+                elif status_str == 'successfully completed':
+                    # For completed events without a district, look for simulcast sessions
+                    simulcast_districts = set()
+                    # Look through all rows to find simulcast sessions for this title
+                    for sim_row in df.iterrows():
+                        sim_row = sim_row[1]  # Get the row data
+                        sim_title = clean_string_value(sim_row.get('Session Title'))
+                        sim_status = safe_str(sim_row.get('Status', '')).lower()
+                        sim_district = safe_str(sim_row.get('District'))
+                        
+                        # Check if this is a simulcast row for our event
+                        if (sim_title == title and 
+                            sim_status == 'simulcast' and 
+                            sim_district and not pd.isna(sim_district)):
+                            simulcast_districts.add(sim_district)
+                    
+                    # Add all found districts to the event
+                    for district_name in simulcast_districts:
+                        district = get_or_create_district(district_name)
+                        if not event.district_partner:
+                            # Set the first district as the partner if none set
+                            event.district_partner = district_name
+                        if district not in event.districts:
+                            event.districts.append(district)
+
                 # Update completed session metrics
                 if status_str == 'successfully completed':
                     # Update event metrics
@@ -913,14 +945,6 @@ def import_sheet():
                 # Process teacher if present
                 if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
                     process_teacher_for_event(row, event, is_simulcast)
-                
-                # Add district association
-                district_name = safe_str(row.get('District'))
-                if district_name:
-                    district = get_or_create_district(district_name)
-                    event.district_partner = district_name
-                    if district not in event.districts:
-                        event.districts.append(district)
                 
                 db.session.commit()
                 success_count += 1
