@@ -717,39 +717,35 @@ def generate_district_stats(school_year):
         print(f"Found {len(schools)} schools for district")  # Debug log
         
         # Build the query conditions for this district
-        query_conditions = [
-            Event.districts.contains(primary_district),
-            Event.school.in_([school.id for school in schools])
-        ]
-
-        # Add title and district_partner conditions
-        title_conditions = [Event.title.ilike(f"%{school.name}%") for school in schools]
         district_partner_conditions = [
             Event.district_partner.ilike(f"%{school.name}%") for school in schools
         ]
         district_partner_conditions.append(Event.district_partner.ilike(f"%{primary_district.name}%"))
 
-        # Add alias conditions
+        # Add conditions for aliases - MODIFIED to handle both directions
         if 'aliases' in mapping:
             for alias in mapping['aliases']:
                 district_partner_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+                # Also check the districts relationship for aliases
+                district_partner_conditions.append(
+                    Event.districts.any(District.name.ilike(f"%{alias}%"))
+                )
 
-        # Combine all conditions
-        query_conditions.extend([
-            db.or_(*title_conditions) if title_conditions else True,
-            db.or_(*district_partner_conditions) if district_partner_conditions else True
-        ])
-
-        # Query events using the conditions
+        # Combine all conditions with OR instead of AND
         events_query = Event.query.filter(
-            db.or_(*query_conditions),
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             Event.status == EventStatus.COMPLETED,
-            ~Event.type.in_([EventType(t) for t in excluded_event_types])
-        )
+            ~Event.type.in_([EventType(t) for t in excluded_event_types]),
+            # Use OR between all district-related conditions
+            db.or_(
+                Event.districts.contains(primary_district),
+                Event.school.in_([school.id for school in schools]),
+                *district_partner_conditions
+            )
+        ).distinct()
         
-        events = events_query.distinct().all()
+        events = events_query.all()
         print(f"Found {len(events)} total events")  # Debug log
         
         # Debug log event types
@@ -1201,6 +1197,10 @@ def district_year_end_detail(district_name):
     if district_mapping and 'aliases' in district_mapping:
         for alias in district_mapping['aliases']:
             query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+            # Also check the districts relationship for aliases
+            query_conditions.append(
+                Event.districts.any(District.name.ilike(f"%{alias}%"))
+            )
 
     # Update the query to include EventAttendance and status filter
     events = (Event.query
