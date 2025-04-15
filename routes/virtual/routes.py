@@ -29,7 +29,7 @@ virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 def virtual():
     return render_template('virtual/virtual.html')
 
-def process_csv_row(row, success_count, warning_count, error_count, errors):
+def process_csv_row(row, success_count, warning_count, error_count, errors, all_rows=None):
     try:
         db.session.rollback()
         
@@ -85,11 +85,32 @@ def process_csv_row(row, success_count, warning_count, error_count, errors):
         if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
             process_teacher_for_event(row, event, is_simulcast)
 
-        # Add district association
-        district_name = row.get('District')
-        if district_name:
+        # Collect all districts (main event + simulcast) before adding them
+        districts_to_add = set()
+        
+        # Add the main event's district if it exists
+        main_district = row.get('District')
+        if main_district and not pd.isna(main_district):
+            districts_to_add.add(main_district)
+            # Set district_partner to the main event's district if not already set
+            if not event.district_partner:
+                event.district_partner = main_district
+
+        # For completed sessions, collect all simulcast districts
+        if status_str == 'successfully completed' and all_rows:
+            session_title = row.get('Session Title')
+            if session_title:
+                # Find all simulcast entries with matching title
+                for sim_row in all_rows:
+                    if (sim_row.get('Session Title') == session_title and 
+                        safe_str(sim_row.get('Status', '')).lower() == 'simulcast'):
+                        sim_district = sim_row.get('District')
+                        if sim_district and not pd.isna(sim_district):
+                            districts_to_add.add(sim_district)
+
+        # Now add all collected districts to the event
+        for district_name in districts_to_add:
             district = get_or_create_district(district_name)
-            event.district_partner = district_name
             if district not in event.districts:
                 event.districts.append(district)
 
@@ -320,9 +341,12 @@ def import_virtual():
             stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
             csv_data = csv.DictReader(stream)
             
-            for row in csv_data:
+            # Convert to list to allow multiple passes
+            all_rows = list(csv_data)
+            
+            for row in all_rows:
                 success_count, warning_count, error_count = process_csv_row(
-                    row, success_count, warning_count, error_count, errors
+                    row, success_count, warning_count, error_count, errors, all_rows
                 )
 
         return jsonify({
@@ -356,10 +380,11 @@ def quick_sync():
 
         with open(csv_path, 'r', encoding='UTF8') as file:
             csv_data = csv.DictReader(file)
+            all_rows = list(csv_data)
             
-            for row in csv_data:
+            for row in all_rows:
                 success_count, warning_count, error_count = process_csv_row(
-                    row, success_count, warning_count, error_count, errors
+                    row, success_count, warning_count, error_count, errors, all_rows
                 )
 
         return jsonify({

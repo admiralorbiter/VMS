@@ -96,8 +96,20 @@
                         <p><i class="fa-solid fa-school"></i> {{ event.school or 'Not set' }}</p>
                     </div>
                     <div class="info-item">
-                        <label>District/Company</label>
-                        <p><i class="fa-solid fa-building"></i> {{ event.district_partner or 'Not set' }}</p>
+                        <label>Districts</label>
+                        <p><i class="fa-solid fa-building"></i>
+                            {% if event.districts %}
+                                {% for district in event.districts %}
+                                    {{ district.name }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Not set
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="info-item">
+                        <label>Primary District</label>
+                        <p><i class="fa-solid fa-building-flag"></i> {{ event.district_partner or 'Not set' }}</p>
                     </div>
                     <div class="info-item">
                         <label>Attendance</label>
