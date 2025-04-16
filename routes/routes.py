@@ -7,7 +7,7 @@ from routes.job_board.routes import job_board_bp
 from routes.upcoming_events.routes import upcoming_events_bp
 from routes.events.routes import events_bp
 from routes.virtual.routes import virtual_bp
-from routes.reports.routes import report_bp
+from routes.reports import report_bp
 from routes.attendance.routes import attendance
 from routes.management.management import management_bp
 from routes.job_board.filters import init_filters
