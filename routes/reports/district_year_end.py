@@ -169,7 +169,8 @@ def load_routes(bp):
                     'total_students': 0,
                     'total_volunteers': 0,
                     'total_volunteer_hours': 0,
-                    'unique_volunteers': set()
+                    'unique_volunteers': set(),
+                    'volunteer_engagement_count': 0
                 }
             
             # Get attendance and volunteer data
@@ -186,14 +187,20 @@ def load_routes(bp):
             events_by_month[month]['events'].append({
                 'id': event.id,
                 'title': event.title,
-                'date': event.start_date.isoformat(),  # Convert datetime to ISO format string
+                'date': event.start_date.isoformat(),
+                'time': event.start_date.strftime('%H:%M:%S'),
+                'type': event.type.value if event.type else None,
+                'location': event.location or '',
                 'student_count': student_count,
                 'volunteer_count': volunteer_count,
-                'volunteer_hours': volunteer_hours
+                'volunteer_hours': volunteer_hours,
+                'students': student_count,
+                'volunteers': volunteer_count
             })
             events_by_month[month]['total_students'] += student_count
             events_by_month[month]['total_volunteers'] += volunteer_count
             events_by_month[month]['total_volunteer_hours'] += volunteer_hours
+            events_by_month[month]['volunteer_engagement_count'] += volunteer_count
             
             # Track unique volunteers
             for p in volunteer_participations:
@@ -204,6 +211,7 @@ def load_routes(bp):
         for month, data in events_by_month.items():
             data['unique_volunteer_count'] = len(data['unique_volunteers'])
             data['unique_volunteers'] = list(data['unique_volunteers'])  # Convert set to list for JSON storage
+            data['volunteer_engagements'] = data['volunteer_engagement_count']
 
         # Cache the events data
         if cached_report:
@@ -318,7 +326,8 @@ def cache_district_stats_with_events(school_year, district_stats):
                     'total_students': 0,
                     'total_volunteers': 0,
                     'total_volunteer_hours': 0,
-                    'unique_volunteers': set()
+                    'unique_volunteers': set(),
+                    'volunteer_engagement_count': 0
                 }
             
             student_count = event.attended_count if event.type == EventType.VIRTUAL_SESSION else (
@@ -334,13 +343,19 @@ def cache_district_stats_with_events(school_year, district_stats):
                 'id': event.id,
                 'title': event.title,
                 'date': event.start_date.isoformat(),
+                'time': event.start_date.strftime('%H:%M:%S'),
+                'type': event.type.value if event.type else None,
+                'location': event.location or '',
                 'student_count': student_count,
                 'volunteer_count': volunteer_count,
-                'volunteer_hours': volunteer_hours
+                'volunteer_hours': volunteer_hours,
+                'students': student_count,
+                'volunteers': volunteer_count
             })
             events_by_month[month]['total_students'] += student_count
             events_by_month[month]['total_volunteers'] += volunteer_count
             events_by_month[month]['total_volunteer_hours'] += volunteer_hours
+            events_by_month[month]['volunteer_engagement_count'] += volunteer_count
             
             for p in volunteer_participations:
                 unique_volunteers.add(p.volunteer_id)
@@ -350,6 +365,7 @@ def cache_district_stats_with_events(school_year, district_stats):
         for month, data in events_by_month.items():
             data['unique_volunteer_count'] = len(data['unique_volunteers'])
             data['unique_volunteers'] = list(data['unique_volunteers'])
+            data['volunteer_engagements'] = data['volunteer_engagement_count']
 
         # Cache the events data
         report.events_data = {
