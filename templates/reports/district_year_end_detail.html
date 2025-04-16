@@ -151,7 +151,7 @@
                                 <td>{{ event.time }}</td>
                                 <td>{{ event.title }}</td>
                                 <td>{{ event.type }}</td>
-                                <td>{{ event.school or event.location }}</td>
+                                <td>{{ event.location }}</td>
                                 <td>{{ event.students }}</td>
                                 <td>{{ event.volunteers }}</td>
                                 <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
@@ -218,8 +218,8 @@
                                 {% for event in school_data.events|sort(attribute='date') %}
                                 <tr>
                                     <td>{{ event.date }}</td>
+                                    <td>{{ event.time }}</td>
                                     <td>{{ event.title }}</td>
-                                    <td>{{ event.type }}</td>
                                     <td>{{ event.students }}</td>
                                     <td>{{ event.volunteers }}</td>
                                     <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>

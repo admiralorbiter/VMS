@@ -184,11 +184,12 @@ def load_routes(bp):
             volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
             
             # Update event data and totals in events_by_month
+            event_date = datetime.fromisoformat(event.start_date.isoformat())
             events_by_month[month]['events'].append({
                 'id': event.id,
                 'title': event.title,
-                'date': event.start_date.isoformat(),
-                'time': event.start_date.strftime('%H:%M:%S'),
+                'date': event_date.strftime('%m/%d/%Y'),
+                'time': event_date.strftime('%I:%M %p'),
                 'type': event.type.value if event.type else None,
                 'location': event.location or '',
                 'student_count': student_count,
@@ -339,11 +340,12 @@ def cache_district_stats_with_events(school_year, district_stats):
             volunteer_count = len(volunteer_participations)
             volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
             
+            event_date = datetime.fromisoformat(event.start_date.isoformat())
             events_by_month[month]['events'].append({
                 'id': event.id,
                 'title': event.title,
-                'date': event.start_date.isoformat(),
-                'time': event.start_date.strftime('%H:%M:%S'),
+                'date': event_date.strftime('%m/%d/%Y'),
+                'time': event_date.strftime('%I:%M %p'),
                 'type': event.type.value if event.type else None,
                 'location': event.location or '',
                 'student_count': student_count,
