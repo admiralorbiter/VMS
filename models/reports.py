@@ -8,6 +8,7 @@ class DistrictYearEndReport(db.Model):
     district_id = db.Column(db.String(18), db.ForeignKey('district.id'), nullable=False)
     school_year = db.Column(db.String(4), nullable=False, index=True)  # Added index
     report_data = db.Column(db.JSON, nullable=False)
+    events_data = db.Column(db.JSON, nullable=True)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
     
     district = db.relationship('District', backref='year_end_reports')

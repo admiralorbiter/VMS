@@ -168,6 +168,8 @@ class Event(db.Model):
         db.Index('idx_event_status_date', 'status', 'start_date'),
         # Add index for district partner lookups
         db.Index('idx_district_partner', 'district_partner'),
+        # Add new composite index for district year-end report queries
+        db.Index('idx_event_status_date_type', 'status', 'start_date', 'type'),
     )
     
     # Event timing - Consider adding validation to ensure end_date > start_date

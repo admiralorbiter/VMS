@@ -38,7 +38,7 @@ def load_routes(bp):
         
         if not district_stats:
             district_stats = generate_district_stats(school_year)
-            cache_district_stats(school_year, district_stats)
+            cache_district_stats_with_events(school_year, district_stats)
         
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -75,8 +75,8 @@ def load_routes(bp):
             # Generate new stats
             district_stats = generate_district_stats(school_year)
             
-            # Cache the stats
-            cache_district_stats(school_year, district_stats)
+            # Cache the stats and events data
+            cache_district_stats_with_events(school_year, district_stats)
             
             return jsonify({
                 'success': True, 
@@ -107,17 +107,27 @@ def load_routes(bp):
         
         if cached_report:
             stats = cached_report.report_data
+            # Check if we have cached events data
+            if cached_report.events_data:
+                return render_template(
+                    'reports/district_year_end_detail.html',
+                    district=district,
+                    school_year=school_year,
+                    stats=stats,
+                    events_by_month=cached_report.events_data.get('events_by_month', {}),
+                    schools_by_level={'High': [], 'Middle': [], 'Elementary': [], None: []},
+                    total_events=cached_report.events_data.get('total_events', 0),
+                    unique_volunteer_count=cached_report.events_data.get('unique_volunteer_count', 0)
+                )
         else:
             # Generate stats for just this district
             stats = generate_district_stats(school_year)[district_name]
-        
-        # Get all events for this district within the school year
+
+        # If we get here, we need to generate the events data
         start_date, end_date = get_school_year_date_range(school_year)
-        
-        # Define event types to exclude
         excluded_event_types = ['connector_session']
 
-        # Base conditions
+        # Rest of the existing query code remains the same until events_by_month processing...
         query_conditions = [
             Event.districts.contains(district),
             Event.school.in_([school.id for school in district.schools]),
@@ -127,7 +137,6 @@ def load_routes(bp):
             Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
         ]
 
-        # Add alias conditions if they exist
         if district_mapping and 'aliases' in district_mapping:
             for alias in district_mapping['aliases']:
                 query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
@@ -135,13 +144,12 @@ def load_routes(bp):
                     Event.districts.any(District.name.ilike(f"%{alias}%"))
                 )
 
-        # Update the query to include EventAttendance and status filter
         events = (Event.query
             .outerjoin(School, Event.school == School.id)
             .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
             .filter(
-                Event.start_date.between(start_date, end_date),
                 Event.status == EventStatus.COMPLETED,
+                Event.start_date.between(start_date, end_date),
                 ~Event.type.in_([EventType(t) for t in excluded_event_types]),
                 db.or_(*query_conditions)
             )
@@ -154,7 +162,6 @@ def load_routes(bp):
         # Organize events by month
         events_by_month = {}
         for event in events:
-            # Process each event and update events_by_month
             month = event.start_date.strftime('%B %Y')
             if month not in events_by_month:
                 events_by_month[month] = {
@@ -176,23 +183,44 @@ def load_routes(bp):
             volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
             
             # Update event data and totals in events_by_month
-            # ...
+            events_by_month[month]['events'].append({
+                'id': event.id,
+                'title': event.title,
+                'date': event.start_date.isoformat(),  # Convert datetime to ISO format string
+                'student_count': student_count,
+                'volunteer_count': volunteer_count,
+                'volunteer_hours': volunteer_hours
+            })
+            events_by_month[month]['total_students'] += student_count
+            events_by_month[month]['total_volunteers'] += volunteer_count
+            events_by_month[month]['total_volunteer_hours'] += volunteer_hours
+            
+            # Track unique volunteers
+            for p in volunteer_participations:
+                unique_volunteers.add(p.volunteer_id)
+                events_by_month[month]['unique_volunteers'].add(p.volunteer_id)
 
-        # Finish processing for template display
+        # Process the events data for storage
         for month, data in events_by_month.items():
             data['unique_volunteer_count'] = len(data['unique_volunteers'])
-            del data['unique_volunteers']
+            data['unique_volunteers'] = list(data['unique_volunteers'])  # Convert set to list for JSON storage
 
-        # Create school data
-        schools_by_level = {'High': [], 'Middle': [], 'Elementary': [], None: []}
-        
+        # Cache the events data
+        if cached_report:
+            cached_report.events_data = {
+                'events_by_month': events_by_month,
+                'total_events': len(events),
+                'unique_volunteer_count': len(unique_volunteers)
+            }
+            db.session.commit()
+
         return render_template(
             'reports/district_year_end_detail.html',
             district=district,
             school_year=school_year,
             stats=stats,
             events_by_month=events_by_month,
-            schools_by_level=schools_by_level,
+            schools_by_level={'High': [], 'Middle': [], 'Elementary': [], None: []},
             total_events=len(events),
             unique_volunteer_count=len(unique_volunteers)
         )
@@ -219,3 +247,115 @@ def load_routes(bp):
             download_name=filename,
             as_attachment=True
         )
+
+def cache_district_stats_with_events(school_year, district_stats):
+    """Cache district stats and events data for all districts"""
+    for district_name, stats in district_stats.items():
+        district = District.query.filter_by(name=district_name).first()
+        if not district:
+            continue
+
+        # Get or create report
+        report = DistrictYearEndReport.query.filter_by(
+            district_id=district.id,
+            school_year=school_year
+        ).first()
+        
+        if not report:
+            report = DistrictYearEndReport(
+                district_id=district.id,
+                school_year=school_year
+            )
+            db.session.add(report)
+        
+        report.report_data = stats
+        
+        # Generate events data
+        start_date, end_date = get_school_year_date_range(school_year)
+        excluded_event_types = ['connector_session']
+
+        query_conditions = [
+            Event.districts.contains(district),
+            Event.school.in_([school.id for school in district.schools]),
+            *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
+            *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
+            Event.district_partner.ilike(f"%{district.name}%"),
+            Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
+        ]
+
+        # Get district mapping for aliases
+        district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
+                               if mapping['name'] == district_name), None)
+        if district_mapping and 'aliases' in district_mapping:
+            for alias in district_mapping['aliases']:
+                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+                query_conditions.append(
+                    Event.districts.any(District.name.ilike(f"%{alias}%"))
+                )
+
+        events = (Event.query
+            .outerjoin(School, Event.school == School.id)
+            .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
+            .filter(
+                Event.status == EventStatus.COMPLETED,
+                Event.start_date.between(start_date, end_date),
+                ~Event.type.in_([EventType(t) for t in excluded_event_types]),
+                db.or_(*query_conditions)
+            )
+            .order_by(Event.start_date)
+            .all())
+
+        # Set to track unique volunteer IDs
+        unique_volunteers = set()
+        
+        # Organize events by month
+        events_by_month = {}
+        for event in events:
+            month = event.start_date.strftime('%B %Y')
+            if month not in events_by_month:
+                events_by_month[month] = {
+                    'events': [],
+                    'total_students': 0,
+                    'total_volunteers': 0,
+                    'total_volunteer_hours': 0,
+                    'unique_volunteers': set()
+                }
+            
+            student_count = event.attended_count if event.type == EventType.VIRTUAL_SESSION else (
+                event.attendance.total_attendance if hasattr(event, 'attendance') and event.attendance else event.participant_count or 0
+            )
+            
+            volunteer_participations = [p for p in event.volunteer_participations 
+                                      if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            volunteer_count = len(volunteer_participations)
+            volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+            
+            events_by_month[month]['events'].append({
+                'id': event.id,
+                'title': event.title,
+                'date': event.start_date.isoformat(),
+                'student_count': student_count,
+                'volunteer_count': volunteer_count,
+                'volunteer_hours': volunteer_hours
+            })
+            events_by_month[month]['total_students'] += student_count
+            events_by_month[month]['total_volunteers'] += volunteer_count
+            events_by_month[month]['total_volunteer_hours'] += volunteer_hours
+            
+            for p in volunteer_participations:
+                unique_volunteers.add(p.volunteer_id)
+                events_by_month[month]['unique_volunteers'].add(p.volunteer_id)
+
+        # Process the events data for storage
+        for month, data in events_by_month.items():
+            data['unique_volunteer_count'] = len(data['unique_volunteers'])
+            data['unique_volunteers'] = list(data['unique_volunteers'])
+
+        # Cache the events data
+        report.events_data = {
+            'events_by_month': events_by_month,
+            'total_events': len(events),
+            'unique_volunteer_count': len(unique_volunteers)
+        }
+
+    db.session.commit()
