@@ -300,9 +300,11 @@ def process_teacher_for_event(row, event, is_simulcast):
             # Handle school association
             school_name = row.get('School Name')
             district_name = row.get('District')
-            if school_name:
-                school = get_or_create_school(school_name, get_or_create_district(district_name))
-                teacher.school_id = school.id
+            if school_name and not pd.isna(school_name):
+                district = get_or_create_district(district_name) if district_name else None
+                school = get_or_create_school(school_name, district)
+                if school:  # Only set school_id if school exists
+                    teacher.school_id = school.id
             
             db.session.add(teacher)
             db.session.flush()
@@ -727,7 +729,7 @@ def import_sheet():
             raise ValueError("Google Sheet ID not configured")
         
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-        df = pd.read_csv(csv_url, skiprows=5)
+        df = pd.read_csv(csv_url, skiprows=5, dtype={'School Name': str})
         
         # Modify the session_datetimes creation to handle multiple dates per title
         session_datetimes = {}
@@ -1033,9 +1035,15 @@ def clean_time_string(time_str):
 
 def generate_school_id(name):
     """Generate a unique ID for virtual schools that matches Salesforce length"""
+    if pd.isna(name) or not name:
+        name = "Unknown School"
+    
+    # Ensure name is a string
+    name = str(name).strip()
+    
     timestamp = datetime.now(timezone.utc).strftime('%y%m%d')
-    name_hash = hashlib.sha256(name.lower().encode()).hexdigest()[:8]  # Increased to 8 chars
-    base_id = f"VRT{timestamp}{name_hash}"  # Removed underscores to save space
+    name_hash = hashlib.sha256(name.lower().encode()).hexdigest()[:8]
+    base_id = f"VRT{timestamp}{name_hash}"
     
     # Ensure exactly 18 characters
     base_id = base_id[:18].ljust(18, '0')
@@ -1045,32 +1053,47 @@ def generate_school_id(name):
     new_id = base_id
     while School.query.filter_by(id=new_id).first():
         counter_str = str(counter).zfill(2)
-        new_id = (base_id[:-2] + counter_str)  # Replace last 2 chars with counter
+        new_id = (base_id[:-2] + counter_str)
         counter += 1
     
     return new_id
 
 def get_or_create_school(name, district=None):
     """Get or create school by name with improved district handling"""
-    if not name:
+    try:
+        if pd.isna(name) or not name:
+            return None
+            
+        # Clean and standardize the school name
+        name = str(name).strip()
+        if not name:
+            return None
+            
+        # Try to find existing school
+        school = School.query.filter(
+            func.lower(School.name) == func.lower(name)
+        ).first()
+        
+        if not school:
+            try:
+                school = School(
+                    id=generate_school_id(name),
+                    name=name,
+                    district_id=district.id if district else None,
+                    normalized_name=name.lower(),
+                    salesforce_district_id=district.salesforce_id if district and district.salesforce_id else None
+                )
+                db.session.add(school)
+                db.session.flush()
+            except Exception as e:
+                current_app.logger.error(f"Error creating school {name}: {str(e)}")
+                return None
+        
+        return school
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in get_or_create_school for {name}: {str(e)}")
         return None
-    
-    school = School.query.filter(
-        func.lower(School.name) == func.lower(name)
-    ).first()
-    
-    if not school:
-        school = School(
-            id=generate_school_id(name),
-            name=name,
-            district_id=district.id if district else None,
-            normalized_name=name.lower(),
-            salesforce_district_id=district.salesforce_id if district and district.salesforce_id else None
-        )
-        db.session.add(school)
-        db.session.flush()
-    
-    return school
 
 def extract_session_id(session_link):
     """Safely extract session ID from link with type checking"""
