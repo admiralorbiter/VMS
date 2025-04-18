@@ -57,8 +57,9 @@ def create_user():
         flash('Email already exists', 'danger')
         return redirect(url_for('auth.admin'))
     
-    # Ensure security level is valid and user has permission to create users at this level
-    if not (0 <= security_level <= 3) or security_level >= current_user.security_level:
+    # For admin users (security_level 3), allow creating any valid security level
+    # For non-admin users, ensure they can only create users with lower security levels
+    if not (0 <= security_level <= 3) or (not current_user.is_admin and security_level >= current_user.security_level):
         flash('Invalid security level or insufficient permissions', 'danger')
         return redirect(url_for('auth.admin'))
     
