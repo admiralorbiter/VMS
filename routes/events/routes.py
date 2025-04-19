@@ -66,22 +66,35 @@ def process_event_row(row, success_count, error_count, errors):
         
         # Handle School relationship (using Salesforce ID)
         school_id = row.get('School__c')
+        school_district = None
         if school_id:
             school = School.query.get(school_id)
             if school:
                 event.school = school_id  # Store the Salesforce ID
-                # If school has a district, add it to event's districts
-                if school.district and school.district not in event.districts:
-                    event.districts.append(school.district)
-        
-        # Handle District relationship (if no school or school without district)
+                school_district = school.district
+
+        # Handle District relationship
         district_name = row.get('District__c')
+        parent_account = row.get('Parent_Account__c')
+
+        # If District__c is empty, use Parent_Account__c instead
+        if not district_name and parent_account:
+            district_name = parent_account
+
+        # Try to get the district
+        district = None
         if district_name and district_name in DISTRICT_MAPPINGS:
             mapped_name = DISTRICT_MAPPINGS[district_name]
             district = District.query.filter_by(name=mapped_name).first()
+
+        # Clear and reassign districts if we have a valid district to assign
+        if district or school_district:
+            event.districts = []  # Clear existing districts
+            if school_district:
+                event.districts.append(school_district)
             if district and district not in event.districts:
                 event.districts.append(district)
-                
+
         # Store original district name for reference
         event.district_partner = district_name if district_name else None
 
@@ -430,7 +443,8 @@ def import_events():
                         End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
                         Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
                         District__c, Legacy_Skill_Covered_for_the_Session__c, 
-                        Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c
+                        Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
+                        Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
                 FROM Session__c
                 WHERE CreatedDate >= LAST_N_MONTHS:120
                 ORDER BY Start_Date_and_Time__c ASC
@@ -650,7 +664,7 @@ def import_events_from_salesforce():
                 Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
                 District__c, School__c, Legacy_Skill_Covered_for_the_Session__c, 
                 Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-                Total_Requested_Volunteer_Jobs__c, Available_Slots__c
+                Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
         FROM Session__c
         ORDER BY Start_Date_and_Time__c DESC
         """
