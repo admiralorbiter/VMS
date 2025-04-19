@@ -20,6 +20,18 @@ events_bp = Blueprint('events', __name__)
 def process_event_row(row, success_count, error_count, errors):
     """Process a single event row from CSV/Salesforce data"""
     try:
+        # Get initial data to check
+        parent_account = row.get('Parent_Account__c')
+        district_name = row.get('District__c')
+        school_id = row.get('School__c')
+        
+        # Skip events missing all three identifiers
+        if not any([parent_account, district_name, school_id]):
+            event_id = row.get('Id', 'unknown')
+            event_name = row.get('Name', 'unknown')
+            errors.append(f"Skipping event {event_id} ({event_name}): Missing all required identifiers (Parent_Account__c, District__c, and School__c)")
+            return success_count, error_count + 1
+
         # Get or create event
         event_id = row.get('Id')
         event = Event.query.filter_by(salesforce_id=event_id).first()
@@ -65,7 +77,6 @@ def process_event_row(row, success_count, error_count, errors):
         event.available_slots = safe_convert_to_int(row.get('Available_Slots__c'))
         
         # Handle School relationship (using Salesforce ID)
-        school_id = row.get('School__c')
         school_district = None
         if school_id:
             school = School.query.get(school_id)
@@ -74,9 +85,6 @@ def process_event_row(row, success_count, error_count, errors):
                 school_district = school.district
 
         # Handle District relationship
-        district_name = row.get('District__c')
-        parent_account = row.get('Parent_Account__c')
-
         # If District__c is empty, use Parent_Account__c instead
         if not district_name and parent_account:
             district_name = parent_account
