@@ -14,11 +14,11 @@
     <div class="filters-section">
         <form class="filters-form" method="GET">
             <div class="filter-group">
-                <label for="year">Year:</label>
+                <label for="year">School Year:</label>
                 <select id="year" name="year">
-                    {% for year in range(2025, 2017, -1) %}
-                        <option value="{{ year }}" {% if year == current_filters.year|default(2024) %}selected{% endif %}>
-                            {{ year }}
+                    {% for school_year in filter_options.school_years %}
+                        <option value="{{ school_year }}" {% if school_year == current_filters.year %}selected{% endif %}>
+                            {{ school_year }}
                         </option>
                     {% endfor %}
                 </select>
@@ -87,7 +87,7 @@
         <div class="stats-grid">
             {% for district, stats in district_stats.items() %}
             <div class="district-card">
-                <a href="{{ url_for('report.virtual_usage_district', district_name=district) }}" class="district-link">
+                <a href="{{ url_for('report.virtual_usage_district', district_name=district, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="district-link">
                     <h2 class="district-name">{{ district }}</h2>
                     
                     <div class="stat-row">

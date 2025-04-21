@@ -11,21 +11,23 @@
 <div class="district-usage-container">
     <div class="district-header">
         <div class="header-content">
-            <a href="{{ url_for('report.virtual_usage') }}" class="back-link">
+            <a href="{{ url_for('report.virtual_usage', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="back-link">
                 <i class="fas fa-arrow-left"></i> Back to Districts
             </a>
             <h1>{{ district_name }}</h1>
+            <p>School Year: {{ current_filters.year }}</p>
+            <p>Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
         </div>
         
         <!-- Filter Section -->
         <div class="date-filters">
             <form method="GET" class="date-filter-form">
                 <div class="filter-group">
-                    <label for="year">Year:</label>
+                    <label for="year">School Year:</label>
                     <select id="year" name="year">
-                        {% for year in range(2025, 2017, -1) %}
-                            <option value="{{ year }}" {% if year == current_filters.year|default(2024) %}selected{% endif %}>
-                                {{ year }}
+                        {% for school_year in school_year_options %}
+                            <option value="{{ school_year }}" {% if school_year == current_filters.year %}selected{% endif %}>
+                                {{ school_year }}
                             </option>
                         {% endfor %}
                     </select>
@@ -60,6 +62,9 @@
                         </span>
                         <span class="summary-item">
                             <i class="fas fa-users"></i> {{ stats.total_attended }}/{{ stats.total_registered }} Students
+                        </span>
+                        <span class="summary-item">
+                            <i class="fas fa-percentage"></i> {{ "%.1f"|format(stats.avg_attendance_rate) }}% Attendance
                         </span>
                     </div>
                 </div>
@@ -106,7 +111,7 @@
         </div>
     {% else %}
         <div class="no-data">
-            No virtual session data available for this district in the selected date range.
+            No virtual session data available for this district in the selected school year and date range.
         </div>
     {% endif %}
 </div>

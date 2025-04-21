@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import extract
 
 from models.event import Event, EventType, EventStatus
@@ -9,33 +9,84 @@ from models import db
 # Create blueprint
 virtual_bp = Blueprint('virtual', __name__)
 
+# --- Helper Functions for School Year ---
+
+def get_current_school_year() -> str:
+    """Determines the current school year string (e.g., '2024-2025')."""
+    today = date.today()
+    if today.month >= 6:  # School year starts in June
+        start_year = today.year
+    else:
+        start_year = today.year - 1
+    return f"{start_year}-{start_year + 1}"
+
+def get_school_year_dates(school_year: str) -> tuple[datetime, datetime]:
+    """Calculates the start and end dates for a given school year string."""
+    try:
+        start_year = int(school_year.split('-')[0])
+        end_year = start_year + 1
+        date_from = datetime(start_year, 6, 1)
+        date_to = datetime(end_year, 5, 31, 23, 59, 59) # End of May 31st
+        return date_from, date_to
+    except (ValueError, IndexError):
+        # Handle invalid format, maybe default to current school year
+        current_sy = get_current_school_year()
+        return get_school_year_dates(current_sy)
+
+def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list[str]:
+    """Generates a list of school year strings for dropdowns."""
+    if end_cal_year is None:
+        end_cal_year = date.today().year + 1 # Go one year into the future potentially
+    
+    school_years = []
+    # School year starts June 1st, so calendar year YYYY corresponds to YYYY-YYYY+1 school year start
+    for year in range(end_cal_year, start_cal_year - 1, -1):
+         # The school year starting in 'year' is 'year'-'year+1'
+         school_years.append(f"{year}-{year + 1}")
+    return school_years
+
+# --- End Helper Functions ---
+
+
 def load_routes(bp):
     @bp.route('/reports/virtual/usage')
     @login_required
     def virtual_usage():
-        # Get filter parameters with explicit year handling
-        year = int(request.args.get('year', '2024'))  # Default to 2024
+        # Get filter parameters: Use school year
+        default_school_year = get_current_school_year()
+        selected_school_year = request.args.get('year', default_school_year)
         
-        # Handle date range
+        # Calculate default date range based on school year
+        default_date_from, default_date_to = get_school_year_dates(selected_school_year)
+        
+        # Handle explicit date range parameters
         date_from_str = request.args.get('date_from')
         date_to_str = request.args.get('date_to')
         
+        date_from = default_date_from
+        date_to = default_date_to
+        
         if date_from_str and date_to_str:
             try:
-                date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
-                date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
-                if date_from.year != year or date_to.year != year:
-                    date_from = datetime(year, 1, 1)
-                    date_to = datetime(year, 12, 31)
+                parsed_date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+                parsed_date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+                
+                # Check if parsed dates fall within the selected school year range
+                # If they don't, we stick with the school year's default range
+                if default_date_from <= parsed_date_from <= default_date_to and \
+                   default_date_from <= parsed_date_to <= default_date_to and \
+                   parsed_date_from <= parsed_date_to:
+                    date_from = parsed_date_from
+                    # Adjust date_to to include the whole day
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+                # else: keep default_date_from/to calculated from school year
+
             except ValueError:
-                date_from = datetime(year, 1, 1)
-                date_to = datetime(year, 12, 31)
-        else:
-            date_from = datetime(year, 1, 1)
-            date_to = datetime(year, 12, 31)
+                # Invalid date format, use the default school year range
+                pass 
 
         current_filters = {
-            'year': year,
+            'year': selected_school_year, # Now stores school year string
             'date_from': date_from,
             'date_to': date_to,
             'career_cluster': request.args.get('career_cluster'),
@@ -48,7 +99,7 @@ def load_routes(bp):
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
             Event.start_date >= date_from,
-            Event.start_date <= date_to
+            Event.start_date <= date_to # Use precise end time
         )
         
         # Apply additional filters
@@ -67,7 +118,11 @@ def load_routes(bp):
         all_schools = db.session.query(Event.school).distinct().all()
         all_districts = db.session.query(Event.district_partner).distinct().all()
         
+        # Generate school year options for the dropdown
+        school_year_options = generate_school_year_options()
+
         filter_options = {
+            'school_years': school_year_options, # Add school years here
             'career_clusters': sorted([c[0] for c in all_clusters if c[0]]),
             'schools': sorted([s[0] for s in all_schools if s[0]]),
             'districts': sorted([d[0] for d in all_districts if d[0]])
@@ -128,42 +183,53 @@ def load_routes(bp):
         return render_template(
             'reports/virtual_usage.html',
             district_stats=sorted_districts,
-            filter_options=filter_options,
+            filter_options=filter_options, # Pass updated filter options
             current_filters=current_filters
         )
 
     @bp.route('/reports/virtual/usage/district/<district_name>')
     @login_required
     def virtual_usage_district(district_name):
-        # Get filter parameters with explicit year handling
-        year = int(request.args.get('year', '2024'))  # Default to 2024
-        
-        # Check if date_from and date_to are provided and match the selected year
+        # Get filter parameters: Use school year
+        default_school_year = get_current_school_year()
+        selected_school_year = request.args.get('year', default_school_year)
+
+        # Calculate default date range based on school year
+        default_date_from, default_date_to = get_school_year_dates(selected_school_year)
+
+        # Handle explicit date range parameters
         date_from_str = request.args.get('date_from')
         date_to_str = request.args.get('date_to')
-        
-        # If dates are provided, check if they match the selected year
+
+        date_from = default_date_from
+        date_to = default_date_to
+
         if date_from_str and date_to_str:
             try:
-                date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
-                date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
-                # If the dates don't match the selected year, use the year's full range
-                if date_from.year != year or date_to.year != year:
-                    date_from = datetime(year, 1, 1)
-                    date_to = datetime(year, 12, 31)
+                parsed_date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+                parsed_date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+
+                # Check if parsed dates fall within the selected school year range
+                if default_date_from <= parsed_date_from <= default_date_to and \
+                   default_date_from <= parsed_date_to <= default_date_to and \
+                   parsed_date_from <= parsed_date_to:
+                     date_from = parsed_date_from
+                     # Adjust date_to to include the whole day
+                     date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+                # else: keep default_date_from/to calculated from school year
+
             except ValueError:
-                date_from = datetime(year, 1, 1)
-                date_to = datetime(year, 12, 31)
-        else:
-            # If no dates provided, use the full year range
-            date_from = datetime(year, 1, 1)
-            date_to = datetime(year, 12, 31)
+                # Invalid date format, use the default school year range
+                 pass
 
         current_filters = {
-            'year': year,
+            'year': selected_school_year, # Use school year string
             'date_from': date_from,
             'date_to': date_to
         }
+        
+        # Generate school year options for the dropdown
+        school_year_options = generate_school_year_options()
         
         # Base query for this district with date filtering
         query = Event.query.filter(
@@ -171,7 +237,7 @@ def load_routes(bp):
             Event.status == EventStatus.COMPLETED,
             Event.district_partner == district_name,
             Event.start_date >= date_from,
-            Event.start_date <= date_to
+            Event.start_date <= date_to # Use precise end time
         ).order_by(Event.start_date)
         
         # Get all events for this district
@@ -190,6 +256,8 @@ def load_routes(bp):
                     'total_registered': 0,
                     'total_attended': 0,
                     'total_duration': 0,
+                    'avg_attendance_rate': 0.0, # Initialize here
+                    'avg_duration': 0.0,       # Initialize here
                     'schools': set(),
                     'educators': set(),
                     'career_clusters': set(),
@@ -225,7 +293,12 @@ def load_routes(bp):
         for stats in monthly_stats.values():
             if stats['total_registered'] > 0:
                 stats['avg_attendance_rate'] = (stats['total_attended'] / stats['total_registered']) * 100
-            stats['avg_duration'] = stats['total_duration'] / stats['total_sessions'] if stats['total_sessions'] > 0 else 0
+            # No 'else' needed as it's initialized to 0.0
+
+            if stats['total_sessions'] > 0: # Check division by zero
+                stats['avg_duration'] = stats['total_duration'] / stats['total_sessions']
+            # No 'else' needed as it's initialized to 0.0
+
             stats['school_count'] = len(stats['schools'])
             stats['educator_count'] = len(stats['educators'])
             stats['career_cluster_count'] = len(stats['career_clusters'])
@@ -242,5 +315,6 @@ def load_routes(bp):
             'reports/virtual_usage_district.html',
             district_name=district_name,
             monthly_stats=sorted_stats,
-            current_filters=current_filters
+            current_filters=current_filters,
+            school_year_options=school_year_options # Pass school year options
         )
