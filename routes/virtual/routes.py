@@ -41,8 +41,13 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
         status_str = safe_str(row.get('Status', '')).lower()
         is_simulcast = status_str == 'simulcast'
         
+        # Parse the date early since we'll need it in multiple places
+        date_str = row.get('Date')
+        time_str = row.get('Time', '')
+        parsed_date = parse_datetime(date_str, time_str) if date_str else None
+        
         # For simulcast entries or entries without dates, we only process teacher data
-        if is_simulcast or not row.get('Date'):
+        if is_simulcast or not date_str:
             # Only process teacher information
             if row.get('Teacher Name'):
                 process_teacher_data(row, is_simulcast)
@@ -97,22 +102,27 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
                 event.district_partner = main_district
 
         # For completed sessions, collect all simulcast districts
-        if status_str == 'successfully completed' and all_rows:
+        if status_str == 'successfully completed' and all_rows and parsed_date:
             session_title = row.get('Session Title')
+            date_key = parsed_date.date().isoformat()
             if session_title:
-                # Find all simulcast entries with matching title
-                for sim_row in all_rows:
-                    if (sim_row.get('Session Title') == session_title and 
-                        safe_str(sim_row.get('Status', '')).lower() == 'simulcast'):
-                        sim_district = sim_row.get('District')
-                        if sim_district and not pd.isna(sim_district):
-                            districts_to_add.add(sim_district)
+                # Find all simulcast entries with matching title and date
+                simulcast_districts = set()
+                for sim_row in all_rows:  # Changed from df.iterrows()
+                    sim_title = clean_string_value(sim_row.get('Session Title'))
+                    sim_status = safe_str(sim_row.get('Status', '')).lower()
+                    sim_district = safe_str(sim_row.get('District'))
+                    sim_date = parse_datetime(sim_row.get('Date'), sim_row.get('Time'))
+                    
+                    if (sim_title == session_title and 
+                        sim_status == 'simulcast' and 
+                        sim_district and not pd.isna(sim_district) and
+                        (not sim_date or sim_date.date().isoformat() == date_key)):
+                        simulcast_districts.add(sim_district)
 
         # Now add all collected districts to the event
         for district_name in districts_to_add:
-            district = get_or_create_district(district_name)
-            if district not in event.districts:
-                event.districts.append(district)
+            add_district_to_event(event, district_name)
 
         db.session.add(event)
         db.session.commit()
@@ -324,6 +334,14 @@ def process_teacher_for_event(row, event, is_simulcast):
                 attendance_confirmed_at=datetime.now(timezone.utc) if event.status == EventStatus.COMPLETED else None
             )
             db.session.add(event_teacher)
+
+def add_district_to_event(event, district_name):
+    district = get_or_create_district(district_name)
+    # Check if district is already associated before adding
+    if not any(d.name.lower() == district.name.lower() for d in event.districts):
+        event.districts.append(district)
+        if not event.district_partner:
+            event.district_partner = district_name
 
 @virtual_bp.route('/import', methods=['GET', 'POST'])
 @login_required
@@ -729,7 +747,12 @@ def import_sheet():
             raise ValueError("Google Sheet ID not configured")
         
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-        df = pd.read_csv(csv_url, skiprows=5, dtype={'School Name': str})
+        # Read only first 200 rows for debugging
+        df = pd.read_csv(csv_url, skiprows=5, dtype={'School Name': str}, nrows=200)
+        
+        print(f"\n=== Starting Import ===")
+        print(f"Total rows to process: {len(df)}")
+        print("========================\n")
         
         # Modify the session_datetimes creation to handle multiple dates per title
         session_datetimes = {}
@@ -852,17 +875,22 @@ def import_sheet():
                     
                     processed_events[event_key] = event
                     # Store the event by title for later simulcast entries
-                    events_by_title[title] = event
+                    event_key = (title, event_datetime.date())
+                    events_by_title[event_key] = event
+                
+                # Print event info before district processing
+                print(f"\n=== Processing Event ===")
+                print(f"Title: {title}")
+                print(f"Status: {status_str}")
+                print(f"Is Simulcast: {is_simulcast}")
                 
                 # Handle district associations
                 district_name = safe_str(row.get('District'))
                 if district_name:
-                    # Direct district association
-                    district = get_or_create_district(district_name)
-                    event.district_partner = district_name
-                    if district not in event.districts:
-                        event.districts.append(district)
+                    print(f"Direct district association found: {district_name}")
+                    add_district_to_event(event, district_name)
                 elif status_str == 'successfully completed':
+                    print(f"\nLooking for simulcast districts for completed event: {title}")
                     # For completed events without a district, look for simulcast sessions
                     simulcast_districts = set()
                     # Look through all rows to find simulcast sessions for this title
@@ -872,20 +900,34 @@ def import_sheet():
                         sim_status = safe_str(sim_row.get('Status', '')).lower()
                         sim_district = safe_str(sim_row.get('District'))
                         
+                        if (sim_title == title and sim_status == 'simulcast'):
+                            print(f"Found simulcast entry:")
+                            print(f"  Title match: {sim_title}")
+                            print(f"  Status: {sim_status}")
+                            print(f"  District: {sim_district}")
+                        
                         # Check if this is a simulcast row for our event
                         if (sim_title == title and 
                             sim_status == 'simulcast' and 
                             sim_district and not pd.isna(sim_district)):
+                            print(f"Adding simulcast district: {sim_district}")
                             simulcast_districts.add(sim_district)
+                    
+                    print(f"Found simulcast districts: {simulcast_districts}")
+                    print(f"Current event districts before adding simulcast: {[d.name for d in event.districts]}")
                     
                     # Add all found districts to the event
                     for district_name in simulcast_districts:
-                        district = get_or_create_district(district_name)
-                        if not event.district_partner:
-                            # Set the first district as the partner if none set
-                            event.district_partner = district_name
-                        if district not in event.districts:
-                            event.districts.append(district)
+                        add_district_to_event(event, district_name)
+                    
+                    print(f"Event districts after adding simulcast: {[d.name for d in event.districts]}")
+
+                # After all district processing
+                print(f"=== Final Event State ===")
+                print(f"Event: {title}")
+                print(f"District Partner: {event.district_partner}")
+                print(f"Associated Districts: {[d.name for d in event.districts]}")
+                print("========================\n")
 
                 # Update completed session metrics
                 if status_str == 'successfully completed':
