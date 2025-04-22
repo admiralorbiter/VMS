@@ -922,6 +922,7 @@ def import_sheet():
                 if is_primary_row_status and not primary_logic_already_run:
                     event_processed_in_this_row = True # Mark that event logic ran
                     print(f"\n=== Processing PRIMARY LOGIC for Event '{title}' ({event.id}) (Row {row_index+1}) ===")
+                    print(f"    Primary Event Key: Title='{title}', DateKey='{date_key}'")
                     processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event
 
                     # Update core event details from this primary row
@@ -942,25 +943,76 @@ def import_sheet():
 
                     print(f"  Searching all {len(all_rows_for_lookup)} rows for districts associated with '{title}' on {date_key}...")
                     # Iterate through ALL rows to find districts related to this title and date
-                    for lookup_row_data in all_rows_for_lookup:
+                    for lookup_row_index, lookup_row_data in enumerate(all_rows_for_lookup):
                         lookup_title = clean_string_value(lookup_row_data.get('Session Title'))
-                        if lookup_title != title: continue # Fast skip if title doesn't match
+                        # Fast skip if title doesn't match
+                        if lookup_title != title:
+                            continue
 
                         lookup_date_str = lookup_row_data.get('Date')
                         lookup_time_str = lookup_row_data.get('Time')
-                        lookup_datetime = parse_datetime(lookup_date_str, lookup_time_str) if not pd.isna(lookup_date_str) else None
-                        lookup_date_key = lookup_datetime.date().isoformat() if lookup_datetime else None
+                        final_lookup_date_key = None # Initialize
 
-                        # Check if the row belongs to the same event instance (title and date)
-                        if lookup_date_key == date_key:
+                        # Attempt 1: Parse full datetime
+                        lookup_datetime = parse_datetime(lookup_date_str, lookup_time_str)
+                        if lookup_datetime:
+                            final_lookup_date_key = lookup_datetime.date().isoformat()
+                            print(f"    [Row {lookup_row_index+1}] Parsed FULL datetime: LookupDateKey='{final_lookup_date_key}'")
+                        else:
+                            # Attempt 2: If full parse failed BUT raw date string exists, parse just the date part
+                            if not pd.isna(lookup_date_str):
+                                try:
+                                    date_str_cleaned = str(lookup_date_str).strip()
+                                    if '/' in date_str_cleaned:
+                                        parts = date_str_cleaned.split('/')
+                                        if len(parts) >= 2:
+                                            month = int(parts[0])
+                                            day = int(parts[1])
+                                            if 1 <= month <= 12 and 1 <= day <= 31:
+                                                # Determine academic year (same logic as parse_datetime)
+                                                current_dt_utc = datetime.now(timezone.utc)
+                                                if current_dt_utc.month >= 6:
+                                                    year = current_dt_utc.year if month >= 6 else current_dt_utc.year + 1
+                                                else:
+                                                    year = current_dt_utc.year - 1 if month >= 6 else current_dt_utc.year
+
+                                                # Create date object, handle potential ValueError (e.g., 2/30)
+                                                try:
+                                                    date_obj_only = datetime(year, month, day).date()
+                                                    final_lookup_date_key = date_obj_only.isoformat()
+                                                    print(f"    [Row {lookup_row_index+1}] Parsed DATE ONLY: LookupDateKey='{final_lookup_date_key}'")
+                                                except ValueError:
+                                                    print(f"    [Row {lookup_row_index+1}] Invalid date components from date string: {year}-{month}-{day}")
+                                                    final_lookup_date_key = None # Mark as failed
+                                            else: # Invalid month/day numbers
+                                                print(f"    [Row {lookup_row_index+1}] Invalid month/day from date string: {month}/{day}")
+                                                final_lookup_date_key = None
+                                        else: # Not enough parts after split
+                                           final_lookup_date_key = None
+                                    else: # Date string doesn't contain '/' - add other format handling if needed
+                                        final_lookup_date_key = None
+                                except Exception as e:
+                                    print(f"    [Row {lookup_row_index+1}] Error parsing date only from '{lookup_date_str}': {e}")
+                                    final_lookup_date_key = None
+                            # else: Raw date string is also missing/NaN, final_lookup_date_key remains None
+
+                        print(f"    [Row {lookup_row_index+1}] Checking: Title='{lookup_title}', RawDate='{lookup_date_str}', RawTime='{lookup_time_str}', FinalLookupDateKey='{final_lookup_date_key}'")
+
+                        # Compare using the final derived lookup_date_key
+                        # Ensure both keys are valid and match
+                        if final_lookup_date_key is not None and final_lookup_date_key == date_key:
                             lookup_district = safe_str(lookup_row_data.get('District'))
+                            print(f"      MATCHED on Title and DateKey. Found District: '{lookup_district}'")
                             if lookup_district:
                                 all_associated_district_names.add(lookup_district)
                                 # Check if this lookup_row_data is the current primary row_data
                                 if lookup_row_data is row_data:
                                      primary_row_district = lookup_district
+                        else:
+                            print(f"      NO MATCH: Title or FinalDateKey mismatch ('{lookup_title}' == '{title}', '{final_lookup_date_key}' == '{date_key}')") # Modified log
 
-                    print(f"  Found unique associated district names: {all_associated_district_names}")
+
+                    print(f"  Finished search. Found unique associated district names: {all_associated_district_names}")
 
                     # Set district partner based ONLY on the primary row's district
                     event.district_partner = primary_row_district # This will be None if primary row had no district
@@ -976,7 +1028,9 @@ def import_sheet():
                         event.district_partner = fallback_partner
                         print(f"  Fallback District Partner set to: {event.district_partner}")
 
-                    print(f"  Final Associated Districts: {[d.name for d in event.districts]}")
+                    # Flush to ensure district additions are reflected before logging
+                    db.session.flush()
+                    print(f"  Final Associated Districts after adding: {[d.name for d in event.districts]}")
 
 
                     # --- Volunteer/Presenter Handling (from primary row only) ---
