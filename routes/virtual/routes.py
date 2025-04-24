@@ -23,6 +23,7 @@ from models.contact import Contact
 from models.event import EventTeacher
 from models.contact import ContactTypeEnum
 from sqlalchemy.orm import joinedload # Import for potential optimization if needed
+from routes.reports.common import DISTRICT_MAPPING
 
 virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 
@@ -700,27 +701,68 @@ def clean_status(status):
     return str(status).strip()
 
 def get_or_create_district(name):
-    """Get or create district by name with basic cleaning and normalization."""
+    """
+    Get or create district by name, attempting to match aliases and standard names
+    from DISTRICT_MAPPING to avoid creating duplicates.
+    """
     if pd.isna(name) or not name or str(name).strip() == '':
-        name = 'Unknown District' # Default name
+        effective_name = 'Unknown District'
+        target_salesforce_id = None
     else:
-        name = str(name).strip()
-        # --- Optional: Add more robust normalization here ---
-        # Example: remove state codes like (KS), (MO)
-        name = re.sub(r'\s*\([A-Z]{2}\)\s*$', '', name).strip()
-        # Example: Standardize common names
-        # name_upper = name.upper()
-        # if name_upper == 'KCKPS': name = 'KCKPS (KS)' # Or your preferred standard form
-        # --- End Optional Normalization ---
+        effective_name = str(name).strip()
+        target_salesforce_id = None
 
-    # Case-insensitive lookup
-    district = District.query.filter(func.lower(District.name) == func.lower(name)).first()
+        # --- Attempt to map the input name to a canonical Salesforce ID ---
+        name_lower = effective_name.lower()
+        for sf_id, mapping_info in DISTRICT_MAPPING.items():
+            # Check exact canonical name
+            if mapping_info['name'].lower() == name_lower:
+                target_salesforce_id = sf_id
+                effective_name = mapping_info['name'] # Use the canonical name
+                print(f"    Mapped input '{name}' to canonical name '{effective_name}' via exact match (SFID: {sf_id})")
+                break
+            # Check aliases
+            if 'aliases' in mapping_info:
+                for alias in mapping_info['aliases']:
+                    if alias.lower() == name_lower:
+                        target_salesforce_id = sf_id
+                        effective_name = mapping_info['name'] # Use the canonical name
+                        print(f"    Mapped input '{name}' to canonical name '{effective_name}' via alias '{alias}' (SFID: {sf_id})")
+                        break
+            if target_salesforce_id: # Stop searching if mapped
+                break
+        # --- End Mapping Attempt ---
 
+    district = None
+    # If we mapped to a Salesforce ID, prioritize finding the district by that ID
+    if target_salesforce_id:
+        district = District.query.filter_by(salesforce_id=target_salesforce_id).first()
+        if district:
+            print(f"    Found existing district by mapped Salesforce ID: '{district.name}' (ID: {district.id})")
+
+    # If not found by Salesforce ID (or no mapping occurred), try finding by the effective name (case-insensitive)
     if not district:
-        print(f"      Creating new district: '{name}'")
-        district = District(name=name)
+        district = District.query.filter(func.lower(District.name) == func.lower(effective_name)).first()
+        if district:
+             print(f"    Found existing district by name lookup: '{district.name}' (ID: {district.id})")
+
+
+    # Only create a new district if absolutely not found and it's not 'Unknown District'
+    if not district and effective_name != 'Unknown District':
+        print(f"      CREATING NEW district: '{effective_name}' (Salesforce ID will be NULL)")
+        # We create it without a Salesforce ID because we couldn't map it
+        district = District(name=effective_name)
         db.session.add(district)
-        db.session.flush() # Flush to assign an ID if needed immediately
+        db.session.flush() # Flush to assign an ID
+
+    # Handle 'Unknown District' case - find or create the specific 'Unknown' record
+    elif not district and effective_name == 'Unknown District':
+         district = District.query.filter(func.lower(District.name) == 'unknown district').first()
+         if not district:
+              print(f"      CREATING 'Unknown District'")
+              district = District(name='Unknown District')
+              db.session.add(district)
+              db.session.flush()
 
     return district
 
