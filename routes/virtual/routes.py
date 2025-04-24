@@ -967,7 +967,7 @@ def import_sheet():
                     print(f"\n=== Processing PRIMARY LOGIC for Event '{title}' ({event.id}) at {current_datetime.isoformat()} (DateKey: {current_date_key}) (Row {row_index+1}) ===")
                     processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event instance
 
-                    # --- Participant Count Calculation (Based on Title and DATE ONLY) ---
+                    # --- Participant Count Calculation (Based on Title and DATE ONLY, requires School Name) ---
                     print(f"  Calculating participant count for event '{title}' on date {current_date_key}...")
                     qualifying_teacher_rows_count = 0
                     event.participant_count = 0 # Reset count for this specific event instance
@@ -1016,20 +1016,28 @@ def import_sheet():
                         if lookup_date_key_pc != current_date_key:
                             continue
 
-                        # Now check the status and if a teacher is present
+                        # Now check status, teacher presence, AND school presence
                         lookup_status_str_pc = safe_str(lookup_row_data_pc.get('Status', '')).lower().strip()
                         lookup_teacher_name_pc = lookup_row_data_pc.get('Teacher Name')
+                        lookup_school_name_pc = lookup_row_data_pc.get('School Name') # Get School Name
 
-                        if lookup_status_str_pc in ['successfully completed', 'simulcast'] and lookup_teacher_name_pc and not pd.isna(lookup_teacher_name_pc):
-                            # print(f"    [Row {lookup_row_index_pc+1}] Qualifies for Count: DateKey='{lookup_date_key_pc}', Status='{lookup_status_str_pc}', Teacher='{lookup_teacher_name_pc}'")
+                        if (lookup_status_str_pc in ['successfully completed', 'simulcast'] and
+                            lookup_teacher_name_pc and not pd.isna(lookup_teacher_name_pc) and
+                            lookup_school_name_pc and not pd.isna(lookup_school_name_pc)): # Added check for non-empty School Name
+                            # print(f"    [Row {lookup_row_index_pc+1}] Qualifies for Count: DateKey='{lookup_date_key_pc}', Status='{lookup_status_str_pc}', Teacher='{lookup_teacher_name_pc}', School='{lookup_school_name_pc}'")
                             qualifying_teacher_rows_count += 1
                         # else:
-                            # print(f"    [Row {lookup_row_index_pc+1}] Does NOT Qualify for Count: DateKey='{lookup_date_key_pc}', Status='{lookup_status_str_pc}', Teacher='{lookup_teacher_name_pc}'")
+                            # Print statement for debugging why a row didn't qualify
+                            # reason = []
+                            # if lookup_status_str_pc not in ['successfully completed', 'simulcast']: reason.append(f"BadStatus({lookup_status_str_pc})")
+                            # if not lookup_teacher_name_pc or pd.isna(lookup_teacher_name_pc): reason.append("NoTeacher")
+                            # if not lookup_school_name_pc or pd.isna(lookup_school_name_pc): reason.append("NoSchool")
+                            # print(f"    [Row {lookup_row_index_pc+1}] Does NOT Qualify for Count: DateKey='{lookup_date_key_pc}', Reason(s): {', '.join(reason)}")
 
 
                     # Update the event's participant count
                     event.participant_count = qualifying_teacher_rows_count * 25
-                    print(f"  Calculated Participant Count: {qualifying_teacher_rows_count} rows * 25 = {event.participant_count} for date {current_date_key}")
+                    print(f"  Calculated Participant Count: {qualifying_teacher_rows_count} qualifying rows * 25 = {event.participant_count} for date {current_date_key}")
                     # --- End Participant Count Calculation ---
 
 
