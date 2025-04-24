@@ -171,6 +171,8 @@ def generate_district_stats(school_year):
             'district_code': mapping['district_code'],
             'total_events': len(events),
             'total_students': 0,
+            'total_in_person_students': 0,
+            'total_virtual_students': 0,
             'total_volunteers': 0,
             'unique_volunteers': set(),  # Track unique volunteer IDs
             'total_volunteer_hours': 0,
@@ -187,15 +189,21 @@ def generate_district_stats(school_year):
         for event in events:
             # Get student count based on event type
             student_count = 0
-            if event.type == EventType.VIRTUAL_SESSION:
+            is_virtual = event.type == EventType.VIRTUAL_SESSION
+            
+            if is_virtual:
                 # Use participant_count for virtual sessions
                 student_count = event.participant_count or 0
-            elif hasattr(event, 'attendance') and event.attendance:
-                student_count = event.attendance.total_attendance
-            else:
-                # Fallback or for other types that might use participant_count
-                student_count = event.participant_count or 0
-            
+                stats['total_virtual_students'] += student_count
+            else: # Treat non-virtual as in-person for this calculation
+                if hasattr(event, 'attendance') and event.attendance:
+                    student_count = event.attendance.total_attendance or 0
+                else:
+                    # Fallback if attendance object doesn't exist or total_attendance is null
+                    student_count = event.participant_count or 0
+                stats['total_in_person_students'] += student_count
+
+            # Keep track of the overall total as well
             stats['total_students'] += student_count
             
             # Track volunteer participation with improved counting for virtual events
