@@ -962,10 +962,76 @@ def import_sheet():
                 # Run this block only ONCE per specific event instance (title + datetime)
                 if is_primary_row_status and not primary_logic_already_run:
                     event_processed_in_this_row = True # Mark that event logic ran
-                    # Get the date key for district aggregation
+                    # Get the date key for aggregation (date part only)
                     current_date_key = current_datetime.date().isoformat()
                     print(f"\n=== Processing PRIMARY LOGIC for Event '{title}' ({event.id}) at {current_datetime.isoformat()} (DateKey: {current_date_key}) (Row {row_index+1}) ===")
                     processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event instance
+
+                    # --- Participant Count Calculation (Based on Title and DATE ONLY) ---
+                    print(f"  Calculating participant count for event '{title}' on date {current_date_key}...")
+                    qualifying_teacher_rows_count = 0
+                    event.participant_count = 0 # Reset count for this specific event instance
+
+                    # Iterate through all rows again specifically for participant count calculation
+                    for lookup_row_index_pc, lookup_row_data_pc in enumerate(all_rows_for_lookup):
+                        lookup_title_pc = clean_string_value(lookup_row_data_pc.get('Session Title'))
+
+                        # Fast skip if title doesn't match
+                        if lookup_title_pc != title:
+                            continue
+
+                        # --- Attempt to parse DATE ONLY from the lookup row ---
+                        lookup_date_str_pc = lookup_row_data_pc.get('Date')
+                        lookup_date_key_pc = None # Reset for each lookup row
+                        if not pd.isna(lookup_date_str_pc):
+                            try:
+                                date_str_cleaned_pc = str(lookup_date_str_pc).strip()
+                                if '/' in date_str_cleaned_pc:
+                                    parts_pc = date_str_cleaned_pc.split('/')
+                                    if len(parts_pc) >= 2:
+                                        month_str_pc, day_str_pc = parts_pc[0], parts_pc[1]
+                                        if month_str_pc.isdigit() and day_str_pc.isdigit():
+                                            month_pc = int(month_str_pc)
+                                            day_pc = int(day_str_pc)
+                                            if 1 <= month_pc <= 12 and 1 <= day_pc <= 31:
+                                                # Determine academic year (reuse logic)
+                                                current_dt_utc_pc = datetime.now(timezone.utc) # Use consistent now reference
+                                                if current_dt_utc_pc.month >= 6:
+                                                    year_pc = current_dt_utc_pc.year if month_pc >= 6 else current_dt_utc_pc.year + 1
+                                                else:
+                                                    year_pc = current_dt_utc_pc.year - 1 if month_pc >= 6 else current_dt_utc_pc.year
+                                                try:
+                                                    date_obj_only_pc = datetime(year_pc, month_pc, day_pc).date()
+                                                    lookup_date_key_pc = date_obj_only_pc.isoformat()
+                                                except ValueError:
+                                                    pass # Invalid date components
+                            except Exception as e_pc:
+                                # Log potential date parsing errors during count calculation if needed
+                                # print(f"    [Row {lookup_row_index_pc+1}] Error parsing date only for count: {e_pc}")
+                                lookup_date_key_pc = None
+                        # --- End Date Only Parsing ---
+
+
+                        # Skip if date doesn't match the current event's date key
+                        if lookup_date_key_pc != current_date_key:
+                            continue
+
+                        # Now check the status and if a teacher is present
+                        lookup_status_str_pc = safe_str(lookup_row_data_pc.get('Status', '')).lower().strip()
+                        lookup_teacher_name_pc = lookup_row_data_pc.get('Teacher Name')
+
+                        if lookup_status_str_pc in ['successfully completed', 'simulcast'] and lookup_teacher_name_pc and not pd.isna(lookup_teacher_name_pc):
+                            # print(f"    [Row {lookup_row_index_pc+1}] Qualifies for Count: DateKey='{lookup_date_key_pc}', Status='{lookup_status_str_pc}', Teacher='{lookup_teacher_name_pc}'")
+                            qualifying_teacher_rows_count += 1
+                        # else:
+                            # print(f"    [Row {lookup_row_index_pc+1}] Does NOT Qualify for Count: DateKey='{lookup_date_key_pc}', Status='{lookup_status_str_pc}', Teacher='{lookup_teacher_name_pc}'")
+
+
+                    # Update the event's participant count
+                    event.participant_count = qualifying_teacher_rows_count * 25
+                    print(f"  Calculated Participant Count: {qualifying_teacher_rows_count} rows * 25 = {event.participant_count} for date {current_date_key}")
+                    # --- End Participant Count Calculation ---
+
 
                     # Update core event details from this primary row
                     event.status = EventStatus.map_status(status_str)
@@ -1080,11 +1146,11 @@ def import_sheet():
 
                     # --- Update Metrics (if applicable, from primary row) ---
                     if event.status == EventStatus.COMPLETED:
-                        print("  Updating metrics for completed event...")
+                        print("  Updating other metrics for completed event...")
                         # Set default metrics if not already set, or adjust as needed
-                        event.participant_count = event.participant_count or 0
+                        # event.participant_count = event.participant_count or 0 # Handled above
                         event.registered_count = event.registered_count or 0
-                        event.attended_count = event.attended_count or 0
+                        event.attended_count = event.attended_count or 0 # Keep attended_count separate? Or set it equal to participant_count? Let's keep it separate for now.
                         event.volunteers_needed = event.volunteers_needed or 1
                         if not event.duration: event.duration = 60
 

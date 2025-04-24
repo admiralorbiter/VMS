@@ -112,8 +112,8 @@
                         <p><i class="fa-solid fa-building-flag"></i> {{ event.district_partner or 'Not set' }}</p>
                     </div>
                     <div class="info-item">
-                        <label>Attendance</label>
-                        <p><i class="fa-solid fa-user-check"></i> {{ event.attended_count }}/{{ event.registered_count }} students</p>
+                        <label>Estimated Student Participation</label>
+                        <p><i class="fa-solid fa-users"></i> {{ event.participant_count or 0 }} students</p>
                     </div>
                 {% endif %}
 
