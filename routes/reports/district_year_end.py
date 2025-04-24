@@ -174,7 +174,7 @@ def load_routes(bp):
                 }
             
             # Get attendance and volunteer data
-            student_count = event.attended_count if event.type == EventType.VIRTUAL_SESSION else (
+            student_count = event.participant_count if event.type == EventType.VIRTUAL_SESSION else (
                 event.attendance.total_attendance if hasattr(event, 'attendance') and event.attendance else event.participant_count or 0
             )
             
@@ -331,7 +331,8 @@ def cache_district_stats_with_events(school_year, district_stats):
                     'volunteer_engagement_count': 0
                 }
             
-            student_count = event.attended_count if event.type == EventType.VIRTUAL_SESSION else (
+            # Use participant_count for virtual sessions, otherwise use attendance logic
+            student_count = event.participant_count if event.type == EventType.VIRTUAL_SESSION else (
                 event.attendance.total_attendance if hasattr(event, 'attendance') and event.attendance else event.participant_count or 0
             )
             

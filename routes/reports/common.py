@@ -188,10 +188,12 @@ def generate_district_stats(school_year):
             # Get student count based on event type
             student_count = 0
             if event.type == EventType.VIRTUAL_SESSION:
-                student_count = event.attended_count or 0
+                # Use participant_count for virtual sessions
+                student_count = event.participant_count or 0
             elif hasattr(event, 'attendance') and event.attendance:
                 student_count = event.attendance.total_attendance
             else:
+                # Fallback or for other types that might use participant_count
                 student_count = event.participant_count or 0
             
             stats['total_students'] += student_count
