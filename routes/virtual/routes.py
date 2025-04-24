@@ -806,36 +806,37 @@ def import_sheet():
         print(f"Total rows read from sheet: {len(df)}")
         print("========================\n")
 
+        # session_datetimes is less critical now as we primarily rely on row's datetime
+        # Keep it for potential logging or edge-case handling if needed, but the core logic
+        # will rely on parsing datetime per row in the second pass.
         session_datetimes = {}
-        # --- First Pass: Identify potential primary event instances and their datetimes ---
-        print("--- First Pass: Identifying event datetimes ---")
+        print("--- First Pass: Pre-parsing datetimes (optional, for logging/reference) ---")
         for index, row in df.iterrows():
             title = clean_string_value(row.get('Session Title'))
             date_str = row.get('Date')
             time_str = row.get('Time')
-            status_str = safe_str(row.get('Status', '')).lower().strip()
 
-            # Basic check for necessary data
-            if title and not pd.isna(date_str) and not pd.isna(time_str):
+            if title and not pd.isna(date_str):
                 event_datetime = parse_datetime(date_str, time_str)
                 if event_datetime:
                     date_key = event_datetime.date().isoformat()
+                    datetime_key = event_datetime.isoformat() # Store full datetime key too
                     if title not in session_datetimes:
                         session_datetimes[title] = {}
+                    if date_key not in session_datetimes[title]:
+                         session_datetimes[title][date_key] = []
+                    # Store all datetimes found for this title/date combination
+                    if datetime_key not in [d['datetime_iso'] for d in session_datetimes[title][date_key]]:
+                        session_datetimes[title][date_key].append({'datetime': event_datetime, 'datetime_iso': datetime_key})
+                        # print(f"  Pre-parsed datetime for '{title}' on {date_key} at {event_datetime.time()}")
 
-                    # Store the datetime. Mark if this specific row seems like a "primary" one.
-                    # Define "primary" statuses (rows that define the core event)
-                    is_primary_status = status_str not in ['simulcast', 'teacher no-show', 'count', 'technical difficulties', ''] # Add other non-primary statuses if necessary
-                    if date_key not in session_datetimes[title] or is_primary_status:
-                         # Prioritize storing info from a primary row if multiple rows have same date/time
-                         session_datetimes[title][date_key] = {'datetime': event_datetime, 'is_primary': is_primary_status, 'status': status_str}
-                         print(f"  Stored datetime for '{title}' on {date_key} (Primary: {is_primary_status})")
 
         print("--- First Pass Complete ---\n")
 
         success_count = warning_count = error_count = 0
         errors = []
         # Use Event ID cache to handle multiple rows for the same event
+        # Key format: (title, datetime_iso_string)
         processed_event_ids = {}
         # Convert DataFrame rows to a list of dictionaries for easier lookup
         all_rows_for_lookup = df.to_dict('records')
@@ -856,72 +857,71 @@ def import_sheet():
                     errors.append(f"Skipped row {row_index + 1}: Missing Session Title")
                     continue
 
-                # Determine the event context (datetime and date_key) for this row
+                # Determine the event context (datetime) for this row
                 current_datetime = None
-                date_key = None
                 date_str = row_data.get('Date')
                 time_str = row_data.get('Time')
 
-                # Try parsing date/time from the current row first
+                # Try parsing date/time from the current row
                 if not pd.isna(date_str):
-                    parsed_date = parse_datetime(date_str, time_str)
-                    if parsed_date:
-                        current_datetime = parsed_date
-                        date_key = current_datetime.date().isoformat()
+                    parsed_dt = parse_datetime(date_str, time_str)
+                    if parsed_dt:
+                        current_datetime = parsed_dt
+                        # print(f"Row {row_index + 1} ('{title}'): Parsed datetime {current_datetime.isoformat()}")
+                    # else:
+                        # print(f"Row {row_index + 1} ('{title}'): Failed to parse date '{date_str}' time '{time_str}'")
 
-                # If current row lacks date/time, try finding *any* matching event from pass 1
-                if not current_datetime and title in session_datetimes:
-                     # Heuristic: Find *a* date_key associated with this title if row lacks its own
-                     potential_date_key = next(iter(session_datetimes[title]), None)
-                     if potential_date_key:
-                         current_datetime = session_datetimes[title][potential_date_key]['datetime']
-                         date_key = potential_date_key
-                         print(f"Row {row_index + 1} ('{title}'): Using inferred date {date_key} as row lacks specific date/time.")
 
-                # If we still can't determine event context, we can only process teacher data
-                if not current_datetime or not date_key:
+                # If we can't determine event context (datetime), we can only process teacher data standalone.
+                # Linking to an event requires the datetime.
+                if not current_datetime:
                     if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
-                         print(f"Processing row {row_index + 1} ('{title}'): No valid event context found. Processing TEACHER ONLY.")
-                         process_teacher_data(row_data, is_simulcast)
-                         # Don't count as full success? Maybe just log.
+                         print(f"Processing row {row_index + 1} ('{title}'): No valid event datetime found. Processing TEACHER ONLY.")
+                         process_teacher_data(row_data, is_simulcast) # Process teacher standalone
                     else:
-                         print(f"Skipping row {row_index + 1} ('{title}'): Cannot determine event context and no teacher name.")
+                         print(f"Skipping row {row_index + 1} ('{title}'): Cannot determine event datetime and no teacher name.")
                          warning_count += 1
-                         errors.append(f"Skipped row {row_index + 1} ('{title}'): Cannot determine event context.")
-                    continue # Cannot process event without context
+                         errors.append(f"Skipped row {row_index + 1} ('{title}'): Cannot determine event datetime.")
+                    continue # Cannot process event without full datetime context
 
                 # --- Event Handling ---
-                event_key = (title, date_key)
+                # Use title and the full datetime ISO string as the unique key
+                event_key = (title, current_datetime.isoformat())
                 event = None
                 event_id = processed_event_ids.get(event_key)
 
                 if event_id:
                     # Fetch fresh event object from session/DB using cached ID
                     event = db.session.get(Event, event_id)
-                    if not event:
-                         print(f"Warning: Event ID {event_id} found in cache for '{title}'/{date_key}, but not in DB session. Querying DB.")
+                    if event:
+                         # print(f"Found event in cache for '{title}' at {current_datetime.isoformat()}. ID: {event.id}")
+                         pass
+                    else:
+                         print(f"Warning: Event ID {event_id} found in cache for '{title}' at {current_datetime.isoformat()}, but not in DB session. Querying DB.")
                          # Fall through to DB query if session.get fails unexpectedly
 
                 if not event:
                     # Query DB if not found via cache or if session.get failed
+                    # *** UPDATED QUERY: Filter by exact start_date (datetime) ***
+                    print(f"Querying DB for event '{title}' at exactly {current_datetime.isoformat()}")
                     event = Event.query.filter(
                         func.lower(Event.title) == func.lower(title.strip()),
-                        func.date(Event.start_date) == current_datetime.date(),
+                        Event.start_date == current_datetime, # Compare full datetime
                         Event.type == EventType.VIRTUAL_SESSION
                     ).first()
 
                     if event:
                         # Found in DB, cache its ID
                         processed_event_ids[event_key] = event.id
-                        print(f"Found existing event in DB for '{title}' on {date_key}. ID: {event.id}")
+                        print(f"Found existing event in DB for '{title}' at {current_datetime.isoformat()}. ID: {event.id}")
                     else:
                         # Create new event *only if* this row represents a primary instance
                         is_primary_row_status = status_str not in ['simulcast', 'teacher no-show', 'count', 'technical difficulties', '']
                         if is_primary_row_status:
-                            print(f"Creating NEW event for '{title}' on {date_key} based on primary status: '{status_str}'")
+                            print(f"Creating NEW event for '{title}' at {current_datetime.isoformat()} based on primary status: '{status_str}'")
                             event = Event(
                                 title=title,
-                                start_date=current_datetime,
+                                start_date=current_datetime, # Use precise datetime
                                 # Basic duration logic, refine if needed
                                 end_date=current_datetime.replace(hour=current_datetime.hour+1) if current_datetime else None,
                                 duration=60,
@@ -932,12 +932,13 @@ def import_sheet():
                             )
                             db.session.add(event)
                             db.session.flush() # Flush to get the new event.id
-                            processed_event_ids[event_key] = event.id
+                            processed_event_ids[event_key] = event.id # Cache using the datetime key
                             print(f"  New Event ID: {event.id}")
                         else:
                             # This row is secondary, but no existing event found.
-                            # We can only process teacher data for this row.
-                            print(f"Row {row_index + 1} ('{title}'): Secondary status '{status_str}' but no existing event found. Processing TEACHER ONLY.")
+                            # This case *should* be less likely now if primary rows always exist for each time slot.
+                            # Process teacher data standalone if it exists.
+                            print(f"Row {row_index + 1} ('{title}'): Secondary status '{status_str}' but no existing event found for datetime {current_datetime.isoformat()}. Processing TEACHER ONLY.")
                             if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
                                 process_teacher_data(row_data, is_simulcast)
                             continue # Skip further event processing for this row
@@ -945,27 +946,26 @@ def import_sheet():
 
                 # If we don't have an event object here, something went wrong or it was skipped above
                 if not event:
-                    print(f"Skipping row {row_index + 1} ('{title}'): Could not find or create event.")
+                    print(f"Skipping row {row_index + 1} ('{title}'): Could not find or create event for datetime {current_datetime.isoformat()}.")
                     warning_count += 1
-                    errors.append(f"Skipped row {row_index + 1} ('{title}'): Could not find or create event.")
+                    errors.append(f"Skipped row {row_index + 1} ('{title}'): Could not find or create event for {current_datetime.isoformat()}.")
                     continue
 
                 # --- Determine if this row dictates the event's core data ---
-                # We only update core Event fields, Districts, Partner, Volunteer based on ONE primary row per event instance.
-                # Check if *this row* is considered the primary one for this event key.
                 is_primary_row_status = status_str not in ['simulcast', 'teacher no-show', 'count', 'technical difficulties', '']
-                # We also need to check if we've ALREADY processed the primary logic for this event_key
-                primary_logic_run_key = f"{event_key}_primary_done"
+                # Check if we've ALREADY processed the primary logic for this specific event instance (title + datetime)
+                primary_logic_run_key = f"{event_key[0]}_{event_key[1]}_primary_done" # Use tuple elements for key string
                 primary_logic_already_run = processed_event_ids.get(primary_logic_run_key, False)
 
 
                 # --- Primary Logic Block ---
-                # Run this block only ONCE per event instance, using the first primary row encountered.
+                # Run this block only ONCE per specific event instance (title + datetime)
                 if is_primary_row_status and not primary_logic_already_run:
                     event_processed_in_this_row = True # Mark that event logic ran
-                    print(f"\n=== Processing PRIMARY LOGIC for Event '{title}' ({event.id}) (Row {row_index+1}) ===")
-                    print(f"    Primary Event Key: Title='{title}', DateKey='{date_key}'")
-                    processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event
+                    # Get the date key for district aggregation
+                    current_date_key = current_datetime.date().isoformat()
+                    print(f"\n=== Processing PRIMARY LOGIC for Event '{title}' ({event.id}) at {current_datetime.isoformat()} (DateKey: {current_date_key}) (Row {row_index+1}) ===")
+                    processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event instance
 
                     # Update core event details from this primary row
                     event.status = EventStatus.map_status(status_str)
@@ -975,43 +975,38 @@ def import_sheet():
                     event.session_type = row_data.get('Session Type')
                     event.session_link = row_data.get('Session Link')
 
-                    # --- District Handling (Reset and Aggregate) ---
-                    print("  Clearing existing districts...")
-                    event.districts = [] # Reset districts for this event instance
+                    # --- District Handling (Reset for this event, Aggregate by Title+Date) ---
+                    print(f"  Clearing existing districts for event {event.id}...")
+                    event.districts = [] # Reset districts for this specific event instance
                     db.session.flush()   # Ensure the clear is persisted before adding
 
                     all_associated_district_names = set()
-                    primary_row_district = None
+                    primary_row_district = None # District from the specific primary row
 
-                    print(f"  Searching all {len(all_rows_for_lookup)} rows for districts associated with '{title}' on {date_key}...")
-                    # Iterate through ALL rows to find districts related to this title and date
+                    # *** REVISED District Search: Iterate all rows, find those matching THIS event's title AND DATE ***
+                    print(f"  Searching all {len(all_rows_for_lookup)} rows for districts associated with '{title}' on DATE {current_date_key}...")
                     for lookup_row_index, lookup_row_data in enumerate(all_rows_for_lookup):
                         lookup_title = clean_string_value(lookup_row_data.get('Session Title'))
                         # Fast skip if title doesn't match
                         if lookup_title != title:
                             continue
 
+                        # --- Attempt to parse DATE ONLY from the lookup row ---
                         lookup_date_str = lookup_row_data.get('Date')
-                        lookup_time_str = lookup_row_data.get('Time')
-                        final_lookup_date_key = None # Initialize
-
-                        # Attempt 1: Parse full datetime
-                        lookup_datetime = parse_datetime(lookup_date_str, lookup_time_str)
-                        if lookup_datetime:
-                            final_lookup_date_key = lookup_datetime.date().isoformat()
-                            print(f"    [Row {lookup_row_index+1}] Parsed FULL datetime: LookupDateKey='{final_lookup_date_key}'")
-                        else:
-                            # Attempt 2: If full parse failed BUT raw date string exists, parse just the date part
-                            if not pd.isna(lookup_date_str):
-                                try:
-                                    date_str_cleaned = str(lookup_date_str).strip()
-                                    if '/' in date_str_cleaned:
-                                        parts = date_str_cleaned.split('/')
-                                        if len(parts) >= 2:
-                                            month = int(parts[0])
-                                            day = int(parts[1])
+                        lookup_date_key = None # Reset for each lookup row
+                        if not pd.isna(lookup_date_str):
+                            try:
+                                date_str_cleaned = str(lookup_date_str).strip()
+                                if '/' in date_str_cleaned:
+                                    parts = date_str_cleaned.split('/')
+                                    if len(parts) >= 2:
+                                        month_str, day_str = parts[0], parts[1]
+                                        # Basic validation before int conversion
+                                        if month_str.isdigit() and day_str.isdigit():
+                                            month = int(month_str)
+                                            day = int(day_str)
                                             if 1 <= month <= 12 and 1 <= day <= 31:
-                                                # Determine academic year (same logic as parse_datetime)
+                                                # Determine academic year (reuse logic from parse_datetime)
                                                 current_dt_utc = datetime.now(timezone.utc)
                                                 if current_dt_utc.month >= 6:
                                                     year = current_dt_utc.year if month >= 6 else current_dt_utc.year + 1
@@ -1021,65 +1016,65 @@ def import_sheet():
                                                 # Create date object, handle potential ValueError (e.g., 2/30)
                                                 try:
                                                     date_obj_only = datetime(year, month, day).date()
-                                                    final_lookup_date_key = date_obj_only.isoformat()
-                                                    print(f"    [Row {lookup_row_index+1}] Parsed DATE ONLY: LookupDateKey='{final_lookup_date_key}'")
+                                                    lookup_date_key = date_obj_only.isoformat()
+                                                    # print(f"    [Row {lookup_row_index+1}] Parsed DATE ONLY: LookupDateKey='{lookup_date_key}'")
                                                 except ValueError:
-                                                    print(f"    [Row {lookup_row_index+1}] Invalid date components from date string: {year}-{month}-{day}")
-                                                    final_lookup_date_key = None # Mark as failed
-                                            else: # Invalid month/day numbers
-                                                print(f"    [Row {lookup_row_index+1}] Invalid month/day from date string: {month}/{day}")
-                                                final_lookup_date_key = None
-                                        else: # Not enough parts after split
-                                           final_lookup_date_key = None
-                                    else: # Date string doesn't contain '/' - add other format handling if needed
-                                        final_lookup_date_key = None
-                                except Exception as e:
-                                    print(f"    [Row {lookup_row_index+1}] Error parsing date only from '{lookup_date_str}': {e}")
-                                    final_lookup_date_key = None
-                            # else: Raw date string is also missing/NaN, final_lookup_date_key remains None
+                                                    # print(f"    [Row {lookup_row_index+1}] Invalid date components from date string: {year}-{month}-{day}")
+                                                    pass # lookup_date_key remains None
+                                            # else: # Invalid month/day numbers
+                                                # print(f"    [Row {lookup_row_index+1}] Invalid month/day numbers: {month}/{day}")
+                                        # else: # Month/Day parts not digits
+                                            # print(f"    [Row {lookup_row_index+1}] Non-digit month/day parts: '{month_str}'/'{day_str}'")
+                                    # else: # Not enough parts after split
+                                        # print(f"    [Row {lookup_row_index+1}] Not enough parts in date string: '{date_str_cleaned}'")
+                                # else: # Date string doesn't contain '/' - add other format handling if needed
+                                    # print(f"    [Row {lookup_row_index+1}] Date string missing '/': '{date_str_cleaned}'")
+                            except Exception as e:
+                                print(f"    [Row {lookup_row_index+1}] Error parsing date only from '{lookup_date_str}': {e}")
+                                lookup_date_key = None # Ensure it's None on error
+                        # --- End Date Only Parsing ---
 
-                        print(f"    [Row {lookup_row_index+1}] Checking: Title='{lookup_title}', RawDate='{lookup_date_str}', RawTime='{lookup_time_str}', FinalLookupDateKey='{final_lookup_date_key}'")
+                        # print(f"    [Row {lookup_row_index+1}] Checking: Title='{lookup_title}', LookupDateKey='{lookup_date_key}' vs CurrentDateKey='{current_date_key}'")
 
-                        # Compare using the final derived lookup_date_key
-                        # Ensure both keys are valid and match
-                        if final_lookup_date_key is not None and final_lookup_date_key == date_key:
+                        # *** Compare using the parsed DATE key ***
+                        if lookup_date_key and lookup_date_key == current_date_key:
                             lookup_district = safe_str(lookup_row_data.get('District'))
-                            print(f"      MATCHED on Title and DateKey. Found District: '{lookup_district}'")
+                            # print(f"      MATCHED on Title and DateKey. Found District: '{lookup_district}'")
                             if lookup_district:
                                 all_associated_district_names.add(lookup_district)
-                                # Check if this lookup_row_data is the current primary row_data
-                                if lookup_row_data is row_data:
-                                     primary_row_district = lookup_district
-                        else:
-                            print(f"      NO MATCH: Title or FinalDateKey mismatch ('{lookup_title}' == '{title}', '{final_lookup_date_key}' == '{date_key}')") # Modified log
+                                # Check if this lookup_row_data IS the current primary row_data being processed
+                                if lookup_row_index == row_index:
+                                     primary_row_district = lookup_district # Capture the district from the exact primary row
+                        # else:
+                        #     print(f"      NO MATCH: Title or DateKey mismatch ('{lookup_title}' vs '{title}', '{lookup_date_key}' vs '{current_date_key}')")
 
 
-                    print(f"  Finished search. Found unique associated district names: {all_associated_district_names}")
+                    print(f"  Finished district search for date {current_date_key}. Found unique names: {all_associated_district_names}")
 
-                    # Set district partner based ONLY on the primary row's district
-                    event.district_partner = primary_row_district # This will be None if primary row had no district
-                    print(f"  District Partner set to: {event.district_partner} (from primary row)")
+                    # Set district partner based ONLY on the primary row's district, if it had one
+                    event.district_partner = primary_row_district
+                    print(f"  District Partner initially set to: {event.district_partner} (from primary row)")
 
-                    # Add all unique districts found to the relationship
+                    # Add all unique districts found (matching title+date) to the relationship
                     for district_name in all_associated_district_names:
-                        add_district_to_event(event, district_name) # Use helper (modified below)
+                        add_district_to_event(event, district_name) # Associates district with the specific 'event' instance
 
-                    # Fallback for district partner if primary row had none
+                    # Fallback for district partner if primary row had none, but other rows on that date did
                     if not event.district_partner and all_associated_district_names:
-                        fallback_partner = next(iter(sorted(list(all_associated_district_names))), None) # Pick one consistently
+                        # Pick the first district found (sorting makes it consistent)
+                        fallback_partner = next(iter(sorted(list(all_associated_district_names))), None)
                         event.district_partner = fallback_partner
                         print(f"  Fallback District Partner set to: {event.district_partner}")
 
                     # Flush to ensure district additions are reflected before logging
                     db.session.flush()
-                    print(f"  Final Associated Districts after adding: {[d.name for d in event.districts]}")
+                    print(f"  Final Associated Districts for event {event.id}: {[d.name for d in event.districts]}")
 
 
-                    # --- Volunteer/Presenter Handling (from primary row only) ---
+                    # --- Volunteer/Presenter Handling (remains tied to the primary row) ---
                     print("  Processing presenter/volunteer from primary row...")
-                    # Assuming only the primary row defines the presenter.
                     # The is_simulcast=False ensures volunteer list is cleared before adding.
-                    process_presenter(row_data, event, is_simulcast=False)
+                    process_presenter(row_data, event, is_simulcast=False) # is_simulcast is based on primary row status here, likely False
                     print(f"  Event Volunteers after processing: {[v.full_name for v in event.volunteers]}")
 
 
@@ -1093,34 +1088,39 @@ def import_sheet():
                         event.volunteers_needed = event.volunteers_needed or 1
                         if not event.duration: event.duration = 60
 
-                    print(f"=== PRIMARY LOGIC Complete for Event '{title}' ({event.id}) ===")
+                    print(f"=== PRIMARY LOGIC Complete for Event '{title}' ({event.id}) at {current_datetime.isoformat()} ===")
 
 
-                # --- Teacher Processing (runs for EVERY row with a teacher) ---
+                # --- Teacher Processing (runs for EVERY row with a teacher associated with THIS event instance) ---
+                # This check implicitly relies on the 'event' object being correctly identified for the row's datetime
                 if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
-                     print(f"Processing TEACHER '{row_data.get('Teacher Name')}' for Event '{title}' ({event.id}) (Row {row_index+1}, Simulcast: {is_simulcast})")
+                     print(f"Processing TEACHER '{row_data.get('Teacher Name')}' for Event '{title}' ({event.id}) at {current_datetime.isoformat()} (Row {row_index+1}, Simulcast: {is_simulcast})")
                      # Pass the correct 'is_simulcast' flag for the *current row*
-                     process_teacher_for_event(row_data, event, is_simulcast=is_simulcast)
+                     # Associate teacher with the specific event instance found/created above
+                     process_teacher_for_event(row_data, event, is_simulcast)
 
 
-                # Commit changes potentially made in this iteration
+                # Commit changes potentially made in this iteration (event creation/update, teacher association)
                 db.session.commit()
-                if event_processed_in_this_row: # Count success if event logic ran
+                if event_processed_in_this_row: # Count success if primary event logic ran
                      success_count += 1
-                # How to count success if only teacher was processed? Add logic if needed.
+                # Decide how to count success if only teacher was processed (currently not counted)
 
 
             except Exception as e:
                  db.session.rollback() # Rollback on error for the specific row
                  error_count += 1
                  title_for_error = clean_string_value(row_data.get('Session Title', 'Unknown'))
-                 errors.append(f"Error processing row {row_index + 1} for '{title_for_error}': {str(e)}")
-                 current_app.logger.error(f"Import error processing row {row_index + 1} for '{title_for_error}': {e}", exc_info=True)
+                 dt_str = current_datetime.isoformat() if 'current_datetime' in locals() and current_datetime else "Unknown Time"
+                 errors.append(f"Error processing row {row_index + 1} for '{title_for_error}' at {dt_str}: {str(e)}")
+                 current_app.logger.error(f"Import error processing row {row_index + 1} for '{title_for_error}' at {dt_str}: {e}", exc_info=True)
+                 # Ensure current_datetime is cleared or handled for the next iteration if error occurred mid-process
+                 current_datetime = None
 
         print("\n--- Import Process Finished ---")
         return jsonify({
             'success': True,
-            'successCount': success_count, # Note: Success count might need adjustment based on definition
+            'successCount': success_count, # Note: Success count reflects primary event logic runs
             'warningCount': warning_count,
             'errorCount': error_count,
             'errors': errors
@@ -1129,9 +1129,10 @@ def import_sheet():
     except Exception as e:
         db.session.rollback() # Rollback any remaining transaction on overall failure
         current_app.logger.error("Sheet import failed", exc_info=True)
+        traceback.print_exc() # Print full traceback for debugging
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f"Overall import failed: {str(e)}" # Provide more context
         }), 400
 
 def clean_time_string(time_str):
