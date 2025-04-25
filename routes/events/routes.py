@@ -14,6 +14,8 @@ from sqlalchemy.sql import func
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 from models.school_model import School
 from models.event import EventTeacher
+from models.student import Student
+from models.event import EventStudentParticipation
 
 events_bp = Blueprint('events', __name__)
 
@@ -170,6 +172,71 @@ def process_participation_row(row, success_count, error_count, errors):
         print(error_msg)  # Debug log
         db.session.rollback()
         errors.append(error_msg)
+        return success_count, error_count + 1
+
+def process_student_participation_row(row, success_count, error_count, errors):
+    """Process a single student participation row from Salesforce data"""
+    try:
+        event_sf_id = row.get('Session__c')
+        student_contact_sf_id = row.get('Contact__c') # Salesforce Contact ID for the student
+        participation_sf_id = row.get('Id') # Salesforce Session_Participant__c ID
+        status = row.get('Status__c')
+        delivery_hours_str = row.get('Delivery_Hours__c')
+        age_group = row.get('Age_Group__c')
+
+        # Validate required Salesforce IDs
+        if not all([event_sf_id, student_contact_sf_id, participation_sf_id]):
+             errors.append(f"Skipping student participation {participation_sf_id or 'unknown'}: Missing required Salesforce IDs (Session__c, Contact__c, Id)")
+             return success_count, error_count + 1
+
+        # --- Find Event ---
+        event = Event.query.filter_by(salesforce_id=event_sf_id).first()
+        if not event:
+            errors.append(f"Event with Salesforce ID {event_sf_id} not found for participation {participation_sf_id}")
+            return success_count, error_count + 1
+
+        # --- Find Student ---
+        # Student inherits from Contact, so we query Student via Contact's salesforce_individual_id
+        student = Student.query.filter(Student.salesforce_individual_id == student_contact_sf_id).first()
+        if not student:
+             # If a student record doesn't exist in your DB for the given SF Contact ID,
+             # we log an error. You could enhance this later to create the student if needed.
+             errors.append(f"Student with Salesforce Contact ID {student_contact_sf_id} not found for participation {participation_sf_id}")
+             return success_count, error_count + 1
+
+        # --- Check for existing participation record ---
+        existing_participation = EventStudentParticipation.query.filter_by(salesforce_id=participation_sf_id).first()
+
+        if existing_participation:
+            # Skip if this specific Salesforce participation record already exists in the DB
+            # Optionally, you could add logic here to update the existing record if needed.
+            return success_count, error_count
+        else:
+            # --- Create New Participation Record ---
+            try:
+                delivery_hours = float(delivery_hours_str) if delivery_hours_str else None
+            except (ValueError, TypeError):
+                delivery_hours = None # Gracefully handle non-numeric delivery hours
+
+            new_participation = EventStudentParticipation(
+                event_id=event.id,
+                student_id=student.id, # Use the primary key of the found student
+                status=status,
+                delivery_hours=delivery_hours,
+                age_group=age_group,
+                salesforce_id=participation_sf_id # Store the unique SF participation ID
+            )
+            db.session.add(new_participation)
+            # You could add db.session.flush() here if you want to catch potential DB errors immediately
+            # print(f"Successfully queued addition of student participation: SF ID {participation_sf_id} for Event {event.id}, Student {student.id}")
+            return success_count + 1, error_count
+
+    except Exception as e:
+        db.session.rollback() # Rollback the transaction for this row on error
+        errors.append(f"Error processing student participation {row.get('Id', 'unknown')}: {str(e)}")
+        # Consider logging the full traceback for debugging complex errors
+        # import traceback
+        # print(traceback.format_exc())
         return success_count, error_count + 1
 
 @events_bp.route('/events')
@@ -706,13 +773,7 @@ def import_events_from_salesforce():
             Delivery_Hours__c,
             Age_Group__c,
             Email__c,
-            Title__c,
-            Session__r.Name,
-            Session__r.Session_Type__c,
-            Session__r.Format__c,
-            Session__r.Start_Date_and_Time__c,
-            Session__r.End_Date_and_Time__c,
-            Session__r.Session_Status__c
+            Title__c
         FROM Session_Participant__c
         WHERE Participant_Type__c = 'Volunteer'
         """
@@ -756,4 +817,84 @@ def import_events_from_salesforce():
     except Exception as e:
         db.session.rollback()
         print(f"Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@events_bp.route('/events/sync-student-participants', methods=['POST'])
+@login_required
+def sync_student_participants():
+    """
+    Fetches student participation data from Salesforce ('Session_Participant__c' where
+    Participant_Type__c = 'Student') and attempts to associate students with events.
+    NOTE: Requires an Event-Student association model/relationship to be implemented.
+    """
+    try:
+        print("Fetching student participation data from Salesforce...")
+        success_count = 0
+        error_count = 0
+        errors = []
+
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain='login'
+        )
+
+        # Query for Student participants
+        participants_query = """
+        SELECT
+            Id,
+            Name,
+            Contact__c,
+            Session__c,
+            Status__c,
+            Delivery_Hours__c,
+            Age_Group__c,
+            Email__c,
+            Title__c
+        FROM Session_Participant__c
+        WHERE Participant_Type__c = 'Student'
+        ORDER BY Session__c, Name
+        """
+
+        # Execute participants query
+        participants_result = sf.query_all(participants_query)
+        participant_rows = participants_result.get('records', [])
+
+        print(f"Found {len(participant_rows)} student participation records in Salesforce.")
+
+        # Process participants
+        for row in participant_rows:
+            success_count, error_count = process_student_participation_row(
+                row, success_count, error_count, errors
+            )
+
+        # Commit changes (will only commit if association logic is added and adds to session)
+        db.session.commit()
+
+        # Print summary and errors
+        print(f"\nSuccessfully processed {success_count} student participations with {error_count} total errors")
+        if errors:
+            print("\nErrors encountered:")
+            for error in errors:
+                print(f"- {error}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Processed {success_count} student participations with {error_count} errors.',
+            'successCount': success_count,
+            'errorCount': error_count,
+            'errors': errors
+        })
+
+    except SalesforceAuthenticationFailed:
+        print("Error: Failed to authenticate with Salesforce")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to authenticate with Salesforce'
+        }), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in sync_student_participants: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500

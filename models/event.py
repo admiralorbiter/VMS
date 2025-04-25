@@ -633,3 +633,33 @@ class EventTeacher(db.Model):
     # Relationships
     event = db.relationship('Event', back_populates='teacher_registrations')
     teacher = db.relationship('Teacher', back_populates='event_registrations')
+
+class EventStudentParticipation(db.Model):
+    __tablename__ = 'event_student_participation'
+
+    id = db.Column(db.Integer, primary_key=True) # Optional: internal primary key
+    salesforce_id = db.Column(db.String(18), unique=True, nullable=True, index=True) # Salesforce Session_Participant__c ID
+
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False, index=True) # Assumes Student primary key is 'id' inherited from Contact
+
+    # Participation details from Salesforce
+    status = db.Column(db.String(50), nullable=True) # e.g., 'Registered', 'Attended', 'No Show' from SF Status__c
+    delivery_hours = db.Column(db.Float, nullable=True) # From Delivery_Hours__c
+    age_group = db.Column(db.String(100), nullable=True) # From Age_Group__c
+
+    # Timestamps
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime(timezone=True),
+                           default=lambda: datetime.now(timezone.utc),
+                           onupdate=lambda: datetime.now(timezone.utc))
+
+    # Relationships (optional but helpful)
+    event = db.relationship('Event', backref=db.backref('student_participations', lazy='dynamic'))
+    student = db.relationship('Student', backref=db.backref('event_participations', lazy='dynamic'))
+
+    # Add unique constraint for event/student pair if needed, although SF ID should handle uniqueness mostly
+    # __table_args__ = (db.UniqueConstraint('event_id', 'student_id', name='uq_event_student'),)
+
+    def __repr__(self):
+        return f'<EventStudentParticipation SF_ID:{self.salesforce_id} Event:{self.event_id} Student:{self.student_id}>'

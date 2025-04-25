@@ -259,6 +259,18 @@
                     </div>
                 </div>
                 
+                <!-- 7a. Student Participations (NEW) -->
+                <div class="import-item">
+                    <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
+                        <i class="fas fa-user-check"></i> <!-- Icon for student check/participation -->
+                        <span>7a. Import Student Participations</span>
+                    </button>
+                    <div class="import-status" id="importStudentParticipantsStatus"></div>
+                    <div class="import-progress" id="importStudentParticipantsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+                
                 <!-- 8. History -->
                 <div class="import-item">
                     <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
@@ -1145,6 +1157,55 @@ function importPathwayParticipants() {
     .finally(() => {
         button.disabled = false;
         progress.style.display = 'none';
+    });
+}
+
+function importStudentParticipants() {
+    if (!confirm('Are you sure you want to import student participation data from Salesforce? This will link existing students to events based on Salesforce records.')) {
+        return;
+    }
+
+    const btn = document.getElementById('importStudentParticipantsBtn');
+    const status = document.getElementById('importStudentParticipantsStatus');
+    const progress = document.getElementById('importStudentParticipantsProgress'); // If using progress bar visual
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Importing student participations...';
+    progress.classList.add('active'); // Show progress bar if applicable
+    progressBar.style.width = '0%'; // Reset progress
+
+    fetch('/events/sync-student-participants', { // Use the correct route
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%'; // Indicate completion
+        if (data.success) {
+            status.textContent = `Import complete: ${data.successCount} processed, ${data.errorCount} errors.`;
+            showToast('Success', data.message || 'Student participation import completed.', 'success');
+            if (data.errors && data.errors.length > 0) {
+                console.log("Student Participation Import Errors:", data.errors);
+                // Optionally display first few errors below status
+                let errorSample = data.errors.slice(0, 5).join('\n - ');
+                status.innerHTML += `<br/><small class="text-danger">Errors:\n - ${errorSample}${data.errors.length > 5 ? '\n...' : ''}</small>`;
+             }
+        } else {
+            throw new Error(data.message || data.error || 'Unknown error during student participation import.');
+        }
+    })
+    .catch(error => {
+        console.error('Import Student Participations Error:', error);
+        status.textContent = `Error: ${error.message}`;
+        showToast('Error', `Failed to import student participations: ${error.message}`, 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        // Optional: Hide progress bar after a delay
+        // setTimeout(() => progress.classList.remove('active'), 2000);
     });
 }
 
