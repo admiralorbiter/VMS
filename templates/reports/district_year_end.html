@@ -58,6 +58,9 @@
                     <div class="stat-box">
                         <div class="stat-value">{{ stats.total_students }}</div>
                         <div class="stat-label">Students Reached</div>
+                        {% if stats.unique_student_count is defined %}
+                        <div class="stat-sublabel">{{ stats.unique_student_count }} unique</div>
+                        {% endif %}
                     </div>
                     <div class="stat-box">
                         <div class="stat-value">{{ stats.total_volunteers }}</div>
@@ -95,7 +98,13 @@
                                 <div class="month-stats">
                                     <span>{{ data.events }} events</span>
                                     <span>{{ data.students }} students</span>
+                                    {% if data.unique_student_count is defined %}
+                                    <span>({{ data.unique_student_count }} unique)</span>
+                                    {% endif %}
                                     <span>{{ data.volunteers }} volunteers</span>
+                                    {% if data.unique_volunteer_count is defined %}
+                                    <span>({{ data.unique_volunteer_count }} unique)</span>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endfor %}

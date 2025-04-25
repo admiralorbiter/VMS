@@ -1,7 +1,7 @@
 from flask import render_template, request, jsonify, make_response, send_file
 from flask_login import login_required
 from sqlalchemy import any_, extract
-from models.event import Event, EventAttendance, EventType, EventStatus
+from models.event import Event, EventAttendance, EventType, EventStatus, EventStudentParticipation
 from datetime import datetime, timedelta
 from models.school_model import School
 from models.teacher import Teacher
@@ -156,6 +156,7 @@ def generate_district_stats(school_year):
         ).distinct()
         
         events = events_query.all()
+        event_ids = [event.id for event in events]
         print(f"Found {len(events)} total events")  # Debug log
         
         # Debug log event types
@@ -165,6 +166,11 @@ def generate_district_stats(school_year):
             event_types_found[event_type] = event_types_found.get(event_type, 0) + 1
         print(f"Event types found: {event_types_found}")  # Debug log
         
+        # Query student participations for these events
+        student_participations = EventStudentParticipation.query.filter(
+            EventStudentParticipation.event_id.in_(event_ids)
+        ).all()
+        
         # Initialize stats dictionary
         stats = {
             'name': mapping['name'],
@@ -173,6 +179,7 @@ def generate_district_stats(school_year):
             'total_students': 0,
             'total_in_person_students': 0,
             'total_virtual_students': 0,
+            'unique_students': set(), # Track unique student IDs
             'total_volunteers': 0,
             'unique_volunteers': set(),  # Track unique volunteer IDs
             'total_volunteer_hours': 0,
@@ -182,8 +189,9 @@ def generate_district_stats(school_year):
             'career_clusters': set()
         }
         
-        # Monthly unique volunteer tracking
+        # Monthly unique volunteer and student tracking
         monthly_unique_volunteers = {}
+        monthly_unique_students = {} # Track unique students per month
         
         # Calculate statistics
         for event in events:
@@ -207,40 +215,16 @@ def generate_district_stats(school_year):
             stats['total_students'] += student_count
             
             # Track volunteer participation with improved counting for virtual events
-            if event.type == EventType.VIRTUAL_SESSION:
-                # For virtual sessions, count all volunteers with Completed or Successfully Completed status
-                volunteer_participations = EventParticipation.query.filter(
-                    EventParticipation.event_id == event.id,
-                    EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
-                ).all()
-                
-                # If we found participations, use them
-                if volunteer_participations:
-                    volunteer_count = len(volunteer_participations)
-                    volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
-                    
-                    # Track unique volunteers
-                    for p in volunteer_participations:
-                        stats['unique_volunteers'].add(p.volunteer_id)
-                else:
-                    # If no participations but the event is completed, assume 1 volunteer and 1 hour
-                    volunteer_count = 1
-                    volunteer_hours = 1.0
-                    # We can't track unique volunteers in this case
-            else:
-                # For non-virtual events, use the standard attendance counting
-                volunteer_participations = EventParticipation.query.filter(
-                    EventParticipation.event_id == event.id,
-                    EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
-                ).all()
-                
-                volunteer_count = len(volunteer_participations)
-                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
-                
-                # Track unique volunteers
-                for p in volunteer_participations:
-                    stats['unique_volunteers'].add(p.volunteer_id)
-            
+            # Fetch participations once outside the loop if possible, or adjust logic
+            volunteer_participations = [p for p in event.volunteer_participations
+                                        if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            volunteer_count = len(volunteer_participations)
+            volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+
+            # Track unique volunteers
+            for p in volunteer_participations:
+                stats['unique_volunteers'].add(p.volunteer_id)
+
             # Add debug info for virtual events
             if event.type == EventType.VIRTUAL_SESSION:
                 print(f"Virtual event: '{event.title}', Volunteers: {volunteer_count}, Hours: {volunteer_hours}")
@@ -262,7 +246,8 @@ def generate_district_stats(school_year):
                     'students': 0,
                     'volunteers': 0,
                     'volunteer_hours': 0,
-                    'unique_volunteers': set()  # Track unique volunteers by month
+                    'unique_volunteers': set(),  # Track unique volunteers by month
+                    'unique_students': set() # Track unique students by month
                 }
             
             # Update monthly stats
@@ -274,8 +259,16 @@ def generate_district_stats(school_year):
             # Track unique volunteers by month
             for p in volunteer_participations:
                 stats['monthly_breakdown'][month]['unique_volunteers'].add(p.volunteer_id)
-        
+
+            # Track unique students by month for this event
+            event_student_ids = {sp.student_id for sp in student_participations if sp.event_id == event.id}
+            stats['unique_students'].update(event_student_ids)
+            stats['monthly_breakdown'][month]['unique_students'].update(event_student_ids)
+
         # Convert sets to counts and round hours
+        stats['unique_student_count'] = len(stats['unique_students']) # Add unique student count
+        del stats['unique_students'] # Remove the set
+        
         stats['unique_volunteer_count'] = len(stats['unique_volunteers'])
         del stats['unique_volunteers']  # Remove the set to avoid JSON serialization issues
         
@@ -288,6 +281,10 @@ def generate_district_stats(school_year):
             # Convert unique volunteer sets to counts
             stats['monthly_breakdown'][month]['unique_volunteer_count'] = len(stats['monthly_breakdown'][month]['unique_volunteers'])
             del stats['monthly_breakdown'][month]['unique_volunteers']  # Remove the set
+            
+            # Convert unique student sets to counts
+            stats['monthly_breakdown'][month]['unique_student_count'] = len(stats['monthly_breakdown'][month]['unique_students'])
+            del stats['monthly_breakdown'][month]['unique_students'] # Remove the set
             
             # Round volunteer hours
             stats['monthly_breakdown'][month]['volunteer_hours'] = round(

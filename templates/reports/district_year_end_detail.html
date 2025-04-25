@@ -68,6 +68,10 @@
             <div class="stat-label">Total Events</div>
         </div>
         <div class="stat-card">
+            <div class="stat-value">{{ unique_student_count }}</div>
+            <div class="stat-label">Unique Students Reached</div>
+        </div>
+        <div class="stat-card">
             <div class="stat-value">{{ stats.total_in_person_students }}</div>
             <div class="stat-label">Total In-Person Students</div>
         </div>
@@ -77,8 +81,8 @@
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ stats.total_volunteers }}</div>
-            <div class="stat-label">Volunteers</div>
-            <div class="stat-sublabel">{{ stats.unique_volunteer_count }} unique</div>
+            <div class="stat-label">Volunteer Engagements</div>
+            <div class="stat-sublabel">{{ unique_volunteer_count }} unique</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
@@ -128,7 +132,10 @@
                     <div class="month-stats">
                         <span>{{ data.events|length }} Events</span>
                         <span>{{ data.total_students }} Students</span>
-                        <span>{{ data.total_volunteers }} Volunteer Engagements</span>
+                        {% if data.unique_student_count is defined %}
+                        <span>{{ data.unique_student_count }} Unique Students</span>
+                        {% endif %}
+                        <span>{{ data.volunteer_engagements }} Volunteer Engagements</span>
                         <span>{{ data.unique_volunteer_count }} Unique Volunteers</span>
                         <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
                     </div>
