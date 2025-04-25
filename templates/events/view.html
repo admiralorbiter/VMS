@@ -407,5 +407,43 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Student Participation Card (NEW) -->
+    <div class="event-card">
+        <div class="card-header">
+            <i class="fa-solid fa-user-graduate"></i>
+            <h2>Student Participation</h2>
+        </div>
+        <div class="card-content">
+            {% if student_participations %}
+                <div class="students-grid"> {# You might want to reuse 'volunteers-grid' class or create a new one #}
+                    {% for participation in student_participations %}
+                        {% if participation.student %} {# Check if student exists #}
+                        <div class="student-card"> {# Reuse 'volunteer-card' or create new style #}
+                            <div class="student-info"> {# Reuse 'volunteer-info' #}
+                                <span class="student-name">{{ participation.student.first_name }} {{ participation.student.last_name }}</span>
+                                {% if participation.status %}
+                                <span class="participation-status status-badge {{ participation.status|lower|replace(' ', '-') }}">{{ participation.status }}</span>
+                                {% endif %}
+                                {# Add other student details if needed, e.g., grade #}
+                                {# {% if participation.student.current_grade %}
+                                <span class="student-grade">Grade: {{ participation.student.current_grade }}</span>
+                                {% endif %} #}
+                            </div>
+                            {# Link to student view page if you have one #}
+                            {# <a href="{{ url_for('students.view_student', id=participation.student.id) }}" class="view-student-btn">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a> #}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-students">No student participation records found for this event.</p>
+            {% endif %}
+        </div>
+    </div>
+    <!-- End Student Participation Card -->
+
 </div>
 {% endblock %}

@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship, declared_attr, validates
 from datetime import datetime, timezone
 from functools import cached_property
 from enum import Enum
+from models.school_model import School
 
 class TeacherStatus(str, Enum):
     """Enum for tracking teacher status"""
@@ -73,6 +74,12 @@ class Teacher(Contact):
         secondary='event_teacher',
         back_populates='teachers',
         viewonly=True  # Use event_registrations for modifications
+    )
+    
+    school = relationship(
+        'School',
+        foreign_keys=[salesforce_school_id],
+        backref=db.backref('teachers', lazy='dynamic')
     )
     
     __table_args__ = (

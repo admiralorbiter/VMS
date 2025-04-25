@@ -10,12 +10,14 @@ from models.volunteer import EventParticipation, Skill, Volunteer
 from datetime import datetime, timedelta
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
+from sqlalchemy.orm import joinedload
 
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 from models.school_model import School
 from models.event import EventTeacher
 from models.student import Student
 from models.event import EventStudentParticipation
+from models.teacher import Teacher
 
 events_bp = Blueprint('events', __name__)
 
@@ -408,13 +410,26 @@ def view_event(id):
     if event.end_date is None:
         event.end_date = datetime.now()
     
-    # Get participations with volunteers
-    participations = EventParticipation.query.filter_by(event_id=id).all()
-    
+    # Get volunteer participations with volunteers
+    # Use joinedload to efficiently load volunteers
+    volunteer_participations = EventParticipation.query.options(
+        joinedload(EventParticipation.volunteer)
+    ).filter_by(event_id=id).all()
+
     # Get all event teachers with their statuses
-    event_teachers = EventTeacher.query.filter_by(event_id=id).all()
-    
-    # Group participations by status
+    # Use joinedload to efficiently load teachers
+    event_teachers = EventTeacher.query.options(
+        joinedload(EventTeacher.teacher).joinedload(Teacher.school)
+    ).filter_by(event_id=id).all()
+
+    # --- NEW: Get student participations with students ---
+    # Use joinedload to efficiently load students
+    student_participations = EventStudentParticipation.query.options(
+        joinedload(EventStudentParticipation.student)
+    ).filter_by(event_id=id).all()
+    # --- End NEW ---
+
+    # Group volunteer participations by status
     participation_stats = {
         'Registered': [],
         'Attended': [],
@@ -422,21 +437,24 @@ def view_event(id):
         'Cancelled': []
     }
     
-    for participation in participations:
-        status = participation.status
-        if status in participation_stats:
-            participation_stats[status].append({
-                'volunteer': participation.volunteer,
-                'delivery_hours': participation.delivery_hours
-            })
+    for participation in volunteer_participations:
+        # Ensure volunteer exists before processing
+        if participation.volunteer:
+            status = participation.status
+            if status in participation_stats:
+                participation_stats[status].append({
+                    'volunteer': participation.volunteer,
+                    'delivery_hours': participation.delivery_hours
+                })
     
     return render_template(
         'events/view.html',
         event=event,
-        volunteer_count=len(event.volunteers),
+        volunteer_count=len(event.volunteers), # This might be slightly inaccurate if participations exist for deleted volunteers
         participation_stats=participation_stats,
-        volunteers=event.volunteers,
-        event_teachers=event_teachers  # Pass all event teachers to template
+        # volunteers=event.volunteers, # volunteers association might not be needed if using participation_stats
+        event_teachers=event_teachers,
+        student_participations=student_participations # Pass student data to template
     )
 
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])
