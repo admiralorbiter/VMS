@@ -318,6 +318,18 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
+
+                <!-- NEW: Sync Unaffiliated Events -->
+                <div class="import-item">
+                    <button onclick="syncUnaffiliatedEvents()" class="btn admin-btn-import" id="syncUnaffiliatedEventsBtn">
+                        <i class="fas fa-sitemap"></i> <!-- Icon suggesting relationship/mapping -->
+                        <span>Sync Unaffiliated Events (by Students)</span>
+                    </button>
+                    <div class="import-status" id="syncUnaffiliatedEventsStatus"></div>
+                    <div class="import-progress" id="syncUnaffiliatedEventsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1206,6 +1218,84 @@ function importStudentParticipants() {
         btn.disabled = false;
         // Optional: Hide progress bar after a delay
         // setTimeout(() => progress.classList.remove('active'), 2000);
+    });
+}
+
+function syncUnaffiliatedEvents() {
+    if (!confirm('Are you sure you want to attempt to affiliate events based on student participants? This will query Salesforce and update local events.')) {
+        return;
+    }
+
+    const btn = document.getElementById('syncUnaffiliatedEventsBtn');
+    const status = document.getElementById('syncUnaffiliatedEventsStatus');
+    const progress = document.getElementById('syncUnaffiliatedEventsProgress'); // Assuming you have progress elements
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Syncing unaffiliated events...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%'; // Start progress
+
+    fetch('/pathway-events/sync-unaffiliated-events', { // Use the correct new route
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            // If you use Flask-WTF CSRF protection, uncomment and ensure csrf_token() is available in JS scope
+            // 'X-CSRFToken': /* some_js_variable_holding_the_token */ 
+        }
+    })
+    .then(response => {
+        const contentType = response.headers.get("content-type");
+        if (response.ok && contentType && contentType.indexOf("application/json") !== -1) {
+            // It's likely JSON, proceed to parse
+            return response.json(); 
+        } else {
+            // Not JSON or not an OK status, read as text and throw an error
+            return response.text().then(text => {
+                // Check for common HTML signatures or specific messages if needed
+                let errorMsg = `Server returned non-JSON response (Status: ${response.status}).`;
+                if (text.toLowerCase().includes('<!doctype html') || text.toLowerCase().includes('<html')) {
+                   errorMsg += ' This might be a login redirect or an HTML error page.';
+                } else {
+                   errorMsg += ` Response body: ${text.substring(0, 200)}...`; // Show beginning of text
+                }
+                // Throw an error object to be caught by .catch()
+                throw new Error(errorMsg); 
+            });
+        }
+    })
+    .then(data => { // This block only runs if response.json() was successful
+        progressBar.style.width = '100%'; // Indicate completion
+        if (data.success) {
+            status.textContent = `Sync complete: ${data.processed_count} processed, ${data.updated_count} updated.`;
+            showToast('Success', data.message || 'Unaffiliated events sync completed.', 'success');
+            console.log("Unaffiliated Event Sync Details:", data.district_map_details); // Log details
+            if (data.errors && data.errors.length > 0) {
+                console.log("Unaffiliated Event Sync Errors:", data.errors);
+                let errorSample = data.errors.slice(0, 5).join('\n - ');
+                status.innerHTML += `<br/><small class="text-danger">Errors:\n - ${errorSample}${data.errors.length > 5 ? '\n...' : ''}</small>`;
+             }
+        } else {
+             // Handle application-level errors reported in the JSON ({'success': false, 'error': '...'})
+            throw new Error(data.message || data.error || 'Sync failed according to server response.');
+        }
+    })
+    .catch(error => { // Catches errors from fetch network issues, response parsing, or thrown exceptions
+        console.error('Sync Unaffiliated Events Error:', error);
+        // Use error.message which now contains more details from the .then block
+        const errorMessage = error.message || 'An unexpected error occurred during the sync.';
+        status.textContent = `Error: ${errorMessage}`;
+        progressBar.style.width = '100%'; // Show completion even on error
+        progress.classList.add('error'); // Optional: Style progress bar on error
+        showToast('Error', `Failed to sync unaffiliated events: ${errorMessage}`, 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        // Optional: Hide progress bar after a delay, remove error styling etc.
+        // setTimeout(() => {
+        //     progress.classList.remove('active', 'error');
+        //     progressBar.style.width = '0%';
+        // }, 5000);
     });
 }
 
