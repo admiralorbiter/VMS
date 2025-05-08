@@ -479,7 +479,7 @@ def list_events():
                 'school': et.teacher.school.name if et.teacher.school else None,
                 'status': et.status,
                 'is_simulcast': et.is_simulcast
-            } for et in event.teacher_participants]
+            } for et in event.icipants]
             
             events_data.append({
                 'id': event.id,

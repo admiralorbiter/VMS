@@ -200,9 +200,34 @@ def generate_district_stats(school_year):
             is_virtual = event.type == EventType.VIRTUAL_SESSION
             
             if is_virtual:
-                # Use participant_count for virtual sessions
-                student_count = event.participant_count or 0
+                # New logic for virtual session student count
+                district_teachers_count = 0
+                # primary_district is the District object for the current district being processed
+                print(f"[DEBUG] Common - Event ID: {event.id}, District: {primary_district.name} (ID: {primary_district.id})")
+                for teacher_registration in event.teacher_registrations:
+                    teacher = teacher_registration.teacher
+                    print(f"  [DEBUG] Common - Processing Teacher ID: {teacher.id}, Name: {teacher.first_name} {teacher.last_name}")
+                    print(f"    [DEBUG] Common - teacher.school_id (used for lookup): '{teacher.school_id}'")
+
+                    if teacher.school_id:
+                        # Manually fetch the school using teacher.school_id
+                        school = School.query.filter_by(id=teacher.school_id).first()
+                        if school:
+                            print(f"    [DEBUG] Common - Manual school lookup SUCCESSFUL: School ID: {school.id}, School District ID: {school.district_id}")
+                            # Ensure primary_district is not None and has an id
+                            if primary_district and hasattr(school, 'district_id') and school.district_id == primary_district.id:
+                                print(f"        [DEBUG] Common - MATCH! District IDs align.")
+                                district_teachers_count += 1
+                            else:
+                                print(f"        [DEBUG] Common - NO MATCH: school.district_id ({school.district_id}) != primary_district.id ({primary_district.id if primary_district else 'N/A'})")
+                        else:
+                            print(f"    [DEBUG] Common - Manual school lookup FAILED for school_id: '{teacher.school_id}'")
+                    else:
+                        print(f"    [DEBUG] Common - teacher.school_id is None or empty.")
+
+                student_count = district_teachers_count * 25
                 stats['total_virtual_students'] += student_count
+                print(f"  [DEBUG] Common - Final district_teachers_count for Event {event.id} in District {primary_district.name}: {district_teachers_count}. Student count: {student_count}")
             else: # Treat non-virtual as in-person for this calculation
                 if hasattr(event, 'attendance') and event.attendance:
                     student_count = event.attendance.total_attendance or 0
