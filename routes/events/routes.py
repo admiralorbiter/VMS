@@ -753,12 +753,13 @@ def import_events_from_salesforce():
         # First query: Get events
         events_query = """
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
-                End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
-                Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
-                District__c, School__c, Legacy_Skill_Covered_for_the_Session__c, 
-                Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-                Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
+            End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
+            Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
+            District__c, School__c, Legacy_Skill_Covered_for_the_Session__c, 
+            Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
+            Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
         FROM Session__c
+        WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
         ORDER BY Start_Date_and_Time__c DESC
         """
 
@@ -815,15 +816,20 @@ def import_events_from_salesforce():
         print(f"\nSuccessfully processed {success_count} events and {participant_success} participants with {error_count + participant_error} total errors")
         if errors:
             print("\nErrors encountered:")
-            for error in errors:
+            for error in errors[:50]:  # Only print first 50 errors
                 print(f"- {error}")
         
+        # Truncate errors list to 50 items
+        truncated_errors = errors[:50]
+        if len(errors) > 50:
+            truncated_errors.append(f"... and {len(errors) - 50} more errors")
+
         return jsonify({
             'success': True,
             'message': (f'Successfully processed {success_count} events and '
                        f'{participant_success} participants with '
                        f'{error_count + participant_error} total errors'),
-            'errors': errors
+            'errors': truncated_errors
         })
 
     except SalesforceAuthenticationFailed:
@@ -895,7 +901,7 @@ def sync_student_participants():
         print(f"\nSuccessfully processed {success_count} student participations with {error_count} total errors")
         if errors:
             print("\nErrors encountered:")
-            for error in errors:
+            for error in errors[:50]:  # Only print first 50 errors
                 print(f"- {error}")
 
         return jsonify({
