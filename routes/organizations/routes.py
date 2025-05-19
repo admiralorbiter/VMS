@@ -9,6 +9,10 @@ import csv
 import os
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from config import Config
+from models.school_model import School  # Add this import at the top
+from models.contact import Contact  # Add this import at the top
+from models.teacher import Teacher  # Add this import at the top
+from models.district_model import District  # Add this import at the top
 
 organizations_bp = Blueprint('organizations', __name__)
 
@@ -479,25 +483,56 @@ def import_affiliations_from_salesforce():
         # Process affiliations
         for row in affiliation_rows:
             try:
-                # Get the organization and volunteer by their Salesforce IDs
+                # Get the organization and contact by their Salesforce IDs
                 org = Organization.query.filter_by(
                     salesforce_id=row.get('npe5__Organization__c')
                 ).first()
                 
-                volunteer = Volunteer.query.filter_by(
-                    salesforce_individual_id=row.get('npe5__Contact__c')
+                # If organization not found, check if it's a school or district
+                if not org:
+                    # First check if it's a school
+                    school = School.query.filter_by(
+                        id=row.get('npe5__Organization__c')
+                    ).first()
+                    if school:
+                        # Create an organization record for the school
+                        org = Organization(
+                            name=school.name,
+                            type='School',
+                            salesforce_id=school.id
+                        )
+                        db.session.add(org)
+                        db.session.flush()  # Get the new org ID
+                    else:
+                        # If not a school, check if it's a district
+                        district = District.query.filter_by(
+                            salesforce_id=row.get('npe5__Organization__c')
+                        ).first()
+                        if district:
+                            # Create an organization record for the district
+                            org = Organization(
+                                name=district.name,
+                                type='District',
+                                salesforce_id=district.salesforce_id
+                            )
+                            db.session.add(org)
+                            db.session.flush()  # Get the new org ID
+                
+                # Look up contact by Salesforce ID across all contact types
+                contact = Contact.query.filter_by(
+                    salesforce_individual_id=row.get('npe5__Contact__c')                          
                 ).first()
 
-                if org and volunteer:
+                if org and contact:
                     # Check for existing relationship
                     vol_org = VolunteerOrganization.query.filter_by(
-                        volunteer_id=volunteer.id,
+                        volunteer_id=contact.id,
                         organization_id=org.id
                     ).first()
 
                     if not vol_org:
                         vol_org = VolunteerOrganization(
-                            volunteer_id=volunteer.id,
+                            volunteer_id=contact.id,
                             organization_id=org.id
                         )
                         db.session.add(vol_org)
@@ -519,9 +554,9 @@ def import_affiliations_from_salesforce():
                     affiliation_error += 1
                     error_msgs = []
                     if not org:
-                        error_msgs.append(f"Organization with Salesforce ID {row.get('npe5__Organization__c')} not found")
-                    if not volunteer:
-                        error_msgs.append(f"Volunteer with Salesforce ID {row.get('npe5__Contact__c')} not found")
+                        error_msgs.append(f"Organization/School/District with Salesforce ID {row.get('npe5__Organization__c')} not found")
+                    if not contact:
+                        error_msgs.append(f"Contact (Volunteer/Teacher) with Salesforce ID {row.get('npe5__Contact__c')} not found")
                     errors.extend(error_msgs)
 
             except Exception as e:
