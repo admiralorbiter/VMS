@@ -289,14 +289,143 @@ def load_routes(bp):
         """Generate Excel file for district year-end report"""
         school_year = request.args.get('school_year', get_current_school_year())
         
-        # Get district and events data
-        # Create Excel data
+        # Get district
+        district = District.query.filter_by(name=district_name).first_or_404()
         
-        # Generate Excel file
+        # Get cached report data
+        cached_report = DistrictYearEndReport.query.filter_by(
+            district_id=district.id,
+            school_year=school_year
+        ).first()
+        
+        if not cached_report:
+            # Generate new stats if not cached
+            district_stats = generate_district_stats(school_year)
+            stats = district_stats.get(district_name, {})
+            events_data = None
+        else:
+            stats = cached_report.report_data or {}
+            events_data = cached_report.events_data
+        
+        # Create Excel file
         output = io.BytesIO()
         writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        workbook = writer.book
         
-        # Create the Excel file and return it
+        # Add some formatting
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#467599',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        # Summary Sheet
+        summary_data = {
+            'Metric': [
+                'Total Events',
+                'Total Students Reached',
+                'Unique Students',
+                'Total Volunteers',
+                'Unique Volunteers',
+                'Total Volunteer Hours',
+                'Schools Reached',
+                'Career Clusters'
+            ],
+            'Value': [
+                stats.get('total_events', 0),
+                stats.get('total_students', 0),
+                stats.get('unique_student_count', 0),
+                stats.get('total_volunteers', 0),
+                stats.get('unique_volunteer_count', 0),
+                stats.get('total_volunteer_hours', 0),
+                stats.get('schools_reached', 0),
+                stats.get('career_clusters', 0)
+            ]
+        }
+        
+        summary_df = pd.DataFrame(summary_data)
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # Format summary sheet
+        worksheet = writer.sheets['Summary']
+        worksheet.set_column('A:A', 25)
+        worksheet.set_column('B:B', 15)
+        worksheet.conditional_format('A1:B9', {'type': 'no_blanks', 'format': header_format})
+        
+        # Event Types Sheet
+        if stats.get('event_types'):
+            event_types_data = {
+                'Event Type': list(stats['event_types'].keys()),
+                'Count': list(stats['event_types'].values())
+            }
+            event_types_df = pd.DataFrame(event_types_data)
+            event_types_df.to_excel(writer, sheet_name='Event Types', index=False)
+            
+            # Format event types sheet
+            worksheet = writer.sheets['Event Types']
+            worksheet.set_column('A:A', 30)
+            worksheet.set_column('B:B', 15)
+            worksheet.conditional_format('A1:B1', {'type': 'no_blanks', 'format': header_format})
+        
+        # Monthly Breakdown Sheet
+        if stats.get('monthly_breakdown'):
+            monthly_data = []
+            for month, data in stats['monthly_breakdown'].items():
+                monthly_data.append({
+                    'Month': month,
+                    'Events': data.get('events', 0),
+                    'Students': data.get('students', 0),
+                    'Unique Students': data.get('unique_student_count', 0),
+                    'Volunteers': data.get('volunteers', 0),
+                    'Unique Volunteers': data.get('unique_volunteer_count', 0),
+                    'Volunteer Hours': data.get('volunteer_hours', 0)
+                })
+            
+            monthly_df = pd.DataFrame(monthly_data)
+            monthly_df.to_excel(writer, sheet_name='Monthly Breakdown', index=False)
+            
+            # Format monthly breakdown sheet
+            worksheet = writer.sheets['Monthly Breakdown']
+            worksheet.set_column('A:A', 20)
+            worksheet.set_column('B:G', 15)
+            worksheet.conditional_format('A1:G1', {'type': 'no_blanks', 'format': header_format})
+        
+        # Events Detail Sheet
+        if events_data and events_data.get('events_by_month'):
+            events_detail = []
+            for month, data in events_data['events_by_month'].items():
+                for event in data['events']:
+                    events_detail.append({
+                        'Month': month,
+                        'Date': event['date'],
+                        'Time': event['time'],
+                        'Event Title': event['title'],
+                        'Type': event['type'],
+                        'Location': event['location'],
+                        'Students': event['student_count'],
+                        'Volunteers': event['volunteer_count'],
+                        'Volunteer Hours': event['volunteer_hours']
+                    })
+            
+            events_df = pd.DataFrame(events_detail)
+            events_df.to_excel(writer, sheet_name='Events Detail', index=False)
+            
+            # Format events detail sheet
+            worksheet = writer.sheets['Events Detail']
+            worksheet.set_column('A:A', 20)  # Month
+            worksheet.set_column('B:B', 12)  # Date
+            worksheet.set_column('C:C', 12)  # Time
+            worksheet.set_column('D:D', 40)  # Event Title
+            worksheet.set_column('E:E', 20)  # Type
+            worksheet.set_column('F:F', 30)  # Location
+            worksheet.set_column('G:I', 15)  # Numbers
+            worksheet.conditional_format('A1:I1', {'type': 'no_blanks', 'format': header_format})
+        
+        writer.close()
+        output.seek(0)
+        
+        # Create filename
         filename = f"{district_name.replace(' ', '_')}_{school_year}_Year_End_Report.xlsx"
         
         return send_file(
