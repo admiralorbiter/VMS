@@ -12,6 +12,7 @@ from models.school_model import School
 from models.reports import DistrictYearEndReport
 from models.volunteer import EventParticipation
 from models import db
+from models.organization import Organization, VolunteerOrganization
 
 from routes.reports.common import (
     DISTRICT_MAPPING, 
@@ -120,11 +121,23 @@ def load_routes(bp):
                 unique_volunteer_count = cached_report.events_data.get('unique_volunteer_count', 0)
                 unique_student_count = cached_report.events_data.get('unique_student_count', 0) # Get from cache
 
-                # Note: We might not need to re-render if everything is cached.
-                # However, the current logic re-renders with cached data, so we keep it.
-                # If performance becomes an issue, consider checking if *all* needed data is cached
-                # before deciding whether to proceed with rendering or querying.
-                
+                # Calculate unique_organization_count from cached events_by_month
+                volunteer_ids = set()
+                for month_data in events_by_month.values():
+                    for event in month_data.get('events', []):
+                        event_id = event['id']
+                        participations = EventParticipation.query.filter_by(event_id=event_id).all()
+                        for p in participations:
+                            if p.status in ['Attended', 'Completed', 'Successfully Completed']:
+                                volunteer_ids.add(p.volunteer_id)
+                org_ids = (
+                    db.session.query(VolunteerOrganization.organization_id)
+                    .filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids))
+                    .distinct()
+                    .all()
+                )
+                unique_organization_count = len(org_ids)
+
                 # If stats are also present, we can render immediately
                 if stats:
                     return render_template(
@@ -136,7 +149,8 @@ def load_routes(bp):
                         schools_by_level={'High': [], 'Middle': [], 'Elementary': [], None: []}, # Placeholder - needs calculation if not cached
                         total_events=total_events,
                         unique_volunteer_count=unique_volunteer_count,
-                        unique_student_count=unique_student_count # Pass to template
+                        unique_student_count=unique_student_count, # Pass to template
+                        unique_organization_count=unique_organization_count
                     )
         
         # If we reach here, either no cache or missing parts (stats or events_data)
@@ -271,6 +285,22 @@ def load_routes(bp):
         # we might consider creating one here, similar to cache_district_stats_with_events.
         # For now, we only update if it already existed.
 
+        # Calculate unique organization count
+        volunteer_ids = set()
+        for event in events:
+            for p in event.volunteer_participations:
+                if p.status in ['Attended', 'Completed', 'Successfully Completed']:
+                    volunteer_ids.add(p.volunteer_id)
+
+        # Get all unique organization IDs for these volunteers
+        org_ids = (
+            db.session.query(VolunteerOrganization.organization_id)
+            .filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids))
+            .distinct()
+            .all()
+        )
+        unique_organization_count = len(org_ids)
+
         return render_template(
             'reports/district_year_end_detail.html',
             district=district,
@@ -280,7 +310,8 @@ def load_routes(bp):
             schools_by_level={'High': [], 'Middle': [], 'Elementary': [], None: []}, # Placeholder
             total_events=total_events,
             unique_volunteer_count=unique_volunteer_count,
-            unique_student_count=unique_student_count # Pass to template
+            unique_student_count=unique_student_count, # Pass to template
+            unique_organization_count=unique_organization_count
         )
 
     @bp.route('/reports/district/year-end/<district_name>/excel')
