@@ -59,7 +59,7 @@
 
     <!-- Summary Statistics -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-2">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Events</h5>
@@ -67,7 +67,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Volunteers</h5>
@@ -75,11 +75,27 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Unique Volunteers</h5>
+                    <h2 class="card-text" id="uniqueVolunteers">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Students</h5>
                     <h2 class="card-text" id="totalStudents">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Unique Students</h5>
+                    <h2 class="card-text" id="uniqueStudents">0</h2>
                 </div>
             </div>
         </div>
@@ -92,6 +108,22 @@
             <div class="row" id="eventCardGrid">
                 <!-- Cards will be injected here by JS -->
             </div>
+        </div>
+    </div>
+
+    <!-- Unique Volunteers Section -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Unique Volunteers (across all events)</h5>
+            <ul id="uniqueVolunteersList" class="list-unstyled mb-0" style="max-height:200px; overflow-y:auto;"></ul>
+        </div>
+    </div>
+
+    <!-- Unique Students Section -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Unique Students (across all events)</h5>
+            <ul id="uniqueStudentsList" class="list-unstyled mb-0" style="max-height:200px; overflow-y:auto;"></ul>
         </div>
     </div>
 </div>
@@ -135,6 +167,8 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
             document.getElementById('totalEvents').textContent = data.summary.total_events;
             document.getElementById('totalVolunteers').textContent = data.summary.total_volunteers;
             document.getElementById('totalStudents').textContent = data.summary.total_students;
+            document.getElementById('uniqueVolunteers').textContent = data.summary.unique_volunteers;
+            document.getElementById('uniqueStudents').textContent = data.summary.unique_students;
             
             // Update table
             const grid = document.getElementById('eventCardGrid');
@@ -174,6 +208,18 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
                 `;
                 grid.appendChild(card);
             });
+
+            // Render unique volunteers
+            const uniqueVolunteersList = document.getElementById('uniqueVolunteersList');
+            uniqueVolunteersList.innerHTML = data.unique_volunteer_names.length
+                ? data.unique_volunteer_names.map(name => `<li>${name}</li>`).join('')
+                : '<li>None</li>';
+
+            // Render unique students
+            const uniqueStudentsList = document.getElementById('uniqueStudentsList');
+            uniqueStudentsList.innerHTML = data.unique_student_names.length
+                ? data.unique_student_names.map(name => `<li>${name}</li>`).join('')
+                : '<li>None</li>';
         })
         .catch(error => {
             document.getElementById('loadingIndicator').style.display = 'none';

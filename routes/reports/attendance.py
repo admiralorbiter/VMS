@@ -77,6 +77,10 @@ def load_routes(bp):
         total_volunteers = 0
         total_students = 0
         total_events = len(events)
+        unique_volunteer_set = set()
+        unique_student_set = set()
+        unique_volunteer_names = set()
+        unique_student_names = set()
         
         for event in events:
             # Get volunteer participation
@@ -94,6 +98,14 @@ def load_routes(bp):
             ).all()
             students = [sp.student for sp in student_participations if sp.student]
             student_names = [f"{s.first_name} {s.last_name}" for s in students]
+            
+            # Add to unique sets
+            for v in volunteers:
+                unique_volunteer_set.add(v.id)
+                unique_volunteer_names.add(f"{v.first_name} {v.last_name}")
+            for s in students:
+                unique_student_set.add(s.id)
+                unique_student_names.add(f"{s.first_name} {s.last_name}")
             
             # Calculate attendance metrics
             volunteer_count = len(volunteer_names)
@@ -120,6 +132,10 @@ def load_routes(bp):
             'summary': {
                 'total_events': total_events,
                 'total_volunteers': total_volunteers,
-                'total_students': total_students
-            }
+                'total_students': total_students,
+                'unique_volunteers': len(unique_volunteer_set),
+                'unique_students': len(unique_student_set)
+            },
+            'unique_volunteer_names': sorted(unique_volunteer_names),
+            'unique_student_names': sorted(unique_student_names)
         })
