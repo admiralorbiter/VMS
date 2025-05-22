@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Event Attendance Report</h1>
+    <h1>District Attendance Report</h1>
     
     <!-- Filters Section -->
     <div class="card mb-4">
@@ -12,29 +12,40 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="dateRange">Date Range</label>
-                            <input type="date" class="form-control" id="dateRange">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="eventType">Event Type</label>
-                            <select class="form-control" id="eventType">
-                                <option value="">All Events</option>
-                                <!-- Event types will be populated dynamically -->
+                            <label for="schoolYear">School Year</label>
+                            <select class="form-control" id="schoolYear" required>
+                                <option value="24-25" {% if current_school_year == '24-25' %}selected{% endif %}>2024-2025</option>
+                                <option value="23-24" {% if current_school_year == '23-24' %}selected{% endif %}>2023-2024</option>
+                                <option value="22-23" {% if current_school_year == '22-23' %}selected{% endif %}>2022-2023</option>
+                                <option value="21-22" {% if current_school_year == '21-22' %}selected{% endif %}>2021-2022</option>
                             </select>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
                             <label for="district">District</label>
-                            <select class="form-control" id="district">
-                                <option value="">All Districts</option>
-                                <!-- Districts will be populated dynamically -->
+                            <select class="form-control" id="district" required>
+                                <option value="">Select a District</option>
+                                {% for district in districts %}
+                                <option value="{{ district.id }}">{{ district.name }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="dateRange">Custom Date Range (Optional)</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" id="startDate" placeholder="Start Date">
+                                <div class="input-group-append input-group-prepend">
+                                    <span class="input-group-text">to</span>
+                                </div>
+                                <input type="date" class="form-control" id="endDate" placeholder="End Date">
+                            </div>
+                            <small class="form-text text-muted">Leave empty to use full school year</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <button type="submit" class="btn btn-primary mt-4">Generate Report</button>
                     </div>
                 </div>
@@ -44,7 +55,7 @@
 
     <!-- Summary Statistics -->
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Events</h5>
@@ -52,7 +63,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Volunteers</h5>
@@ -60,19 +71,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Students</h5>
                     <h2 class="card-text" id="totalStudents">0</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Average Attendance</h5>
-                    <h2 class="card-text" id="avgAttendance">0%</h2>
                 </div>
             </div>
         </div>
@@ -91,8 +94,6 @@
                             <th>District</th>
                             <th>Volunteers</th>
                             <th>Students</th>
-                            <th>Total Attendance</th>
-                            <th>Attendance Rate</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
@@ -103,4 +104,62 @@
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<script>
+document.getElementById('attendanceFilters').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const districtId = document.getElementById('district').value;
+    const schoolYear = document.getElementById('schoolYear').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!districtId) {
+        alert('Please select a district');
+        return;
+    }
+    
+    // Build query parameters
+    const params = new URLSearchParams({
+        district_id: districtId,
+        school_year: schoolYear
+    });
+    
+    // Only add date parameters if they're provided
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    // Fetch data from the API
+    fetch(`/reports/attendance/data?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            // Update summary statistics
+            document.getElementById('totalEvents').textContent = data.summary.total_events;
+            document.getElementById('totalVolunteers').textContent = data.summary.total_volunteers;
+            document.getElementById('totalStudents').textContent = data.summary.total_students;
+            
+            // Update table
+            const tbody = document.getElementById('attendanceTableBody');
+            tbody.innerHTML = '';
+            
+            data.events.forEach(event => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${event.date}</td>
+                    <td>${event.name}</td>
+                    <td>${event.district}</td>
+                    <td>${event.volunteers}</td>
+                    <td>${event.students}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching attendance data:', error);
+            alert('Error loading attendance data. Please try again.');
+        });
+});
+</script>
+{% endblock %}
 {% endblock %}
