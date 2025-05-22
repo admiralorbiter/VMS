@@ -12,6 +12,7 @@ from routes.reports.district_year_end import load_routes as load_district_routes
 from routes.reports.recruitment import load_routes as load_recruitment_routes
 from routes.reports.contact import load_routes as load_contact_routes
 from routes.reports.pathways import load_routes as load_pathways_routes
+from routes.reports.attendance import load_routes as load_attendance_routes
 
 # Register all routes with the main blueprint
 load_routes(report_bp)  # This registers the main /reports route
@@ -22,3 +23,4 @@ load_district_routes(report_bp)
 load_recruitment_routes(report_bp)
 load_contact_routes(report_bp)
 load_pathways_routes(report_bp)
+load_attendance_routes(report_bp)
