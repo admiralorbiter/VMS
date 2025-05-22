@@ -50,6 +50,10 @@
                     </div>
                 </div>
             </form>
+            <div id="loadingIndicator" style="display:none; margin-top:10px;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Generating report, please wait...
+            </div>
         </div>
     </div>
 
@@ -81,25 +85,12 @@
         </div>
     </div>
 
-    <!-- Detailed Results Table -->
+    <!-- Detailed Results Card Grid -->
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">Event Attendance Details</h5>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Event Date</th>
-                            <th>Event Name</th>
-                            <th>District</th>
-                            <th>Volunteers</th>
-                            <th>Students</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendanceTableBody">
-                        <!-- Data will be populated dynamically -->
-                    </tbody>
-                </table>
+            <div class="row" id="eventCardGrid">
+                <!-- Cards will be injected here by JS -->
             </div>
         </div>
     </div>
@@ -110,6 +101,9 @@
 document.getElementById('attendanceFilters').addEventListener('submit', function(e) {
     e.preventDefault();
     
+    // Show loading indicator
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
     const districtId = document.getElementById('district').value;
     const schoolYear = document.getElementById('schoolYear').value;
     const startDate = document.getElementById('startDate').value;
@@ -117,6 +111,7 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
     
     if (!districtId) {
         alert('Please select a district');
+        document.getElementById('loadingIndicator').style.display = 'none';
         return;
     }
     
@@ -134,28 +129,54 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
     fetch(`/reports/attendance/data?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            
             // Update summary statistics
             document.getElementById('totalEvents').textContent = data.summary.total_events;
             document.getElementById('totalVolunteers').textContent = data.summary.total_volunteers;
             document.getElementById('totalStudents').textContent = data.summary.total_students;
             
             // Update table
-            const tbody = document.getElementById('attendanceTableBody');
-            tbody.innerHTML = '';
+            const grid = document.getElementById('eventCardGrid');
+            grid.innerHTML = '';
             
             data.events.forEach(event => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${event.date}</td>
-                    <td>${event.name}</td>
-                    <td>${event.district}</td>
-                    <td>${event.volunteers}</td>
-                    <td>${event.students}</td>
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4 mb-4';
+
+                card.innerHTML = `
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <strong>${event.date}</strong> — <strong>${event.name}</strong>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>District:</strong> ${event.district}</p>
+                            <div class="row">
+                                <div class="col-6">
+                                    <h6>Volunteers (${event.volunteers})</h6>
+                                    <div style="max-height:120px; overflow-y:auto;">
+                                        <ul class="list-unstyled mb-0">
+                                            ${event.volunteer_names.length ? event.volunteer_names.map(name => `<li>${name}</li>`).join('') : '<li>None</li>'}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h6>Students (${event.students})</h6>
+                                    <div style="max-height:120px; overflow-y:auto;">
+                                        <ul class="list-unstyled mb-0">
+                                            ${event.student_names.length ? event.student_names.map(name => `<li>${name}</li>`).join('') : '<li>None</li>'}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 `;
-                tbody.appendChild(row);
+                grid.appendChild(card);
             });
         })
         .catch(error => {
+            document.getElementById('loadingIndicator').style.display = 'none';
             console.error('Error fetching attendance data:', error);
             alert('Error loading attendance data. Please try again.');
         });

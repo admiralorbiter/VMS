@@ -49,27 +49,28 @@ def load_routes(bp):
     @bp.route('/reports/attendance/data')
     @login_required
     def get_attendance_data():
+        print("Starting attendance data generation...")  # Debug
         district_id = request.args.get('district_id')
-        school_year = request.args.get('school_year', '24-25')  # Default to 2024-2025
-        
-        # Get date range for school year
+        school_year = request.args.get('school_year', '24-25')
+        print(f"Params: district_id={district_id}, school_year={school_year}")
+
         start_date, end_date = get_school_year_dates(school_year)
-            
-        # Base query for events
+        print(f"Date range: {start_date} to {end_date}")
+
         query = Event.query.filter(
             Event.status == EventStatus.COMPLETED,
             Event.start_date >= start_date,
             Event.start_date <= end_date
         )
-        
-        # Apply district filter if provided
+
         if district_id:
             district = District.query.get(district_id)
+            print(f"Filtering for district: {district.name if district else 'N/A'}")
             if district:
                 query = query.filter(Event.districts.contains(district))
-            
-        # Get all matching events
+
         events = query.all()
+        print(f"Found {len(events)} events.")
         
         # Prepare the response data
         event_data = []
@@ -83,16 +84,20 @@ def load_routes(bp):
                 EventParticipation.event_id == event.id,
                 EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
             ).all()
+            volunteers = [vp.volunteer for vp in volunteer_participations if vp.volunteer]
+            volunteer_names = [f"{v.first_name} {v.last_name}" for v in volunteers]
             
             # Get student participation
             student_participations = EventStudentParticipation.query.filter(
                 EventStudentParticipation.event_id == event.id,
                 EventStudentParticipation.status == 'Attended'
             ).all()
+            students = [sp.student for sp in student_participations if sp.student]
+            student_names = [f"{s.first_name} {s.last_name}" for s in students]
             
             # Calculate attendance metrics
-            volunteer_count = len(volunteer_participations)
-            student_count = len(student_participations)
+            volunteer_count = len(volunteer_names)
+            student_count = len(student_names)
             
             # Get district names
             district_names = [d.name for d in event.districts]
@@ -102,7 +107,9 @@ def load_routes(bp):
                 'name': event.title,
                 'district': ', '.join(district_names),
                 'volunteers': volunteer_count,
-                'students': student_count
+                'students': student_count,
+                'volunteer_names': volunteer_names,
+                'student_names': student_names
             })
             
             total_volunteers += volunteer_count
