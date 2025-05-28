@@ -10,9 +10,11 @@ from models.event import Event, EventType, EventFormat, EventStatus, Cancellatio
 from models.student import Student
 from models.school_model import School # Assuming School model is here
 from models.district_model import District # Assuming District model is here
-from models.volunteer import Skill # Need Skill for parsing
+from models.volunteer import Skill, EventParticipation, Volunteer # Need Skill for parsing and volunteer participation
 # Import helpers from routes.utils
 from routes.utils import map_session_type, map_event_format, parse_date, map_cancellation_reason, parse_event_skills, DISTRICT_MAPPINGS
+# Import the process_participation_row function from the events routes
+from routes.events.routes import process_participation_row
 # Adjust imports based on your actual model locations if needed
 
 pathway_events_bp = Blueprint('pathway_events', __name__, url_prefix='/pathway-events')
@@ -97,6 +99,7 @@ def sync_unaffiliated_events():
     Fetches events from Salesforce that are missing School, District, and Parent Account.
     Attempts to associate these events with districts based on the districts of
     participating students found in the local database.
+    Also syncs volunteer participation for these events.
     """
     processed_count = 0
     updated_count = 0
@@ -283,16 +286,58 @@ def sync_unaffiliated_events():
             #    errors.append(f"Event {event_sf_id} finished loop without being processed or explicitly skipped.")
 
 
-        # Commit all successful creations/updates at the end
+        # NEW: After processing events, sync volunteer participants for the created/updated events
+        print("Syncing volunteer participants for processed events...")
+        
+        # Get the Salesforce IDs of events we just processed
+        processed_event_sf_ids = list(district_map_details.keys())
+        
+        participant_success = 0
+        participant_error = 0
+        
+        if processed_event_sf_ids:
+            # Query for volunteer participants for these specific events
+            participants_query = f"""
+            SELECT 
+                Id,
+                Name,
+                Contact__c,
+                Session__c,
+                Status__c,
+                Delivery_Hours__c,
+                Age_Group__c,
+                Email__c,
+                Title__c
+            FROM Session_Participant__c
+            WHERE Participant_Type__c = 'Volunteer' 
+            AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in processed_event_sf_ids])})
+            """
+
+            # Execute participants query
+            participants_result = sf.query_all(participants_query)
+            participant_rows = participants_result.get('records', [])
+
+            print(f"Found {len(participant_rows)} volunteer participation records for processed events.")
+
+            # Process volunteer participants using the existing function
+            for row in participant_rows:
+                participant_success, participant_error = process_participation_row(
+                    row, participant_success, participant_error, errors
+                )
+
+            print(f"Successfully processed {participant_success} volunteer participations with {participant_error} errors")
+
+        # Commit all changes
         db.session.commit()
         print("Database changes committed.")
 
         return jsonify({
             'success': True,
-            'message': f'Processed {processed_count} unaffiliated events. Created: {created_count}, Updated: {updated_count}.',
+            'message': f'Processed {processed_count} unaffiliated events. Created: {created_count}, Updated: {updated_count}. Volunteer participations: {participant_success}.',
             'processed_count': processed_count,
-            'created_count': created_count, # Add new count
+            'created_count': created_count,
             'updated_count': updated_count,
+            'volunteer_participations': participant_success,
             'district_map_details': district_map_details,
             'errors': errors
         })
@@ -300,21 +345,19 @@ def sync_unaffiliated_events():
     except SalesforceAuthenticationFailed:
         db.session.rollback()
         print("Error: Failed to authenticate with Salesforce")
-        # Return JSON error response with 401 status
         return jsonify({
             'success': False,
             'message': 'Failed to authenticate with Salesforce.',
             'error': 'Salesforce Authentication Failed'
-        }), 401 # Unauthorized
+        }), 401
     except Exception as e:
         db.session.rollback()
         error_msg = f"An unexpected error occurred: {str(e)}"
         print(error_msg)
         import traceback
-        traceback.print_exc() # Log the full traceback for server-side debugging
-        # Ensure JSON is returned even for generic exceptions, with 500 status
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': 'Internal Server Error',
             'message': 'An internal server error occurred during the sync process. Please check server logs.'
-            }), 500 # Internal Server Error
+        }), 500
