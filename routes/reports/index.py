@@ -58,6 +58,13 @@ def load_routes(bp):
                 'icon': 'fa-solid fa-road',
                 'url': '/reports/pathways',
                 'category': 'Program Reports'
+            },
+            {
+                'title': 'Attendance Report',
+                'description': 'View attendance statistics by event and district.',
+                'icon': 'fa-solid fa-calendar-check',
+                'url': '/reports/attendance',
+                'category': 'Attendance'
             }
         ]
         

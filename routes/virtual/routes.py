@@ -800,7 +800,7 @@ def import_sheet():
 
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         # Consider removing nrows limit for production
-        df = pd.read_csv(csv_url, skiprows=5, dtype={'School Name': str})
+        df = pd.read_csv(csv_url, skiprows=3, dtype={'School Name': str})
 
         print(f"\n=== Starting Import ===")
         print(f"Total rows read from sheet: {len(df)}")
