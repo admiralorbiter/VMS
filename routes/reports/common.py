@@ -4,6 +4,7 @@ from sqlalchemy import any_, extract
 from models.event import Event, EventAttendance, EventType, EventStatus, EventStudentParticipation
 from datetime import datetime, timedelta
 from models.school_model import School
+from models.student import Student
 from models.teacher import Teacher
 from models.upcoming_events import UpcomingEvent
 from models.volunteer import Volunteer, EventParticipation, Skill, VolunteerSkill
@@ -74,6 +75,44 @@ DISTRICT_MAPPING = {
         'aliases': ['KCPS (MO)']
     }
 }
+
+def get_district_student_count_for_event(event, target_district_id):
+    """
+    Count students for an event that belong to the specified district.
+    
+    Args:
+        event: Event object
+        target_district_id: The district ID to filter students by
+        
+    Returns:
+        int: Count of students from the specified district who attended the event
+    """
+    if event.type == EventType.VIRTUAL_SESSION:
+        # For virtual sessions, count teachers from the district and multiply by 25
+        district_teachers_count = 0
+        for teacher_registration in event.teacher_registrations:
+            teacher = teacher_registration.teacher
+            if teacher.school_id:
+                school = School.query.filter_by(id=teacher.school_id).first()
+                if school and hasattr(school, 'district_id') and school.district_id == target_district_id:
+                    district_teachers_count += 1
+        return district_teachers_count * 25
+    else:
+        # For non-virtual events, count actual student participations from the district
+        from models.student import Student
+        
+        district_student_count = (
+            db.session.query(EventStudentParticipation)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == 'Attended',  # Only count attended students
+                School.district_id == target_district_id
+            )
+            .count()
+        )
+        return district_student_count
 
 def get_current_school_year():
     """
@@ -195,45 +234,15 @@ def generate_district_stats(school_year):
         
         # Calculate statistics
         for event in events:
-            # Get student count based on event type
-            student_count = 0
+            # Get student count filtered by district
+            student_count = get_district_student_count_for_event(event, primary_district.id)
+            
             is_virtual = event.type == EventType.VIRTUAL_SESSION
             
             if is_virtual:
-                # New logic for virtual session student count
-                district_teachers_count = 0
-                # primary_district is the District object for the current district being processed
-                print(f"[DEBUG] Common - Event ID: {event.id}, District: {primary_district.name} (ID: {primary_district.id})")
-                for teacher_registration in event.teacher_registrations:
-                    teacher = teacher_registration.teacher
-                    print(f"  [DEBUG] Common - Processing Teacher ID: {teacher.id}, Name: {teacher.first_name} {teacher.last_name}")
-                    print(f"    [DEBUG] Common - teacher.school_id (used for lookup): '{teacher.school_id}'")
-
-                    if teacher.school_id:
-                        # Manually fetch the school using teacher.school_id
-                        school = School.query.filter_by(id=teacher.school_id).first()
-                        if school:
-                            print(f"    [DEBUG] Common - Manual school lookup SUCCESSFUL: School ID: {school.id}, School District ID: {school.district_id}")
-                            # Ensure primary_district is not None and has an id
-                            if primary_district and hasattr(school, 'district_id') and school.district_id == primary_district.id:
-                                print(f"        [DEBUG] Common - MATCH! District IDs align.")
-                                district_teachers_count += 1
-                            else:
-                                print(f"        [DEBUG] Common - NO MATCH: school.district_id ({school.district_id}) != primary_district.id ({primary_district.id if primary_district else 'N/A'})")
-                        else:
-                            print(f"    [DEBUG] Common - Manual school lookup FAILED for school_id: '{teacher.school_id}'")
-                    else:
-                        print(f"    [DEBUG] Common - teacher.school_id is None or empty.")
-
-                student_count = district_teachers_count * 25
                 stats['total_virtual_students'] += student_count
-                print(f"  [DEBUG] Common - Final district_teachers_count for Event {event.id} in District {primary_district.name}: {district_teachers_count}. Student count: {student_count}")
-            else: # Treat non-virtual as in-person for this calculation
-                if hasattr(event, 'attendance') and event.attendance:
-                    student_count = event.attendance.total_attendance or 0
-                else:
-                    # Fallback if attendance object doesn't exist or total_attendance is null
-                    student_count = event.participant_count or 0
+                print(f"  [DEBUG] Common - Virtual event {event.id} in District {primary_district.name}: {student_count} students")
+            else:
                 stats['total_in_person_students'] += student_count
 
             # Keep track of the overall total as well
@@ -285,10 +294,27 @@ def generate_district_stats(school_year):
             for p in volunteer_participations:
                 stats['monthly_breakdown'][month]['unique_volunteers'].add(p.volunteer_id)
 
-            # Track unique students by month for this event
-            event_student_ids = {sp.student_id for sp in student_participations if sp.event_id == event.id}
-            stats['unique_students'].update(event_student_ids)
-            stats['monthly_breakdown'][month]['unique_students'].update(event_student_ids)
+            # Track unique students by month for this event - filter by district
+            if event.type == EventType.VIRTUAL_SESSION:
+                # For virtual events, we can't track individual unique students
+                # since the count is calculated from teachers
+                pass
+            else:
+                # Get student IDs for this specific district and event
+                district_student_ids = (
+                    db.session.query(EventStudentParticipation.student_id)
+                    .join(Student, EventStudentParticipation.student_id == Student.id)
+                    .join(School, Student.school_id == School.id)
+                    .filter(
+                        EventStudentParticipation.event_id == event.id,
+                        EventStudentParticipation.status == 'Attended',
+                        School.district_id == primary_district.id
+                    )
+                    .all()
+                )
+                event_student_ids = {student_id[0] for student_id in district_student_ids}
+                stats['unique_students'].update(event_student_ids)
+                stats['monthly_breakdown'][month]['unique_students'].update(event_student_ids)
 
         # Convert sets to counts and round hours
         stats['unique_student_count'] = len(stats['unique_students']) # Add unique student count

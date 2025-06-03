@@ -13,13 +13,15 @@ from models.reports import DistrictYearEndReport
 from models.volunteer import EventParticipation
 from models import db
 from models.organization import Organization, VolunteerOrganization
+from models.student import Student
 
 from routes.reports.common import (
     DISTRICT_MAPPING, 
     get_current_school_year, 
     get_school_year_date_range,
     generate_district_stats,
-    cache_district_stats
+    cache_district_stats,
+    get_district_student_count_for_event
 )
 
 # Create blueprint
@@ -221,39 +223,7 @@ def load_routes(bp):
                 }
             
             # Get attendance and volunteer data
-            student_count = 0
-            if event.type == EventType.VIRTUAL_SESSION:
-                district_teachers_count = 0
-                # Add this for context:
-                print(f"[DEBUG] Event ID: {event.id}, District Report for: {district.name} (ID: {district.id})")
-                for teacher_registration in event.teacher_registrations:
-                    teacher = teacher_registration.teacher
-                    print(f"  [DEBUG] Processing Teacher ID: {teacher.id}, Name: {teacher.first_name} {teacher.last_name}")
-                    print(f"    [DEBUG] teacher.school_id (used for lookup): '{teacher.school_id}'")
-                    print(f"    [DEBUG] teacher.salesforce_school_id (original FK field): '{teacher.salesforce_school_id}'")
-
-                    if teacher.school_id: # Check if the field we need has a value
-                        # Manually fetch the school using teacher.school_id
-                        # Assuming School.id is the Salesforce ID
-                        school = School.query.filter_by(id=teacher.school_id).first()
-                        if school:
-                            print(f"    [DEBUG] Manual school lookup SUCCESSFUL: School Name: {school.name}, School ID: {school.id}")
-                            print(f"      [DEBUG] school.district_id: {school.district_id}")
-                            if hasattr(school, 'district_id') and school.district_id == district.id:
-                                print(f"        [DEBUG] MATCH! District IDs align. Incrementing count.")
-                                district_teachers_count += 1
-                            else:
-                                print(f"        [DEBUG] NO MATCH: school.district_id ({school.district_id}) != district.id ({district.id})")
-                        else:
-                            print(f"    [DEBUG] Manual school lookup FAILED for school_id: '{teacher.school_id}'")
-                    else:
-                        print(f"    [DEBUG] teacher.school_id is None or empty. Cannot link to district.")
-                student_count = district_teachers_count * 25
-                print(f"  [DEBUG] Final district_teachers_count for Event ID {event.id}: {district_teachers_count}. Student count: {student_count}")
-            else:
-                student_count = (
-                    event.attendance.total_attendance if hasattr(event, 'attendance') and event.attendance else event.participant_count or 0
-                )
+            student_count = get_district_student_count_for_event(event, district.id)
             
             volunteer_participations = [p for p in event.volunteer_participations 
                                       if p.status in ['Attended', 'Completed', 'Successfully Completed']]
@@ -285,10 +255,27 @@ def load_routes(bp):
                 unique_volunteers.add(p.volunteer_id)
                 events_by_month[month]['unique_volunteers'].add(p.volunteer_id)
 
-            # Track unique students (overall and monthly)
-            event_student_ids = {sp.student_id for sp in student_participations if sp.event_id == event.id}
-            unique_students.update(event_student_ids)
-            events_by_month[month]['unique_students'].update(event_student_ids)
+            # Track unique students (overall and monthly) - filter by district
+            if event.type == EventType.VIRTUAL_SESSION:
+                # For virtual events, we can't track individual unique students
+                # since the count is calculated from teachers
+                pass
+            else:
+                # Get student IDs for this specific district and event
+                district_student_ids = (
+                    db.session.query(EventStudentParticipation.student_id)
+                    .join(Student, EventStudentParticipation.student_id == Student.id)
+                    .join(School, Student.school_id == School.id)
+                    .filter(
+                        EventStudentParticipation.event_id == event.id,
+                        EventStudentParticipation.status == 'Attended',
+                        School.district_id == district.id
+                    )
+                    .all()
+                )
+                event_student_ids = {student_id[0] for student_id in district_student_ids}
+                unique_students.update(event_student_ids)
+                events_by_month[month]['unique_students'].update(event_student_ids)
 
         # Calculate overall unique counts
         unique_volunteer_count = len(unique_volunteers)
@@ -578,40 +565,7 @@ def cache_district_stats_with_events(school_year, district_stats):
                 }
             
             # Use participant_count for virtual sessions, otherwise use attendance logic
-            student_count = 0
-            if event.type == EventType.VIRTUAL_SESSION:
-                district_teachers_count = 0
-                # 'district' is the District object for the current iteration
-                # We need to fetch it explicitly if it's not already available as 'primary_district'
-                # This part of the code already has 'district' from the loop:
-                # for district_name, stats in district_stats.items():
-                #     district = District.query.filter_by(name=district_name).first()
-
-                print(f"[DEBUG] Caching - Event ID: {event.id}, District: {district.name} (ID: {district.id})")
-                for teacher_registration in event.teacher_registrations:
-                    teacher = teacher_registration.teacher
-                    print(f"  [DEBUG] Caching - Processing Teacher ID: {teacher.id}, Name: {teacher.first_name} {teacher.last_name}")
-                    print(f"    [DEBUG] Caching - teacher.school_id (used for lookup): '{teacher.school_id}'")
-
-                    if teacher.school_id:
-                        school = School.query.filter_by(id=teacher.school_id).first()
-                        if school:
-                            print(f"    [DEBUG] Caching - Manual school lookup SUCCESSFUL: School ID: {school.id}, School District ID: {school.district_id}")
-                            if hasattr(school, 'district_id') and school.district_id == district.id:
-                                print(f"        [DEBUG] Caching - MATCH! District IDs align.")
-                                district_teachers_count += 1
-                            else:
-                                print(f"        [DEBUG] Caching - NO MATCH: school.district_id ({school.district_id}) != district.id ({district.id})")
-                        else:
-                             print(f"    [DEBUG] Caching - Manual school lookup FAILED for school_id: '{teacher.school_id}'")
-                    else:
-                        print(f"    [DEBUG] Caching - teacher.school_id is None or empty.")
-                student_count = district_teachers_count * 25
-                print(f"  [DEBUG] Caching - Final district_teachers_count for Event ID {event.id} in District {district.name}: {district_teachers_count}. Student count: {student_count}")
-            else:
-                student_count = (
-                    event.attendance.total_attendance if hasattr(event, 'attendance') and event.attendance else event.participant_count or 0
-                )
+            student_count = get_district_student_count_for_event(event, district.id)
             
             volunteer_participations = [p for p in event.volunteer_participations 
                                       if p.status in ['Attended', 'Completed', 'Successfully Completed']]
@@ -642,10 +596,27 @@ def cache_district_stats_with_events(school_year, district_stats):
                 unique_volunteers.add(p.volunteer_id)
                 events_by_month[month]['unique_volunteers'].add(p.volunteer_id)
             
-            # Track unique students (overall and monthly)
-            event_student_ids = {sp.student_id for sp in student_participations if sp.event_id == event.id}
-            unique_students.update(event_student_ids)
-            events_by_month[month]['unique_students'].update(event_student_ids)
+            # Track unique students (overall and monthly) - filter by district
+            if event.type == EventType.VIRTUAL_SESSION:
+                # For virtual events, we can't track individual unique students
+                # since the count is calculated from teachers
+                pass
+            else:
+                # Get student IDs for this specific district and event
+                district_student_ids = (
+                    db.session.query(EventStudentParticipation.student_id)
+                    .join(Student, EventStudentParticipation.student_id == Student.id)
+                    .join(School, Student.school_id == School.id)
+                    .filter(
+                        EventStudentParticipation.event_id == event.id,
+                        EventStudentParticipation.status == 'Attended',
+                        School.district_id == district.id
+                    )
+                    .all()
+                )
+                event_student_ids = {student_id[0] for student_id in district_student_ids}
+                unique_students.update(event_student_ids)
+                events_by_month[month]['unique_students'].update(event_student_ids)
 
         # Process the events data for storage
         for month, data in events_by_month.items():
