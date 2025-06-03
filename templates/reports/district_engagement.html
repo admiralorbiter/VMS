@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}District Engagement Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<style>
+.engagement-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.engagement-stat {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.engagement-stat .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--ucla-blue);
+}
+
+.engagement-stat .label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.district-engagement-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.district-engagement-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.district-engagement-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 1rem;
+}
+
+.district-engagement-title {
+    color: var(--ucla-blue);
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.view-detail-btn {
+    background-color: var(--ucla-blue);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+.view-detail-btn:hover {
+    background-color: var(--delft-blue);
+    text-decoration: none;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="year-end-container">
+    <div class="report-header">
+        <h1>District Engagement Report {{ school_year[:2] }}-{{ school_year[2:] }}</h1>
+        <div class="header-controls">
+            <div class="year-filter">
+                <form method="get" action="{{ url_for('report.district_engagement') }}" id="yearForm">
+                    <select name="school_year" onchange="updateReport(this)">
+                        {% for y in school_years %}
+                        <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                            {{ y[:2] }}-{{ y[2:] }} School Year
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingIndicator" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="districts-container" id="districtsContainer">
+        {% for district_name, stats in districts.items() %}
+        <div class="district-engagement-card">
+            <div class="district-engagement-header">
+                <h2 class="district-engagement-title">{{ stats.name }}</h2>
+                <a href="{{ url_for('report.district_engagement_detail', district_name=district_name, school_year=school_year) }}" 
+                   class="view-detail-btn">
+                    <i class="fas fa-eye"></i> View Details
+                </a>
+            </div>
+
+            <div class="engagement-stats">
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.unique_volunteers }}</div>
+                    <div class="label">Unique Volunteers</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.total_volunteer_engagements }}</div>
+                    <div class="label">Volunteer Engagements</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.total_volunteer_hours }}</div>
+                    <div class="label">Volunteer Hours</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.unique_students }}</div>
+                    <div class="label">Unique Students</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.total_student_participations }}</div>
+                    <div class="label">Student Participations</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.unique_events }}</div>
+                    <div class="label">Unique Events</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.unique_organizations }}</div>
+                    <div class="label">Organizations</div>
+                </div>
+                <div class="engagement-stat">
+                    <div class="value">{{ stats.schools_engaged }}</div>
+                    <div class="label">Schools Engaged</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function updateReport(select) {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const districtsContainer = document.getElementById('districtsContainer');
+    
+    loadingIndicator.style.display = 'block';
+    districtsContainer.style.opacity = '0.5';
+    
+    // Submit the form
+    select.form.submit();
+}
+
+// Show loading indicator when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    loadingIndicator.style.display = 'block';
+});
+
+// Hide loading indicator when content is loaded
+window.addEventListener('load', function() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const districtsContainer = document.getElementById('districtsContainer');
+    loadingIndicator.style.display = 'none';
+    districtsContainer.style.opacity = '1';
+});
+</script>
+{% endblock %} 

@@ -39,6 +39,13 @@ def load_routes(bp):
                 'category': 'District Reports'
             },
             {
+                'title': 'District Engagement Report',
+                'description': 'View district engagement statistics by district, including unique volunteers and students.',
+                'icon': 'fa-solid fa-chart-pie',
+                'url': '/reports/district/engagement',
+                'category': 'District Reports'
+            },
+            {
                 'title': 'Recruitment Tools',
                 'description': 'Access various tools for volunteer recruitment and event matching.',
                 'icon': 'fa-solid fa-users',

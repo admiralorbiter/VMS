@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}{{ district.name }} Engagement Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}">
+<style>
+    .engagement-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .summary-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--ucla-blue);
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-card .label {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .data-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .data-section-header {
+        background: var(--ucla-blue);
+        color: white;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .data-section-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .toggle-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .data-table tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .view-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+        background: white;
+        border: 2px solid var(--ucla-blue);
+        color: var(--ucla-blue);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .tab-btn.active,
+    .tab-btn:hover {
+        background: var(--ucla-blue);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .download-excel {
+        background: #28a745;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 5px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background-color 0.2s ease;
+    }
+
+    .download-excel:hover {
+        background: #218838;
+        color: white;
+        text-decoration: none;
+    }
+
+    .collapsible-content {
+        max-height: 800px;
+        overflow-y: auto;
+    }
+
+    .collapsed .collapsible-content {
+        max-height: 0;
+        overflow: hidden;
+    }
+
+    .search-box {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        width: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="engagement-container">
+    <div class="header-section">
+        <div class="back-nav">
+            <a href="{{ url_for('report.district_engagement', school_year=school_year) }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Districts
+            </a>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>{{ district.name }} Engagement Report</h1>
+                <div class="school-year">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
+            </div>
+            <a href="{{ url_for('report.district_engagement_excel', district_name=district.name, school_year=school_year) }}" 
+               class="download-excel">
+                <i class="fas fa-file-excel"></i> Download Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.unique_volunteers }}</div>
+            <div class="label">Unique Volunteers</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.total_volunteer_engagements }}</div>
+            <div class="label">Volunteer Engagements</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.total_volunteer_hours }}</div>
+            <div class="label">Volunteer Hours</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.unique_students }}</div>
+            <div class="label">Unique Students</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.total_student_participations }}</div>
+            <div class="label">Student Participations</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.unique_events }}</div>
+            <div class="label">Unique Events</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.unique_organizations }}</div>
+            <div class="label">Organizations</div>
+        </div>
+        <div class="summary-card">
+            <div class="value">{{ summary_stats.schools_engaged }}</div>
+            <div class="label">Schools Engaged</div>
+        </div>
+    </div>
+
+    <!-- View Tabs -->
+    <div class="view-tabs">
+        <button class="tab-btn active" data-tab="volunteers">
+            <i class="fas fa-users"></i> Volunteers ({{ volunteers|length }})
+        </button>
+        <button class="tab-btn" data-tab="students">
+            <i class="fas fa-user-graduate"></i> Students ({{ students|length }})
+        </button>
+        <button class="tab-btn" data-tab="events">
+            <i class="fas fa-calendar-alt"></i> Events ({{ events|length }})
+        </button>
+    </div>
+
+    <!-- Volunteers Tab -->
+    <div id="volunteers-tab" class="tab-content active">
+        <div class="data-section">
+            <div class="data-section-header">
+                <h2 class="data-section-title">Volunteer Engagement Details</h2>
+                <button class="toggle-btn" onclick="toggleSection(this)">
+                    <i class="fas fa-chevron-up"></i> Collapse
+                </button>
+            </div>
+            <div class="collapsible-content">
+                <div style="padding: 1rem;">
+                    <input type="text" class="search-box" placeholder="Search volunteers..." 
+                           onkeyup="searchTable(this, 'volunteers-table')">
+                </div>
+                <table class="data-table" id="volunteers-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Organization</th>
+                            <th>Events</th>
+                            <th>Hours</th>
+                            <th>Skills</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for volunteer in volunteers %}
+                        <tr>
+                            <td>{{ volunteer.first_name }} {{ volunteer.last_name }}</td>
+                            <td>{{ volunteer.email }}</td>
+                            <td>{{ volunteer.organization }}</td>
+                            <td>{{ volunteer.events_count }}</td>
+                            <td>{{ volunteer.total_hours }}</td>
+                            <td>{{ volunteer.skills|join(', ') if volunteer.skills else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students Tab -->
+    <div id="students-tab" class="tab-content">
+        <div class="data-section">
+            <div class="data-section-header">
+                <h2 class="data-section-title">Student Engagement Details</h2>
+                <button class="toggle-btn" onclick="toggleSection(this)">
+                    <i class="fas fa-chevron-up"></i> Collapse
+                </button>
+            </div>
+            <div class="collapsible-content">
+                <div style="padding: 1rem;">
+                    <input type="text" class="search-box" placeholder="Search students..." 
+                           onkeyup="searchTable(this, 'students-table')">
+                </div>
+                <table class="data-table" id="students-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>School</th>
+                            <th>Grade</th>
+                            <th>Events Attended</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.first_name }} {{ student.last_name }}</td>
+                            <td>{{ student.email }}</td>
+                            <td>{{ student.school }}</td>
+                            <td>{{ student.grade }}</td>
+                            <td>{{ student.events_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Events Tab -->
+    <div id="events-tab" class="tab-content">
+        <div class="data-section">
+            <div class="data-section-header">
+                <h2 class="data-section-title">Event Details</h2>
+                <button class="toggle-btn" onclick="toggleSection(this)">
+                    <i class="fas fa-chevron-up"></i> Collapse
+                </button>
+            </div>
+            <div class="collapsible-content">
+                <div style="padding: 1rem;">
+                    <input type="text" class="search-box" placeholder="Search events..." 
+                           onkeyup="searchTable(this, 'events-table')">
+                </div>
+                <table class="data-table" id="events-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Location</th>
+                            <th>Volunteers</th>
+                            <th>Students</th>
+                            <th>Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td>{{ event.date }}</td>
+                            <td>{{ event.title }}</td>
+                            <td>{{ event.type }}</td>
+                            <td>{{ event.location }}</td>
+                            <td>{{ event.volunteer_count }}</td>
+                            <td>{{ event.student_count }}</td>
+                            <td>{{ event.volunteer_hours }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching functionality
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
+            
+            // Remove active class from all tabs and contents
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding content
+            this.classList.add('active');
+            document.getElementById(targetTab + '-tab').classList.add('active');
+        });
+    });
+});
+
+function toggleSection(button) {
+    const section = button.closest('.data-section');
+    const content = section.querySelector('.collapsible-content');
+    const icon = button.querySelector('i');
+    
+    section.classList.toggle('collapsed');
+    
+    if (section.classList.contains('collapsed')) {
+        button.innerHTML = '<i class="fas fa-chevron-down"></i> Expand';
+    } else {
+        button.innerHTML = '<i class="fas fa-chevron-up"></i> Collapse';
+    }
+}
+
+function searchTable(input, tableId) {
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById(tableId);
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        let found = false;
+        
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j].textContent.toLowerCase().includes(filter)) {
+                found = true;
+                break;
+            }
+        }
+        
+        row.style.display = found ? '' : 'none';
+    }
+}
+</script>
+{% endblock %} 
