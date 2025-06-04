@@ -56,6 +56,13 @@ class EventType(str, Enum):
     CLASSROOM_ACTIVITY = 'classroom_activity'
     HISTORICAL = 'historical'
     DATA_VIZ = 'data_viz'
+    P2GD = 'p2gd'
+    SLA = 'sla'
+    HEALTHSTART = 'healthstart'
+    P2T = 'p2t'
+    BFI = 'bfi'
+    
+
 
 class CancellationReason(str, Enum):
     WEATHER = 'weather'

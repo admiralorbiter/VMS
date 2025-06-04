@@ -18,6 +18,7 @@ from models.event import EventTeacher
 from models.student import Student
 from models.event import EventStudentParticipation
 from models.teacher import Teacher
+from models.pathways import pathway_events
 
 events_bp = Blueprint('events', __name__)
 
@@ -539,7 +540,6 @@ def import_events():
                         Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
                         Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
                 FROM Session__c
-                WHERE CreatedDate >= LAST_N_MONTHS:120
                 ORDER BY Start_Date_and_Time__c ASC
                 """
 
@@ -613,6 +613,21 @@ def purge_events():
     try:
         # First delete all event participations
         EventParticipation.query.delete()
+        
+        # Delete student participations
+        EventStudentParticipation.query.delete()
+        
+        # Delete event-teacher associations
+        EventTeacher.query.delete()
+        
+        # Delete pathway-event associations
+        db.session.execute(pathway_events.delete())
+        
+        # Delete event-district associations
+        db.session.execute(db.text('DELETE FROM event_districts'))
+        
+        # Delete event-skill associations
+        db.session.execute(db.text('DELETE FROM event_skills'))
         
         # Then delete all events
         Event.query.delete()

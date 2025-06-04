@@ -142,7 +142,7 @@ def map_session_type(salesforce_type):
         'IGNITE': EventType.IGNITE,
         'Career Fair': EventType.CAREER_FAIR,
         'Client Connected Project': EventType.CLIENT_CONNECTED_PROJECT,
-        'Pathway Campus Visits': EventType.PATHWAY_CAMPUS_VISITS,
+        'Pathway campus visits': EventType.PATHWAY_CAMPUS_VISITS,
         'Workplace Visit': EventType.WORKPLACE_VISIT,
         'Pathway Workplace Visits': EventType.PATHWAY_WORKPLACE_VISITS,
         'College Options': EventType.COLLEGE_OPTIONS,
@@ -161,9 +161,14 @@ def map_session_type(salesforce_type):
         'FAFSA': EventType.FAFSA,
         'Classroom Activity': EventType.CLASSROOM_ACTIVITY,
         'Historical, Not Yet Updated': EventType.HISTORICAL,
-        'DataViz': EventType.DATA_VIZ
+        'DataViz': EventType.DATA_VIZ,
+        'P2GD': EventType.P2GD,
+        'SLA': EventType.SLA,
+        'HealthStart': EventType.HEALTHSTART,
+        'P2T': EventType.P2T,
+        'BFI': EventType.BFI,
     }
-    return mapping.get(salesforce_type, EventType.CLASSROOM_ACTIVITY)  # default to CLASSROOM_ACTIVITY if not found
+    return mapping.get(salesforce_type, EventType.CLASSROOM_ACTIVITY)
 
 def map_cancellation_reason(reason):
     """Map cancellation reasons to CancellationReason enum values"""
