@@ -483,6 +483,128 @@ def load_routes(bp):
             as_attachment=True
         )
 
+    @bp.route('/reports/district/year-end/detail/<district_name>/filtered-stats')
+    @login_required
+    def get_filtered_stats(district_name):
+        """Get precise filtered stats for selected event types"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        event_types = request.args.getlist('event_types[]')
+        
+        if not event_types:
+            return jsonify({'error': 'No event types specified'}), 400
+        
+        # Get district
+        district = District.query.filter_by(name=district_name).first()
+        if not district:
+            return jsonify({'error': 'District not found'}), 404
+        
+        # Get the district's mapping info
+        district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
+                                if mapping['name'] == district_name), None)
+        
+        # Get events of specified types for this district
+        start_date, end_date = get_school_year_date_range(school_year)
+        excluded_event_types = ['connector_session']
+        
+        # Build query conditions (same logic as main detail view)
+        query_conditions = [
+            Event.districts.contains(district),
+            Event.school.in_([school.id for school in district.schools]),
+            *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
+            *[Event.district_partner.ilike(f"%{school.name}%") for school in district.schools],
+            Event.district_partner.ilike(f"%{district.name}%"),
+            Event.district_partner.ilike(f"%{district.name.replace(' School District', '')}%")
+        ]
+        
+        if district_mapping and 'aliases' in district_mapping:
+            for alias in district_mapping['aliases']:
+                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+                query_conditions.append(
+                    Event.districts.any(District.name.ilike(f"%{alias}%"))
+                )
+        
+        events = (Event.query
+            .outerjoin(School, Event.school == School.id)
+            .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
+            .filter(
+                Event.status == EventStatus.COMPLETED,
+                Event.start_date.between(start_date, end_date),
+                Event.type.in_([EventType(t) for t in event_types]),
+                db.or_(*query_conditions)
+            )
+            .order_by(Event.start_date)
+            .all())
+        
+        # Calculate precise unique counts
+        unique_volunteers = set()
+        unique_students = set()
+        total_events = len(events)
+        total_students = 0
+        total_in_person_students = 0
+        total_virtual_students = 0
+        total_volunteers = 0
+        total_volunteer_hours = 0
+        
+        for event in events:
+            # Get volunteer participations
+            volunteer_participations = [p for p in event.volunteer_participations 
+                                      if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+            
+            for p in volunteer_participations:
+                unique_volunteers.add(p.volunteer_id)
+            
+            total_volunteers += len(volunteer_participations)
+            total_volunteer_hours += sum(p.delivery_hours or 0 for p in volunteer_participations)
+            
+            # Get student count for this district
+            student_count = get_district_student_count_for_event(event, district.id)
+            total_students += student_count
+            
+            # Categorize students by event type
+            if event.type == EventType.VIRTUAL_SESSION:
+                total_virtual_students += student_count
+            else:
+                total_in_person_students += student_count
+            
+            # Get unique students for non-virtual events
+            if event.type != EventType.VIRTUAL_SESSION:
+                district_student_ids = (
+                    db.session.query(EventStudentParticipation.student_id)
+                    .join(Student, EventStudentParticipation.student_id == Student.id)
+                    .join(School, Student.school_id == School.id)
+                    .filter(
+                        EventStudentParticipation.event_id == event.id,
+                        EventStudentParticipation.status == 'Attended',
+                        School.district_id == district.id
+                    )
+                    .all()
+                )
+                unique_students.update(student_id[0] for student_id in district_student_ids)
+        
+        # Get unique organizations
+        if unique_volunteers:
+            org_ids = (
+                db.session.query(VolunteerOrganization.organization_id)
+                .filter(VolunteerOrganization.volunteer_id.in_(unique_volunteers))
+                .distinct()
+                .all()
+            )
+            unique_organization_count = len(org_ids)
+        else:
+            unique_organization_count = 0
+        
+        return jsonify({
+            'totalEvents': total_events,
+            'totalStudents': total_students,
+            'uniqueStudents': len(unique_students),
+            'totalInPersonStudents': total_in_person_students,
+            'totalVirtualStudents': total_virtual_students,
+            'totalVolunteers': total_volunteers,
+            'uniqueVolunteers': len(unique_volunteers),
+            'totalVolunteerHours': total_volunteer_hours,
+            'uniqueOrganizations': unique_organization_count
+        })
+
 def cache_district_stats_with_events(school_year, district_stats):
     """Cache district stats and events data for all districts"""
     for district_name, stats in district_stats.items():

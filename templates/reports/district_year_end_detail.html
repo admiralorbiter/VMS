@@ -18,6 +18,16 @@
     .event-type-card.selected {
         background-color: #007bff;
         color: white;
+        position: relative;
+    }
+
+    .event-type-card.selected::after {
+        content: "✓";
+        position: absolute;
+        top: 5px;
+        right: 8px;
+        font-weight: bold;
+        font-size: 12px;
     }
 
     .event-types-grid {
@@ -25,6 +35,15 @@
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 1rem;
         margin: 1rem 0;
+    }
+
+    .event-types-grid::before {
+        content: "💡 Tip: Hold Ctrl/Cmd to select multiple event types";
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 10px;
+        font-style: italic;
     }
 
     .download-button {
@@ -263,7 +282,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const schoolsView = document.getElementById('schools-view');
     const eventTypeCards = document.querySelectorAll('.event-type-card');
     let currentView = 'monthly';
-    let selectedEventType = null;
+    let selectedEventTypes = new Set(); // Change to Set for multiple selections
+
+    // Store original stats for resetting
+    const originalStats = {
+        totalEvents: {{ total_events }},
+        uniqueStudents: {{ unique_student_count }},
+        totalInPersonStudents: {{ stats.total_in_person_students }},
+        totalVirtualStudents: {{ stats.total_virtual_students }},
+        totalVolunteers: {{ stats.total_volunteers }},
+        uniqueVolunteers: {{ unique_volunteer_count }},
+        totalVolunteerHours: {{ stats.total_volunteer_hours }},
+        uniqueOrganizations: {{ unique_organization_count }}
+    };
+
+    // Store event data for filtering calculations
+    const eventsData = {
+        {% for month, data in events_by_month.items() %}
+        "{{ month }}": {
+            events: [
+                {% for event in data.events %}
+                {
+                    id: {{ event.id }},
+                    type: "{{ event.type }}",
+                    students: {{ event.students }},
+                    volunteers: {{ event.volunteers }},
+                    volunteerHours: {{ event.volunteer_hours }},
+                    studentIds: [], // Will be populated from backend if needed
+                    volunteerIds: [] // Will be populated from backend if needed
+                },
+                {% endfor %}
+            ]
+        },
+        {% endfor %}
+    };
 
     function switchView(viewType) {
         // Update button states
@@ -301,44 +353,137 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function filterByEventType(eventType) {
-        // Reset previous selection
-        eventTypeCards.forEach(card => card.classList.remove('selected'));
+    function updateTopLevelStats(filteredStats) {
+        // Update the summary stats at the top of the page
+        const statCards = document.querySelectorAll('.stat-card .stat-value');
+        if (statCards.length >= 7) {
+            statCards[0].textContent = filteredStats.totalEvents;
+            statCards[1].textContent = filteredStats.uniqueStudents;
+            statCards[2].textContent = filteredStats.totalInPersonStudents;
+            statCards[3].textContent = filteredStats.totalVirtualStudents;
+            statCards[4].textContent = filteredStats.totalVolunteers;
+            statCards[5].textContent = filteredStats.totalVolunteerHours.toFixed(1);
+            statCards[6].textContent = filteredStats.uniqueOrganizations;
+        }
+
+        // Update the unique volunteers sub-label
+        const volunteerCard = document.querySelector('.stat-card:nth-child(5) .stat-sublabel');
+        if (volunteerCard) {
+            volunteerCard.textContent = `${filteredStats.uniqueVolunteers} unique`;
+        }
+    }
+
+    function calculateFilteredStats(selectedTypes) {
+        if (selectedTypes.size === 0) {
+            // No filter, return original stats
+            return originalStats;
+        }
+
+        let totalEvents = 0;
+        let totalStudents = 0;
+        let totalInPersonStudents = 0;
+        let totalVirtualStudents = 0;
+        let totalVolunteers = 0;
+        let totalVolunteerHours = 0;
+        let uniqueStudents = new Set();
+        let uniqueVolunteers = new Set();
+        let uniqueOrganizations = new Set();
+
+        // Iterate through all events and sum up filtered data
+        for (const month in eventsData) {
+            for (const event of eventsData[month].events) {
+                if (selectedTypes.has(event.type)) {
+                    totalEvents++;
+                    totalStudents += event.students;
+                    totalVolunteers += event.volunteers;
+                    totalVolunteerHours += event.volunteerHours;
+                    
+                    // For virtual vs in-person, we'd need the event format
+                    // For now, assume all filtered events contribute to in-person
+                    // You may need to add event format to the eventsData structure
+                    totalInPersonStudents += event.students;
+                    
+                    // Note: For true unique counting, we'd need individual IDs
+                    // This is a simplified calculation
+                    // You might want to make an AJAX call for precise unique counts
+                }
+            }
+        }
+
+        return {
+            totalEvents,
+            uniqueStudents: totalStudents, // Simplified - would need actual unique IDs
+            totalInPersonStudents,
+            totalVirtualStudents,
+            totalVolunteers,
+            uniqueVolunteers: Math.min(totalVolunteers, originalStats.uniqueVolunteers), // Approximation
+            totalVolunteerHours,
+            uniqueOrganizations: Math.min(totalVolunteers, originalStats.uniqueOrganizations) // Approximation
+        };
+    }
+
+    // Add this function to fetch precise stats
+    async function fetchPreciseStats(selectedTypes) {
+        if (selectedTypes.size === 0) {
+            return originalStats;
+        }
         
-        if (eventType === null) {
+        const params = new URLSearchParams();
+        params.append('school_year', '{{ school_year }}');
+        selectedTypes.forEach(type => params.append('event_types[]', type));
+        
+        try {
+            const response = await fetch(`{{ url_for('report.get_filtered_stats', district_name=district.name) }}?${params}`);
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching precise stats:', error);
+            return calculateFilteredStats(selectedTypes); // Fallback to approximation
+        }
+    }
+
+    // Update the filterByEventTypes function to use precise stats
+    async function filterByEventTypes(eventTypes) {
+        // Update card selection states
+        eventTypeCards.forEach(card => {
+            const type = card.dataset.type;
+            if (eventTypes.has(type)) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+
+        if (eventTypes.size === 0) {
             // Show all events and reset everything
             document.querySelectorAll('.events-table tbody tr').forEach(row => {
                 row.style.display = '';
             });
+            updateTopLevelStats(originalStats);
             updateAllStats();
             return;
         }
         
-        // Select the card
-        document.querySelector(`.event-type-card[data-type="${eventType}"]`).classList.add('selected');
-        
         // Filter monthly view
         document.querySelectorAll('#monthly-view .events-table tbody tr').forEach(row => {
             const typeCell = row.querySelector('td:nth-child(4)');
-            if (typeCell && typeCell.textContent.trim() === eventType) {
+            if (typeCell && eventTypes.has(typeCell.textContent.trim())) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
             }
         });
         
-        // Filter school view - keep schools visible but filter their events
+        // Filter school view
         document.querySelectorAll('#schools-view .school-card').forEach(card => {
-            // Always keep the school card visible
             card.style.display = '';
             
-            // Filter the events within this school
             const eventRows = card.querySelectorAll('.events-table tbody tr');
             let visibleEvents = 0;
             
             eventRows.forEach(row => {
-                const typeCell = row.querySelector('td:nth-child(3)'); // Type is in the 3rd column
-                if (typeCell && typeCell.textContent.trim() === eventType) {
+                const typeCell = row.querySelector('td:nth-child(3)'); // Type is in the 3rd column for school view
+                if (typeCell && eventTypes.has(typeCell.textContent.trim())) {
                     row.style.display = '';
                     visibleEvents++;
                 } else {
@@ -346,63 +491,84 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            // Update this school's event count
-            const eventCountElement = card.querySelector('.school-stat:first-child');
-            if (eventCountElement) {
-                eventCountElement.innerHTML = `<i class="fas fa-calendar-check"></i> ${visibleEvents} Events`;
-            }
-            
-            // Update other stats based on visible events
-            let totalStudents = 0;
-            let totalVolunteers = 0;
-            let totalHours = 0;
-            
-            eventRows.forEach(row => {
-                if (row.style.display !== 'none') {
-                    totalStudents += parseInt(row.querySelector('td:nth-child(4)').textContent) || 0;
-                    totalVolunteers += parseInt(row.querySelector('td:nth-child(5)').textContent) || 0;
-                    totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
-                }
-            });
-            
-            // Update school stats
-            const statsElements = card.querySelectorAll('.school-stat');
-            if (statsElements.length >= 4) {
-                statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
-                statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteer Engagements`;
-                statsElements[3].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
-            }
+            // Update this school's stats based on visible events
+            updateSchoolStats(card, eventRows);
         });
         
         // Update monthly view stats
         document.querySelectorAll('#monthly-view .month-card').forEach(card => {
             const visibleEvents = Array.from(card.querySelectorAll('tbody tr')).filter(row => 
                 row.style.display !== 'none'
-            ).length;
+            );
             
-            const statsElement = card.querySelector('.month-stats');
-            if (statsElement) {
-                const firstStat = statsElement.querySelector('span:first-child');
-                if (firstStat) {
-                    firstStat.textContent = `${visibleEvents} Events`;
-                }
+            updateMonthlyStats(card, visibleEvents);
+        });
+
+        // Get precise stats and update top-level display
+        const filteredStats = await fetchPreciseStats(eventTypes);
+        updateTopLevelStats(filteredStats);
+    }
+
+    function updateSchoolStats(card, eventRows) {
+        let totalEvents = 0;
+        let totalStudents = 0;
+        let totalVolunteers = 0;
+        let totalHours = 0;
+        
+        eventRows.forEach(row => {
+            if (row.style.display !== 'none') {
+                totalEvents++;
+                totalStudents += parseInt(row.querySelector('td:nth-child(4)').textContent) || 0;
+                totalVolunteers += parseInt(row.querySelector('td:nth-child(5)').textContent) || 0;
+                totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
             }
         });
+        
+        // Update school stats display
+        const statsElements = card.querySelectorAll('.school-stat');
+        if (statsElements.length >= 5) {
+            statsElements[0].innerHTML = `<i class="fas fa-calendar-check"></i> ${totalEvents} Events`;
+            statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
+            statsElements[2].innerHTML = `<i class="fas fa-users"></i> ${totalVolunteers} Volunteer Engagements`;
+            statsElements[3].innerHTML = `<i class="fas fa-user-friends"></i> ${Math.min(totalVolunteers, parseInt(statsElements[3].textContent.match(/\d+/)[0]))} Unique Volunteers`;
+            statsElements[4].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
+        }
+    }
+
+    function updateMonthlyStats(card, visibleEvents) {
+        let totalStudents = 0;
+        let totalVolunteers = 0;
+        let totalHours = 0;
+        
+        visibleEvents.forEach(row => {
+            totalStudents += parseInt(row.querySelector('td:nth-child(6)').textContent) || 0; // Students column
+            totalVolunteers += parseInt(row.querySelector('td:nth-child(7)').textContent) || 0; // Volunteers column  
+            totalHours += parseFloat(row.querySelector('td:nth-child(8)').textContent) || 0; // Hours column
+        });
+        
+        const statsElement = card.querySelector('.month-stats');
+        if (statsElement) {
+            const stats = statsElement.querySelectorAll('span');
+            if (stats.length >= 6) {
+                stats[0].textContent = `${visibleEvents.length} Events`;
+                stats[1].textContent = `${totalStudents} Students`;
+                stats[3].textContent = `${totalVolunteers} Volunteer Engagements`;
+                stats[5].textContent = `${totalHours.toFixed(1)} Hours`;
+            }
+        }
     }
     
     function updateAllStats() {
-        // Reset all stats to their original values
+        // Reset all stats to their original values (same as before)
         document.querySelectorAll('.school-card').forEach(card => {
             const eventRows = card.querySelectorAll('.events-table tbody tr');
             const totalEvents = eventRows.length;
             
-            // Reset event count
             const eventCountElement = card.querySelector('.school-stat:first-child');
             if (eventCountElement) {
                 eventCountElement.innerHTML = `<i class="fas fa-calendar-check"></i> ${totalEvents} Events`;
             }
             
-            // Calculate and reset other stats
             let totalStudents = 0;
             let totalVolunteers = 0;
             let totalHours = 0;
@@ -413,7 +579,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
             });
             
-            // Update school stats
             const statsElements = card.querySelectorAll('.school-stat');
             if (statsElements.length >= 4) {
                 statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
@@ -422,7 +587,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Reset monthly view stats
         document.querySelectorAll('.month-card').forEach(card => {
             const totalEvents = card.querySelectorAll('tbody tr').length;
             const statsElement = card.querySelector('.month-stats');
@@ -436,28 +600,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function clearEventTypeFilter() {
-        selectedEventType = null;
+        selectedEventTypes.clear();
         eventTypeCards.forEach(card => card.classList.remove('selected'));
-        filterByEventType(null);
+        filterByEventTypes(selectedEventTypes);
     }
 
+    // Event handlers
     toggleButtons.forEach(button => {
         button.addEventListener('click', function() {
             switchView(this.dataset.view);
         });
     });
     
-    // Add click handlers to event type cards
+    // Modified click handler for multi-select
     eventTypeCards.forEach(card => {
-        card.addEventListener('click', function() {
+        card.addEventListener('click', function(e) {
             const type = this.dataset.type;
-            if (selectedEventType === type) {
-                // Clicking the same type again clears the filter
-                clearEventTypeFilter();
+            
+            // Check if Ctrl/Cmd key is held for multi-select
+            if (e.ctrlKey || e.metaKey) {
+                if (selectedEventTypes.has(type)) {
+                    selectedEventTypes.delete(type);
+                } else {
+                    selectedEventTypes.add(type);
+                }
             } else {
-                selectedEventType = type;
-                filterByEventType(type);
+                // Single select mode
+                if (selectedEventTypes.size === 1 && selectedEventTypes.has(type)) {
+                    // Clicking the same type again clears the filter
+                    selectedEventTypes.clear();
+                } else {
+                    // Select only this type
+                    selectedEventTypes.clear();
+                    selectedEventTypes.add(type);
+                }
             }
+            
+            filterByEventTypes(selectedEventTypes);
         });
     });
 
