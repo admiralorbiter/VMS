@@ -586,6 +586,228 @@ def load_routes(bp):
             **breakdown_data
         )
 
+    @bp.route('/reports/district/engagement/full-breakdown/<district_name>/excel')
+    @login_required
+    def district_engagement_full_breakdown_excel(district_name):
+        """Generate Excel file for district engagement full breakdown report"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get district
+        district = District.query.filter_by(name=district_name).first_or_404()
+        
+        # Try to get cached breakdown data first
+        cached_report = DistrictEngagementReport.query.filter_by(
+            district_id=district.id,
+            school_year=school_year
+        ).first()
+        
+        if cached_report and cached_report.breakdown_data:
+            # Use cached breakdown data
+            breakdown_data = cached_report.breakdown_data
+        else:
+            # Generate event-centric breakdown data
+            breakdown_data = generate_event_breakdown_data(district, school_year)
+        
+        # Create Excel file
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        workbook = writer.book
+        
+        # Add formatting
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#467599',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        title_format = workbook.add_format({
+            'bold': True,
+            'font_size': 14,
+            'bg_color': '#f0f0f0',
+            'border': 1
+        })
+        
+        # Events Overview Sheet
+        events_data = []
+        all_volunteers = []
+        all_students = []
+        
+        for event in breakdown_data['events_breakdown']:
+            events_data.append({
+                'Date': event['date'],
+                'Event Title': event['title'],
+                'Type': event['type'],
+                'Location': event['location'],
+                'Volunteer Count': event['volunteer_count'],
+                'Student Count': event['student_count'],
+                'Volunteer Hours': event['total_volunteer_hours'],
+                'Is Virtual': 'Yes' if event['is_virtual'] else 'No'
+            })
+            
+            # Collect all volunteers
+            for volunteer in event['volunteers']:
+                volunteer_record = volunteer.copy()
+                volunteer_record['Event Title'] = event['title']
+                volunteer_record['Event Date'] = event['date']
+                all_volunteers.append(volunteer_record)
+            
+            # Collect all students (if not virtual)
+            if not event['is_virtual']:
+                for student in event['students']:
+                    student_record = student.copy()
+                    student_record['Event Title'] = event['title']
+                    student_record['Event Date'] = event['date']
+                    all_students.append(student_record)
+        
+        # Events Overview Sheet
+        if events_data:
+            events_df = pd.DataFrame(events_data)
+            events_df.to_excel(writer, sheet_name='Events Overview', index=False)
+            
+            # Format events sheet
+            worksheet = writer.sheets['Events Overview']
+            worksheet.set_column('A:A', 15)  # Date
+            worksheet.set_column('B:B', 40)  # Event Title
+            worksheet.set_column('C:C', 20)  # Type
+            worksheet.set_column('D:D', 30)  # Location
+            worksheet.set_column('E:H', 12)  # Counts and Hours
+            worksheet.conditional_format('A1:H1', {'type': 'no_blanks', 'format': header_format})
+        
+        # All Volunteers Sheet
+        if all_volunteers:
+            volunteers_data = []
+            for volunteer in all_volunteers:
+                skills_str = ', '.join(volunteer.get('skills', []))
+                volunteers_data.append({
+                    'Event Date': volunteer['Event Date'],
+                    'Event Title': volunteer['Event Title'],
+                    'Volunteer Name': f"{volunteer['first_name']} {volunteer['last_name']}",
+                    'Email': volunteer['email'],
+                    'Organization': volunteer['organization'],
+                    'Hours': volunteer['hours'],
+                    'Skills': skills_str
+                })
+            
+            volunteers_df = pd.DataFrame(volunteers_data)
+            volunteers_df.to_excel(writer, sheet_name='All Volunteers', index=False)
+            
+            # Format volunteers sheet
+            worksheet = writer.sheets['All Volunteers']
+            worksheet.set_column('A:A', 15)  # Event Date
+            worksheet.set_column('B:B', 40)  # Event Title
+            worksheet.set_column('C:C', 25)  # Volunteer Name
+            worksheet.set_column('D:D', 30)  # Email
+            worksheet.set_column('E:E', 25)  # Organization
+            worksheet.set_column('F:F', 10)  # Hours
+            worksheet.set_column('G:G', 50)  # Skills
+            worksheet.conditional_format('A1:G1', {'type': 'no_blanks', 'format': header_format})
+        
+        # All Students Sheet
+        if all_students:
+            students_data = []
+            for student in all_students:
+                students_data.append({
+                    'Event Date': student['Event Date'],
+                    'Event Title': student['Event Title'],
+                    'Student Name': f"{student['first_name']} {student['last_name']}",
+                    'Email': student['email'],
+                    'School': student['school'],
+                    'Grade': student['grade']
+                })
+            
+            students_df = pd.DataFrame(students_data)
+            students_df.to_excel(writer, sheet_name='All Students', index=False)
+            
+            # Format students sheet
+            worksheet = writer.sheets['All Students']
+            worksheet.set_column('A:A', 15)  # Event Date
+            worksheet.set_column('B:B', 40)  # Event Title
+            worksheet.set_column('C:C', 25)  # Student Name
+            worksheet.set_column('D:D', 30)  # Email
+            worksheet.set_column('E:E', 25)  # School
+            worksheet.set_column('F:F', 10)  # Grade
+            worksheet.conditional_format('A1:F1', {'type': 'no_blanks', 'format': header_format})
+        
+        # Individual Event Sheets (limit to first 20 events to avoid too many sheets)
+        for i, event in enumerate(breakdown_data['events_breakdown'][:20]):
+            sheet_name = f"Event_{i+1}_{event['date'][:5]}"  # Sheet name with event number and month/day
+            
+            # Create event info at the top
+            event_info = pd.DataFrame([
+                ['Event Title', event['title']],
+                ['Date', event['date']],
+                ['Type', event['type']],
+                ['Location', event['location']],
+                ['Volunteer Count', event['volunteer_count']],
+                ['Student Count', event['student_count']],
+                ['Volunteer Hours', event['total_volunteer_hours']],
+                ['', ''],  # Empty row
+                ['VOLUNTEERS', ''],
+            ])
+            
+            startrow = 0
+            event_info.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
+            startrow += len(event_info) + 1
+            
+            # Add volunteers for this event
+            if event['volunteers']:
+                event_volunteers_data = []
+                for volunteer in event['volunteers']:
+                    skills_str = ', '.join(volunteer.get('skills', []))
+                    event_volunteers_data.append({
+                        'Name': f"{volunteer['first_name']} {volunteer['last_name']}",
+                        'Email': volunteer['email'],
+                        'Organization': volunteer['organization'],
+                        'Hours': volunteer['hours'],
+                        'Skills': skills_str
+                    })
+                
+                volunteers_df = pd.DataFrame(event_volunteers_data)
+                volunteers_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=startrow)
+                startrow += len(volunteers_df) + 3
+            
+            # Add students for this event (if not virtual)
+            if not event['is_virtual'] and event['students']:
+                # Add students header
+                students_header = pd.DataFrame([['STUDENTS', '', '', '', '']])
+                students_header.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
+                startrow += 2
+                
+                event_students_data = []
+                for student in event['students']:
+                    event_students_data.append({
+                        'Name': f"{student['first_name']} {student['last_name']}",
+                        'Email': student['email'],
+                        'School': student['school'],
+                        'Grade': student['grade']
+                    })
+                
+                students_df = pd.DataFrame(event_students_data)
+                students_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=startrow)
+            elif event['is_virtual']:
+                # Add virtual note
+                virtual_note = pd.DataFrame([['STUDENTS', ''], [event['students'][0]['note'], '']])
+                virtual_note.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=startrow)
+            
+            # Format the individual event sheet
+            worksheet = writer.sheets[sheet_name]
+            worksheet.set_column('A:A', 25)
+            worksheet.set_column('B:E', 20)
+        
+        writer.close()
+        output.seek(0)
+        
+        # Create filename
+        filename = f"{district_name.replace(' ', '_')}_{school_year}_Full_Breakdown.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            download_name=filename,
+            as_attachment=True
+        )
+
 def is_cache_complete(cached_report):
     """Check if the cached report has all necessary data"""
     return (cached_report and 
