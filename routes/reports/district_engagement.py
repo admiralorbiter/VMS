@@ -538,6 +538,54 @@ def load_routes(bp):
             'event_ids': event_ids
         })
 
+    @bp.route('/reports/district/engagement/full-breakdown/<district_name>')
+    @login_required
+    def district_engagement_full_breakdown(district_name):
+        """Show comprehensive full breakdown report for a specific district organized by event"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get district
+        district = District.query.filter_by(name=district_name).first_or_404()
+        
+        # Try to get cached breakdown data first
+        cached_report = DistrictEngagementReport.query.filter_by(
+            district_id=district.id,
+            school_year=school_year
+        ).first()
+        
+        if cached_report and cached_report.breakdown_data:
+            # Use cached breakdown data
+            breakdown_data = cached_report.breakdown_data
+        else:
+            # Generate event-centric breakdown data
+            breakdown_data = generate_event_breakdown_data(district, school_year)
+            
+            # Cache the breakdown data
+            if not cached_report:
+                cached_report = DistrictEngagementReport(
+                    district_id=district.id,
+                    school_year=school_year,
+                    summary_stats={}  # Will be filled later if needed
+                )
+                db.session.add(cached_report)
+            
+            cached_report.breakdown_data = breakdown_data
+            cached_report.last_updated = datetime.utcnow()
+            
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                # Log error but continue with generated data
+                print(f"Error caching breakdown data: {e}")
+        
+        return render_template(
+            'reports/district_engagement_full_breakdown.html',
+            district=district,
+            school_year=school_year,
+            **breakdown_data
+        )
+
 def is_cache_complete(cached_report):
     """Check if the cached report has all necessary data"""
     return (cached_report and 
@@ -577,12 +625,18 @@ def cache_district_engagement_stats_with_details(school_year, district_stats):
                 report.volunteers_data = detailed_data['volunteers']
                 report.students_data = detailed_data['students']
                 report.events_data = detailed_data['events']
+                
+                # Also generate and cache breakdown data
+                breakdown_data = generate_event_breakdown_data(district, school_year)
+                report.breakdown_data = breakdown_data
+                
             except Exception as e:
                 print(f"Error generating detailed data for {district_name}: {e}")
                 # Set empty arrays if generation fails
                 report.volunteers_data = []
                 report.students_data = []
                 report.events_data = []
+                report.breakdown_data = {'events_breakdown': [], 'total_events': 0}
         
         report.last_updated = datetime.utcnow()
 
@@ -900,4 +954,138 @@ def generate_detailed_engagement_data(district, school_year):
         'students': students_data,
         'events': events_data,
         'event_types': event_type_breakdown
+    }
+
+def generate_event_breakdown_data(district, school_year):
+    """Generate event-centric breakdown data showing volunteers and students for each event"""
+    start_date, end_date = get_school_year_date_range(school_year)
+    excluded_event_types = ['connector_session']
+    
+    # Get district mapping
+    district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
+                            if mapping['name'] == district.name), None)
+    
+    # Get all schools for this district
+    schools = School.query.filter_by(district_id=district.id).all()
+    
+    # Build query conditions
+    district_partner_conditions = [
+        Event.district_partner.ilike(f"%{school.name}%") for school in schools
+    ]
+    district_partner_conditions.append(Event.district_partner.ilike(f"%{district.name}%"))
+
+    if district_mapping and 'aliases' in district_mapping:
+        for alias in district_mapping['aliases']:
+            district_partner_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+            district_partner_conditions.append(
+                Event.districts.any(District.name.ilike(f"%{alias}%"))
+            )
+
+    # Get events for this district
+    events = Event.query.filter(
+        Event.start_date >= start_date,
+        Event.start_date <= end_date,
+        Event.status == EventStatus.COMPLETED,
+        ~Event.type.in_([EventType(t) for t in excluded_event_types]),
+        db.or_(
+            Event.districts.contains(district),
+            Event.school.in_([school.id for school in schools]),
+            *district_partner_conditions
+        )
+    ).distinct().order_by(Event.start_date.desc()).all()
+    
+    # Generate event-centric data
+    events_breakdown = []
+    
+    for event in events:
+        # Get volunteers for this event
+        volunteer_participations = EventParticipation.query.filter(
+            EventParticipation.event_id == event.id,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        ).all()
+        
+        event_volunteers = []
+        total_volunteer_hours = 0
+        
+        for participation in volunteer_participations:
+            volunteer = Volunteer.query.get(participation.volunteer_id)
+            if volunteer:
+                # Get organization
+                org_relationship = VolunteerOrganization.query.filter_by(volunteer_id=volunteer.id).first()
+                organization = Organization.query.get(org_relationship.organization_id).name if org_relationship else 'N/A'
+                
+                # Get skills
+                skills = db.session.query(Skill.name).join(VolunteerSkill).filter(
+                    VolunteerSkill.volunteer_id == volunteer.id
+                ).all()
+                skill_names = [skill[0] for skill in skills]
+                
+                hours = participation.delivery_hours or 0
+                total_volunteer_hours += hours
+                
+                event_volunteers.append({
+                    'id': volunteer.id,
+                    'first_name': volunteer.first_name or '',
+                    'last_name': volunteer.last_name or '',
+                    'email': volunteer.primary_email or '',
+                    'organization': organization,
+                    'hours': round(hours, 1),
+                    'skills': skill_names
+                })
+        
+        # Sort volunteers by hours (descending), then by last name
+        event_volunteers.sort(key=lambda x: (-x['hours'], x['last_name']))
+        
+        # Get students for this event (excluding virtual sessions for detailed attendance)
+        event_students = []
+        if event.type != EventType.VIRTUAL_SESSION:
+            student_participations = EventStudentParticipation.query.join(
+                Student, EventStudentParticipation.student_id == Student.id
+            ).join(
+                School, Student.school_id == School.id
+            ).filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == 'Attended',
+                School.district_id == district.id
+            ).all()
+            
+            for participation in student_participations:
+                student = Student.query.get(participation.student_id)
+                if student:
+                    school = School.query.get(student.school_id)
+                    event_students.append({
+                        'id': student.id,
+                        'first_name': student.first_name or '',
+                        'last_name': student.last_name or '',
+                        'email': student.primary_email or '',
+                        'school': school.name if school else 'N/A',
+                        'grade': student.current_grade or 'N/A'
+                    })
+            
+            # Sort students by school, then by grade, then by last name
+            event_students.sort(key=lambda x: (x['school'], str(x['grade']), x['last_name']))
+        else:
+            # For virtual sessions, use estimated count
+            estimated_students = get_district_student_count_for_event(event, district.id)
+            event_students = [{
+                'note': f'Virtual session - estimated {estimated_students} students participated'
+            }]
+        
+        events_breakdown.append({
+            'id': event.id,
+            'date': event.start_date.strftime('%B %d, %Y'),
+            'title': event.title,
+            'type': event.type.value if event.type else 'N/A',
+            'location': event.location or 'N/A',
+            'volunteers': event_volunteers,
+            'students': event_students,
+            'volunteer_count': len(event_volunteers),
+            'student_count': len(event_students) if event.type != EventType.VIRTUAL_SESSION else estimated_students,
+            'total_volunteer_hours': round(total_volunteer_hours, 1),
+            'is_virtual': event.type == EventType.VIRTUAL_SESSION
+        })
+    
+    return {
+        'events_breakdown': events_breakdown,
+        'total_events': len(events_breakdown)
     } 

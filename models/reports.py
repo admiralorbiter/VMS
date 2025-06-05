@@ -31,6 +31,9 @@ class DistrictEngagementReport(db.Model):
     students_data = db.Column(db.JSON, nullable=True)
     events_data = db.Column(db.JSON, nullable=True)
     
+    # Cache for full breakdown data (event-centric view)
+    breakdown_data = db.Column(db.JSON, nullable=True)
+    
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
     
     district = db.relationship('District', backref='engagement_reports')
