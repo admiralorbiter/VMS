@@ -42,7 +42,12 @@ def load_routes(bp):
         if not district_stats:
             # Generate new stats if no cache exists
             district_stats = generate_district_engagement_stats(school_year)
-            cache_district_engagement_stats(school_year, district_stats)
+            # Use the detailed caching function to ensure all data is cached
+            cache_district_engagement_stats_with_details(school_year, district_stats)
+            
+            # Reload cached reports to get the updated data
+            cached_reports = DistrictEngagementReport.query.filter_by(school_year=school_year).all()
+            district_stats = {report.district.name: report.summary_stats for report in cached_reports}
         
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -105,7 +110,7 @@ def load_routes(bp):
             school_year=school_year
         ).first()
         
-        if cached_report and cached_report.volunteers_data and cached_report.students_data and cached_report.events_data:
+        if cached_report and is_cache_complete(cached_report):
             # Use cached detailed data
             engagement_data = {
                 'summary_stats': cached_report.summary_stats,
@@ -114,16 +119,30 @@ def load_routes(bp):
                 'events': cached_report.events_data
             }
         else:
-            # Generate detailed engagement data if not cached
+            # Generate detailed engagement data if not cached or incomplete
             engagement_data = generate_detailed_engagement_data(district, school_year)
             
-            # Update the cache with detailed data if we have a report object
-            if cached_report:
-                cached_report.volunteers_data = engagement_data['volunteers']
-                cached_report.students_data = engagement_data['students']
-                cached_report.events_data = engagement_data['events']
-                cached_report.last_updated = datetime.utcnow()
+            # Update or create the cache with detailed data
+            if not cached_report:
+                cached_report = DistrictEngagementReport(
+                    district_id=district.id,
+                    school_year=school_year
+                )
+                db.session.add(cached_report)
+            
+            # Update cache with all data
+            cached_report.summary_stats = engagement_data['summary_stats']
+            cached_report.volunteers_data = engagement_data['volunteers']
+            cached_report.students_data = engagement_data['students']
+            cached_report.events_data = engagement_data['events']
+            cached_report.last_updated = datetime.utcnow()
+            
+            try:
                 db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                # Log error but continue with generated data
+                print(f"Error caching data: {e}")
         
         return render_template(
             'reports/district_engagement_detail.html',
@@ -147,7 +166,7 @@ def load_routes(bp):
             school_year=school_year
         ).first()
         
-        if cached_report and cached_report.volunteers_data and cached_report.students_data and cached_report.events_data:
+        if cached_report and is_cache_complete(cached_report):
             # Use cached detailed data
             engagement_data = {
                 'summary_stats': cached_report.summary_stats,
@@ -158,6 +177,17 @@ def load_routes(bp):
         else:
             # Generate detailed engagement data if not cached
             engagement_data = generate_detailed_engagement_data(district, school_year)
+        
+        # Cache the data if we don't have a complete cache
+        if cached_report:
+            cached_report.volunteers_data = engagement_data['volunteers']
+            cached_report.students_data = engagement_data['students']
+            cached_report.events_data = engagement_data['events']
+            cached_report.last_updated = datetime.utcnow()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
         
         # Create Excel file
         output = io.BytesIO()
@@ -294,28 +324,13 @@ def load_routes(bp):
             as_attachment=True
         )
 
-def cache_district_engagement_stats(school_year, district_stats):
-    """Save basic district engagement statistics to the cache table"""
-    for district_name, stats in district_stats.items():
-        district = District.query.filter_by(name=district_name).first()
-        if district:
-            # Update or create cache entry
-            report = DistrictEngagementReport.query.filter_by(
-                district_id=district.id,
-                school_year=school_year
-            ).first()
-            
-            if not report:
-                report = DistrictEngagementReport(
-                    district_id=district.id,
-                    school_year=school_year
-                )
-                db.session.add(report)
-            
-            report.summary_stats = stats
-            report.last_updated = datetime.utcnow()
-    
-    db.session.commit()
+def is_cache_complete(cached_report):
+    """Check if the cached report has all necessary data"""
+    return (cached_report and 
+            cached_report.summary_stats and 
+            cached_report.volunteers_data is not None and 
+            cached_report.students_data is not None and 
+            cached_report.events_data is not None)
 
 def cache_district_engagement_stats_with_details(school_year, district_stats):
     """Cache district engagement stats and generate detailed data for all districts"""
@@ -339,15 +354,29 @@ def cache_district_engagement_stats_with_details(school_year, district_stats):
         
         report.summary_stats = stats
         
-        # Generate detailed engagement data
-        detailed_data = generate_detailed_engagement_data(district, school_year)
+        # Only generate detailed data if not already cached or if forced refresh
+        if not is_cache_complete(report):
+            try:
+                # Generate detailed engagement data
+                detailed_data = generate_detailed_engagement_data(district, school_year)
+                
+                report.volunteers_data = detailed_data['volunteers']
+                report.students_data = detailed_data['students']
+                report.events_data = detailed_data['events']
+            except Exception as e:
+                print(f"Error generating detailed data for {district_name}: {e}")
+                # Set empty arrays if generation fails
+                report.volunteers_data = []
+                report.students_data = []
+                report.events_data = []
         
-        report.volunteers_data = detailed_data['volunteers']
-        report.students_data = detailed_data['students']
-        report.events_data = detailed_data['events']
         report.last_updated = datetime.utcnow()
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error committing cache data: {e}")
 
 def generate_district_engagement_stats(school_year):
     """Generate engagement statistics for all districts"""
