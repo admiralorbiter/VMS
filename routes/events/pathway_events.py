@@ -218,43 +218,23 @@ def sync_unaffiliated_events():
                 if not local_event:
                     # Look up student participants in the map we built
                     student_sf_ids = event_to_student_sf_ids.get(event_sf_id)
-                    if not student_sf_ids:
-                        # errors.append(f"New event {event_sf_id} - no students found in map. Cannot create/affiliate.")
-                        event_processed_or_skipped = True
-                        continue # Skip event if no participants were mapped
-
-                    # Find local students and determine districts
-                    local_students = db.session.query(Student).options(
-                        selectinload(Student.school).selectinload(School.district)
-                    ).filter(
-                        Student.salesforce_individual_id.in_(student_sf_ids)
-                    ).all()
-
+                    
+                    # Determine districts from students (if any students exist)
                     event_districts = set()
-                    if local_students:
-                        for student in local_students:
-                            if student.school and student.school.district:
-                                event_districts.add(student.school.district)
+                    if student_sf_ids:
+                        # Find local students and determine districts
+                        local_students = db.session.query(Student).options(
+                            selectinload(Student.school).selectinload(School.district)
+                        ).filter(
+                            Student.salesforce_individual_id.in_(student_sf_ids)
+                        ).all()
 
-                    if not event_districts:
-                        errors.append(f"New event {event_sf_id} - found students (SF IDs: {', '.join(student_sf_ids)}) but cannot determine districts. Event not created.")
-                        event_processed_or_skipped = True
-                        continue # Skip event if districts can't be determined
+                        if local_students:
+                            for student in local_students:
+                                if student.school and student.school.district:
+                                    event_districts.add(student.school.district)
 
-                    # *** Create New Event ***
-                    # Use a helper or adapt logic from process_event_row
-                    # For simplicity here, basic creation:
-                    # Import necessary helpers/enums at the top of the file:
-                    # from routes.utils import map_session_type, map_event_format, parse_date, map_cancellation_reason, parse_event_skills
-                    # from models.event import EventType, EventFormat, EventStatus, CancellationReason # Add Enums
-                    # from datetime import datetime # Add datetime
-
-                    # (Make sure the necessary functions/enums are imported at the top)
-                    from routes.utils import map_session_type, map_event_format, parse_date, map_cancellation_reason, parse_event_skills, DISTRICT_MAPPINGS
-                    from models.event import EventType, EventFormat, EventStatus, CancellationReason
-                    from models.volunteer import Skill # Need Skill for parsing
-                    from datetime import datetime
-
+                    # *** Modified Logic: Create event regardless of district availability ***
                     try:
                         new_event = _create_event_from_salesforce(sf_event_data, event_districts)
 
@@ -262,8 +242,15 @@ def sync_unaffiliated_events():
                         db.session.flush() # Flush to catch potential validation errors early
 
                         created_count += 1
-                        district_map_details[event_sf_id] = [d.name for d in event_districts]
-                        print(f"CREATED new Event {event_sf_id} ({new_event.title}) affiliated with districts: {[d.name for d in event_districts]}")
+                        
+                        # Track district association status
+                        if event_districts:
+                            district_map_details[event_sf_id] = [d.name for d in event_districts]
+                            print(f"CREATED new Event {event_sf_id} ({new_event.title}) affiliated with districts: {[d.name for d in event_districts]}")
+                        else:
+                            district_map_details[event_sf_id] = ["No district association - volunteer-only event"]
+                            print(f"CREATED new Event {event_sf_id} ({new_event.title}) as volunteer-only event (no district association)")
+                        
                         event_processed_or_skipped = True
 
                     except Exception as creation_error:
@@ -296,34 +283,49 @@ def sync_unaffiliated_events():
         participant_error = 0
         
         if processed_event_sf_ids:
-            # Query for volunteer participants for these specific events
-            participants_query = f"""
-            SELECT 
-                Id,
-                Name,
-                Contact__c,
-                Session__c,
-                Status__c,
-                Delivery_Hours__c,
-                Age_Group__c,
-                Email__c,
-                Title__c
-            FROM Session_Participant__c
-            WHERE Participant_Type__c = 'Volunteer' 
-            AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in processed_event_sf_ids])})
-            """
+            # Process in batches to avoid "Request Header Fields Too Large" error
+            batch_size = 50  # Adjust this number if needed
+            
+            for i in range(0, len(processed_event_sf_ids), batch_size):
+                batch_sf_ids = processed_event_sf_ids[i:i + batch_size]
+                
+                print(f"Processing volunteer participants batch {i//batch_size + 1} of {(len(processed_event_sf_ids) + batch_size - 1)//batch_size} ({len(batch_sf_ids)} events)")
+                
+                # Query for volunteer participants for this batch of events
+                participants_query = f"""
+                SELECT 
+                    Id,
+                    Name,
+                    Contact__c,
+                    Session__c,
+                    Status__c,
+                    Delivery_Hours__c,
+                    Age_Group__c,
+                    Email__c,
+                    Title__c
+                FROM Session_Participant__c
+                WHERE Participant_Type__c = 'Volunteer' 
+                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
+                """
 
-            # Execute participants query
-            participants_result = sf.query_all(participants_query)
-            participant_rows = participants_result.get('records', [])
+                try:
+                    # Execute participants query for this batch
+                    participants_result = sf.query_all(participants_query)
+                    participant_rows = participants_result.get('records', [])
 
-            print(f"Found {len(participant_rows)} volunteer participation records for processed events.")
+                    print(f"Found {len(participant_rows)} volunteer participation records for batch {i//batch_size + 1}")
 
-            # Process volunteer participants using the existing function
-            for row in participant_rows:
-                participant_success, participant_error = process_participation_row(
-                    row, participant_success, participant_error, errors
-                )
+                    # Process volunteer participants using the existing function
+                    for row in participant_rows:
+                        participant_success, participant_error = process_participation_row(
+                            row, participant_success, participant_error, errors
+                        )
+                        
+                except Exception as batch_error:
+                    error_msg = f"Error processing volunteer participants batch {i//batch_size + 1}: {str(batch_error)}"
+                    print(error_msg)
+                    errors.append(error_msg)
+                    participant_error += len(batch_sf_ids)  # Count all events in failed batch as errors
 
             print(f"Successfully processed {participant_success} volunteer participations with {participant_error} errors")
 
