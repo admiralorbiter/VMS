@@ -118,6 +118,11 @@ def load_routes(bp):
                 'students': cached_report.students_data,
                 'events': cached_report.events_data
             }
+            # Get event types from cached events data
+            event_types = {}
+            for event in cached_report.events_data:
+                event_type = event.get('type', 'Unknown')
+                event_types[event_type] = event_types.get(event_type, 0) + 1
         else:
             # Generate detailed engagement data if not cached or incomplete
             engagement_data = generate_detailed_engagement_data(district, school_year)
@@ -143,11 +148,15 @@ def load_routes(bp):
                 db.session.rollback()
                 # Log error but continue with generated data
                 print(f"Error caching data: {e}")
+            
+            # Get event types from generated data
+            event_types = engagement_data.get('event_types', {})
         
         return render_template(
             'reports/district_engagement_detail.html',
             district=district,
             school_year=school_year,
+            event_types=event_types,
             **engagement_data
         )
 
@@ -323,6 +332,211 @@ def load_routes(bp):
             download_name=filename,
             as_attachment=True
         )
+
+    @bp.route('/reports/district/engagement/detail/<district_name>/filtered-stats')
+    @login_required
+    def get_filtered_engagement_stats(district_name):
+        """Get precise filtered engagement stats for selected event types"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        event_types = request.args.getlist('event_types[]')
+        
+        if not event_types:
+            return jsonify({'error': 'No event types specified'}), 400
+        
+        # Get district
+        district = District.query.filter_by(name=district_name).first()
+        if not district:
+            return jsonify({'error': 'District not found'}), 404
+        
+        # Generate filtered engagement data
+        start_date, end_date = get_school_year_date_range(school_year)
+        excluded_event_types = ['connector_session']
+        
+        # Get district mapping
+        district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
+                                if mapping['name'] == district.name), None)
+        
+        # Get all schools for this district
+        schools = School.query.filter_by(district_id=district.id).all()
+        
+        # Build query conditions
+        district_partner_conditions = [
+            Event.district_partner.ilike(f"%{school.name}%") for school in schools
+        ]
+        district_partner_conditions.append(Event.district_partner.ilike(f"%{district.name}%"))
+
+        if district_mapping and 'aliases' in district_mapping:
+            for alias in district_mapping['aliases']:
+                district_partner_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+                district_partner_conditions.append(
+                    Event.districts.any(District.name.ilike(f"%{alias}%"))
+                )
+
+        # Get events of specified types for this district
+        events = Event.query.filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.status == EventStatus.COMPLETED,
+            Event.type.in_([EventType(t) for t in event_types]),
+            db.or_(
+                Event.districts.contains(district),
+                Event.school.in_([school.id for school in schools]),
+                *district_partner_conditions
+            )
+        ).distinct().all()
+        
+        event_ids = [event.id for event in events]
+        
+        # Calculate volunteer stats
+        unique_volunteers = set()
+        total_volunteer_engagements = 0
+        total_volunteer_hours = 0
+        
+        volunteer_participations = EventParticipation.query.filter(
+            EventParticipation.event_id.in_(event_ids),
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        ).all()
+        
+        for participation in volunteer_participations:
+            unique_volunteers.add(participation.volunteer_id)
+            total_volunteer_engagements += 1
+            total_volunteer_hours += participation.delivery_hours or 0
+        
+        # Calculate student stats (excluding virtual sessions for unique count)
+        non_virtual_event_ids = [e.id for e in events if e.type != EventType.VIRTUAL_SESSION]
+        unique_students = set()
+        total_student_participations = 0
+        
+        if non_virtual_event_ids:
+            student_participations = EventStudentParticipation.query.join(
+                Student, EventStudentParticipation.student_id == Student.id
+            ).join(
+                School, Student.school_id == School.id
+            ).filter(
+                EventStudentParticipation.event_id.in_(non_virtual_event_ids),
+                EventStudentParticipation.status == 'Attended',
+                School.district_id == district.id
+            ).all()
+            
+            for participation in student_participations:
+                unique_students.add(participation.student_id)
+                total_student_participations += 1
+        
+        # Calculate total students including virtual estimates
+        total_students_with_virtual = 0
+        for event in events:
+            total_students_with_virtual += get_district_student_count_for_event(event, district.id)
+        
+        # Get unique organizations
+        unique_organizations = 0
+        if unique_volunteers:
+            volunteer_id_list = list(unique_volunteers)
+            unique_organizations = db.session.query(distinct(VolunteerOrganization.organization_id)).filter(
+                VolunteerOrganization.volunteer_id.in_(volunteer_id_list)
+            ).count()
+        
+        # Get schools engaged
+        schools_engaged = len(set([event.school for event in events if event.school]))
+        
+        return jsonify({
+            'unique_volunteers': len(unique_volunteers),
+            'total_volunteer_engagements': total_volunteer_engagements,
+            'total_volunteer_hours': round(total_volunteer_hours, 1),
+            'unique_students': len(unique_students),
+            'total_student_participations': total_student_participations,
+            'total_students_with_virtual': total_students_with_virtual,
+            'unique_events': len(events),
+            'unique_organizations': unique_organizations,
+            'schools_engaged': schools_engaged
+        })
+
+    @bp.route('/reports/district/engagement/detail/<district_name>/filtered-participants')
+    @login_required
+    def get_filtered_participants(district_name):
+        """Get filtered volunteers and students for selected event types"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        event_types = request.args.getlist('event_types[]')
+        
+        if not event_types:
+            return jsonify({'error': 'No event types specified'}), 400
+        
+        # Get district
+        district = District.query.filter_by(name=district_name).first()
+        if not district:
+            return jsonify({'error': 'District not found'}), 404
+        
+        # Get events of specified types for this district (same logic as before)
+        start_date, end_date = get_school_year_date_range(school_year)
+        excluded_event_types = ['connector_session']
+        
+        # Get district mapping
+        district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
+                                if mapping['name'] == district.name), None)
+        
+        # Get all schools for this district
+        schools = School.query.filter_by(district_id=district.id).all()
+        
+        # Build query conditions
+        district_partner_conditions = [
+            Event.district_partner.ilike(f"%{school.name}%") for school in schools
+        ]
+        district_partner_conditions.append(Event.district_partner.ilike(f"%{district.name}%"))
+
+        if district_mapping and 'aliases' in district_mapping:
+            for alias in district_mapping['aliases']:
+                district_partner_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+                district_partner_conditions.append(
+                    Event.districts.any(District.name.ilike(f"%{alias}%"))
+                )
+
+        # Get events of specified types for this district
+        events = Event.query.filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.status == EventStatus.COMPLETED,
+            Event.type.in_([EventType(t) for t in event_types]),
+            db.or_(
+                Event.districts.contains(district),
+                Event.school.in_([school.id for school in schools]),
+                *district_partner_conditions
+            )
+        ).distinct().all()
+        
+        event_ids = [event.id for event in events]
+        
+        # Get filtered volunteers
+        filtered_volunteer_ids = set()
+        volunteer_participations = EventParticipation.query.filter(
+            EventParticipation.event_id.in_(event_ids),
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        ).all()
+        
+        for participation in volunteer_participations:
+            filtered_volunteer_ids.add(participation.volunteer_id)
+        
+        # Get filtered students (excluding virtual sessions)
+        filtered_student_ids = set()
+        non_virtual_event_ids = [e.id for e in events if e.type != EventType.VIRTUAL_SESSION]
+        
+        if non_virtual_event_ids:
+            student_participations = EventStudentParticipation.query.join(
+                Student, EventStudentParticipation.student_id == Student.id
+            ).join(
+                School, Student.school_id == School.id
+            ).filter(
+                EventStudentParticipation.event_id.in_(non_virtual_event_ids),
+                EventStudentParticipation.status == 'Attended',
+                School.district_id == district.id
+            ).all()
+            
+            for participation in student_participations:
+                filtered_student_ids.add(participation.student_id)
+        
+        return jsonify({
+            'volunteer_ids': list(filtered_volunteer_ids),
+            'student_ids': list(filtered_student_ids),
+            'event_ids': event_ids
+        })
 
 def is_cache_complete(cached_report):
     """Check if the cached report has all necessary data"""
@@ -674,9 +888,16 @@ def generate_detailed_engagement_data(district, school_year):
         'schools_engaged': len(set(s['school'] for s in students_data if s['school'] != 'N/A'))
     }
     
+    # After getting events, add event type breakdown
+    event_type_breakdown = {}
+    for event in events:
+        event_type = event.type.value if event.type else 'Unknown'
+        event_type_breakdown[event_type] = event_type_breakdown.get(event_type, 0) + 1
+    
     return {
         'summary_stats': summary_stats,
         'volunteers': volunteers_data,
         'students': students_data,
-        'events': events_data
+        'events': events_data,
+        'event_types': event_type_breakdown
     } 

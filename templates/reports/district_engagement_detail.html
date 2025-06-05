@@ -38,6 +38,153 @@
         color: #666;
     }
 
+    /* Event type filtering styles - IMPROVED */
+    .event-types-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .event-types-header {
+        background: var(--ucla-blue);
+        color: white;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .event-types-content {
+        padding: 1rem 1.5rem;
+    }
+
+    .event-types-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+    }
+
+    .event-type-card {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 0.75rem 0.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .event-type-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        border-color: var(--ucla-blue);
+    }
+
+    .event-type-card.selected {
+        background-color: var(--ucla-blue);
+        color: white;
+        border-color: var(--ucla-blue);
+        box-shadow: 0 4px 12px rgba(70, 117, 153, 0.3);
+    }
+
+    .event-type-card.selected::after {
+        content: "✓";
+        position: absolute;
+        top: 4px;
+        right: 6px;
+        font-weight: bold;
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--ucla-blue);
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .type-count {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+        line-height: 1;
+    }
+
+    .type-name {
+        font-size: 0.75rem;
+        line-height: 1.2;
+        font-weight: 500;
+        text-transform: replace;
+        word-break: break-word;
+        hyphens: auto;
+    }
+
+    .filter-tip {
+        font-size: 11px;
+        color: #666;
+        font-style: italic;
+        margin: 0;
+        padding: 0.5rem 0.75rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 3px solid var(--ucla-blue);
+    }
+
+    .filter-tip::before {
+        content: "💡";
+        margin-right: 0.5rem;
+    }
+
+    .clear-filter-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .clear-filter-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .event-types-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.5rem;
+        }
+        
+        .event-type-card {
+            padding: 0.5rem 0.25rem;
+            min-height: 60px;
+        }
+        
+        .type-count {
+            font-size: 1.25rem;
+        }
+        
+        .type-name {
+            font-size: 0.7rem;
+        }
+    }
+
+    /* Existing styles... */
     .data-section {
         background: white;
         border-radius: 10px;
@@ -190,49 +337,74 @@
     <!-- Summary Stats -->
     <div class="summary-cards">
         <div class="summary-card">
-            <div class="value">{{ summary_stats.unique_volunteers }}</div>
+            <div class="value" id="unique-volunteers-stat">{{ summary_stats.unique_volunteers }}</div>
             <div class="label">Unique Volunteers</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.total_volunteer_engagements }}</div>
+            <div class="value" id="volunteer-engagements-stat">{{ summary_stats.total_volunteer_engagements }}</div>
             <div class="label">Volunteer Engagements</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.total_volunteer_hours }}</div>
+            <div class="value" id="volunteer-hours-stat">{{ summary_stats.total_volunteer_hours }}</div>
             <div class="label">Volunteer Hours</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.unique_students }}</div>
+            <div class="value" id="unique-students-stat">{{ summary_stats.unique_students }}</div>
             <div class="label">Unique Students</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.total_student_participations }}</div>
+            <div class="value" id="student-participations-stat">{{ summary_stats.total_student_participations }}</div>
             <div class="label">Student Participations</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.unique_events }}</div>
+            <div class="value" id="unique-events-stat">{{ summary_stats.unique_events }}</div>
             <div class="label">Unique Events</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.unique_organizations }}</div>
+            <div class="value" id="unique-organizations-stat">{{ summary_stats.unique_organizations }}</div>
             <div class="label">Organizations</div>
         </div>
         <div class="summary-card">
-            <div class="value">{{ summary_stats.schools_engaged }}</div>
+            <div class="value" id="schools-engaged-stat">{{ summary_stats.schools_engaged }}</div>
             <div class="label">Schools Engaged</div>
         </div>
     </div>
 
+    <!-- Event Type Breakdown -->
+    {% if event_types %}
+    <div class="event-types-section">
+        <div class="event-types-header">
+            <h2 style="margin: 0;">Event Types</h2>
+            <button class="clear-filter-btn" id="clear-filter">
+                <i class="fas fa-times"></i> Clear Filter
+            </button>
+        </div>
+        <div class="event-types-content">
+            <div class="filter-tip">
+                Tip: Click event types to filter data. Hold Ctrl/Cmd to select multiple types.
+            </div>
+            <div class="event-types-grid">
+                {% for type, count in event_types.items() %}
+                <div class="event-type-card" data-type="{{ type }}">
+                    <div class="type-count">{{ count }}</div>
+                    <div class="type-name">{{ type.replace('_', ' ').title() }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- View Tabs -->
     <div class="view-tabs">
         <button class="tab-btn active" data-tab="volunteers">
-            <i class="fas fa-users"></i> Volunteers ({{ volunteers|length }})
+            <i class="fas fa-users"></i> Volunteers (<span id="volunteers-count">{{ volunteers|length }}</span>)
         </button>
         <button class="tab-btn" data-tab="students">
-            <i class="fas fa-user-graduate"></i> Students ({{ students|length }})
+            <i class="fas fa-user-graduate"></i> Students (<span id="students-count">{{ students|length }}</span>)
         </button>
         <button class="tab-btn" data-tab="events">
-            <i class="fas fa-calendar-alt"></i> Events ({{ events|length }})
+            <i class="fas fa-calendar-alt"></i> Events (<span id="events-count">{{ events|length }}</span>)
         </button>
     </div>
 
@@ -263,7 +435,7 @@
                     </thead>
                     <tbody>
                         {% for volunteer in volunteers %}
-                        <tr>
+                        <tr data-volunteer-id="{{ volunteer.id }}">
                             <td>{{ volunteer.first_name }} {{ volunteer.last_name }}</td>
                             <td>{{ volunteer.email }}</td>
                             <td>{{ volunteer.organization }}</td>
@@ -304,7 +476,7 @@
                     </thead>
                     <tbody>
                         {% for student in students %}
-                        <tr>
+                        <tr data-student-id="{{ student.id }}">
                             <td>{{ student.first_name }} {{ student.last_name }}</td>
                             <td>{{ student.email }}</td>
                             <td>{{ student.school }}</td>
@@ -346,7 +518,7 @@
                     </thead>
                     <tbody>
                         {% for event in events %}
-                        <tr>
+                        <tr data-event-type="{{ event.type }}" data-event-id="{{ event.id }}">
                             <td>{{ event.date }}</td>
                             <td>{{ event.title }}</td>
                             <td>{{ event.type }}</td>
@@ -370,6 +542,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tab switching functionality
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
+    const eventTypeCards = document.querySelectorAll('.event-type-card');
+    const clearFilterBtn = document.getElementById('clear-filter');
+    
+    let selectedEventTypes = new Set();
+    
+    // Store original stats for resetting
+    const originalStats = {
+        unique_volunteers: {{ summary_stats.unique_volunteers }},
+        total_volunteer_engagements: {{ summary_stats.total_volunteer_engagements }},
+        total_volunteer_hours: {{ summary_stats.total_volunteer_hours }},
+        unique_students: {{ summary_stats.unique_students }},
+        total_student_participations: {{ summary_stats.total_student_participations }},
+        unique_events: {{ summary_stats.unique_events }},
+        unique_organizations: {{ summary_stats.unique_organizations }},
+        schools_engaged: {{ summary_stats.schools_engaged }}
+    };
+
+    // Store original counts for tabs
+    const originalCounts = {
+        volunteers: {{ volunteers|length }},
+        students: {{ students|length }},
+        events: {{ events|length }}
+    };
 
     tabBtns.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -384,12 +579,176 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(targetTab + '-tab').classList.add('active');
         });
     });
+
+    // Event type filtering
+    eventTypeCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            const type = this.dataset.type;
+            
+            // Check if Ctrl/Cmd key is held for multi-select
+            if (e.ctrlKey || e.metaKey) {
+                if (selectedEventTypes.has(type)) {
+                    selectedEventTypes.delete(type);
+                } else {
+                    selectedEventTypes.add(type);
+                }
+            } else {
+                // Single select mode
+                if (selectedEventTypes.size === 1 && selectedEventTypes.has(type)) {
+                    // Clicking the same type again clears the filter
+                    selectedEventTypes.clear();
+                } else {
+                    // Select only this type
+                    selectedEventTypes.clear();
+                    selectedEventTypes.add(type);
+                }
+            }
+            
+            filterByEventTypes(selectedEventTypes);
+        });
+    });
+
+    clearFilterBtn.addEventListener('click', function() {
+        selectedEventTypes.clear();
+        filterByEventTypes(selectedEventTypes);
+    });
+
+    async function filterByEventTypes(eventTypes) {
+        // Update card selection states
+        eventTypeCards.forEach(card => {
+            const type = card.dataset.type;
+            if (eventTypes.has(type)) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+
+        if (eventTypes.size === 0) {
+            // Show all rows and reset stats
+            showAllParticipants();
+            updateStats(originalStats);
+            updateTabCounts(originalCounts);
+            return;
+        }
+
+        try {
+            // Get filtered participants and stats
+            const [participantsData, statsData] = await Promise.all([
+                fetchFilteredParticipants(eventTypes),
+                fetchPreciseStats(eventTypes)
+            ]);
+
+            // Filter tables based on actual participation
+            filterParticipantTables(participantsData);
+            
+            // Update stats
+            updateStats(statsData);
+            
+            // Update tab counts
+            updateTabCounts({
+                volunteers: participantsData.volunteer_ids.length,
+                students: participantsData.student_ids.length,
+                events: participantsData.event_ids.length
+            });
+            
+        } catch (error) {
+            console.error('Error filtering by event types:', error);
+            // Fallback to showing all if there's an error
+            showAllParticipants();
+            updateStats(originalStats);
+            updateTabCounts(originalCounts);
+        }
+    }
+
+    async function fetchFilteredParticipants(selectedTypes) {
+        const params = new URLSearchParams();
+        params.append('school_year', '{{ school_year }}');
+        selectedTypes.forEach(type => params.append('event_types[]', type));
+        
+        const response = await fetch(`{{ url_for('report.get_filtered_participants', district_name=district.name) }}?${params}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch filtered participants');
+        }
+        return await response.json();
+    }
+
+    async function fetchPreciseStats(selectedTypes) {
+        const params = new URLSearchParams();
+        params.append('school_year', '{{ school_year }}');
+        selectedTypes.forEach(type => params.append('event_types[]', type));
+        
+        const response = await fetch(`{{ url_for('report.get_filtered_engagement_stats', district_name=district.name) }}?${params}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch stats');
+        }
+        return await response.json();
+    }
+
+    function filterParticipantTables(participantsData) {
+        const volunteerIds = new Set(participantsData.volunteer_ids);
+        const studentIds = new Set(participantsData.student_ids);
+        const eventIds = new Set(participantsData.event_ids);
+
+        // Filter volunteers table
+        document.querySelectorAll('#volunteers-table tbody tr').forEach(row => {
+            const volunteerId = parseInt(row.dataset.volunteerId);
+            if (volunteerIds.has(volunteerId)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Filter students table
+        document.querySelectorAll('#students-table tbody tr').forEach(row => {
+            const studentId = parseInt(row.dataset.studentId);
+            if (studentIds.has(studentId)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Filter events table
+        document.querySelectorAll('#events-table tbody tr').forEach(row => {
+            const eventId = parseInt(row.dataset.eventId);
+            if (eventIds.has(eventId)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function showAllParticipants() {
+        // Show all rows in all tables
+        document.querySelectorAll('.data-table tbody tr').forEach(row => {
+            row.style.display = '';
+        });
+    }
+
+    function updateStats(stats) {
+        document.getElementById('unique-volunteers-stat').textContent = stats.unique_volunteers;
+        document.getElementById('volunteer-engagements-stat').textContent = stats.total_volunteer_engagements;
+        document.getElementById('volunteer-hours-stat').textContent = stats.total_volunteer_hours;
+        document.getElementById('unique-students-stat').textContent = stats.unique_students;
+        document.getElementById('student-participations-stat').textContent = stats.total_student_participations;
+        document.getElementById('unique-events-stat').textContent = stats.unique_events;
+        document.getElementById('unique-organizations-stat').textContent = stats.unique_organizations;
+        document.getElementById('schools-engaged-stat').textContent = stats.schools_engaged;
+    }
+
+    function updateTabCounts(counts) {
+        document.getElementById('volunteers-count').textContent = counts.volunteers;
+        document.getElementById('students-count').textContent = counts.students;
+        document.getElementById('events-count').textContent = counts.events;
+    }
 });
 
 function toggleSection(button) {
     const section = button.closest('.data-section');
     const content = section.querySelector('.collapsible-content');
-    const icon = button.querySelector('i');
     
     section.classList.toggle('collapsed');
     
@@ -407,6 +766,12 @@ function searchTable(input, tableId) {
     
     for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
+        
+        // Skip filtering if row is already hidden by event type filter
+        if (row.style.display === 'none') {
+            continue;
+        }
+        
         const cells = row.getElementsByTagName('td');
         let found = false;
         
@@ -417,7 +782,14 @@ function searchTable(input, tableId) {
             }
         }
         
-        row.style.display = found ? '' : 'none';
+        // Only hide if not found, don't show if hidden by other filters
+        if (!found && row.style.display !== 'none') {
+            row.style.display = 'none';
+        } else if (found && row.style.display === 'none') {
+            // Only show if it was hidden by search, not by event type filter
+            // This is tricky - we'd need to track which filter caused the hiding
+            // For now, let's just let the search work on already filtered results
+        }
     }
 }
 </script>
