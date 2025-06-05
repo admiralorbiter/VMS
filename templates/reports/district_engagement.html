@@ -147,6 +147,197 @@
 .districts-container {
     transition: opacity 0.3s ease;
 }
+
+.overview-section {
+    background: linear-gradient(135deg, var(--ucla-blue), var(--delft-blue));
+    color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.overview-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.overview-header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.8rem;
+}
+
+.overview-header p {
+    margin: 0;
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+.overview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.overview-stat {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.overview-stat .value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: white;
+}
+
+.overview-stat .label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.event-types-section {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.event-types-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.event-types-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+    font-size: 1rem;
+}
+
+.collapse-icon.collapsed {
+    transform: rotate(-90deg);
+}
+
+.event-types-content {
+    max-height: 400px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.event-types-content.collapsed {
+    max-height: 0;
+}
+
+.event-types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.event-type-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.event-type-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.event-type-name {
+    font-weight: bold;
+    font-size: 1rem;
+    text-transform: capitalize;
+}
+
+.event-type-count {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.event-type-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.event-type-stat {
+    text-align: center;
+}
+
+.event-type-stat-value {
+    font-weight: bold;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+}
+
+.event-type-stat-label {
+    opacity: 0.8;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+@media (max-width: 768px) {
+    .overview-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .event-types-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .overview-section {
+        padding: 1rem;
+    }
+    
+    .overview-header h2 {
+        font-size: 1.4rem;
+    }
+    
+    .overview-stat .value {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .overview-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .event-type-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
 </style>
 {% endblock %}
 
@@ -175,6 +366,90 @@
             Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
         </div>
         {% endif %}
+    </div>
+
+    <!-- Overview Section -->
+    <div class="overview-section">
+        <div class="overview-header">
+            <h2><i class="fas fa-chart-line"></i> System-Wide Overview</h2>
+            <p>Aggregated engagement statistics across all districts</p>
+        </div>
+
+        <div class="overview-stats">
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_districts }}</div>
+                <div class="label">Active Districts</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_unique_volunteers }}</div>
+                <div class="label">Unique Volunteers</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_volunteer_engagements }}</div>
+                <div class="label">Volunteer Engagements</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_volunteer_hours }}</div>
+                <div class="label">Volunteer Hours</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_unique_students }}</div>
+                <div class="label">Unique Students</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_student_participations }}</div>
+                <div class="label">Student Participations</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_unique_events }}</div>
+                <div class="label">Total Events</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_unique_organizations }}</div>
+                <div class="label">Organizations</div>
+            </div>
+            <div class="overview-stat">
+                <div class="value">{{ overview_stats.total_schools_engaged }}</div>
+                <div class="label">Schools Engaged</div>
+            </div>
+        </div>
+
+        <!-- Event Types Breakdown -->
+        <div class="event-types-section">
+            <div class="event-types-header" onclick="toggleEventTypes()">
+                <h3 class="event-types-title">
+                    <i class="fas fa-calendar-alt"></i> Event Types Breakdown
+                </h3>
+                <i class="fas fa-chevron-down collapse-icon" id="collapseIcon"></i>
+            </div>
+            
+            <div class="event-types-content" id="eventTypesContent">
+                <div class="event-types-grid">
+                    {% for event_type, stats in event_type_breakdown.items() %}
+                    <div class="event-type-card">
+                        <div class="event-type-header">
+                            <div class="event-type-name">{{ event_type.replace('_', ' ').title() }}</div>
+                            <div class="event-type-count">{{ stats.count }} events</div>
+                        </div>
+                        <div class="event-type-stats">
+                            <div class="event-type-stat">
+                                <div class="event-type-stat-value">{{ stats.unique_volunteers }}</div>
+                                <div class="event-type-stat-label">Volunteers</div>
+                            </div>
+                            <div class="event-type-stat">
+                                <div class="event-type-stat-value">{{ stats.unique_students }}</div>
+                                <div class="event-type-stat-label">Students</div>
+                            </div>
+                            <div class="event-type-stat">
+                                <div class="event-type-stat-value">{{ stats.volunteer_hours }}</div>
+                                <div class="event-type-stat-label">Vol. Hours</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="loadingIndicator" style="display: none;">
@@ -308,6 +583,14 @@ function refreshData() {
         loadingIndicator.style.display = 'none';
         districtsContainer.style.opacity = '1';
     });
+}
+
+function toggleEventTypes() {
+    const content = document.getElementById('eventTypesContent');
+    const icon = document.getElementById('collapseIcon');
+    
+    content.classList.toggle('collapsed');
+    icon.classList.toggle('collapsed');
 }
 </script>
 {% endblock %} 

@@ -49,6 +49,12 @@ def load_routes(bp):
             cached_reports = DistrictEngagementReport.query.filter_by(school_year=school_year).all()
             district_stats = {report.district.name: report.summary_stats for report in cached_reports}
         
+        # Generate overview stats (aggregated across all districts) - pass school_year
+        overview_stats = generate_overview_stats(district_stats, school_year)
+        
+        # Generate event type breakdown
+        event_type_breakdown = generate_event_type_breakdown(school_year)
+        
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
@@ -64,6 +70,8 @@ def load_routes(bp):
         return render_template(
             'reports/district_engagement.html',
             districts=district_stats,
+            overview_stats=overview_stats,
+            event_type_breakdown=event_type_breakdown,
             school_year=school_year,
             school_years=school_years,
             now=datetime.now(),
@@ -1310,4 +1318,162 @@ def generate_event_breakdown_data(district, school_year):
     return {
         'events_breakdown': events_breakdown,
         'total_events': len(events_breakdown)
-    } 
+    }
+
+def generate_overview_stats(district_stats, school_year):
+    """Generate aggregated overview stats across all districts"""
+    if not district_stats:
+        return {
+            'total_unique_volunteers': 0,
+            'total_volunteer_engagements': 0,
+            'total_volunteer_hours': 0,
+            'total_unique_students': 0,
+            'total_student_participations': 0,
+            'total_unique_events': 0,
+            'total_unique_organizations': 0,
+            'total_schools_engaged': 0,
+            'total_districts': 0
+        }
+    
+    # For truly unique counts, we need to calculate them ourselves
+    # rather than summing the individual district counts
+    start_date, end_date = get_school_year_date_range(school_year)
+    excluded_event_types = ['connector_session']
+    
+    # Get all events across all districts for the school year
+    all_events = Event.query.filter(
+        Event.start_date >= start_date,
+        Event.start_date <= end_date,
+        Event.status == EventStatus.COMPLETED,
+        ~Event.type.in_([EventType(t) for t in excluded_event_types])
+    ).all()
+    
+    event_ids = [event.id for event in all_events]
+    
+    # Calculate truly unique volunteers across all districts
+    unique_volunteers = db.session.query(distinct(EventParticipation.volunteer_id)).filter(
+        EventParticipation.event_id.in_(event_ids),
+        EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+    ).count()
+    
+    # Calculate truly unique students across all districts (excluding virtual sessions)
+    non_virtual_events = [e for e in all_events if e.type != EventType.VIRTUAL_SESSION]
+    non_virtual_event_ids = [e.id for e in non_virtual_events]
+    
+    unique_students = 0
+    if non_virtual_event_ids:
+        unique_students = db.session.query(distinct(EventStudentParticipation.student_id)).filter(
+            EventStudentParticipation.event_id.in_(non_virtual_event_ids),
+            EventStudentParticipation.status == 'Attended'
+        ).count()
+    
+    # Calculate truly unique organizations
+    volunteer_ids = db.session.query(EventParticipation.volunteer_id).filter(
+        EventParticipation.event_id.in_(event_ids),
+        EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+    ).distinct().all()
+    
+    unique_organizations = 0
+    if volunteer_ids:
+        volunteer_id_list = [v[0] for v in volunteer_ids]
+        unique_organizations = db.session.query(distinct(VolunteerOrganization.organization_id)).filter(
+            VolunteerOrganization.volunteer_id.in_(volunteer_id_list)
+        ).count()
+    
+    # Calculate truly unique schools engaged
+    unique_schools = len(set([event.school for event in all_events if event.school]))
+    
+    # Sum up engagement counts and hours (these can be summed since they're not "unique" counts)
+    total_volunteer_engagements = sum(stats.get('total_volunteer_engagements', 0) for stats in district_stats.values())
+    total_volunteer_hours = round(sum(stats.get('total_volunteer_hours', 0) for stats in district_stats.values()), 1)
+    total_student_participations = sum(stats.get('total_student_participations', 0) for stats in district_stats.values())
+    
+    overview = {
+        'total_unique_volunteers': unique_volunteers,
+        'total_volunteer_engagements': total_volunteer_engagements,
+        'total_volunteer_hours': total_volunteer_hours,
+        'total_unique_students': unique_students,
+        'total_student_participations': total_student_participations,
+        'total_unique_events': len(all_events),
+        'total_unique_organizations': unique_organizations,
+        'total_schools_engaged': unique_schools,
+        'total_districts': len(district_stats)
+    }
+    
+    return overview
+
+def generate_event_type_breakdown(school_year):
+    """Generate event type breakdown with stats for the school year"""
+    start_date, end_date = get_school_year_date_range(school_year)
+    excluded_event_types = ['connector_session']
+    
+    # Get all events for the school year (excluding connector sessions)
+    events = Event.query.filter(
+        Event.start_date >= start_date,
+        Event.start_date <= end_date,
+        Event.status == EventStatus.COMPLETED,
+        ~Event.type.in_([EventType(t) for t in excluded_event_types])
+    ).all()
+    
+    # Group events by type and calculate stats
+    event_type_stats = {}
+    
+    for event in events:
+        event_type = event.type.value if event.type else 'Unknown'
+        
+        if event_type not in event_type_stats:
+            event_type_stats[event_type] = {
+                'count': 0,
+                'volunteer_engagements': 0,
+                'volunteer_hours': 0,
+                'student_participations': 0,
+                'unique_volunteers': set(),
+                'unique_students': set()
+            }
+        
+        stats = event_type_stats[event_type]
+        stats['count'] += 1
+        
+        # Get volunteer stats for this event
+        volunteer_participations = EventParticipation.query.filter(
+            EventParticipation.event_id == event.id,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        ).all()
+        
+        for participation in volunteer_participations:
+            stats['volunteer_engagements'] += 1
+            stats['volunteer_hours'] += participation.delivery_hours or 0
+            stats['unique_volunteers'].add(participation.volunteer_id)
+        
+        # Get student stats for this event (excluding virtual sessions for detailed count)
+        if event.type != EventType.VIRTUAL_SESSION:
+            student_participations = EventStudentParticipation.query.filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == 'Attended'
+            ).all()
+            
+            for participation in student_participations:
+                stats['student_participations'] += 1
+                stats['unique_students'].add(participation.student_id)
+        else:
+            # For virtual sessions, estimate student participation
+            # This is a simplified estimation - you might want to use your existing logic
+            estimated_students = event.estimated_participants or 0
+            stats['student_participations'] += estimated_students
+    
+    # Convert sets to counts and format the data
+    formatted_stats = {}
+    for event_type, stats in event_type_stats.items():
+        formatted_stats[event_type] = {
+            'count': stats['count'],
+            'volunteer_engagements': stats['volunteer_engagements'],
+            'volunteer_hours': round(stats['volunteer_hours'], 1),
+            'student_participations': stats['student_participations'],
+            'unique_volunteers': len(stats['unique_volunteers']),
+            'unique_students': len(stats['unique_students'])
+        }
+    
+    # Sort by event count (descending)
+    sorted_stats = dict(sorted(formatted_stats.items(), key=lambda x: x[1]['count'], reverse=True))
+    
+    return sorted_stats 
