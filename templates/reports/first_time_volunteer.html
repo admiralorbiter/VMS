@@ -35,6 +35,8 @@
         display: flex;
         gap: 20px;
         margin-bottom: 30px;
+        flex-wrap: wrap;
+        align-items: center;
     }
     
     .stat-card {
@@ -45,6 +47,7 @@
         text-align: center;
         flex: 1;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-width: 200px;
     }
     
     .stat-number {
@@ -57,6 +60,31 @@
     .stat-label {
         color: #666;
         font-size: 0.9em;
+    }
+    
+    .export-button {
+        margin-left: auto;
+    }
+    
+    .btn-success {
+        background: #28a745;
+        color: #fff !important;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 20px;
+        font-size: 0.9em;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s;
+        font-weight: 500;
+    }
+    
+    .btn-success:hover {
+        background: #218838;
+        color: #fff !important;
+        text-decoration: none;
     }
     
     .volunteer-table {
@@ -82,6 +110,7 @@
     .volunteer-table td {
         padding: 12px 15px;
         border-bottom: 1px solid #eee;
+        vertical-align: middle;
     }
     
     .volunteer-table tr:hover {
@@ -101,6 +130,36 @@
     .contact-info {
         font-size: 0.9em;
         color: #666;
+    }
+    
+    .salesforce-btn {
+        background: #00D4AA;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 3px;
+        text-decoration: none;
+        font-size: 0.8em;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        transition: background 0.3s ease;
+        white-space: nowrap;
+    }
+    
+    .salesforce-btn:hover {
+        background: #00B89A;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .salesforce-btn i {
+        font-size: 0.9em;
+    }
+    
+    .volunteer-name-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
     }
     
     .no-data {
@@ -142,6 +201,11 @@
             <div class="stat-number">{{ "%.1f"|format(total_hours_by_first_timers) }}</div>
             <div class="stat-label">Total Hours</div>
         </div>
+        <div class="export-button">
+            <a href="{{ url_for('report.export_first_time_volunteer', school_year=school_year) }}" class="btn btn-success">
+                <i class="fa-solid fa-file-excel"></i> Export to Excel
+            </a>
+        </div>
     </div>
 
     <div class="volunteer-table">
@@ -155,15 +219,18 @@
                     <th>Hours</th>
                     <th>Organization</th>
                     <th>Contact</th>
+                    <th>Salesforce</th>
                 </tr>
             </thead>
             <tbody>
                 {% for volunteer in volunteers %}
                 <tr>
                     <td>
-                        <a href="{{ url_for('report.first_time_volunteer_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="volunteer-link">
-                            {{ volunteer.name }}
-                        </a>
+                        <div class="volunteer-name-cell">
+                            <a href="{{ url_for('report.first_time_volunteer_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="volunteer-link">
+                                {{ volunteer.name }}
+                            </a>
+                        </div>
                     </td>
                     <td>{{ volunteer.first_volunteer_date }}</td>
                     <td>{{ volunteer.total_events }}</td>
@@ -172,6 +239,15 @@
                     <td class="contact-info">
                         {% if volunteer.email %}{{ volunteer.email }}<br>{% endif %}
                         {% if volunteer.phone %}{{ volunteer.phone }}{% endif %}
+                    </td>
+                    <td>
+                        {% if volunteer.salesforce_contact_url %}
+                            <a href="{{ volunteer.salesforce_contact_url }}" class="salesforce-btn" target="_blank" title="View Contact in Salesforce">
+                                <i class="fa-solid fa-cloud"></i> Contact
+                            </a>
+                        {% else %}
+                            <span style="color: #999; font-style: italic;">No link</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

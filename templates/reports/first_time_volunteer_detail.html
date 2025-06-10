@@ -17,6 +17,47 @@
         font-size: 2.5em;
     }
     
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .header-left {
+        flex: 1;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .salesforce-links {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .salesforce-btn {
+        background: #00D4AA;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9em;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: background 0.3s ease;
+    }
+    
+    .salesforce-btn:hover {
+        background: #00B89A;
+        color: white;
+        text-decoration: none;
+    }
+    
     .volunteer-info {
         background: #f8f9fa;
         padding: 20px;
@@ -110,7 +151,6 @@
     
     .back-link {
         display: inline-block;
-        margin-bottom: 20px;
         color: #2c5aa0;
         text-decoration: none;
         padding: 8px 16px;
@@ -136,9 +176,29 @@
 
 {% block content %}
 <div class="detail-container">
-    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year) }}" class="back-link">
-        ← Back to First Time Volunteer Report
-    </a>
+    <div class="detail-header">
+        <div class="header-left">
+            <a href="{{ url_for('report.first_time_volunteer', school_year=school_year) }}" class="back-link">
+                ← Back to First Time Volunteer Report
+            </a>
+        </div>
+        <div class="header-actions">
+            {% if volunteer.salesforce_contact_url or volunteer.salesforce_account_url %}
+            <div class="salesforce-links">
+                {% if volunteer.salesforce_contact_url %}
+                <a href="{{ volunteer.salesforce_contact_url }}" class="btn salesforce-btn" target="_blank">
+                    <i class="fa-solid fa-cloud"></i> Contact
+                </a>
+                {% endif %}
+                {% if volunteer.salesforce_account_url %}
+                <a href="{{ volunteer.salesforce_account_url }}" class="btn salesforce-btn" target="_blank">
+                    <i class="fa-solid fa-building-user"></i> Account
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
     
     <h1 class="page-header">{{ volunteer.first_name }} {{ volunteer.last_name }}</h1>
     
@@ -151,11 +211,11 @@
             </div>
             <div class="info-item">
                 <span class="info-label">Email:</span>
-                <span class="info-value">{{ volunteer.email or 'Not provided' }}</span>
+                <span class="info-value">{{ volunteer.primary_email or 'Not provided' }}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Phone:</span>
-                <span class="info-value">{{ volunteer.phone or 'Not provided' }}</span>
+                <span class="info-value">{{ volunteer.primary_phone or 'Not provided' }}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">Organization:</span>
@@ -169,6 +229,12 @@
                 <span class="info-label">School Year:</span>
                 <span class="info-value">{{ school_year_display }}</span>
             </div>
+            {% if volunteer.salesforce_individual_id %}
+            <div class="info-item">
+                <span class="info-label">Salesforce ID:</span>
+                <span class="info-value">{{ volunteer.salesforce_individual_id }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 
