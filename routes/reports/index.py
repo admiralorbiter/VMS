@@ -46,6 +46,13 @@ def load_routes(bp):
                 'category': 'District Reports'
             },
             {
+                'title': 'First Time Volunteer Report',
+                'description': 'View statistics on first-time volunteers, including participation and engagement metrics.',
+                'icon': 'fa-solid fa-user-plus',
+                'url': '/reports/first-time-volunteer',
+                'category': 'Volunteer Reports'
+            },
+            {
                 'title': 'Recruitment Tools',
                 'description': 'Access various tools for volunteer recruitment and event matching.',
                 'icon': 'fa-solid fa-users',
