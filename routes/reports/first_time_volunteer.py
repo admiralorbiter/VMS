@@ -25,7 +25,6 @@ def load_routes(bp):
         start_date, end_date = get_school_year_date_range(school_year)
         
         # Query for first-time volunteers in the school year
-        # A first-time volunteer is someone whose first_volunteer_date falls within the school year
         first_time_volunteers = db.session.query(
             Volunteer,
             db.func.count(EventParticipation.id).label('total_events'),
@@ -65,16 +64,53 @@ def load_routes(bp):
 
         # Format the data for the template
         volunteer_data = []
-        for v, events, hours, org in first_time_volunteers:
+        for v, events_count, hours, org in first_time_volunteers:
+            # Get skills for this volunteer
+            skills_list = [skill.name for skill in v.skills] if v.skills else []
+            skills_str = ', '.join(skills_list) if skills_list else 'No skills listed'
+            
+            # Get events for this volunteer in the school year
+            volunteer_events = db.session.query(
+                Event,
+                EventParticipation.delivery_hours,
+                EventParticipation.status
+            ).join(
+                EventParticipation, Event.id == EventParticipation.event_id
+            ).filter(
+                EventParticipation.volunteer_id == v.id,
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                Event.status == EventStatus.COMPLETED,
+                or_(
+                    EventParticipation.status == 'Attended',
+                    EventParticipation.status == 'Completed',
+                    EventParticipation.status == 'Successfully Completed'
+                )
+            ).order_by(
+                Event.start_date
+            ).all()
+            
+            # Format events data
+            events_list = []
+            for event, event_hours, status in volunteer_events:
+                events_list.append({
+                    'title': event.title,
+                    'date': event.start_date.strftime('%b %d, %Y'),
+                    'type': event.type.value if event.type else 'Unknown',
+                    'hours': round(event_hours or 0, 2),
+                    'district': event.district_partner or 'N/A'
+                })
+            
             volunteer_data.append({
                 'id': v.id,
                 'name': f"{v.first_name} {v.last_name}",
                 'first_volunteer_date': v.first_volunteer_date.strftime('%B %d, %Y') if v.first_volunteer_date else 'Unknown',
-                'total_events': events or 0,
+                'total_events': events_count or 0,
                 'total_hours': round(float(hours or 0), 2),
                 'organization': org or 'Independent',
-                'email': v.primary_email,
-                'phone': v.primary_phone,
+                'title': v.title or 'No title listed',
+                'skills': skills_str,
+                'events': events_list,
                 'salesforce_contact_url': v.salesforce_contact_url,
                 'salesforce_account_url': v.salesforce_account_url
             })
@@ -92,80 +128,6 @@ def load_routes(bp):
             total_first_time_volunteers=total_first_time_volunteers,
             total_events_by_first_timers=total_events_by_first_timers,
             total_hours_by_first_timers=total_hours_by_first_timers,
-            now=datetime.now()
-        )
-
-    @bp.route('/reports/first-time-volunteer/detail/<int:volunteer_id>')
-    @login_required
-    def first_time_volunteer_detail(volunteer_id):
-        # Get filter parameters
-        school_year = request.args.get('school_year', get_current_school_year())
-        
-        # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
-        
-        # Get volunteer details
-        volunteer = Volunteer.query.get_or_404(volunteer_id)
-        
-        # Verify this is actually a first-time volunteer for the selected school year
-        if not volunteer.first_volunteer_date or not (start_date <= volunteer.first_volunteer_date <= end_date):
-            return render_template('404.html'), 404
-        
-        # Query all events for this volunteer in the specified school year
-        events = db.session.query(
-            Event,
-            EventParticipation.delivery_hours,
-            EventParticipation.status
-        ).join(
-            EventParticipation, Event.id == EventParticipation.event_id
-        ).filter(
-            EventParticipation.volunteer_id == volunteer_id,
-            Event.start_date >= start_date,
-            Event.start_date <= end_date,
-            Event.status == EventStatus.COMPLETED,
-            or_(
-                EventParticipation.status == 'Attended',
-                EventParticipation.status == 'Completed',
-                EventParticipation.status == 'Successfully Completed'
-            )
-        ).order_by(
-            Event.start_date
-        ).all()
-        
-        # Format the events data
-        events_data = []
-        for event, hours, status in events:
-            events_data.append({
-                'date': event.start_date.strftime('%B %d, %Y'),
-                'title': event.title,
-                'type': event.type.value if event.type else 'Unknown',
-                'hours': round(hours or 0, 2),
-                'status': status,
-                'school': event.school or 'N/A',
-                'district': event.district_partner or 'N/A'
-            })
-        
-        # Calculate totals
-        total_hours = sum(event['hours'] for event in events_data)
-        total_events = len(events_data)
-        
-        # Get organization info
-        org_relationship = VolunteerOrganization.query.filter_by(volunteer_id=volunteer_id).first()
-        organization_name = 'Independent'
-        if org_relationship:
-            org = Organization.query.get(org_relationship.organization_id)
-            if org:
-                organization_name = org.name
-        
-        return render_template(
-            'reports/first_time_volunteer_detail.html',
-            volunteer=volunteer,
-            events=events_data,
-            total_hours=total_hours,
-            total_events=total_events,
-            organization=organization_name,
-            school_year=school_year,
-            school_year_display=f"20{school_year[:2]}-{school_year[2:]}",
             now=datetime.now()
         )
 
@@ -215,15 +177,43 @@ def load_routes(bp):
 
         # Prepare data for DataFrame
         data = []
-        for v, events, hours, org in first_time_volunteers:
+        for v, events_count, hours, org in first_time_volunteers:
+            # Get skills for this volunteer
+            skills_list = [skill.name for skill in v.skills] if v.skills else []
+            skills_str = ', '.join(skills_list) if skills_list else 'No skills listed'
+            
+            # Get events for this volunteer in the school year
+            volunteer_events = db.session.query(
+                Event,
+                EventParticipation.delivery_hours
+            ).join(
+                EventParticipation, Event.id == EventParticipation.event_id
+            ).filter(
+                EventParticipation.volunteer_id == v.id,
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                Event.status == EventStatus.COMPLETED,
+                or_(
+                    EventParticipation.status == 'Attended',
+                    EventParticipation.status == 'Completed',
+                    EventParticipation.status == 'Successfully Completed'
+                )
+            ).order_by(
+                Event.start_date
+            ).all()
+            
+            # Format events for Excel
+            events_str = '; '.join([f"{event.title} ({event.start_date.strftime('%m/%d/%Y')})" for event, _ in volunteer_events])
+            
             data.append({
                 'Name': f"{v.first_name} {v.last_name}",
                 'First Volunteer Date': v.first_volunteer_date.strftime('%Y-%m-%d') if v.first_volunteer_date else '',
-                'Events': events or 0,
-                'Hours': round(float(hours or 0), 2),
+                'Events Count': events_count or 0,
+                'Total Hours': round(float(hours or 0), 2),
                 'Organization': org or 'Independent',
-                'Email': v.primary_email or '',
-                'Phone': v.primary_phone or '',
+                'Title': v.title or 'No title listed',
+                'Skills': skills_str,
+                'Events': events_str,
                 'Salesforce Contact URL': v.salesforce_contact_url or ''
             })
 

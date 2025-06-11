@@ -7,7 +7,7 @@
 <style>
     .first-time-volunteer-container {
         padding: 20px;
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
     }
     
@@ -92,11 +92,13 @@
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow-x: auto;
     }
     
     .volunteer-table table {
         width: 100%;
         border-collapse: collapse;
+        min-width: 1200px;
     }
     
     .volunteer-table th {
@@ -105,31 +107,105 @@
         padding: 15px;
         text-align: left;
         font-weight: 600;
+        white-space: nowrap;
     }
     
     .volunteer-table td {
         padding: 12px 15px;
         border-bottom: 1px solid #eee;
-        vertical-align: middle;
+        vertical-align: top;
     }
     
     .volunteer-table tr:hover {
         background: #f8f9fa;
     }
     
-    .volunteer-link {
+    .volunteer-name-cell {
+        min-width: 200px;
+    }
+    
+    .volunteer-name {
+        font-weight: 600;
         color: #2c5aa0;
-        text-decoration: none;
+        margin-bottom: 4px;
+        font-size: 1em;
+    }
+    
+    .volunteer-date {
+        color: #666;
+        font-size: 0.9em;
+        font-weight: normal;
+    }
+    
+    .events-hours-cell {
+        min-width: 100px;
+        text-align: center;
+    }
+    
+    .events-count {
+        font-weight: 600;
+        color: #2c5aa0;
+        font-size: 1.1em;
+        margin-bottom: 2px;
+    }
+    
+    .hours-count {
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    .skills-cell {
+        max-width: 250px;
+        word-wrap: break-word;
+        font-size: 0.9em;
+        color: #666;
+    }
+    
+    .title-cell {
+        max-width: 180px;
+        word-wrap: break-word;
+        font-size: 0.9em;
+        color: #333;
+    }
+    
+    .events-cell {
+        max-width: 350px;
+        font-size: 0.85em;
+    }
+    
+    .event-item {
+        margin-bottom: 8px;
+        padding: 6px 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border-left: 3px solid #2c5aa0;
+    }
+    
+    .event-title {
+        font-weight: 500;
+        color: #2c5aa0;
+        margin-bottom: 2px;
+    }
+    
+    .event-details {
+        color: #666;
+        font-size: 0.9em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .event-date {
         font-weight: 500;
     }
     
-    .volunteer-link:hover {
-        text-decoration: underline;
-    }
-    
-    .contact-info {
-        font-size: 0.9em;
-        color: #666;
+    .event-hours {
+        background: #e9ecef;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 0.8em;
+        white-space: nowrap;
     }
     
     .salesforce-btn {
@@ -156,17 +232,17 @@
         font-size: 0.9em;
     }
     
-    .volunteer-name-cell {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-    
     .no-data {
         text-align: center;
         padding: 40px;
         color: #666;
         font-style: italic;
+    }
+    
+    .no-events {
+        color: #999;
+        font-style: italic;
+        font-size: 0.9em;
     }
 </style>
 {% endblock %}
@@ -213,32 +289,43 @@
         <table>
             <thead>
                 <tr>
-                    <th>Volunteer Name</th>
-                    <th>First Volunteer Date</th>
-                    <th>Events</th>
-                    <th>Hours</th>
+                    <th>Volunteer & First Date</th>
+                    <th>Events & Hours</th>
                     <th>Organization</th>
-                    <th>Contact</th>
+                    <th>Title</th>
+                    <th>Skills</th>
+                    <th>Events Participated</th>
                     <th>Salesforce</th>
                 </tr>
             </thead>
             <tbody>
                 {% for volunteer in volunteers %}
                 <tr>
-                    <td>
-                        <div class="volunteer-name-cell">
-                            <a href="{{ url_for('report.first_time_volunteer_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="volunteer-link">
-                                {{ volunteer.name }}
-                            </a>
-                        </div>
+                    <td class="volunteer-name-cell">
+                        <div class="volunteer-name">{{ volunteer.name }}</div>
+                        <div class="volunteer-date">{{ volunteer.first_volunteer_date }}</div>
                     </td>
-                    <td>{{ volunteer.first_volunteer_date }}</td>
-                    <td>{{ volunteer.total_events }}</td>
-                    <td>{{ volunteer.total_hours }}</td>
+                    <td class="events-hours-cell">
+                        <div class="events-count">{{ volunteer.total_events }} events</div>
+                        <div class="hours-count">{{ volunteer.total_hours }} hrs</div>
+                    </td>
                     <td>{{ volunteer.organization }}</td>
-                    <td class="contact-info">
-                        {% if volunteer.email %}{{ volunteer.email }}<br>{% endif %}
-                        {% if volunteer.phone %}{{ volunteer.phone }}{% endif %}
+                    <td class="title-cell">{{ volunteer.title }}</td>
+                    <td class="skills-cell">{{ volunteer.skills }}</td>
+                    <td class="events-cell">
+                        {% if volunteer.events %}
+                            {% for event in volunteer.events %}
+                                <div class="event-item">
+                                    <div class="event-title">{{ event.title }}</div>
+                                    <div class="event-details">
+                                        <span class="event-date">{{ event.date }}</span>
+                                        <span class="event-hours">{{ event.hours }} hrs</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="no-events">No events recorded</div>
+                        {% endif %}
                     </td>
                     <td>
                         {% if volunteer.salesforce_contact_url %}
