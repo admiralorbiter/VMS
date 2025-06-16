@@ -24,6 +24,8 @@ from models.event import EventTeacher
 from models.contact import ContactTypeEnum
 from sqlalchemy.orm import joinedload # Import for potential optimization if needed
 from routes.reports.common import DISTRICT_MAPPING
+import requests
+from requests.adapters import HTTPAdapter
 
 virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 
@@ -592,97 +594,47 @@ def standardize_organization(org_name):
     return replacements.get(org_name.upper(), org_name)
 
 def parse_datetime(date_str, time_str):
-    """Parse date and time strings using academic year logic"""
+    """Parse datetime with support for 2024-2025 academic year"""
     try:
-        # Handle missing or NaN values
-        if pd.isna(date_str) or pd.isna(time_str):
+        if pd.isna(date_str):
             return None
             
-        # Convert numeric values to strings and clean them
-        date_str = str(date_str).strip() if not pd.isna(date_str) else ''
-        time_str = str(time_str).strip() if not pd.isna(time_str) else ''
-        
-        if not date_str:
-            return None
-            
-        # Parse the month and day
-        try:
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) >= 2:
-                    month = int(parts[0])
-                    day = int(parts[1])
+        # Clean and parse date
+        date_str = str(date_str).strip()
+        if '/' in date_str:
+            parts = date_str.split('/')
+            if len(parts) >= 2:
+                month = int(parts[0])
+                day = int(parts[1])
+                
+                # For 2024-2025 academic year:
+                # - If month is June (6) or later, use 2024
+                # - If month is before June, use 2025
+                current_year = 2024 if month >= 6 else 2025
+                
+                # Parse time
+                time_obj = clean_time_string(time_str) if time_str and not pd.isna(time_str) and str(time_str).strip() else None
+                
+                if time_obj:
+                    # We have both date and time
+                    try:
+                        return datetime(
+                            current_year,
+                            month,
+                            day,
+                            time_obj.hour,
+                            time_obj.minute
+                        )
+                    except ValueError:
+                        current_app.logger.warning(f"Invalid date components: {month}/{day}/{current_year}")
+                        return None
                 else:
+                    # We only have date, return None - the calling code will handle finding the event
                     return None
-            else:
-                return None
-                
-            # Validate month and day
-            if not (1 <= month <= 12) or not (1 <= day <= 31):
-                return None
-                
-            # Get current date for comparison
-            current_date = datetime.now(timezone.utc)
-            
-            # Determine academic year
-            # If we're in or after June, use current year for fall semester (months 6-12)
-            # and next year for spring semester (months 1-5)
-            # If we're before June, use previous year for fall semester and current year for spring
-            if current_date.month >= 6:
-                year = current_date.year if month >= 6 else current_date.year + 1
-            else:
-                year = current_date.year - 1 if month >= 6 else current_date.year
-                
-            # Create the date object with validation
-            try:
-                date_obj = datetime(year, month, day).date()
-            except ValueError:
-                # Handle invalid dates like 9/31
-                return None
-                
-            # Parse time with multiple format support
-            time_obj = None
-            
-            # Clean up time string
-            time_str = (time_str.replace('am', ' AM')
-                       .replace('pm', ' PM')
-                       .replace('AM', ' AM')
-                       .replace('PM', ' PM')
-                       .replace('  ', ' ')
-                       .strip())
-            
-            # Try different time formats
-            time_formats = [
-                '%I:%M %p',  # 11:30 AM
-                '%H:%M',     # 13:30
-                '%I:%M%p',   # 11:30AM
-                '%I%p',      # 11AM
-                '%H:%M:%S'   # 13:30:00
-            ]
-            
-            for fmt in time_formats:
-                try:
-                    if 'M' in fmt:  # If format expects AM/PM
-                        if ' AM' not in time_str.upper() and ' PM' not in time_str.upper():
-                            continue
-                    time_obj = datetime.strptime(time_str, fmt).time()
-                    break
-                except ValueError:
-                    continue
-            
-            # If time parsing failed, use default time (9:00 AM)
-            if not time_obj:
-                time_obj = datetime.strptime('9:00 AM', '%I:%M %p').time()
-            
-            # Combine date and time
-            return datetime.combine(date_obj, time_obj)
-            
-        except (ValueError, IndexError, TypeError) as e:
-            current_app.logger.warning(f"Date parsing error: {e} for date: '{date_str}'")
-            return None
-            
+                    
+        return None
     except Exception as e:
-        current_app.logger.warning(f"DateTime parsing error: {e} for date: '{date_str}', time: '{time_str}'")
+        current_app.logger.warning(f"Error parsing datetime: {e}")
         return None
 
 def clean_string_value(value):
@@ -799,9 +751,27 @@ def import_sheet():
             raise ValueError("Google Sheet ID not configured")
 
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-        # Consider removing nrows limit for production
-        df = pd.read_csv(csv_url, skiprows=3, dtype={'School Name': str})
-
+        
+        # Use requests with streaming
+        response = requests.get(csv_url, stream=True)
+        response.raise_for_status()
+        
+        # Read the CSV in chunks
+        chunks = []
+        chunk_size = 8192  # 8KB chunks
+        
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            if chunk:
+                chunks.append(chunk)
+        
+        # Combine chunks and read as CSV
+        content = b''.join(chunks)
+        df = pd.read_csv(
+            pd.io.common.BytesIO(content),
+            skiprows=3,
+            dtype={'School Name': str}
+        )
+        
         print(f"\n=== Starting Import ===")
         print(f"Total rows read from sheet: {len(df)}")
         print("========================\n")
@@ -867,22 +837,42 @@ def import_sheet():
                     parsed_dt = parse_datetime(date_str, time_str)
                     if parsed_dt:
                         current_datetime = parsed_dt
-                        # print(f"Row {row_index + 1} ('{title}'): Parsed datetime {current_datetime.isoformat()}")
-                    # else:
-                        # print(f"Row {row_index + 1} ('{title}'): Failed to parse date '{date_str}' time '{time_str}'")
-
-
+                        print(f"Row {row_index + 1} ('{title}'): Parsed datetime {current_datetime.isoformat()}")
+                    else:
+                        # If parsing failed (likely due to missing time), try to find existing event
+                        date_parts = str(date_str).strip().split('/')
+                        if len(date_parts) >= 2:
+                            try:
+                                month = int(date_parts[0])
+                                day = int(date_parts[1])
+                                current_year = 2024 if month >= 6 else 2025
+                                target_date = datetime(current_year, month, day).date()
+                                
+                                # Find existing event for this title and date
+                                existing_event = Event.query.filter(
+                                    func.lower(Event.title) == func.lower(title.strip()),
+                                    func.date(Event.start_date) == target_date,
+                                    Event.type == EventType.VIRTUAL_SESSION
+                                ).first()
+                                
+                                if existing_event:
+                                    # Use the existing event's datetime
+                                    current_datetime = existing_event.start_date
+                                    print(f"Row {row_index + 1} ('{title}'): Found existing event for date {target_date}, using datetime {current_datetime.isoformat()}")
+                                    
+                            except (ValueError, IndexError):
+                                pass
+                    
                 # If we can't determine event context (datetime), we can only process teacher data standalone.
-                # Linking to an event requires the datetime.
                 if not current_datetime:
                     if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
                          print(f"Processing row {row_index + 1} ('{title}'): No valid event datetime found. Processing TEACHER ONLY.")
-                         process_teacher_data(row_data, is_simulcast) # Process teacher standalone
+                         process_teacher_data(row_data, is_simulcast)
                     else:
                          print(f"Skipping row {row_index + 1} ('{title}'): Cannot determine event datetime and no teacher name.")
                          warning_count += 1
                          errors.append(f"Skipped row {row_index + 1} ('{title}'): Cannot determine event datetime.")
-                    continue # Cannot process event without full datetime context
+                    continue
 
                 # --- Event Handling ---
                 # Use title and the full datetime ISO string as the unique key
@@ -1210,16 +1200,46 @@ def import_sheet():
         }), 400
 
 def clean_time_string(time_str):
-    """Clean and validate time string"""
+    """Clean and validate time string - handles multiple formats"""
+    if not time_str or pd.isna(time_str):
+        return None
+    
+    time_str = str(time_str).strip()
     if not time_str:
         return None
+        
     # Remove duplicate AM/PM
     time_str = time_str.replace(' PM PM', ' PM').replace(' AM AM', ' AM')
-    try:
-        return datetime.strptime(time_str, '%I:%M %p')
-    except ValueError:
-        current_app.logger.warning(f"Invalid time format: {time_str}")
-        return None
+    
+    # Try different time formats
+    time_formats = [
+        '%I:%M %p',    # 11:00 AM, 2:30 PM
+        '%H:%M',       # 14:30, 09:30 (24-hour format)
+        '%I:%M',       # 11:00, 2:30 (12-hour without AM/PM)
+        '%H:%M:%S',    # 14:30:00
+        '%I:%M:%S %p', # 11:00:00 AM
+        '%I %p',       # 11 AM
+        '%H'           # 14 (just hour)
+    ]
+    
+    for fmt in time_formats:
+        try:
+            parsed_time = datetime.strptime(time_str, fmt)
+            # If it's a format without AM/PM and hour is <= 12, assume AM for morning times
+            if fmt in ['%I:%M', '%H:%M'] and parsed_time.hour <= 12:
+                # For times like "9:30", assume it's AM if <= 12
+                return parsed_time
+            elif fmt in ['%I:%M', '%H:%M'] and parsed_time.hour > 12:
+                # For times > 12 without AM/PM, treat as 24-hour format
+                return parsed_time
+            else:
+                return parsed_time
+        except ValueError:
+            continue
+    
+    # If all formats fail, log warning and return None
+    current_app.logger.warning(f"Invalid time format: {time_str}")
+    return None
 
 def generate_school_id(name):
     """Generate a unique ID for virtual schools that matches Salesforce length"""
