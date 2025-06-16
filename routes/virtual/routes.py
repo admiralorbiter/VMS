@@ -1034,10 +1034,10 @@ def import_sheet():
                     # Update core event details from this primary row
                     event.status = EventStatus.map_status(status_str)
                     event.session_id = extract_session_id(row_data.get('Session Link'))
-                    # Update other fields if needed: topic, session_type, etc.
-                    event.topic = row_data.get('Topic/Theme')
-                    event.session_type = row_data.get('Session Type')
-                    event.session_link = row_data.get('Session Link')
+                    # Update other fields using existing Event model fields
+                    event.series = row_data.get('Topic/Theme')  # Use series instead of topic
+                    event.additional_information = row_data.get('Session Type')  # Store session type in additional_information
+                    event.registration_link = row_data.get('Session Link')  # Use registration_link instead of session_link
 
                     # --- District Handling (Reset for this event, Aggregate by Title+Date) ---
                     print(f"  Clearing existing districts for event {event.id}...")

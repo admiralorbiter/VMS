@@ -4,11 +4,166 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+.virtual-sessions-container {
+    padding: 20px;
+}
+
+.filters-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #495057;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-btn, .reset-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    font-size: 14px;
+}
+
+.filter-btn {
+    background: #007bff;
+    color: white;
+}
+
+.reset-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.sessions-table-container {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sessions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.sessions-table th {
+    background: #495057;
+    color: white;
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.sessions-table td {
+    padding: 8px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: top;
+}
+
+.sessions-table tr:hover {
+    background: #f8f9fa;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-completed { background: #d4edda; color: #155724; }
+.status-simulcast { background: #d1ecf1; color: #0c5460; }
+.status-registered { background: #fff3cd; color: #856404; }
+.status-no-show { background: #f8d7da; color: #721c24; }
+.status-cancelled { background: #f5c6cb; color: #721c24; }
+
+.session-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.session-link:hover {
+    text-decoration: underline;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.stat-label {
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-style: italic;
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="usage-container">
-    <h1 class="page-title">Virtual Session Usage by District</h1>
+<div class="virtual-sessions-container">
+    <h1 class="page-title">Virtual Session Usage Report</h1>
     
     <!-- Filter Section -->
     <div class="filters-section">
@@ -37,6 +192,19 @@
             </div>
             
             <div class="filter-group">
+                <label for="session_title">Session Title:</label>
+                <select id="session_title" name="session_title">
+                    <option value="">All Sessions</option>
+                    {% for title in filter_options.session_titles %}
+                    <option value="{{ title }}" 
+                            {% if title == current_filters.session_title %}selected{% endif %}>
+                        {{ title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
                 <label for="career_cluster">Career Cluster:</label>
                 <select id="career_cluster" name="career_cluster">
                     <option value="">All Clusters</option>
@@ -44,6 +212,19 @@
                     <option value="{{ cluster }}" 
                             {% if cluster == current_filters.career_cluster %}selected{% endif %}>
                         {{ cluster }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="district">District:</label>
+                <select id="district" name="district">
+                    <option value="">All Districts</option>
+                    {% for district in filter_options.districts %}
+                    <option value="{{ district }}"
+                            {% if district == current_filters.district %}selected{% endif %}>
+                        {{ district }}
                     </option>
                     {% endfor %}
                 </select>
@@ -63,13 +244,13 @@
             </div>
             
             <div class="filter-group">
-                <label for="district">District:</label>
-                <select id="district" name="district">
-                    <option value="">All Districts</option>
-                    {% for district in filter_options.districts %}
-                    <option value="{{ district }}"
-                            {% if district == current_filters.district %}selected{% endif %}>
-                        {{ district }}
+                <label for="status">Status:</label>
+                <select id="status" name="status">
+                    <option value="">All Statuses</option>
+                    {% for status in filter_options.statuses %}
+                    <option value="{{ status }}"
+                            {% if status == current_filters.status %}selected{% endif %}>
+                        {{ status }}
                     </option>
                     {% endfor %}
                 </select>
@@ -82,55 +263,79 @@
         </form>
     </div>
 
-    <!-- Existing Stats Grid -->
-    {% if district_stats %}
-        <div class="stats-grid">
-            {% for district, stats in district_stats.items() %}
-            <div class="district-card">
-                <a href="{{ url_for('report.virtual_usage_district', district_name=district, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="district-link">
-                    <h2 class="district-name">{{ district }}</h2>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Total Sessions</span>
-                        <span class="stat-value">{{ stats.total_sessions }}</span>
-                    </div>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Total Students Registered</span>
-                        <span class="stat-value">{{ stats.total_registered }}</span>
-                    </div>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Total Students Attended</span>
-                        <span class="stat-value">{{ stats.total_attended }}</span>
-                    </div>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Average Duration</span>
-                        <span class="stat-value">{{ "%.0f"|format(stats.avg_duration) }} min</span>
-                    </div>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Unique Schools</span>
-                        <span class="stat-value">{{ stats.school_count }}</span>
-                    </div>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Unique Educators</span>
-                        <span class="stat-value">{{ stats.educator_count }}</span>
-                    </div>
-                    
-                    <div class="stat-row">
-                        <span class="stat-label">Career Clusters</span>
-                        <span class="stat-value">{{ stats.career_cluster_count }}</span>
-                    </div>
-                    
-                    <div class="attendance-rate">
-                        Average Attendance Rate: {{ "%.1f"|format(stats.avg_attendance_rate) }}%
-                    </div>
-                </a>
+    <!-- Summary Stats -->
+    {% if session_data %}
+        <div class="summary-stats">
+            <div class="stat-card">
+                <div class="stat-value">{{ session_data|length }}</div>
+                <div class="stat-label">Total Records</div>
             </div>
-            {% endfor %}
+            <div class="stat-card">
+                <div class="stat-value">{{ session_data|selectattr('session_title')|map(attribute='session_title')|unique|list|length }}</div>
+                <div class="stat-label">Unique Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ session_data|selectattr('district')|map(attribute='district')|unique|list|length }}</div>
+                <div class="stat-label">Districts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ session_data|selectattr('school_name')|map(attribute='school_name')|unique|list|length }}</div>
+                <div class="stat-label">Schools</div>
+            </div>
+        </div>
+
+        <!-- Sessions Table -->
+        <div class="sessions-table-container">
+            <table class="sessions-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Session Type</th>
+                        <th>Teacher Name</th>
+                        <th>School Name</th>
+                        <th>School Level</th>
+                        <th>District</th>
+                        <th>Session Title</th>
+                        <th>Presenter</th>
+                        <th>Topic/Theme</th>
+                        <th>Participants</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in session_data %}
+                    <tr>
+                        <td>
+                            <span class="status-badge status-{{ session.status|lower|replace(' ', '-') }}">
+                                {{ session.status }}
+                            </span>
+                        </td>
+                        <td>{{ session.date }}</td>
+                        <td>{{ session.time }}</td>
+                        <td>{{ session.session_type }}</td>
+                        <td>{{ session.teacher_name }}</td>
+                        <td>{{ session.school_name }}</td>
+                        <td>{{ session.school_level }}</td>
+                        <td>{{ session.district }}</td>
+                        <td>
+                            {% if session.session_link %}
+                                <a href="{{ session.session_link }}" target="_blank" class="session-link">
+                                    {{ session.session_title }}
+                                </a>
+                            {% else %}
+                                {{ session.session_title }}
+                            {% endif %}
+                        </td>
+                        <td>{{ session.presenter }}</td>
+                        <td>{{ session.topic_theme }}</td>
+                        <td>{{ session.participant_count }}</td>
+                        <td>{{ session.duration }} min</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     {% else %}
         <div class="no-data">
