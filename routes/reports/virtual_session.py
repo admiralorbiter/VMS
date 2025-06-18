@@ -173,7 +173,7 @@ def load_routes(bp):
                     session_data.append({
                         'event_id': event.id,
                         'status': teacher_reg.status or 'registered',
-                        'date': event.start_date.strftime('%m/%d') if event.start_date else '',
+                        'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
                         'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                         'session_type': event.additional_information or '',
                         'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
@@ -206,7 +206,7 @@ def load_routes(bp):
                 session_data.append({
                     'event_id': event.id,
                     'status': event.status.value if event.status else '',
-                    'date': event.start_date.strftime('%m/%d') if event.start_date else '',
+                    'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
                     'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                     'session_type': event.additional_information or '',
                     'teacher_name': '',
@@ -224,6 +224,83 @@ def load_routes(bp):
                 })
         
         # Get filter options
+        # Apply sorting before building filter options
+        sort_column = request.args.get('sort', 'date')  # Default sort by date
+        sort_order = request.args.get('order', 'desc')  # Default descending
+        
+        # Define sortable columns mapping
+        sortable_columns = {
+            'status': 'status',
+            'date': 'date',
+            'time': 'time', 
+            'session_type': 'session_type',
+            'teacher_name': 'teacher_name',
+            'school_name': 'school_name',
+            'school_level': 'school_level',
+            'district': 'district',
+            'session_title': 'session_title',
+            'presenter': 'presenter',
+            'topic_theme': 'topic_theme'
+        }
+        
+        # Apply sorting if valid column
+        if sort_column in sortable_columns:
+            reverse_order = (sort_order == 'desc')
+            
+            # Handle special sorting for date/time columns
+            if sort_column == 'date':
+                def date_sort_key(session):
+                    try:
+                        # Convert MM/DD/YY format back to date for proper sorting
+                        if session['date']:
+                            # Handle both MM/DD/YY and MM/DD formats for backward compatibility
+                            date_parts = session['date'].split('/')
+                            if len(date_parts) == 3:  # MM/DD/YY format
+                                month = int(date_parts[0])
+                                day = int(date_parts[1])
+                                year = int(date_parts[2])
+                                # Convert 2-digit year to 4-digit year
+                                if year < 50:  # Assume 00-49 means 2000-2049
+                                    year += 2000
+                                else:  # Assume 50-99 means 1950-1999
+                                    year += 1900
+                                return datetime(year, month, day)
+                            elif len(date_parts) == 2:  # MM/DD format (fallback)
+                                month = int(date_parts[0])
+                                day = int(date_parts[1])
+                                # Use the school year logic as fallback
+                                school_year_start = int(selected_school_year.split('-')[0])
+                                if month >= 6:  # June-December
+                                    year = school_year_start
+                                else:  # January-May
+                                    year = school_year_start + 1
+                                return datetime(year, month, day)
+                        return datetime.min
+                    except (ValueError, IndexError):
+                        return datetime.min
+                session_data.sort(key=date_sort_key, reverse=reverse_order)
+            
+            elif sort_column == 'time':
+                def time_sort_key(session):
+                    try:
+                        if session['time']:
+                            return datetime.strptime(session['time'], '%I:%M %p').time()
+                        return datetime.min.time()
+                    except ValueError:
+                        return datetime.min.time()
+                session_data.sort(key=time_sort_key, reverse=reverse_order)
+            
+            else:
+                # For other columns, sort by string value (case-insensitive)
+                def string_sort_key(session):
+                    value = session.get(sortable_columns[sort_column], '') or ''
+                    return str(value).lower()
+                session_data.sort(key=string_sort_key, reverse=reverse_order)
+        
+        # Add sorting info to current_filters for template
+        current_filters['sort'] = sort_column
+        current_filters['order'] = sort_order
+
         all_districts = set()
         all_schools = set()
         all_career_clusters = set()

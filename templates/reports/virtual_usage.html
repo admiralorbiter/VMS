@@ -158,6 +158,36 @@
     color: #6c757d;
     font-style: italic;
 }
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 20px !important;
+}
+
+.sortable-header:hover {
+    background: #6c757d;
+}
+
+.sort-indicator {
+    position: absolute;
+    right: 8px;
+    font-size: 12px;
+    color: #adb5bd;
+}
+
+.sort-indicator.active {
+    color: white;
+}
+
+.sort-indicator.asc::after {
+    content: '▲';
+}
+
+.sort-indicator.desc::after {
+    content: '▼';
+}
 </style>
 {% endblock %}
 
@@ -289,17 +319,50 @@
             <table class="sessions-table">
                 <thead>
                     <tr>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Session Type</th>
-                        <th>Teacher Name</th>
-                        <th>School Name</th>
-                        <th>School Level</th>
-                        <th>District</th>
-                        <th>Session Title</th>
-                        <th>Presenter</th>
-                        <th>Topic/Theme</th>
+                        <th class="sortable-header" data-column="status">
+                            Status
+                            <span class="sort-indicator {% if current_filters.sort == 'status' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="date">
+                            Date
+                            <span class="sort-indicator {% if current_filters.sort == 'date' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="time">
+                            Time
+                            <span class="sort-indicator {% if current_filters.sort == 'time' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="session_type">
+                            Session Type
+                            <span class="sort-indicator {% if current_filters.sort == 'session_type' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="teacher_name">
+                            Teacher Name
+                            <span class="sort-indicator {% if current_filters.sort == 'teacher_name' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="school_name">
+                            School Name
+                            <span class="sort-indicator {% if current_filters.sort == 'school_name' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="school_level">
+                            School Level
+                            <span class="sort-indicator {% if current_filters.sort == 'school_level' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="district">
+                            District
+                            <span class="sort-indicator {% if current_filters.sort == 'district' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="session_title">
+                            Session Title
+                            <span class="sort-indicator {% if current_filters.sort == 'session_title' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="presenter">
+                            Presenter
+                            <span class="sort-indicator {% if current_filters.sort == 'presenter' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
+                        <th class="sortable-header" data-column="topic_theme">
+                            Topic/Theme
+                            <span class="sort-indicator {% if current_filters.sort == 'topic_theme' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -339,4 +402,30 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle column header clicks for sorting
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.column;
+            const currentSort = '{{ current_filters.sort }}';
+            const currentOrder = '{{ current_filters.order }}';
+            
+            let newOrder = 'asc';
+            if (column === currentSort && currentOrder === 'asc') {
+                newOrder = 'desc';
+            }
+            
+            // Build new URL with sorting parameters
+            const url = new URL(window.location);
+            url.searchParams.set('sort', column);
+            url.searchParams.set('order', newOrder);
+            
+            // Navigate to sorted URL
+            window.location.href = url.toString();
+        });
+    });
+});
+</script>
 {% endblock %}
