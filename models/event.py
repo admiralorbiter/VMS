@@ -116,6 +116,7 @@ class EventStatus(str, Enum):
     PUBLISHED = 'Published'
     NO_SHOW = 'No Show'
     SIMULCAST = 'Simulcast'
+    COUNT = 'Count'
 
     @classmethod
     def map_status(cls, status_str):
@@ -135,7 +136,7 @@ class EventStatus(str, Enum):
             'published': cls.PUBLISHED,
             'requested': cls.REQUESTED,
             'draft': cls.DRAFT,
-            'count': cls.CONFIRMED,  # Map 'count' to confirmed
+            'count': cls.COUNT,
             'technical difficulties': cls.NO_SHOW,
             'local professional no-show': cls.NO_SHOW,
             'pathful professional no-show': cls.NO_SHOW

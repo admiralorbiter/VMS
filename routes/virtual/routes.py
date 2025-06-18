@@ -346,7 +346,6 @@ def add_district_to_event(event, district_name):
         # Check if district is already associated by ID
         if not any(d.id == district.id for d in event.districts):
             event.districts.append(district)
-            print(f"    Added district '{district.name}' (ID: {district.id}) to event '{event.title}'")
         # else:
         #     print(f"    District '{district.name}' already associated with event '{event.title}'.")
     # else:
@@ -671,7 +670,7 @@ def get_or_create_district(name):
             if mapping_info['name'].lower() == name_lower:
                 target_salesforce_id = sf_id
                 effective_name = mapping_info['name'] # Use the canonical name
-                print(f"    Mapped input '{name}' to canonical name '{effective_name}' via exact match (SFID: {sf_id})")
+                # REMOVED: Success log - print(f"    Mapped input '{name}' to canonical name '{effective_name}' via exact match (SFID: {sf_id})")
                 break
             # Check aliases
             if 'aliases' in mapping_info:
@@ -679,7 +678,7 @@ def get_or_create_district(name):
                     if alias.lower() == name_lower:
                         target_salesforce_id = sf_id
                         effective_name = mapping_info['name'] # Use the canonical name
-                        print(f"    Mapped input '{name}' to canonical name '{effective_name}' via alias '{alias}' (SFID: {sf_id})")
+                        # REMOVED: Success log - print(f"    Mapped input '{name}' to canonical name '{effective_name}' via alias '{alias}' (SFID: {sf_id})")
                         break
             if target_salesforce_id: # Stop searching if mapped
                 break
@@ -690,18 +689,20 @@ def get_or_create_district(name):
     if target_salesforce_id:
         district = District.query.filter_by(salesforce_id=target_salesforce_id).first()
         if district:
-            print(f"    Found existing district by mapped Salesforce ID: '{district.name}' (ID: {district.id})")
+            # REMOVED: Success log - print(f"    Found existing district by mapped Salesforce ID: '{district.name}' (ID: {district.id})")
+            pass
 
     # If not found by Salesforce ID (or no mapping occurred), try finding by the effective name (case-insensitive)
     if not district:
         district = District.query.filter(func.lower(District.name) == func.lower(effective_name)).first()
         if district:
-             print(f"    Found existing district by name lookup: '{district.name}' (ID: {district.id})")
-
+             # REMOVED: Success log - print(f"    Found existing district by name lookup: '{district.name}' (ID: {district.id})")
+             pass
 
     # Only create a new district if absolutely not found and it's not 'Unknown District'
     if not district and effective_name != 'Unknown District':
-        print(f"      CREATING NEW district: '{effective_name}' (Salesforce ID will be NULL)")
+        # Only log when creating new districts (this could be worth knowing about)
+        print(f"INFO: Creating new district: '{effective_name}'")
         # We create it without a Salesforce ID because we couldn't map it
         district = District(name=effective_name)
         db.session.add(district)
@@ -711,7 +712,8 @@ def get_or_create_district(name):
     elif not district and effective_name == 'Unknown District':
          district = District.query.filter(func.lower(District.name) == 'unknown district').first()
          if not district:
-              print(f"      CREATING 'Unknown District'")
+              # Only log when creating Unknown District for the first time
+              print(f"INFO: Creating 'Unknown District'")
               district = District(name='Unknown District')
               db.session.add(district)
               db.session.flush()
@@ -732,7 +734,7 @@ def map_status(status_str):
     status_mapping = {
         'simulcast': EventStatus.SIMULCAST,
         'technical difficulties': EventStatus.NO_SHOW,
-        'count': EventStatus.CONFIRMED,
+        'count': EventStatus.COUNT,
         'local professional no-show': EventStatus.NO_SHOW,
         'pathful professional no-show': EventStatus.NO_SHOW,
         'teacher no-show': EventStatus.NO_SHOW,
@@ -772,15 +774,14 @@ def import_sheet():
             dtype={'School Name': str}
         )
         
-        print(f"\n=== Starting Import ===")
-        print(f"Total rows read from sheet: {len(df)}")
-        print("========================\n")
+        # Only show summary, not detailed processing info
+        print(f"\n=== Starting Import: {len(df)} rows ===")
 
         # session_datetimes is less critical now as we primarily rely on row's datetime
         # Keep it for potential logging or edge-case handling if needed, but the core logic
         # will rely on parsing datetime per row in the second pass.
         session_datetimes = {}
-        print("--- First Pass: Pre-parsing datetimes (optional, for logging/reference) ---")
+        # REMOVED: First pass detailed logging - only calculate datetimes
         for index, row in df.iterrows():
             title = clean_string_value(row.get('Session Title'))
             date_str = row.get('Date')
@@ -798,10 +799,6 @@ def import_sheet():
                     # Store all datetimes found for this title/date combination
                     if datetime_key not in [d['datetime_iso'] for d in session_datetimes[title][date_key]]:
                         session_datetimes[title][date_key].append({'datetime': event_datetime, 'datetime_iso': datetime_key})
-                        # print(f"  Pre-parsed datetime for '{title}' on {date_key} at {event_datetime.time()}")
-
-
-        print("--- First Pass Complete ---\n")
 
         success_count = warning_count = error_count = 0
         errors = []
@@ -812,7 +809,7 @@ def import_sheet():
         all_rows_for_lookup = df.to_dict('records')
 
         # --- Second Pass: Process each row ---
-        print("--- Second Pass: Processing Rows ---")
+        # REMOVED: "Processing Rows" header
         for row_index, row_data in enumerate(all_rows_for_lookup):
             event_processed_in_this_row = False # Flag to track if event logic ran
             try:
@@ -822,7 +819,7 @@ def import_sheet():
                 title = clean_string_value(row_data.get('Session Title'))
 
                 if not title:
-                    print(f"Skipping row {row_index + 1}: No Session Title")
+                    print(f"ERROR - Row {row_index + 1}: No Session Title")
                     warning_count += 1
                     errors.append(f"Skipped row {row_index + 1}: Missing Session Title")
                     continue
@@ -837,7 +834,7 @@ def import_sheet():
                     parsed_dt = parse_datetime(date_str, time_str)
                     if parsed_dt:
                         current_datetime = parsed_dt
-                        print(f"Row {row_index + 1} ('{title}'): Parsed datetime {current_datetime.isoformat()}")
+                        # REMOVED: Successful parsing log
                     else:
                         # If parsing failed (likely due to missing time), try to find existing event
                         date_parts = str(date_str).strip().split('/')
@@ -858,7 +855,7 @@ def import_sheet():
                                 if existing_event:
                                     # Use the existing event's datetime
                                     current_datetime = existing_event.start_date
-                                    print(f"Row {row_index + 1} ('{title}'): Found existing event for date {target_date}, using datetime {current_datetime.isoformat()}")
+                                    # REMOVED: Success log
                                     
                             except (ValueError, IndexError):
                                 pass
@@ -866,10 +863,10 @@ def import_sheet():
                 # If we can't determine event context (datetime), we can only process teacher data standalone.
                 if not current_datetime:
                     if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
-                         print(f"Processing row {row_index + 1} ('{title}'): No valid event datetime found. Processing TEACHER ONLY.")
+                         print(f"WARNING - Row {row_index + 1} ('{title}'): No valid event datetime found. Processing TEACHER ONLY.")
                          process_teacher_data(row_data, is_simulcast)
                     else:
-                         print(f"Skipping row {row_index + 1} ('{title}'): Cannot determine event datetime and no teacher name.")
+                         print(f"ERROR - Row {row_index + 1} ('{title}'): Cannot determine event datetime and no teacher name.")
                          warning_count += 1
                          errors.append(f"Skipped row {row_index + 1} ('{title}'): Cannot determine event datetime.")
                     continue
@@ -884,79 +881,93 @@ def import_sheet():
                     # Fetch fresh event object from session/DB using cached ID
                     event = db.session.get(Event, event_id)
                     if event:
-                         # print(f"Found event in cache for '{title}' at {current_datetime.isoformat()}. ID: {event.id}")
+                         # REMOVED: Cache hit success log
                          pass
                     else:
-                         print(f"Warning: Event ID {event_id} found in cache for '{title}' at {current_datetime.isoformat()}, but not in DB session. Querying DB.")
+                         print(f"WARNING - Row {row_index + 1}: Event ID {event_id} found in cache for '{title}' at {current_datetime.isoformat()}, but not in DB session. Querying DB.")
                          # Fall through to DB query if session.get fails unexpectedly
 
                 if not event:
-                    # Modified logic: Allow certain "incomplete" statuses to create events
-                    # when no existing event is found
-                    can_create_event_statuses = [
-                        'teacher no-show',
-                        'teacher cancelation', 
-                        'local professional no-show',
-                        'pathful professional no-show',
-                        'technical difficulties'
-                    ]
-                    
-                    is_primary_row_status = status_str not in ['simulcast', 'count', '']
-                    can_create_incomplete_event = status_str in can_create_event_statuses
-                    
-                    if is_primary_row_status or can_create_incomplete_event:
-                        event_type = "primary" if is_primary_row_status else "incomplete"
-                        print(f"Creating NEW event for '{title}' at {current_datetime.isoformat()} based on {event_type} status: '{status_str}'")
-                        event = Event(
-                            title=title,
-                            start_date=current_datetime, # Use precise datetime
-                            # Basic duration logic, refine if needed
-                            end_date=current_datetime.replace(hour=current_datetime.hour+1) if current_datetime else None,
-                            duration=60,
-                            type=EventType.VIRTUAL_SESSION,
-                            format=EventFormat.VIRTUAL,
-                            status=EventStatus.map_status(status_str), # Status from creating row
-                            session_id=extract_session_id(row_data.get('Session Link'))
-                        )
-                        db.session.add(event)
-                        db.session.flush() # Flush to get the new event.id
-                        processed_event_ids[event_key] = event.id # Cache using the datetime key
-                        print(f"  New Event ID: {event.id}")
+                    # Query DB if not found via cache or if session.get failed
+                    # *** UPDATED QUERY: Filter by exact start_date (datetime) ***
+                    # REMOVED: DB query log
+                    event = Event.query.filter(
+                        func.lower(Event.title) == func.lower(title.strip()),
+                        Event.start_date == current_datetime, # Compare full datetime
+                        Event.type == EventType.VIRTUAL_SESSION
+                    ).first()
+
+                    if event:
+                        # Found in DB, cache its ID
+                        processed_event_ids[event_key] = event.id
+                        # REMOVED: DB found success log
                     else:
-                        # This row is truly secondary (simulcast, count, empty), but no existing event found.
-                        # Process teacher data standalone if it exists.
-                        print(f"Row {row_index + 1} ('{title}'): Secondary status '{status_str}' but no existing event found for datetime {current_datetime.isoformat()}. Processing TEACHER ONLY.")
-                        if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
-                            process_teacher_data(row_data, is_simulcast)
-                        continue # Skip further event processing for this row
+                        # Modified logic: Allow certain "incomplete" statuses to create events
+                        # when no existing event is found
+                        can_create_event_statuses = [
+                            'teacher no-show',
+                            'teacher cancelation', 
+                            'local professional no-show',
+                            'pathful professional no-show',
+                            'technical difficulties',
+                            'count'
+                        ]
+                        
+                        is_primary_row_status = status_str not in ['simulcast', '']
+                        can_create_incomplete_event = status_str in can_create_event_statuses
+                        
+                        if is_primary_row_status or can_create_incomplete_event:
+                            # REMOVED: Event creation success log
+                            event = Event(
+                                title=title,
+                                start_date=current_datetime, # Use precise datetime
+                                # Basic duration logic, refine if needed
+                                end_date=current_datetime.replace(hour=current_datetime.hour+1) if current_datetime else None,
+                                duration=60,
+                                type=EventType.VIRTUAL_SESSION,
+                                format=EventFormat.VIRTUAL,
+                                status=EventStatus.map_status(status_str), # Status from creating row
+                                session_id=extract_session_id(row_data.get('Session Link'))
+                            )
+                            db.session.add(event)
+                            db.session.flush() # Flush to get the new event.id
+                            processed_event_ids[event_key] = event.id # Cache using the datetime key
+                            # REMOVED: New event ID success log
+                        else:
+                            # This row is truly secondary (simulcast, count, empty), but no existing event found.
+                            # Process teacher data standalone if it exists.
+                            print(f"WARNING - Row {row_index + 1} ('{title}'): Secondary status '{status_str}' but no existing event found for datetime {current_datetime.isoformat()}. Processing TEACHER ONLY.")
+                            if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
+                                process_teacher_data(row_data, is_simulcast)
+                            continue # Skip further event processing for this row
 
 
                 # If we don't have an event object here, something went wrong or it was skipped above
                 if not event:
-                    print(f"Skipping row {row_index + 1} ('{title}'): Could not find or create event for datetime {current_datetime.isoformat()}.")
+                    print(f"ERROR - Row {row_index + 1} ('{title}'): Could not find or create event for datetime {current_datetime.isoformat()}.")
                     warning_count += 1
                     errors.append(f"Skipped row {row_index + 1} ('{title}'): Could not find or create event for {current_datetime.isoformat()}.")
                     continue
 
                 # --- Determine if this row dictates the event's core data ---
                 # Modified logic: Allow "incomplete" statuses to also run primary logic if they created the event
-                is_primary_row_status = status_str not in ['simulcast', 'count', '']
+                is_primary_row_status = status_str not in ['simulcast', '']
                 # Check if we've ALREADY processed the primary logic for this specific event instance (title + datetime)
                 primary_logic_run_key = f"{event_key[0]}_{event_key[1]}_primary_done" # Use tuple elements for key string
                 primary_logic_already_run = processed_event_ids.get(primary_logic_run_key, False)
 
 
                 # --- Primary Logic Block ---
-                # Run this block for primary statuses OR if this is the first row for an incomplete event
+                # Run this block only ONCE per specific event instance (title + datetime)
                 if is_primary_row_status and not primary_logic_already_run:
                     event_processed_in_this_row = True # Mark that event logic ran
                     # Get the date key for aggregation (date part only)
                     current_date_key = current_datetime.date().isoformat()
-                    print(f"\n=== Processing PRIMARY LOGIC for Event '{title}' ({event.id}) at {current_datetime.isoformat()} (DateKey: {current_date_key}) (Row {row_index+1}) ===")
+                    # REMOVED: Primary logic processing header
                     processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event instance
 
                     # --- Participant Count Calculation (Based on Title and DATE ONLY, requires School Name) ---
-                    print(f"  Calculating participant count for event '{title}' on date {current_date_key}...")
+                    # REMOVED: Participant count calculation log
                     qualifying_teacher_rows_count = 0
                     event.participant_count = 0 # Reset count for this specific event instance
 
@@ -994,8 +1005,7 @@ def import_sheet():
                                                 except ValueError:
                                                     pass # Invalid date components
                             except Exception as e_pc:
-                                # Log potential date parsing errors during count calculation if needed
-                                # print(f"    [Row {lookup_row_index_pc+1}] Error parsing date only for count: {e_pc}")
+                                # REMOVED: Date parsing error log (too verbose)
                                 lookup_date_key_pc = None
                         # --- End Date Only Parsing ---
 
@@ -1012,20 +1022,12 @@ def import_sheet():
                         if (lookup_status_str_pc in ['successfully completed', 'simulcast'] and
                             lookup_teacher_name_pc and not pd.isna(lookup_teacher_name_pc) and
                             lookup_school_name_pc and not pd.isna(lookup_school_name_pc)): # Added check for non-empty School Name
-                            # print(f"    [Row {lookup_row_index_pc+1}] Qualifies for Count: DateKey='{lookup_date_key_pc}', Status='{lookup_status_str_pc}', Teacher='{lookup_teacher_name_pc}', School='{lookup_school_name_pc}'")
+                            # REMOVED: Qualification success log
                             qualifying_teacher_rows_count += 1
-                        # else:
-                            # Print statement for debugging why a row didn't qualify
-                            # reason = []
-                            # if lookup_status_str_pc not in ['successfully completed', 'simulcast']: reason.append(f"BadStatus({lookup_status_str_pc})")
-                            # if not lookup_teacher_name_pc or pd.isna(lookup_teacher_name_pc): reason.append("NoTeacher")
-                            # if not lookup_school_name_pc or pd.isna(lookup_school_name_pc): reason.append("NoSchool")
-                            # print(f"    [Row {lookup_row_index_pc+1}] Does NOT Qualify for Count: DateKey='{lookup_date_key_pc}', Reason(s): {', '.join(reason)}")
-
 
                     # Update the event's participant count
                     event.participant_count = qualifying_teacher_rows_count * 25
-                    print(f"  Calculated Participant Count: {qualifying_teacher_rows_count} qualifying rows * 25 = {event.participant_count} for date {current_date_key}")
+                    # REMOVED: Participant count success log
                     # --- End Participant Count Calculation ---
 
 
@@ -1038,7 +1040,7 @@ def import_sheet():
                     event.registration_link = row_data.get('Session Link')  # Use registration_link instead of session_link
 
                     # --- District Handling (Reset for this event, Aggregate by Title+Date) ---
-                    print(f"  Clearing existing districts for event {event.id}...")
+                    # REMOVED: District clearing log
                     event.districts = [] # Reset districts for this specific event instance
                     db.session.flush()   # Ensure the clear is persisted before adding
 
@@ -1046,7 +1048,7 @@ def import_sheet():
                     primary_row_district = None # District from the specific primary row
 
                     # *** REVISED District Search: Iterate all rows, find those matching THIS event's title AND DATE ***
-                    print(f"  Searching all {len(all_rows_for_lookup)} rows for districts associated with '{title}' on DATE {current_date_key}...")
+                    # REMOVED: District search log
                     for lookup_row_index, lookup_row_data in enumerate(all_rows_for_lookup):
                         lookup_title = clean_string_value(lookup_row_data.get('Session Title'))
                         # Fast skip if title doesn't match
@@ -1079,43 +1081,29 @@ def import_sheet():
                                                 try:
                                                     date_obj_only = datetime(year, month, day).date()
                                                     lookup_date_key = date_obj_only.isoformat()
-                                                    # print(f"    [Row {lookup_row_index+1}] Parsed DATE ONLY: LookupDateKey='{lookup_date_key}'")
                                                 except ValueError:
-                                                    # print(f"    [Row {lookup_row_index+1}] Invalid date components from date string: {year}-{month}-{day}")
                                                     pass # lookup_date_key remains None
-                                            # else: # Invalid month/day numbers
-                                                # print(f"    [Row {lookup_row_index+1}] Invalid month/day numbers: {month}/{day}")
-                                        # else: # Month/Day parts not digits
-                                            # print(f"    [Row {lookup_row_index+1}] Non-digit month/day parts: '{month_str}'/'{day_str}'")
-                                    # else: # Not enough parts after split
-                                        # print(f"    [Row {lookup_row_index+1}] Not enough parts in date string: '{date_str_cleaned}'")
-                                # else: # Date string doesn't contain '/' - add other format handling if needed
-                                    # print(f"    [Row {lookup_row_index+1}] Date string missing '/': '{date_str_cleaned}'")
                             except Exception as e:
-                                print(f"    [Row {lookup_row_index+1}] Error parsing date only from '{lookup_date_str}': {e}")
+                                # Only log significant date parsing errors
+                                if 'Row' not in str(e):  # Avoid duplicate logging
+                                    print(f"WARNING - Row {lookup_row_index+1}: Error parsing date '{lookup_date_str}': {e}")
                                 lookup_date_key = None # Ensure it's None on error
                         # --- End Date Only Parsing ---
-
-                        # print(f"    [Row {lookup_row_index+1}] Checking: Title='{lookup_title}', LookupDateKey='{lookup_date_key}' vs CurrentDateKey='{current_date_key}'")
 
                         # *** Compare using the parsed DATE key ***
                         if lookup_date_key and lookup_date_key == current_date_key:
                             lookup_district = safe_str(lookup_row_data.get('District'))
-                            # print(f"      MATCHED on Title and DateKey. Found District: '{lookup_district}'")
                             if lookup_district:
                                 all_associated_district_names.add(lookup_district)
                                 # Check if this lookup_row_data IS the current primary row_data being processed
                                 if lookup_row_index == row_index:
                                      primary_row_district = lookup_district # Capture the district from the exact primary row
-                        # else:
-                        #     print(f"      NO MATCH: Title or DateKey mismatch ('{lookup_title}' vs '{title}', '{lookup_date_key}' vs '{current_date_key}')")
 
-
-                    print(f"  Finished district search for date {current_date_key}. Found unique names: {all_associated_district_names}")
+                    # REMOVED: District search completion log
 
                     # Set district partner based ONLY on the primary row's district, if it had one
                     event.district_partner = primary_row_district
-                    print(f"  District Partner initially set to: {event.district_partner} (from primary row)")
+                    # REMOVED: District partner initial setting log
 
                     # Add all unique districts found (matching title+date) to the relationship
                     for district_name in all_associated_district_names:
@@ -1126,45 +1114,41 @@ def import_sheet():
                         # Pick the first district found (sorting makes it consistent)
                         fallback_partner = next(iter(sorted(list(all_associated_district_names))), None)
                         event.district_partner = fallback_partner
-                        print(f"  Fallback District Partner set to: {event.district_partner}")
+                        # REMOVED: Fallback district partner log
 
                     # Flush to ensure district additions are reflected before logging
                     db.session.flush()
-                    print(f"  Final Associated Districts for event {event.id}: {[d.name for d in event.districts]}")
+                    # REMOVED: Final associated districts log
 
 
                     # --- School Handling (following events import pattern) ---
                     primary_school_name = row_data.get('School Name')
-                    school_district = None  # Track school's district like events import
-
                     if primary_school_name and not pd.isna(primary_school_name):
-                        # Create/find district first
-                        district = get_or_create_district(primary_row_district) if primary_row_district else None
-                        
-                        # Create/find school
-                        school = get_or_create_school(primary_school_name, district)
-                        
+                        # Get district for school creation context (prefer event's primary district)
+                        school_district = None
+                        if event.district_partner:
+                            school_district = get_or_create_district(event.district_partner)
+                        elif all_associated_district_names:
+                            # Fallback to any district associated with this event
+                            first_district_name = next(iter(sorted(list(all_associated_district_names))), None)
+                            if first_district_name:
+                                school_district = get_or_create_district(first_district_name)
+
+                        school = get_or_create_school(primary_school_name, school_district)
                         if school:
-                            # MAIN ASSIGNMENT - just like events import
-                            event.school = school.id
-                            school_district = school.district  # Track for district logic
-                            print(f"  Set event school to: {school.name} (ID: {school.id})")
+                            event.school_id = school.id
+                            # REMOVED: School setting success log
 
-                    # Later in district handling, include school_district like events import
-                    if school_district and school_district not in event.districts:
-                        event.districts.append(school_district)
-
-
-                    # --- Volunteer/Presenter Handling (remains tied to the primary row) ---
-                    print("  Processing presenter/volunteer from primary row...")
-                    # The is_simulcast=False ensures volunteer list is cleared before adding.
-                    process_presenter(row_data, event, is_simulcast=False) # is_simulcast is based on primary row status here, likely False
-                    print(f"  Event Volunteers after processing: {[v.full_name for v in event.volunteers]}")
-
+                    # --- Presenter/Volunteer Handling ---
+                    presenter_name = row_data.get('Presenter')
+                    if presenter_name and not pd.isna(presenter_name):
+                        # REMOVED: Presenter processing log
+                        process_presenter(row_data, event, is_simulcast)
+                        # REMOVED: Event volunteers log
 
                     # --- Update Metrics (if applicable, from primary row) ---
                     if event.status == EventStatus.COMPLETED:
-                        print("  Updating other metrics for completed event...")
+                        # REMOVED: Metrics update log
                         # Set default metrics if not already set, or adjust as needed
                         # event.participant_count = event.participant_count or 0 # Handled above
                         event.registered_count = event.registered_count or 0
@@ -1172,13 +1156,13 @@ def import_sheet():
                         event.volunteers_needed = event.volunteers_needed or 1
                         if not event.duration: event.duration = 60
 
-                    print(f"=== PRIMARY LOGIC Complete for Event '{title}' ({event.id}) at {current_datetime.isoformat()} ===")
+                    # REMOVED: Primary logic completion log
 
 
                 # --- Teacher Processing (runs for EVERY row with a teacher associated with THIS event instance) ---
                 # This check implicitly relies on the 'event' object being correctly identified for the row's datetime
                 if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
-                     print(f"Processing TEACHER '{row_data.get('Teacher Name')}' for Event '{title}' ({event.id}) at {current_datetime.isoformat()} (Row {row_index+1}, Simulcast: {is_simulcast})")
+                     # REMOVED: Teacher processing log
                      # Pass the correct 'is_simulcast' flag for the *current row*
                      # Associate teacher with the specific event instance found/created above
                      process_teacher_for_event(row_data, event, is_simulcast)
@@ -1196,12 +1180,22 @@ def import_sheet():
                  error_count += 1
                  title_for_error = clean_string_value(row_data.get('Session Title', 'Unknown'))
                  dt_str = current_datetime.isoformat() if 'current_datetime' in locals() and current_datetime else "Unknown Time"
-                 errors.append(f"Error processing row {row_index + 1} for '{title_for_error}' at {dt_str}: {str(e)}")
+                 error_msg = f"ERROR - Row {row_index + 1} for '{title_for_error}' at {dt_str}: {str(e)}"
+                 print(error_msg)
+                 errors.append(error_msg)
                  current_app.logger.error(f"Import error processing row {row_index + 1} for '{title_for_error}' at {dt_str}: {e}", exc_info=True)
                  # Ensure current_datetime is cleared or handled for the next iteration if error occurred mid-process
                  current_datetime = None
 
-        print("\n--- Import Process Finished ---")
+        # Summary of results
+        print(f"\n=== Import Complete ===")
+        print(f"Success: {success_count} events processed")
+        print(f"Warnings: {warning_count}")  
+        print(f"Errors: {error_count}")
+        if errors:
+            print(f"Error details: {len(errors)} total issues")
+        print("========================")
+        
         return jsonify({
             'success': True,
             'successCount': success_count, # Note: Success count reflects primary event logic runs
@@ -1213,10 +1207,11 @@ def import_sheet():
     except Exception as e:
         db.session.rollback() # Rollback any remaining transaction on overall failure
         current_app.logger.error("Sheet import failed", exc_info=True)
-        traceback.print_exc() # Print full traceback for debugging
+        error_msg = f"Overall import failed: {str(e)}"
+        print(f"CRITICAL ERROR: {error_msg}")
         return jsonify({
             'success': False,
-            'error': f"Overall import failed: {str(e)}" # Provide more context
+            'error': error_msg
         }), 400
 
 def clean_time_string(time_str):
