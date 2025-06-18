@@ -188,6 +188,25 @@
 .sort-indicator.desc::after {
     content: '▼';
 }
+
+.export-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    font-size: 14px;
+    background: #28a745;
+    color: white;
+}
+
+.export-btn:hover {
+    background: #218838;
+    color: white;
+    text-decoration: none;
+}
 </style>
 {% endblock %}
 
@@ -289,6 +308,12 @@
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
+                {% if session_data %}
+                <a href="{{ url_for('report.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+                   class="export-btn" title="Export to Excel">
+                    📊 Export Excel
+                </a>
+                {% endif %}
             </div>
         </form>
     </div>
