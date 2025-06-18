@@ -46,6 +46,27 @@ def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list
          school_years.append(f"{year}-{year + 1}")
     return school_years
 
+def get_current_virtual_year() -> str:
+    """Determines the current virtual session year string (July 1st to July 1st)."""
+    today = date.today()
+    if today.month >= 7:  # Virtual year starts in July
+        start_year = today.year
+    else:
+        start_year = today.year - 1
+    return f"{start_year}-{start_year + 1}"
+
+def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
+    """Calculates the start and end dates for a given virtual session year string."""
+    try:
+        start_year = int(virtual_year.split('-')[0])
+        end_year = start_year + 1
+        date_from = datetime(start_year, 7, 1, 0, 0, 0)  # July 1st start
+        date_to = datetime(end_year, 6, 30, 23, 59, 59)  # June 30th end
+        return date_from, date_to
+    except (ValueError, IndexError):
+        current_vy = get_current_virtual_year()
+        return get_virtual_year_dates(current_vy)
+
 # --- End Helper Functions ---
 
 
@@ -53,12 +74,12 @@ def load_routes(bp):
     @bp.route('/reports/virtual/usage')
     @login_required
     def virtual_usage():
-        # Get filter parameters
-        default_school_year = get_current_school_year()
-        selected_school_year = request.args.get('year', default_school_year)
+        # Get filter parameters - Use virtual year instead of school year
+        default_virtual_year = get_current_virtual_year()  # Changed from get_current_school_year()
+        selected_virtual_year = request.args.get('year', default_virtual_year)  # Changed variable name
         
-        # Calculate default date range based on school year
-        default_date_from, default_date_to = get_school_year_dates(selected_school_year)
+        # Calculate default date range based on virtual session year
+        default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)  # Changed from get_school_year_dates()
         
         # Handle explicit date range parameters
         date_from_str = request.args.get('date_from')
@@ -88,7 +109,7 @@ def load_routes(bp):
             date_to = default_date_to
 
         current_filters = {
-            'year': selected_school_year,
+            'year': selected_virtual_year,  # Updated variable name
             'date_from': date_from,
             'date_to': date_to,
             'career_cluster': request.args.get('career_cluster'),
@@ -268,12 +289,16 @@ def load_routes(bp):
                             elif len(date_parts) == 2:  # MM/DD format (fallback)
                                 month = int(date_parts[0])
                                 day = int(date_parts[1])
-                                # Use the school year logic as fallback
-                                school_year_start = int(selected_school_year.split('-')[0])
-                                if month >= 6:  # June-December
-                                    year = school_year_start
-                                else:  # January-May
-                                    year = school_year_start + 1
+                                # Determine the correct year based on virtual session year context
+                                # Virtual year runs July-June, so:
+                                # July-December = first year of virtual year
+                                # January-June = second year of virtual year
+                                virtual_year_start = int(selected_virtual_year.split('-')[0])  # Changed from school_year_start
+                                
+                                if month >= 7:  # July-December
+                                    year = virtual_year_start
+                                else:  # January-June
+                                    year = virtual_year_start + 1
                                 return datetime(year, month, day)
                         return datetime.min
                     except (ValueError, IndexError):
@@ -319,10 +344,10 @@ def load_routes(bp):
             if session['session_title']:
                 all_session_titles.add(session['session_title'])
         
-        school_year_options = generate_school_year_options()
+        virtual_year_options = generate_school_year_options()  # This function name is misleading but works for both school and virtual years
 
         filter_options = {
-            'school_years': school_year_options,
+            'school_years': virtual_year_options,  # Keep the key name for template compatibility
             'career_clusters': sorted(list(all_career_clusters)),
             'schools': sorted(list(all_schools)),
             'districts': sorted(list(all_districts)),
@@ -340,12 +365,12 @@ def load_routes(bp):
     @bp.route('/reports/virtual/usage/district/<district_name>')
     @login_required
     def virtual_usage_district(district_name):
-        # Get filter parameters: Use school year
-        default_school_year = get_current_school_year()
-        selected_school_year = request.args.get('year', default_school_year)
+        # Get filter parameters: Use virtual year instead of school year
+        default_virtual_year = get_current_virtual_year()  # Changed from get_current_school_year()
+        selected_virtual_year = request.args.get('year', default_virtual_year)  # Changed variable name
 
-        # Calculate default date range based on school year
-        default_date_from, default_date_to = get_school_year_dates(selected_school_year)
+        # Calculate default date range based on virtual session year
+        default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)  # Changed from get_school_year_dates()
 
         # Handle explicit date range parameters
         date_from_str = request.args.get('date_from')
@@ -375,12 +400,12 @@ def load_routes(bp):
             date_to = default_date_to
 
         current_filters = {
-            'year': selected_school_year,
+            'year': selected_virtual_year,  # Updated variable name
             'date_from': date_from,
             'date_to': date_to
         }
         
-        school_year_options = generate_school_year_options()
+        virtual_year_options = generate_school_year_options()  # Keep same function
         
         query = Event.query.options(
             joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
@@ -470,5 +495,5 @@ def load_routes(bp):
             district_name=district_name,
             monthly_stats=sorted_stats,
             current_filters=current_filters,
-            school_year_options=school_year_options
+            school_year_options=virtual_year_options  # Keep same key name for template compatibility
         )

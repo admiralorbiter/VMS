@@ -199,7 +199,7 @@
     <div class="filters-section">
         <form class="filters-form" method="GET">
             <div class="filter-group">
-                <label for="year">School Year:</label>
+                <label for="year">Virtual Session Year:</label>
                 <select id="year" name="year">
                     {% for school_year in filter_options.school_years %}
                         <option value="{{ school_year }}" {% if school_year == current_filters.year %}selected{% endif %}>

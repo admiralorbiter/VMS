@@ -594,7 +594,7 @@ def standardize_organization(org_name):
     return replacements.get(org_name.upper(), org_name)
 
 def parse_datetime(date_str, time_str):
-    """Parse datetime with support for 2024-2025 academic year"""
+    """Parse datetime with support for virtual session year (July 1st to July 1st)"""
     try:
         if pd.isna(date_str):
             return None
@@ -607,10 +607,10 @@ def parse_datetime(date_str, time_str):
                 month = int(parts[0])
                 day = int(parts[1])
                 
-                # For 2024-2025 academic year:
-                # - If month is June (6) or later, use 2024
-                # - If month is before June, use 2025
-                current_year = 2024 if month >= 6 else 2025
+                # For virtual sessions (July 1st to July 1st):
+                # - If month is July (7) or later, use current year
+                # - If month is before July, use next year
+                current_year = 2024 if month >= 7 else 2025  # Changed from >= 6 to >= 7
                 
                 # Parse time
                 time_obj = clean_time_string(time_str) if time_str and not pd.isna(time_str) and str(time_str).strip() else None
@@ -845,7 +845,7 @@ def import_sheet():
                             try:
                                 month = int(date_parts[0])
                                 day = int(date_parts[1])
-                                current_year = 2024 if month >= 6 else 2025
+                                current_year = 2024 if month >= 7 else 2025
                                 target_date = datetime(current_year, month, day).date()
                                 
                                 # Find existing event for this title and date
@@ -984,12 +984,12 @@ def import_sheet():
                                             month_pc = int(month_str_pc)
                                             day_pc = int(day_str_pc)
                                             if 1 <= month_pc <= 12 and 1 <= day_pc <= 31:
-                                                # Determine academic year (reuse logic)
-                                                current_dt_utc_pc = datetime.now(timezone.utc) # Use consistent now reference
-                                                if current_dt_utc_pc.month >= 6:
-                                                    year_pc = current_dt_utc_pc.year if month_pc >= 6 else current_dt_utc_pc.year + 1
+                                                # Determine virtual session year (July 1st to July 1st)
+                                                current_dt_utc_pc = datetime.now(timezone.utc)
+                                                if current_dt_utc_pc.month >= 7:  # Changed from >= 6 to >= 7
+                                                    year_pc = current_dt_utc_pc.year if month_pc >= 7 else current_dt_utc_pc.year + 1  # Changed from >= 6 to >= 7
                                                 else:
-                                                    year_pc = current_dt_utc_pc.year - 1 if month_pc >= 6 else current_dt_utc_pc.year
+                                                    year_pc = current_dt_utc_pc.year - 1 if month_pc >= 7 else current_dt_utc_pc.year  # Changed from >= 6 to >= 7
                                                 try:
                                                     date_obj_only_pc = datetime(year_pc, month_pc, day_pc).date()
                                                     lookup_date_key_pc = date_obj_only_pc.isoformat()
@@ -1070,12 +1070,12 @@ def import_sheet():
                                             month = int(month_str)
                                             day = int(day_str)
                                             if 1 <= month <= 12 and 1 <= day <= 31:
-                                                # Determine academic year (reuse logic from parse_datetime)
+                                                # Determine virtual session year (July 1st to July 1st)
                                                 current_dt_utc = datetime.now(timezone.utc)
-                                                if current_dt_utc.month >= 6:
-                                                    year = current_dt_utc.year if month >= 6 else current_dt_utc.year + 1
+                                                if current_dt_utc.month >= 7:
+                                                    year = current_dt_utc.year if month >= 7 else current_dt_utc.year + 1
                                                 else:
-                                                    year = current_dt_utc.year - 1 if month >= 6 else current_dt_utc.year
+                                                    year = current_dt_utc.year - 1 if month >= 7 else current_dt_utc.year
 
                                                 # Create date object, handle potential ValueError (e.g., 2/30)
                                                 try:
