@@ -93,7 +93,13 @@
                     
                     <div class="info-item">
                         <label>School</label>
-                        <p><i class="fa-solid fa-school"></i> {{ event.school or 'Not set' }}</p>
+                        <p><i class="fa-solid fa-school"></i> 
+                            {% if event.school_obj %}
+                                {{ event.school_obj.name }}
+                            {% else %}
+                                {{ event.school or 'Not set' }}
+                            {% endif %}
+                        </p>
                     </div>
                     <div class="info-item">
                         <label>Districts</label>

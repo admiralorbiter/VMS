@@ -1135,6 +1135,28 @@ def import_sheet():
                     print(f"  Final Associated Districts for event {event.id}: {[d.name for d in event.districts]}")
 
 
+                    # --- School Handling (following events import pattern) ---
+                    primary_school_name = row_data.get('School Name')
+                    school_district = None  # Track school's district like events import
+
+                    if primary_school_name and not pd.isna(primary_school_name):
+                        # Create/find district first
+                        district = get_or_create_district(primary_row_district) if primary_row_district else None
+                        
+                        # Create/find school
+                        school = get_or_create_school(primary_school_name, district)
+                        
+                        if school:
+                            # MAIN ASSIGNMENT - just like events import
+                            event.school = school.id
+                            school_district = school.district  # Track for district logic
+                            print(f"  Set event school to: {school.name} (ID: {school.id})")
+
+                    # Later in district handling, include school_district like events import
+                    if school_district and school_district not in event.districts:
+                        event.districts.append(school_district)
+
+
                     # --- Volunteer/Presenter Handling (remains tied to the primary row) ---
                     print("  Processing presenter/volunteer from primary row...")
                     # The is_simulcast=False ensures volunteer list is cleared before adding.

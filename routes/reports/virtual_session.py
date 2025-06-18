@@ -132,7 +132,24 @@ def load_routes(bp):
                 # Create a row for each teacher registration
                 for teacher_reg in teacher_registrations:
                     teacher = teacher_reg.teacher
-                    school = teacher.school if teacher else None
+                    
+                    # Get school information - handle both relationship and direct query
+                    school = None
+                    school_name = ''
+                    school_level = ''
+                    
+                    if teacher:
+                        if hasattr(teacher, 'school_obj') and teacher.school_obj:
+                            # Use relationship if available
+                            school = teacher.school_obj
+                            school_name = school.name
+                            school_level = getattr(school, 'level', '')
+                        elif teacher.school_id:
+                            # Fallback to direct query
+                            school = School.query.get(teacher.school_id)
+                            if school:
+                                school_name = school.name
+                                school_level = getattr(school, 'level', '')
                     
                     # Determine district from multiple sources
                     district_name = None
@@ -150,7 +167,7 @@ def load_routes(bp):
                         continue
                     
                     # Apply school filter if specified
-                    if current_filters['school'] and school and current_filters['school'].lower() not in school.name.lower():
+                    if current_filters['school'] and school_name and current_filters['school'].lower() not in school_name.lower():
                         continue
                     
                     session_data.append({
@@ -158,14 +175,14 @@ def load_routes(bp):
                         'status': teacher_reg.status or 'registered',
                         'date': event.start_date.strftime('%m/%d') if event.start_date else '',
                         'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
-                        'session_type': event.additional_information or '',  # Session Type stored here
+                        'session_type': event.additional_information or '',
                         'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
-                        'school_name': school.name if school else '',
-                        'school_level': getattr(school, 'level', '') if school else '',
+                        'school_name': school_name,
+                        'school_level': school_level,
                         'district': district_name,
                         'session_title': event.title,
                         'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                        'topic_theme': event.series or '',  # Topic/Theme stored in series
+                        'topic_theme': event.series or '',
                         'session_link': event.registration_link or '',
                         'session_id': event.session_id or '',
                         'participant_count': event.participant_count or 0,

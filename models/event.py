@@ -267,6 +267,13 @@ class Event(db.Model):
         viewonly=True  # Use teacher_registrations for modifications
     )
 
+    # Add this to your Event class relationships section
+    school_obj = db.relationship(
+        'School', 
+        foreign_keys=[school],
+        backref=db.backref('events', lazy='dynamic')
+    )
+
     # TODO: Consider adding validation methods:
     # - Ensure end_date is after start_date
     # - Validate attendance counts don't exceed capacity
