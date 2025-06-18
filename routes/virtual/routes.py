@@ -891,47 +891,44 @@ def import_sheet():
                          # Fall through to DB query if session.get fails unexpectedly
 
                 if not event:
-                    # Query DB if not found via cache or if session.get failed
-                    # *** UPDATED QUERY: Filter by exact start_date (datetime) ***
-                    print(f"Querying DB for event '{title}' at exactly {current_datetime.isoformat()}")
-                    event = Event.query.filter(
-                        func.lower(Event.title) == func.lower(title.strip()),
-                        Event.start_date == current_datetime, # Compare full datetime
-                        Event.type == EventType.VIRTUAL_SESSION
-                    ).first()
-
-                    if event:
-                        # Found in DB, cache its ID
-                        processed_event_ids[event_key] = event.id
-                        print(f"Found existing event in DB for '{title}' at {current_datetime.isoformat()}. ID: {event.id}")
+                    # Modified logic: Allow certain "incomplete" statuses to create events
+                    # when no existing event is found
+                    can_create_event_statuses = [
+                        'teacher no-show',
+                        'teacher cancelation', 
+                        'local professional no-show',
+                        'pathful professional no-show',
+                        'technical difficulties'
+                    ]
+                    
+                    is_primary_row_status = status_str not in ['simulcast', 'count', '']
+                    can_create_incomplete_event = status_str in can_create_event_statuses
+                    
+                    if is_primary_row_status or can_create_incomplete_event:
+                        event_type = "primary" if is_primary_row_status else "incomplete"
+                        print(f"Creating NEW event for '{title}' at {current_datetime.isoformat()} based on {event_type} status: '{status_str}'")
+                        event = Event(
+                            title=title,
+                            start_date=current_datetime, # Use precise datetime
+                            # Basic duration logic, refine if needed
+                            end_date=current_datetime.replace(hour=current_datetime.hour+1) if current_datetime else None,
+                            duration=60,
+                            type=EventType.VIRTUAL_SESSION,
+                            format=EventFormat.VIRTUAL,
+                            status=EventStatus.map_status(status_str), # Status from creating row
+                            session_id=extract_session_id(row_data.get('Session Link'))
+                        )
+                        db.session.add(event)
+                        db.session.flush() # Flush to get the new event.id
+                        processed_event_ids[event_key] = event.id # Cache using the datetime key
+                        print(f"  New Event ID: {event.id}")
                     else:
-                        # Create new event *only if* this row represents a primary instance
-                        is_primary_row_status = status_str not in ['simulcast', 'teacher no-show', 'count', 'technical difficulties', '']
-                        if is_primary_row_status:
-                            print(f"Creating NEW event for '{title}' at {current_datetime.isoformat()} based on primary status: '{status_str}'")
-                            event = Event(
-                                title=title,
-                                start_date=current_datetime, # Use precise datetime
-                                # Basic duration logic, refine if needed
-                                end_date=current_datetime.replace(hour=current_datetime.hour+1) if current_datetime else None,
-                                duration=60,
-                                type=EventType.VIRTUAL_SESSION,
-                                format=EventFormat.VIRTUAL,
-                                status=EventStatus.map_status(status_str), # Status from primary row
-                                session_id=extract_session_id(row_data.get('Session Link'))
-                            )
-                            db.session.add(event)
-                            db.session.flush() # Flush to get the new event.id
-                            processed_event_ids[event_key] = event.id # Cache using the datetime key
-                            print(f"  New Event ID: {event.id}")
-                        else:
-                            # This row is secondary, but no existing event found.
-                            # This case *should* be less likely now if primary rows always exist for each time slot.
-                            # Process teacher data standalone if it exists.
-                            print(f"Row {row_index + 1} ('{title}'): Secondary status '{status_str}' but no existing event found for datetime {current_datetime.isoformat()}. Processing TEACHER ONLY.")
-                            if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
-                                process_teacher_data(row_data, is_simulcast)
-                            continue # Skip further event processing for this row
+                        # This row is truly secondary (simulcast, count, empty), but no existing event found.
+                        # Process teacher data standalone if it exists.
+                        print(f"Row {row_index + 1} ('{title}'): Secondary status '{status_str}' but no existing event found for datetime {current_datetime.isoformat()}. Processing TEACHER ONLY.")
+                        if row_data.get('Teacher Name') and not pd.isna(row_data.get('Teacher Name')):
+                            process_teacher_data(row_data, is_simulcast)
+                        continue # Skip further event processing for this row
 
 
                 # If we don't have an event object here, something went wrong or it was skipped above
@@ -942,14 +939,15 @@ def import_sheet():
                     continue
 
                 # --- Determine if this row dictates the event's core data ---
-                is_primary_row_status = status_str not in ['simulcast', 'teacher no-show', 'count', 'technical difficulties', '']
+                # Modified logic: Allow "incomplete" statuses to also run primary logic if they created the event
+                is_primary_row_status = status_str not in ['simulcast', 'count', '']
                 # Check if we've ALREADY processed the primary logic for this specific event instance (title + datetime)
                 primary_logic_run_key = f"{event_key[0]}_{event_key[1]}_primary_done" # Use tuple elements for key string
                 primary_logic_already_run = processed_event_ids.get(primary_logic_run_key, False)
 
 
                 # --- Primary Logic Block ---
-                # Run this block only ONCE per specific event instance (title + datetime)
+                # Run this block for primary statuses OR if this is the first row for an incomplete event
                 if is_primary_row_status and not primary_logic_already_run:
                     event_processed_in_this_row = True # Mark that event logic ran
                     # Get the date key for aggregation (date part only)
