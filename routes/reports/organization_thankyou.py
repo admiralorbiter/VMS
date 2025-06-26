@@ -7,6 +7,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Volunteer, EventParticipation
 from models.event import Event
 from models import db
+from routes.reports.common import get_current_school_year, get_school_year_date_range
 
 # Create blueprint
 organization_thankyou_bp = Blueprint('organization_thankyou', __name__)
@@ -15,8 +16,11 @@ def load_routes(bp):
     @bp.route('/reports/organization/thankyou')
     @login_required
     def organization_thankyou():
-        # Get filter parameters
-        year = request.args.get('year', datetime.now().year)
+        # Get filter parameters - use school year format (e.g., '2425' for 2024-25)
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get date range for the school year
+        start_date, end_date = get_school_year_date_range(school_year)
         
         # Query organization participation through EventParticipation
         org_stats = db.session.query(
@@ -33,7 +37,8 @@ def load_routes(bp):
         ).join(
             Event, EventParticipation.event_id == Event.id
         ).filter(
-            extract('year', Event.start_date) == year,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
         ).group_by(
             Organization.id
@@ -50,10 +55,16 @@ def load_routes(bp):
             'unique_volunteers': volunteers
         } for org, sessions, hours, volunteers in org_stats]
 
+        # Generate list of school years (from 2020-21 to current+1)
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()  # Most recent first
+
         return render_template(
             'reports/organization_thankyou.html',
             organizations=org_data,
-            year=year,
+            school_year=school_year,
+            school_years=school_years,
             now=datetime.now()
         )
 
@@ -61,7 +72,10 @@ def load_routes(bp):
     @login_required
     def organization_thankyou_detail(org_id):
         # Get filter parameters
-        year = request.args.get('year', datetime.now().year)
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get date range for the school year
+        start_date, end_date = get_school_year_date_range(school_year)
         
         # Get organization details
         organization = Organization.query.get_or_404(org_id)
@@ -79,7 +93,8 @@ def load_routes(bp):
             Event, EventParticipation.event_id == Event.id
         ).filter(
             VolunteerOrganization.organization_id == org_id,
-            extract('year', Event.start_date) == year,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
         ).group_by(
             Volunteer.id
@@ -108,7 +123,8 @@ def load_routes(bp):
             VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
         ).filter(
             VolunteerOrganization.organization_id == org_id,
-            extract('year', Event.start_date) == year,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
         ).group_by(
             Event.id
@@ -125,11 +141,17 @@ def load_routes(bp):
             'hours': round(hours or 0, 2)
         } for event, vol_count, hours in events]
 
+        # Generate list of school years (from 2020-21 to current+1)
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()  # Most recent first
+
         return render_template(
             'reports/organization_thankyou_detail.html',
             organization=organization,
             volunteers=volunteers_data,
             events=events_data,
-            year=year,
+            school_year=school_year,
+            school_years=school_years,
             now=datetime.now()
         )
