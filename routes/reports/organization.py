@@ -111,8 +111,7 @@ def load_routes(bp):
         attended_events = db.session.query(
             Event,
             EventParticipation.delivery_hours,
-            Volunteer.first_name,
-            Volunteer.last_name
+            Volunteer
         ).join(
             EventParticipation, Event.id == EventParticipation.event_id
         ).join(
@@ -136,8 +135,7 @@ def load_routes(bp):
         # Get cancelled events for this organization
         cancelled_events = db.session.query(
             Event,
-            Volunteer.first_name,
-            Volunteer.last_name
+            Volunteer
         ).join(
             EventParticipation, Event.id == EventParticipation.event_id
         ).join(
@@ -225,11 +223,13 @@ def load_routes(bp):
             EventType.HISTORICAL
         }
         
-        for event, hours, first_name, last_name in attended_events:
+        for event, hours, volunteer in attended_events:
             event_data = {
                 'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
-                'volunteer': f"{first_name} {last_name}",
+                'volunteer': f"{volunteer.first_name} {volunteer.last_name}",
+                'volunteer_id': volunteer.id,
                 'session': event.title,
+                'event_id': event.id,
                 'hours': round(float(hours or 0), 2),
                 'students_reached': event.participant_count or 0,
                 'event_type': event.type.value if event.type else 'Unknown'
@@ -256,10 +256,12 @@ def load_routes(bp):
 
         # Process cancelled events
         cancelled_events_data = []
-        for event, first_name, last_name in cancelled_events:
+        for event, volunteer in cancelled_events:
             cancelled_events_data.append({
                 'event': event.title,
-                'volunteer': f"{first_name} {last_name}",
+                'volunteer': f"{volunteer.first_name} {volunteer.last_name}",
+                'volunteer_id': volunteer.id,
+                'event_id': event.id,
                 'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
                 'cancellation_reason': event.cancellation_reason.value if event.cancellation_reason else 'Unknown'
             })

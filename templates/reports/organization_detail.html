@@ -79,6 +79,16 @@
 .back-link:hover {
     text-decoration: underline;
 }
+
+.volunteer-link, .session-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.volunteer-link:hover, .session-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
 </style>
 {% endblock %}
 
@@ -154,8 +164,24 @@
                 <tr>
                     <td>{{ event.students_reached }}</td>
                     <td>{{ event.date }}</td>
-                    <td>{{ event.volunteer }}</td>
-                    <td>{{ event.session }}</td>
+                    <td>
+                        {% if event.volunteer_id %}
+                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}" class="volunteer-link">
+                            {{ event.volunteer }}
+                        </a>
+                        {% else %}
+                        {{ event.volunteer }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.event_id %}
+                        <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link">
+                            {{ event.session }}
+                        </a>
+                        {% else %}
+                        {{ event.session }}
+                        {% endif %}
+                    </td>
                     <td>{{ event.event_type }}</td>
                 </tr>
                 {% endfor %}
@@ -181,8 +207,24 @@
             <tbody>
                 {% for event in cancelled_events %}
                 <tr>
-                    <td>{{ event.event }}</td>
-                    <td>{{ event.volunteer }}</td>
+                    <td>
+                        {% if event.event_id %}
+                        <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link">
+                            {{ event.event }}
+                        </a>
+                        {% else %}
+                        {{ event.event }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.volunteer_id %}
+                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}" class="volunteer-link">
+                            {{ event.volunteer }}
+                        </a>
+                        {% else %}
+                        {{ event.volunteer }}
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -216,8 +258,24 @@
                     <td>{{ event.date }}</td>
                     <td>{{ event.time }}</td>
                     <td>{{ event.classrooms }}</td>
-                    <td>{{ event.session }}</td>
-                    <td>{{ event.volunteer }}</td>
+                    <td>
+                        {% if event.event_id %}
+                        <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link">
+                            {{ event.session }}
+                        </a>
+                        {% else %}
+                        {{ event.session }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.volunteer_id %}
+                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}" class="volunteer-link">
+                            {{ event.volunteer }}
+                        </a>
+                        {% else %}
+                        {{ event.volunteer }}
+                        {% endif %}
+                    </td>
                     <td>{{ event.event_type }}</td>
                     <td>{{ event.session_id }}</td>
                 </tr>
