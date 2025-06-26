@@ -126,11 +126,18 @@
             <div class="stat-number">{{ summary.total_virtual_classrooms }}</div>
             <div class="stat-label">classrooms reached</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ summary.total_cancelled_events }}</div>
+            <div class="stat-label">cancelled events</div>
+        </div>
     </div>
 
     <!-- In-person experiences -->
     {% if in_person_events %}
     <h2 class="section-header">In-person experiences</h2>
+    <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <p><strong>Total:</strong> {{ summary.total_in_person_events }} in-person sessions reaching {{ summary.total_in_person_students }} students.</p>
+    </div>
     <div class="event-table">
         <table>
             <thead>
@@ -139,6 +146,7 @@
                     <th>Date</th>
                     <th>Volunteer</th>
                     <th>Session</th>
+                    <th>Event Type</th>
                 </tr>
             </thead>
             <tbody>
@@ -148,6 +156,33 @@
                     <td>{{ event.date }}</td>
                     <td>{{ event.volunteer }}</td>
                     <td>{{ event.session }}</td>
+                    <td>{{ event.event_type }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <h2 class="section-header">In-person experiences</h2>
+    <p style="font-style: italic; color: #666; margin: 20px 0;">No in-person events found for this organization in the selected time period.</p>
+    {% endif %}
+
+    <!-- Volunteers for cancelled events -->
+    {% if cancelled_events %}
+    <h2 class="section-header">Volunteers for cancelled events due to {{ cancelled_events[0].cancellation_reason if cancelled_events else 'various reasons' }}</h2>
+    <div class="event-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Volunteer Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in cancelled_events %}
+                <tr>
+                    <td>{{ event.event }}</td>
+                    <td>{{ event.volunteer }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -158,15 +193,21 @@
     <!-- Virtual experiences -->
     {% if virtual_events %}
     <h2 class="section-header">Virtual experiences</h2>
+    <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <p><strong>Total:</strong> {{ summary.total_virtual_events }} virtual sessions reaching approximately {{ summary.total_virtual_classrooms }} students.</p>
+        <p><strong>Note:</strong> Virtual events include Virtual Sessions, Connector Sessions, Data Visualization, and other remote learning activities. Includes completed sessions even when there was a teacher no-show.</p>
+    </div>
     <div class="event-table">
         <table>
             <thead>
                 <tr>
                     <th>Date</th>
                     <th>Time</th>
-                    <th>No. classrooms</th>
+                    <th>No. students</th>
                     <th>Session Name</th>
                     <th>Volunteer</th>
+                    <th>Event Type</th>
+                    <th>Session ID</th>
                 </tr>
             </thead>
             <tbody>
@@ -177,11 +218,16 @@
                     <td>{{ event.classrooms }}</td>
                     <td>{{ event.session }}</td>
                     <td>{{ event.volunteer }}</td>
+                    <td>{{ event.event_type }}</td>
+                    <td>{{ event.session_id }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    <h2 class="section-header">Virtual experiences</h2>
+    <p style="font-style: italic; color: #666; margin: 20px 0;">No virtual events found for this organization in the selected time period.</p>
     {% endif %}
 
     <!-- Volunteer Summary -->
@@ -208,5 +254,17 @@
         </table>
     </div>
     {% endif %}
+
+    <!-- Report Summary -->
+    <div class="section-header" style="margin-top: 40px;">
+        <h2>Report Summary</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 15px;">
+            <p><strong>Total:</strong> {{ summary.total_volunteers }} {{ organization.name }} volunteers lead {{ summary.total_in_person_events + summary.total_virtual_events }} sessions reaching approximately {{ summary.total_in_person_students + summary.total_virtual_classrooms }} students.</p>
+            
+            {% if summary.total_cancelled_events > 0 %}
+            <p style="margin-top: 10px;"><strong>Note:</strong> {{ summary.total_cancelled_events }} event(s) were cancelled during this time period.</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %} 
