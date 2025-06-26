@@ -79,6 +79,13 @@ def load_routes(bp):
                 'icon': 'fa-solid fa-calendar-check',
                 'url': '/reports/attendance',
                 'category': 'Attendance'
+            },
+            {
+                'title': 'Organization Report',
+                'description': 'View detailed organization engagement reports with volunteer activities and student reach.',
+                'icon': 'fa-solid fa-building',
+                'url': '/reports/organization',
+                'category': 'Organization Reports'
             }
         ]
         
