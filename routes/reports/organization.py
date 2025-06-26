@@ -125,7 +125,9 @@ def load_routes(bp):
             Event.start_date <= end_date,
             db.or_(
                 EventParticipation.status == 'Attended',
-                db.and_(Event.status == 'Completed', EventParticipation.status.in_(['Confirmed', 'Attended']))
+                EventParticipation.status == 'Completed', 
+                EventParticipation.status == 'Successfully Completed',
+                EventParticipation.status == 'Confirmed'
             )
         ).order_by(
             Event.start_date.desc()
@@ -168,7 +170,9 @@ def load_routes(bp):
             Event.start_date <= end_date,
             db.or_(
                 EventParticipation.status == 'Attended',
-                db.and_(Event.status == 'Completed', EventParticipation.status.in_(['Confirmed', 'Attended']))
+                EventParticipation.status == 'Completed', 
+                EventParticipation.status == 'Successfully Completed',
+                EventParticipation.status == 'Confirmed'
             )
         ).group_by(
             Volunteer.id
