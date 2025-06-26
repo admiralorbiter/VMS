@@ -12,10 +12,12 @@
     
     <div class="filters">
         <form method="GET" class="year-filter">
-            <label for="year">Year:</label>
-            <select name="year" id="year" onchange="this.form.submit()">
-                {% for y in range(2020, now.year + 1) %}
-                <option value="{{ y }}" {% if y|string == year|string %}selected{% endif %}>{{ y }}</option>
+            <label for="school_year">School Year:</label>
+            <select name="school_year" id="school_year" onchange="this.form.submit()">
+                {% for y in school_years %}
+                <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                    {{ y[:2] }}-{{ y[2:] }} School Year
+                </option>
                 {% endfor %}
             </select>
         </form>
@@ -35,7 +37,7 @@
                 {% for volunteer in volunteers %}
                 <tr>
                     <td>
-                        <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, year=year) }}" class="volunteer-link">
+                        <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="volunteer-link">
                             {{ volunteer.name }}
                         </a>
                     </td>

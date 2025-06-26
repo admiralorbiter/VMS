@@ -7,6 +7,7 @@ from models.volunteer import Volunteer, EventParticipation
 from models.organization import Organization, VolunteerOrganization
 from models.event import Event
 from models import db
+from routes.reports.common import get_current_school_year, get_school_year_date_range
 
 # Create blueprint
 volunteer_thankyou_bp = Blueprint('volunteer_thankyou', __name__)
@@ -15,8 +16,11 @@ def load_routes(bp):
     @bp.route('/reports/volunteer/thankyou')
     @login_required
     def volunteer_thankyou():
-        # Get filter parameters
-        year = request.args.get('year', datetime.now().year)
+        # Get filter parameters - use school year format (e.g., '2425' for 2024-25)
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get date range for the school year
+        start_date, end_date = get_school_year_date_range(school_year)
         
         # Query volunteer participation through EventParticipation
         volunteer_stats = db.session.query(
@@ -33,7 +37,8 @@ def load_routes(bp):
         ).outerjoin(
             Organization, VolunteerOrganization.organization_id == Organization.id
         ).filter(
-            extract('year', Event.start_date) == year,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
         ).group_by(
             Volunteer.id,
@@ -51,10 +56,16 @@ def load_routes(bp):
             'organization': org or 'Independent'
         } for v, hours, events, org in volunteer_stats]
 
+        # Generate list of school years (from 2020-21 to current+1)
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()  # Most recent first
+
         return render_template(
             'reports/volunteer_thankyou.html',
             volunteers=volunteer_data,
-            year=year,
+            school_year=school_year,
+            school_years=school_years,
             now=datetime.now()
         )
 
@@ -62,7 +73,10 @@ def load_routes(bp):
     @login_required
     def volunteer_thankyou_detail(volunteer_id):
         # Get filter parameters
-        year = request.args.get('year', datetime.now().year)
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get date range for the school year
+        start_date, end_date = get_school_year_date_range(school_year)
         
         # Get volunteer details
         volunteer = Volunteer.query.get_or_404(volunteer_id)
@@ -75,7 +89,8 @@ def load_routes(bp):
             EventParticipation, Event.id == EventParticipation.event_id
         ).filter(
             EventParticipation.volunteer_id == volunteer_id,
-            extract('year', Event.start_date) == year,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
         ).order_by(
             Event.start_date
@@ -94,6 +109,11 @@ def load_routes(bp):
         # Calculate totals
         total_hours = sum(event['hours'] for event in events_data)
         total_events = len(events_data)
+
+        # Generate list of school years (from 2020-21 to current+1)
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()  # Most recent first
         
         return render_template(
             'reports/volunteer_thankyou_detail.html',
@@ -101,6 +121,7 @@ def load_routes(bp):
             events=events_data,
             total_hours=total_hours,
             total_events=total_events,
-            year=year,
+            school_year=school_year,
+            school_years=school_years,
             now=datetime.now()
         )
