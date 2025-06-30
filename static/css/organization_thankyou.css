@@ -63,6 +63,47 @@ th {
     color: #333;
 }
 
+/* Sortable column styles */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 2rem;
+}
+
+.sortable:hover {
+    background: #e8e8e8;
+}
+
+.sortable::after {
+    content: '';
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid #999;
+    opacity: 0.5;
+}
+
+.sortable.asc::after {
+    border-bottom: none;
+    border-top: 4px solid #333;
+    opacity: 1;
+}
+
+.sortable.desc::after {
+    border-bottom: 4px solid #333;
+    opacity: 1;
+}
+
+.sortable.active {
+    background: #e8f4f8;
+}
+
 tr:hover {
     background: #f9f9f9;
 }

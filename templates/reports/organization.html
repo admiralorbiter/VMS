@@ -6,6 +6,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
 {% endblock %}
 
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/organization_reports.js') }}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="thankyou-container">
     <h1 class="page-header">Organization Reports</h1>
@@ -21,17 +25,20 @@
                 {% endfor %}
             </select>
         </form>
+        <div style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 4px; font-size: 0.9em; color: #666;">
+            <strong>💡 Tip:</strong> Click on any column header to sort the table by that column. Click again to reverse the sort order.
+        </div>
     </div>
 
     <div class="organization-table">
         <table>
             <thead>
                 <tr>
-                    <th>Organization</th>
-                    <th>Total Events</th>
-                    <th>Unique Volunteers</th>
-                    <th>Total Hours</th>
-                    <th>Cancelled Events</th>
+                    <th class="sortable {% if sort_by == 'name' %}active {{ sort_order }}{% endif %}" data-sort="name">Organization</th>
+                    <th class="sortable {% if sort_by == 'total_events' %}active {{ sort_order }}{% endif %}" data-sort="total_events">Total Events</th>
+                    <th class="sortable {% if sort_by == 'unique_volunteers' %}active {{ sort_order }}{% endif %}" data-sort="unique_volunteers">Unique Volunteers</th>
+                    <th class="sortable {% if sort_by == 'total_hours' %}active {{ sort_order }}{% endif %}" data-sort="total_hours">Total Hours</th>
+                    <th class="sortable {% if sort_by == 'cancelled_events' %}active {{ sort_order }}{% endif %}" data-sort="cancelled_events">Cancelled Events</th>
                 </tr>
             </thead>
             <tbody>

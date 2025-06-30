@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
+<script src="{{ url_for('static', filename='js/organization_reports.js') }}"></script>
 <style>
 .report-header {
     display: flex;
@@ -114,6 +115,10 @@
         </div>
     </div>
 
+    <div style="margin-bottom: 20px; padding: 10px; background: #f0f8ff; border-radius: 4px; font-size: 0.9em; color: #666;">
+        <strong>💡 Tip:</strong> Click on any column header in the tables below to sort by that column. Click again to reverse the sort order.
+    </div>
+
     <!-- Summary Section -->
     <div class="summary-stats">
         <div class="stat-card">
@@ -152,11 +157,11 @@
         <table>
             <thead>
                 <tr>
-                    <th>No. students reached</th>
-                    <th>Date</th>
-                    <th>Volunteer</th>
+                    <th class="sortable {% if sort_by == 'students' %}active {{ sort_order }}{% endif %}" data-sort="students">No. students reached</th>
+                    <th class="sortable {% if sort_by == 'date' %}active {{ sort_order }}{% endif %}" data-sort="date">Date</th>
+                    <th class="sortable {% if sort_by == 'volunteer' %}active {{ sort_order }}{% endif %}" data-sort="volunteer">Volunteer</th>
                     <th>Session</th>
-                    <th>Event Type</th>
+                    <th class="sortable {% if sort_by == 'event_type' %}active {{ sort_order }}{% endif %}" data-sort="event_type">Event Type</th>
                 </tr>
             </thead>
             <tbody>
@@ -243,12 +248,12 @@
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
+                    <th class="sortable {% if sort_by == 'date' %}active {{ sort_order }}{% endif %}" data-sort="date">Date</th>
                     <th>Time</th>
-                    <th>No. students</th>
+                    <th class="sortable {% if sort_by == 'students' %}active {{ sort_order }}{% endif %}" data-sort="students">No. students</th>
                     <th>Session Name</th>
-                    <th>Volunteer</th>
-                    <th>Event Type</th>
+                    <th class="sortable {% if sort_by == 'volunteer' %}active {{ sort_order }}{% endif %}" data-sort="volunteer">Volunteer</th>
+                    <th class="sortable {% if sort_by == 'event_type' %}active {{ sort_order }}{% endif %}" data-sort="event_type">Event Type</th>
                     <th>Session ID</th>
                 </tr>
             </thead>

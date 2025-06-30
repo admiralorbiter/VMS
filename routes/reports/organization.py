@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required
 from datetime import datetime
-from sqlalchemy import distinct, func, or_
+from sqlalchemy import distinct, func, or_, desc, asc
 
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Volunteer, EventParticipation
@@ -19,6 +19,8 @@ def load_routes(bp):
         """Display all organizations with their engagement statistics"""
         # Get filter parameters
         school_year = request.args.get('school_year', get_current_school_year())
+        sort_by = request.args.get('sort_by', 'total_events')
+        sort_order = request.args.get('sort_order', 'desc')
         
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
@@ -43,9 +45,34 @@ def load_routes(bp):
             EventParticipation.status == 'Attended'
         ).group_by(
             Organization.id
-        ).order_by(
-            db.desc('total_events')
-        ).all()
+        )
+        
+        # Apply sorting based on parameters
+        if sort_by == 'name':
+            if sort_order == 'asc':
+                org_stats = org_stats.order_by(asc(Organization.name))
+            else:
+                org_stats = org_stats.order_by(desc(Organization.name))
+        elif sort_by == 'total_events':
+            if sort_order == 'asc':
+                org_stats = org_stats.order_by(asc(func.count(distinct(Event.id))))
+            else:
+                org_stats = org_stats.order_by(desc(func.count(distinct(Event.id))))
+        elif sort_by == 'unique_volunteers':
+            if sort_order == 'asc':
+                org_stats = org_stats.order_by(asc(func.count(distinct(Volunteer.id))))
+            else:
+                org_stats = org_stats.order_by(desc(func.count(distinct(Volunteer.id))))
+        elif sort_by == 'total_hours':
+            if sort_order == 'asc':
+                org_stats = org_stats.order_by(asc(func.sum(EventParticipation.delivery_hours)))
+            else:
+                org_stats = org_stats.order_by(desc(func.sum(EventParticipation.delivery_hours)))
+        else:
+            # Default sorting
+            org_stats = org_stats.order_by(desc(func.count(distinct(Event.id))))
+        
+        org_stats = org_stats.all()
 
         # Get cancelled events count for each organization
         cancelled_stats = db.session.query(
@@ -79,6 +106,13 @@ def load_routes(bp):
             'total_hours': round(float(total_hours or 0), 2),
             'cancelled_events': cancelled_dict.get(org.id, 0)
         } for org, total_events, unique_volunteers, total_hours in org_stats]
+        
+        # Handle sorting for cancelled events in main list
+        if sort_by == 'cancelled_events':
+            if sort_order == 'asc':
+                org_data = sorted(org_data, key=lambda x: x['cancelled_events'])
+            else:
+                org_data = sorted(org_data, key=lambda x: x['cancelled_events'], reverse=True)
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -90,6 +124,8 @@ def load_routes(bp):
             organizations=org_data,
             school_year=school_year,
             school_years=school_years,
+            sort_by=sort_by,
+            sort_order=sort_order,
             now=datetime.now()
         )
 
@@ -99,6 +135,8 @@ def load_routes(bp):
         """Display detailed report for a specific organization"""
         # Get filter parameters
         school_year = request.args.get('school_year', get_current_school_year())
+        sort_by = request.args.get('sort_by', 'date')
+        sort_order = request.args.get('sort_order', 'desc')
         
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
@@ -106,9 +144,8 @@ def load_routes(bp):
         # Get organization details
         organization = Organization.query.get_or_404(org_id)
         
-        # Get attended events for this organization
-        # Include both 'Attended' participation and 'Completed' events (for virtual sessions where professional delivered but may have had teacher no-show)
-        attended_events = db.session.query(
+        # Get attended events for this organization with optimized sorting
+        attended_events_query = db.session.query(
             Event,
             EventParticipation.delivery_hours,
             Volunteer
@@ -128,9 +165,29 @@ def load_routes(bp):
                 EventParticipation.status == 'Successfully Completed',
                 EventParticipation.status == 'Confirmed'
             )
-        ).order_by(
-            Event.start_date.desc()
-        ).all()
+        )
+        
+        # Apply database-level sorting for better performance
+        if sort_by == 'date':
+            if sort_order == 'asc':
+                attended_events_query = attended_events_query.order_by(asc(Event.start_date))
+            else:
+                attended_events_query = attended_events_query.order_by(desc(Event.start_date))
+        elif sort_by == 'volunteer':
+            if sort_order == 'asc':
+                attended_events_query = attended_events_query.order_by(asc(Volunteer.first_name), asc(Volunteer.last_name))
+            else:
+                attended_events_query = attended_events_query.order_by(desc(Volunteer.first_name), desc(Volunteer.last_name))
+        elif sort_by == 'event_type':
+            if sort_order == 'asc':
+                attended_events_query = attended_events_query.order_by(asc(Event.type))
+            else:
+                attended_events_query = attended_events_query.order_by(desc(Event.type))
+        else:
+            # Default sorting by date desc
+            attended_events_query = attended_events_query.order_by(desc(Event.start_date))
+            
+        attended_events = attended_events_query.all()
 
         # Get cancelled events for this organization
         cancelled_events = db.session.query(
@@ -285,6 +342,18 @@ def load_routes(bp):
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
         school_years.reverse()  # Most recent first
         
+        # Only apply Python-level sorting for 'students' since it differs between in-person and virtual
+        if sort_by == 'students':
+            in_person_events = sorted(in_person_events, key=lambda x: x.get('students_reached', 0), reverse=(sort_order == 'desc'))
+            virtual_events = sorted(virtual_events, key=lambda x: x.get('classrooms', 0), reverse=(sort_order == 'desc'))
+
+        # Apply minimal sorting to cancelled events for consistency  
+        if cancelled_events_data and sort_by in ['volunteer', 'date']:
+            if sort_by == 'volunteer':
+                cancelled_events_data = sorted(cancelled_events_data, key=lambda x: x['volunteer'], reverse=(sort_order == 'desc'))
+            elif sort_by == 'date':
+                cancelled_events_data = sorted(cancelled_events_data, key=lambda x: x['date'], reverse=(sort_order == 'desc'))
+
         return render_template(
             'reports/organization_detail.html',
             organization=organization,
@@ -302,5 +371,7 @@ def load_routes(bp):
             },
             school_year=school_year,
             school_years=school_years,
+            sort_by=sort_by,
+            sort_order=sort_order,
             now=datetime.now()
         )
