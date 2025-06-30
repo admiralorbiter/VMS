@@ -1,7 +1,12 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, send_file
 from flask_login import login_required
 from datetime import datetime, timedelta
 from sqlalchemy import distinct, func, or_, desc, asc
+import pandas as pd
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Volunteer, EventParticipation
@@ -215,6 +220,252 @@ def load_routes(bp):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
+
+    @bp.route('/reports/organization/detail/<int:org_id>/export')
+    @login_required
+    def export_organization_detail_excel(org_id):
+        """Export organization detail data to Excel"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        
+        # Get organization details
+        organization = Organization.query.get_or_404(org_id)
+        
+        # Try to get cached data first, fallback to generating fresh data
+        cached_detail = OrganizationDetailCache.query.filter_by(
+            organization_id=org_id, 
+            school_year=school_year
+        ).first()
+        
+        if cached_detail:
+            # Use cached data
+            in_person_events = cached_detail.in_person_events or []
+            virtual_events = cached_detail.virtual_events or []
+            cancelled_events_data = cached_detail.cancelled_events or []
+            volunteers_data = cached_detail.volunteers_data or []
+            summary = cached_detail.summary_stats or {}
+        else:
+            # Generate fresh data
+            detail_data = generate_organization_detail_data(org_id, school_year)
+            in_person_events = detail_data['in_person_events']
+            virtual_events = detail_data['virtual_events']
+            cancelled_events_data = detail_data['cancelled_events']
+            volunteers_data = detail_data['volunteers_data']
+            summary = detail_data['summary']
+        
+        # Create Excel workbook
+        output = io.BytesIO()
+        
+        try:
+            # Create workbook and add sheets
+            wb = Workbook()
+            
+            # Remove default sheet
+            if wb.active:
+                wb.remove(wb.active)
+            
+            # Define styles
+            header_font = Font(bold=True, color="FFFFFF")
+            header_fill = PatternFill(start_color="1d3354", end_color="1d3354", fill_type="solid")
+            header_alignment = Alignment(horizontal="center", vertical="center")
+            border = Border(
+                left=Side(style="thin"),
+                right=Side(style="thin"),
+                top=Side(style="thin"),
+                bottom=Side(style="thin")
+            )
+            
+            # 1. Summary Sheet
+            ws_summary = wb.create_sheet("Summary")
+            summary_data = [
+                ["Organization", organization.name],
+                ["School Year", f"20{school_year[:2]}-20{school_year[2:]}"],
+                ["Report Generated", datetime.now().strftime("%B %d, %Y at %I:%M %p")],
+                ["", ""],  # Empty row with two values
+                ["Total Volunteers Engaged", summary.get('total_volunteers', 0)],
+                ["In-Person Events", summary.get('total_in_person_events', 0)],
+                ["Students Reached (In-Person)", summary.get('total_in_person_students', 0)],
+                ["Virtual Events", summary.get('total_virtual_events', 0)],
+                ["Virtual Classrooms Reached", summary.get('total_virtual_classrooms', 0)],
+                ["Cancelled Events", summary.get('total_cancelled_events', 0)],
+                ["", ""],  # Empty row with two values
+                ["Total Events", summary.get('total_in_person_events', 0) + summary.get('total_virtual_events', 0)],
+                ["Total Students/Classrooms Reached", summary.get('total_in_person_students', 0) + summary.get('total_virtual_classrooms', 0)]
+            ]
+            
+            for row_idx, row_data in enumerate(summary_data, 1):
+                if len(row_data) >= 2:
+                    label, value = row_data[0], row_data[1]
+                    ws_summary.cell(row=row_idx, column=1, value=label)
+                    ws_summary.cell(row=row_idx, column=2, value=value)
+                    
+                    # Style the first column (labels)
+                    if label:  # Skip empty rows
+                        ws_summary.cell(row=row_idx, column=1).font = Font(bold=True)
+            
+            # Auto-size columns
+            ws_summary.column_dimensions['A'].width = 30
+            ws_summary.column_dimensions['B'].width = 20
+            
+            # 2. In-Person Events Sheet
+            if in_person_events:
+                ws_in_person = wb.create_sheet("In-Person Events")
+                
+                # Headers
+                headers = ["Date", "Volunteer", "Session", "Event Type", "Students Reached"]
+                for col_idx, header in enumerate(headers, 1):
+                    cell = ws_in_person.cell(row=1, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                    cell.border = border
+                
+                # Data
+                for row_idx, event in enumerate(in_person_events, 2):
+                    ws_in_person.cell(row=row_idx, column=1, value=event.get('date', ''))
+                    ws_in_person.cell(row=row_idx, column=2, value=event.get('volunteer', ''))
+                    ws_in_person.cell(row=row_idx, column=3, value=event.get('session', ''))
+                    ws_in_person.cell(row=row_idx, column=4, value=event.get('event_type', ''))
+                    ws_in_person.cell(row=row_idx, column=5, value=event.get('students_reached', 0))
+                    
+                    # Add borders
+                    for col_idx in range(1, 6):
+                        ws_in_person.cell(row=row_idx, column=col_idx).border = border
+                
+                # Auto-size columns
+                for col in ws_in_person.columns:
+                    max_length = 0
+                    column = col[0].column_letter
+                    for cell in col:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    ws_in_person.column_dimensions[column].width = adjusted_width
+            
+            # 3. Virtual Events Sheet
+            if virtual_events:
+                ws_virtual = wb.create_sheet("Virtual Events")
+                
+                # Headers
+                headers = ["Date", "Time", "Volunteer", "Session", "Event Type", "Students", "Session ID"]
+                for col_idx, header in enumerate(headers, 1):
+                    cell = ws_virtual.cell(row=1, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                    cell.border = border
+                
+                # Data
+                for row_idx, event in enumerate(virtual_events, 2):
+                    ws_virtual.cell(row=row_idx, column=1, value=event.get('date', ''))
+                    ws_virtual.cell(row=row_idx, column=2, value=event.get('time', ''))
+                    ws_virtual.cell(row=row_idx, column=3, value=event.get('volunteer', ''))
+                    ws_virtual.cell(row=row_idx, column=4, value=event.get('session', ''))
+                    ws_virtual.cell(row=row_idx, column=5, value=event.get('event_type', ''))
+                    ws_virtual.cell(row=row_idx, column=6, value=event.get('classrooms', 0))
+                    ws_virtual.cell(row=row_idx, column=7, value=event.get('session_id', ''))
+                    
+                    # Add borders
+                    for col_idx in range(1, 8):
+                        ws_virtual.cell(row=row_idx, column=col_idx).border = border
+                
+                # Auto-size columns
+                for col in ws_virtual.columns:
+                    max_length = 0
+                    column = col[0].column_letter
+                    for cell in col:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    ws_virtual.column_dimensions[column].width = adjusted_width
+            
+            # 4. Volunteer Summary Sheet
+            if volunteers_data:
+                ws_volunteers = wb.create_sheet("Volunteer Summary")
+                
+                # Headers
+                headers = ["Volunteer Name", "Number of Events", "Total Hours"]
+                for col_idx, header in enumerate(headers, 1):
+                    cell = ws_volunteers.cell(row=1, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                    cell.border = border
+                
+                # Data
+                for row_idx, volunteer in enumerate(volunteers_data, 2):
+                    ws_volunteers.cell(row=row_idx, column=1, value=volunteer.get('name', ''))
+                    ws_volunteers.cell(row=row_idx, column=2, value=volunteer.get('events', 0))
+                    ws_volunteers.cell(row=row_idx, column=3, value=volunteer.get('hours', 0))
+                    
+                    # Add borders
+                    for col_idx in range(1, 4):
+                        ws_volunteers.cell(row=row_idx, column=col_idx).border = border
+                
+                # Auto-size columns
+                ws_volunteers.column_dimensions['A'].width = 30
+                ws_volunteers.column_dimensions['B'].width = 18
+                ws_volunteers.column_dimensions['C'].width = 15
+            
+            # 5. Cancelled Events Sheet (if any)
+            if cancelled_events_data:
+                ws_cancelled = wb.create_sheet("Cancelled Events")
+                
+                # Headers
+                headers = ["Event", "Volunteer", "Cancellation Reason"]
+                for col_idx, header in enumerate(headers, 1):
+                    cell = ws_cancelled.cell(row=1, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                    cell.border = border
+                
+                # Data
+                for row_idx, event in enumerate(cancelled_events_data, 2):
+                    ws_cancelled.cell(row=row_idx, column=1, value=event.get('event', ''))
+                    ws_cancelled.cell(row=row_idx, column=2, value=event.get('volunteer', ''))
+                    ws_cancelled.cell(row=row_idx, column=3, value=event.get('cancellation_reason', ''))
+                    
+                    # Add borders
+                    for col_idx in range(1, 4):
+                        ws_cancelled.cell(row=row_idx, column=col_idx).border = border
+                
+                # Auto-size columns
+                for col in ws_cancelled.columns:
+                    max_length = 0
+                    column = col[0].column_letter
+                    for cell in col:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    ws_cancelled.column_dimensions[column].width = adjusted_width
+            
+            # Save workbook to BytesIO
+            wb.save(output)
+            output.seek(0)
+            
+            # Generate filename
+            safe_org_name = "".join(c for c in organization.name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            filename = f"{safe_org_name}_Volunteer_Report_{school_year[:2]}-{school_year[2:]}.xlsx"
+            
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=filename
+            )
+            
+        except Exception as e:
+            # Return error response
+            return jsonify({'error': f'Failed to generate Excel file: {str(e)}'}), 500
 
 
 # Helper functions for caching and data generation

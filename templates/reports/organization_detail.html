@@ -50,9 +50,13 @@
                 <span class="cache-refreshed">🔄 Data refreshed</span>
             {% endif %}
         </div>
-        <button onclick="refreshDetailData({{ organization.id }})" class="refresh-btn">
+        <button onclick="refreshDetailData()" data-org-id="{{ organization.id }}" class="refresh-btn">
             Refresh Data
         </button>
+        <a href="{{ url_for('report.export_organization_detail_excel', org_id=organization.id, school_year=school_year) }}" 
+           class="refresh-btn export-btn" style="margin-left: 0.5rem;">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </a>
     </div>
     {% endif %}
 
@@ -313,7 +317,7 @@
 </div>
 
 <script>
-function refreshDetailData(orgId) {
+function refreshDetailData() {
     const button = event.target;
     const originalText = button.textContent;
     button.textContent = 'Refreshing...';
@@ -321,7 +325,7 @@ function refreshDetailData(orgId) {
     
     const schoolYear = new URLSearchParams(window.location.search).get('school_year') || '{{ school_year }}';
     
-    fetch(`{{ url_for('report.refresh_organization_detail', org_id=0) }}`.replace('0', orgId) + `?school_year=${schoolYear}`, {
+    fetch(`{{ url_for('report.refresh_organization_detail', org_id=0) }}`.replace('0', button.getAttribute('data-org-id')) + `?school_year=${schoolYear}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
