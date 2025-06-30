@@ -3,124 +3,68 @@
 {% block title %}{{ organization.name }} - Organization Report{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/organization_detail.css') }}">
+{% endblock %}
+
+{% block extra_js %}
 <script src="{{ url_for('static', filename='js/organization_reports.js') }}"></script>
-<style>
-.report-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.summary-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.stat-number {
-    font-size: 2em;
-    font-weight: bold;
-    color: #007bff;
-}
-
-.stat-label {
-    color: #666;
-    margin-top: 5px;
-}
-
-.section-header {
-    font-size: 1.5em;
-    margin: 30px 0 15px 0;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.event-table {
-    margin-bottom: 30px;
-}
-
-.event-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.event-table th,
-.event-table td {
-    padding: 10px;
-    border: 1px solid #dee2e6;
-    text-align: left;
-}
-
-.event-table th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-}
-
-.event-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.back-link {
-    display: inline-block;
-    margin-bottom: 20px;
-    text-decoration: none;
-    color: #007bff;
-}
-
-.back-link:hover {
-    text-decoration: underline;
-}
-
-.volunteer-link, .session-link {
-    color: #007bff;
-    text-decoration: none;
-}
-
-.volunteer-link:hover, .session-link:hover {
-    color: #0056b3;
-    text-decoration: underline;
-}
-</style>
 {% endblock %}
 
 {% block content %}
-<div class="thankyou-container">
-    <a href="{{ url_for('report.organization_reports', school_year=school_year) }}" class="back-link">
-        ← Back to Organization Reports
-    </a>
-    
-    <div class="report-header">
-        <h1 class="page-header">{{ organization.name }} Volunteer Engagement Report</h1>
-        <div class="filters">
-            <form method="GET" class="year-filter">
-                <label for="school_year">School Year:</label>
-                <select name="school_year" id="school_year" onchange="this.form.submit()">
-                    {% for y in school_years %}
-                    <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
-                        {{ y[:2] }}-{{ y[2:] }} School Year
-                    </option>
-                    {% endfor %}
-                </select>
-            </form>
+<div class="organization-detail-container">
+    <!-- Header Section -->
+    <div class="detail-header">
+        <div class="detail-header-content">
+            <div>
+                <h1 class="organization-title">{{ organization.name }}</h1>
+                <p class="subtitle">Volunteer Engagement Report</p>
+            </div>
+            <div class="header-controls">
+                <a href="{{ url_for('report.organization_reports', school_year=school_year) }}" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Organization Reports
+                </a>
+                <form method="GET" style="margin: 0;">
+                    <select name="school_year" class="year-selector" onchange="this.form.submit()">
+                        {% for y in school_years %}
+                        <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                            {{ y[:2] }}-{{ y[2:] }} School Year
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div style="margin-bottom: 20px; padding: 10px; background: #f0f8ff; border-radius: 4px; font-size: 0.9em; color: #666;">
-        <strong>💡 Tip:</strong> Click on any column header in the tables below to sort by that column. Click again to reverse the sort order.
+    <!-- Cache Info Panel -->
+    {% if cache_is_fresh is defined %}
+    <div class="cache-info">
+        <div class="cache-status">
+            {% if cache_is_fresh %}
+                <span class="cache-fresh">⚡ Using cached data</span>
+                {% if last_updated %}
+                    <span>• Last updated: {{ last_updated.strftime('%m/%d/%y %I:%M %p') }}</span>
+                {% endif %}
+            {% else %}
+                <span class="cache-refreshed">🔄 Data refreshed</span>
+            {% endif %}
+        </div>
+        <button onclick="refreshDetailData({{ organization.id }})" class="refresh-btn">
+            Refresh Data
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Tip Section -->
+    <div class="tip-section">
+        <div class="tip-content">
+            <strong>Tip:</strong> Click on any column header in the tables below to sort by that column. Click again to reverse the sort order.
+        </div>
     </div>
 
-    <!-- Summary Section -->
-    <div class="summary-stats">
+    <!-- Summary Statistics -->
+    <div class="summary-grid">
         <div class="stat-card">
             <div class="stat-number">{{ summary.total_volunteers }}</div>
             <div class="stat-label">{{ organization.name }} volunteers engaged</div>
@@ -148,13 +92,20 @@
     </div>
 
     <!-- In-person experiences -->
-    {% if in_person_events %}
-    <h2 class="section-header">In-person experiences</h2>
-    <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-        <p><strong>Total:</strong> {{ summary.total_in_person_events }} in-person sessions reaching {{ summary.total_in_person_students }} students.</p>
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-users"></i>
+            In-person experiences
+        </h2>
     </div>
-    <div class="event-table">
-        <table>
+    
+    {% if in_person_events %}
+    <div class="section-subtitle">
+        <strong>Total:</strong> {{ summary.total_in_person_events }} in-person sessions reaching {{ summary.total_in_person_students }} students.
+    </div>
+    
+    <div class="enhanced-table-container">
+        <table class="enhanced-table">
             <thead>
                 <tr>
                     <th class="sortable {% if sort_by == 'students' %}active {{ sort_order }}{% endif %}" data-sort="students">No. students reached</th>
@@ -167,11 +118,11 @@
             <tbody>
                 {% for event in in_person_events %}
                 <tr>
-                    <td>{{ event.students_reached }}</td>
+                    <td><strong>{{ event.students_reached }}</strong></td>
                     <td>{{ event.date }}</td>
                     <td>
                         {% if event.volunteer_id %}
-                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}" class="volunteer-link">
+                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}">
                             {{ event.volunteer }}
                         </a>
                         {% else %}
@@ -180,72 +131,42 @@
                     </td>
                     <td>
                         {% if event.event_id %}
-                        <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link">
+                        <a href="{{ url_for('events.view_event', id=event.event_id) }}">
                             {{ event.session }}
                         </a>
                         {% else %}
                         {{ event.session }}
                         {% endif %}
                     </td>
-                    <td>{{ event.event_type }}</td>
+                    <td><span class="badge badge-primary">{{ event.event_type }}</span></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     {% else %}
-    <h2 class="section-header">In-person experiences</h2>
-    <p style="font-style: italic; color: #666; margin: 20px 0;">No in-person events found for this organization in the selected time period.</p>
-    {% endif %}
-
-    <!-- Volunteers for cancelled events -->
-    {% if cancelled_events %}
-    <h2 class="section-header">Volunteers for cancelled events due to {{ cancelled_events[0].cancellation_reason if cancelled_events else 'various reasons' }}</h2>
-    <div class="event-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Event</th>
-                    <th>Volunteer Name</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for event in cancelled_events %}
-                <tr>
-                    <td>
-                        {% if event.event_id %}
-                        <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link">
-                            {{ event.event }}
-                        </a>
-                        {% else %}
-                        {{ event.event }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if event.volunteer_id %}
-                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}" class="volunteer-link">
-                            {{ event.volunteer }}
-                        </a>
-                        {% else %}
-                        {{ event.volunteer }}
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-message">No in-person events found for this organization in the selected time period.</div>
     </div>
     {% endif %}
 
     <!-- Virtual experiences -->
-    {% if virtual_events %}
-    <h2 class="section-header">Virtual experiences</h2>
-    <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-        <p><strong>Total:</strong> {{ summary.total_virtual_events }} virtual sessions reaching approximately {{ summary.total_virtual_classrooms }} students.</p>
-        <p><strong>Note:</strong> Virtual events include Virtual Sessions, Connector Sessions, Data Visualization, and other remote learning activities. Includes completed sessions even when there was a teacher no-show.</p>
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-video"></i>
+            Virtual experiences
+        </h2>
     </div>
-    <div class="event-table">
-        <table>
+    
+    {% if virtual_events %}
+    <div class="section-subtitle virtual">
+        <strong>Total:</strong> {{ summary.total_virtual_events }} virtual sessions reaching approximately {{ summary.total_virtual_classrooms }} students.<br>
+        <strong>Note:</strong> Virtual events include Virtual Sessions, Connector Sessions, Data Visualization, and other remote learning activities. Includes completed sessions even when there was a teacher no-show.
+    </div>
+    
+    <div class="enhanced-table-container">
+        <table class="enhanced-table">
             <thead>
                 <tr>
                     <th class="sortable {% if sort_by == 'date' %}active {{ sort_order }}{% endif %}" data-sort="date">Date</th>
@@ -262,10 +183,10 @@
                 <tr>
                     <td>{{ event.date }}</td>
                     <td>{{ event.time }}</td>
-                    <td>{{ event.classrooms }}</td>
+                    <td><strong>{{ event.classrooms }}</strong></td>
                     <td>
                         {% if event.event_id %}
-                        <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link">
+                        <a href="{{ url_for('events.view_event', id=event.event_id) }}">
                             {{ event.session }}
                         </a>
                         {% else %}
@@ -274,30 +195,85 @@
                     </td>
                     <td>
                         {% if event.volunteer_id %}
-                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}" class="volunteer-link">
+                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}">
                             {{ event.volunteer }}
                         </a>
                         {% else %}
                         {{ event.volunteer }}
                         {% endif %}
                     </td>
-                    <td>{{ event.event_type }}</td>
-                    <td>{{ event.session_id }}</td>
+                    <td><span class="badge badge-info">{{ event.event_type }}</span></td>
+                    <td><code>{{ event.session_id }}</code></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     {% else %}
-    <h2 class="section-header">Virtual experiences</h2>
-    <p style="font-style: italic; color: #666; margin: 20px 0;">No virtual events found for this organization in the selected time period.</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">💻</div>
+        <div class="empty-state-message">No virtual events found for this organization in the selected time period.</div>
+    </div>
+    {% endif %}
+
+    <!-- Volunteers for cancelled events -->
+    {% if cancelled_events %}
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-exclamation-triangle"></i>
+            Volunteers for cancelled events
+        </h2>
+    </div>
+    
+    <div class="enhanced-table-container">
+        <table class="enhanced-table">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Volunteer Name</th>
+                    <th>Cancellation Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in cancelled_events %}
+                <tr>
+                    <td>
+                        {% if event.event_id %}
+                        <a href="{{ url_for('events.view_event', id=event.event_id) }}">
+                            {{ event.event }}
+                        </a>
+                        {% else %}
+                        {{ event.event }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.volunteer_id %}
+                        <a href="{{ url_for('volunteers.view_volunteer', id=event.volunteer_id) }}">
+                            {{ event.volunteer }}
+                        </a>
+                        {% else %}
+                        {{ event.volunteer }}
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-warning">{{ event.cancellation_reason }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% endif %}
 
     <!-- Volunteer Summary -->
     {% if volunteers %}
-    <h2 class="section-header">Volunteer Summary</h2>
-    <div class="event-table">
-        <table>
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-chart-bar"></i>
+            Volunteer Summary
+        </h2>
+    </div>
+    
+    <div class="enhanced-table-container">
+        <table class="enhanced-table">
             <thead>
                 <tr>
                     <th>Volunteer Name</th>
@@ -308,9 +284,9 @@
             <tbody>
                 {% for volunteer in volunteers %}
                 <tr>
-                    <td>{{ volunteer.name }}</td>
-                    <td>{{ volunteer.events }}</td>
-                    <td>{{ volunteer.hours }}</td>
+                    <td><strong>{{ volunteer.name }}</strong></td>
+                    <td><span class="badge badge-success">{{ volunteer.events }}</span></td>
+                    <td><strong>{{ volunteer.hours }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -319,15 +295,54 @@
     {% endif %}
 
     <!-- Report Summary -->
-    <div class="section-header" style="margin-top: 40px;">
-        <h2>Report Summary</h2>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 15px;">
-            <p><strong>Total:</strong> {{ summary.total_volunteers }} {{ organization.name }} volunteers lead {{ summary.total_in_person_events + summary.total_virtual_events }} sessions reaching approximately {{ summary.total_in_person_students + summary.total_virtual_classrooms }} students.</p>
+    <div class="report-summary">
+        <div class="section-header" style="margin: 0 0 1.5rem 0; box-shadow: none; background: transparent; padding: 0;">
+            <h2 class="section-title">
+                <i class="fas fa-file-alt"></i>
+                Report Summary
+            </h2>
+        </div>
+        <div class="summary-content">
+            <p><strong>Total:</strong> <span class="summary-highlight">{{ summary.total_volunteers }} {{ organization.name }} volunteers</span> led <span class="summary-highlight">{{ summary.total_in_person_events + summary.total_virtual_events }} sessions</span> reaching approximately <span class="summary-highlight">{{ summary.total_in_person_students + summary.total_virtual_classrooms }} students</span>.</p>
             
             {% if summary.total_cancelled_events > 0 %}
-            <p style="margin-top: 10px;"><strong>Note:</strong> {{ summary.total_cancelled_events }} event(s) were cancelled during this time period.</p>
+            <p style="margin-top: 1rem;"><strong>Note:</strong> <span class="summary-highlight">{{ summary.total_cancelled_events }} event(s)</span> were cancelled during this time period.</p>
             {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+function refreshDetailData(orgId) {
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = 'Refreshing...';
+    button.disabled = true;
+    
+    const schoolYear = new URLSearchParams(window.location.search).get('school_year') || '{{ school_year }}';
+    
+    fetch(`{{ url_for('report.refresh_organization_detail', org_id=0) }}`.replace('0', orgId) + `?school_year=${schoolYear}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to show fresh data
+            window.location.reload();
+        } else {
+            alert('Error refreshing data: ' + data.error);
+            button.textContent = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('Error refreshing data: ' + error);
+        button.textContent = originalText;
+        button.disabled = false;
+    });
+}
+</script>
 {% endblock %} 
