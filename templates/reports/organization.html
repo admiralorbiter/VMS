@@ -28,6 +28,30 @@
         <div style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 4px; font-size: 0.9em; color: #666;">
             <strong>💡 Tip:</strong> Click on any column header to sort the table by that column. Click again to reverse the sort order.
         </div>
+
+        <!-- Cache and Performance Info -->
+        <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em;">
+            <div>
+                {% if cache_is_fresh %}
+                    <span style="color: #28a745;">⚡ Using cached data</span>
+                    {% if last_updated %}
+                        <span style="color: #666;"> • Last updated: {{ last_updated.strftime('%m/%d/%y %I:%M %p') }}</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color: #ffc107;">🔄 Data refreshed</span>
+                {% endif %}
+                
+                {% if total_orgs %}
+                    <span style="color: #666;"> • Showing {{ ((page-1) * per_page) + 1 }}-{{ [page * per_page, total_orgs] | min }} of {{ total_orgs }} organizations</span>
+                {% endif %}
+            </div>
+            
+            <div>
+                <button onclick="refreshData()" style="padding: 4px 8px; font-size: 0.8em; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="organization-table">
@@ -58,5 +82,110 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Controls -->
+    {% if total_pages > 1 %}
+    <div class="pagination-container" style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;">
+        <!-- Previous button -->
+        {% if has_prev %}
+            <a href="{{ url_for('report.organization_reports', school_year=school_year, sort_by=sort_by, sort_order=sort_order, page=prev_num) }}" 
+               style="padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">
+                ← Previous
+            </a>
+        {% else %}
+            <span style="padding: 8px 12px; background: #f8f9fa; color: #6c757d; border-radius: 4px;">← Previous</span>
+        {% endif %}
+
+        <!-- Page numbers -->
+        <div style="display: flex; gap: 5px;">
+            {% set start_page = [1, page - 2] | max %}
+            {% set end_page = [total_pages, page + 2] | min %}
+            
+            {% if start_page > 1 %}
+                <a href="{{ url_for('report.organization_reports', school_year=school_year, sort_by=sort_by, sort_order=sort_order, page=1) }}" 
+                   style="padding: 8px 12px; background: #f8f9fa; color: #007bff; text-decoration: none; border-radius: 4px;">1</a>
+                {% if start_page > 2 %}
+                    <span style="padding: 8px 12px;">...</span>
+                {% endif %}
+            {% endif %}
+
+            {% for page_num in range(start_page, end_page + 1) %}
+                {% if page_num == page %}
+                    <span style="padding: 8px 12px; background: #007bff; color: white; border-radius: 4px;">{{ page_num }}</span>
+                {% else %}
+                    <a href="{{ url_for('report.organization_reports', school_year=school_year, sort_by=sort_by, sort_order=sort_order, page=page_num) }}" 
+                       style="padding: 8px 12px; background: #f8f9fa; color: #007bff; text-decoration: none; border-radius: 4px;">{{ page_num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+                {% if end_page < total_pages - 1 %}
+                    <span style="padding: 8px 12px;">...</span>
+                {% endif %}
+                <a href="{{ url_for('report.organization_reports', school_year=school_year, sort_by=sort_by, sort_order=sort_order, page=total_pages) }}" 
+                   style="padding: 8px 12px; background: #f8f9fa; color: #007bff; text-decoration: none; border-radius: 4px;">{{ total_pages }}</a>
+            {% endif %}
+        </div>
+
+        <!-- Next button -->
+        {% if has_next %}
+            <a href="{{ url_for('report.organization_reports', school_year=school_year, sort_by=sort_by, sort_order=sort_order, page=next_num) }}" 
+               style="padding: 8px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">
+                Next →
+            </a>
+        {% else %}
+            <span style="padding: 8px 12px; background: #f8f9fa; color: #6c757d; border-radius: 4px;">Next →</span>
+        {% endif %}
+    </div>
+
+    <!-- Per-page selector -->
+    <div style="margin-top: 15px; text-align: center;">
+        <label for="per_page" style="margin-right: 10px;">Show per page:</label>
+        <select id="per_page" onchange="changePerPage(this.value)" style="padding: 4px;">
+            <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+            <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+        </select>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+function refreshData() {
+    const button = event.target;
+    button.textContent = 'Refreshing...';
+    button.disabled = true;
+    
+    fetch(`{{ url_for('report.refresh_organization_reports') }}?school_year={{ school_year }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to show fresh data
+            window.location.reload();
+        } else {
+            alert('Error refreshing data: ' + data.error);
+            button.textContent = 'Refresh Data';
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('Error refreshing data: ' + error);
+        button.textContent = 'Refresh Data';
+        button.disabled = false;
+    });
+}
+
+function changePerPage(perPage) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', perPage);
+    url.searchParams.set('page', '1'); // Reset to first page
+    window.location.href = url.toString();
+}
+</script>
 {% endblock %} 
