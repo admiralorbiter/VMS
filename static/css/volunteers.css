@@ -148,6 +148,23 @@
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
 }
 
+.advanced-search-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: 2px solid var(--delft-blue);
+}
+
+.advanced-search-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.advanced-search-btn i {
+    margin-right: 0.5rem;
+}
+
 .volunteers-table-container {
     background-color: white;
     border-radius: 10px;

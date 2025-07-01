@@ -145,3 +145,21 @@
 
 ## Bugs
 - [ ] Volunteer Purge May not be working - When I purge volunteers and reimport I'm missing some data. Ie: My main account Jon Lane.
+
+# Feature List 2.0
+
+## Volunteer Directory
+
+- [ ] Edit
+- [ ] Add
+- [x] Delete
+- [x] Import
+- [ ] Search
+  - [x] Name
+  - [ ] Org/Role/Title/Dept
+  - [x] Local Status
+  - [x] Email
+  - [x] Skills
+  - [x] Advance Search Button
+
+## Advance Search
