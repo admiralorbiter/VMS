@@ -11,9 +11,11 @@
     <div class="page-header">
         <div class="title-section">
             <h1>{{ history.summary }}</h1>
+            {% if history.activity_type %}
             <span class="activity-type-badge {{ history.activity_type.lower() }}">
                 {{ history.activity_type }}
             </span>
+            {% endif %}
         </div>
         <div class="header-actions">
             <a href="{{ url_for('history.history_table') }}" class="back-btn">
@@ -37,9 +39,13 @@
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Status</label>
+                        {% if history.activity_status %}
                         <span class="status-badge {{ history.activity_status.lower() }}">
                             {{ history.activity_status }}
                         </span>
+                        {% else %}
+                        <span class="status-badge">No Status</span>
+                        {% endif %}
                     </div>
                     <div class="info-item">
                         <label>Activity Date</label>
@@ -47,7 +53,7 @@
                     </div>
                     <div class="info-item">
                         <label>Action</label>
-                        <p>{{ history.action }}</p>
+                        <p>{{ history.action or 'No Action' }}</p>
                     </div>
                     {% if history.completed_at %}
                     <div class="info-item">
@@ -67,6 +73,16 @@
             </div>
             <div class="card-content">
                 <p class="description-text">{{ history.description }}</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="info-card">
+            <div class="card-header">
+                <i class="fa-solid fa-align-left"></i>
+                <h2>Description</h2>
+            </div>
+            <div class="card-content">
+                <p class="description-text">No description available</p>
             </div>
         </div>
         {% endif %}

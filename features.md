@@ -112,7 +112,7 @@
 
 - [ ] Search
   - [x] Summary Search
-  - [ ] Detailed Search
+  - [x] Detailed Search
   - [ ] Activity Type
   - [x] Status
   - [x] Start Date
