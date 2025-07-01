@@ -39,11 +39,11 @@
     </div>
 
     <div class="volunteer-profile-grid">
-        <!-- Personal Information Card -->
-        <div class="profile-card personal-info">
+        <!-- Personal & Contact Information Combined -->
+        <div class="profile-card personal-contact-info">
             <div class="card-header">
                 <i class="fa-solid fa-user"></i>
-                <h2>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</h2>
+                <h2>Personal & Contact Information</h2>
             </div>
             <div class="card-content">
                 {% if volunteer.do_not_contact %}
@@ -51,8 +51,21 @@
                     <i class="fas fa-user-slash"></i> <strong>Do Not Contact This Volunteer</strong>
                 </div>
                 {% endif %}
-                <p>{{ volunteer.title }}</p>
-                <!-- Add Gender Info -->
+                
+                <!-- Basic Info -->
+                <div class="info-group">
+                    <label>Full Name</label>
+                    <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
+                </div>
+                
+                {% if volunteer.title %}
+                <div class="info-group">
+                    <label>Title</label>
+                    <p>{{ volunteer.title }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Demographics Row -->
                 <div class="demographics-row">
                     {% if volunteer.gender %}
                     <div class="info-group">
@@ -108,100 +121,14 @@
                     </div>
                 </div>
 
-                <!-- Email Activity -->
-                <div class="info-group">
-                    <label>Email Activity</label>
-                    <div class="mailchimp-info">
-                        {% if volunteer.last_email_date %}
-                        {% set days_since_email = (now.date() - volunteer.last_email_date).days %}
-                        <div class="activity-date">
-                            <div class="activity-info">
-                                <i class="fa-solid fa-envelope"></i>
-                                <span>
-                                    Last Email: {{ volunteer.last_email_date.strftime('%b %d, %Y') }}
-                                </span>
-                            </div>
-                            <div class="days-ago {{ 'recent' if days_since_email <= 30 else 'moderate' if days_since_email <= 90 else 'old' }}">
-                                {{ days_since_email }} days ago
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.last_non_internal_email_date %}
-                        {% set days_since_external = (now.date() - volunteer.last_non_internal_email_date).days %}
-                        <div class="activity-date">
-                            <div class="activity-info">
-                                <i class="fa-solid fa-envelope-open-text"></i>
-                                <span>
-                                    Last External Email: {{ volunteer.last_non_internal_email_date.strftime('%b %d, %Y') }}
-                                </span>
-                            </div>
-                            <div class="days-ago {{ 'recent' if days_since_external <= 30 else 'moderate' if days_since_external <= 90 else 'old' }}">
-                                {{ days_since_external }} days ago
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.last_mailchimp_activity_date %}
-                        {% set days_since_mailchimp = (now.date() - volunteer.last_mailchimp_activity_date).days %}
-                        <div class="activity-date">
-                            <div class="activity-info">
-                                <i class="fa-brands fa-mailchimp"></i>
-                                <span>
-                                    Last Mailchimp: {{ volunteer.last_mailchimp_activity_date.strftime('%b %d, %Y') }}
-                                </span>
-                            </div>
-                            <div class="days-ago {{ 'recent' if days_since_mailchimp <= 30 else 'moderate' if days_since_mailchimp <= 90 else 'old' }}">
-                                {{ days_since_mailchimp }} days ago
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.email_bounced_date %}
-                        <div class="alert alert-info mb-2">
-                            <i class="fas fa-exclamation-triangle"></i> Last email bounced on {{ volunteer.email_bounced_date.strftime('%Y-%m-%d %H:%M:%S') }}
-                        </div>
-                        {% endif %}
-                    </div>
+                <!-- Contact Information -->
+                {% if volunteer.email_opt_out %}
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-envelope-slash"></i> Email communications opted out
                 </div>
-
-                <!-- Age Group -->
-                {% if volunteer.age_group and volunteer.age_group.value %}
-                <div class="info-group">
-                    <label>Age Group</label>
-                    <p>{{ volunteer.age_group.value }}</p>
-                </div>
-                {% endif %}
-                
-                <!-- Education Level -->
-                {% if volunteer.education_level and volunteer.education_level.value %}
-                <div class="info-group">
-                    <label>Education Level</label>
-                    <p>{{ volunteer.education_level.value }}</p>
-                </div>
-                {% endif %}
-                
-                {% if volunteer.description %}
-                <div class="info-group">
-                    <label>Description</label>
-                    <p>{{ volunteer.description }}</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Contact Information Card -->
-        <div class="profile-card contact-info">
-            <div class="card-header">
-                <i class="fa-solid fa-address-book"></i>
-                <h2>Contact Information</h2>
-            </div>
-            <div class="card-content">
-                <!-- Email Addresses -->
+                {% else %}
                 <div class="info-group">
                     <label>Email Addresses</label>
-                    {% if volunteer.email_opt_out %}
-                    <div class="alert alert-warning" role="alert">
-                        <i class="fas fa-envelope-slash"></i> Email communications opted out
-                    </div>
-                    {% else %}
                     <div class="email-list">
                         {% for email in volunteer.emails %}
                         <div class="contact-item">
@@ -219,17 +146,12 @@
                         </div>
                         {% endfor %}
                     </div>
-                    {% endif %}
                 </div>
+                {% endif %}
 
-                <!-- Phone Numbers -->
+                {% if not volunteer.do_not_call %}
                 <div class="info-group">
                     <label>Phone Numbers</label>
-                    {% if volunteer.do_not_call %}
-                    <div class="alert alert-warning" role="alert">
-                        <i class="fas fa-phone-slash"></i> Do not call this volunteer
-                    </div>
-                    {% else %}
                     <div class="phone-list">
                         {% for phone in volunteer.phones %}
                         <div class="contact-item">
@@ -247,46 +169,6 @@
                         </div>
                         {% endfor %}
                     </div>
-                    {% endif %}
-                </div>
-
-                <!-- Address Information -->
-                {% if volunteer.addresses %}
-                <div class="contact-section">
-                    <h3><i class="fa-solid fa-location-dot"></i> Addresses</h3>
-                    {% for address in volunteer.addresses %}
-                    <div class="contact-item address-item">
-                        <span class="contact-badge {{ address.type.value }}">
-                            {% if address.type.value == 'personal' %}
-                            <i class="fa-solid fa-house"></i>
-                            {% else %}
-                            <i class="fa-solid fa-building"></i>
-                            {% endif %}
-                        </span>
-                        <div class="address-content">
-                            {% if address.address_line1 %}
-                            <p class="mb-0">{{ address.address_line1 }}</p>
-                            {% endif %}
-                            {% if address.address_line2 and address.address_line2.strip() %}
-                            <p class="mb-0">{{ address.address_line2 }}</p>
-                            {% endif %}
-                            {% if address.city or address.state or address.zip_code %}
-                            <p class="mb-0">
-                                {%- if address.city %}{{ address.city }}{% endif -%}
-                                {%- if address.city and address.state %}, {% endif -%}
-                                {%- if address.state %}{{ address.state }}{% endif -%}
-                                {%- if address.zip_code %} {{ address.zip_code }}{% endif -%}
-                            </p>
-                            {% endif %}
-                            {% if address.country and address.country.strip() and address.country.lower() != 'united states' %}
-                            <p class="mb-0">{{ address.country }}</p>
-                            {% endif %}
-                        </div>
-                        {% if address.primary %}
-                        <span class="primary-badge">Primary</span>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
                 </div>
                 {% endif %}
             </div>
@@ -299,166 +181,116 @@
                 <h2>Professional Information</h2>
             </div>
             <div class="card-content">
-                <div class="org-info">
+                {% if volunteer.organizations %}
                     <div class="info-group">
-                        <label>Title</label>
-                        <p class="org-title">{{ volunteer.title }}</p>
+                        <label>Organizations</label>
+                        <div class="organizations-list">
+                            {% for org in volunteer.organizations %}
+                                <div class="organization-item">
+                                    <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-name">
+                                        {{ org.name }}
+                                    </a>
+                                    {% set vol_org = org_relationships[org.id] %}
+                                    {% if vol_org and (vol_org.role or vol_org.status) %}
+                                        <div class="org-details">
+                                            {% if vol_org.role %}
+                                                <span class="org-role">{{ vol_org.role }}</span>
+                                            {% endif %}
+                                            {% if vol_org.status %}
+                                                <span class="org-status">{{ vol_org.status }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
                     </div>
-                    {% if volunteer.organizations %}
-                        <div class="info-group">
-                            <label>Organizations</label>
-                            <div class="organizations-list">
-                                {% for org in volunteer.organizations %}
-                                    <div class="organization-item">
-                                        <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-name">
-                                            {{ org.name }}
-                                        </a>
-                                        {% set vol_org = org_relationships[org.id] %}
-                                        {% if vol_org and (vol_org.role or vol_org.status) %}
-                                            <div class="org-details">
-                                                {% if vol_org.role %}
-                                                    <span class="org-role">{{ vol_org.role }}</span>
-                                                {% endif %}
-                                                {% if vol_org.status %}
-                                                    <span class="org-status">{{ vol_org.status }}</span>
-                                                {% endif %}
-                                            </div>
-                                        {% endif %}
-                                        {% if vol_org and (vol_org.start_date or vol_org.end_date) %}
-                                            <div class="org-dates">
-                                                {% if vol_org.start_date %}
-                                                    <span class="start-date">From: {{ vol_org.start_date.strftime('%Y-%m-%d') }}</span>
-                                                {% endif %}
-                                                {% if vol_org.end_date %}
-                                                    <span class="end-date">To: {{ vol_org.end_date.strftime('%Y-%m-%d') }}</span>
-                                                {% endif %}
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
+                {% elif volunteer.organization_name %}
+                    <div class="info-group">
+                        <label>Organization</label>
+                        <p class="org-name">{{ volunteer.organization_name }}</p>
+                    </div>
+                {% endif %}
+                
+                <div class="demographics-row">
+                    <div class="info-group">
+                        <label>Department</label>
+                        <p class="org-department">{{ volunteer.department or 'Not specified' }}</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Industry</label>
+                        <p>{{ volunteer.industry or 'Not specified' }}</p>
+                    </div>
+                </div>
+
+                <!-- Email Activity -->
+                {% if volunteer.last_email_date or volunteer.last_non_internal_email_date or volunteer.last_mailchimp_activity_date %}
+                <div class="info-group">
+                    <label>Email Activity</label>
+                    <div class="mailchimp-info">
+                        {% if volunteer.last_email_date %}
+                        {% set days_since_email = (now.date() - volunteer.last_email_date).days %}
+                        <div class="activity-date">
+                            <i class="fa-solid fa-envelope"></i>
+                            <span>Last: {{ volunteer.last_email_date.strftime('%b %d, %Y') }}</span>
+                            <div class="days-ago {{ 'recent' if days_since_email <= 30 else 'moderate' if days_since_email <= 90 else 'old' }}">
+                                {{ days_since_email }}d ago
                             </div>
                         </div>
-                    {% elif volunteer.organization_name %}
-                        <div class="info-group">
-                            <label>Organization</label>
-                            <p class="org-name">{{ volunteer.organization_name }}</p>
-                        </div>
-                    {% endif %}
-                    <div class="row">
-                        <div class="col info-group">
-                            <label>Department</label>
-                            <p class="org-department">{{ volunteer.department }}</p>
-                        </div>
-                        <div class="col info-group">
-                            <label>Industry</label>
-                            <p>{{ volunteer.industry }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Connector Information Card -->
-        <div class="profile-card connector-info">
-            <div class="card-header">
-                <i class="fa-solid fa-plug"></i>
-                <h2>Connector Information</h2>
-            </div>
-            <div class="card-content">
-                {% if volunteer.connector %}
-                <div class="connector-grid">
-                    <!-- Subscription Info -->
-                    <div class="connector-section">
-                        <h3><i class="fa-solid fa-certificate"></i> Subscription</h3>
-                        <div class="info-group">
-                            <label>Status</label>
-                            <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
-                                {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription }}
-                            </span>
-                        </div>
-                        {% if volunteer.connector.active_subscription_name %}
-                        <div class="info-group">
-                            <label>Subscription Name</label>
-                            <p>{{ volunteer.connector.active_subscription_name }}</p>
-                        </div>
                         {% endif %}
                     </div>
-
-                    <!-- Role Info -->
-                    <div class="connector-section">
-                        <h3><i class="fa-solid fa-user-tag"></i> Roles</h3>
-                        {% if volunteer.connector.role %}
-                        <div class="info-group">
-                            <label>Current Role</label>
-                            <span class="role-badge">{{ volunteer.connector.role }}</span>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.connector.signup_role %}
-                        <div class="info-group">
-                            <label>SignUp Role</label>
-                            <span class="role-badge signup">{{ volunteer.connector.signup_role }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Profile Info -->
-                    <div class="connector-section">
-                        <h3><i class="fa-solid fa-id-card"></i> Profile</h3>
-                        {% if volunteer.connector.user_auth_id %}
-                        <div class="info-group">
-                            <label>User ID</label>
-                            <p>{{ volunteer.connector.user_auth_id }}</p>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.connector.profile_link %}
-                        <div class="info-group">
-                            <label>Profile Link</label>
-                            <a href="{{ volunteer.connector.profile_link }}" target="_blank" class="profile-link">
-                                <i class="fa-solid fa-external-link"></i> View Profile
-                            </a>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Activity Info -->
-                    <div class="connector-section">
-                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Activity</h3>
-                        {% if volunteer.connector.joining_date %}
-                        <div class="info-group">
-                            <label>Joined</label>
-                            <p>{{ volunteer.connector.joining_date }}</p>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.connector.last_login_datetime %}
-                        <div class="info-group">
-                            <label>Last Login</label>
-                            <p>{{ volunteer.connector.last_login_datetime }}</p>
-                        </div>
-                        {% endif %}
-                        {% if volunteer.connector.last_update_date %}
-                        <div class="info-group">
-                            <label>Last Updated</label>
-                            <p>{{ volunteer.connector.last_update_date.strftime('%Y-%m-%d') }}</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% else %}
-                <div class="no-data">
-                    <i class="fa-solid fa-info-circle"></i>
-                    <p>No Connector data available</p>
                 </div>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Skills Card -->
-        <div class="profile-card skills-info">
+        <!-- Skills & Quick Stats Combined -->
+        <div class="profile-card skills-stats-info">
             <div class="card-header">
                 <i class="fa-solid fa-star"></i>
-                <h2>Skills & Interests</h2>
+                <h2>Skills & Activity Summary</h2>
             </div>
             <div class="card-content">
+                <!-- Quick Stats -->
+                <div class="history-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>First</label>
+                            <p>{{ volunteer.first_volunteer_date.strftime('%m/%d/%y') if volunteer.first_volunteer_date else 'N/A' }}</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>Last</label>
+                            <p>{{ volunteer.last_volunteer_date.strftime('%m/%d/%y') if volunteer.last_volunteer_date else 'N/A' }}</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>Activity</label>
+                            <p>{{ volunteer.last_activity_date.strftime('%m/%d/%y') if volunteer.last_activity_date else 'Never' }}</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <label>Total</label>
+                            <p>{{ volunteer.total_times_volunteered }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 {% if volunteer.skills %}
                 <div class="info-group">
                     <label>Skills</label>
@@ -482,59 +314,9 @@
                     </div>
                 </div>
                 {% endif %}
-            </div>
-        </div>
 
-        <!-- History Card -->
-        <div class="profile-card history-info">
-            <div class="card-header">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-                <h2>History</h2>
-            </div>
-            <div class="card-content">
-                <!-- Key Stats -->
-                <div class="history-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fa-solid fa-flag-checkered"></i>
-                        </div>
-                        <div class="stat-content">
-                            <label>First Volunteered</label>
-                            <p>{{ volunteer.first_volunteer_date.strftime('%b %d, %Y') if volunteer.first_volunteer_date else 'Not recorded' }}</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fa-solid fa-flag-checkered"></i>
-                        </div>
-                        <div class="stat-content">
-                            <label>Last Volunteered</label>
-                            <p>{{ volunteer.last_volunteer_date.strftime('%b %d, %Y') if volunteer.last_volunteer_date else 'Not recorded' }}</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fa-solid fa-calendar-check"></i>
-                        </div>
-                        <div class="stat-content">
-                            <label>Last Activity</label>
-                            <p>{{ volunteer.last_activity_date.strftime('%b %d, %Y') if volunteer.last_activity_date else 'Never' }}</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fa-solid fa-chart-line"></i>
-                        </div>
-                        <div class="stat-content">
-                            <label>Total Times</label>
-                            <p>{{ volunteer.total_times_volunteered }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recruitment Notes -->
                 {% if volunteer.notes %}
-                <div class="info-group mt-4">
+                <div class="info-group">
                     <label>Recruitment Notes</label>
                     <div class="notes-card">
                         <i class="fa-solid fa-note-sticky notes-icon"></i>
@@ -542,11 +324,164 @@
                     </div>
                 </div>
                 {% endif %}
+            </div>
+        </div>
 
-                <!-- History Timeline -->
-                {% if histories %}
-                <div class="history-container mt-4">
+        <!-- Event Participation History - Compact -->
+        <div class="profile-card participation-card">
+            <div class="card-header">
+                <i class="fa-solid fa-calendar-check"></i>
+                <h2>Event Participation ({{ participation_stats['Attended']|length + participation_stats['No-Show']|length + participation_stats['Cancelled']|length }} total)</h2>
+            </div>
+            <div class="card-content">
+                <div class="participation-tabs">
+                    <div class="participation-tab active">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>Attended ({{ participation_stats['Attended']|length }})</span>
+                    </div>
+                    <div class="participation-tab">
+                        <i class="fa-solid fa-times-circle"></i>
+                        <span>No-Shows ({{ participation_stats['No-Show']|length }})</span>
+                    </div>
+                    <div class="participation-tab">
+                        <i class="fa-solid fa-ban"></i>
+                        <span>Cancelled ({{ participation_stats['Cancelled']|length }})</span>
+                    </div>
+                </div>
+
+                {% for status, events in participation_stats.items() %}
+                <div class="event-list" data-status="{{ status }}" {% if not loop.first %}style="display: none;"{% endif %}>
+                    {% if events %}
+                        <div class="event-items-container">
+                            {% for event in events[:5] %}  <!-- Show only first 5 events initially -->
+                            <div class="event-item event-item-initial">
+                                <div class="event-date">
+                                    <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
+                                    <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
+                                </div>
+                                <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
+                                    <div class="event-title">{{ event.event.title }}</div>
+                                    <div class="event-details">
+                                        <span class="event-type {{ event.event.type }}">
+                                            {% if event.event.type == 'virtual_session' %}
+                                                <i class="fa-solid fa-video"></i> Virtual
+                                            {% elif event.event.type == 'in_person' %}
+                                                <i class="fa-solid fa-user-group"></i> In-Person
+                                            {% else %}
+                                                <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </a>
+                                {% if event.delivery_hours %}
+                                <div class="event-hours">{{ event.delivery_hours }}h</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            
+                            {% if events|length > 5 %}
+                            <!-- Hidden events that will be shown when expanded -->
+                            <div class="event-items-hidden" style="display: none;">
+                                {% for event in events[5:] %}  <!-- Show remaining events -->
+                                <div class="event-item event-item-additional">
+                                    <div class="event-date">
+                                        <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
+                                        <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
+                                    </div>
+                                    <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
+                                        <div class="event-title">{{ event.event.title }}</div>
+                                        <div class="event-details">
+                                            <span class="event-type {{ event.event.type }}">
+                                                {% if event.event.type == 'virtual_session' %}
+                                                    <i class="fa-solid fa-video"></i> Virtual
+                                                {% elif event.event.type == 'in_person' %}
+                                                    <i class="fa-solid fa-user-group"></i> In-Person
+                                                {% else %}
+                                                    <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </a>
+                                    {% if event.delivery_hours %}
+                                    <div class="event-hours">{{ event.delivery_hours }}h</div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <button class="show-more-btn" onclick="toggleEventExpansion('{{ status }}', this)">
+                                <i class="fa-solid fa-chevron-down"></i>
+                                Show {{ events|length - 5 }} more events
+                            </button>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="no-events">No {{ status.lower() }} events found.</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Connector Information - Conditional -->
+        {% if volunteer.connector %}
+        <div class="profile-card connector-info">
+            <div class="card-header">
+                <i class="fa-solid fa-plug"></i>
+                <h2>Connector Information</h2>
+            </div>
+            <div class="card-content">
+                <div class="demographics-row">
+                    {% if volunteer.connector.active_subscription %}
+                    <div class="info-group">
+                        <label>Status</label>
+                        <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
+                            {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if volunteer.connector.role %}
+                    <div class="info-group">
+                        <label>Role</label>
+                        <span class="role-badge">{{ volunteer.connector.role }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if volunteer.connector.last_login_datetime or volunteer.connector.joining_date %}
+                <div class="demographics-row">
+                    {% if volunteer.connector.joining_date %}
+                    <div class="info-group">
+                        <label>Joined</label>
+                        <p>{{ volunteer.connector.joining_date }}</p>
+                    </div>
+                    {% endif %}
+                    {% if volunteer.connector.last_login_datetime %}
+                    <div class="info-group">
+                        <label>Last Login</label>
+                        <p>{{ volunteer.connector.last_login_datetime }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- History Section - Collapsible -->
+        {% if histories %}
+        <div class="profile-card history-info">
+            <div class="card-header" style="cursor: pointer;" onclick="toggleHistorySection()">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <h2>Communication History ({{ histories|length }})</h2>
+                <i class="fa-solid fa-chevron-down" id="history-toggle-icon" style="margin-left: auto;"></i>
+            </div>
+            <div class="card-content" id="history-content" style="display: none;">
+                <div class="history-container">
                     <div class="history-filters">
+                        <div class="history-filter active" data-type="all">
+                            <i class="fa-solid fa-list"></i>
+                            <span>All</span>
+                        </div>
                         <div class="history-filter" data-type="Email">
                             <i class="fa-solid fa-envelope"></i>
                             <span>Email</span>
@@ -559,152 +494,130 @@
                             <i class="fa-solid fa-handshake"></i>
                             <span>Meeting</span>
                         </div>
-                        <div class="history-filter" data-type="Other">
-                            <i class="fa-solid fa-clipboard-list"></i>
-                            <span>Other</span>
-                        </div>
                     </div>
                     
-                    <div class="history-timeline">
-                        {% for history in histories %}
-                        <div class="history-group">
-                            <div class="history-group-header">
-                                <span>{{ history.activity_date.strftime('%B %Y') }}</span>
-                                <button class="collapse-btn">
-                                    <i class="fa-solid fa-chevron-right"></i>
-                                </button>
+                    <div class="history-timeline" style="max-height: 400px; overflow-y: auto;">
+                        {% for history in histories[:10] %}  <!-- Show only first 10 history items -->
+                        <div class="history-item" data-type="{{ history.activity_type }}">
+                            <div class="history-header">
+                                <span class="history-date">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    {{ history.activity_date.strftime('%m/%d/%y') if history.activity_date else 'N/A' }}
+                                </span>
+                                <span class="history-status">
+                                    {{ history.activity_status }}
+                                </span>
                             </div>
-                            <div class="history-group-content collapsed">
-                                <div class="history-item" data-date="{{ history.activity_date.isoformat() if history.activity_date else '' }}">
-                                    <div class="history-header">
-                                        <span class="history-date">
-                                            <i class="fa-regular fa-calendar"></i>
-                                            {{ history.activity_date|format_date }}
-                                        </span>
-                                        <span class="history-status">
-                                            <i class="fa-solid fa-circle-check"></i>
-                                            {{ history.activity_status }}
-                                        </span>
-                                    </div>
-                                    {% if history.activity_type == 'Email' %}
-                                        <div class="email-header">
-                                            <div><span>Subject:</span> {{ history.summary }}</div>
-                                            {% if history.description %}
-                                                <div><span>To:</span> {{ history.description.split('\n')[0] }}</div>
-                                            {% endif %}
-                                        </div>
-                                        {% if history.description %}
-                                            <div class="email-body">
-                                                {{ history.description|replace('', '')|safe }}
-                                            </div>
-                                        {% endif %}
-                                    {% else %}
-                                        <div class="history-content">
-                                            {% if history.summary %}
-                                                <div class="history-summary">{{ history.summary }}</div>
-                                            {% endif %}
-                                            {% if history.description %}
-                                                <div class="history-description">{{ history.description }}</div>
-                                            {% endif %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% else %}
-                    <div class="no-history">
-                        <i class="fa-solid fa-clock"></i>
-                        <p>No history records found</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Add this after your existing profile cards -->
-        <div class="profile-card participation-card">
-            <div class="card-header">
-                <i class="fa-solid fa-calendar-check"></i>
-                <h2>Event Participation History</h2>
-            </div>
-            <div class="card-content">
-                <div class="participation-tabs">
-                    <div class="participation-tab active">
-                        <i class="fa-solid fa-check-circle"></i>
-                        <span>Attended</span>
-                        <span class="participation-tab-count">{{ participation_stats['Attended']|length }}</span>
-                    </div>
-                    <div class="participation-tab">
-                        <i class="fa-solid fa-times-circle"></i>
-                        <span>No-Shows</span>
-                        <span class="participation-tab-count">{{ participation_stats['No-Show']|length }}</span>
-                    </div>
-                    <div class="participation-tab">
-                        <i class="fa-solid fa-ban"></i>
-                        <span>Cancelled</span>
-                        <span class="participation-tab-count">{{ participation_stats['Cancelled']|length }}</span>
-                    </div>
-                </div>
-
-                {% for status, events in participation_stats.items() %}
-                <div class="event-list" data-status="{{ status }}" {% if not loop.first %}style="display: none;"{% endif %}>
-                    {% if events %}
-                        {% for event in events %}
-                        <div class="event-item">
-                            <div class="event-date">
-                                <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
-                                <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
-                            </div>
-                            <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
-                                <div class="event-title">{{ event.event.title }}</div>
-                                <div class="event-details">
-                                    {% if event.event.location %}
-                                    <span class="event-location">{{ event.event.location }}</span>
-                                    {% endif %}
-                                    
-                                    <!-- Display event type with appropriate icon -->
-                                    <span class="event-type {{ event.event.type }}">
-                                        {% if event.event.type == 'virtual_session' %}
-                                            <i class="fa-solid fa-video"></i> Virtual
-                                        {% elif event.event.type == 'in_person' %}
-                                            <i class="fa-solid fa-user-group"></i> In-Person
-                                        {% elif event.event.type == 'career_jumping' %}
-                                            <i class="fa-solid fa-briefcase"></i> Career Jumping
-                                        {% elif event.event.type == 'connector_session' %}
-                                            <i class="fa-solid fa-plug"></i> Connector
-                                        {% else %}
-                                            <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
-                                        {% endif %}
-                                    </span>
-                                    
-                                    <!-- Add status display -->
-                                    <span class="event-status {{ event.event.status|lower }}">
-                                        {{ event.event.status }}
-                                    </span>
-                                </div>
-                            </a>
-                            {% if event.delivery_hours %}
-                            <div class="event-hours">
-                                {{ event.delivery_hours }} hours
-                            </div>
+                            {% if history.summary %}
+                            <div class="history-summary">{{ history.summary }}</div>
                             {% endif %}
                         </div>
                         {% endfor %}
-                    {% else %}
-                        <p class="no-events">No {{ status.lower() }} events found.</p>
-                    {% endif %}
+                        {% if histories|length > 10 %}
+                        <p class="show-more">... and {{ histories|length - 10 }} more history records</p>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endfor %}
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- Add this before closing body tag -->
-<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+<script>
+function toggleHistorySection() {
+    const content = document.getElementById('history-content');
+    const icon = document.getElementById('history-toggle-icon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.className = 'fa-solid fa-chevron-up';
+    } else {
+        content.style.display = 'none';
+        icon.className = 'fa-solid fa-chevron-down';
+    }
+}
+
+// Event expansion functionality
+function toggleEventExpansion(status, button) {
+    const eventList = document.querySelector(`[data-status="${status}"]`);
+    const hiddenEvents = eventList.querySelector('.event-items-hidden');
+    const icon = button.querySelector('i');
+    
+    if (hiddenEvents.style.display === 'none') {
+        // Show more events
+        hiddenEvents.style.display = 'block';
+        icon.className = 'fa-solid fa-chevron-up';
+        button.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Show less';
+    } else {
+        // Hide additional events
+        hiddenEvents.style.display = 'none';
+        icon.className = 'fa-solid fa-chevron-down';
+        const count = hiddenEvents.querySelectorAll('.event-item').length;
+        button.innerHTML = `<i class="fa-solid fa-chevron-down"></i> Show ${count} more events`;
+    }
+}
+
+// Participation tabs functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const participationTabs = document.querySelectorAll('.participation-tab');
+    const eventLists = document.querySelectorAll('.event-list');
+    
+    participationTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabText = this.textContent.trim();
+            let status;
+            
+            if (tabText.includes('Attended')) {
+                status = 'Attended';
+            } else if (tabText.includes('No-Shows')) {
+                status = 'No-Show';
+            } else if (tabText.includes('Cancelled')) {
+                status = 'Cancelled';
+            }
+            
+            // Update active tab
+            participationTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide event lists
+            eventLists.forEach(list => {
+                if (list.dataset.status === status) {
+                    list.style.display = 'block';
+                } else {
+                    list.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // History filter functionality
+    const filters = document.querySelectorAll('.history-filter');
+    const historyItems = document.querySelectorAll('.history-item');
+    
+    filters.forEach(filter => {
+        filter.addEventListener('click', function() {
+            const filterType = this.dataset.type;
+            
+            // Update active filter
+            filters.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter history items
+            historyItems.forEach(item => {
+                if (filterType === 'all' || item.dataset.type === filterType) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+
 {% endblock %}
+
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/volunteers.js') }}"></script>
 {% endblock %}
