@@ -22,6 +22,10 @@ def history_table():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
 
+    # Get sort parameters
+    sort_by = request.args.get('sort_by', 'activity_date')  # default sort by activity_date
+    sort_direction = request.args.get('sort_direction', 'desc')  # default direction
+    
     # Create current_filters dictionary
     current_filters = {
         'search_summary': request.args.get('search_summary', '').strip(),
@@ -29,7 +33,9 @@ def history_table():
         'activity_status': request.args.get('activity_status', ''),
         'start_date': request.args.get('start_date', ''),
         'end_date': request.args.get('end_date', ''),
-        'per_page': per_page
+        'per_page': per_page,
+        'sort_by': sort_by,
+        'sort_direction': sort_direction
     }
 
     # Remove empty filters
@@ -68,8 +74,12 @@ def history_table():
         except ValueError:
             flash('Invalid end date format', 'warning')
 
-    # Default sort by activity_date desc
-    query = query.order_by(History.activity_date.desc())
+    # Apply sorting
+    sort_column = getattr(History, sort_by, History.activity_date)
+    if sort_direction == 'desc':
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
 
     # Apply pagination
     pagination = query.paginate(

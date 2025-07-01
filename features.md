@@ -110,15 +110,15 @@
 
 ## History
 
-- [ ] Search
+- [x] Search
   - [x] Summary Search
   - [x] Detailed Search
   - [ ] Activity Type
   - [x] Status
   - [x] Start Date
   - [x] End Date
-- [ ] Column Sort
-- [ ] Pagination
+- [x] Column Sort
+- [x] Pagination
 
 ## Schools
 

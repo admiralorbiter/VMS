@@ -77,13 +77,28 @@
             <thead>
                 <tr>
                     <th class="sortable" data-sort="summary">
-                        Summary <i class="fa-solid fa-sort"></i>
+                        Summary 
+                        {% if current_filters.sort_by == 'summary' %}
+                            <i class="fa-solid fa-sort-{{ 'down' if current_filters.sort_direction == 'desc' else 'up' }}"></i>
+                        {% else %}
+                            <i class="fa-solid fa-sort"></i>
+                        {% endif %}
                     </th>
                     <th class="sortable" data-sort="activity_type">
-                        Type <i class="fa-solid fa-sort"></i>
+                        Type 
+                        {% if current_filters.sort_by == 'activity_type' %}
+                            <i class="fa-solid fa-sort-{{ 'down' if current_filters.sort_direction == 'desc' else 'up' }}"></i>
+                        {% else %}
+                            <i class="fa-solid fa-sort"></i>
+                        {% endif %}
                     </th>
                     <th class="sortable" data-sort="activity_date">
-                        Date <i class="fa-solid fa-sort"></i>
+                        Date 
+                        {% if current_filters.sort_by == 'activity_date' %}
+                            <i class="fa-solid fa-sort-{{ 'down' if current_filters.sort_direction == 'desc' else 'up' }}"></i>
+                        {% else %}
+                            <i class="fa-solid fa-sort"></i>
+                        {% endif %}
                     </th>
                     <th>Description</th>
                     <th>Status</th>
@@ -127,7 +142,7 @@
     <div class="pagination-container">
         <div class="pagination-controls">
             <div class="pagination-info">
-                <select class="per-page-select" name="per_page">
+                <select class="per-page-select" name="per_page" onchange="changePerPage(this.value)">
                     <option value="10" {% if current_filters.per_page == 10 %}selected{% endif %}>10 per page</option>
                     <option value="25" {% if current_filters.per_page == 25 %}selected{% endif %}>25 per page</option>
                     <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 per page</option>
@@ -163,6 +178,43 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/history.js') }}"></script>
 <script>
+// Pagination and sorting functionality
+function changePerPage(value) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', value);
+    url.searchParams.delete('page'); // Reset to first page
+    window.location.href = url.toString();
+}
+
+function sortTable(column) {
+    const url = new URL(window.location);
+    const currentSort = url.searchParams.get('sort_by');
+    const currentDirection = url.searchParams.get('sort_direction');
+    
+    if (currentSort === column) {
+        // Toggle direction if same column
+        url.searchParams.set('sort_direction', currentDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+        // New column, default to ascending
+        url.searchParams.set('sort_by', column);
+        url.searchParams.set('sort_direction', 'asc');
+    }
+    
+    url.searchParams.delete('page'); // Reset to first page
+    window.location.href = url.toString();
+}
+
+// Add click handlers to sortable columns
+document.addEventListener('DOMContentLoaded', function() {
+    const sortableHeaders = document.querySelectorAll('.sortable');
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.getAttribute('data-sort');
+            sortTable(column);
+        });
+    });
+});
+
 function confirmPurge() {
     if (confirm('Are you sure you want to purge all history records? This action cannot be undone.')) {
         fetch('/history/purge', {
