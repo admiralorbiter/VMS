@@ -166,6 +166,14 @@
 
 ### Volunteer Page
 
+- [x] Salesforce Buttons
+- [ ] Edit
+- [x] Personal and Contact Info
+- [x] Professional Information
+- [x] Skills and Activity Summary
+- [x] Event Participation
+- [x] Connector Information
+- [x] Communication History
 
 ## Reports
 
