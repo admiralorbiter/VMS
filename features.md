@@ -68,7 +68,23 @@
 
 ## Reports
 
+### Virtual Session Usage Report
+
+- [x] Search and Filter
+  - [x] Academic Year
+  - [x] Start Date
+  - [x] End Date
+  - [x] Career Cluster
+  - [x] District
+  - [x] School
+  - [x] Status
+- [x] Export To Excel
+- [x] Summary Stats
+- [x] Column Sort
+- [x] Pagination
+
 ### Advance Search
+
 
 ## Admin
 

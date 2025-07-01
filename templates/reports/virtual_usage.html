@@ -207,6 +207,71 @@
     color: white;
     text-decoration: none;
 }
+
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.pagination-bar .page-btn, .pagination-bar .page-ellipsis {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: #007bff;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+    margin: 0 2px;
+}
+
+.pagination-bar .page-btn.active {
+    background: #495057;
+    color: #fff;
+    cursor: default;
+}
+
+.pagination-bar .page-btn:disabled, .pagination-bar .page-btn.disabled {
+    background: #b8c2cc;
+    color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.pagination-bar .page-btn:not(.active):hover:not(:disabled) {
+    background: #0056b3;
+    color: #fff;
+}
+
+.pagination-bar .page-ellipsis {
+    background: transparent;
+    color: #495057;
+    cursor: default;
+    font-size: 18px;
+    box-shadow: none;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #495057;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.pagination-perpage {
+    display: inline-block;
+    margin-right: 16px;
+}
 </style>
 {% endblock %}
 
@@ -238,19 +303,6 @@
                 <label for="date_to">Date To:</label>
                 <input type="date" id="date_to" name="date_to" 
                        value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
-            </div>
-            
-            <div class="filter-group">
-                <label for="session_title">Session Title:</label>
-                <select id="session_title" name="session_title">
-                    <option value="">All Sessions</option>
-                    {% for title in filter_options.session_titles %}
-                    <option value="{{ title }}" 
-                            {% if title == current_filters.session_title %}selected{% endif %}>
-                        {{ title }}
-                    </option>
-                    {% endfor %}
-                </select>
             </div>
             
             <div class="filter-group">
@@ -421,6 +473,55 @@
                 </tbody>
             </table>
         </div>
+        <!-- Pagination Controls -->
+        <div class="pagination-bar-wrapper" style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                <form method="get" class="pagination-perpage">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'per_page' %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <label for="per_page">Rows per page:</label>
+                    <select name="per_page" id="per_page" onchange="this.form.submit()">
+                        {% for n in [10, 25, 50, 100] %}
+                            <option value="{{ n }}" {% if pagination.per_page == n %}selected{% endif %}>{{ n }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <div class="pagination-info">
+                    Showing {{ (pagination.current_page-1)*pagination.per_page + 1 }}
+                    - {{ [pagination.current_page*pagination.per_page, pagination.total_records]|min }}
+                    of {{ pagination.total_records }} records
+                </div>
+            </div>
+            <nav aria-label="Pagination" class="pagination-bar">
+                {% set page = pagination.current_page %}
+                {% set total = pagination.total_pages %}
+                {% set args = request.args.to_dict() %}
+                {# Prev #}
+                {% set args_prev = args.copy() %}
+                {% set _ = args_prev.update({'page': page-1}) %}
+                <a href="?{{ args_prev|urlencode }}" class="page-btn{% if page == 1 %} disabled{% endif %}" {% if page == 1 %}tabindex="-1" aria-disabled="true"{% endif %}>Prev</a>
+                {# Page numbers with ellipsis #}
+                {% set window = 2 %}
+                {% for p in range(1, total+1) %}
+                    {% if p == 1 or p == total or (p >= page-window and p <= page+window) %}
+                        {% set args_p = args.copy() %}
+                        {% set _ = args_p.update({'page': p}) %}
+                        <a href="?{{ args_p|urlencode }}" class="page-btn{% if p == page %} active{% endif %}">{{ p }}</a>
+                    {% elif p == 2 and page-window > 2 %}
+                        <span class="page-ellipsis">…</span>
+                    {% elif p == total-1 and page+window < total-1 %}
+                        <span class="page-ellipsis">…</span>
+                    {% endif %}
+                {% endfor %}
+                {# Next #}
+                {% set args_next = args.copy() %}
+                {% set _ = args_next.update({'page': page+1}) %}
+                <a href="?{{ args_next|urlencode }}" class="page-btn{% if page == total %} disabled{% endif %}" {% if page == total %}tabindex="-1" aria-disabled="true"{% endif %}>Next</a>
+            </nav>
+        </div>
     {% else %}
         <div class="no-data">
             No virtual session data available for the selected filters.
@@ -436,18 +537,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const column = this.dataset.column;
             const currentSort = '{{ current_filters.sort }}';
             const currentOrder = '{{ current_filters.order }}';
-            
             let newOrder = 'asc';
             if (column === currentSort && currentOrder === 'asc') {
                 newOrder = 'desc';
             }
-            
-            // Build new URL with sorting parameters
+            // Build new URL with sorting parameters, preserving filters and pagination
             const url = new URL(window.location);
             url.searchParams.set('sort', column);
             url.searchParams.set('order', newOrder);
-            
-            // Navigate to sorted URL
+            url.searchParams.set('page', 1); // Reset to first page on sort
             window.location.href = url.toString();
         });
     });

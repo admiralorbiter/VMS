@@ -119,8 +119,7 @@ def load_routes(bp):
             'career_cluster': request.args.get('career_cluster'),
             'school': request.args.get('school'),
             'district': request.args.get('district'),
-            'status': request.args.get('status'),
-            'session_title': request.args.get('session_title')
+            'status': request.args.get('status')
         }
         
         # Base query for virtual session events
@@ -136,9 +135,6 @@ def load_routes(bp):
         # Apply filters
         if current_filters['career_cluster']:
             base_query = base_query.filter(Event.series.ilike(f'%{current_filters["career_cluster"]}%'))
-        
-        if current_filters['session_title']:
-            base_query = base_query.filter(Event.title.ilike(f'%{current_filters["session_title"]}%'))
         
         if current_filters['status']:
             base_query = base_query.filter(Event.status == current_filters['status'])
@@ -330,11 +326,30 @@ def load_routes(bp):
         current_filters['sort'] = sort_column
         current_filters['order'] = sort_order
 
+        # --- Pagination ---
+        try:
+            page = int(request.args.get('page', 1))
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
+        try:
+            per_page = int(request.args.get('per_page', 25))
+            if per_page < 1:
+                per_page = 25
+        except ValueError:
+            per_page = 25
+        total_records = len(session_data)
+        total_pages = (total_records + per_page - 1) // per_page
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_data = session_data[start_idx:end_idx]
+        # --- End Pagination ---
+
         all_districts = set()
         all_schools = set()
         all_career_clusters = set()
         all_statuses = set()
-        all_session_titles = set()
         
         for session in session_data:
             if session['district']:
@@ -345,8 +360,6 @@ def load_routes(bp):
                 all_career_clusters.add(session['topic_theme'])
             if session['status']:
                 all_statuses.add(session['status'])
-            if session['session_title']:
-                all_session_titles.add(session['session_title'])
         
         virtual_year_options = generate_school_year_options()  # This function name is misleading but works for both school and virtual years
 
@@ -355,15 +368,20 @@ def load_routes(bp):
             'career_clusters': sorted(list(all_career_clusters)),
             'schools': sorted(list(all_schools)),
             'districts': sorted(list(all_districts)),
-            'statuses': sorted(list(all_statuses)),
-            'session_titles': sorted(list(all_session_titles))
+            'statuses': sorted(list(all_statuses))
         }
         
         return render_template(
             'reports/virtual_usage.html',
-            session_data=session_data,
+            session_data=paginated_data,
             filter_options=filter_options,
-            current_filters=current_filters
+            current_filters=current_filters,
+            pagination={
+                'current_page': page,
+                'per_page': per_page,
+                'total_pages': total_pages,
+                'total_records': total_records
+            }
         )
 
     @bp.route('/reports/virtual/usage/district/<district_name>')
@@ -546,8 +564,7 @@ def load_routes(bp):
             'career_cluster': request.args.get('career_cluster'),
             'school': request.args.get('school'),
             'district': request.args.get('district'),
-            'status': request.args.get('status'),
-            'session_title': request.args.get('session_title')
+            'status': request.args.get('status')
         }
         
         # Base query for virtual session events (same as main route)
@@ -563,9 +580,6 @@ def load_routes(bp):
         # Apply filters (same as main route)
         if current_filters['career_cluster']:
             base_query = base_query.filter(Event.series.ilike(f'%{current_filters["career_cluster"]}%'))
-        
-        if current_filters['session_title']:
-            base_query = base_query.filter(Event.title.ilike(f'%{current_filters["session_title"]}%'))
         
         if current_filters['status']:
             base_query = base_query.filter(Event.status == current_filters['status'])
@@ -798,8 +812,6 @@ def load_routes(bp):
             filter_info += f" | Date Range: {current_filters['date_from'].strftime('%Y-%m-%d')} to {current_filters['date_to'].strftime('%Y-%m-%d')}"
         if current_filters['district']:
             filter_info += f" | District: {current_filters['district']}"
-        if current_filters['session_title']:
-            filter_info += f" | Session: {current_filters['session_title']}"
         if current_filters['career_cluster']:
             filter_info += f" | Career Cluster: {current_filters['career_cluster']}"
         if current_filters['status']:
