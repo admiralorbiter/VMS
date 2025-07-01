@@ -467,7 +467,7 @@ def edit_event(id):
     if not event:
         abort(404)
     
-    form = EventForm(obj=event)
+    form = EventForm()
     
     if form.validate_on_submit():
         try:
@@ -493,6 +493,18 @@ def edit_event(id):
             print(f"Error updating event: {str(e)}")  # Debug
             flash(f'Error updating event: {str(e)}', 'danger')
     else:
+        # Pre-populate form with event data for GET requests
+        if request.method == 'GET':
+            form.title.data = event.title
+            form.type.data = event.type.value if event.type else ''
+            form.format.data = event.format.value if event.format else ''
+            form.start_date.data = event.start_date
+            form.end_date.data = event.end_date
+            form.location.data = event.location
+            form.status.data = event.status.value if event.status else ''
+            form.description.data = event.description
+            form.volunteers_needed.data = event.volunteers_needed
+        
         # Print form validation errors for debugging
         if request.method == 'POST':
             print(f"Form validation failed: {form.errors}")  # Debug

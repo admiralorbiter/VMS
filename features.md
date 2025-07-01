@@ -44,7 +44,7 @@
 - [x] Add
 - [x] Delete (need to check admin only)
 - [x] Import
-- [ ] Search
+- [x] Search
   - [x] Name
   - [x] Type
   - [x] Statuses
