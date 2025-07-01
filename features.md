@@ -91,6 +91,16 @@
 
 ## Bug Report
 
+- [x] Submit Via Bug Icon in Sidebar
+- [x] Bug Report Form
+  - [x] Type of Issue
+  - [x] Description
+- [x] Bug Report Via Admin
+  - [x] Active Bug Reports
+  - [x] Resolved Bug Reports
+  - [x] Resolve Bug
+  - [x] Delete Bug
+
 ## Calendar
 
 - [x] Show Upcoming Events
@@ -107,12 +117,17 @@
   - [x] Status
   - [x] Start Date
   - [x] End Date
-- [] Column Sort
-- [] Pagination
+- [ ] Column Sort
+- [ ] Pagination
 
 ## Schools
 
+- [ ] Column Sort
+- [ ] To Do Look at this and how to use it
+
 ## Client Projects
+
+- [ ] To Do Look at this and how to use it
 
 ## Attendance
 - [x] Student and Teacher List
