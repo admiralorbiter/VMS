@@ -559,6 +559,9 @@ def edit_volunteer(id):
 @volunteers_bp.route('/volunteers/purge', methods=['POST'])
 @login_required
 def purge_volunteers():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
     try:
         # Get all volunteer IDs first
         volunteer_ids = db.session.query(Volunteer.id).all()
@@ -607,6 +610,9 @@ def purge_volunteers():
 @volunteers_bp.route('/volunteers/delete/<int:id>', methods=['DELETE'])
 @login_required
 def delete_volunteer(id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
     try:
         volunteer = db.session.get(Volunteer, id)
         if not volunteer:

@@ -152,7 +152,7 @@
 
 - [ ] Edit
 - [ ] Add
-- [x] Delete
+- [x] Delete (need to check admin only)
 - [x] Import
 - [ ] Search
   - [x] Name
@@ -179,7 +179,7 @@
 
 - [ ] Edit
 - [ ] Add
-- [x] Delete
+- [x] Delete (need to check admin only)
 - [x] Import
 - [ ] Search
   - [x] Name

@@ -610,6 +610,9 @@ def import_events():
 @events_bp.route('/events/purge', methods=['POST'])
 @login_required
 def purge_events():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
     try:
         # First delete all event participations
         EventParticipation.query.delete()
@@ -704,6 +707,9 @@ def sync_events():
 @events_bp.route('/events/delete/<int:id>', methods=['DELETE'])
 @login_required
 def delete_event(id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
     try:
         event = db.session.get(Event, id)
         if not event:
