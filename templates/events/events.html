@@ -98,7 +98,11 @@
             <tbody>
                 {% for event in events %}
                 <tr>
-                    <td>{{ event.title }}</td>
+                    <td>
+                        <a href="{{ url_for('events.view_event', id=event.id) }}" class="event-title-link">
+                            {{ event.title }}
+                        </a>
+                    </td>
                     <td>
                         <span class="event-type-badge {{ event.type }}">
                             {{ event.type|title }}

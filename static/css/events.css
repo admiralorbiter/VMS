@@ -1392,3 +1392,26 @@ th.sortable i {
     font-style: italic;
 }
 
+.event-title-link {
+    color: var(--delft-blue);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    position: relative;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.event-title-link:hover {
+    color: var(--ucla-blue);
+    background-color: rgba(70, 117, 153, 0.08);
+    transform: translateX(2px);
+    text-decoration: none;
+}
+
+.event-title-link:active {
+    transform: translateX(1px);
+    background-color: rgba(70, 117, 153, 0.12);
+}
+

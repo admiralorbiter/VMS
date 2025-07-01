@@ -175,6 +175,21 @@
 - [x] Connector Information
 - [x] Communication History
 
+## Event Directory
+
+- [ ] Edit
+- [ ] Add
+- [x] Delete
+- [x] Import
+- [ ] Search
+  - [x] Name
+  - [x] Type
+  - [x] Statuses
+  - [x] Start Date
+  - [x] End Date
+- [x] Column Sort
+- [x] Pagination
+
 ## Reports
 
 ### Advance Search
