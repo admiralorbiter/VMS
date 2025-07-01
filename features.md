@@ -78,10 +78,20 @@
   - [x] District
   - [x] School
   - [x] Status
+- [ ] Link to Core Spreadsheet
 - [x] Export To Excel
 - [x] Summary Stats
 - [x] Column Sort
 - [x] Pagination
+
+### Volunteer Thank You Report
+
+- [x] Academic Year Filter
+- [x] Column Sort
+- [x] Volunteer Detail
+  - [x] Academic Year Filter
+  - [x] Summary Stats
+  - [x] Sortable Table
 
 ### Advance Search
 

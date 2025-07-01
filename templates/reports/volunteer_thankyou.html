@@ -4,6 +4,23 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/volunteer_thankyou.css') }}">
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 18px;
+}
+.sort-indicator {
+    position: absolute;
+    right: 4px;
+    font-size: 13px;
+    color: #007bff;
+}
+.sortable-header.active {
+    background: #e9ecef;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -27,10 +44,30 @@
         <table>
             <thead>
                 <tr>
-                    <th>Presenter</th>
-                    <th>Total Hours</th>
-                    <th>Total Events</th>
-                    <th>Organization</th>
+                    <th class="sortable-header" data-column="name">
+                        Presenter
+                        {% if sort == 'name' %}
+                            <span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>
+                        {% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="total_hours">
+                        Total Hours
+                        {% if sort == 'total_hours' %}
+                            <span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>
+                        {% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="total_events">
+                        Total Events
+                        {% if sort == 'total_events' %}
+                            <span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>
+                        {% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="organization">
+                        Organization
+                        {% if sort == 'organization' %}
+                            <span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>
+                        {% endif %}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -50,4 +87,26 @@
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.column;
+            const currentSort = '{{ sort }}';
+            const currentOrder = '{{ order }}';
+            let newOrder = 'asc';
+            if (column === currentSort && currentOrder === 'asc') {
+                newOrder = 'desc';
+            }
+            // Build new URL with sorting parameters, preserving school_year
+            const url = new URL(window.location);
+            url.searchParams.set('sort', column);
+            url.searchParams.set('order', newOrder);
+            url.searchParams.set('school_year', '{{ school_year }}');
+            window.location.href = url.toString();
+        });
+    });
+});
+</script>
 {% endblock %} 

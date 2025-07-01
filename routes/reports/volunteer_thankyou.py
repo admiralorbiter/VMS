@@ -19,8 +19,25 @@ def load_routes(bp):
         # Get filter parameters - use school year format (e.g., '2425' for 2024-25)
         school_year = request.args.get('school_year', get_current_school_year())
         
+        # Sorting
+        sort = request.args.get('sort', 'total_hours')
+        order = request.args.get('order', 'desc')
+        
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
+        
+        # Map sort keys to columns
+        sort_columns = {
+            'name': db.func.concat(Volunteer.first_name, ' ', Volunteer.last_name),
+            'total_hours': db.func.sum(EventParticipation.delivery_hours),
+            'total_events': db.func.count(EventParticipation.id),
+            'organization': Organization.name
+        }
+        sort_col = sort_columns.get(sort, db.func.sum(EventParticipation.delivery_hours))
+        if order == 'asc':
+            order_by = sort_col.asc()
+        else:
+            order_by = sort_col.desc()
         
         # Query volunteer participation through EventParticipation
         volunteer_stats = db.session.query(
@@ -44,7 +61,7 @@ def load_routes(bp):
             Volunteer.id,
             Organization.name
         ).order_by(
-            db.desc('total_hours')
+            order_by
         ).all()
 
         # Format the data for the template
@@ -66,7 +83,9 @@ def load_routes(bp):
             volunteers=volunteer_data,
             school_year=school_year,
             school_years=school_years,
-            now=datetime.now()
+            now=datetime.now(),
+            sort=sort,
+            order=order
         )
 
     @bp.route('/reports/volunteer/thankyou/detail/<int:volunteer_id>')
@@ -74,6 +93,8 @@ def load_routes(bp):
     def volunteer_thankyou_detail(volunteer_id):
         # Get filter parameters
         school_year = request.args.get('school_year', get_current_school_year())
+        sort = request.args.get('sort', 'date')
+        order = request.args.get('order', 'asc')
         
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
@@ -99,12 +120,30 @@ def load_routes(bp):
         # Format the events data
         events_data = [{
             'date': event.start_date.strftime('%B %d, %Y'),
+            'date_sort': event.start_date,
             'title': event.title,
             'type': event.type.value if event.type else 'Unknown',
             'hours': round(hours or 0, 2),
             'school': event.school or 'N/A',
             'district': event.district_partner or 'N/A'
         } for event, hours in events]
+        
+        # Sort events_data in Python
+        def get_sort_key(ev):
+            if sort == 'date':
+                return ev['date_sort']
+            elif sort == 'title':
+                return ev['title'].lower() if ev['title'] else ''
+            elif sort == 'type':
+                return ev['type'].lower() if ev['type'] else ''
+            elif sort == 'hours':
+                return ev['hours']
+            elif sort == 'school':
+                return ev['school'].lower() if ev['school'] else ''
+            elif sort == 'district':
+                return ev['district'].lower() if ev['district'] else ''
+            return ev['date_sort']
+        events_data.sort(key=get_sort_key, reverse=(order=='desc'))
         
         # Calculate totals
         total_hours = sum(event['hours'] for event in events_data)
@@ -123,5 +162,7 @@ def load_routes(bp):
             total_events=total_events,
             school_year=school_year,
             school_years=school_years,
-            now=datetime.now()
+            now=datetime.now(),
+            sort=sort,
+            order=order
         )
