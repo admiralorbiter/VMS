@@ -15,7 +15,7 @@ from models.contact import RaceEthnicityEnum
 from models.teacher import Teacher
 from models.contact import GenderEnum
 from models.tech_job_board import JobOpportunity
-from models.upcoming_events import UpcomingEvent
+# from models.upcoming_events import UpcomingEvent  # Moved to microservice
 from models.volunteer import Volunteer, Skill, VolunteerSkill, Engagement, EventParticipation
 from models.contact import EducationEnum, LocalStatusEnum, SkillSourceEnum
 from models.history import History
@@ -479,30 +479,10 @@ def test_job_opportunity(app):
             db.session.delete(existing)
             db.session.commit()
 
-@pytest.fixture
-def test_upcoming_event(app):
-    """Fixture for creating a test upcoming event"""
-    with app.app_context():
-        event = UpcomingEvent(
-            salesforce_id='a005f000003TEST789',
-            name='Test Upcoming Event',
-            available_slots=10,
-            filled_volunteer_jobs=5,
-            date_and_time='01/01/2024 09:00 AM to 11:00 AM',
-            event_type='In Person',
-            registration_link='https://example.com/register',
-            display_on_website=True,
-            start_date=datetime(2024, 1, 1, 9, 0)
-        )
-        db.session.add(event)
-        db.session.commit()
-        yield event
-        
-        # Clean up
-        existing = db.session.get(UpcomingEvent, event.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+# @pytest.fixture
+# def test_upcoming_event(app):
+#     """Fixture for creating a test upcoming event - REMOVED: Moved to microservice"""
+#     pass
 
 @pytest.fixture
 def test_organization(app):

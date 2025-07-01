@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher
-from models.upcoming_events import UpcomingEvent
+# from models.upcoming_events import UpcomingEvent  # Moved to microservice
 from models.volunteer import Volunteer, EventParticipation, Skill, VolunteerSkill
 from models.organization import Organization, VolunteerOrganization
 from models.event import event_districts

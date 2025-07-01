@@ -198,26 +198,7 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/events.js') }}"></script>
 <script>
-document.querySelector('.sync-events-btn').addEventListener('click', async function() {
-    try {
-        const response = await fetch('/sync_upcoming_events', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification('success', `Successfully synced: ${data.new_count} new, ${data.updated_count} updated events`);
-        } else {
-            showNotification('error', `Sync failed: ${data.message}`);
-        }
-    } catch (error) {
-        showNotification('error', 'An unexpected error occurred during sync');
-    }
-});
+// Note: Upcoming events sync functionality moved to microservice
 
 function showNotification(type, message) {
     const notification = document.createElement('div');

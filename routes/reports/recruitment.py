@@ -4,7 +4,7 @@ from datetime import datetime
 
 from models.volunteer import Volunteer, EventParticipation, Skill, VolunteerSkill
 from models.organization import Organization, VolunteerOrganization
-from models.upcoming_events import UpcomingEvent
+# from models.upcoming_events import UpcomingEvent  # Moved to microservice
 from models.event import Event
 from models import db
 
@@ -38,11 +38,8 @@ def load_routes(bp):
     @bp.route('/reports/recruitment/quick')
     @login_required
     def quick_recruitment():
-        # Get upcoming events that need volunteers from the UpcomingEvent model
-        upcoming_events = UpcomingEvent.query.filter(
-            UpcomingEvent.start_date >= datetime.now(),
-            UpcomingEvent.available_slots > UpcomingEvent.filled_volunteer_jobs
-        ).order_by(UpcomingEvent.start_date).all()
+        # Upcoming events functionality moved to microservice
+        upcoming_events = []
 
         # Get the search query from the request
         search_query = request.args.get('search', '').strip().lower()
@@ -144,7 +141,7 @@ def load_routes(bp):
             events=events_data,
             volunteers=volunteers_data,
             search_query=search_query,
-            event_types=UpcomingEvent.query.with_entities(UpcomingEvent.event_type).distinct().all(),
+            event_types=[],  # Upcoming events moved to microservice
             exclude_dia=exclude_dia,
             event_type_filter=event_type_filter,
             pagination=pagination,

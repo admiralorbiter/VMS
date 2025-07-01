@@ -11,7 +11,6 @@ if TOKEN is None:
 
 def trigger_sync():
     endpoints = [
-        ('/sync_upcoming_events', 'Upcoming Events'),
         ('/sync_recent_salesforce_data', 'Full Data Sync')
     ]
 

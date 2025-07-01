@@ -25,11 +25,6 @@
             <li class="nav-item">
               <a class="nav-link" href="/calendar">Calendar</a>
             </li>
-            {% if current_user.has_permission_level(SUPERVISOR) %}
-            <li class="nav-item">
-              <a class="nav-link" href="/upcoming_event_management">Upcoming</a>
-            </li>
-            {% endif %}
             <li class="nav-item">
               <a class="nav-link" href="#" id="moreMenuToggle">
                 More <i class="fas fa-chevron-right"></i>
