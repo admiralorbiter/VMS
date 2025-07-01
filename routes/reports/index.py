@@ -45,7 +45,13 @@ def load_routes(bp):
                 'icon': 'fa-solid fa-user-plus',
                 'url': '/reports/first-time-volunteer',
                 'category': 'Volunteer Reports'
-  'category': 'Recruitment'
+            },
+            {
+                'title': 'Recruitment Tools',
+                'description': 'Access various tools for volunteer recruitment and event matching.',
+                'icon': 'fa-solid fa-users',
+                'url': '/reports/recruitment',
+                'category': 'Recruitment'
             },
             {
                 'title': 'Event Contact Report',
