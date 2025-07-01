@@ -190,6 +190,19 @@
 - [x] Column Sort
 - [x] Pagination
 
+### Event Page
+
+- [ ] Edit
+- [x] Event Info
+- [x] Participation
+- [x] People Involved
+- [x] Description
+- [x] Skills
+- [x] Volunteer Description
+- [x] Additional Info
+- [x] Volunteer Participation
+- [x] Student Participation
+
 ## Reports
 
 ### Advance Search

@@ -11,6 +11,573 @@ main {
     padding: 15px;
 }
 
+/* Event Header Styles */
+.event-header {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.title-info {
+    flex: 1;
+}
+
+.event-title {
+    color: var(--delft-blue);
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    line-height: 1.2;
+}
+
+.header-badges {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Event Content Grid */
+.event-content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.event-card {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid var(--non-photo-blue);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.08);
+    transition: box-shadow 0.2s ease;
+}
+
+.event-card:hover {
+    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.12);
+}
+
+.event-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.event-card.primary-info {
+    grid-row: span 2;
+}
+
+.card-header {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--non-photo-blue);
+}
+
+.card-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.card-header i {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.card-content {
+    padding: 1.5rem;
+}
+
+/* Compact Info Grid */
+.info-grid.compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-item label {
+    color: var(--delft-blue);
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-item label i {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+    width: 16px;
+    text-align: center;
+}
+
+.info-item p {
+    margin: 0;
+    color: var(--delft-blue);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(158, 216, 219, 0.1);
+    border-radius: 8px;
+    border: 1px solid var(--non-photo-blue);
+}
+
+.stat-number {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--ucla-blue);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--delft-blue);
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+/* People Section */
+.people-section {
+    margin-bottom: 1.5rem;
+}
+
+.people-section:last-child {
+    margin-bottom: 0;
+}
+
+.people-section h4 {
+    color: var(--delft-blue);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.people-section h4 i {
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+}
+
+.people-list {
+    line-height: 1.6;
+}
+
+.person-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.person-link:hover {
+    color: var(--delft-blue);
+    text-decoration: underline;
+}
+
+.person-link .org-name {
+    color: var(--delft-blue);
+    font-weight: 400;
+    font-size: 0.9rem;
+}
+
+/* Teachers Grid Compact */
+.teachers-grid.compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.teacher-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(158, 216, 219, 0.08);
+    border-radius: 6px;
+    border: 1px solid rgba(158, 216, 219, 0.3);
+}
+
+.teacher-name {
+    color: var(--delft-blue);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.teacher-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.teacher-status.attended { background: #d4edda; color: #155724; }
+.teacher-status.registered { background: #cce5ff; color: #004085; }
+.teacher-status.no-show,
+.teacher-status.no_show { background: #f8d7da; color: #721c24; }
+.teacher-status.cancelled { background: #fff3cd; color: #856404; }
+.teacher-status.simulcast { background: #e7e3ff; color: #5a189a; }
+
+/* Skills Grid Compact */
+.skills-grid.compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.skill-tag {
+    background-color: #f8f9fa;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 16px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--delft-blue);
+    font-weight: 500;
+}
+
+.skill-tag i {
+    color: var(--ucla-blue);
+    font-size: 0.8rem;
+}
+
+/* Participation Details */
+.participation-details {
+    margin-top: 2rem;
+}
+
+.participation-group {
+    margin-bottom: 1.5rem;
+}
+
+.group-title {
+    color: var(--delft-blue);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.group-title .text-success { color: #28a745 !important; }
+.group-title .text-danger { color: #dc3545 !important; }
+.group-title .text-warning { color: #ffc107 !important; }
+.group-title .text-info { color: #17a2b8 !important; }
+
+.participants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.participant-card {
+    background: white;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.participant-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.1);
+}
+
+.participant-card.attended {
+    border-left: 4px solid #28a745;
+    background: rgba(40, 167, 69, 0.03);
+}
+
+.participant-card.no_show {
+    border-left: 4px solid #dc3545;
+    background: rgba(220, 53, 69, 0.03);
+}
+
+.participant-card.cancelled {
+    border-left: 4px solid #ffc107;
+    background: rgba(255, 193, 7, 0.03);
+}
+
+.participant-card.student {
+    border-left: 4px solid var(--ucla-blue);
+    background: rgba(70, 117, 153, 0.03);
+}
+
+.participant-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.participant-name {
+    color: var(--delft-blue);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.delivery-hours,
+.participation-status {
+    color: var(--ucla-blue);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.participation-status {
+    padding: 0.2rem 0.6rem;
+    background: rgba(70, 117, 153, 0.1);
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.view-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.view-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--non-photo-blue);
+    transform: translateY(-1px);
+}
+
+/* Event Type and Status Badges */
+.event-type-badge,
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.event-type-badge {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border: 1px solid var(--ucla-blue);
+}
+
+.status-badge {
+    border: 1px solid transparent;
+}
+
+.status-badge.completed {
+    background-color: #28a745;
+    color: white;
+}
+
+.status-badge.confirmed {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.status-badge.cancelled {
+    background-color: #dc3545;
+    color: white;
+}
+
+.status-badge.requested {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.status-badge.draft {
+    background-color: #6c757d;
+    color: white;
+}
+
+.status-badge.published {
+    background-color: #6f42c1;
+    color: white;
+}
+
+/* Action Buttons */
+.action-btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.action-btn.edit-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.action-btn.back-btn {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.action-btn.salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn.edit-btn:hover,
+.action-btn.back-btn:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+}
+
+.action-btn.salesforce-btn:hover {
+    background-color: #0089bd;
+}
+
+/* Event Description and Additional Info */
+.event-description,
+.additional-content {
+    color: var(--delft-blue);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .event-content-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .events-container {
+        max-width: 98%;
+        padding: 10px;
+    }
+    
+    .event-header {
+        padding: 1rem;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .event-title {
+        font-size: 1.75rem;
+    }
+    
+    .info-grid.compact {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .participants-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .participant-card {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+    
+    .view-btn {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-badges {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .action-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Legacy Event List Styles (preserved for backward compatibility) */
 .events-header {
     margin-bottom: 2rem;
     display: flex;
@@ -32,21 +599,7 @@ main {
     color: #2c3e50;
 }
 
-.event-type-badge {
-    font-size: 0.9rem;
-    padding: 0.3rem 0.8rem;
-    border-radius: 4px;
-    background-color: #e9ecef;
-    color: #495057;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.header-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
+/* Legacy button styles for event list page */
 .btn-sm {
     padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
@@ -55,16 +608,6 @@ main {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-}
-
-.edit-btn {
-    background-color: #4a6da7;
-    color: white;
-}
-
-.back-btn {
-    background-color: #6c757d;
-    color: white;
 }
 
 .btn-sm i {
