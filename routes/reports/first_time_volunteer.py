@@ -20,6 +20,8 @@ def load_routes(bp):
     def first_time_volunteer():
         # Get filter parameters
         school_year = request.args.get('school_year', get_current_school_year())
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)  # Default 25 per page
         
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
@@ -60,14 +62,17 @@ def load_routes(bp):
             Organization.name
         ).order_by(
             Volunteer.first_volunteer_date.desc()
-        ).all()
+        )
+
+        # Get total count for pagination
+        total_volunteers = first_time_volunteers.count()
+        
+        # Apply pagination
+        volunteers_paginated = first_time_volunteers.offset((page - 1) * per_page).limit(per_page).all()
 
         # Format the data for the template
         volunteer_data = []
-        for v, events_count, hours, org in first_time_volunteers:
-            # Get skills for this volunteer
-            skills_list = [skill.name for skill in v.skills] if v.skills else []
-            skills_str = ', '.join(skills_list) if skills_list else 'No skills listed'
+        for v, events_count, hours, org in volunteers_paginated:
             
             # Get events for this volunteer in the school year
             volunteer_events = db.session.query(
@@ -109,16 +114,21 @@ def load_routes(bp):
                 'total_hours': round(float(hours or 0), 2),
                 'organization': org or 'Independent',
                 'title': v.title or 'No title listed',
-                'skills': skills_str,
                 'events': events_list,
                 'salesforce_contact_url': v.salesforce_contact_url,
                 'salesforce_account_url': v.salesforce_account_url
             })
 
-        # Calculate summary statistics
-        total_first_time_volunteers = len(volunteer_data)
-        total_events_by_first_timers = sum(v['total_events'] for v in volunteer_data)
-        total_hours_by_first_timers = sum(v['total_hours'] for v in volunteer_data)
+        # Calculate summary statistics (for all volunteers, not just current page)
+        all_volunteers_query = first_time_volunteers.all()
+        total_first_time_volunteers = len(all_volunteers_query)
+        total_events_by_first_timers = sum((events_count or 0) for _, events_count, _, _ in all_volunteers_query)
+        total_hours_by_first_timers = sum(float(hours or 0) for _, _, hours, _ in all_volunteers_query)
+
+        # Calculate pagination info
+        total_pages = (total_volunteers + per_page - 1) // per_page
+        has_prev = page > 1
+        has_next = page < total_pages
 
         return render_template(
             'reports/first_time_volunteer.html',
@@ -127,7 +137,14 @@ def load_routes(bp):
             school_year_display=f"20{school_year[:2]}-{school_year[2:]}",
             total_first_time_volunteers=total_first_time_volunteers,
             total_events_by_first_timers=total_events_by_first_timers,
-            total_hours_by_first_timers=total_hours_by_first_timers,
+            total_hours_by_first_timers=round(total_hours_by_first_timers, 1),
+            # Pagination info
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            total_volunteers=total_volunteers,
+            has_prev=has_prev,
+            has_next=has_next,
             now=datetime.now()
         )
 
@@ -178,9 +195,6 @@ def load_routes(bp):
         # Prepare data for DataFrame
         data = []
         for v, events_count, hours, org in first_time_volunteers:
-            # Get skills for this volunteer
-            skills_list = [skill.name for skill in v.skills] if v.skills else []
-            skills_str = ', '.join(skills_list) if skills_list else 'No skills listed'
             
             # Get events for this volunteer in the school year
             volunteer_events = db.session.query(
@@ -212,7 +226,6 @@ def load_routes(bp):
                 'Total Hours': round(float(hours or 0), 2),
                 'Organization': org or 'Independent',
                 'Title': v.title or 'No title listed',
-                'Skills': skills_str,
                 'Events': events_str,
                 'Salesforce Contact URL': v.salesforce_contact_url or ''
             })

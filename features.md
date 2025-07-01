@@ -111,8 +111,58 @@
   - [x] Event Type Filter
   - [x] Export to Excel
 
-### Advance Search
+### End of Year Report
 
+- [x] Academic Year Filter
+- [x] Summary Stats
+- [x] Export to Excel
+- [x] Sortable Table
+
+### First Time Volunteer Report
+
+- [x] Academic Year Filter
+- [x] Summary Stats
+- [ ] Export to Excel
+- [x] Sortable Table
+- [x] Pagination
+
+### Recruitment Tools: Quick Recruitment Tool
+
+- [x] Upcoming Event Filter
+- [x] Search by multiple criteria
+
+### Recruitment Tools: Advance Volunteer Search
+
+- [x] Wide and Narrow Search
+- [x] Search multiple terms and criteria
+
+### Event Contact Report
+
+- [x] List of Events
+- [x] Sortable List
+- [x] View Email and Phone Number List for Contacts
+- [ ] Automation Tools for Snow Days
+
+### Organization Reports
+
+- [x] Academic Year Filter
+- [x] Pagination
+- [x] Cached
+- [x] Organziation Breakdown
+  - [x] Output to Excel
+  - [x] Summary Stats
+  - [x] In-Person Table
+  - [x] Virtual Experiences
+  - [x] Volunteer Summary
+  - [x] Cancelled Events
+
+### Event Contact Report
+
+- [ ] ToDo
+
+### District Attendance Report
+
+- [ ] ToDo
 
 ## Admin
 
