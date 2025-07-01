@@ -293,24 +293,41 @@ def volunteers():
 @volunteers_bp.route('/volunteers/add', methods=['GET', 'POST'])
 @login_required
 def add_volunteer():
-    if request.method == 'POST':
+    form = VolunteerForm()
+    
+    if form.validate_on_submit():
         try:
             # Create and add volunteer first
             volunteer = Volunteer(
-                first_name=request.form.get('first_name'),
-                last_name=request.form.get('last_name'),
-                organization_name=request.form.get('organization_name'),
-                title=request.form.get('title'),
-                gender=GenderEnum[request.form.get('gender')] if request.form.get('gender') else None,
-                local_status=LocalStatusEnum[request.form.get('local_status')] if request.form.get('local_status') else None,
-                race_ethnicity=RaceEthnicityEnum[request.form.get('race_ethnicity')] if request.form.get('race_ethnicity') else None
+                salutation=form.salutation.data if form.salutation.data else None,
+                first_name=form.first_name.data,
+                middle_name=form.middle_name.data,
+                last_name=form.last_name.data,
+                suffix=form.suffix.data if form.suffix.data else None,
+                organization_name=form.organization_name.data,
+                title=form.title.data,
+                department=form.department.data,
+                industry=form.industry.data,
+                notes=form.notes.data
             )
+            
+            # Handle enums properly
+            if form.gender.data:
+                volunteer.gender = GenderEnum[form.gender.data]
+            if form.local_status.data:
+                volunteer.local_status = LocalStatusEnum[form.local_status.data]
+            if form.race_ethnicity.data:
+                volunteer.race_ethnicity = RaceEthnicityEnum[form.race_ethnicity.data]
+            if form.education.data:
+                volunteer.education = EducationEnum[form.education.data]
+            
             db.session.add(volunteer)
             db.session.flush()  # This ensures volunteer has an ID before adding relationships
 
             # Add skills
-            if request.form.get('skills'):
-                skill_names = json.loads(request.form.get('skills'))
+            if form.skills.data:
+                # Parse skills from textarea (assume comma-separated)
+                skill_names = [skill.strip() for skill in form.skills.data.split(',') if skill.strip()]
                 for skill_name in set(skill_names):
                     skill = Skill.query.filter_by(name=skill_name).first()
                     if not skill:
@@ -320,44 +337,46 @@ def add_volunteer():
                     volunteer.skills.append(skill)
 
             # Add email
-            if request.form.get('email'):
+            if form.email.data:
+                email_type = ContactTypeEnum.personal if form.email_type.data == 'personal' else ContactTypeEnum.professional
                 email = Email(
-                    email=request.form.get('email'),
-                    type=request.form.get('email_type', 'personal'),
+                    email=form.email.data,
+                    type=email_type,
                     primary=True,
                     contact_id=volunteer.id
                 )
                 db.session.add(email)
 
             # Add phone
-            if request.form.get('phone'):
+            if form.phone.data:
+                phone_type = ContactTypeEnum.personal if form.phone_type.data == 'personal' else ContactTypeEnum.professional
                 phone = Phone(
-                    number=request.form.get('phone'),
-                    type=request.form.get('phone_type', 'personal'),
+                    number=form.phone.data,
+                    type=phone_type,
                     primary=True,
                     contact_id=volunteer.id
                 )
                 db.session.add(phone)
 
-            # When creating/importing a volunteer with organization info
-            if request.form.get('organization_name'):
+            # Link to organization if provided
+            if form.organization_name.data:
                 vol_org = VolunteerOrganization.link_volunteer_to_org(
                     volunteer=volunteer,
-                    org_name=request.form.get('organization_name'),
-                    role=request.form.get('role'),
+                    org_name=form.organization_name.data,
+                    role=form.title.data,  # Use title as role for now
                     is_primary=True
                 )
                 db.session.flush()
 
             db.session.commit()
+            flash('Volunteer added successfully!', 'success')
             return redirect(url_for('volunteers.volunteers'))
 
         except Exception as e:
             db.session.rollback()
             flash(f'Error adding volunteer: {str(e)}', 'error')
-            return render_template('volunteers/add.html')
 
-    return render_template('volunteers/add.html')
+    return render_template('volunteers/add_volunteer.html', form=form)
 
 @volunteers_bp.route('/volunteers/view/<int:id>')
 @login_required
@@ -468,88 +487,183 @@ def edit_volunteer(id):
     if not volunteer:
         abort(404)
     
-    if request.method == 'POST':
+    form = VolunteerForm(obj=volunteer)
+    
+    # Populate form with existing data
+    if request.method == 'GET':
+        # Handle enums properly
+        if volunteer.gender:
+            form.gender.data = volunteer.gender.name
+        if volunteer.local_status:
+            form.local_status.data = volunteer.local_status.name
+        if volunteer.race_ethnicity:
+            form.race_ethnicity.data = volunteer.race_ethnicity.name
+        if volunteer.education:
+            form.education.data = volunteer.education.name
+        
+        # Handle skills as comma-separated string
+        if volunteer.skills:
+            form.skills.data = ', '.join([skill.name for skill in volunteer.skills])
+        
+        # Handle email and phone safely
         try:
+            emails_list = list(volunteer.emails) if volunteer.emails else []
+            if emails_list:
+                primary_email = next((email for email in emails_list if email.primary), None)
+                if not primary_email:
+                    primary_email = emails_list[0]
+                if primary_email:
+                    form.email.data = primary_email.email
+                    form.email_type.data = primary_email.type.name
+        except Exception as e:
+            print(f"Error loading emails: {e}")
+        
+        try:
+            phones_list = list(volunteer.phones) if volunteer.phones else []
+            if phones_list:
+                primary_phone = next((phone for phone in phones_list if phone.primary), None)
+                if not primary_phone:
+                    primary_phone = phones_list[0]
+                if primary_phone:
+                    form.phone.data = primary_phone.number
+                    form.phone_type.data = primary_phone.type.name
+        except Exception as e:
+            print(f"Error loading phones: {e}")
+    
+    if form.validate_on_submit():
+        try:
+            print(f"Form data: {form.data}")  # Debug form data
+            
             # Update basic fields
-            volunteer.first_name = request.form.get('first_name')
-            volunteer.last_name = request.form.get('last_name')
-            volunteer.organization_name = request.form.get('organization_name')
-            volunteer.title = request.form.get('title')
+            volunteer.salutation = form.salutation.data if form.salutation.data else None
+            volunteer.first_name = form.first_name.data
+            volunteer.middle_name = form.middle_name.data
+            volunteer.last_name = form.last_name.data
+            volunteer.suffix = form.suffix.data if form.suffix.data else None
+            volunteer.organization_name = form.organization_name.data
+            volunteer.title = form.title.data
+            volunteer.department = form.department.data
+            volunteer.industry = form.industry.data
+            volunteer.notes = form.notes.data
+            
+            print(f"Basic fields updated")  # Debug checkpoint
             
             # Handle enums with proper error checking
-            if request.form.get('gender'):
-                try:
-                    volunteer.gender = GenderEnum[request.form.get('gender')]
-                except KeyError:
-                    flash('Invalid gender value', 'error')
-                    return redirect(url_for('volunteers.edit_volunteer', id=id))
+            try:
+                if form.gender.data and form.gender.data != '':
+                    volunteer.gender = GenderEnum[form.gender.data]
+                else:
+                    volunteer.gender = None
+                        
+                if form.local_status.data and form.local_status.data != '':
+                    volunteer.local_status = LocalStatusEnum[form.local_status.data]
+                else:
+                    volunteer.local_status = None
+                        
+                if form.race_ethnicity.data and form.race_ethnicity.data != '':
+                    volunteer.race_ethnicity = RaceEthnicityEnum[form.race_ethnicity.data]
+                else:
+                    volunteer.race_ethnicity = None
                     
-            if request.form.get('local_status'):
-                try:
-                    volunteer.local_status = LocalStatusEnum[request.form.get('local_status')]
-                except KeyError:
-                    flash('Invalid local status value', 'error')
-                    return redirect(url_for('volunteers.edit_volunteer', id=id))
+                if form.education.data and form.education.data != '':
+                    volunteer.education = EducationEnum[form.education.data]
+                else:
+                    volunteer.education = None
                     
-            if request.form.get('race_ethnicity'):
-                try:
-                    volunteer.race_ethnicity = RaceEthnicityEnum[request.form.get('race_ethnicity')]
-                except KeyError:
-                    flash('Invalid race/ethnicity value', 'error')
-                    return redirect(url_for('volunteers.edit_volunteer', id=id))
+                print(f"Enums updated")  # Debug checkpoint
+            except KeyError as e:
+                print(f"Enum error: {e}")
+                flash(f'Invalid enum value: {str(e)}', 'error')
+                return redirect(url_for('volunteers.edit_volunteer', id=id))
 
             # Handle skills
-            if request.form.get('skills'):
-                # Clear existing skills
+            if form.skills.data and form.skills.data.strip() and form.skills.data != '[]':
+                try:
+                    # Clear existing skills
+                    volunteer.skills = []
+                    db.session.flush()
+                    
+                    # Add new skills
+                    skill_names = [skill.strip() for skill in form.skills.data.split(',') if skill.strip() and skill.strip() != '[]']
+                    for skill_name in set(skill_names):
+                        skill = Skill.query.filter_by(name=skill_name).first()
+                        if not skill:
+                            skill = Skill(name=skill_name)
+                            db.session.add(skill)
+                            db.session.flush()
+                        volunteer.skills.append(skill)
+                    print(f"Skills updated: {skill_names}")  # Debug checkpoint
+                except Exception as e:
+                    print(f"Skills error: {e}")
+                    flash(f'Error updating skills: {str(e)}', 'error')
+                    return redirect(url_for('volunteers.edit_volunteer', id=id))
+            else:
+                # Clear skills if empty
                 volunteer.skills = []
-                db.session.flush()
-                
-                # Add new skills
-                skill_names = json.loads(request.form.get('skills'))
-                for skill_name in skill_names:
-                    skill = Skill.query.filter_by(name=skill_name).first()
-                    if not skill:
-                        skill = Skill(name=skill_name)
-                        db.session.add(skill)
-                        db.session.flush()
-                    volunteer.skills.append(skill)
+                print("Skills cleared (empty input)")  # Debug checkpoint
 
             # Handle email with transaction safety
-            if request.form.get('email'):
-                Email.query.filter_by(contact_id=volunteer.id).delete()
-                email = Email(
-                    contact_id=volunteer.id,
-                    email=request.form.get('email'),
-                    type=request.form.get('email_type', 'personal'),
-                    primary=True
-                )
-                db.session.add(email)
+            if form.email.data:
+                try:
+                    Email.query.filter_by(contact_id=volunteer.id).delete()
+                    email_type = ContactTypeEnum.personal if form.email_type.data == 'personal' else ContactTypeEnum.professional
+                    email = Email(
+                        contact_id=volunteer.id,
+                        email=form.email.data,
+                        type=email_type,
+                        primary=True
+                    )
+                    db.session.add(email)
+                    print(f"Email updated: {form.email.data}")  # Debug checkpoint
+                except Exception as e:
+                    print(f"Email error: {e}")
+                    flash(f'Error updating email: {str(e)}', 'error')
+                    return redirect(url_for('volunteers.edit_volunteer', id=id))
 
             # Handle phone with transaction safety
-            if request.form.get('phone'):
-                Phone.query.filter_by(contact_id=volunteer.id).delete()
-                phone = Phone(
-                    contact_id=volunteer.id,
-                    number=request.form.get('phone'),
-                    type=request.form.get('phone_type', 'personal'),
-                    primary=True
-                )
-                db.session.add(phone)
+            if form.phone.data:
+                try:
+                    Phone.query.filter_by(contact_id=volunteer.id).delete()
+                    phone_type = ContactTypeEnum.personal if form.phone_type.data == 'personal' else ContactTypeEnum.professional
+                    phone = Phone(
+                        contact_id=volunteer.id,
+                        number=form.phone.data,
+                        type=phone_type,
+                        primary=True
+                    )
+                    db.session.add(phone)
+                    print(f"Phone updated: {form.phone.data}")  # Debug checkpoint
+                except Exception as e:
+                    print(f"Phone error: {e}")
+                    flash(f'Error updating phone: {str(e)}', 'error')
+                    return redirect(url_for('volunteers.edit_volunteer', id=id))
 
+            print("About to commit to database")  # Debug checkpoint
             db.session.commit()
+            print(f"Database committed successfully")  # Debug checkpoint
             flash('Volunteer updated successfully', 'success')
-            return redirect(url_for('volunteers.view_volunteer', id=volunteer.id))
+            redirect_url = url_for('volunteers.view_volunteer', id=volunteer.id)
+            print(f"Redirecting to: {redirect_url}")  # Debug redirect URL
+            return redirect(redirect_url)
 
         except Exception as e:
             db.session.rollback()
+            print(f"General error in edit_volunteer: {str(e)}")  # Debug error
             flash(f'Error updating volunteer: {str(e)}', 'error')
-            return redirect(url_for('volunteers.edit_volunteer', id=id))
+    else:
+        # Form validation failed
+        print(f"Form validation failed. Errors: {form.errors}")  # Debug validation errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'error')
 
     return render_template('volunteers/edit.html', 
+                         form=form,
                          volunteer=volunteer,
                          GenderEnum=GenderEnum,
-                         RaceEthnicityEnum=RaceEthnicityEnum,
-                         LocalStatusEnum=LocalStatusEnum)
+                         RaceEthnicityEnum=RaceEthnicityEnum, 
+                         LocalStatusEnum=LocalStatusEnum,
+                         EducationEnum=EducationEnum)
 
 @volunteers_bp.route('/volunteers/purge', methods=['POST'])
 @login_required

@@ -11,13 +11,25 @@
     <div class="volunteers-header">
         <h1>Add New Volunteer</h1>
         <a href="{{ url_for('volunteers.volunteers') }}" class="btn add-volunteer-btn">
-            Back to Volunteers
+            <i class="fa-solid fa-arrow-left"></i> Back to Volunteers
         </a>
     </div>
 
     <div class="volunteer-form-container">
         <form method="POST" class="volunteer-form">
             {{ form.csrf_token }}
+            
+            {% if form.errors %}
+                <div class="alert alert-danger">
+                    <ul>
+                        {% for field, errors in form.errors.items() %}
+                            {% for error in errors %}
+                                <li>{{ field }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
             
             <div class="form-section">
                 <h2><i class="fa-solid fa-user"></i> Personal Information</h2>
@@ -29,11 +41,6 @@
                     <div class="form-group required">
                         {{ form.first_name.label(class="form-label") }}
                         {{ form.first_name(class="form-control") }}
-                        {% if form.first_name.errors %}
-                            {% for error in form.first_name.errors %}
-                                <span class="error">{{ error }}</span>
-                            {% endfor %}
-                        {% endif %}
                     </div>
                     <div class="form-group">
                         {{ form.middle_name.label(class="form-label") }}
@@ -42,11 +49,6 @@
                     <div class="form-group required">
                         {{ form.last_name.label(class="form-label") }}
                         {{ form.last_name(class="form-control") }}
-                        {% if form.last_name.errors %}
-                            {% for error in form.last_name.errors %}
-                                <span class="error">{{ error }}</span>
-                            {% endfor %}
-                        {% endif %}
                     </div>
                     <div class="form-group">
                         {{ form.suffix.label(class="form-label") }}
@@ -59,33 +61,26 @@
                 <h2><i class="fa-solid fa-address-card"></i> Contact Information</h2>
                 <div class="form-grid">
                     <div class="form-group required">
-                        <div class="input-group">
-                            <div class="contact-type-toggle">
-                                <input type="radio" name="email_type" id="email_personal" value="personal" checked>
-                                <label for="email_personal"><i class="fa-solid fa-user"></i></label>
-                                <input type="radio" name="email_type" id="email_work" value="work">
-                                <label for="email_work"><i class="fa-solid fa-briefcase"></i></label>
-                            </div>
-                            {{ form.email.label(class="form-label") }}
-                            {{ form.email(class="form-control") }}
-                        </div>
-                        {% if form.email.errors %}
-                            {% for error in form.email.errors %}
-                                <span class="error">{{ error }}</span>
-                            {% endfor %}
-                        {% endif %}
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control") }}
                     </div>
                     <div class="form-group">
-                        <div class="input-group">
-                            <div class="contact-type-toggle">
-                                <input type="radio" name="phone_type" id="phone_personal" value="personal" checked>
-                                <label for="phone_personal"><i class="fa-solid fa-user"></i></label>
-                                <input type="radio" name="phone_type" id="phone_work" value="work">
-                                <label for="phone_work"><i class="fa-solid fa-briefcase"></i></label>
-                            </div>
-                            {{ form.phone.label(class="form-label") }}
-                            {{ form.phone(class="form-control") }}
-                        </div>
+                        {{ form.email_type.label(class="form-label") }}
+                        <select name="email_type" class="form-select">
+                            <option value="personal" {% if form.email_type.data == 'personal' %}selected{% endif %}>Personal</option>
+                            <option value="professional" {% if form.email_type.data == 'professional' %}selected{% endif %}>Professional</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        {{ form.phone.label(class="form-label") }}
+                        {{ form.phone(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.phone_type.label(class="form-label") }}
+                        <select name="phone_type" class="form-select">
+                            <option value="personal" {% if form.phone_type.data == 'personal' %}selected{% endif %}>Personal</option>
+                            <option value="professional" {% if form.phone_type.data == 'professional' %}selected{% endif %}>Professional</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -117,100 +112,45 @@
                 <div class="form-grid">
                     <div class="form-group">
                         {{ form.gender.label(class="form-label") }}
-                        <div class="gender-toggle-group">
-                            {% for value, label in form.gender.choices %}
-                            <input type="radio" 
-                                   name="{{ form.gender.name }}" 
-                                   id="gender_{{ value }}" 
-                                   value="{{ value }}"
-                                   {% if form.gender.data == value %}checked{% endif %}>
-                            <label for="gender_{{ value }}">
-                                {% if value == 'male' %}
-                                    <i class="fa-solid fa-mars"></i>
-                                {% elif value == 'female' %}
-                                    <i class="fa-solid fa-venus"></i>
-                                {% elif value == 'non_binary' %}
-                                    <i class="fa-solid fa-venus-mars"></i>
-                                {% elif value == 'genderfluid' %}
-                                    <i class="fa-solid fa-transgender-alt"></i>
-                                {% elif value == 'agender' %}
-                                    <i class="fa-solid fa-genderless"></i>
-                                {% elif value == 'transgender' %}
-                                    <i class="fa-solid fa-transgender"></i>
-                                {% elif value == 'prefer_not_to_say' %}
-                                    <i class="fa-solid fa-user-secret"></i>
-                                {% else %}
-                                    <i class="fa-solid fa-circle"></i>
-                                {% endif %}
-                                <span>{{ label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% if form.gender.errors %}
-                            {% for error in form.gender.errors %}
-                                <span class="error">{{ error }}</span>
-                            {% endfor %}
-                        {% endif %}
+                        {{ form.gender(class="form-select") }}
                     </div>
-
                     <div class="form-group">
                         {{ form.race_ethnicity.label(class="form-label") }}
                         {{ form.race_ethnicity(class="form-select") }}
-                        {% if form.race_ethnicity.errors %}
-                            {% for error in form.race_ethnicity.errors %}
-                                <span class="error">{{ error }}</span>
-                            {% endfor %}
-                        {% endif %}
                     </div>
-
+                    <div class="form-group">
+                        {{ form.education.label(class="form-label") }}
+                        {{ form.education(class="form-select") }}
+                    </div>
                     <div class="form-group">
                         {{ form.local_status.label(class="form-label") }}
-                        <div class="status-toggle-group">
-                            <input type="radio" name="local_status" id="status_true" value="true">
-                            <label for="status_true">
-                                <i class="fa-solid fa-check-circle"></i>
-                                <span>True</span>
-                            </label>
-                            
-                            <input type="radio" name="local_status" id="status_partial" value="partial">
-                            <label for="status_partial">
-                                <i class="fa-solid fa-adjust"></i>
-                                <span>Partial</span>
-                            </label>
-                            
-                            <input type="radio" name="local_status" id="status_false" value="false">
-                            <label for="status_false">
-                                <i class="fa-solid fa-times-circle"></i>
-                                <span>False</span>
-                            </label>
-                            
-                            <input type="radio" name="local_status" id="status_unknown" value="unknown">
-                            <label for="status_unknown">
-                                <i class="fa-solid fa-question-circle"></i>
-                                <span>Unknown</span>
-                            </label>
-                        </div>
+                        {{ form.local_status(class="form-select") }}
                     </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2><i class="fa-solid fa-star"></i> Skills & Notes</h2>
+                <div class="form-grid">
                     <div class="form-group">
                         {{ form.skills.label(class="form-label") }}
-                        <div class="skills-container">
-                            <div class="skills-list" id="skillsList">
-                                <!-- Skills will be added here dynamically -->
-                            </div>
-                            <div class="skill-input-group">
-                                <input type="text" class="form-control skill-input" placeholder="Enter a skill">
-                                <button type="button" class="btn add-skill-btn">
-                                    <i class="fa-solid fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
+                        {{ form.skills(class="form-control", placeholder="Enter skills separated by commas") }}
+                        <small class="form-text text-muted">Enter skills separated by commas (e.g. "Programming, Project Management, Marketing")</small>
+                    </div>
+                    <div class="form-group">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows="3") }}
                     </div>
                 </div>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn save-btn">Save Volunteer</button>
-                <a href="{{ url_for('volunteers.volunteers') }}" class="btn cancel-btn">Cancel</a>
+                <button type="submit" class="btn save-btn">
+                    <i class="fa-solid fa-save"></i> Save Volunteer
+                </button>
+                <a href="{{ url_for('volunteers.volunteers') }}" class="btn cancel-btn">
+                    <i class="fa-solid fa-times"></i> Cancel
+                </a>
             </div>
         </form>
     </div>

@@ -21,8 +21,20 @@
     </div>
 
     <div class="volunteer-form-container">
-        <form method="POST" class="volunteer-form" action="{{ url_for('volunteers.edit_volunteer', id=volunteer.id) }}">
+        <form method="POST" class="volunteer-form">
             {{ form.csrf_token }}
+            
+            {% if form.errors %}
+                <div class="alert alert-danger">
+                    <ul>
+                        {% for field, errors in form.errors.items() %}
+                            {% for error in errors %}
+                                <li>{{ field }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
             
             <!-- Personal Information Card -->
             <div class="form-section">
@@ -48,133 +60,34 @@
                         {{ form.suffix.label(class="form-label") }}
                         {{ form.suffix(class="form-select") }}
                     </div>
-                    <div class="form-group">
-                        <label>Gender</label>
-                        <div class="gender-toggle-group">
-                            {% for value, label in GenderEnum.choices() %}
-                            <input type="radio" 
-                                   name="gender" 
-                                   id="gender_{{ value }}"
-                                   value="{{ value }}"
-                                   {% if volunteer.gender and volunteer.gender.name == value %}checked{% endif %}>
-                            <label for="gender_{{ value }}">
-                                {% if value == 'male' %}
-                                    <i class="fa-solid fa-mars"></i>
-                                {% elif value == 'female' %}
-                                    <i class="fa-solid fa-venus"></i>
-                                {% elif value == 'non_binary' %}
-                                    <i class="fa-solid fa-venus-mars"></i>
-                                {% elif value == 'genderfluid' %}
-                                    <i class="fa-solid fa-transgender-alt"></i>
-                                {% elif value == 'agender' %}
-                                    <i class="fa-solid fa-genderless"></i>
-                                {% elif value == 'transgender' %}
-                                    <i class="fa-solid fa-transgender"></i>
-                                {% else %}
-                                    <i class="fa-solid fa-circle-question"></i>
-                                {% endif %}
-                                {{ label }}
-                            </label>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Race/Ethnicity</label>
-                        <select name="race_ethnicity" class="form-select">
-                            <option value="">Select Race/Ethnicity</option>
-                            {% for value, label in RaceEthnicityEnum.choices() %}
-                            <option value="{{ value }}" 
-                                    {% if volunteer.race_ethnicity and volunteer.race_ethnicity.name == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Education Level</label>
-                        <select name="education" class="form-select">
-                            <option value="">Select Education Level</option>
-                            {% for value, label in EducationEnum.choices() %}
-                            <option value="{{ value }}"
-                                    {% if volunteer.education and volunteer.education.name == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Local Status</label>
-                        <div class="status-toggle-group">
-                            {% for value, label in LocalStatusEnum.choices() %}
-                            <input type="radio" 
-                                   name="local_status" 
-                                   id="status_{{ value }}"
-                                   value="{{ value }}"
-                                   {% if volunteer.local_status and volunteer.local_status.name == value %}checked{% endif %}>
-                            <label for="status_{{ value }}">
-                                <i class="fa-solid {% if value == 'true' %}fa-check-circle
-                                               {% elif value == 'partial' %}fa-adjust
-                                               {% elif value == 'false' %}fa-times-circle
-                                               {% else %}fa-question-circle{% endif %}"></i>
-                                {{ value|title }}
-                            </label>
-                            {% endfor %}
-                        </div>
-                    </div>
                 </div>
             </div>
 
             <!-- Contact Information Card -->
             <div class="form-section">
                 <h2><i class="fa-solid fa-address-card"></i> Contact Information</h2>
-                <div class="contact-sections">
-                    <!-- Emails Section -->
-                    <div class="contact-section">
-                        <h3><i class="fa-solid fa-envelope"></i> Email Addresses</h3>
-                        <div class="email-container">
-                            {% for email in volunteer.emails %}
-                            <div class="email-group input-group">
-                                <input type="email" 
-                                       class="form-control email-input" 
-                                       value="{{ email.email }}" 
-                                       data-email-id="{{ email.id }}"
-                                       placeholder="Email Address"
-                                       style="min-width: 300px;">
-                                <div class="contact-type-toggle">
-                                    <div class="btn-group" role="group">
-                                        <input type="radio" 
-                                               class="btn-check" 
-                                               name="email_type_{{ email.id }}" 
-                                               id="personal_{{ email.id }}" 
-                                               value="personal" 
-                                               {% if email.type.name == 'personal' %}checked{% endif %}>
-                                        <label class="btn" for="personal_{{ email.id }}">Personal</label>
-                                        
-                                        <input type="radio" 
-                                               class="btn-check" 
-                                               name="email_type_{{ email.id }}" 
-                                               id="professional_{{ email.id }}" 
-                                               value="professional" 
-                                               {% if email.type.name == 'professional' %}checked{% endif %}>
-                                        <label class="btn" for="professional_{{ email.id }}">Professional</label>
-                                    </div>
-                                </div>
-                                <div class="primary-toggle">
-                                    <input type="radio" 
-                                           name="primary_email" 
-                                           id="primary_{{ email.id }}"
-                                           {% if email.primary %}checked{% endif %}>
-                                    <label for="primary_{{ email.id }}">Primary</label>
-                                </div>
-                                <button type="button" class="btn remove-email-btn">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <button type="button" class="btn add-email-btn">
-                            <i class="fa-solid fa-plus"></i> Add Email
-                        </button>
+                <div class="form-grid">
+                    <div class="form-group required">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.email_type.label(class="form-label") }}
+                        <select name="email_type" class="form-select">
+                            <option value="personal" {% if form.email_type.data == 'personal' %}selected{% endif %}>Personal</option>
+                            <option value="professional" {% if form.email_type.data == 'professional' %}selected{% endif %}>Professional</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        {{ form.phone.label(class="form-label") }}
+                        {{ form.phone(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.phone_type.label(class="form-label") }}
+                        <select name="phone_type" class="form-select">
+                            <option value="personal" {% if form.phone_type.data == 'personal' %}selected{% endif %}>Personal</option>
+                            <option value="professional" {% if form.phone_type.data == 'professional' %}selected{% endif %}>Professional</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -202,89 +115,52 @@
                 </div>
             </div>
 
-            <!-- Skills Card -->
+            <!-- Additional Information -->
             <div class="form-section">
-                <h2><i class="fa-solid fa-star"></i> Skills</h2>
-                <div class="skills-container">
-                    <div class="skills-list" id="skillsList">
-                        {% for skill in volunteer.skills %}
-                        <span class="skill-tag">
-                            {{ skill.name }}
-                            <button type="button" class="remove-skill-btn">
-                                <i class="fa-solid fa-times"></i>
-                            </button>
-                        </span>
-                        {% endfor %}
+                <h2><i class="fa-solid fa-circle-info"></i> Additional Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form.gender.label(class="form-label") }}
+                        {{ form.gender(class="form-select") }}
                     </div>
-                    <div class="skill-input-group">
-                        <input type="text" class="form-control skill-input" placeholder="Enter a skill">
-                        <button type="button" class="btn add-skill-btn">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
+                    <div class="form-group">
+                        {{ form.race_ethnicity.label(class="form-label") }}
+                        {{ form.race_ethnicity(class="form-select") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.education.label(class="form-label") }}
+                        {{ form.education(class="form-select") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.local_status.label(class="form-label") }}
+                        {{ form.local_status(class="form-select") }}
                     </div>
                 </div>
             </div>
 
+            <!-- Skills & Notes -->
             <div class="form-section">
-                <h2><i class="fas fa-phone"></i> Phone Numbers</h2>
-                <div id="phones-container">
-                    {% for phone in volunteer.phones %}
-                    <div class="phone-group">
-                        <input type="tel" class="form-control phone-input" value="{{ phone.number }}" required>
-                        <select class="form-select type-select">
-                            <option value="personal" {% if phone.type.name == 'personal' %}selected{% endif %}>Personal</option>
-                            <option value="professional" {% if phone.type.name == 'professional' %}selected{% endif %}>Professional</option>
-                        </select>
-                        <div class="form-check">
-                            <input type="radio" name="primary_phone" class="form-check-input primary-check" {% if phone.primary %}checked{% endif %}>
-                            <label class="form-check-label">Primary</label>
-                        </div>
-                        <button type="button" class="btn btn-danger remove-btn">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                <h2><i class="fa-solid fa-star"></i> Skills & Notes</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form.skills.label(class="form-label") }}
+                        {{ form.skills(class="form-control", placeholder="Enter skills separated by commas") }}
+                        <small class="form-text text-muted">Enter skills separated by commas (e.g. "Programming, Project Management, Marketing")</small>
                     </div>
-                    {% endfor %}
-                </div>
-                <button type="button" id="add-phone-btn" class="btn btn-secondary mt-2">
-                    <i class="fas fa-plus"></i> Add Phone
-                </button>
-            </div>
-
-            <div class="form-section">
-                <h2><i class="fas fa-home"></i> Addresses</h2>
-                <div id="addresses-container">
-                    {% for address in volunteer.addresses %}
-                    <div class="address-group">
-                        <input type="text" class="form-control" value="{{ address.address_line1 }}" placeholder="Address Line 1" required>
-                        <input type="text" class="form-control" value="{{ address.address_line2 }}" placeholder="Address Line 2">
-                        <input type="text" class="form-control" value="{{ address.city }}" placeholder="City" required>
-                        <input type="text" class="form-control" value="{{ address.state }}" placeholder="State" required>
-                        <input type="text" class="form-control" value="{{ address.zip_code }}" placeholder="ZIP Code" required>
-                        <input type="text" class="form-control" value="{{ address.country }}" placeholder="Country">
-                        <div class="address-actions">
-                            <select class="form-select type-select">
-                                <option value="personal" {% if address.type.name == 'personal' %}selected{% endif %}>Personal</option>
-                                <option value="professional" {% if address.type.name == 'professional' %}selected{% endif %}>Professional</option>
-                            </select>
-                            <div class="form-check">
-                                <input type="radio" name="primary_address" class="form-check-input primary-check" {% if address.primary %}checked{% endif %}>
-                                <label class="form-check-label">Primary</label>
-                            </div>
-                            <button type="button" class="btn btn-danger remove-btn">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                    <div class="form-group">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows="3") }}
                     </div>
-                    {% endfor %}
                 </div>
-                <button type="button" id="add-address-btn" class="btn btn-secondary mt-2">
-                    <i class="fas fa-plus"></i> Add Address
-                </button>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn save-btn">Save Changes</button>
-                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="btn cancel-btn">Cancel</a>
+                <button type="submit" class="btn save-btn">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="btn cancel-btn">
+                    <i class="fa-solid fa-times"></i> Cancel
+                </a>
             </div>
         </form>
     </div>
@@ -292,5 +168,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/edit_volunteer.js') }}"></script>
+<!-- Temporarily disabled JS to test form submission -->
+<!-- <script src="{{ url_for('static', filename='js/edit_volunteer.js') }}"></script> -->
 {% endblock %}

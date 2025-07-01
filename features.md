@@ -13,8 +13,8 @@
 
 ## Volunteer Directory
 
-- [ ] Edit
-- [ ] Add
+- [x] Edit
+- [x] Add
 - [x] Delete (need to check admin only)
 - [x] Import
 - [x] Search
@@ -30,7 +30,7 @@
 ### Volunteer Page
 
 - [x] Salesforce Buttons
-- [ ] Edit
+- [x] Edit
 - [x] Personal and Contact Info
 - [x] Professional Information
 - [x] Skills and Activity Summary
