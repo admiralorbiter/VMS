@@ -102,6 +102,15 @@
   - [x] Volunteer List
   - [x] Event List
 
+### End of Year Report
+
+- [x] Academic Year Filter
+- [x] District Stats Overview
+- [x] District Breakdown
+  - [x] Stats Overview
+  - [x] Event Type Filter
+  - [x] Export to Excel
+
 ### Advance Search
 
 
