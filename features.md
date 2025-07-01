@@ -17,9 +17,9 @@
 - [ ] Add
 - [x] Delete (need to check admin only)
 - [x] Import
-- [ ] Search
+- [x] Search
   - [x] Name
-  - [ ] Org/Role/Title/Dept
+  - [x] Org/Role/Title/Dept
   - [x] Local Status
   - [x] Email
   - [x] Skills

@@ -212,13 +212,8 @@ def volunteers():
 
     if current_filters.get('org_search'):
         search_term = f"%{current_filters['org_search']}%"
-        # Join with VolunteerOrganization and Organization tables
-        query = query.outerjoin(
-            VolunteerOrganization
-        ).outerjoin(
-            Organization,
-            VolunteerOrganization.organization_id == Organization.id
-        ).filter(or_(
+        # The joins are already established in the main query, so we can directly filter
+        query = query.filter(or_(
             # Search direct volunteer fields
             Volunteer.organization_name.ilike(search_term),
             Volunteer.title.ilike(search_term),
