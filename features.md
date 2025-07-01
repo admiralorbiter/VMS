@@ -206,3 +206,14 @@
 ## Reports
 
 ### Advance Search
+
+## Calendar
+
+- [x] Show Upcoming Events
+  - [x] Filter by : Month/Week/Day
+  - [x] Filter by : List Upcoming
+  - [x] See Details and Click to see More
+
+## Attendance
+- [x] Student and Teacher List
+- [ ] To Do
