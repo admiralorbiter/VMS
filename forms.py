@@ -1,10 +1,11 @@
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, StringField, SelectField, SubmitField, TextAreaField, RadioField
-from wtforms.validators import DataRequired, Email, Optional
+from wtforms import PasswordField, StringField, SelectField, SubmitField, TextAreaField, RadioField, DateTimeLocalField, IntegerField
+from wtforms.validators import DataRequired, Email, Optional, NumberRange
 from models.contact import (
     SalutationEnum, SuffixEnum, GenderEnum, 
     RaceEthnicityEnum, EducationEnum, LocalStatusEnum
 )
+from models.event import EventType, EventStatus, EventFormat
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(message="Username is required.")])
@@ -43,3 +44,23 @@ class VolunteerForm(FlaskForm):
         choices=EducationEnum.choices(),
         validators=[Optional()]
     )
+
+class EventForm(FlaskForm):
+    title = StringField('Event Title', validators=[DataRequired()])
+    type = SelectField('Event Type', 
+                      choices=[('', 'Select Type')] + [(t.value, t.value.replace('_', ' ').title()) for t in EventType], 
+                      validators=[DataRequired()])
+    format = SelectField('Format', 
+                        choices=[('', 'Select Format')] + [(f.value, f.value.replace('_', ' ').title()) for f in EventFormat], 
+                        validators=[DataRequired()])
+    start_date = DateTimeLocalField('Start Date & Time', validators=[DataRequired()])
+    end_date = DateTimeLocalField('End Date & Time', validators=[DataRequired()])
+    location = StringField('Location', validators=[Optional()])
+    status = SelectField('Status', 
+                        choices=[('', 'Select Status')] + [(s.value, s.value) for s in EventStatus], 
+                        validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[Optional()])
+    volunteers_needed = IntegerField('Volunteers Needed', 
+                                   validators=[Optional(), NumberRange(min=0)], 
+                                   default=0)
+    submit = SubmitField('Save Event')

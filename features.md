@@ -40,8 +40,8 @@
 
 ## Event Directory
 
-- [ ] Edit
-- [ ] Add
+- [x] Edit
+- [x] Add
 - [x] Delete (need to check admin only)
 - [x] Import
 - [ ] Search
@@ -55,7 +55,7 @@
 
 ### Event Page
 
-- [ ] Edit
+- [x] Edit
 - [x] Event Info
 - [x] Participation
 - [x] People Involved

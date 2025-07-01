@@ -1,8 +1,9 @@
 import csv
 import os
 from flask import Blueprint, app, jsonify, request, render_template, flash, redirect, url_for, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 from config import Config
+from forms import EventForm
 from models import db
 from models.district_model import District
 from models.event import Event, EventType, EventStatus, EventFormat
@@ -357,25 +358,27 @@ def events():
 @events_bp.route('/events/add', methods=['GET', 'POST'])
 @login_required
 def add_event():
-    if request.method == 'POST':
+    form = EventForm()
+    
+    if form.validate_on_submit():
         try:
+            print("Form validation successful")  # Debug
+            print(f"Form data: {form.data}")  # Debug
+            
+            # Create new event from form data
             event = Event(
-                title=request.form.get('title'),
-                type=EventType[request.form.get('type').upper()],
-                start_date=datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M'),
-                end_date=datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M'),
-                location=request.form.get('location'),
-                status=request.form.get('status', EventStatus.DRAFT.value),
-                format=EventFormat[request.form.get('format').upper()],
-                description=request.form.get('description'),
-                volunteers_needed=int(request.form.get('volunteers_needed', 0))  # Add explicit type conversion
+                title=form.title.data,
+                type=EventType(form.type.data),
+                format=EventFormat(form.format.data),
+                start_date=form.start_date.data,
+                end_date=form.end_date.data,
+                location=form.location.data or '',
+                status=EventStatus(form.status.data),
+                description=form.description.data or '',
+                volunteers_needed=form.volunteers_needed.data or 0
             )
             
-            # Handle skills
-            skill_ids = request.form.getlist('skills[]')
-            if skill_ids:
-                skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
-                event.skills = skills
+            print(f"Created event: {event}")  # Debug
             
             db.session.add(event)
             db.session.commit()
@@ -385,18 +388,17 @@ def add_event():
             
         except Exception as e:
             db.session.rollback()
+            print(f"Error adding event: {str(e)}")  # Debug
             flash(f'Error adding event: {str(e)}', 'danger')
-            return redirect(url_for('events.add_event'))
+    else:
+        # Print form validation errors for debugging
+        if request.method == 'POST':
+            print(f"Form validation failed: {form.errors}")  # Debug
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'{field}: {error}', 'danger')
     
-    # For GET request, use EventType enum for dropdown options
-    event_types = [(t.value, t.value.replace('_', ' ').title()) for t in EventType]
-    statuses = [(status.value, status.value) for status in EventStatus]
-    
-    return render_template(
-        'events/add_event.html',
-        event_types=event_types,
-        statuses=statuses
-    )
+    return render_template('events/add_event.html', form=form)
 
 @events_bp.route('/events/view/<int:id>')
 @login_required
@@ -465,29 +467,22 @@ def edit_event(id):
     if not event:
         abort(404)
     
-    if request.method == 'POST':
+    form = EventForm(obj=event)
+    
+    if form.validate_on_submit():
         try:
-            event.title = request.form.get('title')
-            event.type = EventType[request.form.get('type').upper()]
-            event.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%dT%H:%M')
-            event.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%dT%H:%M')
-            event.location = request.form.get('location')
-            event.status = request.form.get('status', event.status)
-            event.format = EventFormat[request.form.get('format').upper()]
-            event.description = request.form.get('description')
-            event.volunteers_needed = int(request.form.get('volunteers_needed', 0))
+            print("Edit form validation successful")  # Debug
+            print(f"Form data: {form.data}")  # Debug
             
-            # Update skills
-            skill_ids = request.form.getlist('skills[]')
-            skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
-            event.skills = skills
+            # Update event from form data
+            form.populate_obj(event)
             
-            # Update volunteers (if present in form)
-            if 'volunteers[]' in request.form:
-                volunteer_ids = request.form.getlist('volunteers[]')
-                volunteers = Volunteer.query.filter(Volunteer.id.in_(volunteer_ids)).all()
-                for volunteer in volunteers:
-                    event.add_volunteer(volunteer)  # Use add_volunteer instead of direct append
+            # Handle enum conversions
+            event.type = EventType(form.type.data)
+            event.format = EventFormat(form.format.data)
+            event.status = EventStatus(form.status.data)
+            
+            print(f"Updated event: {event}")  # Debug
             
             db.session.commit()
             flash('Event updated successfully!', 'success')
@@ -495,19 +490,17 @@ def edit_event(id):
             
         except Exception as e:
             db.session.rollback()
+            print(f"Error updating event: {str(e)}")  # Debug
             flash(f'Error updating event: {str(e)}', 'danger')
-            return redirect(url_for('events.edit_event', id=id))
+    else:
+        # Print form validation errors for debugging
+        if request.method == 'POST':
+            print(f"Form validation failed: {form.errors}")  # Debug
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'{field}: {error}', 'danger')
     
-    # Use EventType enum for dropdown options
-    event_types = [(t.value, t.value.replace('_', ' ').title()) for t in EventType]
-    statuses = [(status.value, status.value) for status in EventStatus]
-    
-    return render_template(
-        'events/edit.html',
-        event=event,
-        event_types=event_types,
-        statuses=statuses
-    )
+    return render_template('events/edit.html', event=event, form=form)
     
 @events_bp.route('/events/import', methods=['GET', 'POST'])
 @login_required

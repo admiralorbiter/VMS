@@ -10,12 +10,31 @@
 <div class="events-container">
     <div class="events-header">
         <h1>Edit Event</h1>
-        <a href="{{ url_for('events.events') }}" class="cancel-btn">
-            <i class="fa-solid fa-arrow-left"></i> Back to Events
-        </a>
+        <div class="header-actions">
+            <a href="{{ url_for('events.view_event', id=event.id) }}" class="cancel-btn">
+                <i class="fa-solid fa-eye"></i> View
+            </a>
+            <a href="{{ url_for('events.events') }}" class="cancel-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to Events
+            </a>
+        </div>
     </div>
 
     <form method="POST" class="event-form">
+        {{ form.csrf_token }}
+        
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                <ul>
+                    {% for field, errors in form.errors.items() %}
+                        {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-info-circle"></i>
@@ -23,82 +42,66 @@
             </h2>
             <div class="form-grid">
                 <div class="form-group required">
-                    <label for="title">Event Title</label>
+                    {{ form.title.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-heading"></i>
-                        <input type="text" id="title" name="title" class="form-control" 
-                               value="{{ event.title }}" required>
+                        {{ form.title(class="form-control") }}
                     </div>
                 </div>
 
                 <div class="form-group required">
-                    <label for="type">Event Type</label>
+                    {{ form.type.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-tag"></i>
-                        <select id="type" name="type" class="form-select" required>
-                            <option value="">Select Type</option>
-                            {% for value, label in event_types %}
-                            <option value="{{ value }}" {% if event.type == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
+                        {{ form.type(class="form-select") }}
                     </div>
                 </div>
 
                 <div class="form-group required">
-                    <label for="start_date">Start Date & Time</label>
+                    {{ form.start_date.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-calendar-plus"></i>
-                        <input type="datetime-local" id="start_date" name="start_date" 
-                               class="form-control" 
-                               value="{{ event.start_date.strftime('%Y-%m-%dT%H:%M') }}"
-                               required>
+                        {{ form.start_date(class="form-control") }}
                     </div>
                 </div>
 
                 <div class="form-group required">
-                    <label for="end_date">End Date & Time</label>
+                    {{ form.end_date.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-calendar-check"></i>
-                        <input type="datetime-local" id="end_date" name="end_date" 
-                               class="form-control"
-                               value="{{ event.end_date.strftime('%Y-%m-%dT%H:%M') }}"
-                               required>
+                        {{ form.end_date(class="form-control") }}
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="location">Location</label>
+                    {{ form.location.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-location-dot"></i>
-                        <input type="text" id="location" name="location" 
-                               class="form-control"
-                               value="{{ event.location }}">
+                        {{ form.location(class="form-control") }}
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="status">Status</label>
+                    {{ form.format.label(class="form-label") }}
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-desktop"></i>
+                        {{ form.format(class="form-select") }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.status.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-circle-info"></i>
-                        <select id="status" name="status" class="form-select">
-                            {% for value, label in statuses %}
-                            <option value="{{ value }}" {% if event.status == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
+                        {{ form.status(class="form-select") }}
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="volunteer_needed">Volunteers Needed</label>
+                    {{ form.volunteers_needed.label(class="form-label") }}
                     <div class="input-wrapper">
                         <i class="fa-solid fa-users"></i>
-                        <input type="number" id="volunteer_needed" name="volunteer_needed" 
-                               class="form-control" min="0"
-                               value="{{ event.volunteer_needed }}">
+                        {{ form.volunteers_needed(class="form-control", min="0") }}
                     </div>
                 </div>
             </div>
@@ -110,10 +113,9 @@
                 Event Details
             </h2>
             <div class="form-group full-width">
-                <label for="description">Description</label>
+                {{ form.description.label(class="form-label") }}
                 <div class="input-wrapper">
-                    <textarea id="description" name="description" 
-                              class="form-control">{{ event.description }}</textarea>
+                    {{ form.description(class="form-control", rows="4") }}
                 </div>
             </div>
         </div>
@@ -146,16 +148,15 @@
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="save-btn">
-                <i class="fa-solid fa-save"></i> Save Changes
-            </button>
-            <a href="{{ url_for('events.events') }}" class="cancel-btn">
+            {{ form.submit(class="save-btn") }}
+            <a href="{{ url_for('events.view_event', id=event.id) }}" class="cancel-btn">
                 <i class="fa-solid fa-times"></i> Cancel
             </a>
         </div>
     </form>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/events.js') }}"></script>
 {% endblock %}
