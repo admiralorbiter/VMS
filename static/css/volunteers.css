@@ -1743,6 +1743,20 @@ main {
     color: var(--ucla-blue);
 }
 
+/* Volunteer name link styling */
+.volunteer-name-link {
+    color: var(--delft-blue);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: inline-block;
+}
+
+.volunteer-name-link:hover {
+    color: var(--ucla-blue);
+    text-decoration: underline;
+}
+
 .org-title {
     color: var(--ucla-blue);
     font-size: 0.9rem;

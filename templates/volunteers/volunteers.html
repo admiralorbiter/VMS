@@ -100,7 +100,9 @@
                 {% for volunteer in volunteers %}
                 <tr>
                     <td>
-                        {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}
+                        <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="volunteer-name-link">
+                            {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}
+                        </a>
                         <br>
                         {% if volunteer.volunteer.title %}
                         <div class="org-title">{{ volunteer.volunteer.title }}</div>
