@@ -5,29 +5,103 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}">
 <style>
-    .event-type-card {
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .event-type-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    
-    .event-type-card.selected {
-        background-color: #007bff;
-        color: white;
-        position: relative;
+
+
+    /* Event type filtering styles */
+    .event-types-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        overflow: hidden;
     }
 
-    .event-type-card.selected::after {
+    .event-types-header {
+        background: var(--ucla-blue);
+        color: white;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .event-types-content {
+        padding: 1rem 1.5rem;
+    }
+
+    .event-type-card.filterable {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .event-type-card.filterable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        border-color: var(--ucla-blue);
+    }
+
+    .event-type-card.filterable.selected {
+        background-color: var(--ucla-blue);
+        color: white;
+        border-color: var(--ucla-blue);
+        box-shadow: 0 4px 12px rgba(70, 117, 153, 0.3);
+    }
+
+    .event-type-card.filterable.selected::after {
         content: "✓";
         position: absolute;
-        top: 5px;
-        right: 8px;
+        top: 4px;
+        right: 6px;
         font-weight: bold;
-        font-size: 12px;
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--ucla-blue);
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .clear-filter-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .clear-filter-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .filter-tip {
+        font-size: 11px;
+        color: #666;
+        font-style: italic;
+        margin: 0;
+        padding: 0.5rem 0.75rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 3px solid var(--ucla-blue);
+    }
+
+    .filter-tip::before {
+        content: "💡";
+        margin-right: 0.5rem;
     }
 
     .event-types-grid {
@@ -113,16 +187,27 @@
         </div>
     </div>
 
-    <!-- Event Type Breakdown -->
+    <!-- Event Type Breakdown and Filtering -->
     <div class="breakdown-section">
         <h2>Event Types</h2>
-        <div class="event-types-grid">
-            {% for type, count in stats.event_types.items() %}
-            <div class="event-type-card" data-type="{{ type }}">
-                <div class="type-count">{{ count }}</div>
-                <div class="type-name">{{ type }}</div>
+        <div class="event-types-section">
+            <div class="event-types-header">
+                <h3>Filter by Event Type</h3>
+                <button class="clear-filter-btn" onclick="clearEventTypeFilter()">
+                    <i class="fas fa-times"></i> Clear Filter
+                </button>
             </div>
-            {% endfor %}
+            <div class="event-types-content">
+                <div class="event-types-grid">
+                    {% for type, count in stats.event_types.items() %}
+                    <div class="event-type-card filterable" data-type="{{ type }}">
+                        <div class="type-count">{{ count }}</div>
+                        <div class="type-name">{{ type|replace('_', ' ')|title }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="filter-tip">Click event types to filter the data below. Hold Ctrl/Cmd to select multiple types.</p>
+            </div>
         </div>
     </div>
 
@@ -280,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButtons = document.querySelectorAll('.view-toggle-button');
     const monthlyView = document.getElementById('monthly-view');
     const schoolsView = document.getElementById('schools-view');
-    const eventTypeCards = document.querySelectorAll('.event-type-card');
+    const eventTypeCards = document.querySelectorAll('.event-type-card.filterable');
     let currentView = 'monthly';
     let selectedEventTypes = new Set(); // Change to Set for multiple selections
 
@@ -605,6 +690,39 @@ document.addEventListener('DOMContentLoaded', function() {
         filterByEventTypes(selectedEventTypes);
     }
 
+    function toggleEventTypeFilter(eventType, event) {
+        const card = document.querySelector(`[data-type="${eventType}"]`);
+        if (!card) return;
+        
+        // Check if Ctrl/Cmd key is held for multi-select
+        const isMultiSelect = event.ctrlKey || event.metaKey;
+        
+        if (isMultiSelect) {
+            if (selectedEventTypes.has(eventType)) {
+                selectedEventTypes.delete(eventType);
+                card.classList.remove('selected');
+            } else {
+                selectedEventTypes.add(eventType);
+                card.classList.add('selected');
+            }
+        } else {
+            // Single select mode
+            if (selectedEventTypes.size === 1 && selectedEventTypes.has(eventType)) {
+                // Clicking the same type again clears the filter
+                selectedEventTypes.clear();
+                card.classList.remove('selected');
+            } else {
+                // Select only this type
+                selectedEventTypes.clear();
+                eventTypeCards.forEach(c => c.classList.remove('selected'));
+                selectedEventTypes.add(eventType);
+                card.classList.add('selected');
+            }
+        }
+        
+        filterByEventTypes(selectedEventTypes);
+    }
+
     // Event handlers
     toggleButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -612,33 +730,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Modified click handler for multi-select
+    // Add event listeners for filterable event type cards
     eventTypeCards.forEach(card => {
         card.addEventListener('click', function(e) {
             const type = this.dataset.type;
-            
-            // Check if Ctrl/Cmd key is held for multi-select
-            if (e.ctrlKey || e.metaKey) {
-                if (selectedEventTypes.has(type)) {
-                    selectedEventTypes.delete(type);
-                } else {
-                    selectedEventTypes.add(type);
-                }
-            } else {
-                // Single select mode
-                if (selectedEventTypes.size === 1 && selectedEventTypes.has(type)) {
-                    // Clicking the same type again clears the filter
-                    selectedEventTypes.clear();
-                } else {
-                    // Select only this type
-                    selectedEventTypes.clear();
-                    selectedEventTypes.add(type);
-                }
-            }
-            
-            filterByEventTypes(selectedEventTypes);
+            toggleEventTypeFilter(type, e);
         });
     });
+    
+
 
     // Initialize the view (default to monthly)
     switchView('monthly');

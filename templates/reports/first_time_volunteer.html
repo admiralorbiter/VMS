@@ -7,7 +7,7 @@
 <style>
     .first-time-volunteer-container {
         padding: 20px;
-        max-width: 1400px;
+        max-width: 1600px;
         margin: 0 auto;
     }
     
@@ -93,12 +93,15 @@
         overflow: hidden;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         overflow-x: auto;
+        margin: 0 -20px; /* Extend beyond container padding */
+        width: calc(100% + 40px); /* Ensure full width including margins */
     }
     
     .volunteer-table table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 1200px;
+        min-width: 1400px;
+        table-layout: fixed;
     }
     
     .volunteer-table th {
@@ -108,6 +111,30 @@
         text-align: left;
         font-weight: 600;
         white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+    }
+    
+    .volunteer-table th:hover {
+        background: #1e4a8a;
+    }
+    
+    .volunteer-table th.sortable::after {
+        content: '↕';
+        position: absolute;
+        right: 10px;
+        opacity: 0.7;
+    }
+    
+    .volunteer-table th.sort-asc::after {
+        content: '↑';
+        opacity: 1;
+    }
+    
+    .volunteer-table th.sort-desc::after {
+        content: '↓';
+        opacity: 1;
     }
     
     .volunteer-table td {
@@ -121,7 +148,8 @@
     }
     
     .volunteer-name-cell {
-        min-width: 200px;
+        width: 22%;
+        min-width: 250px;
     }
     
     .volunteer-name {
@@ -135,10 +163,16 @@
         color: #666;
         font-size: 0.9em;
         font-weight: normal;
+        margin-bottom: 6px;
+    }
+    
+    .volunteer-salesforce {
+        margin-top: 6px;
     }
     
     .events-hours-cell {
-        min-width: 100px;
+        width: 12%;
+        min-width: 120px;
         text-align: center;
     }
     
@@ -154,22 +188,25 @@
         font-size: 0.9em;
     }
     
-    .skills-cell {
-        max-width: 250px;
-        word-wrap: break-word;
-        font-size: 0.9em;
-        color: #666;
-    }
+
     
     .title-cell {
-        max-width: 180px;
+        width: 17%;
+        max-width: 200px;
         word-wrap: break-word;
         font-size: 0.9em;
         color: #333;
     }
     
+    .organization-cell {
+        width: 13%;
+        word-wrap: break-word;
+        font-size: 0.9em;
+    }
+    
     .events-cell {
-        max-width: 350px;
+        width: 36%;
+        max-width: 500px;
         font-size: 0.85em;
     }
     
@@ -244,6 +281,73 @@
         font-style: italic;
         font-size: 0.9em;
     }
+
+    /* Pagination Styles */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .pagination-info {
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .pagination-controls select {
+        padding: 5px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+    }
+
+    .pagination-nav {
+        display: flex;
+        gap: 5px;
+    }
+
+    .page-btn {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        background: white;
+        color: #2c5aa0;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 0.9em;
+        transition: all 0.2s;
+    }
+
+    .page-btn:hover {
+        background: #2c5aa0;
+        color: white;
+        text-decoration: none;
+    }
+
+    .page-btn.current {
+        background: #2c5aa0;
+        color: white;
+        font-weight: bold;
+    }
+
+    .page-btn:disabled,
+    .page-btn.disabled {
+        background: #f8f9fa;
+        color: #ccc;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+
 </style>
 {% endblock %}
 
@@ -284,18 +388,75 @@
         </div>
     </div>
 
+    <!-- Pagination Controls -->
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Showing {{ ((page - 1) * per_page) + 1 }} to {{ [page * per_page, total_volunteers] | min }} of {{ total_volunteers }} volunteers
+        </div>
+        <div class="pagination-controls">
+            <label for="per_page">Show:</label>
+            <select name="per_page" id="per_page" onchange="updatePerPage(this.value)">
+                <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+            </select>
+            <div class="pagination-nav">
+                {% if has_prev %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=1, per_page=per_page) }}" class="page-btn">First</a>
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=page-1, per_page=per_page) }}" class="page-btn">← Prev</a>
+                {% else %}
+                    <span class="page-btn disabled">First</span>
+                    <span class="page-btn disabled">← Prev</span>
+                {% endif %}
+                
+                <!-- Page numbers -->
+                {% set start_page = [1, page - 2] | max %}
+                {% set end_page = [total_pages, page + 2] | min %}
+                
+                {% if start_page > 1 %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=1, per_page=per_page) }}" class="page-btn">1</a>
+                    {% if start_page > 2 %}
+                        <span class="page-btn disabled">...</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% for p in range(start_page, end_page + 1) %}
+                    {% if p == page %}
+                        <span class="page-btn current">{{ p }}</span>
+                    {% else %}
+                        <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=p, per_page=per_page) }}" class="page-btn">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if end_page < total_pages %}
+                    {% if end_page < total_pages - 1 %}
+                        <span class="page-btn disabled">...</span>
+                    {% endif %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">{{ total_pages }}</a>
+                {% endif %}
+                
+                {% if has_next %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=page+1, per_page=per_page) }}" class="page-btn">Next →</a>
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">Last</a>
+                {% else %}
+                    <span class="page-btn disabled">Next →</span>
+                    <span class="page-btn disabled">Last</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <div class="volunteer-table">
         {% if volunteers %}
         <table>
             <thead>
                 <tr>
-                    <th>Volunteer & First Date</th>
-                    <th>Events & Hours</th>
-                    <th>Organization</th>
-                    <th>Title</th>
-                    <th>Skills</th>
-                    <th>Events Participated</th>
-                    <th>Salesforce</th>
+                    <th class="sortable" data-sort="name" style="width: 22%;">Volunteer & First Date</th>
+                    <th class="sortable" data-sort="events" style="width: 12%;">Events & Hours</th>
+                    <th class="sortable" data-sort="organization" style="width: 13%;">Organization</th>
+                    <th class="sortable" data-sort="title" style="width: 17%;">Title</th>
+                    <th class="sortable" data-sort="events_participated" style="width: 36%;">Events Participated</th>
                 </tr>
             </thead>
             <tbody>
@@ -304,14 +465,20 @@
                     <td class="volunteer-name-cell">
                         <div class="volunteer-name">{{ volunteer.name }}</div>
                         <div class="volunteer-date">{{ volunteer.first_volunteer_date }}</div>
+                        <div class="volunteer-salesforce">
+                            {% if volunteer.salesforce_contact_url %}
+                                <a href="{{ volunteer.salesforce_contact_url }}" class="salesforce-btn" target="_blank" title="View Contact in Salesforce">
+                                    <i class="fa-solid fa-cloud"></i> Salesforce
+                                </a>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="events-hours-cell">
                         <div class="events-count">{{ volunteer.total_events }} events</div>
                         <div class="hours-count">{{ volunteer.total_hours }} hrs</div>
                     </td>
-                    <td>{{ volunteer.organization }}</td>
+                    <td class="organization-cell">{{ volunteer.organization }}</td>
                     <td class="title-cell">{{ volunteer.title }}</td>
-                    <td class="skills-cell">{{ volunteer.skills }}</td>
                     <td class="events-cell">
                         {% if volunteer.events %}
                             {% for event in volunteer.events %}
@@ -327,15 +494,6 @@
                             <div class="no-events">No events recorded</div>
                         {% endif %}
                     </td>
-                    <td>
-                        {% if volunteer.salesforce_contact_url %}
-                            <a href="{{ volunteer.salesforce_contact_url }}" class="salesforce-btn" target="_blank" title="View Contact in Salesforce">
-                                <i class="fa-solid fa-cloud"></i> Contact
-                            </a>
-                        {% else %}
-                            <span style="color: #999; font-style: italic;">No link</span>
-                        {% endif %}
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -346,5 +504,154 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Bottom Pagination Controls -->
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Showing {{ ((page - 1) * per_page) + 1 }} to {{ [page * per_page, total_volunteers] | min }} of {{ total_volunteers }} volunteers
+        </div>
+        <div class="pagination-controls">
+            <div class="pagination-nav">
+                {% if has_prev %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=1, per_page=per_page) }}" class="page-btn">First</a>
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=page-1, per_page=per_page) }}" class="page-btn">← Prev</a>
+                {% else %}
+                    <span class="page-btn disabled">First</span>
+                    <span class="page-btn disabled">← Prev</span>
+                {% endif %}
+                
+                <!-- Page numbers -->
+                {% set start_page = [1, page - 2] | max %}
+                {% set end_page = [total_pages, page + 2] | min %}
+                
+                {% if start_page > 1 %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=1, per_page=per_page) }}" class="page-btn">1</a>
+                    {% if start_page > 2 %}
+                        <span class="page-btn disabled">...</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% for p in range(start_page, end_page + 1) %}
+                    {% if p == page %}
+                        <span class="page-btn current">{{ p }}</span>
+                    {% else %}
+                        <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=p, per_page=per_page) }}" class="page-btn">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if end_page < total_pages %}
+                    {% if end_page < total_pages - 1 %}
+                        <span class="page-btn disabled">...</span>
+                    {% endif %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">{{ total_pages }}</a>
+                {% endif %}
+                
+                {% if has_next %}
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=page+1, per_page=per_page) }}" class="page-btn">Next →</a>
+                    <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">Last</a>
+                {% else %}
+                    <span class="page-btn disabled">Next →</span>
+                    <span class="page-btn disabled">Last</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+// Function to update per_page and reload
+function updatePerPage(perPage) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', perPage);
+    url.searchParams.set('page', '1'); // Reset to first page when changing per_page
+    window.location.href = url.toString();
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('.volunteer-table table');
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('th.sortable');
+    
+    let currentSort = {
+        column: null,
+        direction: 'asc'
+    };
+    
+    // Store original data for sorting
+    const originalRows = Array.from(tbody.querySelectorAll('tr'));
+    
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortKey = this.dataset.sort;
+            
+            // Update sort direction
+            if (currentSort.column === sortKey) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = sortKey;
+                currentSort.direction = 'asc';
+            }
+            
+            // Update header classes
+            headers.forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            this.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+            
+            // Sort the data
+            sortTable(sortKey, currentSort.direction);
+        });
+    });
+    
+    function sortTable(sortKey, direction) {
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch(sortKey) {
+                case 'name':
+                    aValue = a.querySelector('.volunteer-name').textContent.trim();
+                    bValue = b.querySelector('.volunteer-name').textContent.trim();
+                    break;
+                case 'events':
+                    aValue = parseInt(a.querySelector('.events-count').textContent.match(/\d+/)[0]);
+                    bValue = parseInt(b.querySelector('.events-count').textContent.match(/\d+/)[0]);
+                    break;
+                case 'organization':
+                    aValue = a.cells[2].textContent.trim();
+                    bValue = b.cells[2].textContent.trim();
+                    break;
+                case 'title':
+                    aValue = a.querySelector('.title-cell').textContent.trim();
+                    bValue = b.querySelector('.title-cell').textContent.trim();
+                    break;
+                case 'events_participated':
+                    const aEvents = a.querySelectorAll('.event-item').length;
+                    const bEvents = b.querySelectorAll('.event-item').length;
+                    aValue = aEvents;
+                    bValue = bEvents;
+                    break;
+                default:
+                    return 0;
+            }
+            
+            // Handle string comparison
+            if (typeof aValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+            
+            if (direction === 'asc') {
+                return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+            } else {
+                return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+            }
+        });
+        
+        // Clear and re-append sorted rows
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+    }
+});
+</script>
 {% endblock %} 

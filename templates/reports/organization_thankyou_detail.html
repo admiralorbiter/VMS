@@ -4,6 +4,23 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 18px;
+}
+.sort-indicator {
+    position: absolute;
+    right: 4px;
+    font-size: 13px;
+    color: #007bff;
+}
+.sortable-header.active {
+    background: #e9ecef;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -35,9 +52,18 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Events</th>
-                        <th>Hours</th>
+                        <th class="sortable-header" data-table="vol" data-column="name">
+                            Name
+                            {% if sort_vol == 'name' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
+                        <th class="sortable-header" data-table="vol" data-column="events">
+                            Events
+                            {% if sort_vol == 'events' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
+                        <th class="sortable-header" data-table="vol" data-column="hours">
+                            Hours
+                            {% if sort_vol == 'hours' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,11 +89,26 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Event</th>
-                        <th>Type</th>
-                        <th>Volunteers</th>
-                        <th>Hours</th>
+                        <th class="sortable-header" data-table="evt" data-column="date">
+                            Date
+                            {% if sort_evt == 'date' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
+                        <th class="sortable-header" data-table="evt" data-column="title">
+                            Event
+                            {% if sort_evt == 'title' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
+                        <th class="sortable-header" data-table="evt" data-column="type">
+                            Type
+                            {% if sort_evt == 'type' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
+                        <th class="sortable-header" data-table="evt" data-column="volunteers">
+                            Volunteers
+                            {% if sort_evt == 'volunteers' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
+                        <th class="sortable-header" data-table="evt" data-column="hours">
+                            Hours
+                            {% if sort_evt == 'hours' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,4 +126,41 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const table = this.dataset.table;
+            const column = this.dataset.column;
+            const url = new URL(window.location);
+            url.searchParams.set('school_year', '{{ school_year }}');
+            if (table === 'vol') {
+                const currentSort = '{{ sort_vol }}';
+                const currentOrder = '{{ order_vol }}';
+                let newOrder = 'asc';
+                if (column === currentSort && currentOrder === 'asc') {
+                    newOrder = 'desc';
+                }
+                url.searchParams.set('sort_vol', column);
+                url.searchParams.set('order_vol', newOrder);
+                url.searchParams.set('sort_evt', '{{ sort_evt }}');
+                url.searchParams.set('order_evt', '{{ order_evt }}');
+            } else if (table === 'evt') {
+                const currentSort = '{{ sort_evt }}';
+                const currentOrder = '{{ order_evt }}';
+                let newOrder = 'asc';
+                if (column === currentSort && currentOrder === 'asc') {
+                    newOrder = 'desc';
+                }
+                url.searchParams.set('sort_evt', column);
+                url.searchParams.set('order_evt', newOrder);
+                url.searchParams.set('sort_vol', '{{ sort_vol }}');
+                url.searchParams.set('order_vol', '{{ order_vol }}');
+            }
+            window.location.href = url.toString();
+        });
+    });
+});
+</script>
 {% endblock %} 

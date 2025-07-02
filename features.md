@@ -13,13 +13,13 @@
 
 ## Volunteer Directory
 
-- [ ] Edit
-- [ ] Add
+- [x] Edit
+- [x] Add
 - [x] Delete (need to check admin only)
 - [x] Import
-- [ ] Search
+- [x] Search
   - [x] Name
-  - [ ] Org/Role/Title/Dept
+  - [x] Org/Role/Title/Dept
   - [x] Local Status
   - [x] Email
   - [x] Skills
@@ -30,7 +30,7 @@
 ### Volunteer Page
 
 - [x] Salesforce Buttons
-- [ ] Edit
+- [x] Edit
 - [x] Personal and Contact Info
 - [x] Professional Information
 - [x] Skills and Activity Summary
@@ -40,11 +40,11 @@
 
 ## Event Directory
 
-- [ ] Edit
-- [ ] Add
+- [x] Edit
+- [x] Add
 - [x] Delete (need to check admin only)
 - [x] Import
-- [ ] Search
+- [x] Search
   - [x] Name
   - [x] Type
   - [x] Statuses
@@ -55,7 +55,7 @@
 
 ### Event Page
 
-- [ ] Edit
+- [x] Edit
 - [x] Event Info
 - [x] Participation
 - [x] People Involved
@@ -68,7 +68,101 @@
 
 ## Reports
 
-### Advance Search
+### Virtual Session Usage Report
+
+- [x] Search and Filter
+  - [x] Academic Year
+  - [x] Start Date
+  - [x] End Date
+  - [x] Career Cluster
+  - [x] District
+  - [x] School
+  - [x] Status
+- [ ] Link to Core Spreadsheet
+- [x] Export To Excel
+- [x] Summary Stats
+- [x] Column Sort
+- [x] Pagination
+
+### Volunteer Thank You Report
+
+- [x] Academic Year Filter
+- [x] Column Sort
+- [x] Volunteer Detail
+  - [x] Academic Year Filter
+  - [x] Summary Stats
+  - [x] Sortable Table
+
+### Organization Thank You Report
+
+- [x] Academic Year Filter
+- [x] Column Sort
+- [x] Volunteer Detail
+  - [x] Academic Year Filter
+  - [x] Volunteer List
+  - [x] Event List
+
+### End of Year Report
+
+- [x] Academic Year Filter
+- [x] District Stats Overview
+- [x] District Breakdown
+  - [x] Stats Overview
+  - [x] Event Type Filter
+  - [x] Export to Excel
+
+### End of Year Report
+
+- [x] Academic Year Filter
+- [x] Summary Stats
+- [x] Export to Excel
+- [x] Sortable Table
+
+### First Time Volunteer Report
+
+- [x] Academic Year Filter
+- [x] Summary Stats
+- [ ] Export to Excel
+- [x] Sortable Table
+- [x] Pagination
+
+### Recruitment Tools: Quick Recruitment Tool
+
+- [x] Upcoming Event Filter
+- [x] Search by multiple criteria
+
+### Recruitment Tools: Advance Volunteer Search
+
+- [x] Wide and Narrow Search
+- [x] Search multiple terms and criteria
+
+### Event Contact Report
+
+- [x] List of Events
+- [x] Sortable List
+- [x] View Email and Phone Number List for Contacts
+- [ ] Automation Tools for Snow Days
+
+### Organization Reports
+
+- [x] Academic Year Filter
+- [x] Pagination
+- [x] Cached
+- [x] Organziation Breakdown
+  - [x] Output to Excel
+  - [x] Summary Stats
+  - [x] In-Person Table
+  - [x] Virtual Experiences
+  - [x] Volunteer Summary
+  - [x] Cancelled Events
+
+### Event Contact Report
+
+- [ ] ToDo
+
+### District Attendance Report
+
+- [ ] ToDo
 
 ## Admin
 
@@ -110,15 +204,15 @@
 
 ## History
 
-- [ ] Search
+- [x] Search
   - [x] Summary Search
-  - [ ] Detailed Search
+  - [x] Detailed Search
   - [ ] Activity Type
   - [x] Status
   - [x] Start Date
   - [x] End Date
-- [ ] Column Sort
-- [ ] Pagination
+- [x] Column Sort
+- [x] Pagination
 
 ## Schools
 

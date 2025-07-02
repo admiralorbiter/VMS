@@ -33,18 +33,12 @@ def load_routes(bp):
             },
             {
                 'title': 'District Year-End Report',
-                'description': 'View comprehensive year-end statistics for each district.',
+                'description': 'View comprehensive year-end statistics for each district with event type filtering and detailed engagement data.',
                 'icon': 'fa-solid fa-chart-pie',
                 'url': '/reports/district/year-end',
                 'category': 'District Reports'
             },
-            {
-                'title': 'District Engagement Report',
-                'description': 'View district engagement statistics by district, including unique volunteers and students.',
-                'icon': 'fa-solid fa-chart-pie',
-                'url': '/reports/district/engagement',
-                'category': 'District Reports'
-            },
+
             {
                 'title': 'First Time Volunteer Report',
                 'description': 'View statistics on first-time volunteers, including participation and engagement metrics.',

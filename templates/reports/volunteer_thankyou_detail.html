@@ -4,6 +4,23 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/volunteer_thankyou.css') }}">
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 18px;
+}
+.sort-indicator {
+    position: absolute;
+    right: 4px;
+    font-size: 13px;
+    color: #007bff;
+}
+.sortable-header.active {
+    background: #e9ecef;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -43,12 +60,30 @@
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Event</th>
-                    <th>Type</th>
-                    <th>Hours</th>
-                    <th>School</th>
-                    <th>District</th>
+                    <th class="sortable-header" data-column="date">
+                        Date
+                        {% if sort == 'date' %}<span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>{% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="title">
+                        Event
+                        {% if sort == 'title' %}<span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>{% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="type">
+                        Type
+                        {% if sort == 'type' %}<span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>{% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="hours">
+                        Hours
+                        {% if sort == 'hours' %}<span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>{% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="school">
+                        School
+                        {% if sort == 'school' %}<span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>{% endif %}
+                    </th>
+                    <th class="sortable-header" data-column="district">
+                        District
+                        {% if sort == 'district' %}<span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>{% endif %}
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -66,4 +101,26 @@
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.column;
+            const currentSort = '{{ sort if sort is defined else "date" }}';
+            const currentOrder = '{{ order if order is defined else "asc" }}';
+            let newOrder = 'asc';
+            if (column === currentSort && currentOrder === 'asc') {
+                newOrder = 'desc';
+            }
+            // Build new URL with sorting parameters, preserving school_year
+            const url = new URL(window.location);
+            url.searchParams.set('sort', column);
+            url.searchParams.set('order', newOrder);
+            url.searchParams.set('school_year', '{{ school_year }}');
+            window.location.href = url.toString();
+        });
+    });
+});
+</script>
 {% endblock %} 
