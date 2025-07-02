@@ -117,11 +117,11 @@ def get_district_student_count_for_event(event, target_district_id):
 def get_current_school_year():
     """
     Returns the current school year in 'YYZZ' format (e.g., '2324' for 2023-24).
-    If before June 1st, returns current academic year.
-    If after June 1st, returns next academic year.
+    If before August 1st, returns current academic year.
+    If August 1st or later, returns next academic year.
     """
     today = datetime.now()
-    if today.month < 6:  # Before June
+    if today.month < 8:  # Before August
         return f"{str(today.year-1)[-2:]}{str(today.year)[-2:]}"
     return f"{str(today.year)[-2:]}{str(today.year+1)[-2:]}"
 
@@ -129,10 +129,11 @@ def get_school_year_date_range(school_year):
     """
     Returns start and end dates for a school year.
     school_year format: '2324' for 2023-2024 school year
+    Academic year runs from August 1st to July 31st.
     """
     year = int(school_year[:2]) + 2000
-    start_date = datetime(year, 6, 1)  # June 1st of start year
-    end_date = datetime(year + 1, 5, 31)  # May 31st of end year
+    start_date = datetime(year, 8, 1)  # August 1st of start year
+    end_date = datetime(year + 1, 7, 31)  # July 31st of end year
     return start_date, end_date
 
 def generate_district_stats(school_year, host_filter='all'):
