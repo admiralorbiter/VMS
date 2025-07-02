@@ -444,6 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     students: {{ event.students }},
                     volunteers: {{ event.volunteers }},
                     volunteerHours: {{ event.volunteer_hours }},
+                    sessionHost: "{{ event.session_host or '' }}",
                     studentIds: [], // Will be populated from backend if needed
                     volunteerIds: [] // Will be populated from backend if needed
                 },

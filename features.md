@@ -121,7 +121,7 @@
 - [x] Summary Stats
 - [x] Export to Excel
 - [ ] Sortable Table
-- [ ] Event Host Filter
+- [x] Event Host Filter
 
 ### First Time Volunteer Report
 
