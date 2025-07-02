@@ -389,14 +389,12 @@ def add_district_to_event(event, district_name):
     """Gets or creates the district and adds it to the event's districts list if not already present."""
     district = get_or_create_district(district_name)
     if district:
-        print(f"DEBUG: Adding district '{district.name}' (ID: {district.id}, Type: {type(district.id)}) to event '{event.title}'")
+        # print(f"DEBUG: Adding district '{district.name}' (ID: {district.id}, Type: {type(district.id)}) to event '{event.title}'")
         
         # Check if district is already associated by ID
         if not any(d.id == district.id for d in event.districts):
             event.districts.append(district)
-            print(f"DEBUG: Successfully added district '{district.name}' to event '{event.title}'")
-        else:
-            print(f"DEBUG: District '{district.name}' already associated with event '{event.title}'")
+            # print(f"DEBUG: Successfully added district '{district.name}' to event '{event.title}'")
     else:
         print(f"DEBUG: Failed to get/create district for name: '{district_name}'")
 
@@ -1014,7 +1012,7 @@ def import_sheet():
                         existing_district = next((d for d in event.districts if d.name == district_name), None)
                         if not existing_district:
                             add_district_to_event(event, district_name)
-                            print(f"DEBUG: Added district '{district_name}' to event '{event.title}' from row {row_index + 1}")
+                            #print(f"DEBUG: Added district '{district_name}' to event '{event.title}' from row {row_index + 1}")
 
                 # --- Primary Logic Block ---
                 # Run this block only ONCE per specific event instance (title + datetime)
