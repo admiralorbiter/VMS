@@ -33,6 +33,15 @@
         {% endif %}
     </div>
 
+    <!-- Host Filter Toggle -->
+    <div class="host-filter-toggle" style="margin-bottom: 2rem;">
+        <form method="get" id="hostFilterForm" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="hidden" name="school_year" value="{{ school_year }}">
+            <button type="submit" name="host_filter" value="all" class="host-filter-btn{% if host_filter == 'all' %} selected{% endif %}">All Events</button>
+            <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
+        </form>
+    </div>
+
     <div id="loadingIndicator" style="display: none;">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -42,7 +51,7 @@
     <div class="districts-grid" id="districtsContainer">
         {% for district_name, stats in districts.items() %}
         <div class="district-card">
-            <a href="{{ url_for('report.district_year_end_detail', district_name=district_name, school_year=school_year) }}" class="district-link">
+            <a href="{{ url_for('report.district_year_end_detail', district_name=district_name, school_year=school_year, host_filter=host_filter) }}" class="district-link">
                 <div class="district-header">
                     <h2>{{ stats.name }}</h2>
                     {% if stats.district_code %}
@@ -157,9 +166,11 @@ function refreshData() {
 
     // Get the current school year from the select
     const schoolYear = document.querySelector('select[name="school_year"]').value;
-    
+    // Get the selected host_filter from the active filter button
+    const hostFilter = document.querySelector('.host-filter-btn.selected')?.value || 'all';
+
     // Make the refresh API call
-    fetch(`{{ url_for('report.refresh_district_year_end') }}?school_year=${schoolYear}`, {
+    fetch(`{{ url_for('report.refresh_district_year_end') }}?school_year=${schoolYear}&host_filter=${hostFilter}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -235,6 +246,46 @@ function refreshData() {
 @keyframes fa-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.host-filter-toggle {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 1.5rem 0;
+    display: flex;
+    justify-content: center;
+}
+.host-filter-btn {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    color: #495057;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+.host-filter-btn.selected {
+    background: var(--ucla-blue);
+    border-color: var(--ucla-blue);
+    color: white;
+    box-shadow: 0 2px 4px rgba(70, 117, 153, 0.3);
+}
+.host-filter-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+    text-decoration: none;
+}
+.host-filter-btn.selected:hover {
+    background: var(--delft-blue);
+    border-color: var(--delft-blue);
+    color: white;
 }
 </style>
 {% endblock %} 

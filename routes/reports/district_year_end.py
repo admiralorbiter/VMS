@@ -33,15 +33,16 @@ def load_routes(bp):
     def district_year_end():
         # Get school year from query params or default to current
         school_year = request.args.get('school_year', get_current_school_year())
+        host_filter = request.args.get('host_filter', 'all')  # 'all' or 'prepkc'
         
-        # Get cached reports for the school year
-        cached_reports = DistrictYearEndReport.query.filter_by(school_year=school_year).all()
+        # Get cached reports for the school year and host_filter
+        cached_reports = DistrictYearEndReport.query.filter_by(school_year=school_year, host_filter=host_filter).all()
         
         district_stats = {report.district.name: report.report_data for report in cached_reports}
         
         if not district_stats:
-            district_stats = generate_district_stats(school_year)
-            cache_district_stats_with_events(school_year, district_stats)
+            district_stats = generate_district_stats(school_year, host_filter=host_filter)
+            cache_district_stats_with_events(school_year, district_stats, host_filter=host_filter)
         
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -61,7 +62,8 @@ def load_routes(bp):
             school_year=school_year,
             school_years=school_years,
             now=datetime.now(),
-            last_updated=last_updated
+            last_updated=last_updated,
+            host_filter=host_filter
         )
 
     @bp.route('/reports/district/year-end/refresh', methods=['POST'])
@@ -69,17 +71,17 @@ def load_routes(bp):
     def refresh_district_year_end():
         """Refresh the cached district year-end report data"""
         school_year = request.args.get('school_year', get_current_school_year())
-        
+        host_filter = request.args.get('host_filter', 'all')
         try:
-            # Delete existing cached reports for this school year
-            deleted_count = DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+            # Delete existing cached reports for this school year and host_filter
+            deleted_count = DistrictYearEndReport.query.filter_by(school_year=school_year, host_filter=host_filter).delete()
             db.session.commit()
             
             # Generate new stats
-            district_stats = generate_district_stats(school_year)
+            district_stats = generate_district_stats(school_year, host_filter=host_filter)
             
             # Cache the stats and events data
-            cache_district_stats_with_events(school_year, district_stats)
+            cache_district_stats_with_events(school_year, district_stats, host_filter=host_filter)
             
             return jsonify({
                 'success': True, 
@@ -94,6 +96,7 @@ def load_routes(bp):
     def district_year_end_detail(district_name):
         """Show detailed year-end report for a specific district"""
         school_year = request.args.get('school_year', get_current_school_year())
+        host_filter = request.args.get('host_filter', 'all')  # 'all' or 'prepkc'
         
         # Get district
         district = District.query.filter_by(name=district_name).first_or_404()
@@ -152,14 +155,12 @@ def load_routes(bp):
                         total_events=total_events,
                         unique_volunteer_count=unique_volunteer_count,
                         unique_student_count=unique_student_count, # Pass to template
-                        unique_organization_count=unique_organization_count
+                        unique_organization_count=unique_organization_count,
+                        host_filter=host_filter
                     )
         
         # If we reach here, either no cache or missing parts (stats or events_data)
-        # Regenerate stats if missing
-        if not stats:
-            all_district_stats = generate_district_stats(school_year) # Regenerate all (might be inefficient)
-            stats = all_district_stats.get(district_name, {}) # Get stats for this specific district
+        # We'll calculate stats after the events query
 
         # If we get here, we need to generate the events data (or it was missing from cache)
         start_date, end_date = get_school_year_date_range(school_year)
@@ -183,7 +184,7 @@ def load_routes(bp):
                 )
 
         # Fetch events
-        events = (Event.query
+        events_query = (Event.query
             .outerjoin(School, Event.school == School.id)
             .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
             .filter(
@@ -193,7 +194,32 @@ def load_routes(bp):
                 db.or_(*query_conditions)
             )
             .order_by(Event.start_date)
-            .all())
+        )
+        if host_filter == 'prepkc':
+            events_query = events_query.filter(Event.session_host == 'PREPKC')
+        events = events_query.all()
+        
+        # Calculate stats from filtered events (always recalculate when filter is applied)
+        if host_filter != 'all' or not stats:
+            stats = {
+                'total_events': len(events),
+                'total_in_person_students': sum(
+                    get_district_student_count_for_event(e, district.id) for e in events if e.type != EventType.VIRTUAL_SESSION
+                ),
+                'total_virtual_students': sum(
+                    get_district_student_count_for_event(e, district.id) for e in events if e.type == EventType.VIRTUAL_SESSION
+                ),
+                'total_volunteers': sum(
+                    len([p for p in e.volunteer_participations if p.status in ['Attended', 'Completed', 'Successfully Completed']]) for e in events
+                ),
+                'total_volunteer_hours': sum(
+                    sum(p.delivery_hours or 0 for p in e.volunteer_participations if p.status in ['Attended', 'Completed', 'Successfully Completed']) for e in events
+                ),
+                'event_types': {},
+            }
+            for e in events:
+                t = e.type.value if e.type else 'Unknown'
+                stats['event_types'][t] = stats['event_types'].get(t, 0) + 1
         
         event_ids = [event.id for event in events]
         total_events = len(events)
@@ -328,7 +354,8 @@ def load_routes(bp):
             total_events=total_events,
             unique_volunteer_count=unique_volunteer_count,
             unique_student_count=unique_student_count, # Pass to template
-            unique_organization_count=unique_organization_count
+            unique_organization_count=unique_organization_count,
+            host_filter=host_filter
         )
 
     @bp.route('/reports/district/year-end/<district_name>/excel')
@@ -689,7 +716,7 @@ def load_routes(bp):
             'event_ids': [event.id for event in events]
         })
 
-def cache_district_stats_with_events(school_year, district_stats):
+def cache_district_stats_with_events(school_year, district_stats, host_filter='all'):
     """Cache district stats and events data for all districts"""
     for district_name, stats in district_stats.items():
         district = District.query.filter_by(name=district_name).first()
@@ -699,13 +726,15 @@ def cache_district_stats_with_events(school_year, district_stats):
         # Get or create report
         report = DistrictYearEndReport.query.filter_by(
             district_id=district.id,
-            school_year=school_year
+            school_year=school_year,
+            host_filter=host_filter
         ).first()
         
         if not report:
             report = DistrictYearEndReport(
                 district_id=district.id,
-                school_year=school_year
+                school_year=school_year,
+                host_filter=host_filter
             )
             db.session.add(report)
         

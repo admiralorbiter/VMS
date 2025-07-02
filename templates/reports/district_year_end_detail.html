@@ -139,6 +139,48 @@
         color: white;
         text-decoration: none;
     }
+
+    /* Host Filter Styles */
+    .host-filter-toggle {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 1.5rem 0;
+    }
+
+    .host-filter-btn {
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
+        color: #495057;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .host-filter-btn:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #495057;
+        text-decoration: none;
+    }
+
+    .host-filter-btn.selected {
+        background: var(--ucla-blue);
+        border-color: var(--ucla-blue);
+        color: white;
+        box-shadow: 0 2px 4px rgba(70, 117, 153, 0.3);
+    }
+
+    .host-filter-btn.selected:hover {
+        background: var(--delft-blue);
+        border-color: var(--delft-blue);
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -152,6 +194,15 @@
         </div>
         <h1>{{ district.name }}</h1>
         <div class="school-year">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
+    </div>
+
+    <!-- Host Filter Toggle -->
+    <div class="host-filter-toggle">
+        <form method="get" id="hostFilterForm">
+            <input type="hidden" name="school_year" value="{{ school_year }}">
+            <button type="submit" name="host_filter" value="all" class="host-filter-btn{% if host_filter == 'all' %} selected{% endif %}">All Events</button>
+            <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
+        </form>
     </div>
 
     <!-- Summary Stats -->

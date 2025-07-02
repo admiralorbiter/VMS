@@ -135,7 +135,7 @@ def get_school_year_date_range(school_year):
     end_date = datetime(year + 1, 5, 31)  # May 31st of end year
     return start_date, end_date
 
-def generate_district_stats(school_year):
+def generate_district_stats(school_year, host_filter='all'):
     """Generate district statistics for a school year"""
     district_stats = {}
     start_date, end_date = get_school_year_date_range(school_year)
@@ -193,8 +193,16 @@ def generate_district_stats(school_year):
                 *district_partner_conditions
             )
         ).distinct()
+        if host_filter == 'prepkc':
+            print('Applying PREPKC filter to events_query...')
+            events_query = events_query.filter(Event.session_host.ilike('%prepkc%'))
+            print('PREPKC filter applied. SQL:', str(events_query))
         
         events = events_query.all()
+        if host_filter == 'prepkc':
+            print('PREPKC filter active. session_host values:')
+            for event in events:
+                print(f"  Event ID {event.id}: session_host='{event.session_host}' title='{event.title}'")
         event_ids = [event.id for event in events]
         print(f"Found {len(events)} total events")  # Debug log
         
