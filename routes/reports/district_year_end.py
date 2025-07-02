@@ -197,7 +197,13 @@ def load_routes(bp):
             .order_by(Event.start_date)
         )
         if host_filter == 'prepkc':
-            events_query = events_query.filter(Event.session_host.ilike('%prepkc%'))
+            events_query = events_query.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
         events = events_query.all()
         
         # Calculate stats from filtered events (always recalculate when filter is applied)
@@ -583,7 +589,13 @@ def load_routes(bp):
         
         # Apply host filter if specified
         if host_filter == 'prepkc':
-            events_query = events_query.filter(Event.session_host.ilike('%prepkc%'))
+            events_query = events_query.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
         
         events = events_query.all()
         
@@ -800,7 +812,13 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter='a
         
         # Apply host filter if specified
         if host_filter == 'prepkc':
-            events_query = events_query.filter(Event.session_host.ilike('%prepkc%'))
+            events_query = events_query.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
         
         events = events_query.all()
         

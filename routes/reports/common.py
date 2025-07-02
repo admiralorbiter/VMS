@@ -195,7 +195,13 @@ def generate_district_stats(school_year, host_filter='all'):
         ).distinct()
         if host_filter == 'prepkc':
             print('Applying PREPKC filter to events_query...')
-            events_query = events_query.filter(Event.session_host.ilike('%prepkc%'))
+            events_query = events_query.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
             print('PREPKC filter applied. SQL:', str(events_query))
         
         events = events_query.all()
