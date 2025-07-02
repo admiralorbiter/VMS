@@ -20,6 +20,22 @@
 .sortable-header.active {
     background: #e9ecef;
 }
+.export-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin-left: 10px;
+}
+.export-button:hover {
+    background-color: #218838;
+    color: white;
+    text-decoration: none;
+}
 </style>
 {% endblock %}
 
@@ -37,6 +53,9 @@
                 </option>
                 {% endfor %}
             </select>
+            <a href="{{ url_for('report.organization_thankyou_excel', school_year=school_year, sort=sort, order=order) }}" class="export-button">
+                📊 Export to Excel
+            </a>
         </form>
     </div>
 
