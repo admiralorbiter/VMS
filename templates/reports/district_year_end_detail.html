@@ -188,7 +188,7 @@
 <div class="district-detail-container">
     <div class="header-section">
         <div class="back-nav">
-            <a href="{{ url_for('report.district_year_end', school_year=school_year) }}" class="back-link">
+            <a href="{{ url_for('report.district_year_end', school_year=school_year, host_filter=host_filter) }}" class="back-link">
                 <i class="fas fa-arrow-left"></i> Back to Districts
             </a>
         </div>
@@ -276,7 +276,7 @@
                 <button class="view-toggle-button active" data-view="all-types">
                     <i class="fas fa-th-large"></i> All Types
                 </button>
-                <a href="{{ url_for('report.district_year_end_excel', district_name=district.name, school_year=school_year) }}" class="download-button">
+                <a href="{{ url_for('report.district_year_end_excel', district_name=district.name, school_year=school_year, host_filter=host_filter) }}" class="download-button">
                     <i class="fas fa-file-excel"></i> Download Excel
                 </a>
             </div>
@@ -566,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const params = new URLSearchParams();
         params.append('school_year', '{{ school_year }}');
+        params.append('host_filter', '{{ host_filter }}');
         selectedTypes.forEach(type => params.append('event_types[]', type));
         
         try {

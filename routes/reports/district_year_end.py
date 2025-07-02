@@ -96,7 +96,7 @@ def load_routes(bp):
     def district_year_end_detail(district_name):
         """Show detailed year-end report for a specific district"""
         school_year = request.args.get('school_year', get_current_school_year())
-        host_filter = request.args.get('host_filter', 'all')  # 'all' or 'prepkc'
+        host_filter = request.args.get('host_filter', 'all')
         
         # Get district
         district = District.query.filter_by(name=district_name).first_or_404()
@@ -105,10 +105,11 @@ def load_routes(bp):
         district_mapping = next((mapping for salesforce_id, mapping in DISTRICT_MAPPING.items() 
                                 if mapping['name'] == district_name), None)
         
-        # Try to get cached data first
+        # Try to get cached data first (use host_filter)
         cached_report = DistrictYearEndReport.query.filter_by(
             district_id=district.id,
-            school_year=school_year
+            school_year=school_year,
+            host_filter=host_filter
         ).first()
         
         events_by_month = {}
@@ -143,8 +144,9 @@ def load_routes(bp):
                 )
                 unique_organization_count = len(org_ids)
 
-                # If stats are also present, we can render immediately
-                if stats:
+                # Only use cached data if host_filter is 'all' or if we're confident the cache is correct
+                # For now, always regenerate when host_filter != 'all' to ensure accuracy
+                if stats and host_filter == 'all':
                     return render_template(
                         'reports/district_year_end_detail.html',
                         district=district,
@@ -363,6 +365,7 @@ def load_routes(bp):
     def district_year_end_excel(district_name):
         """Generate Excel file for district year-end report"""
         school_year = request.args.get('school_year', get_current_school_year())
+        host_filter = request.args.get('host_filter', 'all')
         
         # Get district
         district = District.query.filter_by(name=district_name).first_or_404()
@@ -370,12 +373,13 @@ def load_routes(bp):
         # Get cached report data
         cached_report = DistrictYearEndReport.query.filter_by(
             district_id=district.id,
-            school_year=school_year
+            school_year=school_year,
+            host_filter=host_filter
         ).first()
         
         if not cached_report:
             # Generate new stats if not cached
-            district_stats = generate_district_stats(school_year)
+            district_stats = generate_district_stats(school_year, host_filter=host_filter)
             stats = district_stats.get(district_name, {})
             events_data = None
         else:
@@ -515,6 +519,7 @@ def load_routes(bp):
     def get_filtered_stats(district_name):
         """Get precise filtered stats for selected event types"""
         school_year = request.args.get('school_year', get_current_school_year())
+        host_filter = request.args.get('host_filter', 'all')
         event_types = request.args.getlist('event_types[]')
         
         if not event_types:
@@ -550,7 +555,7 @@ def load_routes(bp):
                     Event.districts.any(District.name.ilike(f"%{alias}%"))
                 )
         
-        events = (Event.query
+        events_query = (Event.query
             .outerjoin(School, Event.school == School.id)
             .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
             .filter(
@@ -560,7 +565,13 @@ def load_routes(bp):
                 db.or_(*query_conditions)
             )
             .order_by(Event.start_date)
-            .all())
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            events_query = events_query.filter(Event.session_host == 'PREPKC')
+        
+        events = events_query.all()
         
         # Calculate precise unique counts
         unique_volunteers = set()
@@ -761,7 +772,7 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter='a
                 query_conditions.append(Event.districts.any(District.name.ilike(f"%{alias}%")))
 
         # Fetch events
-        events = (Event.query
+        events_query = (Event.query
             .outerjoin(School, Event.school == School.id)
             .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
             .filter(
@@ -771,7 +782,13 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter='a
                 db.or_(*query_conditions)
             )
             .order_by(Event.start_date)
-            .all())
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            events_query = events_query.filter(Event.session_host == 'PREPKC')
+        
+        events = events_query.all()
         
         event_ids = [event.id for event in events]
         
