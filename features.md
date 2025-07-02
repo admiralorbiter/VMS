@@ -92,8 +92,8 @@
   - [x] Academic Year Filter
   - [x] Summary Stats
   - [x] Sortable Table
-- [ ] Event Host Filter
-- [ ] Export to Excel
+- [x] Event Host Filter
+- [x] Export to Excel
 
 ### Organization Thank You Report
 
@@ -103,8 +103,8 @@
   - [x] Academic Year Filter
   - [x] Volunteer List
   - [x] Event List
-- [ ] Event Host Filter
-- [ ] Export to Excel
+- [x] Event Host Filter
+- [x] Export to Excel
 
 ### End of Year Report
 
