@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required
 import csv
 from io import StringIO
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import current_app
 from models.district_model import District
 from models.event import db, Event, EventType, EventStatus, EventFormat
@@ -67,11 +67,37 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
             event.session_id = session_id
             event.title = row.get('Session Title')
             event.type = EventType.VIRTUAL_SESSION
+            event.format = EventFormat.VIRTUAL
             event.status = EventStatus.map_status(status_str)
-            event.topic = row.get('Topic/Theme')
-            event.session_type = row.get('Session Type')
-            event.session_link = row.get('Session Link')
+            event.series = row.get('Topic/Theme')
+            event.additional_information = row.get('Session Type')
+            event.registration_link = row.get('Session Link')
             event.session_host = 'PREPKC'  # Set default host for virtual sessions
+            
+            # Set date/time for new events
+            try:
+                date_str = row.get('Date')
+                time_str = row.get('Time', '')
+                if date_str:
+                    date_parts = date_str.split('/')
+                    current_year = datetime.now(timezone.utc).year
+                    # Create full datetime for start_date
+                    event_date = datetime.strptime(f"{date_parts[0]}/{date_parts[1]}/{current_year}", '%m/%d/%Y')
+                    
+                    if time_str:
+                        time_obj = datetime.strptime(time_str, '%I:%M %p').time()
+                        event_date = event_date.replace(hour=time_obj.hour, minute=time_obj.minute)
+                    
+                    # Set start_date (timezone-aware datetime)
+                    event.start_date = event_date.replace(tzinfo=timezone.utc)
+                    # Set end_date (1 hour later by default)
+                    event.end_date = event.start_date + timedelta(hours=1)
+                    event.duration = 60  # Default 60 minutes
+                    
+            except ValueError as e:
+                error_count += 1
+                errors.append(f"Error parsing date/time for {event.title}: {str(e)}")
+                return success_count, warning_count, error_count
         else:
             # Update existing event with latest data
             updated_fields = []
@@ -93,35 +119,20 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
                 updated_fields.append('status')
             
             # Update other fields if they exist in the model
-            if hasattr(event, 'topic') and row.get('Topic/Theme') and row.get('Topic/Theme') != event.topic:
-                event.topic = row.get('Topic/Theme')
-                updated_fields.append('topic')
+            if row.get('Topic/Theme') and row.get('Topic/Theme') != event.series:
+                event.series = row.get('Topic/Theme')
+                updated_fields.append('series')
             
-            if hasattr(event, 'session_type') and row.get('Session Type') and row.get('Session Type') != event.session_type:
-                event.session_type = row.get('Session Type')
-                updated_fields.append('session_type')
+            if row.get('Session Type') and row.get('Session Type') != event.additional_information:
+                event.additional_information = row.get('Session Type')
+                updated_fields.append('additional_information')
             
-            if hasattr(event, 'session_link') and row.get('Session Link') and row.get('Session Link') != event.session_link:
-                event.session_link = row.get('Session Link')
-                updated_fields.append('session_link')
+            if row.get('Session Link') and row.get('Session Link') != event.registration_link:
+                event.registration_link = row.get('Session Link')
+                updated_fields.append('registration_link')
             
             if updated_fields:
                 print(f"UPDATED existing virtual event {session_id} ({event.title}) with fields: {updated_fields}")
-            
-            # Set date/time for new events
-            try:
-                date_str = row.get('Date')
-                time_str = row.get('Time', '')
-                if date_str:
-                    date_parts = date_str.split('/')
-                    current_year = datetime.now(timezone.utc).year
-                    event.date = datetime.strptime(f"{date_parts[0]}/{date_parts[1]}/{current_year}", '%m/%d/%Y').date()
-                    if time_str:
-                        event.start_time = datetime.strptime(time_str, '%I:%M %p').time()
-            except ValueError as e:
-                error_count += 1
-                errors.append(f"Error parsing date/time for {event.title}: {str(e)}")
-                return success_count, warning_count, error_count
 
         # Handle presenter information
         process_presenter(row, event, is_simulcast)
@@ -147,8 +158,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
             date_key = parsed_date.date().isoformat()
             if session_title:
                 # Find all simulcast entries with matching title and date
-                simulcast_districts = set()
-                for sim_row in all_rows:  # Changed from df.iterrows()
+                for sim_row in all_rows:
                     sim_title = clean_string_value(sim_row.get('Session Title'))
                     sim_status = safe_str(sim_row.get('Status', '')).lower()
                     sim_district = safe_str(sim_row.get('District'))
@@ -158,7 +168,7 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
                         sim_status == 'simulcast' and 
                         sim_district and not pd.isna(sim_district) and
                         (not sim_date or sim_date.date().isoformat() == date_key)):
-                        simulcast_districts.add(sim_district)
+                        districts_to_add.add(sim_district)
 
         # Now add all collected districts to the event
         for district_name in districts_to_add:
@@ -377,15 +387,18 @@ def process_teacher_for_event(row, event, is_simulcast):
 
 def add_district_to_event(event, district_name):
     """Gets or creates the district and adds it to the event's districts list if not already present."""
-    district = get_or_create_district(district_name) # Handles None/empty names
+    district = get_or_create_district(district_name)
     if district:
+        print(f"DEBUG: Adding district '{district.name}' (ID: {district.id}, Type: {type(district.id)}) to event '{event.title}'")
+        
         # Check if district is already associated by ID
         if not any(d.id == district.id for d in event.districts):
             event.districts.append(district)
-        # else:
-        #     print(f"    District '{district.name}' already associated with event '{event.title}'.")
-    # else:
-    #     print(f"    Skipped adding invalid district name: {district_name}")
+            print(f"DEBUG: Successfully added district '{district.name}' to event '{event.title}'")
+        else:
+            print(f"DEBUG: District '{district.name}' already associated with event '{event.title}'")
+    else:
+        print(f"DEBUG: Failed to get/create district for name: '{district_name}'")
 
 @virtual_bp.route('/import', methods=['GET', 'POST'])
 @login_required
@@ -505,7 +518,7 @@ def list_events():
     try:
         events = Event.query.filter_by(
             type=EventType.VIRTUAL_SESSION
-        ).order_by(Event.date.desc()).all()
+        ).order_by(Event.start_date.desc()).all()
         
         events_data = []
         for event in events:
@@ -516,17 +529,17 @@ def list_events():
                 'school': et.teacher.school.name if et.teacher.school else None,
                 'status': et.status,
                 'is_simulcast': et.is_simulcast
-            } for et in event.icipants]
+            } for et in event.teacher_registrations]
             
             events_data.append({
                 'id': event.id,
                 'title': event.title,
-                'date': event.date.strftime('%Y-%m-%d') if event.date else None,
-                'time': event.start_time.strftime('%I:%M %p') if event.start_time else None,
+                'date': event.start_date.strftime('%Y-%m-%d') if event.start_date else None,
+                'time': event.start_date.strftime('%I:%M %p') if event.start_date else None,
                 'status': event.status,
-                'session_type': event.session_type,
-                'topic': event.topic,
-                'session_link': event.session_link,
+                'session_type': event.additional_information,
+                'topic': event.series,
+                'session_link': event.registration_link,
                 'presenter_name': event.presenter_name,
                 'presenter_organization': event.presenter_organization,
                 'presenter_location_type': event.presenter_location_type,
@@ -562,19 +575,19 @@ def get_event(event_id):
             'school': et.teacher.school.name if et.teacher.school else None,
             'status': et.status,
             'is_simulcast': et.is_simulcast
-        } for et in event.teacher_participants]
+        } for et in event.teacher_registrations]
         
         return jsonify({
             'success': True,
             'event': {
                 'id': event.id,
                 'title': event.title,
-                'date': event.date.strftime('%Y-%m-%d') if event.date else None,
-                'time': event.start_time.strftime('%I:%M %p') if event.start_time else None,
+                'date': event.start_date.strftime('%Y-%m-%d') if event.start_date else None,
+                'time': event.start_date.strftime('%I:%M %p') if event.start_date else None,
                 'status': event.status,
-                'session_type': event.session_type,
-                'topic': event.topic,
-                'session_link': event.session_link,
+                'session_type': event.additional_information,
+                'topic': event.series,
+                'session_link': event.registration_link,
                 'presenter_name': event.presenter_name,
                 'presenter_organization': event.presenter_organization,
                 'presenter_location_type': event.presenter_location_type,
@@ -907,6 +920,7 @@ def import_sheet():
                          errors.append(f"Skipped row {row_index + 1} ('{title}'): Cannot determine event datetime.")
                     continue
 
+
                 # --- Event Handling ---
                 # Use title and the full datetime ISO string as the unique key
                 event_key = (title, current_datetime.isoformat())
@@ -991,18 +1005,21 @@ def import_sheet():
                     errors.append(f"Skipped row {row_index + 1} ('{title}'): Could not find or create event for {current_datetime.isoformat()}.")
                     continue
 
-                # --- Determine if this row dictates the event's core data ---
-                # Modified logic: Allow "incomplete" statuses to also run primary logic if they created the event
-                is_primary_row_status = status_str not in ['simulcast', '']
-                # Check if we've ALREADY processed the primary logic for this specific event instance (title + datetime)
-                primary_logic_run_key = f"{event_key[0]}_{event_key[1]}_primary_done" # Use tuple elements for key string
-                primary_logic_already_run = processed_event_ids.get(primary_logic_run_key, False)
-
+                # --- District Handling (should run for EVERY row with a district) ---
+                # Move this OUTSIDE the primary logic block
+                if row_data.get('District') and not pd.isna(row_data.get('District')):
+                    district_name = safe_str(row_data.get('District'))
+                    if district_name:
+                        # Check if this district is already associated with this event
+                        existing_district = next((d for d in event.districts if d.name == district_name), None)
+                        if not existing_district:
+                            add_district_to_event(event, district_name)
+                            print(f"DEBUG: Added district '{district_name}' to event '{event.title}' from row {row_index + 1}")
 
                 # --- Primary Logic Block ---
                 # Run this block only ONCE per specific event instance (title + datetime)
                 if is_primary_row_status and not primary_logic_already_run:
-                    event_processed_in_this_row = True # Mark that event logic ran
+                    event_processed_in_this_row = True
                     # Get the date key for aggregation (date part only)
                     current_date_key = current_datetime.date().isoformat()
                     # REMOVED: Primary logic processing header
@@ -1081,88 +1098,6 @@ def import_sheet():
                     event.additional_information = row_data.get('Session Type')  # Store session type in additional_information
                     event.registration_link = row_data.get('Session Link')  # Use registration_link instead of session_link
 
-                    # --- District Handling (Reset for this event, Aggregate by Title+Date) ---
-                    # REMOVED: District clearing log
-                    event.districts = [] # Reset districts for this specific event instance
-                    db.session.flush()   # Ensure the clear is persisted before adding
-
-                    all_associated_district_names = set()
-                    primary_row_district = None # District from the specific primary row
-
-                    # *** REVISED District Search: Iterate all rows, find those matching THIS event's title AND DATE ***
-                    # REMOVED: District search log
-                    for lookup_row_index, lookup_row_data in enumerate(all_rows_for_lookup):
-                        lookup_title = clean_string_value(lookup_row_data.get('Session Title'))
-                        # Fast skip if title doesn't match
-                        if lookup_title != title:
-                            continue
-
-                        # --- Attempt to parse DATE ONLY from the lookup row ---
-                        lookup_date_str = lookup_row_data.get('Date')
-                        lookup_date_key = None # Reset for each lookup row
-                        if not pd.isna(lookup_date_str):
-                            try:
-                                date_str_cleaned = str(lookup_date_str).strip()
-                                if '/' in date_str_cleaned:
-                                    parts = date_str_cleaned.split('/')
-                                    if len(parts) >= 2:
-                                        month_str, day_str = parts[0], parts[1]
-                                        # Basic validation before int conversion
-                                        if month_str.isdigit() and day_str.isdigit():
-                                            month = int(month_str)
-                                            day = int(day_str)
-                                            if 1 <= month <= 12 and 1 <= day <= 31:
-                                                # Determine virtual session year (July 1st to July 1st)
-                                                current_dt_utc = datetime.now(timezone.utc)
-                                                if current_dt_utc.month >= 7:
-                                                    year = current_dt_utc.year if month >= 7 else current_dt_utc.year + 1
-                                                else:
-                                                    year = current_dt_utc.year - 1 if month >= 7 else current_dt_utc.year
-
-                                                # Create date object, handle potential ValueError (e.g., 2/30)
-                                                try:
-                                                    date_obj_only = datetime(year, month, day).date()
-                                                    lookup_date_key = date_obj_only.isoformat()
-                                                except ValueError:
-                                                    pass # lookup_date_key remains None
-                            except Exception as e:
-                                # Only log significant date parsing errors
-                                if 'Row' not in str(e):  # Avoid duplicate logging
-                                    print(f"WARNING - Row {lookup_row_index+1}: Error parsing date '{lookup_date_str}': {e}")
-                                lookup_date_key = None # Ensure it's None on error
-                        # --- End Date Only Parsing ---
-
-                        # *** Compare using the parsed DATE key ***
-                        if lookup_date_key and lookup_date_key == current_date_key:
-                            lookup_district = safe_str(lookup_row_data.get('District'))
-                            if lookup_district:
-                                all_associated_district_names.add(lookup_district)
-                                # Check if this lookup_row_data IS the current primary row_data being processed
-                                if lookup_row_index == row_index:
-                                     primary_row_district = lookup_district # Capture the district from the exact primary row
-
-                    # REMOVED: District search completion log
-
-                    # Set district partner based ONLY on the primary row's district, if it had one
-                    event.district_partner = primary_row_district
-                    # REMOVED: District partner initial setting log
-
-                    # Add all unique districts found (matching title+date) to the relationship
-                    for district_name in all_associated_district_names:
-                        add_district_to_event(event, district_name) # Associates district with the specific 'event' instance
-
-                    # Fallback for district partner if primary row had none, but other rows on that date did
-                    if not event.district_partner and all_associated_district_names:
-                        # Pick the first district found (sorting makes it consistent)
-                        fallback_partner = next(iter(sorted(list(all_associated_district_names))), None)
-                        event.district_partner = fallback_partner
-                        # REMOVED: Fallback district partner log
-
-                    # Flush to ensure district additions are reflected before logging
-                    db.session.flush()
-                    # REMOVED: Final associated districts log
-
-
                     # --- School Handling (following events import pattern) ---
                     primary_school_name = row_data.get('School Name')
                     if primary_school_name and not pd.isna(primary_school_name):
@@ -1170,11 +1105,6 @@ def import_sheet():
                         school_district = None
                         if event.district_partner:
                             school_district = get_or_create_district(event.district_partner)
-                        elif all_associated_district_names:
-                            # Fallback to any district associated with this event
-                            first_district_name = next(iter(sorted(list(all_associated_district_names))), None)
-                            if first_district_name:
-                                school_district = get_or_create_district(first_district_name)
 
                         school = get_or_create_school(primary_school_name, school_district)
                         if school:
