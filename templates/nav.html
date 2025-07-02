@@ -20,9 +20,6 @@
               <a class="nav-link" href="/reports">Reports</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/attendance">Attendance</a>
-            </li>
-            <li class="nav-item">
               <a class="nav-link" href="/calendar">Calendar</a>
             </li>
             <li class="nav-item">
@@ -51,6 +48,9 @@
       <li><a href="/history_table" class="side-nav-link">History</a></li>
       <li><a href="/schools" class="side-nav-link">Schools</a></li>
       <li><a href="{{ url_for('client_projects.index') }}" class="side-nav-link">Client Projects</a></li>
+      <li class="nav-item">
+        <a class="nav-link" href="/attendance">Attendance</a>
+      </li>
       {% endif %}
       <li class="nav-item">
         <a class="nav-link" href="#" 
