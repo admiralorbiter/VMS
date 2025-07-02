@@ -36,6 +36,45 @@
     color: white;
     text-decoration: none;
 }
+.host-filter-container {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+}
+.host-filter-btn {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    margin-right: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.host-filter-btn:hover {
+    background-color: #5a6268;
+}
+.host-filter-btn.selected {
+    background-color: #007bff;
+}
+.host-filter-btn.selected:hover {
+    background-color: #0056b3;
+}
+.filter-description {
+    margin: 10px 0 15px 0;
+    color: #495057;
+    font-size: 14px;
+    line-height: 1.5;
+}
+.filter-description strong {
+    color: #212529;
+}
+.filter-description em {
+    color: #6c757d;
+    font-style: italic;
+}
 </style>
 {% endblock %}
 
@@ -53,9 +92,23 @@
                 </option>
                 {% endfor %}
             </select>
-            <a href="{{ url_for('report.volunteer_thankyou_excel', school_year=school_year, sort=sort, order=order) }}" class="export-button">
+            <a href="{{ url_for('report.volunteer_thankyou_excel', school_year=school_year, sort=sort, order=order, host_filter=host_filter) }}" class="export-button">
                 📊 Export to Excel
             </a>
+        </form>
+    </div>
+
+    <div class="host-filter-container">
+        <h3>Event Filter</h3>
+        <p class="filter-description">
+            <em>The Excel export will match your current filter selection.</em>
+        </p>
+        <form method="GET" class="host-filter-form">
+            <input type="hidden" name="school_year" value="{{ school_year }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="order" value="{{ order }}">
+            <button type="submit" name="host_filter" value="all" class="host-filter-btn{% if host_filter == 'all' %} selected{% endif %}">All Events</button>
+            <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
         </form>
     </div>
 

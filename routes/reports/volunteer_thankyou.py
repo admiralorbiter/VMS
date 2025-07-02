@@ -21,6 +21,7 @@ def load_routes(bp):
     def volunteer_thankyou():
         # Get filter parameters - use school year format (e.g., '2425' for 2024-25)
         school_year = request.args.get('school_year', get_current_school_year())
+        host_filter = request.args.get('host_filter', 'all')  # 'all' or 'prepkc'
         
         # Sorting
         sort = request.args.get('sort', 'total_hours')
@@ -60,7 +61,19 @@ def load_routes(bp):
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
-        ).group_by(
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            volunteer_stats = volunteer_stats.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
+        
+        volunteer_stats = volunteer_stats.group_by(
             Volunteer.id,
             Organization.name
         ).order_by(
@@ -88,7 +101,8 @@ def load_routes(bp):
             school_years=school_years,
             now=datetime.now(),
             sort=sort,
-            order=order
+            order=order,
+            host_filter=host_filter
         )
 
     @bp.route('/reports/volunteer/thankyou/excel')
@@ -97,6 +111,7 @@ def load_routes(bp):
         """Generate Excel file for volunteer thank you report"""
         # Get filter parameters
         school_year = request.args.get('school_year', get_current_school_year())
+        host_filter = request.args.get('host_filter', 'all')  # 'all' or 'prepkc'
         sort = request.args.get('sort', 'total_hours')
         order = request.args.get('order', 'desc')
         
@@ -134,7 +149,19 @@ def load_routes(bp):
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             EventParticipation.status == 'Attended'
-        ).group_by(
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            volunteer_stats = volunteer_stats.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
+        
+        volunteer_stats = volunteer_stats.group_by(
             Volunteer.id,
             Organization.name
         ).order_by(
@@ -192,12 +219,15 @@ def load_routes(bp):
         worksheet.write(summary_row + 3, 1, total_events)
         worksheet.write(summary_row + 4, 0, 'School Year')
         worksheet.write(summary_row + 4, 1, f"{school_year[:2]}-{school_year[2:]} School Year")
+        worksheet.write(summary_row + 5, 0, 'Filter')
+        worksheet.write(summary_row + 5, 1, 'PREPKC Events Only' if host_filter == 'prepkc' else 'All Events')
         
         writer.close()
         output.seek(0)
         
         # Create filename
-        filename = f"Volunteer_Thank_You_Report_{school_year[:2]}-{school_year[2:]}.xlsx"
+        filter_suffix = '_PREPKC' if host_filter == 'prepkc' else ''
+        filename = f"Volunteer_Thank_You_Report_{school_year[:2]}-{school_year[2:]}{filter_suffix}.xlsx"
         
         return send_file(
             output,
