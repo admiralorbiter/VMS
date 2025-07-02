@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Management System - Documentation</title>
+    <title>Calendar - VMS Documentation</title>
     <style>
         * {
             margin: 0;
@@ -46,22 +46,20 @@
             top: 0;
             height: 100vh;
             overflow-y: auto;
-            padding: 2rem 0 2rem 0;
-            box-shadow: 2px 0 8px 0 rgba(37,99,235,0.04);
+            padding: 1.5rem 0;
         }
 
         .sidebar-header {
-            padding: 0 1.5rem 1.5rem;
+            padding: 0 1.5rem 1rem;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .sidebar-title {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.25rem;
+            font-weight: 600;
             color: var(--primary-color);
             margin-bottom: 0.5rem;
-            letter-spacing: 0.01em;
         }
 
         .nav-section {
@@ -69,61 +67,46 @@
         }
 
         .nav-section-title {
-            font-size: 0.8rem;
-            font-weight: 700;
+            font-size: 0.75rem;
+            font-weight: 600;
             text-transform: uppercase;
             color: var(--text-secondary);
             padding: 0 1.5rem;
-            margin-bottom: 0.75rem;
-            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
         }
 
         .nav-item {
-            padding: 0.6rem 1.5rem;
+            padding: 0.5rem 1.5rem;
             cursor: pointer;
             transition: all 0.2s;
             border-left: 3px solid transparent;
             text-decoration: none;
-            color: var(--primary-color);
-            font-weight: 500;
+            color: var(--text-primary);
             display: block;
-            border-radius: 0.25rem 0 0 0.25rem;
         }
 
         .nav-item:hover {
-            background: rgba(37, 99, 235, 0.08);
+            background: rgba(37, 99, 235, 0.1);
             border-left-color: var(--primary-color);
         }
 
         .nav-item.active {
-            background: rgba(37, 99, 235, 0.12);
+            background: rgba(37, 99, 235, 0.1);
             border-left-color: var(--primary-color);
             color: var(--primary-color);
-            font-weight: 700;
-        }
-
-        .nav-item-icon {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            margin-right: 0.75rem;
-            opacity: 0.6;
+            font-weight: 500;
         }
 
         /* Main Content */
         .main-content {
-            padding: 3rem 3rem 2rem 3rem;
+            padding: 2rem;
             max-width: none;
-            background: #fff;
         }
 
         .content-section {
-            display: none;
-            animation: fadeIn 0.3s ease-in;
-        }
-
-        .content-section.active {
             display: block;
+            animation: fadeIn 0.3s ease-in;
         }
 
         @keyframes fadeIn {
@@ -313,143 +296,26 @@
             margin-bottom: 0.5rem;
         }
 
-        /* Search Results */
-        .search-results {
-            display: none;
-            margin-top: 1rem;
-        }
-
-        .search-result {
-            padding: 0.75rem;
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-        }
-
-        .search-result:hover {
-            background: var(--secondary-color);
-        }
-
-        .search-result-title {
-            font-weight: 500;
-            color: var(--primary-color);
-        }
-
-        .search-result-context {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-top: 0.25rem;
-        }
-
         /* Responsive Design */
-        @media (max-width: 900px) {
+        @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
             }
-            .main-content {
-                padding: 1.5rem 0.5rem;
+            
+            .sidebar {
+                position: relative;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
             }
-        }
-
-        /* Interactive Elements */
-        .interactive-demo {
-            background: var(--secondary-color);
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin: 1rem 0;
-        }
-
-        .demo-controls {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .demo-button {
-            padding: 0.5rem 1rem;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: background-color 0.2s;
-        }
-
-        .demo-button:hover {
-            background: #1d4ed8;
-        }
-
-        .demo-output {
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 0.25rem;
-            padding: 1rem;
-            font-family: monospace;
-            min-height: 100px;
-        }
-
-        .hero {
-            background: linear-gradient(90deg, #2563eb 0%, #10b981 100%);
-            color: #fff;
-            border-radius: 0.75rem;
-            padding: 2.5rem 2rem 2rem 2rem;
-            margin-bottom: 2.5rem;
-            box-shadow: 0 2px 12px 0 rgba(37,99,235,0.08);
-        }
-
-        .hero-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.01em;
-        }
-
-        .hero-desc {
-            font-size: 1.25rem;
-            color: #e0e7ef;
-            margin-bottom: 0.5rem;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .feature-card {
-            background: var(--secondary-color);
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            box-shadow: var(--shadow);
-            padding: 1.5rem 1.25rem;
-            transition: box-shadow 0.2s, transform 0.2s;
-            text-align: left;
-            cursor: pointer;
-            text-decoration: none;
-            color: var(--text-primary);
-            display: flex;
-            flex-direction: column;
-            min-height: 140px;
-        }
-
-        .feature-card:hover {
-            box-shadow: 0 6px 18px -2px rgba(37,99,235,0.10);
-            transform: translateY(-2px) scale(1.02);
-            border-color: var(--primary-color);
-        }
-
-        .feature-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 0.5rem;
-        }
-
-        .feature-desc {
-            color: var(--text-secondary);
-            font-size: 0.98rem;
+            
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .task-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -465,7 +331,7 @@
                 <a class="nav-item" href="events.html">Managing Events</a>
                 <a class="nav-item" href="reports.html">Reports</a>
                 <a class="nav-item" href="admin.html">Admin</a>
-                <a class="nav-item" href="calendar.html">Calendar</a>
+                <a class="nav-item active" href="calendar.html">Calendar</a>
                 <a class="nav-item" href="history.html">History</a>
                 <a class="nav-item" href="schools.html">Schools</a>
                 <a class="nav-item" href="client_projects.html">Client Projects</a>
@@ -473,49 +339,13 @@
             </div>
         </nav>
         <main class="main-content">
-            <div class="hero">
-                <div class="hero-title">Welcome to the Volunteer Management System Documentation</div>
-                <div class="hero-desc">Your complete guide to using, managing, and getting the most out of the VMS platform.</div>
-            </div>
-            <div class="feature-grid">
-                <a class="feature-card" href="volunteers.html">
-                    <div class="feature-title">Managing Volunteers</div>
-                    <div class="feature-desc">Add, import, search, and manage your volunteer directory with ease.</div>
-                </a>
-                <a class="feature-card" href="events.html">
-                    <div class="feature-title">Managing Events</div>
-                    <div class="feature-desc">Create, organize, and track events and participation.</div>
-                </a>
-                <a class="feature-card" href="reports.html">
-                    <div class="feature-title">Reports</div>
-                    <div class="feature-desc">Generate, filter, and export reports for insights and analysis.</div>
-                </a>
-                <a class="feature-card" href="admin.html">
-                    <div class="feature-title">Admin</div>
-                    <div class="feature-desc">User management, system configuration, and advanced tools.</div>
-                </a>
-                <a class="feature-card" href="calendar.html">
-                    <div class="feature-title">Calendar</div>
-                    <div class="feature-desc">View and manage upcoming events in a calendar view.</div>
-                </a>
-                <a class="feature-card" href="history.html">
-                    <div class="feature-title">History</div>
-                    <div class="feature-desc">Track and search historical activity and engagement.</div>
-                </a>
-                <a class="feature-card" href="schools.html">
-                    <div class="feature-title">Schools</div>
-                    <div class="feature-desc">Manage school data and view related reports.</div>
-                </a>
-                <a class="feature-card" href="client_projects.html">
-                    <div class="feature-title">Client Projects</div>
-                    <div class="feature-desc">Organize and track client-connected projects.</div>
-                </a>
-                <a class="feature-card" href="attendance.html">
-                    <div class="feature-title">Attendance</div>
-                    <div class="feature-desc">Track and manage student and teacher attendance.</div>
-                </a>
-            </div>
+            <section class="content-section active" id="calendar">
+                <div class="section-header">
+                    <h1 class="section-title">Calendar</h1>
+                    <p class="section-description">Documentation for all calendar features will appear here.</p>
+                </div>
+            </section>
         </main>
     </div>
 </body>
-</html>
+</html> 
