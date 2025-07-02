@@ -144,9 +144,8 @@ def load_routes(bp):
                 )
                 unique_organization_count = len(org_ids)
 
-                # Only use cached data if host_filter is 'all' or if we're confident the cache is correct
-                # For now, always regenerate when host_filter != 'all' to ensure accuracy
-                if stats and host_filter == 'all':
+                # Use cached data if we have both stats and events data
+                if stats:
                     return render_template(
                         'reports/district_year_end_detail.html',
                         district=district,
@@ -200,47 +199,6 @@ def load_routes(bp):
         if host_filter == 'prepkc':
             events_query = events_query.filter(Event.session_host.ilike('%prepkc%'))
         events = events_query.all()
-        
-        # Debug: Log filtered events when PREPKC filter is active
-        if host_filter == 'prepkc':
-            print(f"PREPKC filter active. Found {len(events)} events:")
-            for event in events:
-                print(f"  Event ID {event.id}: '{event.title}' - session_host: '{repr(event.session_host)}'")
-        else:
-            print(f"No filter active. Found {len(events)} total events.")
-            
-        # Let's also check what the actual session_host values are in the database
-        print("Checking session_host values for events in this district:")
-        print("First 10 events:")
-        for event in events[:10]:
-            # Let's also query the database directly to double-check
-            db_event = db.session.query(Event.id, Event.title, Event.session_host).filter(Event.id == event.id).first()
-            print(f"  Event ID {event.id}: '{event.title}'")
-            print(f"    - Object session_host: {repr(event.session_host)}")
-            print(f"    - DB query session_host: {repr(db_event.session_host) if db_event else 'NOT FOUND'}")
-            
-        # Check unique session_host values in the database
-        unique_hosts = db.session.query(Event.session_host).distinct().all()
-        print(f"Unique session_host values in database: {[host[0] for host in unique_hosts]}")
-        
-        # Let's specifically check some of the roster events that should probably not be PREPKC
-        roster_events = [event for event in events if 'roster' in event.title.lower()][:3]
-        print("Checking roster events specifically:")
-        for event in roster_events:
-            db_event = db.session.query(Event.id, Event.title, Event.session_host, Event.salesforce_id).filter(Event.id == event.id).first()
-            print(f"  Event ID {event.id}: '{event.title}'")
-            if db_event:
-                print(f"    - session_host: {repr(db_event.session_host)}")
-                print(f"    - salesforce_id: {db_event.salesforce_id}")
-            else:
-                print(f"    - Event not found in database")
-        
-        # Count events by session_host for this district
-        host_counts = {}
-        for event in events:
-            host = event.session_host or 'NULL'
-            host_counts[host] = host_counts.get(host, 0) + 1
-        print(f"Session host distribution for this district: {host_counts}")
         
         # Calculate stats from filtered events (always recalculate when filter is applied)
         if host_filter != 'all' or not stats:
@@ -359,18 +317,32 @@ def load_routes(bp):
             data['unique_student_count'] = len(data['unique_students']) # Calculate monthly unique students
             data['unique_students'] = list(data['unique_students']) # Convert set to list for JSON
 
-        # Cache the newly generated events data if we have a report object
+        # Cache the newly generated events data
         if cached_report:
+            # Update existing cache
             cached_report.events_data = {
                 'events_by_month': events_by_month,
                 'total_events': total_events,
                 'unique_volunteer_count': unique_volunteer_count,
-                'unique_student_count': unique_student_count # Cache the student count
+                'unique_student_count': unique_student_count
             }
+            cached_report.report_data = stats
             db.session.commit()
-        # If there was no cached_report object initially (e.g., first view after refresh),
-        # we might consider creating one here, similar to cache_district_stats_with_events.
-        # For now, we only update if it already existed.
+        else:
+            # Create new cache entry
+            new_cache = DistrictYearEndReport()
+            new_cache.district_id = district.id
+            new_cache.school_year = school_year
+            new_cache.host_filter = host_filter
+            new_cache.report_data = stats
+            new_cache.events_data = {
+                'events_by_month': events_by_month,
+                'total_events': total_events,
+                'unique_volunteer_count': unique_volunteer_count,
+                'unique_student_count': unique_student_count
+            }
+            db.session.add(new_cache)
+            db.session.commit()
 
         # Calculate unique organization count
         volunteer_ids = set()
