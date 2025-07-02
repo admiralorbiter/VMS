@@ -1178,7 +1178,7 @@ def import_sheet():
 
                         school = get_or_create_school(primary_school_name, school_district)
                         if school:
-                            event.school_id = school.id
+                            event.school = school.id
                             # REMOVED: School setting success log
 
                     # --- Presenter/Volunteer Handling ---
