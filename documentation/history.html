@@ -46,20 +46,22 @@
             top: 0;
             height: 100vh;
             overflow-y: auto;
-            padding: 1.5rem 0;
+            padding: 2rem 0 2rem 0;
+            box-shadow: 2px 0 8px 0 rgba(37,99,235,0.04);
         }
 
         .sidebar-header {
-            padding: 0 1.5rem 1rem;
+            padding: 0 1.5rem 1.5rem;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .sidebar-title {
-            font-size: 1.25rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             color: var(--primary-color);
             margin-bottom: 0.5rem;
+            letter-spacing: 0.01em;
         }
 
         .nav-section {
@@ -67,41 +69,44 @@
         }
 
         .nav-section-title {
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 700;
             text-transform: uppercase;
             color: var(--text-secondary);
             padding: 0 1.5rem;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.08em;
         }
 
         .nav-item {
-            padding: 0.5rem 1.5rem;
+            padding: 0.6rem 1.5rem;
             cursor: pointer;
             transition: all 0.2s;
             border-left: 3px solid transparent;
             text-decoration: none;
-            color: var(--text-primary);
+            color: var(--primary-color);
+            font-weight: 500;
             display: block;
+            border-radius: 0.25rem 0 0 0.25rem;
         }
 
         .nav-item:hover {
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(37, 99, 235, 0.08);
             border-left-color: var(--primary-color);
         }
 
         .nav-item.active {
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(37, 99, 235, 0.12);
             border-left-color: var(--primary-color);
             color: var(--primary-color);
-            font-weight: 500;
+            font-weight: 700;
         }
 
         /* Main Content */
         .main-content {
-            padding: 2rem;
+            padding: 3rem 3rem 2rem 3rem;
             max-width: none;
+            background: #fff;
         }
 
         .content-section {
@@ -115,20 +120,20 @@
         }
 
         .section-header {
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
             padding-bottom: 1rem;
             border-bottom: 2px solid var(--border-color);
         }
 
         .section-title {
             font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-primary);
+            font-weight: 800;
+            color: var(--primary-color);
             margin-bottom: 0.5rem;
         }
 
         .section-description {
-            font-size: 1.125rem;
+            font-size: 1.15rem;
             color: var(--text-secondary);
         }
 
@@ -188,18 +193,20 @@
         .expandable {
             border: 1px solid var(--border-color);
             border-radius: 0.375rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             overflow: hidden;
         }
 
         .expandable-header {
-            padding: 1rem;
+            padding: 1.1rem 1.5rem;
             background: var(--secondary-color);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
             transition: background-color 0.2s;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
         .expandable-header:hover {
@@ -220,7 +227,7 @@
         }
 
         .expandable-content {
-            display: none;
+            display: block;
             padding: 1.5rem;
             background: white;
         }
@@ -239,6 +246,7 @@
         .step-list {
             list-style: none;
             counter-reset: step-counter;
+            margin: 0 0 1.5rem 0;
         }
 
         .step-item {
@@ -262,14 +270,14 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            font-size: 0.875rem;
+            font-size: 0.95rem;
         }
 
         /* Callout Boxes */
         .callout {
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             border-radius: 0.375rem;
-            margin: 1rem 0;
+            margin: 1.5rem 0;
             border-left: 4px solid;
         }
 
@@ -292,25 +300,18 @@
         }
 
         .callout-title {
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 0.5rem;
         }
 
         /* Responsive Design */
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .container {
                 grid-template-columns: 1fr;
             }
             
-            .sidebar {
-                position: relative;
-                height: auto;
-                border-right: none;
-                border-bottom: 1px solid var(--border-color);
-            }
-            
             .main-content {
-                padding: 1rem;
+                padding: 1.5rem 0.5rem;
             }
             
             .task-grid {
@@ -339,12 +340,61 @@
             </div>
         </nav>
         <main class="main-content">
-            <section class="content-section active" id="history">
-                <div class="section-header">
-                    <h1 class="section-title">History</h1>
-                    <p class="section-description">Documentation for all history features will appear here.</p>
+            <div class="section-header">
+                <h1 class="section-title">History</h1>
+                <p class="section-description">Track, search, and import historical activity and engagement records.</p>
+            </div>
+            <div class="expandable">
+                <div class="expandable-header">Overview</div>
+                <div class="expandable-content">
+                    <p>The History section provides a searchable record of all past activities, including volunteer participation, event attendance, and engagement logs. Use this section to audit, review, and analyze historical data.</p>
                 </div>
-            </section>
+            </div>
+            <div class="expandable">
+                <div class="expandable-header">Viewing & Searching History</div>
+                <div class="expandable-content">
+                    <ol class="step-list">
+                        <li class="step-item">Go to the History section from the sidebar.</li>
+                        <li class="step-item">Use the search bar to find records by volunteer, event, or date.</li>
+                        <li class="step-item">Click on a record to view detailed information.</li>
+                    </ol>
+                    <div class="callout callout-info">
+                        <div class="callout-title">ℹ️ Info</div>
+                        <p>Advanced filters allow you to narrow results by school, event type, or time period.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="expandable">
+                <div class="expandable-header">Importing History</div>
+                <div class="expandable-content">
+                    <ol class="step-list">
+                        <li class="step-item">Click the "Import" button in the History section.</li>
+                        <li class="step-item">Upload your CSV or Excel file with historical records.</li>
+                        <li class="step-item">Map columns to the correct fields and confirm import.</li>
+                    </ol>
+                    <div class="callout callout-warning">
+                        <div class="callout-title">⚠️ Caution</div>
+                        <p>Imported data cannot be undone. Double-check your file before importing.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="expandable">
+                <div class="expandable-header">Filtering & Exporting</div>
+                <div class="expandable-content">
+                    <ul>
+                        <li>Apply filters to focus on specific schools, volunteers, or event types.</li>
+                        <li>Export filtered results to CSV for further analysis.</li>
+                    </ul>
+                    <div class="callout callout-tip">
+                        <div class="callout-title">💡 Tip</div>
+                        <p>Use exports to create custom reports or share data with stakeholders.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="callout callout-tip">
+                <div class="callout-title">💡 Best Practice</div>
+                <p>Regularly review and export history data to maintain accurate records and support reporting needs.</p>
+            </div>
         </main>
     </div>
 </body>
