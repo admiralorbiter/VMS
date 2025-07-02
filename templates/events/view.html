@@ -105,6 +105,12 @@
                         <p>{{ event.session_id }}</p>
                     </div>
                     {% endif %}
+                    {% if event.session_host %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-user-tie"></i> Session Host</label>
+                        <p>{{ event.session_host }}</p>
+                    </div>
+                    {% endif %}
                     {% if event.series %}
                     <div class="info-item">
                         <label><i class="fa-solid fa-layer-group"></i> Series</label>

@@ -54,6 +54,7 @@ def _create_event_from_salesforce(sf_event_data, event_districts):
     new_event.cancellation_reason = map_cancellation_reason(sf_event_data.get('Cancellation_Reason__c'))
     new_event.participant_count = int(float(sf_event_data.get('Non_Scheduled_Students_Count__c', 0)) if sf_event_data.get('Non_Scheduled_Students_Count__c') is not None else 0)
     new_event.additional_information = sf_event_data.get('Additional_Information__c', '')
+    new_event.session_host = sf_event_data.get('Session_Host__c', '')
 
     def safe_convert_to_int(value, default=0):
          if value is None: return default
@@ -150,7 +151,8 @@ def sync_unaffiliated_events():
                Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
                District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
                Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-               Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
+               Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
+               Session_Host__c
         FROM Session__c
         WHERE School__c = NULL AND District__c = NULL AND Parent_Account__c = NULL
         ORDER BY CreatedDate DESC
@@ -181,10 +183,43 @@ def sync_unaffiliated_events():
                 # Check if event already exists locally
                 local_event = db.session.query(Event).filter(Event.salesforce_id == event_sf_id).first()
 
-                # --- Logic if Event ALREADY Exists Locally (Unlikely, but handled) ---
+                # --- Logic if Event ALREADY Exists Locally (Update with latest Salesforce data) ---
                 if local_event:
                     event_processed_or_skipped = True
-                    # Check if it already has districts assigned locally
+                    updated_fields = []
+                    
+                    # Update event fields with latest Salesforce data
+                    if sf_event_data.get('Name') and sf_event_data.get('Name').strip() != local_event.title:
+                        local_event.title = sf_event_data.get('Name').strip()
+                        updated_fields.append('title')
+                    
+                    if sf_event_data.get('Session_Host__c') and sf_event_data.get('Session_Host__c') != local_event.session_host:
+                        local_event.session_host = sf_event_data.get('Session_Host__c')
+                        updated_fields.append('session_host')
+                    
+                    if sf_event_data.get('Description__c') and sf_event_data.get('Description__c') != local_event.description:
+                        local_event.description = sf_event_data.get('Description__c')
+                        updated_fields.append('description')
+                    
+                    if sf_event_data.get('Location_Information__c') and sf_event_data.get('Location_Information__c') != local_event.location:
+                        local_event.location = sf_event_data.get('Location_Information__c')
+                        updated_fields.append('location')
+                    
+                    # Update status if different
+                    raw_status = sf_event_data.get('Session_Status__c')
+                    if raw_status:
+                        try:
+                            new_status = EventStatus(raw_status)
+                            if new_status != local_event.status:
+                                local_event.status = new_status
+                                updated_fields.append('status')
+                        except ValueError:
+                            # If status doesn't match enum, store as string
+                            if raw_status != local_event.status:
+                                local_event.status = raw_status
+                                updated_fields.append('status')
+                    
+                    # Check if it needs districts assigned
                     if not local_event.districts:
                         # Look up student participants in the map we built
                         student_sf_ids = event_to_student_sf_ids.get(event_sf_id)
@@ -205,13 +240,18 @@ def sync_unaffiliated_events():
                             if event_districts:
                                 # Update existing event's districts
                                 local_event.districts = list(event_districts) # Assign the list directly
-                                db.session.add(local_event)
-                                updated_count += 1
+                                updated_fields.append('districts')
                                 district_map_details[event_sf_id] = [d.name for d in event_districts]
                                 print(f"UPDATED existing Event {event_sf_id} ({local_event.title}) with districts: {[d.name for d in event_districts]}")
-                            # else: errors.append(f"Existing event {event_sf_id} - found students but no districts.")
-                        # else: errors.append(f"Existing event {event_sf_id} - no students found in map.")
-                    # else: print(f"Existing event {event_sf_id} already has districts. Skipping update.")
+                    
+                    # If any fields were updated, save the event
+                    if updated_fields:
+                        db.session.add(local_event)
+                        updated_count += 1
+                        print(f"UPDATED existing Event {event_sf_id} ({local_event.title}) with fields: {updated_fields}")
+                    else:
+                        print(f"Existing event {event_sf_id} ({local_event.title}) - no updates needed")
+                    
                     continue # Move to next Salesforce event
 
                 # --- Logic if Event DOES NOT Exist Locally (Expected case) ---

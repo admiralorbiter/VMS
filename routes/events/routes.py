@@ -69,6 +69,7 @@ def process_event_row(row, success_count, error_count, errors):
         event.cancellation_reason = map_cancellation_reason(row.get('Cancellation_Reason__c'))
         event.participant_count = int(float(row.get('Non_Scheduled_Students_Count__c', 0)) if row.get('Non_Scheduled_Students_Count__c') is not None else 0)
         event.additional_information = row.get('Additional_Information__c', '')
+        event.session_host = row.get('Session_Host__c', '')
         
         # Handle numeric fields
         def safe_convert_to_int(value, default=0):
@@ -543,7 +544,8 @@ def import_events():
                         Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
                         District__c, Legacy_Skill_Covered_for_the_Session__c, 
                         Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-                        Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
+                        Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
+                        Session_Host__c
                 FROM Session__c
                 ORDER BY Start_Date_and_Time__c ASC
                 """
@@ -783,7 +785,8 @@ def import_events_from_salesforce():
             Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
             District__c, School__c, Legacy_Skill_Covered_for_the_Session__c, 
             Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-            Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c
+            Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
+            Session_Host__c
         FROM Session__c
         WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
         ORDER BY Start_Date_and_Time__c DESC

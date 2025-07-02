@@ -206,6 +206,7 @@ class Event(db.Model):
     # Additional metadata
     additional_information = db.Column(db.Text)
     session_id = db.Column(db.String(255))
+    session_host = db.Column(db.String(255), default='PREPKC')  # Store Session_Host__c from Salesforce
     series = db.Column(db.String(255))
     registration_link = db.Column(db.String(1300))
     

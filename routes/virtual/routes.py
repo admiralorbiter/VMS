@@ -71,6 +71,42 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
             event.topic = row.get('Topic/Theme')
             event.session_type = row.get('Session Type')
             event.session_link = row.get('Session Link')
+            event.session_host = 'PREPKC'  # Set default host for virtual sessions
+        else:
+            # Update existing event with latest data
+            updated_fields = []
+            
+            # Update title if different
+            if row.get('Session Title') and row.get('Session Title') != event.title:
+                event.title = row.get('Session Title')
+                updated_fields.append('title')
+            
+            # Update session host if not set or different
+            if not event.session_host or event.session_host != 'PREPKC':
+                event.session_host = 'PREPKC'
+                updated_fields.append('session_host')
+            
+            # Update status if different
+            new_status = EventStatus.map_status(status_str)
+            if new_status != event.status:
+                event.status = new_status
+                updated_fields.append('status')
+            
+            # Update other fields if they exist in the model
+            if hasattr(event, 'topic') and row.get('Topic/Theme') and row.get('Topic/Theme') != event.topic:
+                event.topic = row.get('Topic/Theme')
+                updated_fields.append('topic')
+            
+            if hasattr(event, 'session_type') and row.get('Session Type') and row.get('Session Type') != event.session_type:
+                event.session_type = row.get('Session Type')
+                updated_fields.append('session_type')
+            
+            if hasattr(event, 'session_link') and row.get('Session Link') and row.get('Session Link') != event.session_link:
+                event.session_link = row.get('Session Link')
+                updated_fields.append('session_link')
+            
+            if updated_fields:
+                print(f"UPDATED existing virtual event {session_id} ({event.title}) with fields: {updated_fields}")
             
             # Set date/time for new events
             try:
@@ -901,6 +937,11 @@ def import_sheet():
                         # Found in DB, cache its ID
                         processed_event_ids[event_key] = event.id
                         # REMOVED: DB found success log
+                        
+                        # Update session_host for existing events if not set
+                        if not event.session_host or event.session_host != 'PREPKC':
+                            event.session_host = 'PREPKC'
+                            print(f"UPDATED existing virtual event {event.id} ({event.title}) with session_host: PREPKC")
                     else:
                         # Modified logic: Allow certain "incomplete" statuses to create events
                         # when no existing event is found
@@ -927,7 +968,8 @@ def import_sheet():
                                 type=EventType.VIRTUAL_SESSION,
                                 format=EventFormat.VIRTUAL,
                                 status=EventStatus.map_status(status_str), # Status from creating row
-                                session_id=extract_session_id(row_data.get('Session Link'))
+                                session_id=extract_session_id(row_data.get('Session Link')),
+                                session_host='PREPKC'  # Set default host for virtual sessions
                             )
                             db.session.add(event)
                             db.session.flush() # Flush to get the new event.id
