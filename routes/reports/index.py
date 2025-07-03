@@ -60,26 +60,19 @@ def load_routes(bp):
                 'url': '/reports/contact',
                 'category': 'Event Management'
             },
-            {
-                'title': 'Pathway Report',
-                'description': 'View pathway statistics including student participation, events, and contact engagement.',
-                'icon': 'fa-solid fa-road',
-                'url': '/reports/pathways',
-                'category': 'Program Reports'
-            },
+            # {
+            #     'title': 'Pathway Report',
+            #     'description': 'View pathway statistics including student participation, events, and contact engagement.',
+            #     'icon': 'fa-solid fa-road',
+            #     'url': '/reports/pathways',
+            #     'category': 'Program Reports'
+            # },
             {
                 'title': 'Attendance Report',
                 'description': 'View attendance statistics by event and district.',
                 'icon': 'fa-solid fa-calendar-check',
-                'url': '/reports/attendance',
+                'url': '/attendance/impact',
                 'category': 'Attendance'
-            },
-            {
-                'title': 'Organization Report',
-                'description': 'View detailed organization engagement reports with volunteer activities and student reach.',
-                'icon': 'fa-solid fa-building',
-                'url': '/reports/organization',
-                'category': 'Organization Reports'
             }
         ]
         
