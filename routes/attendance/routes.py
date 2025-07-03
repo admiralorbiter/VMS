@@ -11,9 +11,10 @@ from models.school_model import School
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from config import Config
 from routes.utils import parse_date
-from models.event import Event
+from models.event import Event, EventType
 from models.attendance import EventAttendanceDetail
 from datetime import datetime, date, timedelta
+from sqlalchemy import func
 
 attendance = Blueprint('attendance', __name__)
 
@@ -825,20 +826,64 @@ def get_academic_year_range(today=None):
 @attendance.route('/attendance/impact')
 @login_required
 def attendance_impact():
-    # Academic year selection
     year_param = request.args.get('year', type=int)
     today = date.today()
-    # Generate a list of academic years (e.g., last 5 years)
     current_year = today.year if today.month >= 8 else today.year - 1
     academic_years = [current_year - i for i in range(5)]
     academic_years.sort(reverse=True)
     selected_year = year_param or current_year
-    # Get academic year range for selected year
     start = date(selected_year, 8, 1)
     end = date(selected_year + 1, 7, 31)
-    # Query all events in this range
     events = Event.query.filter(Event.start_date >= start, Event.start_date <= end).order_by(Event.start_date).all()
-    return render_template('attendance/impact.html', events=events, academic_years=academic_years, selected_year=selected_year)
+    # Get unique event types for this year, as value/label dicts
+    event_types = (
+        db.session.query(Event.type)
+        .filter(Event.start_date >= start, Event.start_date <= end)
+        .distinct()
+        .all()
+    )
+    event_types = [et[0] for et in event_types if et[0]]
+    event_types = [
+        {'value': et.value, 'label': et.value.replace('_', ' ').title()} for et in event_types
+    ]
+    event_types = sorted(event_types, key=lambda x: x['label'])
+    return render_template('attendance/impact.html', events=events, academic_years=academic_years, selected_year=selected_year, event_types=event_types)
+
+@attendance.route('/attendance/impact/events_json')
+@login_required
+def attendance_impact_events_json():
+    year = request.args.get('year', type=int)
+    types = request.args.getlist('types[]')
+    start = date(year, 8, 1)
+    end = date(year + 1, 7, 31)
+    q = Event.query.filter(Event.start_date >= start, Event.start_date <= end)
+    if types:
+        # Convert string values to Enum
+        enum_types = [EventType(t) for t in types if t in EventType.__members__.values() or t in [e.value for e in EventType]]
+        q = q.filter(Event.type.in_(enum_types))
+    events = q.order_by(Event.start_date).all()
+    def event_to_dict(event):
+        d = {
+            'id': event.id,
+            'title': event.title,
+            'start_date': event.start_date.strftime('%Y-%m-%d') if event.start_date else '',
+            'type': event.type.value if event.type else '',
+            'attendance_detail': None
+        }
+        if event.attendance_detail:
+            ad = event.attendance_detail
+            d['attendance_detail'] = {
+                'num_classrooms': ad.num_classrooms,
+                'students_per_volunteer': ad.students_per_volunteer,
+                'total_students': ad.total_students,
+                'attendance_in_sf': ad.attendance_in_sf,
+                'pathway': ad.pathway,
+                'groups_rotations': ad.groups_rotations,
+                'is_stem': ad.is_stem,
+                'attendance_link': ad.attendance_link
+            }
+        return d
+    return jsonify([event_to_dict(e) for e in events])
 
 @attendance.route('/attendance/impact/<int:event_id>/detail', methods=['GET'])
 @login_required

@@ -4,6 +4,42 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance_details.css') }}">
+<style>
+.event-type-filter {
+    margin-bottom: 1.5rem;
+}
+.event-type-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-top: 0.5rem;
+}
+.event-type-pill {
+    display: flex;
+    align-items: center;
+    background: #f6fbfa;
+    border: 1.5px solid var(--non-photo-blue, #9ed8db);
+    border-radius: 20px;
+    padding: 0.25rem 0.9rem 0.25rem 0.6rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s, border 0.2s;
+    user-select: none;
+}
+.event-type-pill input[type="checkbox"] {
+    margin-right: 0.5em;
+    accent-color: var(--ucla-blue, #467599);
+    transform: scale(1.1);
+}
+.event-type-pill input[type="checkbox"]:checked + span {
+    font-weight: 600;
+    color: var(--ucla-blue, #467599);
+}
+.event-type-pill:hover {
+    background: var(--non-photo-blue, #e0f4f7);
+    border-color: var(--ucla-blue, #467599);
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +53,19 @@
             {% endfor %}
         </select>
     </form>
-    <table class="table attendance-impact-table">
+    <div id="eventTypeFilter" class="event-type-filter">
+        <strong>Event Types:</strong>
+        <div class="event-type-pills">
+        {% set default_types = ['career_speaker', 'career_jumping', 'career_fair', 'college_fair'] %}
+        {% for et in event_types %}
+            <label class="event-type-pill">
+                <input type="checkbox" class="event-type-checkbox" value="{{ et.value }}" {% if et.value in default_types %}checked{% endif %}>
+                <span>{{ et.label }}</span>
+            </label>
+        {% endfor %}
+        </div>
+    </div>
+    <table class="table attendance-impact-table" id="impactTable">
         <thead>
             <tr>
                 <th>Event</th>
@@ -33,7 +81,7 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="impactTableBody">
             {% for event in events %}
             <tr data-event-id="{{ event.id }}">
                 <td>{{ event.title }}</td>
@@ -62,4 +110,43 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/attendance_details.js') }}"></script>
+<script>
+// AJAX event type filtering
+function fetchAndRenderEvents() {
+    const year = document.getElementById('yearSelect').value;
+    const checked = Array.from(document.querySelectorAll('.event-type-checkbox:checked')).map(cb => cb.value);
+    const params = new URLSearchParams();
+    params.append('year', year);
+    checked.forEach(t => params.append('types[]', t));
+    fetch(`/attendance/impact/events_json?${params.toString()}`)
+        .then(res => res.json())
+        .then(events => {
+            const tbody = document.getElementById('impactTableBody');
+            tbody.innerHTML = '';
+            events.forEach(event => {
+                const ad = event.attendance_detail || {};
+                tbody.innerHTML += `
+                <tr data-event-id="${event.id}">
+                    <td>${event.title}</td>
+                    <td>${event.start_date}</td>
+                    <td>${ad.num_classrooms || ''}</td>
+                    <td>${ad.students_per_volunteer || ''}</td>
+                    <td>${ad.total_students || ''}</td>
+                    <td>${ad.attendance_in_sf ? '✔' : ''}</td>
+                    <td>${ad.pathway || ''}</td>
+                    <td>${ad.groups_rotations || ''}</td>
+                    <td>${ad.is_stem ? '✔' : ''}</td>
+                    <td>${ad.attendance_link ? `<a href="${ad.attendance_link}" target="_blank">Link</a>` : ''}</td>
+                    <td><a href="#" class="btn btn-sm btn-primary">Edit</a></td>
+                </tr>`;
+            });
+        });
+}
+
+document.querySelectorAll('.event-type-checkbox').forEach(cb => {
+    cb.addEventListener('change', fetchAndRenderEvents);
+});
+// Fetch on page load if any are checked by default
+fetchAndRenderEvents();
+</script>
 {% endblock %} 
