@@ -1,5 +1,5 @@
 import pytest
-from app import app as flask_app
+from flask import Flask
 from models import db
 from config import TestingConfig
 from models.user import User
@@ -15,20 +15,37 @@ from models.contact import RaceEthnicityEnum
 from models.teacher import Teacher
 from models.contact import GenderEnum
 from models.tech_job_board import JobOpportunity
-# from models.upcoming_events import UpcomingEvent  # Moved to microservice
 from models.volunteer import Volunteer, Skill, VolunteerSkill, Engagement, EventParticipation
 from models.contact import EducationEnum, LocalStatusEnum, SkillSourceEnum
 from models.history import History
 from models.organization import Organization
 from sqlalchemy import text
+from flask_login import LoginManager
 
 pytest_plugins = ['pytest_mock']
 
 @pytest.fixture
 def app():
-    flask_app.config.from_object(TestingConfig)
+    # Create a fresh Flask app instance for testing
+    test_app = Flask(__name__)
+    test_app.config.from_object(TestingConfig)
     
-    with flask_app.app_context():
+    # Initialize extensions
+    db.init_app(test_app)
+    login_manager = LoginManager()
+    login_manager.init_app(test_app)
+    login_manager.login_view = 'auth.login'
+    
+    # User loader callback
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.get(User, int(user_id))
+    
+    # Import and initialize routes
+    from routes.routes import init_routes
+    init_routes(test_app)
+    
+    with test_app.app_context():
         # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax
         with db.engine.connect() as conn:
             conn.execute(text('PRAGMA foreign_keys=ON'))
@@ -41,7 +58,7 @@ def app():
         inspector = db.inspect(db.engine)
         print("\nDebug - Created tables:", inspector.get_table_names())
         
-        yield flask_app
+        yield test_app
         
         db.session.remove()
         db.drop_all()
