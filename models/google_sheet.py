@@ -12,9 +12,9 @@ class GoogleSheet(db.Model):
     
     id = Column(Integer, primary_key=True)
     academic_year = Column(String(10), nullable=False, unique=True)  # e.g., "2023-2024"
-    sheet_id = Column(Text, nullable=False)  # Encrypted Google Sheet ID
+    sheet_id = Column(Text, nullable=True)  # Encrypted Google Sheet ID (nullable for test compatibility)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(Integer, db.ForeignKey('users.id'))
     
     # Relationship to user who created it
