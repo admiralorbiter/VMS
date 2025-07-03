@@ -392,9 +392,14 @@
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">System Management</h5>
-            <a href="{{ url_for('management.bug_reports') }}" class="btn btn-primary">
-                <i class="fas fa-bug"></i> View Bug Reports
-            </a>
+            <div class="d-grid gap-2 d-md-block">
+                <a href="{{ url_for('management.bug_reports') }}" class="btn btn-primary me-2">
+                    <i class="fas fa-bug"></i> View Bug Reports
+                </a>
+                <a href="{{ url_for('management.google_sheets') }}" class="btn btn-info">
+                    <i class="fas fa-file-spreadsheet"></i> Manage Google Sheets
+                </a>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -1049,7 +1054,8 @@ function importVirtualEvents() {
         const today = new Date();
         const month = today.getMonth() + 1; // JavaScript months are 0-based
         const year = today.getFullYear();
-        const academicYear = month < 8 ? year : year;
+        // Academic year logic: July 1st to June 30th
+        const academicYear = month >= 7 ? `${year}-${year+1}` : `${year-1}-${year}`;
         
         fetch('/virtual/import-sheet', {
             method: 'POST',

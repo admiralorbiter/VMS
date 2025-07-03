@@ -16,6 +16,9 @@ class Config:
     SYNC_AUTH_TOKEN = os.environ.get('SYNC_AUTH_TOKEN')
     CLIENT_PROJECTS_SHEET_ID = os.environ.get('CLIENT_PROJECTS_SHEET_ID')
     SCHOOL_MAPPING_GOOGLE_SHEET = os.environ.get('SCHOOL_MAPPING_GOOGLE_SHEET')
+    
+    # Encryption key for Google Sheets
+    ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
 
     def __init__(self):
         self.validate_config()

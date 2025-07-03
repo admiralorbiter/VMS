@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+    .google-sheets-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .sheet-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .sheet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .sheet-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .sheet-year {
+        background: #007bff;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+    }
+    
+    .sheet-status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+    
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .sheet-description {
+        color: #666;
+        margin-bottom: 15px;
+    }
+    
+    .sheet-meta {
+        font-size: 0.9em;
+        color: #888;
+        margin-bottom: 15px;
+    }
+    
+    .sheet-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-edit {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+    }
+    
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+    }
+    
+    .btn-add {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1em;
+        margin-bottom: 20px;
+    }
+    
+    .sheet-link {
+        display: inline-block;
+        margin-top: 10px;
+        font-size: 0.95em;
+        color: #007bff;
+        text-decoration: underline;
+        word-break: break-all;
+    }
+    
+    .sheet-link i {
+        margin-right: 4px;
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+    }
+    
+    .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close:hover {
+        color: #000;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+    
+    .empty-state i {
+        font-size: 3em;
+        color: #ddd;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="google-sheets-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Google Sheets Management</h1>
+        <a href="{{ url_for('management.admin') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Admin
+        </a>
+    </div>
+    
+    <button class="btn-add" onclick="openAddModal()">
+        <i class="fas fa-plus"></i> Add New Google Sheet
+    </button>
+    
+    {% if sheets %}
+        {% for sheet in sheets %}
+        <div class="sheet-card">
+            <div class="sheet-header">
+                <div>
+                    <span class="sheet-title">Academic Year</span>
+                    <span class="sheet-year">{{ sheet.academic_year }}</span>
+                </div>
+            </div>
+            
+            {% if current_user.is_admin %}
+                <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}" target="_blank" rel="noopener noreferrer">
+                    <i class="fas fa-external-link-alt"></i> View Google Sheet
+                </a>
+            {% endif %}
+            
+            <div class="sheet-actions">
+                <button class="btn-edit" onclick="openEditModal({{ sheet.id }})">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn-delete" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.academic_year }}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-file-spreadsheet"></i>
+            <h3>No Google Sheets Configured</h3>
+            <p>Add your first Google Sheet to get started with virtual event imports.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="sheetModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Google Sheet</h2>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        
+        <form id="sheetForm">
+            <input type="hidden" id="sheetId" name="sheetId">
+            
+            <div class="form-group">
+                <label for="academicYear">Academic Year *</label>
+                <select id="academicYear" name="academicYear" required>
+                    <option value="" disabled selected>Select Academic Year</option>
+                    {% for year in available_years %}
+                        <option value="{{ year }}">{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="sheetIdInput">Google Sheet ID *</label>
+                <input type="text" id="sheetIdInput" name="sheetIdInput" placeholder="Enter the Google Sheet ID from the URL" required>
+                <small class="form-text text-muted">
+                    The Sheet ID is the long string in the Google Sheets URL: 
+                    https://docs.google.com/spreadsheets/d/<strong>YOUR_SHEET_ID</strong>/edit
+                </small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isEditMode = false;
+let currentSheetId = null;
+
+function openAddModal() {
+    isEditMode = false;
+    currentSheetId = null;
+    document.getElementById('modalTitle').textContent = 'Add Google Sheet';
+    document.getElementById('sheetForm').reset();
+    document.getElementById('sheetModal').style.display = 'block';
+}
+
+function openEditModal(sheetId) {
+    isEditMode = true;
+    currentSheetId = sheetId;
+    document.getElementById('modalTitle').textContent = 'Edit Google Sheet';
+    fetch(`/google-sheets/${sheetId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const sheet = data.sheet;
+                document.getElementById('academicYear').value = sheet.academic_year;
+                document.getElementById('sheetIdInput').value = sheet.sheet_id || '';
+                document.getElementById('sheetModal').style.display = 'block';
+            } else {
+                showToast('Error', 'Failed to load sheet data', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'Failed to load sheet data', 'error');
+        });
+}
+
+function closeModal() {
+    document.getElementById('sheetModal').style.display = 'none';
+    document.getElementById('sheetForm').reset();
+}
+
+function deleteSheet(sheetId, academicYear) {
+    if (confirm(`Are you sure you want to delete the Google Sheet for ${academicYear}? This action cannot be undone.`)) {
+        fetch(`/google-sheets/${sheetId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Success', data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast('Error', data.error || 'Failed to delete sheet', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'Failed to delete sheet', 'error');
+        });
+    }
+}
+
+document.getElementById('sheetForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        academic_year: document.getElementById('academicYear').value
+    };
+    
+    // Only include sheet_id if it's provided (for new sheets or updates)
+    const sheetIdInput = document.getElementById('sheetIdInput').value;
+    if (sheetIdInput) {
+        formData.sheet_id = sheetIdInput;
+    }
+    
+    const url = isEditMode ? `/google-sheets/${currentSheetId}` : '/google-sheets';
+    const method = isEditMode ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Success', data.message, 'success');
+            closeModal();
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('Error', data.error || 'Failed to save sheet', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error', 'Failed to save sheet', 'error');
+    });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('sheetModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+function showToast(title, message, type = 'success') {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <div>
+            <strong>${title}</strong>
+            <div>${message}</div>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Remove toast after 5 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+</script>
+{% endblock %} 

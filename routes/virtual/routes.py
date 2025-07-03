@@ -795,10 +795,19 @@ def map_status(status_str):
 @login_required
 def import_sheet():
     try:
-        sheet_id = getenv('GOOGLE_SHEET_ID')
+        data = request.get_json() or {}
+        academic_year = data.get('academic_year')
+        if not academic_year:
+            from utils.academic_year import get_current_academic_year
+            academic_year = get_current_academic_year()
+        from models.google_sheet import GoogleSheet
+        sheet_record = GoogleSheet.query.filter_by(academic_year=academic_year).first()
+        if sheet_record:
+            sheet_id = sheet_record.decrypted_sheet_id
+        else:
+            sheet_id = getenv('GOOGLE_SHEET_ID')
         if not sheet_id:
-            raise ValueError("Google Sheet ID not configured")
-
+            raise ValueError(f"No Google Sheet ID configured for academic year {academic_year}")
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         
         # Use requests with streaming

@@ -15,6 +15,8 @@ import pandas as pd
 from flask import current_app
 from models.user import User, SecurityLevel
 from werkzeug.security import generate_password_hash
+from models.google_sheet import GoogleSheet
+from utils.academic_year import get_academic_year_range
 
 management_bp = Blueprint('management', __name__)
 
@@ -127,6 +129,102 @@ def import_classes():
         }), 401
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# Google Sheet Management Routes
+@management_bp.route('/google-sheets')
+@login_required
+def google_sheets():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.index'))
+    sheets = GoogleSheet.query.order_by(GoogleSheet.academic_year.desc()).all()
+    # Generate a list of academic years (e.g., 2018-2019 to 2030-2031)
+    all_years = get_academic_year_range(2018, 2032)
+    used_years = {sheet.academic_year for sheet in sheets}
+    available_years = [y for y in all_years if y not in used_years]
+    return render_template('management/google_sheets.html', sheets=sheets, available_years=available_years)
+
+@management_bp.route('/google-sheets', methods=['POST'])
+@login_required
+def create_google_sheet():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        data = request.get_json()
+        academic_year = data.get('academic_year')
+        sheet_id = data.get('sheet_id')
+        if not all([academic_year, sheet_id]):
+            return jsonify({'error': 'Academic year and sheet ID are required'}), 400
+        existing = GoogleSheet.query.filter_by(academic_year=academic_year).first()
+        if existing:
+            return jsonify({'error': f'Sheet for academic year {academic_year} already exists'}), 400
+        new_sheet = GoogleSheet(
+            academic_year=academic_year,
+            sheet_id=sheet_id,
+            created_by=current_user.id
+        )
+        db.session.add(new_sheet)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Google Sheet for {academic_year} created successfully',
+            'sheet': new_sheet.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@management_bp.route('/google-sheets/<int:sheet_id>', methods=['PUT'])
+@login_required
+def update_google_sheet(sheet_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        data = request.get_json()
+        if 'sheet_id' in data:
+            sheet.update_sheet_id(data['sheet_id'])
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Google Sheet updated successfully',
+            'sheet': sheet.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@management_bp.route('/google-sheets/<int:sheet_id>', methods=['DELETE'])
+@login_required
+def delete_google_sheet(sheet_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        academic_year = sheet.academic_year
+        db.session.delete(sheet)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Google Sheet for {academic_year} deleted successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@management_bp.route('/google-sheets/<int:sheet_id>', methods=['GET'])
+@login_required
+def get_google_sheet(sheet_id):
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        return jsonify({
+            'success': True,
+            'sheet': sheet.to_dict()
+        })
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @management_bp.route('/management/import-schools', methods=['POST'])
