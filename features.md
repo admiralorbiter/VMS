@@ -188,6 +188,13 @@
 
 - [x] Link to Bug Report
 
+## Manage Google Sheets
+
+- [x] Add New Google Sheet
+- [x] Edit Google Sheets
+- [x] Import Different sheets from different years
+- [x] Delete Google Sheets
+
 ## Bug Report
 
 - [x] Submit Via Bug Icon in Sidebar
@@ -230,4 +237,13 @@
 
 ## Attendance
 - [x] Student and Teacher List
+- [x] Link to Event Attendance Impact (Used to calculate per student voluneer number)
 - [ ] To Do
+
+## Event Attendance Impact 
+
+- [x] Academic Year Filter
+- [x] Event Type Filter
+- [x] Edit Event Numbers
+- [ ] Connect Number with End of Year Reporting
+- [ ] Double check calculations
