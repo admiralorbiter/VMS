@@ -148,30 +148,50 @@ def google_sheets():
 @management_bp.route('/google-sheets', methods=['POST'])
 @login_required
 def create_google_sheet():
+    print("GOOGLE SHEETS ROUTE HIT")
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     try:
+        # Debug environment variable
+        encryption_key = os.getenv('ENCRYPTION_KEY')
+        print(f"DEBUG: ENCRYPTION_KEY exists: {encryption_key is not None}")
+        if encryption_key:
+            print(f"DEBUG: ENCRYPTION_KEY length: {len(encryption_key)}")
+        else:
+            print("DEBUG: ENCRYPTION_KEY is None or empty")
+        
         data = request.get_json()
+        print("GOT DATA:", data)
         academic_year = data.get('academic_year')
         sheet_id = data.get('sheet_id')
+        print("ACADEMIC YEAR:", academic_year, "SHEET ID:", sheet_id)
+        
         if not all([academic_year, sheet_id]):
             return jsonify({'error': 'Academic year and sheet ID are required'}), 400
+        
         existing = GoogleSheet.query.filter_by(academic_year=academic_year).first()
         if existing:
             return jsonify({'error': f'Sheet for academic year {academic_year} already exists'}), 400
+        
+        print(f"DEBUG: About to create GoogleSheet with sheet_id: {sheet_id}")
         new_sheet = GoogleSheet(
             academic_year=academic_year,
             sheet_id=sheet_id,
             created_by=current_user.id
         )
+        print("DEBUG: GoogleSheet created successfully")
+        
         db.session.add(new_sheet)
         db.session.commit()
+        
         return jsonify({
             'success': True,
             'message': f'Google Sheet for {academic_year} created successfully',
             'sheet': new_sheet.to_dict()
         })
     except Exception as e:
+        print("EXCEPTION:", e)
+        import traceback; traceback.print_exc()
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 

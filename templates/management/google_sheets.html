@@ -177,6 +177,40 @@
         font-size: 14px;
     }
     
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+    
+    .form-actions .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    
+    .form-actions .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .form-actions .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+    
+    .form-actions .btn:hover {
+        opacity: 0.9;
+    }
+    
+    .form-actions .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
     .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -348,18 +382,28 @@ function deleteSheet(sheetId, academicYear) {
 document.getElementById('sheetForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const formData = {
-        academic_year: document.getElementById('academicYear').value
-    };
-    
-    // Only include sheet_id if it's provided (for new sheets or updates)
+    // Validate form
+    const academicYear = document.getElementById('academicYear').value;
     const sheetIdInput = document.getElementById('sheetIdInput').value;
-    if (sheetIdInput) {
-        formData.sheet_id = sheetIdInput;
+    
+    if (!academicYear || !sheetIdInput) {
+        showToast('Error', 'Please fill in all required fields', 'error');
+        return;
     }
+    
+    const formData = {
+        academic_year: academicYear,
+        sheet_id: sheetIdInput
+    };
     
     const url = isEditMode ? `/google-sheets/${currentSheetId}` : '/google-sheets';
     const method = isEditMode ? 'PUT' : 'POST';
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
     
     fetch(url, {
         method: method,
@@ -368,7 +412,12 @@ document.getElementById('sheetForm').addEventListener('submit', function(e) {
         },
         body: JSON.stringify(formData)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             showToast('Success', data.message, 'success');
@@ -380,7 +429,12 @@ document.getElementById('sheetForm').addEventListener('submit', function(e) {
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error', 'Failed to save sheet', 'error');
+        showToast('Error', 'Failed to save sheet: ' + error.message, 'error');
+    })
+    .finally(() => {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     });
 });
 

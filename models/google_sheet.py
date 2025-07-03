@@ -5,6 +5,7 @@ from cryptography.fernet import Fernet
 import base64
 import os
 from datetime import datetime, timezone
+from flask import current_app
 
 class GoogleSheet(db.Model):
     __tablename__ = 'google_sheets'
@@ -26,7 +27,13 @@ class GoogleSheet(db.Model):
     
     def _get_encryption_key(self):
         """Get or create encryption key from environment variable"""
-        key = os.getenv('ENCRYPTION_KEY')
+        # Try to get from Flask config first, then environment
+        try:
+            key = current_app.config.get('ENCRYPTION_KEY')
+        except RuntimeError:
+            # If we're outside application context, fall back to os.getenv
+            key = os.getenv('ENCRYPTION_KEY')
+            
         if not key:
             # Generate a new key if none exists
             key = Fernet.generate_key()
