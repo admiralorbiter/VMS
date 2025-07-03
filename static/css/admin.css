@@ -129,6 +129,25 @@
     transition: width 0.3s ease;
 }
 
+.import-item .form-select {
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 1.1rem;
+    padding: 0 1rem;
+    margin-right: 0.5rem;
+    background: #f8f9fa;
+    color: #1d3354;
+    min-width: 140px;
+    max-width: 180px;
+    box-shadow: 0 2px 4px rgba(29,51,84,0.04);
+    transition: border-color 0.2s;
+}
+.import-item .form-select:focus {
+    border-color: var(--ucla-blue);
+    outline: none;
+}
+
 .purge-grid {
     display: grid;
     gap: 1rem;

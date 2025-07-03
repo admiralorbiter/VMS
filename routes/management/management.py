@@ -28,7 +28,10 @@ def admin():
         return redirect(url_for('main.index'))
     
     users = User.query.all()
-    return render_template('management/admin.html', users=users)
+    # Provide academic years with Google Sheets for the dropdown
+    from models.google_sheet import GoogleSheet
+    sheet_years = [sheet.academic_year for sheet in GoogleSheet.query.order_by(GoogleSheet.academic_year.desc()).all()]
+    return render_template('management/admin.html', users=users, sheet_years=sheet_years)
 
 @management_bp.route('/admin/import', methods=['POST'])
 @login_required

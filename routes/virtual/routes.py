@@ -398,86 +398,6 @@ def add_district_to_event(event, district_name):
     else:
         print(f"DEBUG: Failed to get/create district for name: '{district_name}'")
 
-@virtual_bp.route('/import', methods=['GET', 'POST'])
-@login_required
-def import_virtual():
-    if request.method == 'GET':
-        return render_template('virtual/import.html')
-    
-    try:
-        success_count = warning_count = error_count = 0
-        errors = []
-
-        if 'file' in request.files:
-            file = request.files['file']
-            if not file.filename.endswith('.csv'):
-                raise ValueError("Please upload a CSV file")
-            
-            stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
-            csv_data = csv.DictReader(stream)
-            
-            # Convert to list to allow multiple passes
-            all_rows = list(csv_data)
-            
-            for row in all_rows:
-                success_count, warning_count, error_count = process_csv_row(
-                    row, success_count, warning_count, error_count, errors, all_rows
-                )
-
-        return jsonify({
-            'success': True,
-            'successCount': success_count,
-            'warningCount': warning_count,
-            'errorCount': error_count,
-            'errors': errors
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error("Import failed", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
-
-@virtual_bp.route('/quick-sync', methods=['POST'])
-@login_required
-def quick_sync():
-    """Synchronize virtual sessions from a predefined CSV file"""
-    try:
-        csv_path = os.path.join('data', 'virtual.csv')
-        
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"Virtual data file not found at {csv_path}")
-
-        success_count = warning_count = error_count = 0
-        errors = []
-
-        with open(csv_path, 'r', encoding='UTF8') as file:
-            csv_data = csv.DictReader(file)
-            all_rows = list(csv_data)
-            
-            for row in all_rows:
-                success_count, warning_count, error_count = process_csv_row(
-                    row, success_count, warning_count, error_count, errors, all_rows
-                )
-
-        return jsonify({
-            'success': True,
-            'successCount': success_count,
-            'warningCount': warning_count,
-            'errorCount': error_count,
-            'errors': errors
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error("Quick sync failed", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
-
 @virtual_bp.route('/purge', methods=['POST'])
 @login_required
 def purge_virtual():
@@ -798,16 +718,14 @@ def import_sheet():
         data = request.get_json() or {}
         academic_year = data.get('academic_year')
         if not academic_year:
-            from utils.academic_year import get_current_academic_year
-            academic_year = get_current_academic_year()
+            return jsonify({'success': False, 'error': 'Academic year is required.'}), 400
         from models.google_sheet import GoogleSheet
         sheet_record = GoogleSheet.query.filter_by(academic_year=academic_year).first()
-        if sheet_record:
-            sheet_id = sheet_record.decrypted_sheet_id
-        else:
-            sheet_id = getenv('GOOGLE_SHEET_ID')
+        if not sheet_record:
+            return jsonify({'success': False, 'error': f'No Google Sheet configured for academic year {academic_year}'}), 400
+        sheet_id = sheet_record.decrypted_sheet_id
         if not sheet_id:
-            raise ValueError(f"No Google Sheet ID configured for academic year {academic_year}")
+            return jsonify({'success': False, 'error': f'Google Sheet ID for {academic_year} could not be decrypted or is missing.'}), 400
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         
         # Use requests with streaming

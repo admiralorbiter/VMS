@@ -309,10 +309,10 @@
 
                 <!-- 10. Virtual Events -->
                 <div class="import-item">
-                    <button onclick="importVirtualEvents()" class="btn admin-btn-import" id="importVirtualBtn">
-                        <i class="fas fa-video"></i>
-                        <span>10. Import Virtual Events</span>
-                    </button>
+                    <a href="{{ url_for('management.google_sheets') }}" class="btn admin-btn-import" id="manageGoogleSheetsBtn" style="display: flex; align-items: center;">
+                        <i class="fas fa-file-spreadsheet"></i>
+                        <span>Manage Virtual Event Google Sheets</span>
+                    </a>
                     <div class="import-status" id="importVirtualStatus"></div>
                     <div class="import-progress" id="importVirtualProgress">
                         <div class="import-progress-bar"></div>
@@ -1042,54 +1042,10 @@ function refreshDistrictReport() {
 }
 
 function importVirtualEvents() {
-    if (confirm('Are you sure you want to import virtual events from the Google Sheet?')) {
-        const btn = document.getElementById('importVirtualBtn');
-        const status = document.getElementById('importVirtualStatus');
-        const progress = document.getElementById('importVirtualProgress');
-        
-        btn.disabled = true;
-        status.textContent = 'Importing...';
-        
-        // Get current date to determine academic year
-        const today = new Date();
-        const month = today.getMonth() + 1; // JavaScript months are 0-based
-        const year = today.getFullYear();
-        // Academic year logic: July 1st to June 30th
-        const academicYear = month >= 7 ? `${year}-${year+1}` : `${year-1}-${year}`;
-        
-        fetch('/virtual/import-sheet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                academic_year: academicYear
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                status.textContent = `Import completed: ${data.successCount} successful, ${data.warningCount} warnings, ${data.errorCount} errors`;
-                if (data.errors && data.errors.length > 0) {
-                    console.log('Import errors:', data.errors);
-                    // Display errors in the status
-                    const errorList = data.errors.join('\n');
-                    status.innerHTML = `${status.textContent}<br><small class="text-danger">${errorList}</small>`;
-                }
-                showToast('Success', `Import completed successfully with ${data.successCount} records`, 'success');
-            } else {
-                throw new Error(data.error || 'Failed to import virtual events');
-            }
-        })
-        .catch(error => {
-            console.error('Import error:', error);
-            status.textContent = `Error: ${error.message}`;
-            showToast('Error', `Failed to import virtual events: ${error.message}`, 'error');
-        })
-        .finally(() => {
-            btn.disabled = false;
-        });
-    }
+    // This function is no longer needed as the button is removed.
+    // Keeping it here for now, but it will not be called by the new button.
+    // The new button will navigate to the Google Sheets management page.
+    alert('Virtual event import functionality is now managed via the "Manage Virtual Event Google Sheets" button.');
 }
 
 function importPathways() {

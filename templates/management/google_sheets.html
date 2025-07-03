@@ -261,7 +261,11 @@
                 <button class="btn-delete" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.academic_year }}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
+                <button class="btn btn-info" onclick="importVirtualForYear('{{ sheet.academic_year }}', this)">
+                    <i class="fas fa-file-import"></i> Import
+                </button>
             </div>
+            <div class="import-status" id="importStatus-{{ sheet.academic_year|replace('-', '') }}"></div>
         </div>
         {% endfor %}
     {% else %}
@@ -318,6 +322,7 @@
 
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -478,6 +483,37 @@ function showToast(title, message, type = 'success') {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
     }, 5000);
+}
+
+function importVirtualForYear(academicYear, btn) {
+    if (!confirm(`Import virtual events for ${academicYear}?`)) return;
+    btn.disabled = true;
+    const statusId = `importStatus-${academicYear.replace(/-/g, '')}`;
+    const statusDiv = document.getElementById(statusId);
+    statusDiv.textContent = 'Importing...';
+    fetch('/virtual/import-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ academic_year: academicYear })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.textContent = `Import completed: ${data.successCount} successful, ${data.warningCount} warnings, ${data.errorCount} errors.`;
+            if (data.errors && data.errors.length > 0) {
+                statusDiv.innerHTML += `<br><small class='text-danger'>${data.errors.join('<br>')}</small>`;
+            }
+            showToast('Success', `Import completed for ${academicYear}`, 'success');
+        } else {
+            statusDiv.textContent = data.error || 'Import failed.';
+            showToast('Error', data.error || 'Import failed', 'error');
+        }
+    })
+    .catch(e => {
+        statusDiv.textContent = 'Import failed: ' + e.message;
+        showToast('Error', 'Import failed: ' + e.message, 'error');
+    })
+    .finally(() => { btn.disabled = false; });
 }
 </script>
 {% endblock %} 
