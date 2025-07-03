@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Event Attendance Impact{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attendance_details.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="attendance-impact-container">
+    <h1>Event Attendance Impact (Academic Year)</h1>
+    <table class="table attendance-impact-table">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>No. of Classrooms/Tables</th>
+                <th>Students per Volunteer</th>
+                <th>Total Students</th>
+                <th>Attendance in SF</th>
+                <th>Pathway</th>
+                <th>Groups & Rotations</th>
+                <th>STEM</th>
+                <th>Attendance Link</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr>
+                <td>{{ event.title }}</td>
+                <td>{{ event.start_date.strftime('%Y-%m-%d') if event.start_date else '' }}</td>
+                <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.students_per_volunteer if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.total_students if event.attendance_detail else '' }}</td>
+                <td>{% if event.attendance_detail and event.attendance_detail.attendance_in_sf %}✔{% endif %}</td>
+                <td>{{ event.attendance_detail.pathway if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.groups_rotations if event.attendance_detail else '' }}</td>
+                <td>{% if event.attendance_detail and event.attendance_detail.is_stem %}✔{% endif %}</td>
+                <td>
+                    {% if event.attendance_detail and event.attendance_detail.attendance_link %}
+                        <a href="{{ event.attendance_detail.attendance_link }}" target="_blank">Link</a>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="#" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

@@ -7,6 +7,7 @@ from sqlalchemy.orm import validates
 
 from models import db
 from models.volunteer import EventParticipation
+from models.attendance import EventAttendanceDetail
 
 # Define the association table first
 event_volunteers = db.Table('event_volunteers',
@@ -274,6 +275,14 @@ class Event(db.Model):
         'School', 
         foreign_keys=[school],
         backref=db.backref('events', lazy='dynamic')
+    )
+
+    # Add one-to-one relationship to EventAttendanceDetail
+    attendance_detail = db.relationship(
+        'EventAttendanceDetail',
+        back_populates='event',
+        uselist=False,
+        cascade='all, delete-orphan'
     )
 
     # TODO: Consider adding validation methods:

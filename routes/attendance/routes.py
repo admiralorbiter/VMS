@@ -11,6 +11,9 @@ from models.school_model import School
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from config import Config
 from routes.utils import parse_date
+from models.event import Event
+from models.attendance import EventAttendanceDetail
+from datetime import datetime, date, timedelta
 
 attendance = Blueprint('attendance', __name__)
 
@@ -807,3 +810,23 @@ def import_students_from_salesforce():
             'message': error_msg,
             'errors': [str(e)]
         }
+
+def get_academic_year_range(today=None):
+    today = today or date.today()
+    year = today.year
+    if today.month < 8:
+        start = date(year-1, 8, 1)
+        end = date(year, 7, 31)
+    else:
+        start = date(year, 8, 1)
+        end = date(year+1, 7, 31)
+    return start, end
+
+@attendance.route('/attendance/impact')
+@login_required
+def attendance_impact():
+    # Get academic year range
+    start, end = get_academic_year_range()
+    # Query all events in this range
+    events = Event.query.filter(Event.start_date >= start, Event.start_date <= end).order_by(Event.start_date).all()
+    return render_template('attendance/impact.html', events=events)
