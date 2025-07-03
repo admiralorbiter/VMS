@@ -139,11 +139,11 @@ def google_sheets():
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.index'))
     sheets = GoogleSheet.query.order_by(GoogleSheet.academic_year.desc()).all()
-    # Generate a list of academic years (e.g., 2018-2019 to 2030-2031)
     all_years = get_academic_year_range(2018, 2032)
     used_years = {sheet.academic_year for sheet in sheets}
     available_years = [y for y in all_years if y not in used_years]
-    return render_template('management/google_sheets.html', sheets=sheets, available_years=available_years)
+    sheet_years = [sheet.academic_year for sheet in sheets]
+    return render_template('management/google_sheets.html', sheets=sheets, available_years=available_years, sheet_years=sheet_years)
 
 @management_bp.route('/google-sheets', methods=['POST'])
 @login_required

@@ -287,9 +287,14 @@
             <div class="form-group">
                 <label for="academicYear">Academic Year *</label>
                 <select id="academicYear" name="academicYear" required>
-                    <option value="" disabled selected>Select Academic Year</option>
-                    {% for year in available_years %}
+                    <option value="" disabled>Select Academic Year</option>
+                    {% for year in sheet_years %}
                         <option value="{{ year }}">{{ year }}</option>
+                    {% endfor %}
+                    {% for year in available_years %}
+                        {% if year not in sheet_years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endif %}
                     {% endfor %}
                 </select>
             </div>
@@ -337,7 +342,15 @@ function openEditModal(sheetId) {
         .then(data => {
             if (data.success) {
                 const sheet = data.sheet;
-                document.getElementById('academicYear').value = sheet.academic_year;
+                const academicYearSelect = document.getElementById('academicYear');
+                // If the academic year is not in the options, add it
+                if (![...academicYearSelect.options].some(opt => opt.value === sheet.academic_year)) {
+                    const opt = document.createElement('option');
+                    opt.value = sheet.academic_year;
+                    opt.text = sheet.academic_year;
+                    academicYearSelect.add(opt, academicYearSelect.options[1]); // after the placeholder
+                }
+                academicYearSelect.value = sheet.academic_year;
                 document.getElementById('sheetIdInput').value = sheet.sheet_id || '';
                 document.getElementById('sheetModal').style.display = 'block';
             } else {
