@@ -1,6 +1,6 @@
 # app.py
 
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from models import db, User
 from models.user import SecurityLevel
@@ -71,6 +71,10 @@ def inject_security_levels():
 
 # Initialize routes
 init_routes(app)
+
+@app.route('/docs/<path:filename>')
+def documentation(filename):
+    return send_from_directory('documentation', filename)
 
 if __name__ == '__main__':
     # Use production-ready server configuration

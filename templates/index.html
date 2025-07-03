@@ -4,97 +4,110 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<style>
+.revamp-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: center;
+    margin-top: 3rem;
+}
+.revamp-box {
+    background: #f8fafc;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px 0 rgba(37,99,235,0.04);
+    padding: 2.5rem 2rem;
+    min-width: 270px;
+    max-width: 350px;
+    flex: 1 1 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.revamp-box:hover {
+    box-shadow: 0 6px 18px -2px rgba(37,99,235,0.10);
+    border-color: #2563eb;
+}
+.revamp-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin-bottom: 1rem;
+}
+.revamp-btn {
+    display: inline-block;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    margin-top: 1rem;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.revamp-btn:hover {
+    background: #174ea6;
+    color: #fff;
+}
+.revamp-list {
+    margin: 0.5rem 0 0 1.2rem;
+    padding: 0;
+    color: #ef4444;
+    font-size: 1.05rem;
+}
+.quick-links {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+}
+.quick-links li {
+    margin-bottom: 0.7rem;
+}
+.quick-link {
+    color: #2563eb;
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.quick-link:hover {
+    color: #174ea6;
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-section">
-    <div class="dashboard-header">
-        <h2>System Status & Updates</h2>
+<div class="revamp-container">
+    <!-- Documentation -->
+    <div class="revamp-box">
+        <div class="revamp-title">Documentation</div>
+        <div>Browse the full user and admin documentation for the Volunteer Management System.</div>
+        <a class="revamp-btn" href="/docs/index.html" target="_blank" rel="noopener">Open Documentation</a>
     </div>
-
-    <div class="status-grid">
-        <!-- Live Features -->
-        <div class="status-card live">
-            <h3><i class="fa-solid fa-circle-check"></i> Live Features</h3>
-            <ul class="feature-list">
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Event Management</div>
-                        <div class="feature-description">Create, edit, and track events with calendar integration and virtual meeting support</div>
-                    </div>
-                </li>
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Organization Management</div>
-                        <div class="feature-description">Complete organization profiles, directory, and interaction tracking system</div>
-                    </div>
-                </li>
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Volunteer Management</div>
-                        <div class="feature-description">Track volunteers, their skills, and engagement history</div>
-                    </div>
-                </li>
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Attendance Tracking</div>
-                        <div class="feature-description">Record and monitor attendance for events and activities</div>
-                    </div>
-                </li>
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Student & Teacher Management</div>
-                        <div class="feature-description">Profile management and attendance tracking for educational programs</div>
-                    </div>
-                </li>
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Reporting System</div>
-                        <div class="feature-description">Comprehensive reports on activities, attendance, and organizational metrics</div>
-                    </div>
-                </li>
-                <li class="feature-item">
-                    <i class="fa-solid fa-check feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Interactive Calendar</div>
-                        <div class="feature-description">Visual calendar with color-coded events and status tracking</div>
-                    </div>
-                </li>
-            </ul>
-        </div>
-        <!-- Planned Features -->
-        <div class="status-card planned">
-            <h3><i class="fa-solid fa-lightbulb"></i> Planned Features</h3>
-            <ul class="feature-list">
-                <li class="feature-item">
-                    <i class="fa-solid fa-clock feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Email Management</div>
-                        <div class="feature-description">Automated reminders and communication templates</div>
-                    </div>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Known Issues -->
-        <div class="status-card bug">
-            <h3><i class="fa-solid fa-bug"></i> Known Issues</h3>
-            <ul class="feature-list">
-                <li class="feature-item">
-                    <i class="fa-solid fa-exclamation-triangle feature-icon"></i>
-                    <div class="feature-content">
-                        <div class="feature-title">Report to Jon</div>
-                        <div class="feature-description">jlane@prepkc.org</div>
-                    </div>
-                </li>
-            </ul>
-        </div>
+    <!-- Known Issues -->
+    <div class="revamp-box">
+        <div class="revamp-title">Known Issues</div>
+        <ul class="revamp-list">
+            <li>Company Report Numbers are Inaccurate</li>
+            <li>Some Virtual Sessions are Missing</li>
+        </ul>
+    </div>
+    <!-- Voluntold -->
+    <div class="revamp-box">
+        <div class="revamp-title">Voluntold</div>
+        <div>Manage volunteering and signups on our dedicated Voluntold platform.</div>
+        <a class="revamp-btn" href="https://voluntold-prepkc.pythonanywhere.com/" target="_blank" rel="noopener">Go to Voluntold</a>
+    </div>
+    <!-- Quick Links -->
+    <div class="revamp-box">
+        <div class="revamp-title">Quick Links</div>
+        <ul class="quick-links">
+            <li><a class="quick-link" href="/reports/district/year-end" target="_blank" rel="noopener">End of Year Report</a></li>
+        </ul>
     </div>
 </div>
 {% endblock %}
