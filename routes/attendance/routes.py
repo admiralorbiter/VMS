@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import Blueprint, render_template, request, jsonify, current_app, abort
 from flask_login import login_required
 import pandas as pd
 import os
@@ -825,8 +825,65 @@ def get_academic_year_range(today=None):
 @attendance.route('/attendance/impact')
 @login_required
 def attendance_impact():
-    # Get academic year range
-    start, end = get_academic_year_range()
+    # Academic year selection
+    year_param = request.args.get('year', type=int)
+    today = date.today()
+    # Generate a list of academic years (e.g., last 5 years)
+    current_year = today.year if today.month >= 8 else today.year - 1
+    academic_years = [current_year - i for i in range(5)]
+    academic_years.sort(reverse=True)
+    selected_year = year_param or current_year
+    # Get academic year range for selected year
+    start = date(selected_year, 8, 1)
+    end = date(selected_year + 1, 7, 31)
     # Query all events in this range
     events = Event.query.filter(Event.start_date >= start, Event.start_date <= end).order_by(Event.start_date).all()
-    return render_template('attendance/impact.html', events=events)
+    return render_template('attendance/impact.html', events=events, academic_years=academic_years, selected_year=selected_year)
+
+@attendance.route('/attendance/impact/<int:event_id>/detail', methods=['GET'])
+@login_required
+def get_attendance_detail(event_id):
+    event = Event.query.get_or_404(event_id)
+    detail = event.attendance_detail
+    if not detail:
+        # Return empty/default values if not set
+        return jsonify({
+            'num_classrooms': '',
+            'students_per_volunteer': '',
+            'total_students': '',
+            'attendance_in_sf': False,
+            'pathway': '',
+            'groups_rotations': '',
+            'is_stem': False,
+            'attendance_link': ''
+        })
+    return jsonify({
+        'num_classrooms': detail.num_classrooms,
+        'students_per_volunteer': detail.students_per_volunteer,
+        'total_students': detail.total_students,
+        'attendance_in_sf': detail.attendance_in_sf,
+        'pathway': detail.pathway,
+        'groups_rotations': detail.groups_rotations,
+        'is_stem': detail.is_stem,
+        'attendance_link': detail.attendance_link
+    })
+
+@attendance.route('/attendance/impact/<int:event_id>/detail', methods=['POST'])
+@login_required
+def update_attendance_detail(event_id):
+    event = Event.query.get_or_404(event_id)
+    data = request.json
+    detail = event.attendance_detail
+    if not detail:
+        detail = EventAttendanceDetail(event_id=event.id)
+        db.session.add(detail)
+    detail.num_classrooms = data.get('num_classrooms')
+    detail.students_per_volunteer = data.get('students_per_volunteer')
+    detail.total_students = data.get('total_students')
+    detail.attendance_in_sf = data.get('attendance_in_sf', False)
+    detail.pathway = data.get('pathway')
+    detail.groups_rotations = data.get('groups_rotations')
+    detail.is_stem = data.get('is_stem', False)
+    detail.attendance_link = data.get('attendance_link')
+    db.session.commit()
+    return jsonify({'success': True})

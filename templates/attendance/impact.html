@@ -9,6 +9,14 @@
 {% block content %}
 <div class="attendance-impact-container">
     <h1>Event Attendance Impact (Academic Year)</h1>
+    <form id="yearSelectForm" method="get" style="margin-bottom: 1.5rem;">
+        <label for="yearSelect"><strong>Academic Year:</strong></label>
+        <select id="yearSelect" name="year" onchange="document.getElementById('yearSelectForm').submit()">
+            {% for y in academic_years %}
+                <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}-{{ y+1 }}</option>
+            {% endfor %}
+        </select>
+    </form>
     <table class="table attendance-impact-table">
         <thead>
             <tr>
@@ -27,7 +35,7 @@
         </thead>
         <tbody>
             {% for event in events %}
-            <tr>
+            <tr data-event-id="{{ event.id }}">
                 <td>{{ event.title }}</td>
                 <td>{{ event.start_date.strftime('%Y-%m-%d') if event.start_date else '' }}</td>
                 <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
@@ -50,4 +58,8 @@
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/attendance_details.js') }}"></script>
 {% endblock %} 
