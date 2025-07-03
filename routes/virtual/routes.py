@@ -784,6 +784,7 @@ def import_sheet():
 
         # --- Second Pass: Process each row ---
         # REMOVED: "Processing Rows" header
+        primary_logic_already_run = {}  # Track if primary logic has run for each event instance
         for row_index, row_data in enumerate(all_rows_for_lookup):
             event_processed_in_this_row = False # Flag to track if event logic ran
             try:
@@ -943,12 +944,13 @@ def import_sheet():
 
                 # --- Primary Logic Block ---
                 # Run this block only ONCE per specific event instance (title + datetime)
-                if is_primary_row_status and not primary_logic_already_run:
+                primary_logic_run_key = (title, current_datetime.isoformat())
+                if is_primary_row_status and not primary_logic_already_run.get(primary_logic_run_key, False):
                     event_processed_in_this_row = True
                     # Get the date key for aggregation (date part only)
                     current_date_key = current_datetime.date().isoformat()
                     # REMOVED: Primary logic processing header
-                    processed_event_ids[primary_logic_run_key] = True # Mark primary logic as done for this event instance
+                    primary_logic_already_run[primary_logic_run_key] = True # Mark primary logic as done for this event instance
 
                     # --- Participant Count Calculation (Based on Title and DATE ONLY, requires School Name) ---
                     # REMOVED: Participant count calculation log
