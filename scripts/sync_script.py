@@ -3,7 +3,7 @@ import os
 
 # Replace with your actual PythonAnywhere URL for the Flask app
 BASE_URL = 'https://polaris-jlane.pythonanywhere.com'
-TOKEN = 'youcantrybutyoucantgetthroughthiswalloftext'
+TOKEN = os.getenv('TOKEN')
 
 # Add debug print and token validation
 if TOKEN is None:
