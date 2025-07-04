@@ -82,10 +82,11 @@ def test_event_export(client, auth_headers):
     response = safe_route_test(client, '/events/export', headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
-def test_event_import(client, auth_headers):
-    """Test event import page"""
-    response = safe_route_test(client, '/events/import', headers=auth_headers)
-    assert_route_response(response, expected_statuses=[200, 404, 500])
+# Removed test for old import route - now using /events/import-from-salesforce
+# def test_event_import(client, auth_headers):
+#     """Test event import page"""
+#     response = safe_route_test(client, '/events/import', headers=auth_headers)
+#     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 def test_event_copy(client, auth_headers):
     """Test copying an event"""

@@ -10,7 +10,6 @@ Key Features:
 - Event CRUD operations (Create, Read, Update, Delete)
 - Advanced filtering and sorting of events
 - Salesforce integration for data synchronization
-- CSV import functionality for bulk data loading
 - Volunteer and student participation tracking
 - Skills management and association
 
@@ -19,8 +18,8 @@ Main Endpoints:
 - /events/add: Create new events
 - /events/view/<id>: View detailed event information
 - /events/edit/<id>: Edit existing events
-- /events/import: Import events from CSV or Salesforce
-- /events/sync-*: Various sync endpoints for Salesforce data
+- /events/import-from-salesforce: Import events and participants from Salesforce
+- /events/sync-student-participants: Sync student participation data from Salesforce
 
 Dependencies:
 - Salesforce API integration via simple_salesforce
@@ -28,9 +27,7 @@ Dependencies:
 - Various utility functions from routes.utils
 """
 
-import csv
-import os
-from flask import Blueprint, app, jsonify, request, render_template, flash, redirect, url_for, abort
+from flask import Blueprint, jsonify, request, render_template, flash, redirect, url_for, abort
 from flask_login import login_required, current_user
 from config import Config
 from forms import EventForm
@@ -56,15 +53,14 @@ events_bp = Blueprint('events', __name__)
 
 def process_event_row(row, success_count, error_count, errors):
     """
-    Process a single event row from CSV/Salesforce data
+    Process a single event row from Salesforce data
     
     This function handles the processing of individual event records from
-    either CSV files or Salesforce API responses. It validates required
-    fields, creates or updates Event objects, and handles relationships
-    with districts, schools, and skills.
+    Salesforce API responses. It validates required fields, creates or updates
+    Event objects, and handles relationships with districts, schools, and skills.
     
     Args:
-        row (dict): Event data from CSV or Salesforce
+        row (dict): Event data from Salesforce
         success_count (int): Running count of successful operations
         error_count (int): Running count of failed operations
         errors (list): List to collect error messages
@@ -191,14 +187,14 @@ def process_event_row(row, success_count, error_count, errors):
     
 def process_participation_row(row, success_count, error_count, errors):
     """
-    Process a single participation row from CSV data
+    Process a single participation row from Salesforce data
     
-    This function handles volunteer participation records from CSV imports
-    or Salesforce sync operations. It creates EventParticipation records
-    linking volunteers to events with status and delivery hours.
+    This function handles volunteer participation records from Salesforce
+    sync operations. It creates EventParticipation records linking
+    volunteers to events with status and delivery hours.
     
     Args:
-        row (dict): Participation data from CSV or Salesforce
+        row (dict): Participation data from Salesforce
         success_count (int): Running count of successful operations
         error_count (int): Running count of failed operations
         errors (list): List to collect error messages
@@ -653,119 +649,6 @@ def edit_event(id):
     
     return render_template('events/edit.html', event=event, form=form)
     
-@events_bp.route('/events/import', methods=['GET', 'POST'])
-@login_required
-def import_events():
-    """
-    Import events from CSV files or Salesforce
-    
-    This endpoint handles both file uploads and Salesforce synchronization.
-    It supports importing events and participation data with progress
-    tracking and error reporting.
-    
-    GET: Display import interface
-    POST: Process import (CSV file or Salesforce sync)
-    
-    Returns:
-        GET: Rendered import template
-        POST: JSON response with import results
-    """
-    if request.method == 'GET':
-        return render_template('events/import.html')
-
-    try:
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        # Determine import type
-        import_type = request.json.get('importType', 'events') if request.is_json else request.form.get('importType', 'events')
-
-        # Select the appropriate process function
-        process_func = process_event_row if import_type == 'events' else process_participation_row
-
-        # Handle quickSync from Salesforce
-        if request.is_json and request.json.get('quickSync'):
-            try:
-                print("Fetching data from Salesforce...")
-
-                # Define Salesforce query
-                salesforce_query = """
-                SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
-                        End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
-                        Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
-                        District__c, Legacy_Skill_Covered_for_the_Session__c, 
-                        Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-                        Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
-                        Session_Host__c
-                FROM Session__c
-                ORDER BY Start_Date_and_Time__c ASC
-                """
-
-                # Connect to Salesforce
-                sf = Salesforce(
-                    username=Config.SF_USERNAME,
-                    password=Config.SF_PASSWORD,
-                    security_token=Config.SF_SECURITY_TOKEN,
-                    domain='login'
-                )
-
-                # Execute the query
-                result = sf.query_all(salesforce_query)
-                sf_rows = result.get('records', [])
-
-                # Process each row from Salesforce
-                for row in sf_rows:
-                    success_count, error_count = process_func(
-                        row, success_count, error_count, errors
-                    )
-            except SalesforceAuthenticationFailed:
-                return jsonify({
-                    'success': False,
-                    'message': 'Failed to authenticate with Salesforce'
-                }), 401
-            except Exception as e:
-                print(f"Salesforce sync error: {str(e)}")
-                return jsonify({'error': f'Salesforce sync error: {str(e)}'}), 500
-
-        else:
-            # Handle file upload as fallback
-            if 'file' not in request.files:
-                return jsonify({'error': 'No file uploaded'}), 400
-            
-            file = request.files['file']
-            if file.filename == '':
-                return jsonify({'error': 'No file selected'}), 400
-            
-            if not file.filename.endswith('.csv'):
-                return jsonify({'error': 'File must be a CSV'}), 400
-
-            # Read and process the CSV file
-            content = file.stream.read().decode("UTF8", errors='replace').replace('\0', '')
-            csv_data = csv.DictReader(content.splitlines())
-            for row in csv_data:
-                success_count, error_count = process_func(
-                    row, success_count, error_count, errors
-                )
-
-        # Commit changes to the database
-        try:
-            db.session.commit()
-            return jsonify({
-                'success': True,
-                'successCount': success_count,
-                'errorCount': error_count,
-                'errors': errors
-            })
-        except Exception as e:
-            db.session.rollback()
-            print(f"Database commit error: {str(e)}")
-            return jsonify({'error': f'Database error: {str(e)}'}), 500
-
-    except Exception as e:
-        print(f"Import error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
 @events_bp.route('/events/purge', methods=['POST'])
 @login_required
 def purge_events():
@@ -808,87 +691,6 @@ def purge_events():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
-    
-@events_bp.route('/events/sync-participants')
-@login_required
-def sync_participants():
-    """
-    Sync participant data from CSV file
-    
-    This endpoint reads participant data from a CSV file and creates
-    EventParticipation records linking volunteers to events.
-    
-    Returns:
-        JSON response with sync results
-    """
-    try:
-        csv_file = os.path.join('data', 'Session_Participant__c - volunteers.csv')
-        if not os.path.exists(csv_file):
-            return jsonify({'error': f'CSV file not found: {csv_file}'}), 404
-
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        with open(csv_file, 'r', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                success_count, error_count = process_participation_row(
-                    row, success_count, error_count, errors
-                )
-
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Successfully processed {success_count} participants with {error_count} errors',
-            'errors': errors
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in sync_participants: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@events_bp.route('/events/sync-events', methods=['POST'])
-@login_required
-def sync_events():
-    """
-    Sync events from CSV file
-    
-    This endpoint reads event data from a CSV file and creates or updates
-    Event records in the database.
-    
-    Returns:
-        JSON response with sync results
-    """
-    try:
-        # Get absolute path using application root
-        csv_file = os.path.join(app.root_path, 'data', 'Sessions.csv')
-        print(f"CSV file path: {csv_file}")
-        if not os.path.exists(csv_file):
-            return jsonify({'error': f'CSV file not found: {csv_file}'}), 404
-
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        with open(csv_file, 'r', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                success_count, error_count = process_event_row(row, success_count, error_count, errors)
-
-        db.session.commit()
-        return jsonify({
-            'success': True,
-            'message': f'Successfully processed {success_count} events with {error_count} errors',
-            'errors': errors
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in sync_events: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 @events_bp.route('/events/delete/<int:id>', methods=['DELETE'])
 @login_required
