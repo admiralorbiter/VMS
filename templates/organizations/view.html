@@ -13,7 +13,8 @@
   
   Template Variables:
   - organization: Organization object with all details
-  - organization.volunteer_organizations: List of volunteer associations
+  - volunteer_organizations: List of volunteer-organization relationships
+  - recent_activities: List of recent activities for associated volunteers
   - current_user: Current authenticated user (for permissions)
   
   Routes:
@@ -60,9 +61,9 @@
             </a>
             {% endif %}
             {# Edit Organization Action #}
-            <a href="{{ url_for('organizations.edit_organization', id=organization.id) }}" class="action-btn">
+            <!-- <a href="{{ url_for('organizations.edit_organization', id=organization.id) }}" class="action-btn">
                 <i class="fa-solid fa-pencil"></i> Edit Organization
-            </a>
+            </a> -->
             {# Back to Organizations List #}
             <a href="{{ url_for('organizations.organizations') }}" class="action-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back to Organizations
@@ -140,26 +141,33 @@
                 <h2><i class="fa-solid fa-users"></i> Associated Volunteers</h2>
             </div>
             <div class="card-content">
-                {# Volunteers List - Loop Through Volunteer Organizations #}
-                {% if organization.volunteer_organizations %}
+                {# Volunteers List - Loop Through Volunteer Organizations with Null Checks #}
+                {% if volunteer_organizations %}
                 <div class="volunteers-list">
-                    {% for vo in organization.volunteer_organizations %}
+                    {% for vo in volunteer_organizations %}
                     <div class="volunteer-item">
-                        {# Volunteer Basic Information #}
+                        {# Volunteer Basic Information with Null Check #}
                         <div class="volunteer-info">
-                            {# Volunteer Name with Link to Detail View #}
+                            {# Volunteer Name with Link to Detail View - Only if volunteer exists #}
+                            {% if vo.volunteer %}
                             <a href="{{ url_for('volunteers.view_volunteer', id=vo.volunteer.id) }}" class="volunteer-name">
                                 {{ vo.volunteer.first_name }} {{ vo.volunteer.last_name }}
                             </a>
+                            {% else %}
+                            <span class="volunteer-name">Unknown Volunteer</span>
+                            {% endif %}
+                            
                             {# Volunteer Role (if assigned) #}
                             {% if vo.role %}
                             <span class="volunteer-role">{{ vo.role }}</span>
                             {% endif %}
+                            
                             {# Volunteer Status with CSS Class for Styling #}
                             {% if vo.status %}
                             <span class="volunteer-status {{ vo.status.lower() }}">{{ vo.status }}</span>
                             {% endif %}
                         </div>
+                        
                         {# Volunteer Date Range (if available) #}
                         {% if vo.start_date or vo.end_date %}
                         <div class="volunteer-dates">

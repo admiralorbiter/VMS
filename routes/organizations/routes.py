@@ -150,20 +150,23 @@ def view_organization(id):
     # Get the organization or return 404 if not found
     organization = Organization.query.get_or_404(id)
     
-    # Get all volunteers associated with this organization
-    # Using the relationship directly for efficiency
-    volunteers = organization.volunteers
+    # Get volunteer-organization relationships with volunteer data loaded
+    # This ensures we have access to both the relationship metadata and volunteer details
+    volunteer_organizations = VolunteerOrganization.query.filter_by(organization_id=id)\
+        .join(VolunteerOrganization.volunteer)\
+        .all()
     
     # Get recent events/activities for associated volunteers
     # This provides context about the organization's recent involvement
     recent_activities = []
-    for volunteer in volunteers:
-        participations = EventParticipation.query.filter_by(volunteer_id=volunteer.id)\
-            .join(Event)\
-            .order_by(Event.start_date.desc())\
-            .limit(5)\
-            .all()
-        recent_activities.extend(participations)
+    for vo in volunteer_organizations:
+        if vo.volunteer:  # Only process if volunteer exists
+            participations = EventParticipation.query.filter_by(volunteer_id=vo.volunteer.id)\
+                .join(Event)\
+                .order_by(Event.start_date.desc())\
+                .limit(5)\
+                .all()
+            recent_activities.extend(participations)
     
     # Sort activities by event date (most recent first)
     recent_activities.sort(key=lambda x: x.event.start_date, reverse=True)
@@ -172,7 +175,7 @@ def view_organization(id):
     return render_template(
         'organizations/view.html',
         organization=organization,
-        volunteers=volunteers,
+        volunteer_organizations=volunteer_organizations,
         recent_activities=recent_activities[:10]  # Limit to 10 most recent
     )
 
