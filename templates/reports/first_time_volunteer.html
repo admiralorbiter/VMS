@@ -404,10 +404,18 @@
             <div class="stat-number">{{ "%.1f"|format(total_hours_by_first_timers) }}</div>
             <div class="stat-label">Total Hours</div>
         </div>
-        <div class="export-button">
+        <div class="export-button" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
             <a href="{{ url_for('report.export_first_time_volunteer', school_year=school_year) }}" class="btn btn-success">
                 <i class="fa-solid fa-file-excel"></i> Export to Excel
             </a>
+            <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, refresh=1) }}" class="btn btn-secondary" style="background: #007bff; color: #fff; margin-top: 4px;">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+            </a>
+            {% if last_updated %}
+            <div style="font-size: 0.85em; color: #666; margin-top: 2px; text-align: right;">
+                Last refreshed: {{ last_updated.strftime('%b %d, %Y %I:%M %p') }}
+            </div>
+            {% endif %}
         </div>
     </div>
 

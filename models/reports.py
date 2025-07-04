@@ -327,3 +327,17 @@ class OrganizationDetailCache(db.Model):
     
     def __repr__(self):
         return f'<OrganizationDetailCache {self.organization_name} {self.school_year}>' 
+
+
+class FirstTimeVolunteerReportCache(db.Model):
+    """
+    Model for caching first time volunteer report data per school year.
+    """
+    __tablename__ = 'first_time_volunteer_report_cache'
+    id = db.Column(db.Integer, primary_key=True)
+    school_year = db.Column(db.String(4), nullable=False, index=True)
+    report_data = db.Column(db.JSON, nullable=False)
+    last_updated = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (
+        db.UniqueConstraint('school_year', name='uq_first_time_volunteer_report_cache'),
+    ) 
