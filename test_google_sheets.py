@@ -24,9 +24,7 @@ def test_encryption():
     # Create a GoogleSheet instance
     sheet = GoogleSheet(
         academic_year="2023-2024",
-        sheet_id=test_sheet_id,
-        sheet_name="Test Sheet",
-        description="Test description"
+        sheet_id=test_sheet_id
     )
     
     # Test decryption
@@ -78,9 +76,7 @@ def test_database_operations():
             # Test creating a sheet
             test_sheet = GoogleSheet(
                 academic_year="2023-2024",
-                sheet_id="test_sheet_id_123",
-                sheet_name="Test Virtual Events",
-                description="Test sheet for virtual events"
+                sheet_id="test_sheet_id_123"
             )
             
             db.session.add(test_sheet)
@@ -92,18 +88,18 @@ def test_database_operations():
             if retrieved_sheet is None:
                 print("❌ Sheet retrieval test failed - sheet not found")
                 return False
-            if retrieved_sheet.sheet_name == "Test Virtual Events":
+            if retrieved_sheet and retrieved_sheet.academic_year == "2023-2024":
                 print("✅ Sheet retrieval test passed")
             else:
-                print("❌ Sheet retrieval test failed - wrong sheet name")
+                print("❌ Sheet retrieval test failed - wrong academic year")
                 return False
             
             # Test updating the sheet
-            retrieved_sheet.sheet_name = "Updated Test Virtual Events"
+            retrieved_sheet.academic_year = "2024-2025"
             db.session.commit()
             
-            updated_sheet = GoogleSheet.query.filter_by(academic_year="2023-2024").first()
-            if updated_sheet.sheet_name == "Updated Test Virtual Events":
+            updated_sheet = GoogleSheet.query.filter_by(academic_year="2024-2025").first()
+            if updated_sheet.academic_year == "2024-2025":
                 print("✅ Sheet update test passed")
             else:
                 print("❌ Sheet update test failed")

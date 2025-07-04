@@ -336,9 +336,35 @@ def test_event(app, test_school, test_district):
         db.session.refresh(event)
         yield event
         
-        # Clean up
-        db.session.delete(event)
-        db.session.commit()
+        # Clean up - delete related records first to avoid foreign key constraint issues
+        try:
+            # Delete event participations first
+            from models.volunteer import EventParticipation
+            EventParticipation.query.filter_by(event_id=event.id).delete()
+            
+            # Delete student participations
+            from models.event import EventStudentParticipation
+            EventStudentParticipation.query.filter_by(event_id=event.id).delete()
+            
+            # Delete event teachers
+            from models.event import EventTeacher
+            EventTeacher.query.filter_by(event_id=event.id).delete()
+            
+            # Delete event comments
+            from models.event import EventComment
+            EventComment.query.filter_by(event_id=event.id).delete()
+            
+            # Delete event attendance
+            from models.event import EventAttendance
+            EventAttendance.query.filter_by(event_id=event.id).delete()
+            
+            # Now delete the event
+            db.session.delete(event)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            # If cleanup fails, just log it and continue
+            print(f"Warning: Failed to clean up test event {event.id}: {e}")
 
 @pytest.fixture
 def test_event_comment(app, test_event):
@@ -459,11 +485,16 @@ def test_event_participation(app, test_volunteer, test_event):
         
         yield participation
         
-        # Clean up
-        existing = db.session.get(EventParticipation, participation.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+        # Clean up - delete the participation record
+        try:
+            existing = db.session.get(EventParticipation, participation.id)
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            # If cleanup fails, just log it and continue
+            print(f"Warning: Failed to clean up test event participation {participation.id}: {e}")
 
 @pytest.fixture
 def test_history(app, test_volunteer):
