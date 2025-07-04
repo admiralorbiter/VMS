@@ -1,3 +1,29 @@
+"""
+Volunteer Management System - Routes
+
+This module contains all the Flask routes for the volunteer management system.
+It handles volunteer listing, creation, editing, viewing, and data import operations.
+
+Key Features:
+- Volunteer listing with filtering and pagination
+- Individual volunteer view with detailed information
+- Volunteer creation and editing forms
+- Salesforce data import functionality
+- Local status calculation and updates
+- Volunteer deletion and purging operations
+
+Routes:
+- /volunteers: Main volunteer listing page
+- /volunteers/add: Add new volunteer form
+- /volunteers/view/<id>: View individual volunteer details
+- /volunteers/edit/<id>: Edit volunteer information
+- /volunteers/import-from-salesforce: Import volunteer data from Salesforce
+- /volunteers/update-local-statuses: Bulk update local status calculations
+
+Author: VMS Development Team
+Last Updated: 2024
+"""
+
 import csv
 import io
 import os
@@ -18,121 +44,163 @@ from sqlalchemy import or_, and_
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
 from datetime import datetime
 
+# Create Flask Blueprint for volunteer routes
 volunteers_bp = Blueprint('volunteers', __name__)
 
 def process_volunteer_row(row, success_count, error_count, errors):
-        """Process a single volunteer row from CSV data"""
-        try:
-            # Check if volunteer exists by salesforce_id
-            volunteer = None
-            if row.get('Id'):
-                volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Id']).first()
+    """
+    Process a single volunteer row from CSV data.
+    
+    This function handles the conversion of CSV data to Volunteer model instances,
+    including proper data validation and relationship management.
+    
+    Args:
+        row (dict): Dictionary containing volunteer data from CSV
+        success_count (int): Current count of successful processing operations
+        error_count (int): Current count of processing errors
+        errors (list): List to collect error messages
+        
+    Returns:
+        tuple: Updated (success_count, error_count)
+        
+    Note:
+        This function is used primarily for CSV import operations and handles
+        both new volunteer creation and existing volunteer updates.
+    """
+    try:
+        # Check if volunteer exists by salesforce_id
+        volunteer = None
+        if row.get('Id'):
+            volunteer = Volunteer.query.filter_by(salesforce_individual_id=row['Id']).first()
+        
+        # If volunteer doesn't exist, create new one
+        if not volunteer:
+            volunteer = Volunteer()
+            db.session.add(volunteer)
+        
+        # Update volunteer fields (handles both new and existing volunteers)
+        volunteer.salesforce_individual_id = row.get('Id', '').strip()
+        volunteer.salesforce_account_id = row.get('AccountId', '').strip()
+        volunteer.first_name = row.get('FirstName', '').strip()
+        volunteer.last_name = row.get('LastName', '').strip()
+        volunteer.middle_name = row.get('MiddleName', '').strip()
+        volunteer.organization_name = row.get('Primary Affiliation', '').strip()
+        volunteer.title = row.get('Title', '').strip()
+        volunteer.department = row.get('Department', '').strip()
+        volunteer.industry = row.get('Industry', '').strip()
+        
+        # Handle gender enum
+        gender_str = row.get('Gender', '').lower().replace(' ', '_').strip()
+        if gender_str in [e.name for e in GenderEnum]:
+            volunteer.gender = GenderEnum[gender_str]
+        
+        # Handle dates
+        volunteer.birthdate = parse_date(row.get('Birthdate', ''))
+        volunteer.first_volunteer_date = parse_date(row.get('First_Volunteer_Date__c', ''))
+        volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c', ''))
+        volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c', ''))
+        volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c', ''))
+        volunteer.last_non_internal_email_date = parse_date(row.get('Last_Non_Internal_Email_Activity__c', ''))
+        volunteer.notes = row.get('Notes', '').strip()
+
+        # Handle emails
+        new_emails = get_email_addresses(row)
+        if new_emails:
+            # Clear existing emails and add new ones
+            volunteer.emails = new_emails
+
+        # Handle phones
+        new_phones = get_phone_numbers(row)
+        if new_phones:
+            # Clear existing phones and add new ones
+            volunteer.phones = new_phones
+
+        # Handle skills
+        if row.get('Volunteer_Skills_Text__c') or row.get('Volunteer_Skills__c'):
+            skills = parse_skills(
+                row.get('Volunteer_Skills_Text__c', ''),
+                row.get('Volunteer_Skills__c', '')
+            )
             
-            # If volunteer doesn't exist, create new one
-            if not volunteer:
-                volunteer = Volunteer()
-                db.session.add(volunteer)
+            # Update skills
+            for skill_name in skills:
+                skill = Skill.query.filter_by(name=skill_name).first()
+                if not skill:
+                    skill = Skill(name=skill_name)
+                    db.session.add(skill)
+                if skill not in volunteer.skills:
+                    volunteer.skills.append(skill)
+
+        # Add this new section to handle times_volunteered
+        if row.get('Number_of_Attended_Volunteer_Sessions__c'):
+            try:
+                volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
+            except (ValueError, TypeError):
+                volunteer.times_volunteered = 0
+
+        # Handle Connector data
+        connector_data = {
+            'active_subscription': (row.get('Connector_Active_Subscription__c') or '').strip().upper() or 'NONE',
+            'active_subscription_name': (row.get('Connector_Active_Subscription_Name__c') or '').strip(),
+            'affiliations': (row.get('Connector_Affiliations__c') or '').strip(),
+            'industry': (row.get('Connector_Industry__c') or '').strip(),
+            'joining_date': (row.get('Connector_Joining_Date__c') or '').strip(),
+            'last_login_datetime': (row.get('Connector_Last_Login_Date_Time__c') or '').strip(),
+            'last_update_date': parse_date(row.get('Connector_Last_Update_Date__c')),
+            'profile_link': (row.get('Connector_Profile_Link__c') or '').strip(),
+            'role': (row.get('Connector_Role__c') or '').strip(),
+            'signup_role': (row.get('Connector_SignUp_Role__c') or '').strip(),
+            'user_auth_id': (row.get('Connector_User_ID__c') or '').strip()
+        }
+
+        # Create or update connector data
+        if not volunteer.connector:
+            volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
+
+        # Update connector fields if they exist in Salesforce data
+        if connector_data['active_subscription'] in [e.name for e in ConnectorSubscriptionEnum]:
+            if volunteer.connector.active_subscription != ConnectorSubscriptionEnum[connector_data['active_subscription']]:
+                volunteer.connector.active_subscription = ConnectorSubscriptionEnum[connector_data['active_subscription']]
+
+        for field, value in connector_data.items():
+            if field != 'active_subscription' and value:  # Skip active_subscription as it's handled above
+                current_value = getattr(volunteer.connector, field)
+                if current_value != value:
+                    setattr(volunteer.connector, field, value)
+
+        return success_count + 1, error_count
             
-            # Update volunteer fields (handles both new and existing volunteers)
-            volunteer.salesforce_individual_id = row.get('Id', '').strip()
-            volunteer.salesforce_account_id = row.get('AccountId', '').strip()
-            volunteer.first_name = row.get('FirstName', '').strip()
-            volunteer.last_name = row.get('LastName', '').strip()
-            volunteer.middle_name = row.get('MiddleName', '').strip()
-            volunteer.organization_name = row.get('Primary Affiliation', '').strip()
-            volunteer.title = row.get('Title', '').strip()
-            volunteer.department = row.get('Department', '').strip()
-            volunteer.industry = row.get('Industry', '').strip()
-            
-            # Handle gender enum
-            gender_str = row.get('Gender', '').lower().replace(' ', '_').strip()
-            if gender_str in [e.name for e in GenderEnum]:
-                volunteer.gender = GenderEnum[gender_str]
-            
-            # Handle dates
-            volunteer.birthdate = parse_date(row.get('Birthdate', ''))
-            volunteer.first_volunteer_date = parse_date(row.get('First_Volunteer_Date__c', ''))
-            volunteer.last_mailchimp_activity_date = parse_date(row.get('Last_Mailchimp_Email_Date__c', ''))
-            volunteer.last_volunteer_date = parse_date(row.get('Last_Volunteer_Date__c', ''))
-            volunteer.last_email_date = parse_date(row.get('Last_Email_Message__c', ''))
-            volunteer.last_non_internal_email_date = parse_date(row.get('Last_Non_Internal_Email_Activity__c', ''))
-            volunteer.notes = row.get('Notes', '').strip()
-
-            # Handle emails
-            new_emails = get_email_addresses(row)
-            if new_emails:
-                # Clear existing emails and add new ones
-                volunteer.emails = new_emails
-
-            # Handle phones
-            new_phones = get_phone_numbers(row)
-            if new_phones:
-                # Clear existing phones and add new ones
-                volunteer.phones = new_phones
-
-            # Handle skills
-            if row.get('Volunteer_Skills_Text__c') or row.get('Volunteer_Skills__c'):
-                skills = parse_skills(
-                    row.get('Volunteer_Skills_Text__c', ''),
-                    row.get('Volunteer_Skills__c', '')
-                )
-                
-                # Update skills
-                for skill_name in skills:
-                    skill = Skill.query.filter_by(name=skill_name).first()
-                    if not skill:
-                        skill = Skill(name=skill_name)
-                        db.session.add(skill)
-                    if skill not in volunteer.skills:
-                        volunteer.skills.append(skill)
-
-            # Add this new section to handle times_volunteered
-            if row.get('Number_of_Attended_Volunteer_Sessions__c'):
-                try:
-                    volunteer.times_volunteered = int(float(row['Number_of_Attended_Volunteer_Sessions__c']))
-                except (ValueError, TypeError):
-                    volunteer.times_volunteered = 0
-
-            # Handle Connector data
-            connector_data = {
-                'active_subscription': (row.get('Connector_Active_Subscription__c') or '').strip().upper() or 'NONE',
-                'active_subscription_name': (row.get('Connector_Active_Subscription_Name__c') or '').strip(),
-                'affiliations': (row.get('Connector_Affiliations__c') or '').strip(),
-                'industry': (row.get('Connector_Industry__c') or '').strip(),
-                'joining_date': (row.get('Connector_Joining_Date__c') or '').strip(),
-                'last_login_datetime': (row.get('Connector_Last_Login_Date_Time__c') or '').strip(),
-                'last_update_date': parse_date(row.get('Connector_Last_Update_Date__c')),
-                'profile_link': (row.get('Connector_Profile_Link__c') or '').strip(),
-                'role': (row.get('Connector_Role__c') or '').strip(),
-                'signup_role': (row.get('Connector_SignUp_Role__c') or '').strip(),
-                'user_auth_id': (row.get('Connector_User_ID__c') or '').strip()
-            }
-
-            # Create or update connector data
-            if not volunteer.connector:
-                volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
-
-            # Update connector fields if they exist in Salesforce data
-            if connector_data['active_subscription'] in [e.name for e in ConnectorSubscriptionEnum]:
-                if volunteer.connector.active_subscription != ConnectorSubscriptionEnum[connector_data['active_subscription']]:
-                    volunteer.connector.active_subscription = ConnectorSubscriptionEnum[connector_data['active_subscription']]
-
-            for field, value in connector_data.items():
-                if field != 'active_subscription' and value:  # Skip active_subscription as it's handled above
-                    current_value = getattr(volunteer.connector, field)
-                    if current_value != value:
-                        setattr(volunteer.connector, field, value)
-
-            return success_count + 1, error_count
-                
-        except Exception as e:
-            db.session.rollback()
-            errors.append(f"Error processing row: {str(e)}")
-            return success_count, error_count + 1
+    except Exception as e:
+        db.session.rollback()
+        errors.append(f"Error processing row: {str(e)}")
+        return success_count, error_count + 1
 
 @volunteers_bp.route('/volunteers')
 @login_required
 def volunteers():
+    """
+    Main volunteer listing page with filtering, sorting, and pagination.
+    
+    This route handles the primary volunteer management interface, providing:
+    - Comprehensive filtering by name, organization, email, skills, and local status
+    - Sorting by various fields with configurable direction
+    - Pagination for large datasets
+    - Real-time volunteer count calculations
+    
+    Query Parameters:
+    - page: Current page number for pagination
+    - per_page: Number of volunteers per page
+    - search_name: Filter by volunteer name (supports multi-term search)
+    - org_search: Filter by organization name, title, or department
+    - email_search: Filter by email address
+    - skill_search: Filter by volunteer skills
+    - local_status: Filter by local status (local, partial, non_local, unknown)
+    - sort_by: Field to sort by (name, times_volunteered, last_volunteer_date)
+    - sort_direction: Sort direction (asc, desc)
+    
+    Returns:
+        rendered template: volunteers/volunteers.html with volunteer data and filters
+    """
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -161,6 +229,8 @@ def volunteers():
     })
 
     # Start with a subquery to get the attended count
+    # This calculates the actual number of events each volunteer has attended
+    # by counting EventParticipation records with valid attendance statuses
     attended_count_subq = db.session.query(
         EventParticipation.volunteer_id,
         db.func.count(EventParticipation.id).label('attended_count')
@@ -174,7 +244,8 @@ def volunteers():
         EventParticipation.volunteer_id
     ).subquery()
 
-    # Build main query
+    # Build main query with joins for filtering and organization data
+    # This complex query allows for efficient filtering across multiple related tables
     query = db.session.query(
         Volunteer,
         db.func.coalesce(attended_count_subq.c.attended_count, 0).label('attended_count')

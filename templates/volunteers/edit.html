@@ -1,3 +1,35 @@
+{# 
+Volunteer Management System - Edit Volunteer Template
+
+This template provides a comprehensive form for editing existing volunteer information.
+It pre-populates all fields with current volunteer data and allows for updates
+to any volunteer information while maintaining data integrity.
+
+Key Features:
+- Pre-populated form fields with current volunteer data
+- Multi-section form with logical grouping of fields
+- Required field indicators and validation
+- Contact information with type selection
+- Professional information capture
+- Demographic data collection
+- Skills and notes for additional context
+- Responsive form layout with modern styling
+
+Form Sections:
+1. Personal Information: Name fields with salutation and suffix options
+2. Contact Information: Email and phone with type selection
+3. Professional Information: Organization, title, department, industry
+4. Additional Information: Demographics and status fields
+5. Skills & Notes: Skills input and general notes
+
+Template Variables:
+- form: VolunteerForm instance with pre-populated data
+- volunteer: Volunteer model instance being edited
+
+Author: VMS Development Team
+Last Updated: 2024
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Edit Volunteer - {{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
@@ -8,6 +40,7 @@
 
 {% block content %}
 <div class="volunteers-container">
+    {# Header with title and navigation actions #}
     <div class="volunteers-header">
         <h1>Edit Volunteer</h1>
         <div class="header-actions">
@@ -20,10 +53,12 @@
         </div>
     </div>
 
+    {# Main form container #}
     <div class="volunteer-form-container">
         <form method="POST" class="volunteer-form">
             {{ form.csrf_token }}
             
+            {# Form validation errors display #}
             {% if form.errors %}
                 <div class="alert alert-danger">
                     <ul>
@@ -36,26 +71,31 @@
                 </div>
             {% endif %}
             
-            <!-- Personal Information Card -->
+            {# Personal Information Section #}
             <div class="form-section">
                 <h2><i class="fa-solid fa-user"></i> Personal Information</h2>
                 <div class="form-grid">
+                    {# Salutation field (optional) #}
                     <div class="form-group">
                         {{ form.salutation.label(class="form-label") }}
                         {{ form.salutation(class="form-select") }}
                     </div>
+                    {# First name (required) #}
                     <div class="form-group required">
                         {{ form.first_name.label(class="form-label") }}
                         {{ form.first_name(class="form-control") }}
                     </div>
+                    {# Middle name (optional) #}
                     <div class="form-group">
                         {{ form.middle_name.label(class="form-label") }}
                         {{ form.middle_name(class="form-control") }}
                     </div>
+                    {# Last name (required) #}
                     <div class="form-group required">
                         {{ form.last_name.label(class="form-label") }}
                         {{ form.last_name(class="form-control") }}
                     </div>
+                    {# Suffix field (optional) #}
                     <div class="form-group">
                         {{ form.suffix.label(class="form-label") }}
                         {{ form.suffix(class="form-select") }}
@@ -63,14 +103,16 @@
                 </div>
             </div>
 
-            <!-- Contact Information Card -->
+            {# Contact Information Section #}
             <div class="form-section">
                 <h2><i class="fa-solid fa-address-card"></i> Contact Information</h2>
                 <div class="form-grid">
+                    {# Email address (required) #}
                     <div class="form-group required">
                         {{ form.email.label(class="form-label") }}
                         {{ form.email(class="form-control") }}
                     </div>
+                    {# Email type selection #}
                     <div class="form-group">
                         {{ form.email_type.label(class="form-label") }}
                         <select name="email_type" class="form-select">
@@ -78,10 +120,12 @@
                             <option value="professional" {% if form.email_type.data == 'professional' %}selected{% endif %}>Professional</option>
                         </select>
                     </div>
+                    {# Phone number (optional) #}
                     <div class="form-group">
                         {{ form.phone.label(class="form-label") }}
                         {{ form.phone(class="form-control") }}
                     </div>
+                    {# Phone type selection #}
                     <div class="form-group">
                         {{ form.phone_type.label(class="form-label") }}
                         <select name="phone_type" class="form-select">
@@ -92,22 +136,26 @@
                 </div>
             </div>
 
-            <!-- Professional Information Card -->
+            {# Professional Information Section #}
             <div class="form-section">
                 <h2><i class="fa-solid fa-building"></i> Professional Information</h2>
                 <div class="form-grid">
+                    {# Organization name #}
                     <div class="form-group">
                         {{ form.organization_name.label(class="form-label") }}
                         {{ form.organization_name(class="form-control") }}
                     </div>
+                    {# Job title #}
                     <div class="form-group">
                         {{ form.title.label(class="form-label") }}
                         {{ form.title(class="form-control") }}
                     </div>
+                    {# Department #}
                     <div class="form-group">
                         {{ form.department.label(class="form-label") }}
                         {{ form.department(class="form-control") }}
                     </div>
+                    {# Industry #}
                     <div class="form-group">
                         {{ form.industry.label(class="form-label") }}
                         {{ form.industry(class="form-control") }}
@@ -115,22 +163,26 @@
                 </div>
             </div>
 
-            <!-- Additional Information -->
+            {# Additional Information Section #}
             <div class="form-section">
                 <h2><i class="fa-solid fa-circle-info"></i> Additional Information</h2>
                 <div class="form-grid">
+                    {# Gender selection #}
                     <div class="form-group">
                         {{ form.gender.label(class="form-label") }}
                         {{ form.gender(class="form-select") }}
                     </div>
+                    {# Race/Ethnicity selection #}
                     <div class="form-group">
                         {{ form.race_ethnicity.label(class="form-label") }}
                         {{ form.race_ethnicity(class="form-select") }}
                     </div>
+                    {# Education level #}
                     <div class="form-group">
                         {{ form.education.label(class="form-label") }}
                         {{ form.education(class="form-select") }}
                     </div>
+                    {# Local status #}
                     <div class="form-group">
                         {{ form.local_status.label(class="form-label") }}
                         {{ form.local_status(class="form-select") }}
@@ -138,15 +190,17 @@
                 </div>
             </div>
 
-            <!-- Skills & Notes -->
+            {# Skills & Notes Section #}
             <div class="form-section">
                 <h2><i class="fa-solid fa-star"></i> Skills & Notes</h2>
                 <div class="form-grid">
+                    {# Skills input with helpful placeholder and instructions #}
                     <div class="form-group">
                         {{ form.skills.label(class="form-label") }}
                         {{ form.skills(class="form-control", placeholder="Enter skills separated by commas") }}
                         <small class="form-text text-muted">Enter skills separated by commas (e.g. "Programming, Project Management, Marketing")</small>
                     </div>
+                    {# General notes field #}
                     <div class="form-group">
                         {{ form.notes.label(class="form-label") }}
                         {{ form.notes(class="form-control", rows="3") }}
@@ -154,6 +208,7 @@
                 </div>
             </div>
 
+            {# Form action buttons #}
             <div class="form-actions">
                 <button type="submit" class="btn save-btn">
                     <i class="fa-solid fa-save"></i> Save Changes
@@ -168,6 +223,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Temporarily disabled JS to test form submission -->
-<!-- <script src="{{ url_for('static', filename='js/edit_volunteer.js') }}"></script> -->
+{# Temporarily disabled JS to test form submission #}
+{# <script src="{{ url_for('static', filename='js/edit_volunteer.js') }}"></script> #}
 {% endblock %}

@@ -1,3 +1,26 @@
+{# 
+Volunteer Management System - Main Listing Template
+
+This template provides the primary interface for viewing and managing volunteers.
+It includes comprehensive filtering, sorting, and pagination capabilities.
+
+Key Features:
+- Advanced filtering by name, organization, email, skills, and local status
+- Sortable columns with visual indicators
+- Pagination with configurable page sizes
+- Skills display with overflow handling
+- Action buttons for viewing, editing, and Salesforce integration
+- Responsive design with modern UI components
+
+Template Variables:
+- volunteers: List of volunteer data with organization and count information
+- pagination: Pagination object with navigation controls
+- current_filters: Dictionary of active filter parameters
+
+Author: VMS Development Team
+Last Updated: 2024
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Volunteers{% endblock %}
@@ -8,6 +31,7 @@
 
 {% block content %}
 <div class="volunteers-container">
+    {# Header section with title and action buttons #}
     <div class="volunteers-header">
         <h1>Volunteers</h1>
         <!-- <a href="{{ url_for('volunteers.add_volunteer') }}" class="btn add-volunteer-btn">
@@ -15,8 +39,10 @@
         </a> -->
     </div>
 
+    {# Filter panel with comprehensive search options #}
     <div class="filter-panel">
         <form method="GET" class="filter-form">
+            {# First row of filters: Name, Organization/Role, Local Status #}
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="search_name">Name Search</label>
@@ -54,6 +80,7 @@
                 </div>
             </div>
 
+            {# Second row of filters: Email and Skills #}
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="email_search">Email</label>
@@ -72,6 +99,7 @@
                 </div>
             </div>
 
+            {# Filter action buttons #}
             <div class="filter-actions">
                 <button type="submit" class="btn filter-btn">Apply Filters</button>
                 <a href="{{ url_for('volunteers.volunteers') }}" class="btn reset-btn">Reset</a>
@@ -82,16 +110,19 @@
         </form>
     </div>
 
+    {# Main volunteer table with data display #}
     <div class="volunteers-table-container">
         <table class="table volunteers-table">
             <thead>
                 <tr>
+                    {# Sortable name column with default sorting #}
                     <th class="sortable" data-sort="name">
                         Name <i class="fa-solid"></i>
                     </th>
                     <th>
                         Organization & Title
                     </th>
+                    {# Sortable times volunteered column with default desc sort #}
                     <th class="sortable times-col" data-sort="times_volunteered" data-default-sort="desc">
                         Times Volunteered <i class="fa-solid fa-sort"></i>
                     </th>
@@ -100,8 +131,10 @@
                 </tr>
             </thead>
             <tbody>
+                {# Loop through volunteers and display their information #}
                 {% for volunteer in volunteers %}
                 <tr>
+                    {# Volunteer name and title information #}
                     <td>
                         <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="volunteer-name-link">
                             {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}
@@ -111,8 +144,11 @@
                         <div class="org-title">{{ volunteer.volunteer.title }}</div>
                         {% endif %}
                     </td>
+                    
+                    {# Organization and role information #}
                     <td>
                         {% if volunteer.organizations %}
+                            {# Display multiple organizations if volunteer has them #}
                             {% for org_info in volunteer.organizations %}
                                 <div class="org-title-container">
                                     <div class="org-name">
@@ -129,6 +165,7 @@
                                 </div>
                             {% endfor %}
                         {% else %}
+                            {# Fallback to direct organization name if no relationship exists #}
                             <div class="org-title-container">
                                 <div class="org-name">{{ volunteer.volunteer.organization_name }}</div>
                                 {% if volunteer.volunteer.title %}
@@ -137,14 +174,20 @@
                             </div>
                         {% endif %}
                     </td>
+                    
+                    {# Times volunteered count #}
                     <td class="text-center">
                         {{ volunteer.volunteer.total_times_volunteered }}
                     </td>
+                    
+                    {# Skills display with overflow handling #}
                     <td>
                         <div class="skills-container">
+                            {# Display first 3 skills #}
                             {% for skill in volunteer.volunteer.skills[:3] %}
                                 <span class="skill-badge">{{ skill.name }}</span>
                             {% endfor %}
+                            {# Show overflow indicator if more than 3 skills #}
                             {% if volunteer.volunteer.skills|length > 3 %}
                                 <span class="skill-badge more-skills" 
                                       title="{{ volunteer.volunteer.skills[3:]|map(attribute='name')|join(', ') }}">
@@ -153,8 +196,11 @@
                             {% endif %}
                         </div>
                     </td>
+                    
+                    {# Action buttons for each volunteer #}
                     <td class="actions-col">
                         <div class="action-buttons">
+                            {# Salesforce contact link if available #}
                             {% if volunteer.volunteer.salesforce_contact_url %}
                             <a href="{{ volunteer.volunteer.salesforce_contact_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Contact">
                                 <i class="fa-solid fa-cloud"></i>
@@ -165,6 +211,8 @@
                                 <i class="fa-solid fa-building-user"></i>
                             </a>
                             {% endif %} -->
+                            
+                            {# View volunteer details #}
                             <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn view-btn">
                                 <i class="fas fa-eye"></i>
                             </a>
@@ -184,9 +232,11 @@
             </tbody>
         </table>
 
+        {# Pagination controls and summary #}
         <div class="pagination-container">
             <div class="pagination-controls">
                 <div class="pagination-info">
+                    {# Items per page selector #}
                     <select class="per-page-select" name="per_page">
                         <option value="10" {% if current_filters.per_page == 10 %}selected{% endif %}>10 per page</option>
                         <option value="25" {% if current_filters.per_page == 25 %}selected{% endif %}>25 per page</option>
@@ -194,6 +244,7 @@
                         <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
                     </select>
                     
+                    {# Previous/Next navigation buttons #}
                     <div class="pagination-buttons">
                         {% if pagination.has_prev %}
                             <a href="{{ url_for('volunteers.volunteers', page=pagination.prev_num, **current_filters) }}" 
@@ -212,6 +263,7 @@
                 </div>
             </div>
             
+            {# Pagination summary showing current page info #}
             <div class="pagination-summary">
                 Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers 
                 (Page {{ pagination.page }} of {{ pagination.pages }})
@@ -220,6 +272,7 @@
     </div>
 </div>
 
+{# Delete confirmation modal (currently disabled) #}
 <div id="deleteModal" class="confirm-modal" style="display: none;">
     <h3>Confirm Delete</h3>
     <p>Are you sure you want to delete <span id="volunteerName"></span>? This action cannot be undone.</p>

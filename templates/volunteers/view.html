@@ -1,3 +1,32 @@
+{# 
+Volunteer Management System - Individual Volunteer View Template
+
+This template provides a detailed view of a single volunteer's information,
+including personal details, professional information, volunteer history,
+and participation records.
+
+Key Features:
+- Comprehensive volunteer profile display
+- Personal and contact information with privacy controls
+- Professional information and organizational affiliations
+- Volunteer activity history and participation records
+- Skills and interests display
+- Salesforce integration links
+- Responsive card-based layout
+
+Template Variables:
+- volunteer: Volunteer model instance with all related data
+- emails: List of volunteer email addresses
+- phones: List of volunteer phone numbers
+- participation_stats: Dictionary of participation statistics by status
+- histories: List of volunteer history records
+- org_relationships: Dictionary mapping organization IDs to relationship data
+- now: Current datetime for age calculations
+
+Author: VMS Development Team
+Last Updated: 2024
+#}
+
 {% extends "base.html" %}
 
 {% block title %}View Volunteer - {{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
@@ -8,9 +37,11 @@
 
 {% block content %}
 <div class="volunteers-container">
+    {# Header section with volunteer name and action buttons #}
     <div class="volunteers-header">
         <div class="header-left">
             <h1>{{ volunteer.first_name }} {{ volunteer.middle_name }} {{ volunteer.last_name }}</h1>
+            {# Salesforce integration links if available #}
             {% if volunteer.salesforce_contact_url or volunteer.salesforce_account_url %}
             <div class="salesforce-links">
                 {% if volunteer.salesforce_contact_url %}
@@ -38,21 +69,23 @@
         </div>
     </div>
 
+    {# Main content grid with volunteer information cards #}
     <div class="volunteer-profile-grid">
-        <!-- Personal & Contact Information Combined -->
+        {# Personal & Contact Information Card #}
         <div class="profile-card personal-contact-info">
             <div class="card-header">
                 <i class="fa-solid fa-user"></i>
                 <h2>Personal & Contact Information</h2>
             </div>
             <div class="card-content">
+                {# Do Not Contact warning if applicable #}
                 {% if volunteer.do_not_contact %}
                 <div class="alert alert-warning mb-3" role="alert">
                     <i class="fas fa-user-slash"></i> <strong>Do Not Contact This Volunteer</strong>
                 </div>
                 {% endif %}
                 
-                <!-- Basic Info -->
+                {# Basic volunteer information #}
                 <div class="info-group">
                     <label>Full Name</label>
                     <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
@@ -65,12 +98,13 @@
                 </div>
                 {% endif %}
 
-                <!-- Demographics Row -->
+                {# Demographics information with icons #}
                 <div class="demographics-row">
                     {% if volunteer.gender %}
                     <div class="info-group">
                         <label>Gender</label>
                         <div class="gender-badge {{ volunteer.gender.value if volunteer.gender else 'unknown' }}">
+                            {# Gender-specific icons for visual identification #}
                             {% if volunteer.gender.value == 'Male' %}
                                 <i class="fa-solid fa-mars"></i>
                             {% elif volunteer.gender.value == 'Female' %}
@@ -91,6 +125,7 @@
                     </div>
                     {% endif %}
 
+                    {# Race/Ethnicity information if available #}
                     {% if volunteer.race_ethnicity and volunteer.race_ethnicity != 'Unknown' %}
                     <div class="info-group">
                         <label>Race/Ethnicity</label>
@@ -101,6 +136,7 @@
                     </div>
                     {% endif %}
 
+                    {# Local status with visual indicators #}
                     <div class="info-group">
                         <label>Local Status</label>
                         <span class="status-badge {{ volunteer.local_status }}">
@@ -121,7 +157,7 @@
                     </div>
                 </div>
 
-                <!-- Contact Information -->
+                {# Contact information with privacy controls #}
                 {% if volunteer.email_opt_out %}
                 <div class="alert alert-warning" role="alert">
                     <i class="fas fa-envelope-slash"></i> Email communications opted out
@@ -133,6 +169,7 @@
                         {% for email in volunteer.emails %}
                         <div class="contact-item">
                             <span class="contact-badge {{ email.type }}">
+                                {# Email type indicators #}
                                 {% if email.type == 'personal' %}
                                 <i class="fa-solid fa-user"></i>
                                 {% else %}
@@ -149,6 +186,7 @@
                 </div>
                 {% endif %}
 
+                {# Phone numbers with do-not-call protection #}
                 {% if not volunteer.do_not_call %}
                 <div class="info-group">
                     <label>Phone Numbers</label>
@@ -156,6 +194,7 @@
                         {% for phone in volunteer.phones %}
                         <div class="contact-item">
                             <span class="contact-badge {{ phone.type }}">
+                                {# Phone type indicators #}
                                 {% if phone.type == 'personal' %}
                                 <i class="fa-solid fa-user"></i>
                                 {% else %}
@@ -174,13 +213,14 @@
             </div>
         </div>
 
-        <!-- Professional Information Card -->
+        {# Professional Information Card #}
         <div class="profile-card professional-info">
             <div class="card-header">
                 <i class="fa-solid fa-briefcase"></i>
                 <h2>Professional Information</h2>
             </div>
             <div class="card-content">
+                {# Organization affiliations #}
                 {% if volunteer.organizations %}
                     <div class="info-group">
                         <label>Organizations</label>
@@ -223,7 +263,7 @@
                     </div>
                 </div>
 
-                <!-- Email Activity -->
+                {# Email Activity #}
                 {% if volunteer.last_email_date or volunteer.last_non_internal_email_date or volunteer.last_mailchimp_activity_date %}
                 <div class="info-group">
                     <label>Email Activity</label>
@@ -244,14 +284,14 @@
             </div>
         </div>
 
-        <!-- Skills & Quick Stats Combined -->
+        {# Skills & Quick Stats Combined #}
         <div class="profile-card skills-stats-info">
             <div class="card-header">
                 <i class="fa-solid fa-star"></i>
                 <h2>Skills & Activity Summary</h2>
             </div>
             <div class="card-content">
-                <!-- Quick Stats -->
+                {# Quick Stats #}
                 <div class="history-stats">
                     <div class="stat-card">
                         <div class="stat-icon">
@@ -327,7 +367,7 @@
             </div>
         </div>
 
-        <!-- Event Participation History - Compact -->
+        {# Event Participation History - Compact #}
         <div class="profile-card participation-card">
             <div class="card-header">
                 <i class="fa-solid fa-calendar-check"></i>
@@ -353,7 +393,7 @@
                 <div class="event-list" data-status="{{ status }}" {% if not loop.first %}style="display: none;"{% endif %}>
                     {% if events %}
                         <div class="event-items-container">
-                            {% for event in events[:5] %}  <!-- Show only first 5 events initially -->
+                            {% for event in events[:5] %}  {# Show only first 5 events initially #}
                             <div class="event-item event-item-initial">
                                 <div class="event-date">
                                     <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
@@ -380,9 +420,9 @@
                             {% endfor %}
                             
                             {% if events|length > 5 %}
-                            <!-- Hidden events that will be shown when expanded -->
+                            {# Hidden events that will be shown when expanded #}
                             <div class="event-items-hidden" style="display: none;">
-                                {% for event in events[5:] %}  <!-- Show remaining events -->
+                                {% for event in events[5:] %}  {# Show remaining events #}
                                 <div class="event-item event-item-additional">
                                     <div class="event-date">
                                         <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
@@ -423,7 +463,7 @@
             </div>
         </div>
 
-        <!-- Connector Information - Conditional -->
+        {# Connector Information - Conditional #}
         {% if volunteer.connector %}
         <div class="profile-card connector-info">
             <div class="card-header">
@@ -467,7 +507,7 @@
         </div>
         {% endif %}
 
-        <!-- History Section - Collapsible -->
+        {# History Section - Collapsible #}
         {% if histories %}
         <div class="profile-card history-info">
             <div class="card-header" style="cursor: pointer;" onclick="toggleHistorySection()">
@@ -497,7 +537,7 @@
                     </div>
                     
                     <div class="history-timeline" style="max-height: 400px; overflow-y: auto;">
-                        {% for history in histories[:10] %}  <!-- Show only first 10 history items -->
+                        {% for history in histories[:10] %}  {# Show only first 10 history items #}
                         <div class="history-item" data-type="{{ history.activity_type }}">
                             <div class="history-header">
                                 <span class="history-date">

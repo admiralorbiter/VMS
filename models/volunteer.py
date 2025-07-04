@@ -1,3 +1,22 @@
+"""
+Volunteer Management System - Models
+
+This module contains the core data models for the volunteer management system.
+It includes the main Volunteer model and related supporting models for tracking
+volunteer information, skills, engagements, and participation in events.
+
+Key Components:
+- Volunteer: Main model inheriting from Contact
+- ConnectorData: Specialized data for connector program volunteers
+- Skill: Skills that volunteers can possess
+- VolunteerSkill: Association table linking volunteers to skills
+- Engagement: Individual volunteer engagement activities
+- EventParticipation: Volunteer participation in specific events
+
+Author: VMS Development Team
+Last Updated: 2024
+"""
+
 from models import db
 from models.contact import (
     Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum,
@@ -9,8 +28,18 @@ from models.history import History
 from datetime import date, datetime
 
 class ConnectorSubscriptionEnum(FormEnum):
-    """Enum representing the subscription status of a connector.
+    """
+    Enum representing the subscription status of a connector.
+    
     Used to track whether a volunteer is actively participating in the connector program.
+    This is a specialized program within the volunteer system that has additional
+    requirements and tracking mechanisms.
+    
+    Values:
+    - NONE: No subscription status (default)
+    - ACTIVE: Currently active in connector program
+    - INACTIVE: Previously active but currently inactive
+    - PENDING: Awaiting activation or approval
     """
     NONE = ''
     ACTIVE = 'Active'
@@ -18,9 +47,28 @@ class ConnectorSubscriptionEnum(FormEnum):
     PENDING = 'Pending'
 
 class ConnectorData(db.Model):
-    """Model representing additional data for volunteers who are connectors.
+    """
+    Model representing additional data for volunteers who are connectors.
+    
     Stores subscription status, role information, and activity tracking details.
     Has a one-to-one relationship with the Volunteer model.
+    
+    Connectors are a specialized subset of volunteers who participate in a specific
+    program with additional requirements and tracking mechanisms.
+    
+    Attributes:
+        volunteer_id: Foreign key to the volunteer
+        active_subscription: Current subscription status in connector program
+        active_subscription_name: Human-readable subscription name
+        role: Current role in connector program
+        signup_role: Original role when they signed up
+        profile_link: URL to external profile
+        affiliations: Organizations/groups they're affiliated with
+        industry: Professional industry
+        user_auth_id: Unique identifier for authentication
+        joining_date: When they joined as a connector
+        last_login_datetime: Last time they logged in
+        last_update_date: Last time their record was updated
     """
     __tablename__ = 'connector_data'
     
@@ -62,8 +110,17 @@ class ConnectorData(db.Model):
     )
 
 class VolunteerStatus(FormEnum):
-    """Enum defining the possible states of a volunteer's engagement.
+    """
+    Enum defining the possible states of a volunteer's engagement.
+    
     Used to track whether a volunteer is currently active, inactive, or on hold.
+    This helps with volunteer management and communication strategies.
+    
+    Values:
+    - NONE: No status set (default)
+    - ACTIVE: Currently active and available for volunteering
+    - INACTIVE: Not currently active but may return
+    - ON_HOLD: Temporarily on hold (e.g., due to scheduling conflicts)
     """
     NONE = ''
     ACTIVE = 'active'
@@ -71,8 +128,11 @@ class VolunteerStatus(FormEnum):
     ON_HOLD = 'on_hold'
 
 class Volunteer(Contact):
-    """Main volunteer model that inherits from Contact base class.
+    """
+    Main volunteer model that inherits from Contact base class.
+    
     Stores all volunteer-specific information and manages relationships with other models.
+    This is the core model for the volunteer management system.
     
     Key Relationships:
     - skills: Many-to-many with Skill model (through VolunteerSkill)
@@ -80,6 +140,17 @@ class Volunteer(Contact):
     - engagements: One-to-many with Engagement model
     - connector: One-to-one with ConnectorData model
     - event_participations: One-to-many with EventParticipation model
+    
+    Inheritance:
+    - Inherits from Contact model for basic contact information
+    - Uses polymorphic inheritance to distinguish volunteer contacts from other types
+    
+    Key Features:
+    - Tracks volunteer activity and engagement
+    - Manages skills and organizational affiliations
+    - Supports connector program participation
+    - Handles local status calculation based on address
+    - Provides comprehensive volunteer history tracking
     """
     __tablename__ = 'volunteer'
     
@@ -142,7 +213,19 @@ class Volunteer(Contact):
 
     @property
     def total_times_volunteered(self):
-        """Count that includes actual event participations and manual adjustments"""
+        """
+        Calculates the total number of times this volunteer has volunteered.
+        
+        This property combines actual event participations with manual adjustments
+        to provide an accurate count of volunteer activity.
+        
+        Returns:
+            int: Total count of volunteer sessions including manual adjustments
+            
+        Note:
+            This avoids double counting by not adding times_volunteered field
+            which may contain outdated data from Salesforce imports.
+        """
         from sqlalchemy import or_
         
         # Get count of participations with all relevant statuses
@@ -160,7 +243,15 @@ class Volunteer(Contact):
 
     @property
     def active_histories(self):
-        """Returns all non-deleted history records for this volunteer, ordered by date"""
+        """
+        Returns all non-deleted history records for this volunteer, ordered by date.
+        
+        This provides a chronological view of all volunteer activities and interactions
+        that have been recorded in the system.
+        
+        Returns:
+            list: List of History objects ordered by activity_date descending
+        """
         return History.query.filter_by(
             volunteer_id=self.id,
             is_deleted=False
@@ -169,7 +260,14 @@ class Volunteer(Contact):
         ).all()
 
     def calculate_local_status(self):
-        """Determines if a volunteer is local, partially local, or non-local based on zip code.
+        """
+        Determines if a volunteer is local, partially local, or non-local based on zip code.
+        
+        This method analyzes the volunteer's address(es) to determine their geographic
+        relationship to the organization's service area. This is important for:
+        - Event planning and logistics
+        - Communication strategies
+        - Resource allocation
         
         Returns:
             LocalStatusEnum: The calculated status based on the volunteer's address(es)
@@ -179,6 +277,11 @@ class Volunteer(Contact):
         2. Falls back to personal address if no primary exists
         3. Uses predefined KC metro and regional zip code prefixes
         4. Returns 'unknown' if no valid address is found or on error
+        
+        Zip Code Mapping:
+        - Local: 640, 641, 660, 661, 664, 665, 666 (KC Metro)
+        - Partial: 644, 645, 646, 670, 671, 672, 673, 674 (Regional)
+        - Non-local: All other zip codes
         """
         try:
             # Define KC metro and regional zip code prefixes
@@ -219,7 +322,11 @@ class Volunteer(Contact):
 
     @validates('first_volunteer_date', 'last_volunteer_date', 'last_activity_date')
     def validate_dates(self, key, value):
-        """Validates and converts date fields to proper date objects.
+        """
+        Validates and converts date fields to proper date objects.
+        
+        This validator ensures that date fields are properly formatted and converted
+        from various input formats (strings, date objects) to consistent date objects.
         
         Args:
             key (str): The name of the field being validated
@@ -227,6 +334,9 @@ class Volunteer(Contact):
         
         Returns:
             date: Converted date object or None if invalid
+            
+        Raises:
+            ValueError: If date string cannot be parsed
         """
         if not value:  # Handle empty strings and None
             return None
@@ -240,6 +350,19 @@ class Volunteer(Contact):
 
     @validates('times_volunteered', 'additional_volunteer_count')
     def validate_counts(self, key, value):
+        """
+        Validates and normalizes count fields to ensure they are non-negative integers.
+        
+        This validator handles various input formats and ensures count fields
+        are properly formatted as integers with a minimum value of 0.
+        
+        Args:
+            key (str): The name of the field being validated
+            value: The count value to validate
+            
+        Returns:
+            int: Normalized count value (minimum 0)
+        """
         if not value:  # Handle empty strings and None
             return 0
         try:
@@ -251,6 +374,22 @@ class Volunteer(Contact):
 
     @validates('education')
     def validate_education(self, key, value):
+        """
+        Validates education enum values to ensure they are valid EducationEnum instances.
+        
+        This validator handles both enum instances and string representations,
+        converting strings to proper enum values when possible.
+        
+        Args:
+            key (str): The name of the field being validated
+            value: The education value to validate
+            
+        Returns:
+            EducationEnum: Valid education enum value or None
+            
+        Raises:
+            ValueError: If education value is invalid
+        """
         if value is not None:
             # If it's already an enum instance, return it
             if isinstance(value, EducationEnum):
@@ -266,6 +405,19 @@ class Volunteer(Contact):
     # Add data cleaning for Salesforce imports
     @classmethod
     def from_salesforce(cls, data):
+        """
+        Creates a Volunteer instance from Salesforce data with proper data cleaning.
+        
+        This class method handles the conversion of Salesforce data to Volunteer
+        instances, ensuring that empty strings are converted to None values
+        and data is properly formatted.
+        
+        Args:
+            data (dict): Dictionary containing Salesforce volunteer data
+            
+        Returns:
+            Volunteer: New Volunteer instance with cleaned data
+        """
         # Convert empty strings to None
         cleaned = {k: (None if v == "" else v) for k, v in data.items()}
         return cls(**cleaned)
@@ -273,6 +425,15 @@ class Volunteer(Contact):
     # Relationship definitions that were accidentally removed
     @declared_attr
     def volunteer_organizations(cls):
+        """
+        Many-to-many relationship with organizations through VolunteerOrganization.
+        
+        This relationship allows volunteers to be associated with multiple organizations
+        with additional metadata about their role and status within each organization.
+        
+        Returns:
+            relationship: SQLAlchemy relationship to VolunteerOrganization
+        """
         return relationship(
             'VolunteerOrganization',
             back_populates='volunteer',
@@ -283,14 +444,41 @@ class Volunteer(Contact):
 
     @declared_attr
     def skills(cls):
+        """
+        Many-to-many relationship with skills through VolunteerSkill.
+        
+        This relationship allows volunteers to have multiple skills with additional
+        metadata about the source of the skill and interest level.
+        
+        Returns:
+            relationship: SQLAlchemy relationship to Skill model
+        """
         return relationship('Skill', secondary='volunteer_skills', backref='volunteers')
 
     @declared_attr
     def event_participations(cls):
+        """
+        One-to-many relationship with event participations.
+        
+        This relationship tracks all events that a volunteer has participated in,
+        including their role, status, and contribution details.
+        
+        Returns:
+            relationship: SQLAlchemy relationship to EventParticipation model
+        """
         return relationship('EventParticipation', backref='volunteer')
 
     @declared_attr
     def connector(cls):
+        """
+        One-to-one relationship with connector data.
+        
+        This relationship provides access to specialized connector program data
+        for volunteers who participate in the connector program.
+        
+        Returns:
+            relationship: SQLAlchemy relationship to ConnectorData model
+        """
         return relationship(
             "ConnectorData",
             uselist=False,
@@ -301,8 +489,15 @@ class Volunteer(Contact):
 
 # Skill Model
 class Skill(db.Model):
-    """Model representing a skill that volunteers can possess.
+    """
+    Model representing a skill that volunteers can possess.
+    
     Used to track various capabilities and expertise areas of volunteers.
+    This allows for skill-based volunteer matching and reporting.
+    
+    Attributes:
+        id: Primary key
+        name: Unique skill name (e.g., "Python Programming", "Event Planning")
     """
     __tablename__ = 'skill'
 
@@ -310,15 +505,26 @@ class Skill(db.Model):
     name = db.Column(String(50), unique=True, nullable=False)
 
     def __str__(self):
+        """String representation of the skill."""
         return self.name
 
     def __repr__(self):
+        """Developer-friendly representation of the skill."""
         return f'<Skill {self.name}>'
 
 # Association Table for Volunteer and Skill
 class VolunteerSkill(db.Model):
-    """Association model connecting volunteers to their skills.
-    Includes additional metadata about the skill relationship.
+    """
+    Association model connecting volunteers to their skills.
+    
+    Includes additional metadata about the skill relationship such as
+    the source of the skill information and the volunteer's interest level.
+    
+    Attributes:
+        volunteer_id: Foreign key to volunteer
+        skill_id: Foreign key to skill
+        source: How the skill information was obtained (e.g., self-reported, assessed)
+        interest_level: Optional field for tracking interest level in the skill
     """
     __tablename__ = 'volunteer_skills'
 
@@ -329,8 +535,22 @@ class VolunteerSkill(db.Model):
 
 # Engagement Model
 class Engagement(db.Model):
-    """Model tracking individual volunteer engagement activities.
-    Records specific interactions and activities of volunteers.
+    """
+    Model tracking individual volunteer engagement activities.
+    
+    Records specific interactions and activities of volunteers that may not
+    be tied to specific events. This includes things like:
+    - Phone calls
+    - Email communications
+    - Training sessions
+    - Orientation meetings
+    
+    Attributes:
+        id: Primary key
+        volunteer_id: Foreign key to volunteer
+        engagement_date: Date of the engagement
+        engagement_type: Type of engagement (e.g., "Phone Call", "Training")
+        notes: Additional notes about the engagement
     """
     __tablename__ = 'engagement'
 
@@ -342,8 +562,27 @@ class Engagement(db.Model):
 
 # Event Participation Model
 class EventParticipation(db.Model):
-    """Model tracking volunteer participation in specific events.
+    """
+    Model tracking volunteer participation in specific events.
+    
     Includes details about their role and contribution to each event.
+    This is the primary way to track volunteer activity and impact.
+    
+    Fields from Salesforce Session_Participant__c are mapped to this model
+    to maintain compatibility with existing Salesforce data.
+    
+    Attributes:
+        id: Primary key
+        volunteer_id: Foreign key to volunteer
+        event_id: Foreign key to event
+        status: Participation status (e.g., "Attended", "No-Show", "Cancelled")
+        delivery_hours: Hours contributed to the event
+        salesforce_id: Salesforce record ID for synchronization
+        age_group: Age group of participant at time of event
+        email: Email used for event registration
+        title: Professional title at time of event
+        participant_type: Type of participant (default: "Volunteer")
+        contact: Additional contact information
     """
     __tablename__ = 'event_participation'
 
