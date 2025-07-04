@@ -1,3 +1,64 @@
+{# 
+  Admin Dashboard Template
+  =======================
+  
+  This template provides the main administrative interface for the Volunteer Management System.
+  It includes user management, password changes, data import functionality, and various
+  administrative tools for system management.
+  
+  Key Features:
+  - User creation and management (admin only)
+  - Password change functionality
+  - Salesforce data import system
+  - Import progress tracking and status display
+  - Modal dialogs for user editing
+  - Responsive design with Bootstrap
+  - Real-time import status updates
+  
+  Admin Functions:
+  - Create new users with role assignment
+  - Change user passwords
+  - Import data from Salesforce (organizations, schools, classes)
+  - Sequential import with progress tracking
+  - User management and editing
+  
+  Import System:
+  - Sequential import with dependency order
+  - Progress bars for each import type
+  - Status messages and error handling
+  - Import all functionality
+  - Individual import options
+  
+  Modal Features:
+  - User editing modal
+  - Custom modal styling
+  - Form validation
+  - Dynamic content loading
+  
+  Template Variables:
+  - current_user: Current authenticated user object
+  - users: List of system users (for management)
+  - import_status: Status of import operations
+  
+  Dependencies:
+  - Bootstrap 5.3.3 CSS/JS
+  - FontAwesome icons
+  - Custom admin.css for styling
+  - Custom JavaScript for import functionality
+  
+  Security Features:
+  - Admin-only access controls
+  - CSRF protection
+  - Form validation
+  - User authentication checks
+  
+  JavaScript Integration:
+  - Import functionality with AJAX
+  - Progress tracking
+  - Modal management
+  - Form submission handling
+#}
+
 {% extends "base.html" %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
@@ -87,7 +148,7 @@
     <h1>Admin Dashboard</h1>
     
     {% if current_user.is_admin %}
-    <!-- User Creation Form -->
+    {# User Creation Form - Admin only #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Create New User</h5>
@@ -122,7 +183,7 @@
     </div>
     {% endif %}
 
-    <!-- Password Change Form -->
+    {# Password Change Form #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Change Password</h5>
@@ -144,13 +205,13 @@
         </div>
     </div>
     {% if current_user.is_admin %}
-    <!-- Import Section -->
+    {# Import Section - Admin only #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title mb-0">Import Data from Salesforce</h5>
             <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
             
-            <!-- Add Import All button -->
+            {# Import All button with progress tracking #}
             <div class="mb-4">
                 <button onclick="importAllSequentially()" class="btn admin-btn-import" id="importAllBtn">
                     <i class="fas fa-download"></i>
@@ -162,8 +223,9 @@
                 </div>
             </div>
 
+            {# Individual import options grid #}
             <div class="import-grid">
-                <!-- 1. Organizations -->
+                {# Organizations import #}
                 <div class="import-item">
                     <button onclick="importOrganizations()" class="btn admin-btn-import" id="importOrganizationsBtn">
                         <i class="fas fa-building"></i>
@@ -175,7 +237,7 @@
                     </div>
                 </div>
                 
-                <!-- 2. Schools -->
+                {# Schools import #}
                 <div class="import-item">
                     <button onclick="importSchools()" class="btn admin-btn-import" id="importSchoolsBtn">
                         <i class="fas fa-school"></i>
@@ -187,7 +249,7 @@
                     </div>
                 </div>
                 
-                <!-- 3. Classes -->
+                {# Classes import #}
                 <div class="import-item">
                     <button onclick="importClasses()" class="btn admin-btn-import" id="importClassesBtn">
                         <i class="fas fa-file-import"></i>
@@ -199,7 +261,7 @@
                     </div>
                 </div>
                 
-                <!-- 4. Teachers -->
+                {# Teachers import #}
                 <div class="import-item">
                     <button onclick="importTeachers()" class="btn admin-btn-import" id="importTeachersBtn">
                         <i class="fas fa-chalkboard-teacher"></i>
@@ -211,7 +273,7 @@
                     </div>
                 </div>
                 
-                <!-- 5. Students -->
+                {# Students import #}
                 <div class="import-item">
                     <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
                         <i class="fas fa-user-graduate"></i>
@@ -223,7 +285,7 @@
                     </div>
                 </div>
                 
-                <!-- 6. Volunteers -->
+                {# Volunteers import #}
                 <div class="import-item">
                     <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
                         <i class="fas fa-users"></i>
@@ -235,7 +297,7 @@
                     </div>
                 </div>
                 
-                <!-- 6a. Volunteer-Organization Affiliations -->
+                {# Volunteer-Organization Affiliations import #}
                 <div class="import-item">
                     <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
                         <i class="fas fa-link"></i>
@@ -247,7 +309,7 @@
                     </div>
                 </div>
                 
-                <!-- 7. Events -->
+                {# Events import #}
                 <div class="import-item">
                     <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
                         <i class="fas fa-calendar"></i>
@@ -259,7 +321,7 @@
                     </div>
                 </div>
                 
-                <!-- 7a. Student Participations (NEW) -->
+                {# Student Participations (NEW) import #}
                 <div class="import-item">
                     <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
                         <i class="fas fa-user-check"></i> <!-- Icon for student check/participation -->
@@ -271,7 +333,7 @@
                     </div>
                 </div>
                 
-                <!-- 8. History -->
+                {# History import #}
                 <div class="import-item">
                     <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
                         <i class="fas fa-history"></i>
@@ -283,7 +345,7 @@
                     </div>
                 </div>
 
-                <!-- 9. Pathways -->
+                {# Pathways import #}
                 <div class="import-item">
                     <button onclick="importPathways()" class="btn admin-btn-import" id="importPathwaysBtn">
                         <i class="fas fa-road"></i>
@@ -295,7 +357,7 @@
                     </div>
                 </div>
 
-                <!-- 9a. Pathway Participants -->
+                {# Pathway Participants import #}
                 <div class="import-item">
                     <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
                         <i class="fas fa-users"></i>
@@ -307,7 +369,7 @@
                     </div>
                 </div>
 
-                <!-- 10. Virtual Events -->
+                {# Virtual Events import #}
                 <div class="import-item">
                     <a href="{{ url_for('management.google_sheets') }}" class="btn admin-btn-import" id="manageGoogleSheetsBtn" style="display: flex; align-items: center;">
                         <i class="fas fa-file-spreadsheet"></i>
@@ -319,7 +381,7 @@
                     </div>
                 </div>
 
-                <!-- NEW: Sync Unaffiliated Events -->
+                {# Sync Unaffiliated Events #}
                 <div class="import-item">
                     <button onclick="syncUnaffiliatedEvents()" class="btn admin-btn-import" id="syncUnaffiliatedEventsBtn">
                         <i class="fas fa-sitemap"></i> <!-- Icon suggesting relationship/mapping -->
@@ -334,7 +396,7 @@
         </div>
     </div>
 
-    <!-- Volunteer Management Section -->
+    {# Volunteer Management Section #}
     <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">Volunteer Management</h5>
@@ -352,7 +414,7 @@
         </div>
     </div>
 
-    <!-- Purge Data Section -->
+    {# Purge Data Section #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title text-danger mb-0">Purge Data</h5>
@@ -376,7 +438,7 @@
         </div>
     </div>
 
-    <!-- Report Cache Management -->
+    {# Report Cache Management #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Report Cache Management</h5>
@@ -388,7 +450,7 @@
         </div>
     </div>
 
-    <!-- System Management -->
+    {# System Management #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">System Management</h5>
@@ -403,10 +465,10 @@
         </div>
     </div>
     {% endif %}
-    <!-- Toast Container for Notifications -->
+    {# Toast Container for Notifications #}
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Users Table -->
+    {# Users Table #}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Current Users</h5>
@@ -439,7 +501,7 @@
                             </td>
                             <td>{{ user.created_at|format_date }}</td>
                             <td>
-                                <!-- Add the Edit button with htmx -->
+                                {# Add the Edit button with htmx #}
                                 <button 
                                     hx-get="/management/users/{{ user.id }}/edit"
                                     hx-target="#userEditModal"
@@ -464,7 +526,7 @@
     </div>
 </div>
 
-<!-- Simple Modal for User Editing -->
+{# Simple Modal for User Editing #}
 <div id="modalBackdrop" class="modal-backdrop" _="on click if target.id is 'modalBackdrop' remove .show from me"></div>
 <div id="userEditModal" class="modal-container"></div>
 

@@ -1,3 +1,47 @@
+{# 
+  Navigation Template - Main Site Navigation
+  =========================================
+  
+  This template provides the primary navigation bar for the Volunteer Management System.
+  It includes responsive design, user authentication checks, and dynamic menu items.
+  
+  Key Features:
+  - Responsive Bootstrap navigation with mobile hamburger menu
+  - User authentication-based menu items
+  - Side navigation panel for additional options
+  - Bug report modal integration with HTMX
+  - Admin-only menu items
+  - Brand/logo display with security level indicator
+  
+  Navigation Structure:
+  - Main navbar with primary navigation links
+  - Side panel with additional admin functions
+  - Mobile-responsive design
+  - Dynamic content based on user permissions
+  
+  User States:
+  - Authenticated users: Full navigation with logout
+  - Unauthenticated users: Login link only
+  - Admin users: Additional admin-only menu items
+  
+  HTMX Integration:
+  - Bug report modal loading via HTMX
+  - Dynamic content swapping
+  - Non-intrusive form submission
+  
+  Template Variables:
+  - current_user: Current authenticated user object
+  - current_user.is_authenticated: Boolean for auth status
+  - current_user.is_admin: Boolean for admin status
+  - current_user.security_level: User's security level display
+  
+  Dependencies:
+  - Bootstrap 5.3.3 CSS/JS
+  - FontAwesome icons
+  - HTMX library
+  - Custom nav.js for side panel functionality
+#}
+
 <nav class="navbar navbar-expand-lg custom-nav">
     <div class="container-fluid">
       <div class="navbar-brand-container">
@@ -43,6 +87,7 @@
     </div>
   </nav>
   
+{# Side Navigation Panel - Additional menu items #}
 <div class="side-nav-panel" id="sideNavPanel">
   <div class="side-nav-content">
     <ul class="side-nav-menu">
@@ -69,6 +114,7 @@
   </div>
 </div>
   
+{# Bug Report Modal Container - HTMX target for dynamic content #}
 <div id="bugReportModal" class="modal" tabindex="-1">
   <!-- Modal content will be loaded here -->
 </div>

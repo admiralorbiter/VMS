@@ -1,3 +1,62 @@
+{# 
+  Attendance Management Template
+  ============================
+  
+  This template provides the main interface for managing attendance data in the
+  Volunteer Management System. It includes tabbed views for students and teachers,
+  with pagination, sorting, and detailed view functionality.
+  
+  Key Features:
+  - Tabbed interface for students and teachers
+  - Paginated data tables with sorting
+  - Per-page selection controls
+  - Detailed view functionality
+  - Responsive design with Bootstrap
+  - Search and filter capabilities
+  - Export and reporting options
+  
+  Table Features:
+  - Sortable columns with visual indicators
+  - Pagination with navigation controls
+  - Per-page selection (10, 25, 50, 100)
+  - Action buttons for detailed views
+  - Responsive table layout
+  
+  Tab Navigation:
+  - Students tab (default active)
+  - Teachers tab
+  - Dynamic content switching
+  - State preservation
+  
+  Pagination System:
+  - Page number navigation
+  - Previous/Next buttons
+  - Ellipsis for large page counts
+  - Current page highlighting
+  - Disabled states for edge cases
+  
+  Template Variables:
+  - students: Paginated student data
+  - teachers: Paginated teacher data
+  - per_page: Current items per page
+  - per_page_options: Available page size options
+  - total_students: Total student count
+  - total_teachers: Total teacher count
+  
+  Dependencies:
+  - Bootstrap 5.3.3 CSS/JS
+  - FontAwesome icons
+  - Custom attendance.css for styling
+  - Custom JavaScript for tab switching and pagination
+  
+  JavaScript Functions:
+  - switchTab(): Switch between students/teachers tabs
+  - changePage(): Navigate between pages
+  - changePerPage(): Update items per page
+  - viewDetails(): Open detailed view modal
+  - sortTable(): Handle column sorting
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Attendance{% endblock %}
@@ -8,17 +67,17 @@
 {% endblock %}
 
 {% block content %}
-<!-- Main attendance management container -->
+{# Main attendance management container #}
 <div class="attendance-container">
-    <!-- Page header with title and action buttons -->
+    {# Page header with title and action buttons #}
     <div class="page-header">
         <h1><i class="fa-solid fa-calendar-check"></i> Attendance Management</h1>
         <div class="header-actions">
-            <!-- Link to detailed event attendance tracking -->
+            {# Link to detailed event attendance tracking #}
             <a href="{{ url_for('attendance.attendance_details') }}" class="action-btn">
                 <i class="fas fa-chart-bar"></i> Event Attendance Details
             </a>
-            <!-- Commented out import and purge functionality for safety -->
+            {# Commented out import and purge functionality for safety #}
             {# <a href="{{ url_for('attendance.import_attendance') }}" class="action-btn">
                 <i class="fas fa-file-import"></i> Import Attendance
             </a>
@@ -42,20 +101,20 @@
         </div>
     </div>
 
-    <!-- Main table container with tabbed interface -->
+    {# Main table container with tabbed interface #}
     <div class="attendance-table-container">
-        <!-- Tab navigation for switching between students and teachers -->
+        {# Tab navigation for switching between students and teachers #}
         <div class="table-tabs">
             <button class="tab-btn active" onclick="switchTab('students')">Students</button>
             <button class="tab-btn" onclick="switchTab('teachers')">Teachers</button>
         </div>
 
-        <!-- Students table section -->
+        {# Students table section #}
         <div id="studentsTableWrapper" class="attendance-table-wrapper">
             <table class="table attendance-table" id="studentsTable">
                 <thead>
                     <tr>
-                        <!-- Sortable column headers with data attributes for JavaScript sorting -->
+                        {# Sortable column headers with data attributes for JavaScript sorting #}
                         <th class="sortable" data-sort="id">
                             <span>ID</span>
                             <i class="fa-solid fa-sort"></i>
@@ -76,7 +135,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Iterate through paginated student records -->
+                    {# Iterate through paginated student records #}
                     {% for student in students.items %}
                     <tr>
                         <td>{{ student.student_id }}</td>
@@ -84,7 +143,7 @@
                         <td>{{ student.current_grade }}</td>
                         <td>{{ student.school_code }}</td>
                         <td>
-                            <!-- View details button for each student -->
+                            {# View details button for each student #}
                             <button class="action-icon" onclick="viewDetails('student', {{ student.id }})">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -94,10 +153,10 @@
                 </tbody>
             </table>
             
-            <!-- Pagination controls for students table -->
+            {# Pagination controls for students table #}
             <div class="pagination-controls">
                 <div class="pagination-info">
-                    <!-- Per-page selector with current selection -->
+                    {# Per-page selector with current selection #}
                     <select id="perPageSelect" class="per-page-select" onchange="changePerPage()">
                         {% for option in per_page_options %}
                             <option value="{{ option }}" {% if per_page == option %}selected{% endif %}>
@@ -108,15 +167,15 @@
                     <span>Showing {{ students.items|length }} of {{ total_students }} students</span>
                 </div>
                 
-                <!-- Pagination navigation buttons -->
+                {# Pagination navigation buttons #}
                 <div class="pagination-buttons">
-                    <!-- Previous page button (disabled if no previous page) -->
+                    {# Previous page button (disabled if no previous page) #}
                     <button class="page-btn" onclick="changePage({{ students.prev_num }}, 'students')"
                             {% if not students.has_prev %}disabled{% endif %}>
                         Previous
                     </button>
                     
-                    <!-- Page number buttons with ellipsis for large page counts -->
+                    {# Page number buttons with ellipsis for large page counts #}
                     {% for page_num in students.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
                         {% if page_num %}
                             <button class="page-btn {% if page_num == students.page %}active{% endif %}"
@@ -128,7 +187,7 @@
                         {% endif %}
                     {% endfor %}
                     
-                    <!-- Next page button (disabled if no next page) -->
+                    {# Next page button (disabled if no next page) #}
                     <button class="page-btn" onclick="changePage({{ students.next_num }}, 'students')"
                             {% if not students.has_next %}disabled{% endif %}>
                         Next
@@ -137,12 +196,12 @@
             </div>
         </div>
 
-        <!-- Teachers table section (hidden by default) -->
+        {# Teachers table section (hidden by default) #}
         <div id="teachersTableWrapper" class="attendance-table-wrapper hidden">
             <table class="table attendance-table" id="teachersTable">
                 <thead>
                     <tr>
-                        <!-- Sortable column headers for teacher data -->
+                        {# Sortable column headers for teacher data #}
                         <th class="sortable" data-sort="name">
                             <span>Name</span>
                             <i class="fa-solid fa-sort"></i>
@@ -163,7 +222,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Iterate through paginated teacher records -->
+                    {# Iterate through paginated teacher records #}
                     {% for teacher in teachers.items %}
                     <tr>
                         <td>{{ teacher.first_name }} {{ teacher.last_name }}</td>
@@ -171,7 +230,7 @@
                         <td>{{ teacher.school_code }}</td>
                         <td>{{ teacher.connector_role }}</td>
                         <td>
-                            <!-- View details button for each teacher -->
+                            {# View details button for each teacher #}
                             <button class="action-icon" onclick="viewDetails('teacher', {{ teacher.id }})">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -181,10 +240,10 @@
                 </tbody>
             </table>
             
-            <!-- Pagination controls for teachers table -->
+            {# Pagination controls for teachers table #}
             <div class="pagination-controls">
                 <div class="pagination-info">
-                    <!-- Per-page selector (shared with students table) -->
+                    {# Per-page selector (shared with students table) #}
                     <select id="perPageSelect" class="per-page-select" onchange="changePerPage()">
                         {% for option in per_page_options %}
                             <option value="{{ option }}" {% if per_page == option %}selected{% endif %}>
@@ -195,7 +254,7 @@
                     <span>Showing {{ teachers.items|length }} of {{ total_teachers }} teachers</span>
                 </div>
                 
-                <!-- Pagination navigation buttons for teachers -->
+                {# Pagination navigation buttons for teachers #}
                 <div class="pagination-buttons">
                     <button class="page-btn" onclick="changePage({{ teachers.prev_num }}, 'teachers')"
                             {% if not teachers.has_prev %}disabled{% endif %}>

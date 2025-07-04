@@ -1,3 +1,53 @@
+{# 
+  Reports Dashboard Template
+  =========================
+  
+  This template provides the main reports dashboard for the Volunteer Management System.
+  It displays a grid of available reports with icons, descriptions, and categories
+  for easy navigation and selection.
+  
+  Key Features:
+  - Grid-based report layout
+  - Icon-based visual navigation
+  - Categorized report organization
+  - Responsive design with cards
+  - Descriptive text for each report
+  - Clean, modern interface
+  
+  Report Cards:
+  - Report icon and title
+  - Description text
+  - Category label
+  - Clickable navigation
+  - Hover effects
+  
+  Layout Structure:
+  - Page header with title
+  - Description text
+  - Responsive grid layout
+  - Individual report cards
+  
+  Template Variables:
+  - reports: List of report objects with:
+    - url: Report page URL
+    - icon: FontAwesome icon class
+    - title: Report title
+    - description: Report description
+    - category: Report category
+  
+  Dependencies:
+  - Bootstrap 5.3.3 CSS
+  - FontAwesome icons
+  - Custom reports.css for styling
+  
+  Styling Features:
+  - Card-based layout
+  - Hover effects
+  - Responsive grid
+  - Icon integration
+  - Category badges
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Reports{% endblock %}
@@ -6,12 +56,15 @@
 {% endblock %}
 
 {% block content %}
+{# Main reports container #}
 <div class="reports-container">
+    {# Page header with title and description #}
     <h1 class="page-header">Reports Dashboard</h1>
     <p class="page-description">
         Access and analyze data across various aspects of the platform. Select a report from the options below to view detailed statistics and insights.
     </p>
 
+    {# Reports grid with individual report cards #}
     <div class="reports-grid">
         {% for report in reports %}
         <a href="{{ report.url }}" class="report-card">

@@ -1,3 +1,43 @@
+{# 
+  Base Template (No Navigation) - Alternative Layout Template
+  ==========================================================
+  
+  This template provides the same base HTML structure as base.html but without
+  the navigation bar. It's used for pages that need a clean, minimal layout
+  without the standard navigation elements.
+  
+  Key Features:
+  - Same Bootstrap 5.3.3 integration as base.html
+  - FontAwesome icons for UI elements
+  - Custom CSS and JS block extensions
+  - No navigation bar included
+  - Clean, minimal layout
+  - SEO-friendly meta tags
+  
+  Template Blocks:
+  - title: Page title (defaults to "Volunteer Sign Up")
+  - extra_css: Additional CSS files or styles
+  - content: Main page content
+  - extra_js: Additional JavaScript files or scripts
+  
+  Dependencies:
+  - Bootstrap CSS and JS (CDN)
+  - FontAwesome Kit (CDN)
+  - Custom style.css for global styling
+  
+  Usage:
+  {% extends "base-nonav.html" %}
+  {% block title %}Page Title{% endblock %}
+  {% block content %}Page content here{% endblock %}
+  
+  Common Use Cases:
+  - Login pages
+  - Standalone forms
+  - Modal content
+  - Print-friendly pages
+  - External integrations
+#}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

@@ -1,3 +1,59 @@
+{# 
+  Virtual Sessions Management Template
+  ===================================
+  
+  This template provides the interface for managing virtual session data in the VMS.
+  It includes functionality to view virtual session information and purge virtual data
+  with confirmation dialogs and status feedback.
+  
+  Key Features:
+  - Virtual session data display
+  - Purge functionality with confirmation modal
+  - Status message display for user feedback
+  - AJAX-based purge operation
+  - Responsive design with modern UI
+  - Safety confirmation for destructive operations
+  
+  Page Sections:
+  - Header with title and purge button
+  - Status message display area
+  - Virtual session content area
+  - Confirmation modal for purge operation
+  
+  JavaScript Functionality:
+  - showDeleteConfirmation(): Displays purge confirmation modal
+  - showStatus(): Shows status messages with auto-hide
+  - Modal event handlers for cancel/confirm actions
+  - AJAX fetch for purge operation
+  - Page reload after successful purge
+  
+  Modal Features:
+  - Overlay background
+  - Confirmation dialog with warning text
+  - Cancel and confirm buttons
+  - Responsive design
+  
+  Status Messages:
+  - Success messages (green styling)
+  - Error messages (red styling)
+  - Auto-hide after 5 seconds
+  - Dynamic content updates
+  
+  Template Variables:
+  - current_user: Current authenticated user object
+  
+  Dependencies:
+  - Bootstrap 5.3.3 CSS/JS
+  - Custom virtual.css for styling
+  - FontAwesome icons
+  - Fetch API for AJAX requests
+  
+  Security Considerations:
+  - Confirmation required for destructive operations
+  - Server-side validation of purge requests
+  - User authentication checks
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Virtual{% endblock %}
@@ -8,6 +64,7 @@
 
 {% block content %}
 <div class="virtual-container">
+    {# Page header with title and action buttons #}
     <div class="page-header">
         <h1>Virtual</h1>
         <div class="header-actions">
@@ -17,13 +74,14 @@
         </div>
     </div>
 
-    <!-- Status message div -->
+    {# Status message display area #}
     <div id="statusMessage" class="status-message" style="display: none;"></div>
 
+    {# Virtual session content area #}
     <!-- Existing content here -->
 </div>
 
-<!-- Delete Confirmation Modal -->
+{# Delete Confirmation Modal - Hidden by default #}
 <div id="deleteModal" class="modal-overlay" style="display: none;">
     <div class="confirm-modal">
         <h3 style="color: var(--delft-blue); margin-bottom: 1rem;">Confirm Purge</h3>
@@ -38,10 +96,12 @@
 
 {% block extra_js %}
 <script>
+// Show confirmation modal for purge operation
 function showDeleteConfirmation() {
     document.getElementById('deleteModal').style.display = 'flex';
 }
 
+// Display status messages with auto-hide functionality
 function showStatus(message, isError = false) {
     const statusDiv = document.getElementById('statusMessage');
     statusDiv.textContent = message;
@@ -54,10 +114,12 @@ function showStatus(message, isError = false) {
     }, 5000);
 }
 
+// Cancel button event handler
 document.getElementById('cancelDelete').addEventListener('click', function() {
     document.getElementById('deleteModal').style.display = 'none';
 });
 
+// Confirm purge button event handler with AJAX request
 document.getElementById('confirmDelete').addEventListener('click', async function() {
     try {
         const response = await fetch("{{ url_for('virtual.purge_virtual') }}", {
@@ -87,6 +149,7 @@ document.getElementById('confirmDelete').addEventListener('click', async functio
 </script>
 
 <style>
+/* Status message styling */
 .status-message {
     padding: 1rem;
     margin: 1rem 0;
@@ -106,6 +169,7 @@ document.getElementById('confirmDelete').addEventListener('click', async functio
     border: 1px solid #f5c6cb;
 }
 
+/* Modal overlay styling */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -119,6 +183,7 @@ document.getElementById('confirmDelete').addEventListener('click', async functio
     z-index: 1000;
 }
 
+/* Confirmation modal styling */
 .confirm-modal {
     background-color: white;
     padding: 2rem;

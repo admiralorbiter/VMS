@@ -1,3 +1,45 @@
+{# 
+  Dashboard/Home Page Template
+  ===========================
+  
+  This template serves as the main dashboard/home page for the Volunteer Management System.
+  It provides quick access to key system features, documentation, and external resources.
+  
+  Key Features:
+  - Modern card-based layout with hover effects
+  - Quick access to documentation and external tools
+  - Known issues display for transparency
+  - Responsive design with flexbox layout
+  - External link integration (Voluntold platform)
+  - Direct access to important reports
+  
+  Page Sections:
+  - Documentation access card
+  - Known issues display
+  - Voluntold platform integration
+  - Quick links to important reports
+  
+  External Integrations:
+  - Documentation system (static HTML files)
+  - Voluntold platform (external URL)
+  - District year-end report
+  
+  Styling Features:
+  - Custom CSS with modern design elements
+  - Hover effects and transitions
+  - Color-coded elements (blue theme)
+  - Responsive grid layout
+  - Card-based information architecture
+  
+  Template Variables:
+  - current_user: Current authenticated user (if any)
+  
+  Dependencies:
+  - Bootstrap 5.3.3 CSS
+  - Custom index.css for styling
+  - FontAwesome icons
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Polaris: Our North Star{% endblock %}
@@ -82,13 +124,13 @@
 
 {% block content %}
 <div class="revamp-container">
-    <!-- Documentation -->
+    {# Documentation Access Card #}
     <div class="revamp-box">
         <div class="revamp-title">Documentation</div>
         <div>Browse the full user and admin documentation for the Volunteer Management System.</div>
         <a class="revamp-btn" href="/docs/index.html" target="_blank" rel="noopener">Open Documentation</a>
     </div>
-    <!-- Known Issues -->
+    {# Known Issues Display Card #}
     <div class="revamp-box">
         <div class="revamp-title">Known Issues</div>
         <ul class="revamp-list">
@@ -96,13 +138,13 @@
             <li>Some Virtual Sessions are Missing</li>
         </ul>
     </div>
-    <!-- Voluntold -->
+    {# Voluntold Platform Integration Card #}
     <div class="revamp-box">
         <div class="revamp-title">Voluntold</div>
         <div>Manage volunteering and signups on our dedicated Voluntold platform.</div>
         <a class="revamp-btn" href="https://voluntold-prepkc.pythonanywhere.com/" target="_blank" rel="noopener">Go to Voluntold</a>
     </div>
-    <!-- Quick Links -->
+    {# Quick Links Card #}
     <div class="revamp-box">
         <div class="revamp-title">Quick Links</div>
         <ul class="quick-links">
