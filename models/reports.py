@@ -1,7 +1,104 @@
+"""
+Reports Models Module
+====================
+
+This module defines models for caching and storing report data in the VMS system.
+These models provide efficient data storage for complex reports that require
+significant computation time, allowing for faster report generation and display.
+
+Key Features:
+- Report data caching for performance optimization
+- District-level year-end and engagement reports
+- Organization-level reports and summaries
+- JSON data storage for flexible report structures
+- School year-based data organization
+- Automatic timestamp tracking for cache invalidation
+- Unique constraints to prevent duplicate reports
+
+Database Tables:
+- district_year_end_reports: Cached year-end reports for districts
+- district_engagement_reports: Cached engagement reports for districts
+- organization_reports: Cached reports for organizations
+- organization_summary_cache: Summary data for all organizations
+- organization_detail_cache: Detailed data for individual organizations
+
+Report Types:
+- District Year-End Reports: Annual summary reports for districts
+- District Engagement Reports: Engagement metrics and statistics
+- Organization Reports: Organization-specific activity reports
+- Summary Caches: Aggregated data across organizations
+- Detail Caches: Detailed data for individual organizations
+
+Data Storage:
+- JSON fields for flexible data structures
+- School year organization for academic calendar alignment
+- Host filter support for multi-host environments
+- Timestamp tracking for cache management
+
+Performance Optimizations:
+- Indexed fields for fast queries
+- Unique constraints to prevent duplicates
+- Composite indexes for common query patterns
+- Cached data to reduce computation time
+
+Usage Examples:
+    # Create a district year-end report
+    report = DistrictYearEndReport(
+        district_id="0011234567890ABCD",
+        school_year="2425",
+        host_filter="all",
+        report_data={"total_events": 150, "total_volunteers": 45}
+    )
+    
+    # Cache organization summary data
+    summary = OrganizationSummaryCache(
+        school_year="2425",
+        organizations_data={"total_organizations": 25, "active_volunteers": 120}
+    )
+    
+    # Check if report is recent
+    if (datetime.now() - report.last_updated).days < 7:
+        print("Report is up to date")
+"""
+
 from datetime import datetime, timezone
 from models import db  # Import db from models instead of creating new instance
 
 class DistrictYearEndReport(db.Model):
+    """
+    Model for caching district year-end reports.
+    
+    This model stores pre-computed year-end reports for districts to improve
+    performance when generating complex reports. Each report is tied to a
+    specific district, school year, and host filter combination.
+    
+    Database Table:
+        district_year_end_reports - Cached year-end reports for districts
+        
+    Key Features:
+        - District-specific report caching
+        - School year organization
+        - Host filter support for multi-host environments
+        - JSON data storage for flexible report structures
+        - Automatic timestamp tracking for cache invalidation
+        - Unique constraints to prevent duplicate reports
+        
+    Relationships:
+        - Many-to-one with District model
+        
+    Data Organization:
+        - district_id: Links to specific district
+        - school_year: Academic year (e.g., "2425" for 2024-2025)
+        - host_filter: Host environment filter ("all", "prep-kc", etc.)
+        - report_data: Main report data as JSON
+        - events_data: Event-specific data as JSON
+        
+    Performance Features:
+        - Indexed school_year for fast filtering
+        - Composite index on school_year and last_updated
+        - Unique constraint prevents duplicate reports
+        - Cached data reduces computation time
+    """
     __tablename__ = 'district_year_end_reports'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -20,6 +117,38 @@ class DistrictYearEndReport(db.Model):
     )
 
 class DistrictEngagementReport(db.Model):
+    """
+    Model for caching district engagement reports.
+    
+    This model stores pre-computed engagement reports for districts, including
+    summary statistics, volunteer data, student data, and event breakdowns.
+    
+    Database Table:
+        district_engagement_reports - Cached engagement reports for districts
+        
+    Key Features:
+        - District-specific engagement metrics
+        - School year organization
+        - Comprehensive data caching (summary, volunteers, students, events)
+        - Breakdown data for detailed analysis
+        - Automatic timestamp tracking for cache invalidation
+        
+    Relationships:
+        - Many-to-one with District model
+        
+    Data Structure:
+        - summary_stats: High-level engagement metrics
+        - volunteers_data: Volunteer participation data
+        - students_data: Student participation data
+        - events_data: Event-specific engagement data
+        - breakdown_data: Detailed event-centric analysis
+        
+    Performance Features:
+        - Indexed school_year for fast filtering
+        - Composite index on school_year and last_updated
+        - Unique constraint prevents duplicate reports
+        - Cached data reduces computation time
+    """
     __tablename__ = 'district_engagement_reports'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +175,39 @@ class DistrictEngagementReport(db.Model):
 
 
 class OrganizationReport(db.Model):
+    """
+    Model for caching organization-specific reports.
+    
+    This model stores pre-computed reports for individual organizations,
+    including summary statistics and detailed event data categorized by type.
+    
+    Database Table:
+        organization_reports - Cached reports for organizations
+        
+    Key Features:
+        - Organization-specific report caching
+        - School year organization
+        - Event type categorization (in-person, virtual, cancelled)
+        - Volunteer data caching
+        - Summary statistics storage
+        - Automatic timestamp tracking for cache invalidation
+        
+    Relationships:
+        - Many-to-one with Organization model
+        
+    Data Structure:
+        - summary_stats: High-level organization metrics
+        - in_person_events_data: In-person event details
+        - virtual_events_data: Virtual event details
+        - cancelled_events_data: Cancelled event details
+        - volunteers_data: Volunteer participation data
+        
+    Performance Features:
+        - Indexed school_year for fast filtering
+        - Composite index on school_year and last_updated
+        - Unique constraint prevents duplicate reports
+        - Cached data reduces computation time
+    """
     __tablename__ = 'organization_reports'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -72,6 +234,32 @@ class OrganizationReport(db.Model):
 
 
 class OrganizationSummaryCache(db.Model):
+    """
+    Model for caching organization summary data across all organizations.
+    
+    This model stores aggregated summary data for all organizations within
+    a school year, providing quick access to organization-level statistics.
+    
+    Database Table:
+        organization_summary_cache - Summary data for all organizations
+        
+    Key Features:
+        - School year-based organization summaries
+        - Aggregated data across all organizations
+        - JSON storage for flexible data structures
+        - Automatic timestamp tracking for cache invalidation
+        - Quick access to organization-level statistics
+        
+    Data Structure:
+        - school_year: Academic year (e.g., "2425")
+        - organizations_data: Aggregated organization statistics
+        - last_updated: Cache invalidation timestamp
+        
+    Performance Features:
+        - Indexed school_year for fast filtering
+        - Single record per school year for efficient access
+        - Cached data reduces computation time
+    """
     __tablename__ = 'organization_summary_cache'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -84,6 +272,38 @@ class OrganizationSummaryCache(db.Model):
 
 
 class OrganizationDetailCache(db.Model):
+    """
+    Model for caching detailed organization data.
+    
+    This model stores detailed data for individual organizations within
+    a school year, including event breakdowns and volunteer statistics.
+    
+    Database Table:
+        organization_detail_cache - Detailed data for individual organizations
+        
+    Key Features:
+        - Organization-specific detailed data caching
+        - School year organization
+        - Event type categorization (in-person, virtual, cancelled)
+        - Volunteer data storage
+        - Summary statistics caching
+        - Automatic timestamp tracking for cache invalidation
+        
+    Data Structure:
+        - organization_id: Links to specific organization
+        - school_year: Academic year (e.g., "2425")
+        - organization_name: Human-readable organization name
+        - in_person_events: In-person event data as JSON
+        - virtual_events: Virtual event data as JSON
+        - cancelled_events: Cancelled event data as JSON
+        - volunteers_data: Volunteer statistics as JSON
+        - summary_stats: Summary statistics as JSON
+        
+    Performance Features:
+        - Indexed organization_id and school_year for fast queries
+        - Unique constraint prevents duplicate caches
+        - Cached data reduces computation time
+    """
     __tablename__ = 'organization_detail_cache'
     
     id = db.Column(db.Integer, primary_key=True)

@@ -1,5 +1,6 @@
 """
 Organization Models Module
+=========================
 
 This module contains the SQLAlchemy models for managing organizations and their
 relationships with volunteers in the VMS system.
@@ -14,6 +15,9 @@ Key Features:
 - Many-to-many volunteer relationships with metadata
 - Automatic timestamp tracking
 - Cascade delete operations for data integrity
+- Role and status tracking for relationships
+- Primary organization designation
+- Historical relationship tracking
 
 Relationships:
 - Organization <-> Volunteer (many-to-many through VolunteerOrganization)
@@ -25,6 +29,44 @@ Database Design:
 - Indexed fields for performance on common queries
 - Foreign key constraints with CASCADE delete
 - Optimized for bulk operations with confirm_deleted_rows=False
+
+Salesforce Integration:
+- Bi-directional synchronization with Salesforce
+- Account record linking via salesforce_id
+- Volunteer-organization relationship tracking
+- Direct URL generation for Salesforce records
+
+Data Management:
+- Address information for billing and contact
+- Organization classification and description
+- Relationship metadata (role, dates, status)
+- Audit trail with timestamps
+- Activity tracking for business intelligence
+
+Performance Optimizations:
+- Indexed foreign keys for fast joins
+- Composite primary keys for efficient lookups
+- Cascade delete for referential integrity
+- Bulk operation optimizations
+
+Usage Examples:
+    # Create a new organization
+    org = Organization(
+        name="Tech Corp",
+        type="Business",
+        salesforce_id="0011234567890ABCD"
+    )
+    
+    # Add volunteer to organization
+    vol_org = VolunteerOrganization(
+        volunteer_id=volunteer.id,
+        organization_id=org.id,
+        role="Software Engineer",
+        is_primary=True
+    )
+    
+    # Get organization's Salesforce URL
+    sf_url = org.salesforce_url
 """
 
 from datetime import datetime
@@ -39,24 +81,40 @@ class Organization(db.Model):
     This model stores core information about organizations that volunteers are associated with.
     It supports bi-directional sync with Salesforce and includes address information.
     
+    Database Table:
+        organization - Stores organization information and addresses
+        
+    Key Features:
+        - Salesforce integration for data synchronization
+        - Address management for billing and contact information
+        - Many-to-many relationships with volunteers
+        - Automatic timestamp tracking for audit trails
+        - Organization classification and description
+        - Activity tracking for business intelligence
+        
     Relationships:
-    - volunteers: Many-to-many with Volunteer model through volunteer_organization table
-    - volunteer_organizations: One-to-many with VolunteerOrganization model (association table)
-    
+        - volunteers: Many-to-many with Volunteer model through volunteer_organization table
+        - volunteer_organizations: One-to-many with VolunteerOrganization model (association table)
+        
     Salesforce Integration:
-    - salesforce_id: Links to Salesforce Account record
-    - volunteer_salesforce_id: Reference to volunteer record in Salesforce
-    - salesforce_url property: Generates direct link to Salesforce record
-    
+        - salesforce_id: Links to Salesforce Account record
+        - volunteer_salesforce_id: Reference to volunteer record in Salesforce
+        - salesforce_url property: Generates direct link to Salesforce record
+        
     Address Management:
-    - Structured address fields for billing information
-    - Supports international addresses with country field
-    - TODO: Consider refactoring into separate Address model
-    
+        - Structured address fields for billing information
+        - Supports international addresses with country field
+        - TODO: Consider refactoring into separate Address model
+        
     Timestamps:
-    - created_at: Set once when record is created
-    - updated_at: Automatically updated whenever record is modified
-    - last_activity_date: Manually set to track business-level activity
+        - created_at: Set once when record is created
+        - updated_at: Automatically updated whenever record is modified
+        - last_activity_date: Manually set to track business-level activity
+        
+    Data Validation:
+        - Name is required and indexed for search
+        - Salesforce ID is unique when present
+        - Address fields are optional but structured
     """
     __tablename__ = 'organization'
     
@@ -123,6 +181,11 @@ class Organization(db.Model):
         
         Returns:
             str: URL to Salesforce record, or None if no salesforce_id exists
+            
+        Usage:
+            sf_url = organization.salesforce_url
+            if sf_url:
+                # Open Salesforce record in browser
         """
         if self.salesforce_id:
             return f"https://prep-kc.lightning.force.com/lightning/r/Account/{self.salesforce_id}/view"
@@ -136,21 +199,38 @@ class VolunteerOrganization(db.Model):
     Volunteer and Organization models. It includes additional metadata about
     the relationship such as role, dates, and status.
     
+    Database Table:
+        volunteer_organization - Junction table for volunteer-organization relationships
+        
+    Key Features:
+        - Composite primary key for efficient relationship management
+        - Salesforce integration for bi-directional synchronization
+        - Role and status tracking for relationship context
+        - Date range support for historical tracking
+        - Primary organization flag for volunteer's main affiliation
+        - Automatic timestamp tracking for audit trails
+        
     Design Features:
-    - Composite primary key (volunteer_id + organization_id)
-    - Salesforce integration for bi-directional sync
-    - Role and status tracking for relationship context
-    - Date range support for historical tracking
-    - Primary organization flag for volunteer's main affiliation
-    
+        - Composite primary key (volunteer_id + organization_id)
+        - Salesforce integration for bi-directional sync
+        - Role and status tracking for relationship context
+        - Date range support for historical tracking
+        - Primary organization flag for volunteer's main affiliation
+        
     Performance Optimizations:
-    - confirm_deleted_rows=False improves deletion performance for bulk operations
-    - Indexed foreign keys for fast joins and lookups
-    - CASCADE delete ensures referential integrity
-    
+        - confirm_deleted_rows=False improves deletion performance for bulk operations
+        - Indexed foreign keys for fast joins and lookups
+        - CASCADE delete ensures referential integrity
+        
     Primary Keys:
-    - volunteer_id and organization_id form a composite primary key
-    
+        - volunteer_id and organization_id form a composite primary key
+        
+    Relationship Metadata:
+        - role: Position or role at the organization
+        - start_date/end_date: Relationship duration tracking
+        - is_primary: Flags the volunteer's main organization
+        - status: Current relationship status (Current, Past, Pending)
+        
     Note: confirm_deleted_rows=False improves deletion performance for bulk operations
     """
     __tablename__ = 'volunteer_organization'

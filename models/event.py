@@ -14,9 +14,12 @@ Key Features:
 - District and school relationships
 - Teacher and student participation tracking
 - Validation and business logic methods
+- Capacity management and registration tracking
+- Status workflow management
+- Comment and note system
 
 Database Tables:
-- event: Main events table
+- event: Main events table with comprehensive event data
 - event_volunteers: Association table for event-volunteer relationships
 - event_districts: Association table for event-district relationships
 - event_skills: Association table for event-skill relationships
@@ -24,6 +27,50 @@ Database Tables:
 - event_student_participation: Student participation tracking
 - event_comment: Event comments and notes
 - event_attendance: Event attendance tracking
+
+Event Types:
+- IN_PERSON: Traditional face-to-face events
+- VIRTUAL_SESSION: Online events and webinars
+- CONNECTOR_SESSION: Specialized connector program events
+- CAREER_FAIR: Career exploration events
+- CLASSROOM_SPEAKER: Classroom presentations
+- MENTORING: One-on-one mentoring sessions
+- INTERNSHIP: Internship programs
+- And many more specialized event types
+
+Event Formats:
+- IN_PERSON: Physical location events
+- VIRTUAL: Online or remote events
+
+Event Statuses:
+- DRAFT: Initial planning stage
+- REQUESTED: Event has been requested
+- CONFIRMED: Event is confirmed and ready
+- PUBLISHED: Event is publicly available
+- COMPLETED: Event has finished
+- CANCELLED: Event was cancelled
+- NO_SHOW: Event had no participants
+- SIMULCAST: Multi-location event
+- COUNT: Administrative counting event
+
+Key Relationships:
+- Many-to-many with volunteers, districts, and skills
+- One-to-many with teachers, students, and comments
+- One-to-one with attendance tracking
+- Foreign key relationships with schools
+
+Data Validation:
+- Date consistency validation
+- Capacity and attendance validation
+- Status transition validation
+- Title and description validation
+- Count validation for participants
+
+Salesforce Integration:
+- Salesforce ID mapping for synchronization
+- Status mapping from Salesforce values
+- Participant data synchronization
+- Session tracking and management
 
 Usage Examples:
     # Create a new event
@@ -46,6 +93,13 @@ Usage Examples:
     # Check event capacity
     if event.is_at_capacity:
         print("Event is full")
+        
+    # Validate event data
+    event.validate_dates()
+    event.validate_counts()
+    
+    # Update from external data
+    event.update_from_csv(csv_data)
 """
 
 from datetime import datetime, timezone
@@ -86,6 +140,19 @@ class EventType(str, Enum):
     
     The enum values are used for filtering, reporting, and organizing events
     by their primary purpose or format.
+    
+    Event Categories:
+        - Career Development: CAREER_FAIR, CAREER_SPEAKER, CAREER_JUMPING
+        - Educational: CLASSROOM_SPEAKER, CLASSROOM_ACTIVITY, MATH_RELAYS
+        - Virtual Programs: VIRTUAL_SESSION, CONNECTOR_SESSION
+        - College Preparation: COLLEGE_OPTIONS, COLLEGE_APPLICATION_FAIR, FAFSA
+        - Workplace Exposure: WORKPLACE_VISIT, INTERNSHIP
+        - Campus Visits: CAMPUS_VISIT, PATHWAY_CAMPUS_VISITS
+        - Mentoring: MENTORING, ADVISORY_SESSIONS
+        - Financial Education: FINANCIAL_LITERACY
+        - Special Programs: IGNITE, DIA, P2GD, SLA, HEALTHSTART, P2T, BFI
+        - Volunteer Management: VOLUNTEER_ORIENTATION, VOLUNTEER_ENGAGEMENT
+        - Historical: HISTORICAL, DATA_VIZ
     """
     IN_PERSON = 'in_person'
     VIRTUAL_SESSION = 'virtual_session'
@@ -130,6 +197,13 @@ class CancellationReason(str, Enum):
     
     Defines the possible reasons why an event might be cancelled.
     Used for tracking and reporting on event cancellations.
+    
+    Reasons:
+        - WEATHER: Weather-related cancellations
+        - LOW_ENROLLMENT: Insufficient participant registration
+        - INSTRUCTOR_UNAVAILABLE: Instructor unable to attend
+        - FACILITY_ISSUE: Problems with the event location
+        - OTHER: Miscellaneous cancellation reasons
     """
     WEATHER = 'weather'
     LOW_ENROLLMENT = 'low_enrollment'
@@ -143,6 +217,15 @@ class EventComment(db.Model):
     
     Allows users to add comments and notes to events for internal
     communication and tracking purposes.
+    
+    Database Table:
+        event_comment - Stores event comments and notes
+        
+    Features:
+        - Rich text content support
+        - Automatic timestamp tracking
+        - Cascade deletion with events
+        - User-friendly comment management
     """
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
@@ -155,6 +238,11 @@ class AttendanceStatus(str, Enum):
     Attendance Status Enumeration
     
     Tracks the status of attendance taking for events.
+    
+    Statuses:
+        - NOT_TAKEN: Attendance has not been recorded yet
+        - IN_PROGRESS: Attendance is currently being taken
+        - COMPLETED: Attendance has been fully recorded
     """
     NOT_TAKEN = 'not_taken'
     IN_PROGRESS = 'in_progress'
@@ -166,6 +254,15 @@ class EventAttendance(db.Model):
     
     Tracks attendance information for events, including status,
     counts, and timestamps.
+    
+    Database Table:
+        event_attendance - Stores attendance tracking data
+        
+    Features:
+        - Status tracking for attendance process
+        - Total attendance counting
+        - Timestamp tracking for audit trails
+        - One-to-one relationship with events
     """
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
@@ -191,6 +288,10 @@ class EventFormat(str, Enum):
     Event Format Enumeration
     
     Defines the format or delivery method of events.
+    
+    Formats:
+        - IN_PERSON: Traditional face-to-face events
+        - VIRTUAL: Online or remote events
     """
     IN_PERSON = 'in_person'
     VIRTUAL = 'virtual'
@@ -204,6 +305,11 @@ class EventStatus(str, Enum):
     
     The map_status class method provides mapping from various
     Salesforce status values to standardized enum values.
+    
+    Status Workflow:
+        DRAFT -> REQUESTED -> CONFIRMED -> PUBLISHED -> COMPLETED
+        Any status can transition to CANCELLED
+        NO_SHOW and SIMULCAST are special administrative statuses
     """
     COMPLETED = 'Completed'
     CONFIRMED = 'Confirmed'

@@ -11,11 +11,33 @@ Key Features:
 - Salesforce integration with salesforce_id field
 - Automatic timestamp tracking for created_at and updated_at
 - Indexed salesforce_id for efficient lookups
+- Career pathway categorization and organization
+- Student pathway tracking and management
+- Event pathway association for program alignment
 
 Database Tables:
 - pathway: Main pathway table with basic information
 - pathway_contacts: Association table linking pathways to contacts
 - pathway_events: Association table linking pathways to events
+
+Pathway Management:
+- Career pathway definition and organization
+- Student pathway assignment and tracking
+- Event pathway categorization
+- Educational program alignment
+- Career development tracking
+
+Salesforce Integration:
+- Bi-directional synchronization with Salesforce
+- Pathway record mapping and tracking
+- Student pathway assignment synchronization
+- Event pathway categorization sync
+
+Data Relationships:
+- Many-to-many with students (contacts)
+- Many-to-many with events
+- Automatic timestamp tracking
+- Audit trail for pathway changes
 
 Usage:
     # Create a new pathway
@@ -27,6 +49,12 @@ Usage:
     pathway.contacts.append(student_contact)
     pathway.events.append(event)
     db.session.commit()
+    
+    # Query pathways for a student
+    student_pathways = student_contact.pathways.all()
+    
+    # Query events for a pathway
+    pathway_events = pathway.events.all()
 """
 
 from datetime import datetime
@@ -42,6 +70,35 @@ class Pathway(db.Model):
     multiple contacts (students) and events. Pathways help organize and
     categorize educational experiences and career development activities.
     
+    Database Table:
+        pathway - Stores career and educational pathway information
+        
+    Key Features:
+        - Career pathway definition and organization
+        - Student pathway assignment and tracking
+        - Event pathway categorization
+        - Educational program alignment
+        - Career development tracking
+        - Salesforce integration for data synchronization
+        - Automatic timestamp tracking for audit trails
+        
+    Relationships:
+        - Many-to-many with Contact via pathway_contacts table
+        - Many-to-many with Event via pathway_events table
+        
+    Data Management:
+        - Pathway name and identification
+        - Salesforce ID mapping for synchronization
+        - Student pathway assignments
+        - Event pathway categorizations
+        - Timestamp tracking for changes
+        
+    Integration Features:
+        - Salesforce bi-directional synchronization
+        - Student pathway tracking
+        - Event pathway categorization
+        - Career development monitoring
+        
     Attributes:
         id: Primary key identifier
         salesforce_id: Unique Salesforce identifier for integration
@@ -50,10 +107,12 @@ class Pathway(db.Model):
         events: Many-to-many relationship with Event model
         created_at: Timestamp when record was created
         updated_at: Timestamp when record was last updated
-    
-    Relationships:
-        - Many-to-many with Contact via pathway_contacts table
-        - Many-to-many with Event via pathway_events table
+        
+    Performance Features:
+        - Indexed salesforce_id for fast lookups
+        - Lazy loading for related collections
+        - Efficient many-to-many relationships
+        - Optimized query patterns
     """
     __tablename__ = 'pathway'
     

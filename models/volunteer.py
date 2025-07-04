@@ -1,5 +1,6 @@
 """
 Volunteer Management System - Models
+===================================
 
 This module contains the core data models for the volunteer management system.
 It includes the main Volunteer model and related supporting models for tracking
@@ -12,6 +13,35 @@ Key Components:
 - VolunteerSkill: Association table linking volunteers to skills
 - Engagement: Individual volunteer engagement activities
 - EventParticipation: Volunteer participation in specific events
+
+Core Features:
+- Comprehensive volunteer data management
+- Skill tracking and matching capabilities
+- Engagement and activity tracking
+- Event participation recording
+- Connector program support
+- Local status calculation
+- Historical data tracking
+- Organization affiliations
+
+Database Relationships:
+- Volunteer inherits from Contact (polymorphic inheritance)
+- Many-to-many relationships with skills and organizations
+- One-to-many relationships with engagements and event participations
+- One-to-one relationship with connector data
+- History tracking for audit trails
+
+Data Sources:
+- Manual entry through web interface
+- Salesforce synchronization
+- External system integrations
+- Automated data imports
+
+Security and Privacy:
+- Personal information protection
+- Access control based on user permissions
+- Audit trails for data changes
+- GDPR compliance considerations
 
 Author: VMS Development Team
 Last Updated: 2024
@@ -56,6 +86,21 @@ class ConnectorData(db.Model):
     Connectors are a specialized subset of volunteers who participate in a specific
     program with additional requirements and tracking mechanisms.
     
+    Database Table:
+        connector_data - Stores connector-specific information
+        
+    Key Features:
+        - Subscription status tracking
+        - Role management (current and signup roles)
+        - Professional information storage
+        - Activity tracking with timestamps
+        - External profile integration
+        - Authentication ID management
+        
+    Relationships:
+        - One-to-one with Volunteer model
+        - Unique constraints on user_auth_id and volunteer_id
+        
     Attributes:
         volunteer_id: Foreign key to the volunteer
         active_subscription: Current subscription status in connector program
@@ -69,6 +114,8 @@ class ConnectorData(db.Model):
         joining_date: When they joined as a connector
         last_login_datetime: Last time they logged in
         last_update_date: Last time their record was updated
+        created_at: Record creation timestamp
+        updated_at: Record update timestamp
     """
     __tablename__ = 'connector_data'
     
@@ -134,12 +181,16 @@ class Volunteer(Contact):
     Stores all volunteer-specific information and manages relationships with other models.
     This is the core model for the volunteer management system.
     
+    Database Table:
+        volunteer - Inherits from contact table with polymorphic identity
+        
     Key Relationships:
     - skills: Many-to-many with Skill model (through VolunteerSkill)
     - organizations: Many-to-many with Organization model
     - engagements: One-to-many with Engagement model
     - connector: One-to-one with ConnectorData model
     - event_participations: One-to-many with EventParticipation model
+    - histories: One-to-many with History model for audit trails
     
     Inheritance:
     - Inherits from Contact model for basic contact information
@@ -151,6 +202,21 @@ class Volunteer(Contact):
     - Supports connector program participation
     - Handles local status calculation based on address
     - Provides comprehensive volunteer history tracking
+    - Automatic date validation and status updates
+    - Salesforce data synchronization support
+    
+    Data Management:
+    - Professional information tracking
+    - Demographic data collection
+    - Activity and engagement metrics
+    - Communication history
+    - Status and availability tracking
+    
+    Validation Features:
+    - Date validation for volunteer activities
+    - Count validation for volunteer sessions
+    - Education level validation
+    - Local status calculation and updates
     """
     __tablename__ = 'volunteer'
     
