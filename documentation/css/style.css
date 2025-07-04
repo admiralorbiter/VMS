@@ -220,7 +220,7 @@ body {
 }
 
 .expandable-content {
-    display: block;
+    display: none;
     padding: 1.5rem;
     background: white;
 }
