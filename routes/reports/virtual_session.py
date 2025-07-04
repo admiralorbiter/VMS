@@ -13,6 +13,7 @@ from models.district_model import District
 from models.teacher import Teacher
 from models.school_model import School
 from models import db
+from models.google_sheet import GoogleSheet
 
 # Create blueprint
 virtual_bp = Blueprint('virtual', __name__)
@@ -371,6 +372,12 @@ def load_routes(bp):
             'statuses': sorted(list(all_statuses))
         }
         
+        # --- Google Sheet for this year ---
+        google_sheet = GoogleSheet.query.filter_by(academic_year=selected_virtual_year).first()
+        google_sheet_url = None
+        if google_sheet and google_sheet.decrypted_sheet_id:
+            google_sheet_url = f"https://docs.google.com/spreadsheets/d/{google_sheet.decrypted_sheet_id}"
+
         return render_template(
             'reports/virtual_usage.html',
             session_data=paginated_data,
@@ -381,7 +388,8 @@ def load_routes(bp):
                 'per_page': per_page,
                 'total_pages': total_pages,
                 'total_records': total_records
-            }
+            },
+            google_sheet_url=google_sheet_url  # <--- Pass to template
         )
 
     @bp.route('/reports/virtual/usage/district/<district_name>')
@@ -617,8 +625,6 @@ def load_routes(bp):
                         district_name = event.districts[0].name
                     elif event.district_partner:
                         district_name = event.district_partner
-                    elif school and hasattr(school, 'district') and school.district:
-                        district_name = school.district.name
                     else:
                         district_name = 'Unknown District'
                     

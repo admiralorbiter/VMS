@@ -98,6 +98,11 @@
                 📊 Export Excel
             </a>
             {% endif %}
+            {% if google_sheet_url %}
+            <a href="{{ google_sheet_url }}" target="_blank" class="export-btn" title="View Original Google Sheet">
+                📄 View Original Google Sheet for {{ current_filters.year }}
+            </a>
+            {% endif %}
         </div>
         </form>
     </div>
