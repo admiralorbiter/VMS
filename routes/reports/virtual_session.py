@@ -51,21 +51,21 @@ def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list
     return school_years
 
 def get_current_virtual_year() -> str:
-    """Determines the current virtual session year string (July 1st to July 1st)."""
+    """Determines the current virtual session year string (August 1st to July 31st)."""
     today = date.today()
-    if today.month >= 7:  # Virtual year starts in July
+    if today.month > 7 or (today.month == 7 and today.day == 31):  # After July 31st
         start_year = today.year
     else:
         start_year = today.year - 1
     return f"{start_year}-{start_year + 1}"
 
 def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given virtual session year string."""
+    """Calculates the start and end dates for a given virtual session year string (8/1 to 7/31)."""
     try:
         start_year = int(virtual_year.split('-')[0])
         end_year = start_year + 1
-        date_from = datetime(start_year, 7, 1, 0, 0, 0)  # July 1st start
-        date_to = datetime(end_year, 6, 30, 23, 59, 59)  # June 30th end
+        date_from = datetime(start_year, 8, 1, 0, 0, 0)  # August 1st start
+        date_to = datetime(end_year, 7, 31, 23, 59, 59)  # July 31st end
         return date_from, date_to
     except (ValueError, IndexError):
         current_vy = get_current_virtual_year()
