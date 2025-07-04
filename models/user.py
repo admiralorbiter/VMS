@@ -358,3 +358,27 @@ class User(db.Model, UserMixin):
                 # Token is valid
         """
         return cls.query.filter_by(api_token=token).first()
+
+    def __str__(self):
+        """
+        String representation of the User model.
+        
+        Returns:
+            String in format "<User username>"
+            
+        Example:
+            str(user) -> "<User john_doe>"
+        """
+        return f"<User {self.username}>"
+
+    def __repr__(self):
+        """
+        Detailed string representation of the User model for debugging.
+        
+        Returns:
+            String in format "<User(id=X, username='Y', email='Z', security_level=N)>"
+            
+        Example:
+            repr(user) -> "<User(id=1, username='john_doe', email='john@example.com', security_level=0)>"
+        """
+        return f"<User(id={self.id}, username='{self.username}', email='{self.email}', security_level={self.security_level})>"
