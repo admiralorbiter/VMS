@@ -1,3 +1,28 @@
+{# 
+  Organizations Listing Template
+  
+  This template displays a paginated list of organizations with filtering capabilities.
+  
+  Features:
+  - Search organizations by name
+  - Filter by organization type
+  - Sortable table columns
+  - Pagination controls
+  - Admin actions (edit/delete) - currently disabled
+  - Salesforce integration links
+  
+  Template Variables:
+  - organizations: List of organization objects
+  - organization_types: Available organization types for filtering
+  - current_filters: Current filter state
+  - pagination: Pagination object with navigation info
+  - current_user: Current authenticated user
+  
+  Routes:
+  - GET: Display organizations with optional filters
+  - POST: Not used in this template
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Organizations{% endblock %}
@@ -8,18 +33,22 @@
 
 {% block content %}
 <div class="organizations-container">
+    {# Page Header Section - Contains title and action buttons #}
     <div class="page-header">
         <h1>Organizations</h1>
         <div class="header-actions">
-            <a href="{{ url_for('organizations.add_organization') }}" class="action-btn">
+            {# TODO: Enable Add Organization button for admin users #}
+            <!-- <a href="{{ url_for('organizations.add_organization') }}" class="action-btn">
                 <i class="fa-solid fa-plus"></i> Add Organization
-            </a>
+            </a> -->
         </div>
     </div>
 
+    {# Filter Panel - Search and filter controls #}
     <div class="filter-panel">
         <form method="GET" class="filter-form">
             <div class="filter-row">
+                {# Organization Name Search Filter #}
                 <div class="filter-group">
                     <label for="search_name">Organization Search</label>
                     <input type="text" name="search_name" id="search_name" 
@@ -28,6 +57,7 @@
                            placeholder="Search by name...">
                 </div>
                 
+                {# Organization Type Filter Dropdown #}
                 <div class="filter-group">
                     <label for="type">Organization Type</label>
                     <select name="type" id="type" class="form-select">
@@ -41,6 +71,7 @@
                 </div>
             </div>
 
+            {# Filter Action Buttons #}
             <div class="filter-actions">
                 <button type="submit" class="btn filter-btn">
                     <i class="fa-solid fa-filter"></i> Apply Filters
@@ -52,30 +83,40 @@
         </form>
     </div>
 
+    {# Organizations Data Table #}
     <div class="table-responsive">
         <table class="table organizations-table">
             <thead>
                 <tr>
+                    {# Sortable Name Column #}
                     <th class="sortable" data-sort="name">
                         Name <i class="fa-solid fa-sort"></i>
                     </th>
+                    {# Sortable Type Column #}
                     <th class="sortable" data-sort="type">
                         Type <i class="fa-solid fa-sort"></i>
                     </th>
+                    {# Location Column (City, State) #}
                     <th>Location</th>
+                    {# Sortable Last Activity Column #}
                     <th class="sortable" data-sort="last_activity_date">
                         Last Activity <i class="fa-solid fa-sort"></i>
                     </th>
+                    {# Actions Column #}
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
+                {# Loop through organizations and display each row #}
                 {% for org in organizations %}
                 <tr>
+                    {# Organization Name #}
                     <td>{{ org.name }}</td>
+                    {# Organization Type with badge styling #}
                     <td>
                         <span class="org-type-badge">{{ org.type or 'N/A' }}</span>
                     </td>
+                    {# Location (City, State) - handles missing data gracefully #}
                     <td>
                         {% if org.billing_city and org.billing_state %}
                             {{ org.billing_city }}, {{ org.billing_state }}
@@ -83,23 +124,31 @@
                             N/A
                         {% endif %}
                     </td>
+                    {# Last Activity Date with formatting #}
                     <td>{{ org.last_activity_date|format_date if org.last_activity_date else 'Never' }}</td>
+                    {# Action Buttons #}
                     <td>
                         <div class="action-buttons">
+                            {# View Organization Details #}
                             <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="btn btn-sm action-btn view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
+                            {# TODO: Enable admin actions for edit/delete #}
+                            <!-- {% if current_user.is_admin %}
                             <a href="{{ url_for('organizations.edit_organization', id=org.id) }}" class="btn btn-sm action-btn edit-btn">
                                 <i class="fa-solid fa-pencil"></i> Edit
                             </a>
-                            {% if org.salesforce_url %}
-                            <a href="{{ org.salesforce_url }}" target="_blank" class="btn btn-sm action-btn salesforce-btn">
-                                <i class="fa-solid fa-external-link"></i> SF
-                            </a>
-                            {% endif %}
                             <button onclick="deleteOrganization({{ org.id }})" class="btn btn-sm action-btn delete-btn">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
+                            {% endif %} -->
+                            {# Salesforce External Link (if available) #}
+                            {% if org.salesforce_url %}
+                            <a href="{{ org.salesforce_url }}" target="_blank" class="btn btn-sm action-btn salesforce-btn">
+                                <i class="fa-solid fa-external-link"></i>
+                            </a>
+                            {% endif %}
+                            
                         </div>
                     </td>
                 </tr>
@@ -108,8 +157,11 @@
         </table>
     </div>
 
+    {# Pagination Controls #}
     <div class="pagination-container">
+        {# Pagination Info and Per-Page Selector #}
         <div class="pagination-info">
+            {# Items per page selector #}
             <select name="per_page" class="per-page-select" onchange="this.form.submit()">
                 {% for count in [10, 25, 50, 100] %}
                 <option value="{{ count }}" {% if current_filters.get('per_page', 25)|int == count %}selected{% endif %}>
@@ -117,12 +169,15 @@
                 </option>
                 {% endfor %}
             </select>
+            {# Pagination summary text #}
             <span class="pagination-summary">
                 Showing {{ organizations|length }} of {{ pagination.total }} organizations
             </span>
         </div>
         
+        {# Pagination Navigation Buttons #}
         <div class="pagination-controls">
+            {# Previous Page Button #}
             {% if pagination.has_prev %}
             <a href="{{ url_for('organizations.organizations', page=pagination.prev_num, **current_filters) }}" 
                class="pagination-btn">
@@ -130,6 +185,7 @@
             </a>
             {% endif %}
             
+            {# Next Page Button #}
             {% if pagination.has_next %}
             <a href="{{ url_for('organizations.organizations', page=pagination.next_num, **current_filters) }}" 
                class="pagination-btn">
@@ -140,6 +196,7 @@
     </div>
 </div>
 
+{# Delete Confirmation Modal - Hidden by default #}
 <div id="deleteModal" class="modal-overlay" style="display: none;">
     <div class="confirm-modal">
         <h3 style="color: var(--delft-blue); margin-bottom: 1rem;">Confirm Delete</h3>

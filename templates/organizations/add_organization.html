@@ -1,3 +1,34 @@
+{# 
+  Add Organization Template
+  
+  This template provides a form for creating new organizations in the system.
+  
+  Features:
+  - Basic organization information (name, type, description)
+  - Address information (street, city, state, postal code, country)
+  - Form validation with required fields
+  - Responsive form layout with icons
+  - Cancel and save actions
+  
+  Template Variables:
+  - organization_types: List of available organization types for dropdown
+  - current_user: Current authenticated user (for permissions)
+  
+  Routes:
+  - GET: Display the form
+  - POST: Process form submission and create organization
+  
+  Form Fields:
+  - name (required): Organization name
+  - type: Organization type (dropdown)
+  - description: Organization description
+  - billing_street: Street address
+  - billing_city: City
+  - billing_state: State/Province
+  - billing_postal_code: Postal/ZIP code
+  - billing_country: Country
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Add Organization{% endblock %}
@@ -8,6 +39,7 @@
 
 {% block content %}
 <div class="organizations-container">
+    {# Page Header with Title and Back Navigation #}
     <div class="organizations-header">
         <h1>Create New Organization</h1>
         <a href="{{ url_for('organizations.organizations') }}" class="cancel-btn">
@@ -15,13 +47,16 @@
         </a>
     </div>
 
+    {# Main Organization Creation Form #}
     <form method="POST" class="organization-form">
+        {# Basic Information Section #}
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-info-circle"></i>
                 Basic Information
             </h2>
             <div class="form-grid">
+                {# Organization Name - Required Field #}
                 <div class="form-group required">
                     <label for="name">Organization Name</label>
                     <div class="input-wrapper">
@@ -30,6 +65,7 @@
                     </div>
                 </div>
 
+                {# Organization Type - Dropdown Selection #}
                 <div class="form-group">
                     <label for="type">Organization Type</label>
                     <div class="input-wrapper">
@@ -43,6 +79,7 @@
                     </div>
                 </div>
 
+                {# Organization Description - Text Input #}
                 <div class="form-group">
                     <label for="description">Description</label>
                     <div class="input-wrapper">
@@ -53,12 +90,14 @@
             </div>
         </div>
 
+        {# Address Information Section #}
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-location-dot"></i>
                 Address Information
             </h2>
             <div class="form-grid">
+                {# Street Address #}
                 <div class="form-group">
                     <label for="billing_street">Street Address</label>
                     <div class="input-wrapper">
@@ -67,6 +106,7 @@
                     </div>
                 </div>
 
+                {# City #}
                 <div class="form-group">
                     <label for="billing_city">City</label>
                     <div class="input-wrapper">
@@ -75,6 +115,7 @@
                     </div>
                 </div>
 
+                {# State/Province #}
                 <div class="form-group">
                     <label for="billing_state">State</label>
                     <div class="input-wrapper">
@@ -83,6 +124,7 @@
                     </div>
                 </div>
 
+                {# Postal/ZIP Code #}
                 <div class="form-group">
                     <label for="billing_postal_code">Postal Code</label>
                     <div class="input-wrapper">
@@ -91,6 +133,7 @@
                     </div>
                 </div>
 
+                {# Country #}
                 <div class="form-group">
                     <label for="billing_country">Country</label>
                     <div class="input-wrapper">
@@ -101,6 +144,7 @@
             </div>
         </div>
 
+        {# Form Action Buttons #}
         <div class="form-actions">
             <button type="submit" class="save-btn">
                 <i class="fa-solid fa-save"></i> Create Organization

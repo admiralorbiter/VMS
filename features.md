@@ -38,6 +38,53 @@
 - [x] Connector Information
 - [x] Communication History
 
+## Organization Directory
+
+- [x] Edit
+- [x] Add
+- [x] Delete (need to check admin only)
+- [x] Import
+  - [x] Import from Salesforce
+  - [x] Import affiliations from Salesforce
+- [x] Search
+  - [x] Name
+  - [x] Organization Type
+- [x] Column Sort
+  - [x] Name
+  - [x] Type
+  - [x] Last Activity Date
+- [x] Pagination
+- [x] Salesforce Integration
+  - [x] Salesforce URL links
+  - [x] Salesforce ID tracking
+
+### Organization Page
+
+- [x] Salesforce Buttons
+- [x] Edit
+- [x] Basic Information
+  - [x] Organization Name
+  - [x] Organization Type
+  - [x] Description
+- [x] Address Information
+  - [x] Street Address
+  - [x] City
+  - [x] State
+  - [x] Postal Code
+  - [x] Country
+- [x] Timestamps
+  - [x] Created Date
+  - [x] Last Updated
+  - [x] Last Activity Date
+- [x] Associated Volunteers
+  - [x] Volunteer List with Roles
+  - [x] Volunteer Status
+  - [x] Start/End Dates
+  - [x] Link to Volunteer Details
+- [x] Data Management
+  - [x] Purge Organizations
+  - [x] Purge Affiliations
+
 ## Event Directory
 
 - [x] Edit

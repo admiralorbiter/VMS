@@ -1,3 +1,39 @@
+{# 
+  View Organization Template
+  
+  This template displays detailed information about a specific organization.
+  
+  Features:
+  - Organization header with name, type, and action buttons
+  - Basic organization details (description, address, timestamps)
+  - Associated volunteers list with roles and dates
+  - Salesforce integration links
+  - Edit and navigation actions
+  - Responsive card-based layout
+  
+  Template Variables:
+  - organization: Organization object with all details
+  - organization.volunteer_organizations: List of volunteer associations
+  - current_user: Current authenticated user (for permissions)
+  
+  Routes:
+  - GET: Display organization details
+  - POST: Not used in this template
+  
+  Data Displayed:
+  - Organization name and type
+  - Description and address information
+  - Creation and update timestamps
+  - Last activity date
+  - Salesforce ID and URL
+  - Associated volunteers with roles and status
+  - Volunteer start/end dates
+  
+  Security Notes:
+  - TODO: Add permission checks for viewing organization details
+  - TODO: Add permission checks for edit actions
+#}
+
 {% extends "base.html" %}
 
 {% block title %}{{ organization.name }}{% endblock %}
@@ -6,7 +42,7 @@
 {% endblock %}
 {% block content %}
 <div class="org-profile-container">
-    <!-- Header Section -->
+    {# Organization Header Section - Title, Type Badge, and Action Buttons #}
     <div class="org-header">
         <div class="org-title">
             <h1>{{ organization.name }}</h1>
@@ -15,6 +51,7 @@
             {% endif %}
         </div>
         <div class="header-actions">
+            {# Salesforce External Link (if available) #}
             {% if organization.salesforce_id %}
             <a href="{{ organization.salesforce_url }}" 
                target="_blank" 
@@ -22,23 +59,26 @@
                 <i class="fa-solid fa-cloud"></i> View in Salesforce
             </a>
             {% endif %}
+            {# Edit Organization Action #}
             <a href="{{ url_for('organizations.edit_organization', id=organization.id) }}" class="action-btn">
                 <i class="fa-solid fa-pencil"></i> Edit Organization
             </a>
+            {# Back to Organizations List #}
             <a href="{{ url_for('organizations.organizations') }}" class="action-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back to Organizations
             </a>
         </div>
     </div>
 
-    <!-- Profile Grid -->
+    {# Organization Profile Grid - Two Column Layout #}
     <div class="org-profile-grid">
-        <!-- Basic Info Card -->
+        {# Basic Information Card - Organization Details #}
         <div class="profile-card basic-info">
             <div class="card-header">
                 <h2><i class="fa-solid fa-building"></i> Organization Details</h2>
             </div>
             <div class="card-content">
+                {# Organization Description #}
                 {% if organization.description %}
                 <div class="info-group">
                     <label>Description</label>
@@ -46,6 +86,7 @@
                 </div>
                 {% endif %}
 
+                {# Organization Address - Handles Missing Address Components Gracefully #}
                 {% if organization.billing_street or organization.billing_city %}
                 <div class="info-group">
                     <label>Address</label>
@@ -59,6 +100,7 @@
                 </div>
                 {% endif %}
 
+                {# Organization Creation Date #}
                 {% if organization.created_at %}
                 <div class="info-group">
                     <label>Created</label>
@@ -66,6 +108,7 @@
                 </div>
                 {% endif %}
 
+                {# Last Update Date #}
                 {% if organization.updated_at %}
                 <div class="info-group">
                     <label>Last Updated</label>
@@ -73,6 +116,7 @@
                 </div>
                 {% endif %}
 
+                {# Last Activity Date #}
                 {% if organization.last_activity_date %}
                 <div class="info-group">
                     <label>Last Activity</label>
@@ -80,6 +124,7 @@
                 </div>
                 {% endif %}
 
+                {# Salesforce ID (if available) #}
                 {% if organization.salesforce_id %}
                 <div class="info-group">
                     <label>Salesforce ID</label>
@@ -89,32 +134,40 @@
             </div>
         </div>
 
-        <!-- Associated Volunteers Card -->
+        {# Associated Volunteers Card - Volunteer Relationships #}
         <div class="profile-card volunteers-info">
             <div class="card-header">
                 <h2><i class="fa-solid fa-users"></i> Associated Volunteers</h2>
             </div>
             <div class="card-content">
+                {# Volunteers List - Loop Through Volunteer Organizations #}
                 {% if organization.volunteer_organizations %}
                 <div class="volunteers-list">
                     {% for vo in organization.volunteer_organizations %}
                     <div class="volunteer-item">
+                        {# Volunteer Basic Information #}
                         <div class="volunteer-info">
+                            {# Volunteer Name with Link to Detail View #}
                             <a href="{{ url_for('volunteers.view_volunteer', id=vo.volunteer.id) }}" class="volunteer-name">
                                 {{ vo.volunteer.first_name }} {{ vo.volunteer.last_name }}
                             </a>
+                            {# Volunteer Role (if assigned) #}
                             {% if vo.role %}
                             <span class="volunteer-role">{{ vo.role }}</span>
                             {% endif %}
+                            {# Volunteer Status with CSS Class for Styling #}
                             {% if vo.status %}
                             <span class="volunteer-status {{ vo.status.lower() }}">{{ vo.status }}</span>
                             {% endif %}
                         </div>
+                        {# Volunteer Date Range (if available) #}
                         {% if vo.start_date or vo.end_date %}
                         <div class="volunteer-dates">
+                            {# Start Date #}
                             {% if vo.start_date %}
                             <span class="date-label">Started:</span> {{ vo.start_date.strftime('%B %d, %Y') }}
                             {% endif %}
+                            {# End Date #}
                             {% if vo.end_date %}
                             <span class="date-label">Ended:</span> {{ vo.end_date.strftime('%B %d, %Y') }}
                             {% endif %}
@@ -124,6 +177,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
+                {# No Volunteers Message #}
                 <p class="no-data">No volunteers associated with this organization</p>
                 {% endif %}
             </div>
