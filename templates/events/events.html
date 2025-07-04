@@ -1,24 +1,59 @@
+{# 
+  Events List Template
+  ===================
+  
+  This template displays a paginated list of events with filtering and sorting capabilities.
+  
+  Key Features:
+  - Advanced filtering by title, type, status, and date range
+  - Sortable table columns with visual indicators
+  - Pagination with configurable items per page
+  - Action buttons for view, edit, delete, and Salesforce integration
+  - Responsive design with mobile-friendly layout
+  - Delete confirmation modal for safety
+  
+  Template Variables:
+  - events: Paginated list of Event objects
+  - pagination: Pagination object with navigation controls
+  - current_filters: Dictionary of active filter parameters
+  - event_types: List of available event types for dropdown
+  - statuses: List of available statuses for dropdown
+  
+  Filter Options:
+  - Search by event title (text search)
+  - Filter by event type (dropdown)
+  - Filter by status (dropdown)
+  - Date range filtering (start/end dates)
+  - Items per page selection (10, 25, 50, 100)
+  
+  Sorting: Clickable column headers for title, type, and start date
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Events{% endblock %}
 
 {% block extra_css %}
+{# Include events-specific CSS for styling and layout #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="events-container">
+    {# Page header with title and create button #}
     <div class="page-header">
-        <h1>Event Calendar</h1>
-        <div class="header-actions">
+        <h1>Events</h1>
+        <!-- <div class="header-actions">
             <a href="{{ url_for('events.add_event') }}" class="action-btn">
                 <i class="fa-solid fa-plus"></i> Create New Event
             </a>
-        </div>
+        </div> -->
     </div>
 
+    {# Filter panel with comprehensive filtering options #}
     <div class="filter-panel">
         <form method="GET" class="filter-form">
+            {# First row of filters: Search, Type, Status #}
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="search_title">Event Search</label>
@@ -54,6 +89,7 @@
                 </div>
             </div>
 
+            {# Second row of filters: Date range #}
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="start_date">Start Date</label>
@@ -70,6 +106,7 @@
                 </div>
             </div>
 
+            {# Filter action buttons #}
             <div class="filter-actions">
                 <button type="submit" class="btn filter-btn">Apply Filters</button>
                 <a href="{{ url_for('events.events') }}" class="btn reset-btn">Reset</a>
@@ -77,10 +114,12 @@
         </form>
     </div>
 
+    {# Events table container with sortable columns #}
     <div class="events-table-container">
         <table class="table events-table">
             <thead>
                 <tr>
+                    {# Sortable column headers with visual indicators #}
                     <th class="sortable" data-sort="title">
                         Event Title <i class="fa-solid fa-sort"></i>
                     </th>
@@ -96,41 +135,51 @@
                 </tr>
             </thead>
             <tbody>
+                {# Event rows with data and action buttons #}
                 {% for event in events %}
                 <tr>
+                    {# Event title with link to view page #}
                     <td>
                         <a href="{{ url_for('events.view_event', id=event.id) }}" class="event-title-link">
                             {{ event.title }}
                         </a>
                     </td>
+                    {# Event type with styled badge #}
                     <td>
                         <span class="event-type-badge {{ event.type }}">
                             {{ event.type|title }}
                         </span>
                     </td>
+                    {# Formatted start date #}
                     <td>{{ event.start_date.strftime('%b %d, %y @ %I:%M %p') }}</td>
                     <td>{{ event.location }}</td>
+                    {# Status with styled badge #}
                     <td>
                         <span class="status-badge {{ event.status.lower() }}">
                             {{ event.display_status }}
                         </span>
                     </td>
+                    {# Action buttons: View, Edit, Salesforce, Delete #}
                     <td>
                         <div class="action-buttons">
                             <a href="{{ url_for('events.view_event', id=event.id) }}" class="btn btn-sm action-btn view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
+                            <!-- {% if current_user.is_admin %}
                             <a href="{{ url_for('events.edit_event', id=event.id) }}" class="btn btn-sm action-btn edit-btn">
                                 <i class="fa-solid fa-pencil"></i> Edit
                             </a>
+                            {# Delete button with confirmation modal trigger #}
+                            <button onclick="deleteEvent({{ event.id }})" class="btn btn-sm action-btn delete-btn">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            {% endif %} -->
+                            {# Salesforce link (only shown if available) #}
                             {% if event.salesforce_url %}
                             <a href="{{ event.salesforce_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank">
                                 <i class="fa-solid fa-cloud"></i>
                             </a>
                             {% endif %}
-                            <button onclick="deleteEvent({{ event.id }})" class="btn btn-sm action-btn delete-btn">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
                         </div>
                     </td>
                 </tr>
@@ -139,10 +188,11 @@
         </table>
     </div>
 
-    <!-- Add pagination container at the bottom -->
+    {# Pagination container with controls and summary #}
     <div class="pagination-container">
         <div class="pagination-controls">
             <div class="pagination-info">
+                {# Items per page selector #}
                 <select class="per-page-select" name="per_page">
                     <option value="10" {% if current_filters.per_page == 10 %}selected{% endif %}>10 per page</option>
                     <option value="25" {% if current_filters.per_page == 25 %}selected{% endif %}>25 per page</option>
@@ -150,8 +200,10 @@
                     <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
                 </select>
                 
+                {# Pagination navigation buttons #}
                 <div class="pagination-buttons">
                     {% if pagination.has_prev %}
+                        {# Previous page button with preserved filters #}
                         {% set filtered_params = {} %}
                         {% for key, value in current_filters.items() if key != 'per_page' %}
                             {% set _ = filtered_params.update({key: value}) %}
@@ -163,6 +215,7 @@
                     {% endif %}
                     
                     {% if pagination.has_next %}
+                        {# Next page button with preserved filters #}
                         {% set filtered_params = {} %}
                         {% for key, value in current_filters.items() if key != 'per_page' %}
                             {% set _ = filtered_params.update({key: value}) %}
@@ -176,13 +229,15 @@
             </div>
         </div>
         
+        {# Pagination summary showing current page info #}
         <div class="pagination-summary">
             Showing {{ pagination.items|length }} of {{ pagination.total }} events 
             (Page {{ pagination.page }} of {{ pagination.pages }})
         </div>
     </div>
 </div>
-<!-- Add this at the bottom of your template, before the closing body tag -->
+
+{# Delete confirmation modal - hidden by default #}
 <div id="deleteModal" class="modal-overlay" style="display: none;">
     <div class="confirm-modal">
         <h3 style="color: var(--delft-blue); margin-bottom: 1rem;">Confirm Delete</h3>
@@ -196,28 +251,6 @@
 {% endblock %}
 
 {% block extra_js %}
+{# Include events-specific JavaScript for table functionality #}
 <script src="{{ url_for('static', filename='js/events.js') }}"></script>
-<script>
-// Note: Upcoming events sync functionality moved to microservice
-
-function showNotification(type, message) {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-        <span>${message}</span>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Fade in
-    setTimeout(() => notification.classList.add('show'), 100);
-    
-    // Remove after 5 seconds
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => notification.remove(), 300);
-    }, 5000);
-}
-</script>
 {% endblock %}

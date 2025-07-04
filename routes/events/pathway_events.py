@@ -1,3 +1,27 @@
+"""
+Pathway Events Blueprint
+=======================
+
+This module provides functionality for syncing unaffiliated events from Salesforce
+and associating them with districts based on student participation data.
+
+Key Features:
+- Syncs events that are missing School, District, and Parent Account associations
+- Associates events with districts based on participating students' school districts
+- Syncs volunteer participation data for processed events
+- Handles both creation of new events and updates to existing events
+- Provides detailed error reporting and success statistics
+
+Main Functions:
+- sync_unaffiliated_events: Main endpoint for syncing unaffiliated events
+- _create_event_from_salesforce: Helper function to create Event objects from Salesforce data
+
+Dependencies:
+- Salesforce API integration via simple_salesforce
+- Event, Student, School, District, Skill, and Volunteer models
+- Various utility functions from routes.utils
+"""
+
 from flask import Blueprint, jsonify
 from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
@@ -17,28 +41,50 @@ from routes.utils import map_session_type, map_event_format, parse_date, map_can
 from routes.events.routes import process_participation_row
 # Adjust imports based on your actual model locations if needed
 
+# Create blueprint for pathway events functionality
 pathway_events_bp = Blueprint('pathway_events', __name__, url_prefix='/pathway-events')
 
 def _create_event_from_salesforce(sf_event_data, event_districts):
     """
     Creates and returns a new Event object from Salesforce data,
     assigning the provided districts. Does not commit.
+    
+    This helper function processes Salesforce event data and creates a new Event
+    object with all necessary associations. It handles skills parsing, district
+    assignment, and data validation.
+    
+    Args:
+        sf_event_data (dict): Raw Salesforce event data from API
+        event_districts (set): Set of District objects to associate with the event
+    
+    Returns:
+        Event: Newly created Event object (not yet committed to database)
+    
+    Raises:
+        ValueError: If required Salesforce ID is missing
+    
+    Note:
+        This function does NOT add the event to the session or commit changes.
+        The calling function is responsible for that.
     """
+    # Validate required Salesforce ID
     event_sf_id = sf_event_data.get('Id')
     if not event_sf_id:
         raise ValueError("Salesforce event data missing 'Id'")
 
+    # Create new event with basic information
     new_event = Event(
         salesforce_id=event_sf_id,
         title=sf_event_data.get('Name', '').strip() or f"Untitled Event {event_sf_id}" # Ensure title is not empty
     )
 
-    # Map fields (similar to process_event_row)
+    # Map Salesforce fields to Event model fields
     new_event.type = map_session_type(sf_event_data.get('Session_Type__c', ''))
     new_event.format = map_event_format(sf_event_data.get('Format__c', ''))
     new_event.start_date = parse_date(sf_event_data.get('Start_Date_and_Time__c')) or datetime(2000, 1, 1)
     new_event.end_date = parse_date(sf_event_data.get('End_Date_and_Time__c')) or datetime(2000, 1, 1)
-    # Ensure status uses the enum value if applicable, otherwise the string
+    
+    # Handle status mapping with fallback to DRAFT
     raw_status = sf_event_data.get('Session_Status__c')
     try:
         new_event.status = EventStatus(raw_status) if raw_status else EventStatus.DRAFT
@@ -49,6 +95,7 @@ def _create_event_from_salesforce(sf_event_data, event_districts):
         print(f"Warning: Unknown status '{raw_status}' for event {event_sf_id}. Defaulting to DRAFT.")
         new_event.status = EventStatus.DRAFT
 
+    # Map additional fields
     new_event.location = sf_event_data.get('Location_Information__c', '')
     new_event.description = sf_event_data.get('Description__c', '')
     new_event.cancellation_reason = map_cancellation_reason(sf_event_data.get('Cancellation_Reason__c'))
@@ -56,11 +103,13 @@ def _create_event_from_salesforce(sf_event_data, event_districts):
     new_event.additional_information = sf_event_data.get('Additional_Information__c', '')
     new_event.session_host = sf_event_data.get('Session_Host__c', '')
 
+    # Helper function for safe integer conversion
     def safe_convert_to_int(value, default=0):
          if value is None: return default
          try: return int(float(value))
          except (ValueError, TypeError): return default
 
+    # Handle numeric fields
     new_event.total_requested_volunteer_jobs = safe_convert_to_int(sf_event_data.get('Total_Requested_Volunteer_Jobs__c'))
     new_event.available_slots = safe_convert_to_int(sf_event_data.get('Available_Slots__c'))
 
@@ -74,6 +123,7 @@ def _create_event_from_salesforce(sf_event_data, event_districts):
     requested_skills = parse_event_skills(sf_event_data.get('Requested_Skills__c', ''))
     all_skill_names = set(skills_covered + skills_needed + requested_skills)
 
+    # Process each skill and create/get Skill objects
     for skill_name in all_skill_names:
         # Use get_or_create pattern for skills to avoid race conditions if run concurrently (though unlikely here)
         # This requires querying within the loop, which is acceptable for a smaller number of skills per event.
@@ -101,6 +151,22 @@ def sync_unaffiliated_events():
     Attempts to associate these events with districts based on the districts of
     participating students found in the local database.
     Also syncs volunteer participation for these events.
+    
+    This endpoint performs the following operations:
+    1. Queries Salesforce for all student participants to build event-to-student mapping
+    2. Queries Salesforce for unaffiliated events (missing school/district/parent account)
+    3. For each unaffiliated event:
+       - Checks if it already exists locally
+       - If exists: updates with latest Salesforce data and assigns districts if missing
+       - If new: creates new event and assigns districts based on student participation
+    4. Syncs volunteer participation data for all processed events
+    5. Returns detailed statistics and error information
+    
+    Returns:
+        JSON response with success status, counts, and error details
+    
+    Authentication:
+        Requires user login (login_required decorator)
     """
     processed_count = 0
     updated_count = 0
@@ -109,6 +175,7 @@ def sync_unaffiliated_events():
 
     try:
         print("Connecting to Salesforce...")
+        # Initialize Salesforce connection
         sf = Salesforce(
             username=Config.SF_USERNAME,
             password=Config.SF_PASSWORD,
@@ -117,7 +184,7 @@ def sync_unaffiliated_events():
         )
         print("Connected to Salesforce.")
 
-        # 1. Query for *all* student participants first
+        # Step 1: Query for ALL student participants first
         # Consider adding a date filter if this table is extremely large
         # e.g., WHERE CreatedDate >= LAST_N_MONTHS:24
         all_participants_query = """
@@ -143,7 +210,7 @@ def sync_unaffiliated_events():
         print(f"Built participation map for {len(event_to_student_sf_ids)} events.")
 
 
-        # 2. Query for unaffiliated events in Salesforce (FETCH FULL DETAILS)
+        # Step 2: Query for unaffiliated events in Salesforce (FETCH FULL DETAILS)
         # Copy fields from routes/events/routes.py import query
         unaffiliated_events_query = """
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
@@ -162,6 +229,7 @@ def sync_unaffiliated_events():
         unaffiliated_events_data = events_result.get('records', []) # Rename variable
         print(f"Found {len(unaffiliated_events_data)} potentially unaffiliated events in Salesforce.")
 
+        # Early return if no unaffiliated events found
         if not unaffiliated_events_data:
             return jsonify({
                 'success': True,
@@ -171,7 +239,7 @@ def sync_unaffiliated_events():
                 'errors': []
             })
 
-        # 3. Process each unaffiliated event found in Salesforce
+        # Step 3: Process each unaffiliated event found in Salesforce
         created_count = 0 # Add counter for new events
         # Rename loop variable for clarity
         for sf_event_data in unaffiliated_events_data:
@@ -373,6 +441,7 @@ def sync_unaffiliated_events():
         db.session.commit()
         print("Database changes committed.")
 
+        # Return comprehensive results
         return jsonify({
             'success': True,
             'message': f'Processed {processed_count} unaffiliated events. Created: {created_count}, Updated: {updated_count}. Volunteer participations: {participant_success}.',
@@ -385,6 +454,7 @@ def sync_unaffiliated_events():
         })
 
     except SalesforceAuthenticationFailed:
+        # Handle Salesforce authentication errors
         db.session.rollback()
         print("Error: Failed to authenticate with Salesforce")
         return jsonify({
@@ -393,6 +463,7 @@ def sync_unaffiliated_events():
             'error': 'Salesforce Authentication Failed'
         }), 401
     except Exception as e:
+        # Handle any other unexpected errors
         db.session.rollback()
         error_msg = f"An unexpected error occurred: {str(e)}"
         print(error_msg)

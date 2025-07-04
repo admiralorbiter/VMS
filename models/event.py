@@ -1,3 +1,53 @@
+"""
+Event Model and Related Classes
+==============================
+
+This module defines the Event model and related classes for managing events in the VMS system.
+Events represent various types of activities, sessions, and programs that can involve
+volunteers, students, teachers, and other participants.
+
+Key Features:
+- Comprehensive event management with multiple types and formats
+- Salesforce integration for data synchronization
+- Attendance tracking and participation management
+- Skills and requirements association
+- District and school relationships
+- Teacher and student participation tracking
+- Validation and business logic methods
+
+Database Tables:
+- event: Main events table
+- event_volunteers: Association table for event-volunteer relationships
+- event_districts: Association table for event-district relationships
+- event_skills: Association table for event-skill relationships
+- event_teacher: Association table for event-teacher relationships with attendance
+- event_student_participation: Student participation tracking
+- event_comment: Event comments and notes
+- event_attendance: Event attendance tracking
+
+Usage Examples:
+    # Create a new event
+    event = Event(
+        title="Career Fair 2024",
+        type=EventType.CAREER_FAIR,
+        format=EventFormat.IN_PERSON,
+        start_date=datetime.now(),
+        status=EventStatus.CONFIRMED
+    )
+    db.session.add(event)
+    db.session.commit()
+    
+    # Add volunteers to event
+    event.volunteers.append(volunteer)
+    
+    # Add skills to event
+    event.skills.append(skill)
+    
+    # Check event capacity
+    if event.is_at_capacity:
+        print("Event is full")
+"""
+
 from datetime import datetime, timezone
 from enum import Enum
 from flask import current_app
@@ -28,6 +78,15 @@ event_skills = db.Table('event_skills',
 )
 
 class EventType(str, Enum):
+    """
+    Event Type Enumeration
+    
+    Defines all possible types of events in the system. Each type represents
+    a different category of educational or career development activity.
+    
+    The enum values are used for filtering, reporting, and organizing events
+    by their primary purpose or format.
+    """
     IN_PERSON = 'in_person'
     VIRTUAL_SESSION = 'virtual_session'
     CONNECTOR_SESSION = 'connector_session'
@@ -66,6 +125,12 @@ class EventType(str, Enum):
 
 
 class CancellationReason(str, Enum):
+    """
+    Cancellation Reason Enumeration
+    
+    Defines the possible reasons why an event might be cancelled.
+    Used for tracking and reporting on event cancellations.
+    """
     WEATHER = 'weather'
     LOW_ENROLLMENT = 'low_enrollment'
     INSTRUCTOR_UNAVAILABLE = 'instructor_unavailable'
@@ -73,6 +138,12 @@ class CancellationReason(str, Enum):
     OTHER = 'other'
 
 class EventComment(db.Model):
+    """
+    Event Comment Model
+    
+    Allows users to add comments and notes to events for internal
+    communication and tracking purposes.
+    """
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -80,11 +151,22 @@ class EventComment(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
 class AttendanceStatus(str, Enum):
+    """
+    Attendance Status Enumeration
+    
+    Tracks the status of attendance taking for events.
+    """
     NOT_TAKEN = 'not_taken'
     IN_PROGRESS = 'in_progress'
     COMPLETED = 'completed'
 
 class EventAttendance(db.Model):
+    """
+    Event Attendance Model
+    
+    Tracks attendance information for events, including status,
+    counts, and timestamps.
+    """
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     
@@ -105,10 +187,24 @@ class EventAttendance(db.Model):
                           single_parent=True)
 
 class EventFormat(str, Enum):
+    """
+    Event Format Enumeration
+    
+    Defines the format or delivery method of events.
+    """
     IN_PERSON = 'in_person'
     VIRTUAL = 'virtual'
 
 class EventStatus(str, Enum):
+    """
+    Event Status Enumeration
+    
+    Defines the current status of events. Used for filtering,
+    reporting, and workflow management.
+    
+    The map_status class method provides mapping from various
+    Salesforce status values to standardized enum values.
+    """
     COMPLETED = 'Completed'
     CONFIRMED = 'Confirmed'
     CANCELLED = 'Cancelled'
@@ -121,6 +217,18 @@ class EventStatus(str, Enum):
 
     @classmethod
     def map_status(cls, status_str):
+        """
+        Maps various status strings to standardized enum values.
+        
+        This method handles the conversion from Salesforce status values
+        and other external status formats to our internal enum values.
+        
+        Args:
+            status_str (str): Raw status string from external source
+            
+        Returns:
+            EventStatus: Mapped enum value, defaults to DRAFT if unknown
+        """
         if not status_str:
             return cls.DRAFT
             
@@ -147,6 +255,8 @@ class EventStatus(str, Enum):
 
 class Event(db.Model):
     """
+    Event Model
+    
     Represents an event in the system. Events can be various types (in-person, virtual, etc.)
     and can have multiple participants (volunteers, educators) associated with them.
     
@@ -331,6 +441,7 @@ class Event(db.Model):
 
     @property
     def is_virtual(self):
+        """Check if event is virtual format"""
         return self.type == EventType.VIRTUAL_SESSION
 
     @property
@@ -383,7 +494,15 @@ class Event(db.Model):
         )
 
     def merge_duplicate(self, data):
-        """Merge data from a duplicate event's CSV row"""
+        """
+        Merge data from a duplicate event's CSV row
+        
+        This method combines data from duplicate events, typically used
+        when importing data from external sources that may contain duplicates.
+        
+        Args:
+            data (dict): CSV row data to merge
+        """
         # Combine counts
         new_registered = int(data.get('Registered Student Count', '0').replace('n/a', '0'))
         new_attended = int(data.get('Attended Student Count', '0').replace('n/a', '0'))
@@ -453,7 +572,15 @@ class Event(db.Model):
                     self.volunteers.append(volunteer)
 
     def update_from_csv(self, data):
-        """Update event from CSV data"""
+        """
+        Update event from CSV data
+        
+        This method updates an event with data from a CSV import,
+        typically used for bulk data updates from external sources.
+        
+        Args:
+            data (dict): CSV row data containing event information
+        """
         # Validate required fields
         if not data.get('Date'):
             raise ValueError("Date is required")
@@ -572,6 +699,7 @@ class Event(db.Model):
         return self.volunteer_count >= self.volunteers_needed if self.volunteers_needed else False
 
     def __init__(self, *args, **kwargs):
+        """Initialize event with validation"""
         super().__init__(*args, **kwargs)
         self._previous_status = self.status
         self.validate_title()  # Validate title on initialization
@@ -601,6 +729,17 @@ class Event(db.Model):
     def add_volunteer(self, volunteer, participant_type='Volunteer', status='Confirmed'):
         """
         Add volunteer to event and create participation record
+        
+        This method adds a volunteer to an event and creates the necessary
+        participation record to track their involvement.
+        
+        Args:
+            volunteer: Volunteer object to add
+            participant_type: Type of participation (default: 'Volunteer')
+            status: Participation status (default: 'Confirmed')
+            
+        Returns:
+            EventParticipation: The created participation record
         """
         # Add to many-to-many relationship if not present
         if volunteer not in self.volunteers:
@@ -637,7 +776,12 @@ class Event(db.Model):
         return len(self.teacher_registrations)
 
 class EventTeacher(db.Model):
-    """Association table for Event-Teacher many-to-many relationship with attendance tracking"""
+    """
+    Association table for Event-Teacher many-to-many relationship with attendance tracking
+    
+    This model tracks the relationship between events and teachers, including
+    attendance status, simulcast participation, and confirmation timestamps.
+    """
     __tablename__ = 'event_teacher'
     
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), primary_key=True)
@@ -660,6 +804,12 @@ class EventTeacher(db.Model):
     teacher = db.relationship('Teacher', back_populates='event_registrations')
 
 class EventStudentParticipation(db.Model):
+    """
+    Event Student Participation Model
+    
+    Tracks student participation in events, including status, delivery hours,
+    and age group information. Links to Salesforce Session_Participant__c records.
+    """
     __tablename__ = 'event_student_participation'
 
     id = db.Column(db.Integer, primary_key=True) # Optional: internal primary key

@@ -1,14 +1,44 @@
+{# 
+  Event Import Template
+  ====================
+  
+  This template provides a comprehensive interface for importing events and participation
+  data from various sources including Salesforce and CSV files.
+  
+  Key Features:
+  - Quick sync with Salesforce for real-time data
+  - CSV file upload and processing
+  - Progress tracking with visual indicators
+  - Import type selection (events vs participations)
+  - Results display with success/error statistics
+  - Drag-and-drop file upload interface
+  
+  Import Methods:
+  1. Quick Sync: Direct Salesforce connection for immediate data sync
+  2. Sync Events: Import events from CSV backup files
+  3. Sync Participants: Import participation data from CSV files
+  4. File Upload: Manual CSV file upload and processing
+  
+  Template Variables:
+  - None required - all functionality handled via JavaScript
+  
+  Security: File upload validation and CSRF protection
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Import Events{% endblock %}
 
 {% block extra_css %}
+{# Include events-specific CSS for styling and layout #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+{# Include import-specific CSS for progress bars and upload interface #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/import.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="events-container">
+    {# Header section with title and navigation #}
     <div class="events-header">
         <h1>Import Events</h1>
         <a href="{{ url_for('events.events') }}" class="btn add-event-btn">
@@ -17,7 +47,7 @@
     </div>
 
     <div class="import-container">
-        <!-- Quick Sync Section -->
+        {# Quick Sync Section - Salesforce integration #}
         <div class="import-section sync-section">
             <h2><i class="fa-solid fa-sync"></i> Quick Sync</h2>
             <p>
@@ -25,32 +55,37 @@
                 Sync Now connects directly to Salesforce, while Events and Participants sync from CSV backups
             </p>
             <div class="sync-buttons">
+                {# Quick sync button - direct Salesforce connection #}
                 <button class="sync-btn" id="quickSyncBtn">
                     <i class="fa-solid fa-sync"></i> Sync Now
                 </button>
+                {# Event sync button - CSV backup processing #}
                 <button class="sync-btn" id="eventSyncBtn">
                     <i class="fa-solid fa-calendar-sync"></i> Sync Events
                 </button>
+                {# Participant sync button - CSV backup processing #}
                 <button class="sync-btn" id="participantSyncBtn">
                     <i class="fa-solid fa-users-sync"></i> Sync Participants
                 </button>
             </div>
         </div>
 
-        <!-- Progress Section (Initially Hidden) -->
+        {# Progress Section - Initially hidden, shown during import #}
         <div class="import-section progress-section" id="progressSection" style="display: none;">
             <h2><i class="fa-solid fa-tasks"></i> Import Progress</h2>
             <div class="progress-container">
+                {# Visual progress bar #}
                 <div class="progress-bar">
                     <div class="progress" id="importProgress"></div>
                 </div>
+                {# Progress statistics #}
                 <div class="progress-stats">
                     <span id="processedCount">0</span> / <span id="totalCount">0</span> records processed
                 </div>
             </div>
         </div>
 
-        <!-- Import Type Selection -->
+        {# Import Type Selection - Choose between events and participations #}
         <div class="import-section">
             <h2><i class="fa-solid fa-filter"></i> Import Type</h2>
             <select id="importType" class="form-select">
@@ -60,7 +95,7 @@
         </div>
         
 
-        <!-- File Upload Section -->
+        {# File Upload Section - Drag and drop interface #}
         <div class="import-section">
             <h2><i class="fa-solid fa-file-import"></i> Import CSV File</h2>
             <div class="upload-container" id="dropZone">
@@ -77,26 +112,31 @@
         </div>
 
 
-        <!-- Results Section (Initially Hidden) -->
+        {# Results Section - Initially hidden, shown after import completion #}
         <div class="import-section results-section" id="resultsSection" style="display: none;">
             <h2><i class="fa-solid fa-clipboard-check"></i> Import Results</h2>
+            {# Results statistics cards #}
             <div class="results-stats">
+                {# Success statistics #}
                 <div class="stat-card success">
                     <i class="fa-solid fa-check-circle"></i>
                     <span class="stat-count" id="successCount">0</span>
                     <span class="stat-label">Successful</span>
                 </div>
+                {# Warning statistics #}
                 <div class="stat-card warning">
                     <i class="fa-solid fa-exclamation-triangle"></i>
                     <span class="stat-count" id="warningCount">0</span>
                     <span class="stat-label">Warnings</span>
                 </div>
+                {# Error statistics #}
                 <div class="stat-card error">
                     <i class="fa-solid fa-times-circle"></i>
                     <span class="stat-count" id="errorCount">0</span>
                     <span class="stat-label">Errors</span>
                 </div>
             </div>
+            {# Error list container for detailed error messages #}
             <div class="error-list" id="errorList"></div>
         </div>
     </div>
@@ -104,5 +144,6 @@
 {% endblock %}
 
 {% block extra_js %}
+{# Include events import JavaScript for file handling and sync functionality #}
 <script src="{{ url_for('static', filename='js/events_import.js') }}"></script>
 {% endblock %}

@@ -1,13 +1,42 @@
+{# 
+  Event Edit Template
+  ==================
+  
+  This template provides a form for editing existing events in the VMS system.
+  
+  Key Features:
+  - Pre-populated form with existing event data
+  - Form validation with error display
+  - Skills management with dynamic add/remove functionality
+  - Organized sections for basic info, event details, and skills
+  - FontAwesome icons for visual enhancement
+  - Responsive grid layout for form fields
+  - CSRF protection for security
+  
+  Template Variables:
+  - form: EventForm instance with validation and field definitions
+  - event: Event object with current data to be edited
+  
+  Form Sections:
+  1. Basic Information: Title, type, dates, location, format, status, volunteers needed
+  2. Event Details: Description field for detailed event information
+  3. Skills Required: Dynamic skills management with add/remove functionality
+  
+  Security: CSRF token included for POST request protection
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Edit Event{% endblock %}
 
 {% block extra_css %}
+{# Include events-specific CSS for styling and layout #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="events-container">
+    {# Header section with title and navigation actions #}
     <div class="events-header">
         <h1>Edit Event</h1>
         <div class="header-actions">
@@ -20,9 +49,12 @@
         </div>
     </div>
 
+    {# Main form for event editing - POST method for data submission #}
     <form method="POST" class="event-form">
+        {# CSRF protection token - required for all POST requests #}
         {{ form.csrf_token }}
         
+        {# Error display section - shows validation errors if form submission fails #}
         {% if form.errors %}
             <div class="alert alert-danger">
                 <ul>
@@ -35,12 +67,14 @@
             </div>
         {% endif %}
 
+        {# Section 1: Basic Event Information #}
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-info-circle"></i>
                 Basic Information
             </h2>
             <div class="form-grid">
+                {# Event Title - Required field with heading icon #}
                 <div class="form-group required">
                     {{ form.title.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -49,6 +83,7 @@
                     </div>
                 </div>
 
+                {# Event Type - Required field with tag icon #}
                 <div class="form-group required">
                     {{ form.type.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -57,6 +92,7 @@
                     </div>
                 </div>
 
+                {# Start Date - Required field with calendar icon #}
                 <div class="form-group required">
                     {{ form.start_date.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -65,6 +101,7 @@
                     </div>
                 </div>
 
+                {# End Date - Required field with calendar check icon #}
                 <div class="form-group required">
                     {{ form.end_date.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -73,6 +110,7 @@
                     </div>
                 </div>
 
+                {# Location - Optional field with location icon #}
                 <div class="form-group">
                     {{ form.location.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -81,6 +119,7 @@
                     </div>
                 </div>
 
+                {# Event Format - Optional field with desktop icon #}
                 <div class="form-group">
                     {{ form.format.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -89,6 +128,7 @@
                     </div>
                 </div>
 
+                {# Event Status - Optional field with info icon #}
                 <div class="form-group">
                     {{ form.status.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -97,6 +137,7 @@
                     </div>
                 </div>
 
+                {# Volunteers Needed - Optional field with users icon #}
                 <div class="form-group">
                     {{ form.volunteers_needed.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -107,6 +148,7 @@
             </div>
         </div>
 
+        {# Section 2: Event Details - Description field #}
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-align-left"></i>
@@ -120,11 +162,13 @@
             </div>
         </div>
 
+        {# Section 3: Skills Management - Dynamic skills add/remove functionality #}
         <div class="form-section">
             <h2><i class="fa-solid fa-brain"></i> Skills Required</h2>
             <div class="form-grid">
                 <div class="form-group">
                     <label for="skill-input">Add Skills</label>
+                    {# Skills input group with add button #}
                     <div class="skill-input-group">
                         <input type="text" id="skill-input" class="form-control skill-input" 
                                placeholder="Enter a skill...">
@@ -132,6 +176,7 @@
                             <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
+                    {# Container for existing skills with remove functionality #}
                     <div id="skills-container" class="skills-grid">
                         {% for skill in event.skills %}
                         <div class="skill-tag" data-skill-id="{{ skill.id }}">
@@ -147,6 +192,7 @@
             </div>
         </div>
 
+        {# Form action buttons - Save and Cancel #}
         <div class="form-actions">
             {{ form.submit(class="save-btn") }}
             <a href="{{ url_for('events.view_event', id=event.id) }}" class="cancel-btn">
@@ -158,5 +204,6 @@
 {% endblock %}
 
 {% block extra_js %}
+{# Include events-specific JavaScript for skills management functionality #}
 <script src="{{ url_for('static', filename='js/events.js') }}"></script>
 {% endblock %}

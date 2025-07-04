@@ -1,3 +1,33 @@
+"""
+Events Routes Module
+===================
+
+This module provides all the route handlers for event management in the VMS system.
+It includes functionality for listing, creating, editing, viewing, and importing events,
+as well as syncing data with Salesforce.
+
+Key Features:
+- Event CRUD operations (Create, Read, Update, Delete)
+- Advanced filtering and sorting of events
+- Salesforce integration for data synchronization
+- CSV import functionality for bulk data loading
+- Volunteer and student participation tracking
+- Skills management and association
+
+Main Endpoints:
+- /events: List all events with filtering and pagination
+- /events/add: Create new events
+- /events/view/<id>: View detailed event information
+- /events/edit/<id>: Edit existing events
+- /events/import: Import events from CSV or Salesforce
+- /events/sync-*: Various sync endpoints for Salesforce data
+
+Dependencies:
+- Salesforce API integration via simple_salesforce
+- Event, Student, School, District, Skill, and Volunteer models
+- Various utility functions from routes.utils
+"""
+
 import csv
 import os
 from flask import Blueprint, app, jsonify, request, render_template, flash, redirect, url_for, abort
@@ -21,10 +51,27 @@ from models.event import EventStudentParticipation
 from models.teacher import Teacher
 from models.pathways import pathway_events
 
+# Create blueprint for events functionality
 events_bp = Blueprint('events', __name__)
 
 def process_event_row(row, success_count, error_count, errors):
-    """Process a single event row from CSV/Salesforce data"""
+    """
+    Process a single event row from CSV/Salesforce data
+    
+    This function handles the processing of individual event records from
+    either CSV files or Salesforce API responses. It validates required
+    fields, creates or updates Event objects, and handles relationships
+    with districts, schools, and skills.
+    
+    Args:
+        row (dict): Event data from CSV or Salesforce
+        success_count (int): Running count of successful operations
+        error_count (int): Running count of failed operations
+        errors (list): List to collect error messages
+        
+    Returns:
+        tuple: Updated (success_count, error_count)
+    """
     try:
         # Get initial data to check
         parent_account = row.get('Parent_Account__c')
@@ -143,7 +190,22 @@ def process_event_row(row, success_count, error_count, errors):
         return success_count, error_count + 1
     
 def process_participation_row(row, success_count, error_count, errors):
-    """Process a single participation row from CSV data"""
+    """
+    Process a single participation row from CSV data
+    
+    This function handles volunteer participation records from CSV imports
+    or Salesforce sync operations. It creates EventParticipation records
+    linking volunteers to events with status and delivery hours.
+    
+    Args:
+        row (dict): Participation data from CSV or Salesforce
+        success_count (int): Running count of successful operations
+        error_count (int): Running count of failed operations
+        errors (list): List to collect error messages
+        
+    Returns:
+        tuple: Updated (success_count, error_count)
+    """
     try:
         # Check if participation already exists
         existing = EventParticipation.query.filter_by(salesforce_id=row['Id']).first()
@@ -180,7 +242,22 @@ def process_participation_row(row, success_count, error_count, errors):
         return success_count, error_count + 1
 
 def process_student_participation_row(row, success_count, error_count, errors):
-    """Process a single student participation row from Salesforce data"""
+    """
+    Process a single student participation row from Salesforce data
+    
+    This function handles student participation records from Salesforce sync
+    operations. It creates EventStudentParticipation records linking students
+    to events with status, delivery hours, and age group information.
+    
+    Args:
+        row (dict): Student participation data from Salesforce
+        success_count (int): Running count of successful operations
+        error_count (int): Running count of failed operations
+        errors (list): List to collect error messages
+        
+    Returns:
+        tuple: Updated (success_count, error_count)
+    """
     try:
         event_sf_id = row.get('Session__c')
         student_contact_sf_id = row.get('Contact__c') # Salesforce Contact ID for the student
@@ -247,6 +324,26 @@ def process_student_participation_row(row, success_count, error_count, errors):
 @events_bp.route('/events')
 @login_required
 def events():
+    """
+    List all events with filtering, sorting, and pagination
+    
+    This endpoint provides a comprehensive view of all events in the system
+    with advanced filtering capabilities, sorting options, and pagination.
+    
+    Query Parameters:
+    - page: Page number for pagination
+    - per_page: Items per page (10, 25, 50, 100)
+    - search_title: Text search in event titles
+    - event_type: Filter by event type
+    - status: Filter by event status
+    - start_date: Filter by start date (YYYY-MM-DD)
+    - end_date: Filter by end date (YYYY-MM-DD)
+    - sort_by: Column to sort by (title, type, start_date)
+    - sort_direction: Sort direction (asc, desc)
+    
+    Returns:
+        Rendered template with filtered and paginated events
+    """
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -359,6 +456,16 @@ def events():
 @events_bp.route('/events/add', methods=['GET', 'POST'])
 @login_required
 def add_event():
+    """
+    Create a new event
+    
+    GET: Display the event creation form
+    POST: Process form submission and create new event
+    
+    Returns:
+        GET: Rendered form template
+        POST: Redirect to event view page on success
+    """
     form = EventForm()
     
     if form.validate_on_submit():
@@ -404,6 +511,21 @@ def add_event():
 @events_bp.route('/events/view/<int:id>')
 @login_required
 def view_event(id):
+    """
+    View detailed information about a specific event
+    
+    This endpoint displays comprehensive event information including
+    participation details, skills, and related data.
+    
+    Args:
+        id (int): Event ID to view
+        
+    Returns:
+        Rendered template with event details
+        
+    Raises:
+        404: If event not found
+    """
     event = db.session.get(Event, id)
     if not event:
         abort(404)
@@ -464,6 +586,22 @@ def view_event(id):
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_event(id):
+    """
+    Edit an existing event
+    
+    GET: Display the event edit form pre-populated with current data
+    POST: Process form submission and update event
+    
+    Args:
+        id (int): Event ID to edit
+        
+    Returns:
+        GET: Rendered form template
+        POST: Redirect to event view page on success
+        
+    Raises:
+        404: If event not found
+    """
     event = db.session.get(Event, id)
     if not event:
         abort(404)
@@ -518,6 +656,20 @@ def edit_event(id):
 @events_bp.route('/events/import', methods=['GET', 'POST'])
 @login_required
 def import_events():
+    """
+    Import events from CSV files or Salesforce
+    
+    This endpoint handles both file uploads and Salesforce synchronization.
+    It supports importing events and participation data with progress
+    tracking and error reporting.
+    
+    GET: Display import interface
+    POST: Process import (CSV file or Salesforce sync)
+    
+    Returns:
+        GET: Rendered import template
+        POST: JSON response with import results
+    """
     if request.method == 'GET':
         return render_template('events/import.html')
 
@@ -617,6 +769,15 @@ def import_events():
 @events_bp.route('/events/purge', methods=['POST'])
 @login_required
 def purge_events():
+    """
+    Purge all events and related data (Admin only)
+    
+    This endpoint completely removes all events and related data from the database.
+    It should only be used for testing or complete data reset scenarios.
+    
+    Returns:
+        JSON response indicating success or failure
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
         
@@ -651,6 +812,15 @@ def purge_events():
 @events_bp.route('/events/sync-participants')
 @login_required
 def sync_participants():
+    """
+    Sync participant data from CSV file
+    
+    This endpoint reads participant data from a CSV file and creates
+    EventParticipation records linking volunteers to events.
+    
+    Returns:
+        JSON response with sync results
+    """
     try:
         csv_file = os.path.join('data', 'Session_Participant__c - volunteers.csv')
         if not os.path.exists(csv_file):
@@ -683,6 +853,15 @@ def sync_participants():
 @events_bp.route('/events/sync-events', methods=['POST'])
 @login_required
 def sync_events():
+    """
+    Sync events from CSV file
+    
+    This endpoint reads event data from a CSV file and creates or updates
+    Event records in the database.
+    
+    Returns:
+        JSON response with sync results
+    """
     try:
         # Get absolute path using application root
         csv_file = os.path.join(app.root_path, 'data', 'Sessions.csv')
@@ -714,6 +893,20 @@ def sync_events():
 @events_bp.route('/events/delete/<int:id>', methods=['DELETE'])
 @login_required
 def delete_event(id):
+    """
+    Delete an event (Admin only)
+    
+    This endpoint removes an event and all its associated data from the database.
+    
+    Args:
+        id (int): Event ID to delete
+        
+    Returns:
+        JSON response indicating success or failure
+        
+    Raises:
+        404: If event not found
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
         
@@ -737,6 +930,15 @@ def delete_event(id):
 @events_bp.route('/api/skills/find-or-create', methods=['POST'])
 @login_required
 def find_or_create_skill():
+    """
+    Find or create a skill by name
+    
+    This endpoint provides an API for finding existing skills or creating
+    new ones. It's typically used by the frontend for dynamic skill management.
+    
+    Returns:
+        JSON response with skill information
+    """
     try:
         data = request.get_json()
         skill_name = data.get('name').strip()
@@ -764,6 +966,16 @@ def find_or_create_skill():
 @events_bp.route('/events/import-from-salesforce', methods=['POST'])
 @login_required
 def import_events_from_salesforce():
+    """
+    Import events and participants from Salesforce
+    
+    This endpoint performs a comprehensive import of both events and
+    participant data from Salesforce. It handles authentication, data
+    processing, and error reporting.
+    
+    Returns:
+        JSON response with import results and statistics
+    """
     try:
         print("Fetching data from Salesforce...")
         success_count = 0
@@ -876,9 +1088,13 @@ def import_events_from_salesforce():
 @login_required
 def sync_student_participants():
     """
-    Fetches student participation data from Salesforce ('Session_Participant__c' where
-    Participant_Type__c = 'Student') and attempts to associate students with events.
-    NOTE: Requires an Event-Student association model/relationship to be implemented.
+    Sync student participation data from Salesforce
+    
+    This endpoint fetches student participation data from Salesforce and
+    creates EventStudentParticipation records in the local database.
+    
+    Returns:
+        JSON response with sync results and statistics
     """
     try:
         print("Fetching student participation data from Salesforce...")

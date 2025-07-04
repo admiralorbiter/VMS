@@ -218,3 +218,30 @@ function removeSkill(button) {
     const skillTag = button.closest('.skill-tag');
     skillTag.remove();
 }
+
+/**
+ * Notification system for user feedback
+ * Displays temporary notifications with fade in/out animations
+ * 
+ * @param {string} type - The type of notification ('success' or 'error')
+ * @param {string} message - The message to display
+ */
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Fade in animation
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}

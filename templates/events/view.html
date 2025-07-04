@@ -1,14 +1,46 @@
+{# 
+  Event View Template
+  ==================
+  
+  This template displays detailed information about a single event with comprehensive
+  participation data and related information.
+  
+  Key Features:
+  - Comprehensive event information display
+  - Participation statistics and details
+  - Skills and requirements visualization
+  - People involved (volunteers, teachers, students)
+  - Responsive card-based layout
+  - Salesforce integration links
+  - Action buttons for editing and navigation
+  
+  Template Variables:
+  - event: Event object with all related data
+  - volunteer_count: Number of volunteers associated with event
+  - participation_stats: Dictionary of volunteer participation by status
+  - event_teachers: List of EventTeacher objects with teacher details
+  - student_participations: List of EventStudentParticipation objects
+  
+  Layout Sections:
+  1. Header: Event title, badges, and action buttons
+  2. Main Content Grid: Event details, participation, people, skills
+  3. Participation Details: Volunteer and student participation breakdown
+  
+  Security: All links properly escaped and validated
+#}
+
 {% extends "base.html" %}
 
 {% block title %}{{ event.title }}{% endblock %}
 
 {% block extra_css %}
+{# Include events-specific CSS for styling and layout #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="events-container">
-    <!-- Header Section -->
+    {# Header Section with title, badges, and navigation #}
     <div class="event-header">
         <div class="header-content">
             <div class="title-info">
@@ -19,6 +51,7 @@
                 </div>
             </div>
             <div class="header-actions">
+                {# Salesforce integration link (only shown if available) #}
                 {% if event.salesforce_url %}
                 <a href="{{ event.salesforce_url }}" class="action-btn salesforce-btn" target="_blank">
                     <i class="fa-solid fa-cloud"></i> Salesforce
@@ -34,9 +67,9 @@
         </div>
     </div>
 
-    <!-- Main Content Grid -->
+    {# Main Content Grid - Responsive card layout #}
     <div class="event-content-grid">
-        <!-- Event Details Card -->
+        {# Event Details Card - Primary information #}
         <div class="event-card primary-info">
             <div class="card-header">
                 <i class="fa-solid fa-info-circle"></i>
@@ -44,7 +77,7 @@
             </div>
             <div class="card-content">
                 <div class="info-grid compact">
-                    <!-- Date & Time -->
+                    {# Date & Time Information #}
                     <div class="info-item">
                         <label><i class="fa-solid fa-calendar-plus"></i> Start Date</label>
                         <p>{{ event.start_date.strftime('%m/%d/%Y at %I:%M %p') if event.start_date else 'Not set' }}</p>
@@ -54,7 +87,7 @@
                         <p>{{ event.end_date.strftime('%m/%d/%Y at %I:%M %p') if event.end_date else 'Not set' }}</p>
                     </div>
 
-                    <!-- Format & Duration -->
+                    {# Format & Duration Information #}
                     <div class="info-item">
                         <label><i class="fa-solid {% if event.format == 'virtual' %}fa-video{% else %}fa-person{% endif %}"></i> Format</label>
                         <p>{{ event.format.value|replace('_', ' ')|title }}</p>
@@ -66,7 +99,7 @@
                     </div>
                     {% endif %}
 
-                    <!-- Location & School -->
+                    {# Location & School Information #}
                     {% if event.location %}
                     <div class="info-item">
                         <label><i class="fa-solid fa-location-dot"></i> Location</label>
@@ -80,7 +113,7 @@
                     </div>
                     {% endif %}
 
-                    <!-- Districts -->
+                    {# District Information #}
                     {% if event.districts %}
                     <div class="info-item {% if event.districts|length > 1 %}full-width{% endif %}">
                         <label><i class="fa-solid fa-building"></i> District{% if event.districts|length > 1 %}s{% endif %}</label>
@@ -98,7 +131,7 @@
                     </div>
                     {% endif %}
 
-                    <!-- Session Info (for virtual sessions) -->
+                    {# Session Information (for virtual sessions) #}
                     {% if event.session_id %}
                     <div class="info-item">
                         <label><i class="fa-solid fa-id-badge"></i> Session ID</label>
@@ -121,7 +154,7 @@
             </div>
         </div>
 
-        <!-- Capacity & Participation Card -->
+        {# Capacity & Participation Card - Statistics #}
         <div class="event-card participation-info">
             <div class="card-header">
                 <i class="fa-solid fa-users"></i>
@@ -149,14 +182,14 @@
             </div>
         </div>
 
-        <!-- People Involved Card -->
+        {# People Involved Card - Volunteers, Teachers, Educators #}
         <div class="event-card people-info">
             <div class="card-header">
                 <i class="fa-solid fa-user-group"></i>
                 <h2>People Involved</h2>
             </div>
             <div class="card-content">
-                <!-- Educators -->
+                {# Educators Section #}
                 {% if event.educators %}
                 <div class="people-section">
                     <h4><i class="fa-solid fa-chalkboard-teacher"></i> Educators</h4>
@@ -166,7 +199,7 @@
                 </div>
                 {% endif %}
 
-                <!-- Volunteers -->
+                {# Volunteers Section #}
                 {% if event.volunteers %}
                 <div class="people-section">
                     <h4><i class="fa-solid fa-briefcase"></i> Volunteers</h4>
@@ -183,7 +216,7 @@
                 </div>
                 {% endif %}
 
-                <!-- Teachers -->
+                {# Teachers Section #}
                 {% if event_teachers %}
                 <div class="people-section">
                     <h4><i class="fa-solid fa-chalkboard-user"></i> Teachers</h4>
@@ -208,7 +241,7 @@
             </div>
         </div>
 
-        <!-- Skills Card -->
+        {# Skills Card - Event skills and requirements #}
         {% if event.skills %}
         <div class="event-card skills-info">
             <div class="card-header">
@@ -219,6 +252,7 @@
                 <div class="skills-grid compact">
                     {% for skill in event.skills %}
                     <span class="skill-tag">
+                        {# Different icons based on skill category #}
                         {% if skill.name.startswith('Pathway:') %}
                             <i class="fa-solid fa-road"></i>
                         {% elif skill.name.startswith('Skill:') %}
@@ -240,7 +274,7 @@
         </div>
         {% endif %}
 
-        <!-- Description Card -->
+        {# Description Card - Event description #}
         {% if event.description %}
         <div class="event-card description-info full-width">
             <div class="card-header">
@@ -253,7 +287,7 @@
         </div>
         {% endif %}
 
-        <!-- Additional Information -->
+        {# Additional Information Card - Extra details #}
         {% if event.additional_information %}
         <div class="event-card additional-info full-width">
             <div class="card-header">
@@ -267,9 +301,9 @@
         {% endif %}
     </div>
 
-    <!-- Participation Details Section -->
+    {# Participation Details Section - Detailed breakdown #}
     <div class="participation-details">
-        <!-- Volunteer Participation -->
+        {# Volunteer Participation Card #}
         {% if participation_stats %}
         <div class="event-card">
             <div class="card-header">
@@ -283,6 +317,7 @@
                         {% if participants %}
                         <div class="participation-group">
                             <h4 class="group-title">
+                                {# Status-specific icons and colors #}
                                 {% if status == 'Attended' %}
                                     <i class="fa-solid fa-check-circle text-success"></i>
                                 {% elif status == 'No-Show' %}
@@ -320,7 +355,7 @@
         </div>
         {% endif %}
 
-        <!-- Student Participation -->
+        {# Student Participation Card #}
         {% if student_participations %}
         <div class="event-card">
             <div class="card-header">

@@ -1,13 +1,38 @@
+{# 
+  Event Creation Template
+  ======================
+  
+  This template provides a form for creating new events in the VMS system.
+  
+  Key Features:
+  - Form validation with error display
+  - Organized sections for basic info and event details
+  - FontAwesome icons for visual enhancement
+  - Responsive grid layout for form fields
+  - CSRF protection for security
+  
+  Template Variables:
+  - form: EventForm instance with validation and field definitions
+  
+  Form Sections:
+  1. Basic Information: Title, type, dates, location, format, status, volunteers needed
+  2. Event Details: Description field for detailed event information
+  
+  Security: CSRF token included for POST request protection
+#}
+
 {% extends "base.html" %}
 
 {% block title %}Add Event{% endblock %}
 
 {% block extra_css %}
+{# Include events-specific CSS for styling and layout #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="events-container">
+    {# Header section with title and navigation #}
     <div class="events-header">
         <h1>Create New Event</h1>
         <a href="{{ url_for('events.events') }}" class="cancel-btn">
@@ -15,9 +40,12 @@
         </a>
     </div>
 
+    {# Main form for event creation - POST method for data submission #}
     <form method="POST" class="event-form">
+        {# CSRF protection token - required for all POST requests #}
         {{ form.csrf_token }}
         
+        {# Error display section - shows validation errors if form submission fails #}
         {% if form.errors %}
             <div class="alert alert-danger">
                 <ul>
@@ -30,12 +58,14 @@
             </div>
         {% endif %}
 
+        {# Section 1: Basic Event Information #}
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-info-circle"></i>
                 Basic Information
             </h2>
             <div class="form-grid">
+                {# Event Title - Required field with heading icon #}
                 <div class="form-group required">
                     {{ form.title.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -44,6 +74,7 @@
                     </div>
                 </div>
 
+                {# Event Type - Required field with tag icon #}
                 <div class="form-group required">
                     {{ form.type.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -52,6 +83,7 @@
                     </div>
                 </div>
 
+                {# Start Date - Required field with calendar icon #}
                 <div class="form-group required">
                     {{ form.start_date.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -60,6 +92,7 @@
                     </div>
                 </div>
 
+                {# End Date - Required field with calendar check icon #}
                 <div class="form-group required">
                     {{ form.end_date.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -68,6 +101,7 @@
                     </div>
                 </div>
 
+                {# Location - Optional field with location icon #}
                 <div class="form-group">
                     {{ form.location.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -76,6 +110,7 @@
                     </div>
                 </div>
 
+                {# Event Format - Optional field with desktop icon #}
                 <div class="form-group">
                     {{ form.format.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -84,6 +119,7 @@
                     </div>
                 </div>
 
+                {# Event Status - Optional field with info icon #}
                 <div class="form-group">
                     {{ form.status.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -92,6 +128,7 @@
                     </div>
                 </div>
 
+                {# Volunteers Needed - Optional field with users icon #}
                 <div class="form-group">
                     {{ form.volunteers_needed.label(class="form-label") }}
                     <div class="input-wrapper">
@@ -102,6 +139,7 @@
             </div>
         </div>
 
+        {# Section 2: Event Details - Description field #}
         <div class="form-section">
             <h2 class="section-title">
                 <i class="fa-solid fa-align-left"></i>
@@ -115,6 +153,7 @@
             </div>
         </div>
 
+        {# Form action buttons - Save and Cancel #}
         <div class="form-actions">
             {{ form.submit(class="save-btn") }}
             <a href="{{ url_for('events.events') }}" class="cancel-btn">
