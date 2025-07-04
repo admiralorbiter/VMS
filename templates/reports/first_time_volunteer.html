@@ -93,8 +93,8 @@
         overflow: hidden;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         overflow-x: auto;
-        margin: 0 -20px; /* Extend beyond container padding */
-        width: calc(100% + 40px); /* Ensure full width including margins */
+        margin: 0; /* Remove negative margins */
+        width: 100%;
     }
     
     .volunteer-table table {
@@ -347,6 +347,29 @@
         pointer-events: none;
     }
     
+    /* Only override main for this page, not globally */
+    main {
+        max-width: none !important;
+        width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* Make the report container use full width, but not overflow */
+    .first-time-volunteer-container {
+        max-width: 100%;
+        width: 100%;
+        margin: 20px auto; /* Add vertical margin for spacing */
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    /* Fix volunteer-table to not overflow horizontally */
+    .volunteer-table {
+        margin: 16px 0; /* Add vertical margin for spacing */
+        width: 100%;
+        overflow-x: auto;
+    }
 
 </style>
 {% endblock %}
