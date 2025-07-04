@@ -1,3 +1,87 @@
+/**
+ * Volunteers Management JavaScript Module
+ * ======================================
+ * 
+ * This module provides comprehensive functionality for managing volunteers
+ * in the VMS, including search, sorting, pagination, deletion, and
+ * dynamic form management for contact information.
+ * 
+ * Key Features:
+ * - Advanced search with debouncing
+ * - Sortable table columns with visual indicators
+ * - Pagination with per-page selection
+ * - Volunteer deletion with confirmation modal
+ * - Purge functionality for bulk operations
+ * - Dynamic phone and address management
+ * - Participation tab system
+ * - Event expansion/collapse functionality
+ * - History section toggle
+ * 
+ * Search Functionality:
+ * - Debounced input handling (600ms delay)
+ * - Real-time form submission
+ * - Multiple search field support
+ * - URL parameter preservation
+ * 
+ * Sorting System:
+ * - Clickable column headers
+ * - Visual sort direction indicators
+ * - Toggle between ascending/descending
+ * - URL state management
+ * - Reset to first page on sort
+ * 
+ * Pagination:
+ * - Per-page selection (10, 25, 50, 100)
+ * - URL parameter management
+ * - Reset to first page on change
+ * 
+ * Delete Operations:
+ * - Confirmation modal for safety
+ * - AJAX delete requests
+ * - Error handling and user feedback
+ * - Page reload after successful deletion
+ * 
+ * Purge Operations:
+ * - Confirmation dialog for bulk deletion
+ * - AJAX purge requests
+ * - Success/error notifications
+ * - Automatic page reload
+ * 
+ * Dynamic Form Management:
+ * - Add/remove phone number groups
+ * - Add/remove address groups
+ * - Primary contact selection
+ * - Form data collection and submission
+ * 
+ * Participation System:
+ * - Tab-based event participation display
+ * - Event expansion/collapse
+ * - Status-based filtering
+ * - Dynamic content loading
+ * 
+ * Dependencies:
+ * - Bootstrap 5.3.3 CSS/JS for modal functionality
+ * - FontAwesome icons for visual indicators
+ * - Custom CSS for form styling
+ * 
+ * API Endpoints:
+ * - DELETE /volunteers/delete/{id}: Delete specific volunteer
+ * - POST /volunteers/purge: Purge all volunteers
+ * - POST /volunteers/sync: Sync volunteer data
+ * 
+ * CSS Classes:
+ * - .sortable: Sortable column headers
+ * - .phone-group/.address-group: Dynamic form groups
+ * - .participation-tab: Participation tab styling
+ * - .event-list: Event list containers
+ * - .active: Active tab/selection styling
+ * 
+ * Data Attributes:
+ * - data-volunteer-id: Volunteer ID for deletion
+ * - data-volunteer-name: Volunteer name for confirmation
+ * - data-status: Event status for filtering
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize sorting
     document.querySelectorAll('th.sortable').forEach(header => {
@@ -62,6 +146,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('add-address-btn')?.addEventListener('click', addAddressGroup);
     });
 
+    /**
+     * Add new phone number input group
+     * Creates dynamic form elements for phone number entry
+     */
     function addPhoneGroup() {
         const container = document.getElementById('phones-container');
         const phoneGroup = document.createElement('div');
@@ -83,6 +171,10 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(phoneGroup);
     }
 
+    /**
+     * Add new address input group
+     * Creates dynamic form elements for address entry
+     */
     function addAddressGroup() {
         const container = document.getElementById('addresses-container');
         const addressGroup = document.createElement('div');
@@ -111,6 +203,10 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(addressGroup);
     }
 
+    /**
+     * Remove phone or address group
+     * @param {HTMLElement} button - Remove button element
+     */
     function removeGroup(button) {
         button.closest('.phone-group, .address-group').remove();
     }
@@ -193,6 +289,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+/**
+ * Debounce function to limit function execution frequency
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {

@@ -1,11 +1,62 @@
 /**
- * Organization Reports - Sorting functionality
+ * Organization Reports JavaScript Module
+ * ====================================
+ * 
+ * This module provides sorting functionality for organization reports,
+ * including table column sorting with visual indicators and URL state management.
+ * 
+ * Key Features:
+ * - Clickable column sorting
+ * - Visual sort direction indicators
+ * - URL parameter management
+ * - Toggle between ascending/descending
+ * - Active sort highlighting
+ * - Helper function for sort URL generation
+ * 
+ * Sorting System:
+ * - Clickable table headers with data-sort attributes
+ * - Toggle between ascending and descending order
+ * - URL state preservation
+ * - Visual feedback for active sorting
+ * - Automatic page reload with new sort parameters
+ * 
+ * URL Parameters:
+ * - sort_by: Column to sort by
+ * - sort_order: Sort direction ('asc' or 'desc')
+ * - Preserves other URL parameters during sorting
+ * 
+ * Visual Indicators:
+ * - .active: Applied to currently sorted column
+ * - .asc/.desc: Applied to indicate sort direction
+ * - Hover effects for sortable columns
+ * 
+ * Dependencies:
+ * - Bootstrap 5.3.3 CSS for table styling
+ * - Custom CSS for sort indicators
+ * - FontAwesome icons (if used for sort indicators)
+ * 
+ * CSS Classes:
+ * - .sortable: Sortable column headers
+ * - .active: Active sort column
+ * - .asc/.desc: Sort direction indicators
+ * 
+ * Data Attributes:
+ * - data-sort: Column identifier for sorting
+ * 
+ * Usage:
+ * - Automatically initializes on DOM content loaded
+ * - Requires sortable headers with data-sort attributes
+ * - Works with existing table structure
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeSorting();
 });
 
+/**
+ * Initialize sorting functionality for organization reports
+ * Sets up click handlers and visual indicators
+ */
 function initializeSorting() {
     const sortableHeaders = document.querySelectorAll('.sortable');
     
@@ -43,7 +94,11 @@ function initializeSorting() {
 }
 
 /**
- * Helper function to get sorting URL
+ * Helper function to generate sorting URLs
+ * @param {string} sortBy - Column to sort by
+ * @param {string} currentSort - Currently active sort column
+ * @param {string} currentOrder - Current sort order
+ * @returns {string} URL with updated sort parameters
  */
 function getSortUrl(sortBy, currentSort, currentOrder) {
     const url = new URL(window.location);

@@ -1,3 +1,65 @@
+/**
+ * Organizations Management JavaScript Module
+ * ========================================
+ * 
+ * This module provides comprehensive functionality for managing organizations
+ * in the VMS, including search, sorting, pagination, deletion, and purge operations.
+ * 
+ * Key Features:
+ * - Debounced search functionality
+ * - Sortable table columns with visual indicators
+ * - Pagination with per-page selection
+ * - Organization deletion with confirmation modal
+ * - Purge functionality for bulk operations
+ * - Notification system for user feedback
+ * - URL parameter management
+ * 
+ * Search Functionality:
+ * - Debounced input handling (600ms delay)
+ * - Real-time form submission
+ * - Multiple search field support
+ * - URL parameter preservation
+ * 
+ * Sorting System:
+ * - Clickable column headers
+ * - Visual sort direction indicators
+ * - Toggle between ascending/descending
+ * - URL state management
+ * - Reset to first page on sort
+ * 
+ * Pagination:
+ * - Per-page selection (10, 25, 50, 100)
+ * - URL parameter management
+ * - Reset to first page on change
+ * 
+ * Delete Operations:
+ * - Confirmation modal for safety
+ * - AJAX delete requests
+ * - Error handling and user feedback
+ * - Page reload after successful deletion
+ * 
+ * Purge Operations:
+ * - Confirmation dialog for bulk deletion
+ * - AJAX purge requests
+ * - Success/error notifications
+ * - Automatic page reload
+ * 
+ * Dependencies:
+ * - Bootstrap 5.3.3 CSS/JS for modal functionality
+ * - FontAwesome icons for visual indicators
+ * - Custom CSS for notification styling
+ * 
+ * API Endpoints:
+ * - DELETE /organizations/delete/{id}: Delete specific organization
+ * - POST /organizations/purge: Purge all organizations
+ * 
+ * CSS Classes:
+ * - .sortable: Sortable column headers
+ * - .notification: Notification styling
+ * - .show: Show notification
+ * - .success/.error: Notification types
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize search with debouncing
     const searchInputs = document.querySelectorAll('.filter-group input[type="text"]');
@@ -23,6 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+/**
+ * Debounce function to limit function execution frequency
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -35,11 +103,19 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Handle search input changes
+ * @param {Event} event - Input event
+ */
 function handleSearch(event) {
     const form = event.target.closest('form');
     form.submit();
 }
 
+/**
+ * Handle per-page selection changes
+ * @param {Event} event - Change event
+ */
 function handlePerPageChange(event) {
     const url = new URL(window.location);
     url.searchParams.set('per_page', event.target.value);
@@ -47,19 +123,26 @@ function handlePerPageChange(event) {
     window.location = url;
 }
 
+// Global variable to store organization ID for deletion
 let organizationToDelete = null;
 
+/**
+ * Initiate organization deletion process
+ * @param {number} organizationId - ID of organization to delete
+ */
 function deleteOrganization(organizationId) {
     organizationToDelete = organizationId;
     const modal = document.getElementById('deleteModal');
     modal.style.display = 'block';
 }
 
+// Cancel delete button event handler
 document.getElementById('cancelDelete').addEventListener('click', function() {
     document.getElementById('deleteModal').style.display = 'none';
     organizationToDelete = null;
 });
 
+// Confirm delete button event handler
 document.getElementById('confirmDelete').addEventListener('click', async function() {
     if (organizationToDelete) {
         try {
@@ -89,6 +172,10 @@ window.addEventListener('click', function(event) {
     }
 });
 
+/**
+ * Purge all organizations with confirmation
+ * Performs bulk deletion of all organizations and their affiliations
+ */
 function purgeOrganizations() {
     if (confirm('Are you sure you want to purge ALL organizations? This will delete all organizations and their affiliations. This action cannot be undone.')) {
         fetch('/organizations/purge', {
@@ -115,7 +202,11 @@ function purgeOrganizations() {
     }
 }
 
-// Add this if you don't already have a showNotification function
+/**
+ * Show notification to user
+ * @param {string} type - Notification type ('success' or 'error')
+ * @param {string} message - Notification message
+ */
 function showNotification(type, message) {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
@@ -136,6 +227,10 @@ function showNotification(type, message) {
     }, 5000);
 }
 
+/**
+ * Get current sort parameters from URL
+ * @returns {Object} Object with sort field and direction
+ */
 function getCurrentSort() {
     const url = new URL(window.location);
     return {
@@ -144,6 +239,11 @@ function getCurrentSort() {
     };
 }
 
+/**
+ * Update sort icon in table header
+ * @param {HTMLElement} header - Table header element
+ * @param {string} direction - Sort direction ('asc' or 'desc')
+ */
 function updateSortIcon(header, direction) {
     // Remove all existing sort icons
     header.querySelectorAll('i').forEach(icon => {
@@ -159,6 +259,10 @@ function updateSortIcon(header, direction) {
     }
 }
 
+/**
+ * Handle table column sorting
+ * @param {Event} event - Click event on sortable header
+ */
 function handleSort(event) {
     const header = event.currentTarget;
     const sortField = header.dataset.sort;

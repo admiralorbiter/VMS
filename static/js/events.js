@@ -1,3 +1,80 @@
+/**
+ * Events Management JavaScript Module
+ * ==================================
+ * 
+ * This module provides comprehensive functionality for managing events
+ * in the VMS, including search, sorting, pagination, deletion, purge
+ * operations, and dynamic skills management.
+ * 
+ * Key Features:
+ * - Advanced search with debouncing
+ * - Sortable table columns with visual indicators
+ * - Pagination with per-page selection
+ * - Event deletion with confirmation modal
+ * - Purge functionality for bulk operations
+ * - Dynamic skills management with API integration
+ * - Notification system for user feedback
+ * - URL parameter management
+ * 
+ * Search Functionality:
+ * - Debounced input handling (600ms delay)
+ * - Real-time form submission
+ * - Multiple search field support
+ * - URL parameter preservation
+ * 
+ * Sorting System:
+ * - Clickable column headers with data-sort attributes
+ * - Visual sort direction indicators
+ * - Toggle between ascending/descending
+ * - URL state management
+ * - Reset to first page on sort
+ * 
+ * Pagination:
+ * - Per-page selection (10, 25, 50, 100)
+ * - URL parameter management
+ * - Reset to first page on change
+ * - Preserve existing filters and sort
+ * 
+ * Delete Operations:
+ * - Confirmation modal for safety
+ * - AJAX delete requests
+ * - Error handling and user feedback
+ * - Page reload after successful deletion
+ * 
+ * Purge Operations:
+ * - Confirmation dialog for bulk deletion
+ * - AJAX purge requests
+ * - Success/error notifications
+ * - Automatic page reload
+ * 
+ * Skills Management:
+ * - Dynamic skill addition via API
+ * - Duplicate skill prevention
+ * - Visual skill tags with remove functionality
+ * - Real-time skill creation and association
+ * 
+ * Dependencies:
+ * - Bootstrap 5.3.3 CSS/JS for modal functionality
+ * - FontAwesome icons for visual indicators
+ * - Custom CSS for skill tag styling
+ * 
+ * API Endpoints:
+ * - DELETE /events/delete/{id}: Delete specific event
+ * - POST /events/purge: Purge all events
+ * - POST /api/skills/find-or-create: Create or find skill
+ * 
+ * CSS Classes:
+ * - .sortable: Sortable column headers
+ * - .skill-tag: Skill tag styling
+ * - .notification: Notification styling
+ * - .show: Show notification
+ * - .success/.error: Notification types
+ * 
+ * Data Attributes:
+ * - data-sort: Column identifier for sorting
+ * - data-skill-id: Skill ID for API operations
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize sorting
     const url = new URL(window.location);
@@ -34,6 +111,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+/**
+ * Debounce function to limit function execution frequency
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -46,6 +129,10 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Handle table column sorting
+ * @param {HTMLElement} header - Table header element
+ */
 function handleSort(header) {
     const sortField = header.dataset.sort;
     const url = new URL(window.location);
@@ -66,6 +153,11 @@ function handleSort(header) {
     window.location = url.toString();
 }
 
+/**
+ * Update sort icon in table header
+ * @param {HTMLElement} header - Table header element
+ * @param {string} direction - Sort direction ('asc' or 'desc')
+ */
 function updateSortIcon(header, direction) {
     const icon = header.querySelector('i.fa-sort');
     if (icon) {
@@ -74,11 +166,19 @@ function updateSortIcon(header, direction) {
     }
 }
 
+/**
+ * Handle search input changes
+ * @param {Event} event - Input event
+ */
 function handleSearch(event) {
     const form = event.target.closest('form');
     form.submit();
 }
 
+/**
+ * Confirm and execute purge operations
+ * Performs bulk deletion of all events with confirmation
+ */
 function confirmPurge() {
     if (confirm('Are you sure you want to purge all event data? This action cannot be undone.')) {
         fetch('/events/purge', { 
@@ -103,6 +203,10 @@ function confirmPurge() {
     }
 }
 
+/**
+ * Handle per-page selection changes
+ * @param {Event} event - Change event
+ */
 function handlePerPageChange(event) {
     const url = new URL(window.location);
     
@@ -116,8 +220,13 @@ function handlePerPageChange(event) {
     window.location = url.toString();
 }
 
+// Global variable to store event ID for deletion
 let eventToDelete = null;
 
+/**
+ * Initiate event deletion process
+ * @param {number} eventId - ID of event to delete
+ */
 function deleteEvent(eventId) {
     eventToDelete = eventId;
     const modal = document.getElementById('deleteModal');
@@ -135,12 +244,18 @@ function deleteEvent(eventId) {
     };
 }
 
+/**
+ * Close the delete confirmation modal
+ */
 function closeDeleteModal() {
     const modal = document.getElementById('deleteModal');
     modal.style.display = 'none';
     eventToDelete = null;
 }
 
+/**
+ * Execute event deletion via AJAX
+ */
 function confirmDelete() {
     if (!eventToDelete) return;
     
@@ -167,6 +282,10 @@ function confirmDelete() {
     });
 }
 
+/**
+ * Add a new skill to the event
+ * Creates skill via API and adds visual tag
+ */
 function addSkill() {
     const input = document.getElementById('skill-input');
     const skillName = input.value.trim();
@@ -198,33 +317,39 @@ function addSkill() {
             skillTag.className = 'skill-tag';
             skillTag.dataset.skillId = data.skill.id;
             skillTag.innerHTML = `
-                <span>${data.skill.name}</span>
-                <button type="button" onclick="removeSkill(this)">
+                <span>${skillName}</span>
+                <button type="button" class="remove-skill" onclick="removeSkill(this)">
                     <i class="fa-solid fa-times"></i>
                 </button>
-                <input type="hidden" name="skills[]" value="${data.skill.id}">
             `;
+            
             skillsContainer.appendChild(skillTag);
             input.value = '';
+            showNotification('success', 'Skill added successfully');
+        } else {
+            showNotification('error', data.error || 'Error adding skill');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error adding skill');
+        showNotification('error', 'Error adding skill');
     });
 }
 
+/**
+ * Remove skill tag from event
+ * @param {HTMLElement} button - Remove button element
+ */
 function removeSkill(button) {
     const skillTag = button.closest('.skill-tag');
     skillTag.remove();
+    showNotification('success', 'Skill removed');
 }
 
 /**
- * Notification system for user feedback
- * Displays temporary notifications with fade in/out animations
- * 
- * @param {string} type - The type of notification ('success' or 'error')
- * @param {string} message - The message to display
+ * Show notification to user
+ * @param {string} type - Notification type ('success' or 'error')
+ * @param {string} message - Notification message
  */
 function showNotification(type, message) {
     const notification = document.createElement('div');
@@ -236,10 +361,10 @@ function showNotification(type, message) {
     
     document.body.appendChild(notification);
     
-    // Fade in animation
+    // Fade in
     setTimeout(() => notification.classList.add('show'), 100);
     
-    // Auto-remove after 5 seconds
+    // Remove after 5 seconds
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);

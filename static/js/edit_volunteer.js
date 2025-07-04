@@ -1,8 +1,83 @@
+/**
+ * Edit Volunteer Form JavaScript Module
+ * ====================================
+ * 
+ * This module provides functionality for the volunteer editing form,
+ * including dynamic phone and address management, form data collection,
+ * and AJAX form submission with error handling.
+ * 
+ * Key Features:
+ * - Dynamic phone number management
+ * - Dynamic address management
+ * - Form data collection and validation
+ * - AJAX form submission
+ * - Error handling and user feedback
+ * - Redirect on successful update
+ * 
+ * Dynamic Form Management:
+ * - Add/remove phone number groups
+ * - Add/remove address groups
+ * - Primary contact selection
+ * - Form validation
+ * - Real-time form updates
+ * 
+ * Phone Management:
+ * - Phone number input with validation
+ * - Type selection (personal/professional)
+ * - Primary phone designation
+ * - Remove functionality
+ * - Required field validation
+ * 
+ * Address Management:
+ * - Multi-line address input
+ * - Type selection (personal/professional)
+ * - Primary address designation
+ * - Remove functionality
+ * - Required field validation
+ * 
+ * Form Submission:
+ * - AJAX submission with FormData
+ * - JSON serialization of complex data
+ * - Server response handling
+ * - Error display and user feedback
+ * - Automatic redirect on success
+ * 
+ * Data Structure:
+ * - Phone objects with number, type, and primary flag
+ * - Address objects with all address fields and metadata
+ * - FormData for multipart form submission
+ * - JSON serialization for complex data
+ * 
+ * Dependencies:
+ * - Bootstrap 5.3.3 CSS/JS for form styling
+ * - FontAwesome icons for remove buttons
+ * - Custom CSS for form group styling
+ * 
+ * CSS Classes:
+ * - .phone-group/.address-group: Dynamic form groups
+ * - .remove-btn: Remove button styling
+ * - .form-control: Input field styling
+ * - .form-select: Select dropdown styling
+ * - .form-check: Checkbox/radio styling
+ * 
+ * Form Structure:
+ * - #phones-container: Container for phone groups
+ * - #addresses-container: Container for address groups
+ * - .volunteer-form: Main form element
+ * - .phone-input: Phone number input field
+ * - .type-select: Type selection dropdown
+ * - .primary-check: Primary selection radio button
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize add buttons with direct function assignments
     const addPhoneBtn = document.getElementById('add-phone-btn');
     const addAddressBtn = document.getElementById('add-address-btn');
 
+    /**
+     * Initialize phone number management
+     * Sets up add button functionality for phone groups
+     */
     if (addPhoneBtn) {
         addPhoneBtn.addEventListener('click', function() {
             const container = document.getElementById('phones-container');
@@ -33,6 +108,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    /**
+     * Initialize address management
+     * Sets up add button functionality for address groups
+     */
     if (addAddressBtn) {
         addAddressBtn.addEventListener('click', function() {
             const container = document.getElementById('addresses-container');
@@ -70,7 +149,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Form submission handler
+    /**
+     * Initialize form submission handler
+     * Collects form data and submits via AJAX
+     */
     const form = document.querySelector('.volunteer-form');
     if (form) {
         form.addEventListener('submit', function(e) {

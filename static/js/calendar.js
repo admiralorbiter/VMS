@@ -1,6 +1,56 @@
 /**
- * Calendar JavaScript functionality
- * Handles FullCalendar initialization, event interactions, and modal management
+ * Calendar JavaScript Module
+ * =========================
+ * 
+ * This module provides comprehensive calendar functionality for the VMS using FullCalendar.
+ * It handles event display, interaction, modal management, and custom styling.
+ * 
+ * Key Features:
+ * - FullCalendar integration with multiple view options
+ * - Event click handling with modal display
+ * - Custom event styling based on status and date
+ * - Tooltip functionality for event details
+ * - Responsive design support
+ * - Event navigation and filtering
+ * 
+ * Calendar Views:
+ * - Month grid (default)
+ * - Week timeline
+ * - Day timeline
+ * - List view
+ * 
+ * Event Interactions:
+ * - Click to view details in modal
+ * - Hover for tooltip information
+ * - Navigation between views
+ * - Date range selection
+ * 
+ * Modal Features:
+ * - Event title and description
+ * - Date and time information
+ * - Location and type details
+ * - Status information
+ * - Direct link to full event page
+ * 
+ * Dependencies:
+ * - FullCalendar 6.1.15 library
+ * - Bootstrap 5.3.3 for modal functionality
+ * - Bootstrap Tooltip component
+ * - Custom CSS for event styling
+ * 
+ * API Endpoints:
+ * - GET /calendar/events: Fetch calendar events
+ * - GET /events/view/{id}: View event details
+ * 
+ * CSS Classes:
+ * - .cancelled-event: Styling for cancelled events
+ * - .past-event: Styling for past events
+ * - .fc-event: FullCalendar event styling
+ * 
+ * Usage:
+ * - Automatically initializes on DOM content loaded
+ * - Requires calendar container with id="calendar"
+ * - Requires event modal with proper structure
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -43,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Populate the event modal with event details
- * @param {Object} event - FullCalendar event object
+ * @param {Object} event - FullCalendar event object with extended properties
  */
 function populateEventModal(event) {
     document.getElementById('eventTitle').textContent = event.title;
@@ -57,7 +107,7 @@ function populateEventModal(event) {
 
 /**
  * Set up the view details button with correct event URL
- * @param {string} eventId - The event ID
+ * @param {string} eventId - The event ID for navigation
  */
 function setupViewDetailsButton(eventId) {
     const viewEventBtn = document.getElementById('viewEventBtn');
