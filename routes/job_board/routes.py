@@ -153,11 +153,7 @@ def purge_jobs():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@job_board_bp.route('/tech_jobs/import', methods=['GET', 'POST'])
-@login_required
-def import_tech_jobs():
-    if request.method == 'GET':
-        return render_template('job_board/import.html')
+
     
     try:
         success_count = 0
@@ -267,130 +263,7 @@ def import_tech_jobs():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@job_board_bp.route('/tech_jobs/import/quick', methods=['POST'])
-@login_required
-def quick_import_tech_jobs():
-    import_type = request.args.get('type', 'tech_jobs')
-    try:
-        success_count = 0
-        error_count = 0
-        errors = []
 
-        if import_type == 'tech_jobs':
-            csv_path = 'data/KC Tech Jobs.csv'
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                csv_data = csv.DictReader(file)
-                # First, deactivate all existing jobs
-                JobOpportunity.query.update({JobOpportunity.is_active: False})
-                
-                for row in csv_data:
-                    try:
-                        # Skip empty rows
-                        if not row['Name']:
-                            continue
-                        
-                        # Map CSV data to model fields
-                        job = JobOpportunity.query.filter_by(company_name=row['Name']).first()
-                        if not job:
-                            job = JobOpportunity()
-                        
-                        job.company_name = row['Name']
-                        job.description = row['Description']
-                        job.industry = row['Industry']
-                        job.current_openings = int(row['Current Local Openings']) if row['Current Local Openings'] else 0
-                        job.opening_types = row['Type of Openings']
-                        job.location = row['Location']
-                        
-                        # Convert Yes/No/One to boolean
-                        job.entry_level_available = row['Entry Avaible?'].lower() in ['yes', 'one']
-                        job.kc_based = row['KC Based'].lower() == 'yes'
-                        
-                        # Check for remote in location
-                        job.remote_available = 'remote' in row['Location'].lower() if row['Location'] else False
-                        
-                        job.notes = row['Notes']
-                        job.job_link = row['Link to Jobs']
-                        job.is_active = True
-                        
-                        db.session.add(job)
-                        success_count += 1
-                        
-                    except Exception as e:
-                        error_count += 1
-                        errors.append(f"Error processing {row.get('Name', 'Unknown')}: {str(e)}")
-                        continue
-                
-                try:
-                    db.session.commit()
-                    return jsonify({
-                        'success': True,
-                        'successCount': success_count,
-                        'errorCount': error_count,
-                        'errors': errors
-                    })
-                except Exception as e:
-                    db.session.rollback()
-                    return jsonify({'error': f'Database error: {str(e)}'}), 500
-                    
-        elif import_type == 'entry_level':
-            csv_path = 'data/entry_level_jobs.csv'
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                csv_data = csv.DictReader(file)
-                
-                for row in csv_data:
-                    try:
-                        # Find parent job opportunity
-                        job = JobOpportunity.query.filter_by(
-                            company_name=row['Company Name'],
-                            is_active=True
-                        ).first()
-                        
-                        if not job:
-                            error_count += 1
-                            errors.append(f"Parent job not found for {row['Company Name']}")
-                            continue
-                        
-                        # Check for existing entry level job
-                        entry_job = EntryLevelJob.query.filter_by(
-                            job_opportunity_id=job.id,
-                            title=row['Position Title']
-                        ).first()
-                        
-                        if not entry_job:
-                            entry_job = EntryLevelJob()
-                        
-                        # Update entry job fields
-                        entry_job.job_opportunity_id = job.id
-                        entry_job.title = row['Position Title']
-                        entry_job.description = row['Description']
-                        entry_job.address = row['Address']
-                        entry_job.job_link = row['Job Link']
-                        entry_job.skills_needed = row['Skills Needed']
-                        entry_job.work_location = WorkLocationType(row['Work Location'].lower())
-                        entry_job.is_active = True
-                        
-                        db.session.add(entry_job)
-                        success_count += 1
-                        
-                    except Exception as e:
-                        error_count += 1
-                        errors.append(f"Error processing {row.get('Position Title', 'Unknown')}: {str(e)}")
-                        continue
-                
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'successCount': success_count,
-            'errorCount': error_count,
-            'errors': errors
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @job_board_bp.route('/tech_jobs/entry_level/add/<int:job_id>', methods=['GET', 'POST'])
 @login_required
