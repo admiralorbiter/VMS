@@ -3,8 +3,11 @@
 {% block title %}Event Attendance Details{% endblock %}
 
 {% block extra_css %}
+<!-- Custom CSS for attendance details interface -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance_details.css') }}">
+<!-- Inline styles for event type filter pills -->
 <style>
+/* Event type filter styling for interactive checkboxes */
 .event-type-filter {
     margin-bottom: 1.5rem;
 }
@@ -43,8 +46,11 @@
 {% endblock %}
 
 {% block content %}
+<!-- Main container for event attendance details -->
 <div class="attendance-details-container">
     <h1>Event Attendance Details (Academic Year)</h1>
+    
+    <!-- Academic year selection form -->
     <form id="yearSelectForm" method="get" style="margin-bottom: 1.5rem;">
         <label for="yearSelect"><strong>Academic Year:</strong></label>
         <select id="yearSelect" name="year" onchange="document.getElementById('yearSelectForm').submit()">
@@ -53,9 +59,12 @@
             {% endfor %}
         </select>
     </form>
+    
+    <!-- Event type filter section with interactive checkboxes -->
     <div id="eventTypeFilter" class="event-type-filter">
         <strong>Event Types:</strong>
         <div class="event-type-pills">
+        <!-- Default event types that are checked by default -->
         {% set default_types = ['career_speaker', 'career_jumping', 'career_fair', 'college_fair'] %}
         {% for et in event_types %}
             <label class="event-type-pill">
@@ -65,6 +74,8 @@
         {% endfor %}
         </div>
     </div>
+    
+    <!-- Main attendance details table -->
     <table class="table attendance-details-table" id="detailsTable">
         <thead>
             <tr>
@@ -82,6 +93,7 @@
             </tr>
         </thead>
         <tbody id="detailsTableBody">
+            <!-- Server-side rendered event rows -->
             {% for event in events %}
             <tr data-event-id="{{ event.id }}">
                 <td>{{ event.title }}</td>
@@ -99,7 +111,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <a href="#" class="btn btn-sm btn-primary">Edit</a>
+                    <a href="#" class="btn btn-sm btn-primary edit-attendance-btn">Edit</a>
                 </td>
             </tr>
             {% endfor %}
@@ -109,20 +121,29 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- JavaScript for attendance details functionality -->
 <script src="{{ url_for('static', filename='js/attendance_details.js') }}"></script>
 <script>
-// AJAX event type filtering
+// AJAX-based event type filtering functionality
 function fetchAndRenderEvents() {
+    // Get selected academic year and checked event types
     const year = document.getElementById('yearSelect').value;
     const checked = Array.from(document.querySelectorAll('.event-type-checkbox:checked')).map(cb => cb.value);
+    
+    // Build query parameters for AJAX request
     const params = new URLSearchParams();
     params.append('year', year);
     checked.forEach(t => params.append('types[]', t));
+    
+    // Fetch filtered events from server
     fetch(`/attendance/details/events_json?${params.toString()}`)
         .then(res => res.json())
         .then(events => {
+            // Update table body with filtered results
             const tbody = document.getElementById('detailsTableBody');
             tbody.innerHTML = '';
+            
+            // Render each event row
             events.forEach(event => {
                 const ad = event.attendance_detail || {};
                 tbody.innerHTML += `
@@ -137,16 +158,18 @@ function fetchAndRenderEvents() {
                     <td>${ad.groups_rotations || ''}</td>
                     <td>${ad.is_stem ? '✔' : ''}</td>
                     <td>${ad.attendance_link ? `<a href="${ad.attendance_link}" target="_blank">Link</a>` : ''}</td>
-                    <td><a href="#" class="btn btn-sm btn-primary">Edit</a></td>
+                    <td><a href="#" class="btn btn-sm btn-primary edit-attendance-btn">Edit</a></td>
                 </tr>`;
             });
         });
 }
 
+// Add event listeners to all event type checkboxes
 document.querySelectorAll('.event-type-checkbox').forEach(cb => {
     cb.addEventListener('change', fetchAndRenderEvents);
 });
-// Fetch on page load if any are checked by default
+
+// Fetch events on page load if any checkboxes are checked by default
 fetchAndRenderEvents();
 </script>
 {% endblock %} 

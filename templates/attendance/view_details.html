@@ -2,17 +2,22 @@
 
 {% block title %}View {{ type|title }} Details{% endblock %}
 {% block extra_css %}
+<!-- Custom CSS for detailed view interface -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance_details.css') }}">
 {% endblock %}
 
 {% block content %}
+<!-- Main container for detailed contact view -->
 <div class="details-container">
+    <!-- Page header with dynamic icon and navigation -->
     <div class="details-header">
         <h1>
+            <!-- Dynamic icon based on contact type -->
             <i class="fas {% if type == 'student' %}fa-user-graduate{% else %}fa-chalkboard-teacher{% endif %}"></i>
             {{ contact.first_name }} {{ contact.last_name }}
         </h1>
         <div class="header-actions">
+            <!-- Back navigation button -->
             <a href="{{ url_for('attendance.view_attendance') }}" class="action-btn">
                 <i class="fas fa-arrow-left"></i>
                 Back to List
@@ -20,10 +25,13 @@
         </div>
     </div>
 
+    <!-- Main content area with multiple information sections -->
     <div class="details-content">
+        <!-- Basic Information Section -->
         <div class="details-section">
             <h2>Basic Information</h2>
             <div class="details-grid">
+                <!-- Full name with optional salutation and suffix -->
                 <div class="detail-item">
                     <label>Full Name</label>
                     <span>
@@ -35,6 +43,7 @@
                     </span>
                 </div>
                 
+                <!-- Gender information (if available) -->
                 {% if contact.gender %}
                 <div class="detail-item">
                     <label>Gender</label>
@@ -42,7 +51,9 @@
                 </div>
                 {% endif %}
 
+                <!-- Teacher-specific information -->
                 {% if type == 'teacher' %}
+                    <!-- Department information -->
                     {% if contact.department %}
                     <div class="detail-item">
                         <label>Department</label>
@@ -50,6 +61,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- School ID for teachers -->
                     {% if contact.school_id %}
                     <div class="detail-item">
                         <label>School ID</label>
@@ -57,13 +69,16 @@
                     </div>
                     {% endif %}
 
+                    <!-- Active status indicator -->
                     <div class="detail-item">
                         <label>Status</label>
                         <span>{{ 'Active' if contact.active else 'Inactive' }}</span>
                     </div>
                 {% endif %}
 
+                <!-- Student-specific information -->
                 {% if type == 'student' %}
+                    <!-- Salesforce individual ID with optional link -->
                     {% if contact.salesforce_individual_id %}
                     <div class="detail-item">
                         <label>Salesforce ID</label>
@@ -80,6 +95,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Salesforce account ID with optional link -->
                     {% if contact.salesforce_account_id %}
                     <div class="detail-item">
                         <label>Account ID</label>
@@ -96,6 +112,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Local student ID -->
                     {% if contact.student_id %}
                     <div class="detail-item">
                         <label>Student ID</label>
@@ -103,6 +120,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- School information with relationship lookup -->
                     {% if contact.school_id %}
                     <div class="detail-item">
                         <label>School</label>
@@ -116,6 +134,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Class information with year -->
                     {% if contact.class_ref %}
                     <div class="detail-item">
                         <label>Class</label>
@@ -128,6 +147,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Current grade level -->
                     {% if contact.current_grade %}
                     <div class="detail-item">
                         <label>Current Grade</label>
@@ -135,6 +155,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Legacy grade information -->
                     {% if contact.legacy_grade %}
                     <div class="detail-item">
                         <label>Legacy Grade</label>
@@ -142,6 +163,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Racial/ethnic background -->
                     {% if contact.racial_ethnic %}
                     <div class="detail-item">
                         <label>Racial/Ethnic Background</label>
@@ -149,6 +171,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Birthdate with formatted display -->
                     {% if contact.birthdate %}
                     <div class="detail-item">
                         <label>Birthdate</label>
@@ -156,6 +179,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- School code -->
                     {% if contact.school_code %}
                     <div class="detail-item">
                         <label>School Code</label>
@@ -163,6 +187,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- English Language Learner information -->
                     {% if contact.ell_language %}
                     <div class="detail-item">
                         <label>ELL Language</label>
@@ -170,6 +195,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Gifted program status -->
                     {% if contact.gifted is not none %}
                     <div class="detail-item">
                         <label>Gifted</label>
@@ -177,6 +203,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Lunch status -->
                     {% if contact.lunch_status %}
                     <div class="detail-item">
                         <label>Lunch Status</label>
@@ -187,9 +214,11 @@
             </div>
         </div>
 
+        <!-- Contact Information Section -->
         <div class="details-section">
             <h2>Contact Information</h2>
             <div class="details-grid">
+                <!-- Primary email address -->
                 {% if primary_email %}
                 <div class="detail-item">
                     <label>Primary Email</label>
@@ -197,6 +226,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Primary phone number -->
                 {% if primary_phone %}
                 <div class="detail-item">
                     <label>Primary Phone</label>
@@ -204,6 +234,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Primary address with multi-line formatting -->
                 {% if primary_address %}
                 <div class="detail-item">
                     <label>Primary Address</label>
@@ -217,10 +248,13 @@
             </div>
         </div>
 
+        <!-- Teacher-specific sections -->
         {% if type == 'teacher' %}
+        <!-- Connector Information Section -->
         <div class="details-section">
             <h2>Connector Information</h2>
             <div class="details-grid">
+                <!-- Connector role -->
                 {% if contact.connector_role %}
                 <div class="detail-item">
                     <label>Connector Role</label>
@@ -228,11 +262,13 @@
                 </div>
                 {% endif %}
 
+                <!-- Connector active status -->
                 <div class="detail-item">
                     <label>Connector Status</label>
                     <span>{{ 'Active' if contact.connector_active else 'Inactive' }}</span>
                 </div>
 
+                <!-- Connector start date -->
                 {% if contact.connector_start_date %}
                 <div class="detail-item">
                     <label>Start Date</label>
@@ -240,6 +276,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Connector end date -->
                 {% if contact.connector_end_date %}
                 <div class="detail-item">
                     <label>End Date</label>
@@ -249,9 +286,11 @@
             </div>
         </div>
 
+        <!-- Email Tracking Section -->
         <div class="details-section">
             <h2>Email Tracking</h2>
             <div class="details-grid">
+                <!-- Last email message date -->
                 {% if contact.last_email_message %}
                 <div class="detail-item">
                     <label>Last Email Message</label>
@@ -259,6 +298,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Last Mailchimp email date -->
                 {% if contact.last_mailchimp_date %}
                 <div class="detail-item">
                     <label>Last Mailchimp Email</label>

@@ -1,3 +1,10 @@
+# Attendance management routes for VMS (Volunteer Management System)
+# This module handles all attendance-related functionality including:
+# - Viewing student and teacher lists with pagination
+# - Importing data from Salesforce
+# - Managing event attendance details
+# - Data purging operations
+
 from flask import Blueprint, render_template, request, jsonify, current_app, abort
 from flask_login import login_required
 import pandas as pd
@@ -16,29 +23,37 @@ from models.attendance import EventAttendanceDetail
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 
+# Create Blueprint for attendance routes
 attendance = Blueprint('attendance', __name__)
 
 @attendance.route('/attendance')
 @login_required
 def view_attendance():
-    # Get pagination parameters
+    """
+    Main attendance management page showing paginated lists of students and teachers.
+    
+    Returns:
+        Rendered template with paginated student and teacher data
+    """
+    # Get pagination parameters from request
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    # Query with pagination
+    # Query students with pagination
     students = Student.query.paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
     
+    # Query teachers with pagination
     teachers = Teacher.query.paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
     
-    # Calculate total pages for both tables
+    # Calculate total counts for pagination info
     total_students = Student.query.count()
     total_teachers = Teacher.query.count()
     
@@ -53,18 +68,20 @@ def view_attendance():
         per_page_options=[10, 25, 50, 100]
     )
 
-
-
-
-
-
-
 def map_racial_ethnic_value(value):
-    """Clean and standardize racial/ethnic values from Salesforce."""
+    """
+    Clean and standardize racial/ethnic values from Salesforce.
+    
+    Args:
+        value: Raw racial/ethnic value from Salesforce
+        
+    Returns:
+        Cleaned and standardized value or None if empty
+    """
     if not value:
         return None
         
-    # Clean the input
+    # Clean the input by stripping whitespace
     value = value.strip()
     
     # Return the cleaned value directly
@@ -73,17 +90,26 @@ def map_racial_ethnic_value(value):
 @attendance.route('/attendance/purge', methods=['POST'])
 @login_required
 def purge_attendance():
+    """
+    Purge attendance data (students, teachers, or all).
+    
+    This is a destructive operation that permanently deletes data.
+    Use with extreme caution.
+    
+    Returns:
+        JSON response with success/error status
+    """
     try:
         # Get the type from request, default to 'all'
         purge_type = request.json.get('type', 'all')
         
+        # Purge students if requested
         if purge_type == 'students' or purge_type == 'all':
-            # Delete all students
             Student.query.delete()
             db.session.commit()
             
+        # Purge teachers if requested
         if purge_type == 'teachers' or purge_type == 'all':
-            # Delete all teachers
             Teacher.query.delete()
             db.session.commit()
             
@@ -102,7 +128,18 @@ def purge_attendance():
 @attendance.route('/attendance/view/<type>/<int:id>')
 @login_required
 def view_details(type, id):
+    """
+    View detailed information for a specific student or teacher.
+    
+    Args:
+        type: 'student' or 'teacher'
+        id: Database ID of the contact
+        
+    Returns:
+        Rendered template with detailed contact information
+    """
     try:
+        # Query the appropriate model based on type
         if type == 'student':
             contact = Student.query.get_or_404(id)
         elif type == 'teacher':
@@ -110,7 +147,7 @@ def view_details(type, id):
         else:
             return jsonify({'status': 'error', 'message': 'Invalid type'})
         
-        # Get related data
+        # Get related contact information
         primary_email = contact.emails.filter_by(primary=True).first()
         primary_phone = contact.phones.filter_by(primary=True).first()
         primary_address = contact.addresses.filter_by(primary=True).first()
@@ -130,13 +167,25 @@ def view_details(type, id):
 @attendance.route('/attendance/import-from-salesforce', methods=['POST'])
 @login_required
 def import_teachers_from_salesforce():
+    """
+    Import teacher data from Salesforce.
+    
+    This function:
+    1. Connects to Salesforce using configured credentials
+    2. Queries for teachers with specific criteria
+    3. Creates or updates teacher records in the local database
+    4. Handles associated contact information (emails, phones)
+    
+    Returns:
+        JSON response with import results and any errors
+    """
     try:
         print("Starting teacher import from Salesforce...")
         success_count = 0
         error_count = 0
         errors = []
 
-        # Connect to Salesforce
+        # Connect to Salesforce using configured credentials
         sf = Salesforce(
             username=Config.SF_USERNAME,
             password=Config.SF_PASSWORD,
@@ -144,7 +193,7 @@ def import_teachers_from_salesforce():
             domain='login'
         )
 
-        # Query for teachers
+        # Query for teachers with specific fields
         teacher_query = """
         SELECT Id, AccountId, FirstName, LastName, Email, 
                npsp__Primary_Affiliation__c, Department, Gender__c, 
@@ -153,20 +202,20 @@ def import_teachers_from_salesforce():
         WHERE Contact_Type__c = 'Teacher'
         """
 
-        # Execute query
+        # Execute query and get results
         result = sf.query_all(teacher_query)
         teacher_rows = result.get('records', [])
 
-        # Process each teacher
+        # Process each teacher record
         for row in teacher_rows:
             try:
-                # Check if teacher exists
+                # Check if teacher already exists by Salesforce ID
                 teacher = Teacher.query.filter_by(salesforce_individual_id=row['Id']).first()
                 if not teacher:
                     teacher = Teacher()
                     db.session.add(teacher)
 
-                # Update teacher fields
+                # Update teacher fields with Salesforce data
                 teacher.salesforce_individual_id = row['Id']
                 teacher.salesforce_account_id = row.get('AccountId')
                 teacher.first_name = row.get('FirstName', '')
@@ -187,7 +236,7 @@ def import_teachers_from_salesforce():
                     except KeyError:
                         errors.append(f"Teacher {teacher.first_name} {teacher.last_name}: Invalid gender value: {gender_value}")
 
-                # Handle dates
+                # Handle date fields
                 if row.get('Last_Email_Message__c'):
                     teacher.last_email_message = parse_date(row['Last_Email_Message__c'])
                 if row.get('Last_Mailchimp_Email_Date__c'):
@@ -204,7 +253,7 @@ def import_teachers_from_salesforce():
                     errors.append(f"Error saving teacher {teacher.first_name} {teacher.last_name}: {str(e)}")
                     continue
 
-                # Now handle email and phone in a new transaction
+                # Handle email and phone in a new transaction
                 try:
                     # Handle email after teacher is saved
                     email_address = row.get('Email')
@@ -284,6 +333,19 @@ def import_teachers_from_salesforce():
 @attendance.route('/attendance/import-students-from-salesforce', methods=['POST'])
 @login_required
 def import_students_from_salesforce():
+    """
+    Import student data from Salesforce with chunked processing.
+    
+    This function handles large datasets by processing them in chunks
+    to avoid memory issues and stay within Salesforce API limits.
+    
+    Args:
+        chunk_size: Number of records to process per chunk (default: 2000)
+        last_id: ID of last processed record for pagination
+        
+    Returns:
+        JSON response with chunk processing results
+    """
     try:
         chunk_size = request.json.get('chunk_size', 2000)  # Reduced to 2000 to stay within limits
         last_id = request.json.get('last_id', None)  # Use ID-based pagination instead of offset
@@ -298,7 +360,7 @@ def import_students_from_salesforce():
             domain='login'
         )
 
-        # First, get total count
+        # First, get total count for progress tracking
         count_query = """
         SELECT COUNT(Id) total
         FROM Contact 
@@ -332,10 +394,10 @@ def import_students_from_salesforce():
         errors = []
         processed_ids = []
         
-        # Process chunk
+        # Process each student in the chunk
         for row in student_rows:
             try:
-                # Get required fields
+                # Get required fields with validation
                 first_name = str(row.get('FirstName', '')).strip()
                 last_name = str(row.get('LastName', '')).strip()
                 sf_id = row['Id']
@@ -355,7 +417,7 @@ def import_students_from_salesforce():
                     student.salesforce_individual_id = sf_id
                     student.salesforce_account_id = row.get('AccountId')
 
-                # Update student fields
+                # Update student fields with Salesforce data
                 student.first_name = first_name
                 student.last_name = last_name
                 student.middle_name = str(row.get('MiddleName', '')).strip() or None
@@ -366,7 +428,7 @@ def import_students_from_salesforce():
                 student.legacy_grade = str(row.get('Legacy_Grade__c', '')).strip() or None
                 student.current_grade = int(row.get('Current_Grade__c', 0)) if pd.notna(row.get('Current_Grade__c')) else None
 
-                # Handle gender
+                # Handle gender using GenderEnum
                 gender_value = row.get('Gender__c')
                 if gender_value:
                     gender_key = gender_value.lower().replace(' ', '_')
@@ -389,7 +451,7 @@ def import_students_from_salesforce():
                 # Commit each student individually to prevent large transaction blocks
                 db.session.commit()
 
-                # Handle contact info
+                # Handle contact info in separate transaction
                 try:
                     # Handle email
                     email_address = str(row.get('Email', '')).strip()
@@ -476,6 +538,17 @@ def import_students_from_salesforce():
         }
 
 def get_academic_year_range(today=None):
+    """
+    Calculate academic year start and end dates.
+    
+    Academic year runs from August 1 to July 31 of the following year.
+    
+    Args:
+        today: Date to calculate from (defaults to current date)
+        
+    Returns:
+        Tuple of (start_date, end_date) for the academic year
+    """
     today = today or date.today()
     year = today.year
     if today.month < 8:
@@ -489,6 +562,15 @@ def get_academic_year_range(today=None):
 @attendance.route('/attendance/details')
 @login_required
 def attendance_details():
+    """
+    Display event attendance details for a specific academic year.
+    
+    This page shows detailed attendance information for events including
+    classroom counts, student-volunteer ratios, and pathway information.
+    
+    Returns:
+        Rendered template with event attendance data
+    """
     year_param = request.args.get('year', type=int)
     today = date.today()
     current_year = today.year if today.month >= 8 else today.year - 1
@@ -497,7 +579,10 @@ def attendance_details():
     selected_year = year_param or current_year
     start = date(selected_year, 8, 1)
     end = date(selected_year + 1, 7, 31)
+    
+    # Query events for the selected academic year
     events = Event.query.filter(Event.start_date >= start, Event.start_date <= end).order_by(Event.start_date).all()
+    
     # Get unique event types for this year, as value/label dicts
     event_types = (
         db.session.query(Event.type)
@@ -510,22 +595,40 @@ def attendance_details():
         {'value': et.value, 'label': et.value.replace('_', ' ').title()} for et in event_types
     ]
     event_types = sorted(event_types, key=lambda x: x['label'])
-    return render_template('attendance/details.html', events=events, academic_years=academic_years, selected_year=selected_year, event_types=event_types)
+    
+    return render_template('attendance/details.html', 
+                         events=events, 
+                         academic_years=academic_years, 
+                         selected_year=selected_year, 
+                         event_types=event_types)
 
 @attendance.route('/attendance/details/events_json')
 @login_required
 def attendance_details_events_json():
+    """
+    AJAX endpoint for filtered event data.
+    
+    Returns JSON data for events filtered by year and event types.
+    Used by the frontend for dynamic filtering without page reload.
+    
+    Returns:
+        JSON array of event data with attendance details
+    """
     year = request.args.get('year', type=int)
     types = request.args.getlist('types[]')
     start = date(year, 8, 1)
     end = date(year + 1, 7, 31)
+    
+    # Build query with filters
     q = Event.query.filter(Event.start_date >= start, Event.start_date <= end)
     if types:
         # Convert string values to Enum
         enum_types = [EventType(t) for t in types if t in EventType.__members__.values() or t in [e.value for e in EventType]]
         q = q.filter(Event.type.in_(enum_types))
     events = q.order_by(Event.start_date).all()
+    
     def event_to_dict(event):
+        """Convert event object to dictionary for JSON serialization."""
         d = {
             'id': event.id,
             'title': event.title,
@@ -546,11 +649,21 @@ def attendance_details_events_json():
                 'attendance_link': ad.attendance_link
             }
         return d
+    
     return jsonify([event_to_dict(e) for e in events])
 
 @attendance.route('/attendance/details/<int:event_id>/detail', methods=['GET'])
 @login_required
 def get_attendance_detail(event_id):
+    """
+    Get attendance detail for a specific event.
+    
+    Args:
+        event_id: Database ID of the event
+        
+    Returns:
+        JSON object with attendance detail data or default values
+    """
     event = Event.query.get_or_404(event_id)
     detail = event.attendance_detail
     if not detail:
@@ -579,12 +692,23 @@ def get_attendance_detail(event_id):
 @attendance.route('/attendance/details/<int:event_id>/detail', methods=['POST'])
 @login_required
 def update_attendance_detail(event_id):
+    """
+    Update attendance detail for a specific event.
+    
+    Args:
+        event_id: Database ID of the event
+        
+    Returns:
+        JSON response indicating success
+    """
     event = Event.query.get_or_404(event_id)
     data = request.json
     detail = event.attendance_detail
     if not detail:
         detail = EventAttendanceDetail(event_id=event.id)
         db.session.add(detail)
+    
+    # Update attendance detail fields
     detail.num_classrooms = data.get('num_classrooms')
     detail.students_per_volunteer = data.get('students_per_volunteer')
     detail.total_students = data.get('total_students')
@@ -593,5 +717,6 @@ def update_attendance_detail(event_id):
     detail.groups_rotations = data.get('groups_rotations')
     detail.is_stem = data.get('is_stem', False)
     detail.attendance_link = data.get('attendance_link')
+    
     db.session.commit()
     return jsonify({'success': True})

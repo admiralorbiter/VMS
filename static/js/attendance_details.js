@@ -1,15 +1,12 @@
 // Modal logic for attendance details editing
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Delegate edit button clicks
-    document.querySelectorAll('.attendance-details-table .btn-primary').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const row = btn.closest('tr');
-            const eventId = row.dataset.eventId || row.getAttribute('data-event-id') || row.querySelector('td').dataset.eventId;
-            openAttendanceDetailModal(eventId, row);
-        });
-    });
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('edit-attendance-btn')) {
+        e.preventDefault();
+        const row = e.target.closest('tr');
+        const eventId = row.dataset.eventId;
+        openAttendanceDetailModal(eventId, row);
+    }
 });
 
 function openAttendanceDetailModal(eventId, row) {
