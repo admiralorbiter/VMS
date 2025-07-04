@@ -334,4 +334,111 @@ function executeDelete() {
     .finally(() => {
         cancelDelete();
     });
-} 
+}
+
+// Volunteer view page functionality
+function toggleHistorySection() {
+    const content = document.getElementById('history-content');
+    const icon = document.getElementById('history-toggle-icon');
+    
+    if (content && icon) {
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.className = 'fa-solid fa-chevron-up';
+        } else {
+            content.style.display = 'none';
+            icon.className = 'fa-solid fa-chevron-down';
+        }
+    }
+}
+
+// Event expansion functionality
+function toggleEventExpansion(status, button) {
+    const eventList = document.querySelector(`[data-status="${status}"]`);
+    if (!eventList || !button) return;
+    
+    const hiddenEvents = eventList.querySelector('.event-items-hidden');
+    const icon = button.querySelector('i');
+    
+    if (hiddenEvents && icon) {
+        if (hiddenEvents.style.display === 'none') {
+            // Show more events
+            hiddenEvents.style.display = 'block';
+            icon.className = 'fa-solid fa-chevron-up';
+            button.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Show less';
+        } else {
+            // Hide additional events
+            hiddenEvents.style.display = 'none';
+            icon.className = 'fa-solid fa-chevron-down';
+            const count = hiddenEvents.querySelectorAll('.event-item').length;
+            button.innerHTML = `<i class="fa-solid fa-chevron-down"></i> Show ${count} more events`;
+        }
+    }
+}
+
+// Initialize volunteer view page functionality
+function initializeVolunteerView() {
+    // Participation tabs functionality
+    const participationTabs = document.querySelectorAll('.participation-tab');
+    const eventLists = document.querySelectorAll('.event-list');
+    
+    participationTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabText = this.textContent.trim();
+            let status;
+            
+            if (tabText.includes('Attended')) {
+                status = 'Attended';
+            } else if (tabText.includes('No-Shows')) {
+                status = 'No-Show';
+            } else if (tabText.includes('Cancelled')) {
+                status = 'Cancelled';
+            }
+            
+            // Update active tab
+            participationTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide event lists
+            eventLists.forEach(list => {
+                if (list.dataset.status === status) {
+                    list.style.display = 'block';
+                } else {
+                    list.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // History filter functionality
+    const filters = document.querySelectorAll('.history-filter');
+    const historyItems = document.querySelectorAll('.history-item');
+    
+    filters.forEach(filter => {
+        filter.addEventListener('click', function() {
+            const filterType = this.dataset.type;
+            
+            // Update active filter
+            filters.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter history items
+            historyItems.forEach(item => {
+                if (filterType === 'all' || item.dataset.type === filterType) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+}
+
+// Initialize all functionality when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize existing functionality
+    // ... existing code ...
+
+    // Initialize volunteer view page functionality
+    initializeVolunteerView();
+}); 
