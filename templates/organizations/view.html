@@ -52,42 +52,34 @@
             {% endif %}
         </div>
         <div class="header-actions">
-            {# Salesforce External Link (if available) #}
             {% if organization.salesforce_id %}
             <a href="{{ organization.salesforce_url }}" 
                target="_blank" 
                class="action-btn salesforce-btn">
-                <i class="fa-solid fa-cloud"></i> View in Salesforce
+                <i class="fa-solid fa-cloud"></i>
             </a>
             {% endif %}
-            {# Edit Organization Action #}
-            <!-- <a href="{{ url_for('organizations.edit_organization', id=organization.id) }}" class="action-btn">
-                <i class="fa-solid fa-pencil"></i> Edit Organization
-            </a> -->
-            {# Back to Organizations List #}
             <a href="{{ url_for('organizations.organizations') }}" class="action-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back to Organizations
             </a>
         </div>
     </div>
 
-    {# Organization Profile Grid - Two Column Layout #}
-    <div class="org-profile-grid">
-        {# Basic Information Card - Organization Details #}
-        <div class="profile-card basic-info">
+    {# Modern Card Grid Layout #}
+    <div class="org-content-grid">
+        {# Organization Details Card #}
+        <div class="org-card primary-info">
             <div class="card-header">
-                <h2><i class="fa-solid fa-building"></i> Organization Details</h2>
+                <i class="fa-solid fa-building"></i>
+                <h2>Organization Details</h2>
             </div>
             <div class="card-content">
-                {# Organization Description #}
                 {% if organization.description %}
                 <div class="info-group">
                     <label>Description</label>
                     <p>{{ organization.description }}</p>
                 </div>
                 {% endif %}
-
-                {# Organization Address - Handles Missing Address Components Gracefully #}
                 {% if organization.billing_street or organization.billing_city %}
                 <div class="info-group">
                     <label>Address</label>
@@ -100,32 +92,24 @@
                     </address>
                 </div>
                 {% endif %}
-
-                {# Organization Creation Date #}
                 {% if organization.created_at %}
                 <div class="info-group">
                     <label>Created</label>
                     <p>{{ organization.created_at.strftime('%B %d, %Y') }}</p>
                 </div>
                 {% endif %}
-
-                {# Last Update Date #}
                 {% if organization.updated_at %}
                 <div class="info-group">
                     <label>Last Updated</label>
                     <p>{{ organization.updated_at.strftime('%B %d, %Y') }}</p>
                 </div>
                 {% endif %}
-
-                {# Last Activity Date #}
                 {% if organization.last_activity_date %}
                 <div class="info-group">
                     <label>Last Activity</label>
                     <p>{{ organization.last_activity_date.strftime('%B %d, %Y') }}</p>
                 </div>
                 {% endif %}
-
-                {# Salesforce ID (if available) #}
                 {% if organization.salesforce_id %}
                 <div class="info-group">
                     <label>Salesforce ID</label>
@@ -135,61 +119,59 @@
             </div>
         </div>
 
-        {# Associated Volunteers Card - Volunteer Relationships #}
-        <div class="profile-card volunteers-info">
+        {# Associated Volunteers Card - Modern Grid #}
+        <div class="org-card volunteers-info">
             <div class="card-header">
-                <h2><i class="fa-solid fa-users"></i> Associated Volunteers</h2>
+                <i class="fa-solid fa-users"></i>
+                <h2>Associated Volunteers ({{ volunteer_organizations|length }})</h2>
             </div>
             <div class="card-content">
-                {# Volunteers List - Loop Through Volunteer Organizations with Null Checks #}
+                {% if volunteer_organizations|length > 20 %}
+                <input type="text" class="form-control volunteer-search" placeholder="Search volunteers..." oninput="filterVolunteers(this.value)">
+                {% endif %}
                 {% if volunteer_organizations %}
-                <div class="volunteers-list">
+                <div class="participants-grid" id="volunteersGrid">
                     {% for vo in volunteer_organizations %}
-                    <div class="volunteer-item">
-                        {# Volunteer Basic Information with Null Check #}
-                        <div class="volunteer-info">
-                            {# Volunteer Name with Link to Detail View - Only if volunteer exists #}
-                            {% if vo.volunteer %}
-                            <a href="{{ url_for('volunteers.view_volunteer', id=vo.volunteer.id) }}" class="volunteer-name">
-                                {{ vo.volunteer.first_name }} {{ vo.volunteer.last_name }}
-                            </a>
-                            {% else %}
-                            <span class="volunteer-name">Unknown Volunteer</span>
-                            {% endif %}
-                            
-                            {# Volunteer Role (if assigned) #}
+                    {% if vo.volunteer %}
+                    <div class="participant-card volunteer">
+                        <div class="participant-info">
+                            <a href="{{ url_for('volunteers.view_volunteer', id=vo.volunteer.id) }}" class="participant-name">{{ vo.volunteer.first_name }} {{ vo.volunteer.last_name }}</a>
                             {% if vo.role %}
                             <span class="volunteer-role">{{ vo.role }}</span>
                             {% endif %}
-                            
-                            {# Volunteer Status with CSS Class for Styling #}
                             {% if vo.status %}
                             <span class="volunteer-status {{ vo.status.lower() }}">{{ vo.status }}</span>
                             {% endif %}
-                        </div>
-                        
-                        {# Volunteer Date Range (if available) #}
-                        {% if vo.start_date or vo.end_date %}
-                        <div class="volunteer-dates">
-                            {# Start Date #}
-                            {% if vo.start_date %}
-                            <span class="date-label">Started:</span> {{ vo.start_date.strftime('%B %d, %Y') }}
-                            {% endif %}
-                            {# End Date #}
-                            {% if vo.end_date %}
-                            <span class="date-label">Ended:</span> {{ vo.end_date.strftime('%B %d, %Y') }}
+                            {% if vo.start_date or vo.end_date %}
+                            <div class="volunteer-dates">
+                                {% if vo.start_date %}
+                                <span class="date-label">Started:</span> {{ vo.start_date.strftime('%B %d, %Y') }}
+                                {% endif %}
+                                {% if vo.end_date %}
+                                <span class="date-label">Ended:</span> {{ vo.end_date.strftime('%B %d, %Y') }}
+                                {% endif %}
+                            </div>
                             {% endif %}
                         </div>
-                        {% endif %}
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
                 {% else %}
-                {# No Volunteers Message #}
                 <p class="no-data">No volunteers associated with this organization</p>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+<script>
+function filterVolunteers(query) {
+    query = query.toLowerCase();
+    const cards = document.querySelectorAll('#volunteersGrid .participant-card');
+    cards.forEach(card => {
+        const name = card.querySelector('.participant-name').textContent.toLowerCase();
+        card.style.display = name.includes(query) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

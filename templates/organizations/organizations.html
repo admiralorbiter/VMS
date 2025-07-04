@@ -84,39 +84,30 @@
     </div>
 
     {# Organizations Data Table #}
-    <div class="table-responsive">
-        <table class="table organizations-table">
+    <div class="orgs-table-container">
+        <table class="orgs-table">
             <thead>
                 <tr>
-                    {# Sortable Name Column #}
                     <th class="sortable" data-sort="name">
                         Name <i class="fa-solid fa-sort"></i>
                     </th>
-                    {# Sortable Type Column #}
                     <th class="sortable" data-sort="type">
                         Type <i class="fa-solid fa-sort"></i>
                     </th>
-                    {# Location Column (City, State) #}
                     <th>Location</th>
-                    {# Sortable Last Activity Column #}
                     <th class="sortable" data-sort="last_activity_date">
                         Last Activity <i class="fa-solid fa-sort"></i>
                     </th>
-                    {# Actions Column #}
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {# Loop through organizations and display each row #}
                 {% for org in organizations %}
                 <tr>
-                    {# Organization Name #}
-                    <td>{{ org.name }}</td>
-                    {# Organization Type with badge styling #}
+                    <td><a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-name-link">{{ org.name }}</a></td>
                     <td>
                         <span class="org-type-badge">{{ org.type or 'N/A' }}</span>
                     </td>
-                    {# Location (City, State) - handles missing data gracefully #}
                     <td>
                         {% if org.billing_city and org.billing_state %}
                             {{ org.billing_city }}, {{ org.billing_state }}
@@ -124,31 +115,17 @@
                             N/A
                         {% endif %}
                     </td>
-                    {# Last Activity Date with formatting #}
                     <td>{{ org.last_activity_date|format_date if org.last_activity_date else 'Never' }}</td>
-                    {# Action Buttons #}
                     <td>
-                        <div class="action-buttons">
-                            {# View Organization Details #}
-                            <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="btn btn-sm action-btn view-btn">
+                        <div class="org-action-buttons">
+                            <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-action-btn org-view-btn">
                                 <i class="fa-solid fa-eye"></i> View
                             </a>
-                            {# TODO: Enable admin actions for edit/delete #}
-                            <!-- {% if current_user.is_admin %}
-                            <a href="{{ url_for('organizations.edit_organization', id=org.id) }}" class="btn btn-sm action-btn edit-btn">
-                                <i class="fa-solid fa-pencil"></i> Edit
-                            </a>
-                            <button onclick="deleteOrganization({{ org.id }})" class="btn btn-sm action-btn delete-btn">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                            {% endif %} -->
-                            {# Salesforce External Link (if available) #}
                             {% if org.salesforce_url %}
-                            <a href="{{ org.salesforce_url }}" target="_blank" class="btn btn-sm action-btn salesforce-btn">
-                                <i class="fa-solid fa-external-link"></i>
+                            <a href="{{ org.salesforce_url }}" target="_blank" class="org-action-btn org-salesforce-btn">
+                                <i class="fa-solid fa-cloud"></i>
                             </a>
                             {% endif %}
-                            
                         </div>
                     </td>
                 </tr>
