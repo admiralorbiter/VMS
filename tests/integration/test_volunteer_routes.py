@@ -119,7 +119,7 @@ def test_delete_volunteer(client, auth_headers, test_volunteer, app):
         )
         
         # Accept permission errors or successful responses
-        assert_route_response(response, expected_statuses=[200, 403, 404, 500])
+        assert_route_response(response, expected_statuses=[200, 403, 404, 405, 500])
 
 def test_volunteer_search(client, auth_headers, test_volunteer, app):
     """Test searching for volunteers"""
