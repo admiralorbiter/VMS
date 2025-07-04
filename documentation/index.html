@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Volunteer Management System - Documentation</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- FontAwesome for icons -->
+    <script src="https://kit.fontawesome.com/e0a2833fbd.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
@@ -32,6 +34,24 @@
                             <img src="img/change-password.png" alt="Change Password UI" style="max-width: 600px; width: 100%; border: 1px solid #b0e0e6; border-radius: 8px; box-shadow: 0 2px 8px #e0f7fa;">
                         </div>
                         <p style="margin-top: 0.5rem; color: #555; font-size: 0.98rem;">You can find this section in the Admin Dashboard page (<code>admin.html</code> template).</p>
+                    </div>
+                </details>
+                <details style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #b0e0e6; background: #fff;">
+                    <summary style="font-size: 1.1rem; font-weight: bold; color: #205080; cursor: pointer; padding: 0.7rem 1rem; outline: none; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #27a6e5; border-radius: 8px; margin-right: 0.5rem;">
+                            <i class="fa-solid fa-cloud" style="color: white; font-size: 1.3rem;"></i>
+                        </span>
+                        What does the blue cloud button mean?
+                    </summary>
+                    <div style="padding: 1rem 1.5rem 1.2rem 1.5rem;">
+                        <p style="margin-bottom: 1rem;">This button is a quick link to the volunteer's record in Salesforce. Clicking it will open the corresponding Salesforce contact page in a new tab. You may see this button on volunteer profile pages and other areas where Salesforce integration is available.</p>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #27a6e5; border-radius: 12px; box-shadow: 0 2px 4px #e0e0e0;">
+                                <i class="fa-solid fa-cloud" style="color: white; font-size: 2rem;"></i>
+                            </span>
+                            <span style="color: #555; font-size: 1rem;">Salesforce Link</span>
+                        </div>
+                        <p style="margin-top: 0.7rem; color: #888; font-size: 0.95rem;">If you have access, clicking this button will take you directly to the Salesforce record for more details or updates.</p>
                     </div>
                 </details>
             </section>
