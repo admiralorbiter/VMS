@@ -1,5 +1,6 @@
 """
 Organization Routes Module
+=========================
 
 This module contains all the Flask routes for managing organizations in the VMS system.
 It provides CRUD operations, Salesforce integration, and data management functionality.
@@ -10,8 +11,9 @@ Key Features:
 - Salesforce data import and synchronization
 - Volunteer-organization relationship management
 - Data purging and cleanup operations
+- Affiliation tracking and management
 
-Routes:
+Main Endpoints:
 - GET /organizations - List organizations with filtering
 - GET /organizations/view/<id> - View organization details
 - GET/POST /organizations/add - Create new organization
@@ -21,10 +23,57 @@ Routes:
 - POST /organizations/import-from-salesforce - Import from Salesforce
 - POST /organizations/import-affiliations-from-salesforce - Import affiliations
 
+Organization Management:
+- Comprehensive organization profiles
+- Type categorization and filtering
+- Address and contact information
+- Volunteer relationship tracking
+- Activity history and engagement metrics
+
+Salesforce Integration:
+- Organization data import from Salesforce
+- Affiliation relationship synchronization
+- Batch processing with error handling
+- Data validation and cleanup
+- Import statistics and reporting
+
+Filtering and Search:
+- Text search across organization names
+- Type-based filtering
+- Sortable columns (name, type, activity date)
+- Configurable pagination
+- Filter state preservation
+
+Security Features:
+- Login required for all operations
+- Input validation and sanitization
+- Error handling with user feedback
+- Data integrity protection
+- Soft delete capabilities
+
 Dependencies:
 - Flask-Login for authentication
 - SQLAlchemy for database operations
 - simple-salesforce for Salesforce integration
+- CSV processing for data import
+- Utility functions for date parsing
+
+Models Used:
+- Organization: Main organization data
+- VolunteerOrganization: Volunteer-organization relationships
+- Volunteer: Volunteer data for relationships
+- Event: Event data for activity tracking
+- EventParticipation: Volunteer participation data
+- Contact: Contact information
+- Teacher: Teacher data
+- District: District associations
+- School: School relationships
+
+Template Dependencies:
+- organizations/organizations.html: Main listing page
+- organizations/view.html: Organization detail view
+- organizations/add_organization.html: Organization creation form
+- organizations/edit_organization.html: Organization editing form
 """
 
 from flask import Blueprint, request, render_template, jsonify, flash, redirect, url_for
@@ -54,23 +103,43 @@ def organizations():
     """
     Display the main organizations listing page with filtering and pagination.
     
+    Provides a comprehensive view of all organizations with advanced
+    filtering, sorting, and pagination capabilities.
+    
     Features:
-    - Search organizations by name
-    - Filter by organization type
-    - Sortable columns (name, type, last activity date)
-    - Pagination with configurable page size
-    - Admin actions (edit/delete) - currently disabled in template
-    
+        - Search organizations by name
+        - Filter by organization type
+        - Sortable columns (name, type, last activity date)
+        - Pagination with configurable page size
+        - Admin actions (edit/delete) - currently disabled in template
+        
     Query Parameters:
-    - page: Page number for pagination
-    - per_page: Number of items per page (10, 25, 50, 100)
-    - search_name: Search term for organization name
-    - type: Filter by organization type
-    - sort: Column to sort by (name, type, last_activity_date)
-    - direction: Sort direction (asc, desc)
-    
+        page: Page number for pagination
+        per_page: Number of items per page (10, 25, 50, 100)
+        search_name: Search term for organization name
+        type: Filter by organization type
+        sort: Column to sort by (name, type, last_activity_date)
+        direction: Sort direction (asc, desc)
+        
+    Filtering Features:
+        - Text search across organization names
+        - Type-based dropdown filtering
+        - Dynamic filter options based on available data
+        - Filter state preservation across requests
+        
+    Sorting Features:
+        - Multi-column sorting capability
+        - Configurable sort direction
+        - Default sort by name ascending
+        
     Returns:
         Rendered template with organizations list and pagination info
+        
+    Template Variables:
+        organizations: List of organization objects for current page
+        pagination: Pagination object with navigation
+        current_filters: Dictionary of active filters
+        organization_types: List of available organization types
     """
     # Get pagination and sorting parameters from request
     page = request.args.get('page', 1, type=int)
@@ -134,18 +203,29 @@ def view_organization(id):
     """
     Display detailed information about a specific organization.
     
-    Features:
-    - Organization basic information (name, type, description, address)
-    - Timestamps (created, updated, last activity)
-    - Associated volunteers list with roles and dates
-    - Salesforce integration links
-    - Recent activity tracking
+    Shows comprehensive organization information including basic details,
+    associated volunteers, recent activities, and relationship data.
     
+    Features:
+        - Organization basic information (name, type, description, address)
+        - Timestamps (created, updated, last activity)
+        - Associated volunteers list with roles and dates
+        - Salesforce integration links
+        - Recent activity tracking
+        
     Args:
         id (int): Organization ID to view
         
     Returns:
         Rendered template with organization details and associated data
+        
+    Raises:
+        404: Organization not found
+        
+    Template Variables:
+        organization: Organization object with all details
+        volunteer_organizations: List of volunteer-organization relationships
+        recent_activities: List of recent volunteer activities
     """
     # Get the organization or return 404 if not found
     organization = Organization.query.get_or_404(id)
@@ -185,22 +265,25 @@ def add_organization():
     """
     Create a new organization in the system.
     
+    Handles both GET (form display) and POST (form processing)
+    for creating new organizations with validation and error handling.
+    
     Features:
-    - GET: Display the organization creation form
-    - POST: Process form submission and create organization
-    - Form validation and error handling
-    - Flash messages for user feedback
-    
+        - GET: Display the organization creation form
+        - POST: Process form submission and create organization
+        - Form validation and error handling
+        - Flash messages for user feedback
+        
     Form Fields:
-    - name (required): Organization name
-    - type: Organization type (dropdown)
-    - description: Organization description
-    - billing_street: Street address
-    - billing_city: City
-    - billing_state: State/Province
-    - billing_postal_code: Postal/ZIP code
-    - billing_country: Country
-    
+        name (required): Organization name
+        type: Organization type (dropdown)
+        description: Organization description
+        billing_street: Street address
+        billing_city: City
+        billing_state: State/Province
+        billing_postal_code: Postal/ZIP code
+        billing_country: Country
+        
     Returns:
         GET: Rendered form template
         POST: Redirect to organizations list on success

@@ -1,3 +1,90 @@
+"""
+Virtual Routes Module
+====================
+
+This module provides comprehensive functionality for managing virtual sessions
+and events in the Volunteer Management System (VMS). It handles virtual event
+creation, data import from Google Sheets, and virtual session management.
+
+Key Features:
+- Virtual session management and tracking
+- Google Sheets data import and processing
+- Event creation and updating from CSV data
+- Teacher and presenter data processing
+- District and organization association
+- Simulcast session handling
+- Data validation and error handling
+
+Main Endpoints:
+- GET /virtual: Main virtual sessions page
+- POST /virtual/purge: Purge virtual session data
+- GET /virtual/events: List virtual events
+- GET /virtual/event/<id>: Get specific virtual event
+- POST /virtual/import-sheet: Import virtual session data from Google Sheets
+
+Virtual Session Processing:
+- CSV data parsing and validation
+- Event creation from session data
+- Teacher and presenter association
+- District and organization linking
+- Status tracking and updates
+- Simulcast session handling
+
+Data Import Features:
+- Google Sheets integration
+- CSV data processing
+- Batch import with error reporting
+- Data validation and cleanup
+- Duplicate detection and handling
+- Progress tracking and statistics
+
+Event Management:
+- Virtual event creation and updates
+- Session ID extraction and tracking
+- Date/time parsing and validation
+- Status mapping and updates
+- District and organization associations
+- Teacher and presenter relationships
+
+Helper Functions:
+- Data cleaning and standardization
+- Name parsing and validation
+- Organization name mapping
+- District and school creation
+- Session ID extraction
+- Status mapping and validation
+
+Security Features:
+- Login required for all operations
+- Input validation and sanitization
+- Error handling with detailed reporting
+- Data integrity protection
+- Transaction rollback on errors
+
+Dependencies:
+- Flask Blueprint for routing
+- Google Sheets API integration
+- CSV processing with pandas
+- Database models for all entities
+- Utility functions for data processing
+- HTTP requests for external APIs
+
+Models Used:
+- Event: Virtual event data and metadata
+- District: District information and associations
+- Organization: Organization data and relationships
+- School: School information and district links
+- Teacher: Teacher data and event associations
+- Volunteer: Volunteer data and participation
+- History: Activity tracking and audit trails
+- Contact: Contact information and relationships
+
+Template Dependencies:
+- virtual/virtual.html: Main virtual sessions page
+- virtual/events.html: Virtual events listing
+- virtual/event_detail.html: Individual event view
+"""
+
 import traceback
 from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required
@@ -31,9 +118,44 @@ virtual_bp = Blueprint('virtual', __name__, url_prefix='/virtual')
 
 @virtual_bp.route('/virtual')
 def virtual():
+    """
+    Display the main virtual sessions page.
+    
+    Provides the main interface for virtual session management
+    and data import operations.
+    
+    Returns:
+        Rendered virtual sessions template
+    """
     return render_template('virtual/virtual.html')
 
 def process_csv_row(row, success_count, warning_count, error_count, errors, all_rows=None):
+    """
+    Process a single CSV row from virtual session data.
+    
+    Handles the creation and updating of virtual events from CSV data,
+    including teacher and presenter associations, district linking, and
+    simulcast session processing.
+    
+    Args:
+        row: Dictionary containing CSV row data
+        success_count: Current count of successful processing operations
+        warning_count: Current count of warnings during processing
+        error_count: Current count of processing errors
+        errors: List to collect error messages
+        all_rows: Optional list of all rows for simulcast processing
+        
+    Returns:
+        tuple: Updated (success_count, warning_count, error_count)
+        
+    Processing Features:
+        - Event creation and updating
+        - Teacher and presenter data processing
+        - District and organization association
+        - Simulcast session handling
+        - Date/time parsing and validation
+        - Status mapping and updates
+    """
     try:
         db.session.rollback()
         
@@ -188,7 +310,22 @@ def process_csv_row(row, success_count, warning_count, error_count, errors, all_
     return success_count, warning_count, error_count
 
 def process_teacher_data(row, is_simulcast=False):
-    """Helper function to process just teacher data for simulcast/dateless entries"""
+    """
+    Helper function to process just teacher data for simulcast/dateless entries.
+    
+    Processes teacher information from CSV rows that don't have full event data,
+    such as simulcast entries or entries without dates.
+    
+    Args:
+        row: Dictionary containing CSV row data
+        is_simulcast: Boolean indicating if this is a simulcast entry
+        
+    Processing:
+        - Teacher name parsing and validation
+        - Teacher record creation or updating
+        - Organization association if available
+        - Contact information handling
+    """
     if not row.get('Teacher Name') or pd.isna(row.get('Teacher Name')):
         return
         

@@ -1,3 +1,83 @@
+"""
+Management Routes Module
+=======================
+
+This module provides comprehensive administrative functionality for the
+Volunteer Management System (VMS). It handles user management, data import
+operations, Google Sheets integration, and system administration tasks.
+
+Key Features:
+- User administration and management
+- Salesforce data import operations
+- Google Sheets configuration and management
+- School and district data management
+- Bug report administration
+- System configuration and maintenance
+
+Main Endpoints:
+- /admin: Main admin panel
+- /admin/import: Data import functionality
+- /management/import-classes: Import class data from Salesforce
+- /google-sheets: Google Sheets management
+- /management/import-schools: Import school data from Salesforce
+- /management/import-districts: Import district data from Salesforce
+- /schools: School management interface
+- /bug-reports: Bug report administration
+- /management/users/<id>/edit: User editing interface
+
+Administrative Functions:
+- User creation, editing, and management
+- Security level management
+- System configuration
+- Data import and synchronization
+- Google Sheets integration
+- Bug report resolution
+
+Salesforce Integration:
+- Class data import from Salesforce
+- School data import from Salesforce
+- District data import from Salesforce
+- Authentication and error handling
+- Batch processing with rollback support
+
+Google Sheets Management:
+- Academic year-based sheet configuration
+- Sheet ID management and encryption
+- Year range validation and availability
+- CRUD operations for sheet configurations
+
+Security Features:
+- Role-based access control
+- Security level validation
+- Admin-only operations
+- Input validation and sanitization
+- Error handling with user feedback
+
+Dependencies:
+- Flask Blueprint for routing
+- Salesforce API integration
+- Google Sheets API integration
+- Database models for all entities
+- Encryption utilities for sensitive data
+- Academic year utilities
+
+Models Used:
+- User: User management and authentication
+- Class: Class data and associations
+- School: School information and relationships
+- District: District data and organization
+- BugReport: Bug report management
+- GoogleSheet: Google Sheets configuration
+- Database session for persistence
+
+Template Dependencies:
+- management/admin.html: Main admin panel
+- management/google_sheets.html: Google Sheets management
+- management/schools.html: School management interface
+- management/bug_reports.html: Bug report administration
+- management/resolve_form.html: Bug report resolution form
+"""
+
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -23,6 +103,22 @@ management_bp = Blueprint('management', __name__)
 @management_bp.route('/admin')
 @login_required
 def admin():
+    """
+    Display the main admin panel.
+    
+    Provides administrative interface for user management, system
+    configuration, and administrative functions. Requires supervisor
+    or higher security level access.
+    
+    Permission Requirements:
+        - Security level >= SUPERVISOR
+        
+    Returns:
+        Rendered admin template with user list and configuration options
+        
+    Raises:
+        Redirect to main index if unauthorized
+    """
     if not current_user.security_level >= SecurityLevel.SUPERVISOR:
         flash('Access denied. Supervisor or higher privileges required.', 'error')
         return redirect(url_for('main.index'))
@@ -36,6 +132,24 @@ def admin():
 @management_bp.route('/admin/import', methods=['POST'])
 @login_required
 def import_data():
+    """
+    Handle data import functionality.
+    
+    Processes file uploads for data import operations. Currently
+    a placeholder for future import functionality.
+    
+    Permission Requirements:
+        - Admin access required
+        
+    Form Parameters:
+        import_file: File to import
+        
+    Returns:
+        Redirect to admin panel with success/error message
+        
+    Raises:
+        403: Unauthorized access attempt
+    """
     if not current_user.is_admin:
         return {'error': 'Unauthorized'}, 403
     
@@ -57,6 +171,34 @@ def import_data():
 @management_bp.route('/management/import-classes', methods=['POST'])
 @login_required
 def import_classes():
+    """
+    Import class data from Salesforce.
+    
+    Fetches class information from Salesforce and synchronizes it
+    with the local database. Handles both creation of new classes
+    and updates to existing ones.
+    
+    Salesforce Objects:
+        - Class__c: Class data with school associations
+        
+    Process Flow:
+        1. Authenticate with Salesforce
+        2. Query Class__c objects
+        3. Create/update class records
+        4. Associate with schools
+        5. Commit all changes
+        
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        JSON response with import results and statistics
+        
+    Raises:
+        401: Salesforce authentication failure
+        403: Unauthorized access attempt
+        500: Import or database error
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
         
@@ -138,6 +280,23 @@ def import_classes():
 @management_bp.route('/google-sheets')
 @login_required
 def google_sheets():
+    """
+    Display Google Sheets management interface.
+    
+    Shows all configured Google Sheets with their academic years
+    and provides options for creating new sheet configurations.
+    
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Rendered Google Sheets management template
+        
+    Template Variables:
+        sheets: List of all Google Sheet configurations
+        available_years: Academic years available for new sheets
+        sheet_years: Years that already have sheet configurations
+    """
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.index'))
@@ -151,6 +310,32 @@ def google_sheets():
 @management_bp.route('/google-sheets', methods=['POST'])
 @login_required
 def create_google_sheet():
+    """
+    Create a new Google Sheet configuration.
+    
+    Creates a new Google Sheet record with encrypted sheet ID
+    and associates it with an academic year.
+    
+    Permission Requirements:
+        - Admin access required
+        
+    Request Body (JSON):
+        academic_year: Academic year for the sheet
+        sheet_id: Google Sheet ID to associate
+        
+    Validation:
+        - Academic year and sheet ID are required
+        - No duplicate academic years allowed
+        - Encryption key must be configured
+        
+    Returns:
+        JSON response with success status and sheet data
+        
+    Raises:
+        400: Missing required fields or duplicate academic year
+        403: Unauthorized access attempt
+        500: Database or encryption error
+    """
     print("GOOGLE SHEETS ROUTE HIT")
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403

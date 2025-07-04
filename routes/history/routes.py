@@ -1,3 +1,71 @@
+"""
+History Routes Module
+===================
+
+This module provides functionality for managing activity history and audit trails
+in the Volunteer Management System (VMS). It handles history tracking, viewing,
+filtering, and Salesforce integration for historical data.
+
+Key Features:
+- History table display with filtering and pagination
+- Individual history item viewing
+- History entry creation and management
+- Soft delete functionality for history items
+- Salesforce history data import
+- Advanced filtering and sorting capabilities
+
+Main Endpoints:
+- /history_table: Main history listing with filters and pagination
+- /history/view/<id>: View individual history item details
+- /history/add: Add new history entry (POST)
+- /history/delete/<id>: Soft delete history entry (POST)
+- /history/import-from-salesforce: Import history from Salesforce (POST)
+
+History Management:
+- Activity tracking and audit trails
+- Event and volunteer association
+- Activity type and status categorization
+- Date-based filtering and sorting
+- Search functionality across summary and description
+
+Filtering Capabilities:
+- Text search in summary and description
+- Activity type filtering
+- Activity status filtering
+- Date range filtering (start/end dates)
+- Pagination with configurable page sizes
+- Multi-column sorting with direction control
+
+Salesforce Integration:
+- History data import from Salesforce
+- SOQL query execution for historical records
+- Error handling and import statistics
+- Batch processing with rollback support
+
+Security Features:
+- Login required for all operations
+- Soft delete for data preservation
+- Input validation and sanitization
+- Error handling with user feedback
+
+Dependencies:
+- Flask Blueprint for routing
+- History and Event models for data
+- Salesforce API integration
+- Database session management
+- Utility functions for date parsing
+
+Models Used:
+- History: Activity history and audit data
+- Event: Event association data
+- Volunteer: Volunteer association data
+- Database session for persistence
+
+Template Dependencies:
+- history/history.html: Main history table template
+- history/view.html: Individual history item template
+"""
+
 import csv
 import os
 from flask import Blueprint, request, flash, render_template, jsonify
@@ -18,6 +86,44 @@ history_bp = Blueprint('history', __name__)
 @history_bp.route('/history_table')
 @login_required
 def history_table():
+    """
+    Display the main history table with filtering and pagination.
+    
+    Provides a comprehensive view of all history entries with advanced
+    filtering, sorting, and pagination capabilities.
+    
+    Query Parameters:
+        page: Current page number for pagination
+        per_page: Number of items per page
+        sort_by: Column to sort by (activity_date, summary, activity_type, etc.)
+        sort_direction: Sort direction (asc, desc)
+        search_summary: Text search in summary and description
+        activity_type: Filter by activity type
+        activity_status: Filter by activity status
+        start_date: Filter by start date (YYYY-MM-DD)
+        end_date: Filter by end date (YYYY-MM-DD)
+        
+    Filtering Features:
+        - Text search across summary and description fields
+        - Activity type and status dropdown filtering
+        - Date range filtering with validation
+        - Dynamic filter options based on available data
+        
+    Sorting Features:
+        - Multi-column sorting capability
+        - Configurable sort direction
+        - Default sort by activity_date descending
+        
+    Returns:
+        Rendered history table template with filtered and paginated data
+        
+    Template Variables:
+        history: List of history items for current page
+        pagination: Pagination object with navigation
+        current_filters: Dictionary of active filters
+        activity_types: List of available activity types
+        activity_statuses: List of available activity statuses
+    """
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -113,6 +219,21 @@ def history_table():
 @history_bp.route('/history/view/<int:id>')
 @login_required
 def view_history(id):
+    """
+    Display detailed view of a specific history item.
+    
+    Shows comprehensive information about a single history entry
+    including all associated data and metadata.
+    
+    Args:
+        id: Database ID of the history item to view
+        
+    Returns:
+        Rendered template with detailed history item information
+        
+    Raises:
+        404: History item not found
+    """
     history_item = History.query.get_or_404(id)
     return render_template(
         'history/view.html',
@@ -122,7 +243,28 @@ def view_history(id):
 @history_bp.route('/history/add', methods=['POST'])
 @login_required
 def add_history():
-    """Add a new history entry"""
+    """
+    Add a new history entry.
+    
+    Creates a new history record with the provided data and
+    associates it with events, volunteers, and other entities.
+    
+    Request Body (JSON):
+        event_id: Associated event ID (optional)
+        volunteer_id: Associated volunteer ID (optional)
+        action: Action performed
+        summary: Brief summary of the activity
+        description: Detailed description of the activity
+        activity_type: Type of activity performed
+        activity_status: Status of the activity (default: 'Completed')
+        email_message_id: Associated email message ID (optional)
+        
+    Returns:
+        JSON response with success status and history ID
+        
+    Raises:
+        500: Database or server error
+    """
     try:
         data = request.get_json()
         
@@ -158,7 +300,22 @@ def add_history():
 @history_bp.route('/history/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_history(id):
-    """Soft delete a history entry"""
+    """
+    Soft delete a history entry.
+    
+    Marks a history item as deleted without permanently removing
+    it from the database, preserving data integrity.
+    
+    Args:
+        id: Database ID of the history item to delete
+        
+    Returns:
+        JSON response with success status
+        
+    Raises:
+        404: History item not found
+        500: Database or server error
+    """
     try:
         history = History.query.get_or_404(id)
         history.is_deleted = True
@@ -181,6 +338,32 @@ def delete_history(id):
 @history_bp.route('/history/import-from-salesforce', methods=['POST'])
 @login_required
 def import_history_from_salesforce():
+    """
+    Import history data from Salesforce.
+    
+    Fetches historical activity data from Salesforce and synchronizes
+    it with the local database. Handles batch processing with error
+    reporting and import statistics.
+    
+    Salesforce Integration:
+        - Connects to Salesforce using configured credentials
+        - Executes SOQL queries for historical data
+        - Processes records in batches
+        - Provides detailed import statistics
+        
+    Error Handling:
+        - Salesforce authentication failures
+        - Data validation errors
+        - Database transaction rollback
+        - Detailed error reporting
+        
+    Returns:
+        JSON response with import results and statistics
+        
+    Raises:
+        401: Salesforce authentication failure
+        500: Import or database error
+    """
     try:
         print("Starting history import from Salesforce...")
         success_count = 0
