@@ -1,3 +1,57 @@
+"""
+Routes Utilities Module
+======================
+
+This module provides utility functions for data processing, parsing, and
+mapping operations used throughout the VMS route system. It handles
+Salesforce data integration, contact information processing, and various
+data transformation tasks.
+
+Key Features:
+- Date parsing from multiple formats
+- Contact information extraction and formatting
+- Salesforce data mapping and transformation
+- Skill parsing and standardization
+- District name mapping
+- Event type and format mapping
+
+Data Processing Functions:
+- parse_date: Multi-format date parsing
+- clean_skill_name: Skill name standardization
+- parse_skills: Skill list parsing and deduplication
+- get_email_addresses: Email extraction from CSV rows
+- get_phone_numbers: Phone number extraction from CSV rows
+
+Salesforce Integration:
+- map_session_type: Event type mapping
+- map_cancellation_reason: Cancellation reason mapping
+- map_event_format: Event format mapping
+- parse_event_skills: Event skills parsing
+
+Contact Processing:
+- Email address extraction and type assignment
+- Phone number cleaning and formatting
+- Primary contact designation
+- Duplicate contact prevention
+
+District Mapping:
+- DISTRICT_MAPPINGS: Standardized district name mapping
+- Salesforce to local district name conversion
+- Consistent district naming across the system
+
+Dependencies:
+- datetime for date parsing
+- Database models for data types
+- Enum classes for standardized values
+- CSV processing utilities
+
+Usage:
+- Imported by route modules for data processing
+- Used in Salesforce import operations
+- Applied in contact information handling
+- Utilized in event data transformation
+"""
+
 from datetime import datetime
 
 from models import db
@@ -5,6 +59,7 @@ from models.event import CancellationReason, EventFormat, EventType
 from models.contact import ContactTypeEnum, Email
 from models.district_model import District
 
+# District name mapping for Salesforce integration
 DISTRICT_MAPPINGS = {
     'KANSAS CITY USD 500': 'KANSAS CITY USD 500',
     'HICKMAN MILLS C-1': 'HICKMAN MILLS C-1',
@@ -29,7 +84,29 @@ DISTRICT_MAPPINGS = {
 }
 
 def parse_date(date_str):
-    """Parse date string from Salesforce CSV or API"""
+    """
+    Parse date string from Salesforce CSV or API.
+    
+    Handles multiple date formats commonly found in Salesforce data:
+    - ISO 8601 format (2025-03-05T14:15:00.000+0000)
+    - CSV format with time (YYYY-MM-DD HH:MM:SS)
+    - CSV format without seconds (YYYY-MM-DD HH:MM)
+    - Date only format (YYYY-MM-DD)
+    
+    Args:
+        date_str: Date string to parse
+        
+    Returns:
+        datetime object if parsing successful, None otherwise
+        
+    Examples:
+        >>> parse_date('2025-03-05T14:15:00.000+0000')
+        datetime(2025, 3, 5, 14, 15)
+        >>> parse_date('2025-03-05 14:15:30')
+        datetime(2025, 3, 5, 14, 15, 30)
+        >>> parse_date('2025-03-05')
+        datetime(2025, 3, 5, 0, 0)
+    """
     if not date_str:
         return None
     
@@ -59,11 +136,44 @@ def parse_date(date_str):
         return None
 
 def clean_skill_name(skill_name):
-    """Standardize skill name format"""
+    """
+    Standardize skill name format.
+    
+    Converts skill names to a consistent format by trimming whitespace,
+    converting to lowercase, and capitalizing the first letter.
+    
+    Args:
+        skill_name: Raw skill name string
+        
+    Returns:
+        Standardized skill name string
+        
+    Examples:
+        >>> clean_skill_name('  python programming  ')
+        'Python programming'
+        >>> clean_skill_name('JAVA')
+        'Java'
+    """
     return skill_name.strip().lower().capitalize()
 
 def parse_skills(text_skills, comma_skills):
-    """Parse and combine skills from both columns, removing duplicates"""
+    """
+    Parse and combine skills from both columns, removing duplicates.
+    
+    Processes skills from two different input formats and combines them
+    into a single list with duplicates removed.
+    
+    Args:
+        text_skills: Semicolon-separated skills string
+        comma_skills: Comma-separated skills string
+        
+    Returns:
+        List of unique, standardized skill names
+        
+    Examples:
+        >>> parse_skills('Python; Java', 'JavaScript, Python')
+        ['Python', 'Java', 'JavaScript']
+    """
     skills = set()
     
     # Parse semicolon-separated skills
@@ -77,7 +187,28 @@ def parse_skills(text_skills, comma_skills):
     return list(skills)
 
 def get_email_addresses(row):
-    """Extract and format email addresses from a CSV row."""
+    """
+    Extract and format email addresses from a CSV row.
+    
+    Processes multiple email columns from Salesforce CSV data and creates
+    Email objects with appropriate types and primary designation.
+    
+    Args:
+        row: Dictionary containing CSV row data
+        
+    Returns:
+        List of Email objects with type and primary designation
+        
+    Email Types:
+        - personal: General email addresses
+        - home: Home email addresses
+        - alternate: Alternate email addresses
+        - work: Work email addresses
+        
+    Primary Designation:
+        - Based on preferred email type from CSV
+        - Falls back to 'Email' column if no preference specified
+    """
     emails = []
     seen_emails = set()  # Track unique emails
     preferred_type = row.get('npe01__Preferred_Email__c', '').lower()
@@ -112,7 +243,28 @@ def get_email_addresses(row):
 
 
 def get_phone_numbers(row):
-    """Extract and format phone numbers from a CSV row."""
+    """
+    Extract and format phone numbers from a CSV row.
+    
+    Processes multiple phone columns from Salesforce CSV data and creates
+    Phone objects with appropriate types and primary designation.
+    
+    Args:
+        row: Dictionary containing CSV row data
+        
+    Returns:
+        List of Phone objects with type and primary designation
+        
+    Phone Types:
+        - personal: General phone numbers
+        - mobile: Mobile phone numbers
+        - home: Home phone numbers
+        - work: Work phone numbers
+        
+    Number Formatting:
+        - Removes non-digit characters
+        - Standardizes format for consistency
+    """
     phones = []
     seen_numbers = set()  # Track unique numbers
     preferred_type = row.get('npe01__PreferredPhone__c', '').lower()
@@ -133,7 +285,30 @@ def get_phone_numbers(row):
     return phones
 
 def map_session_type(salesforce_type):
-    """Map Salesforce session types to EventType enum values"""
+    """
+    Map Salesforce session types to EventType enum values.
+    
+    Converts Salesforce session type strings to standardized EventType
+    enum values used throughout the VMS system.
+    
+    Args:
+        salesforce_type: Salesforce session type string
+        
+    Returns:
+        EventType enum value, defaults to CLASSROOM_ACTIVITY if not found
+        
+    Supported Types:
+        - Connector Session, Career Jumping, Career Speaker
+        - Employability Skills, IGNITE, Career Fair
+        - Client Connected Project, Pathway campus visits
+        - Workplace Visit, Pathway Workplace Visits
+        - College Options, DIA, Campus Visit
+        - Advisory Sessions, Volunteer Orientation
+        - Mentoring, Financial Literacy, Math Relays
+        - Classroom Speaker, Internship, College Application Fair
+        - FAFSA, Classroom Activity, Historical
+        - DataViz, P2GD, SLA, HealthStart, P2T, BFI
+    """
     mapping = {
         'Connector Session': EventType.CONNECTOR_SESSION,
         'Career Jumping': EventType.CAREER_JUMPING,
@@ -171,13 +346,42 @@ def map_session_type(salesforce_type):
     return mapping.get(salesforce_type, EventType.CLASSROOM_ACTIVITY)
 
 def map_cancellation_reason(reason):
-    """Map cancellation reasons to CancellationReason enum values"""
+    """
+    Map cancellation reasons to CancellationReason enum values.
+    
+    Converts Salesforce cancellation reason strings to standardized
+    CancellationReason enum values.
+    
+    Args:
+        reason: Salesforce cancellation reason string
+        
+    Returns:
+        CancellationReason enum value or None if not recognized
+        
+    Supported Reasons:
+        - 'Inclement Weather Cancellation' -> CancellationReason.WEATHER
+    """
     if reason == 'Inclement Weather Cancellation':
         return CancellationReason.WEATHER
     return None
 
 def map_event_format(format_str):
-    """Map Salesforce format to EventFormat enum values"""
+    """
+    Map Salesforce format to EventFormat enum values.
+    
+    Converts Salesforce event format strings to standardized EventFormat
+    enum values.
+    
+    Args:
+        format_str: Salesforce format string
+        
+    Returns:
+        EventFormat enum value, defaults to IN_PERSON if not found
+        
+    Supported Formats:
+        - 'In-Person' -> EventFormat.IN_PERSON
+        - 'Virtual' -> EventFormat.VIRTUAL
+    """
     format_mapping = {
         'In-Person': EventFormat.IN_PERSON,
         'Virtual': EventFormat.VIRTUAL
@@ -185,7 +389,25 @@ def map_event_format(format_str):
     return format_mapping.get(format_str, EventFormat.IN_PERSON)  # Default to in-person if not found
 
 def parse_event_skills(skills_str, is_needed=False):
-    """Parse skills from Legacy_Skill_Covered_for_the_Session__c or Legacy_Skills_Needed__c"""
+    """
+    Parse skills from Legacy_Skill_Covered_for_the_Session__c or Legacy_Skills_Needed__c.
+    
+    Processes comma-separated skill strings from Salesforce event data,
+    cleaning and standardizing skill names.
+    
+    Args:
+        skills_str: Comma-separated skills string
+        is_needed: Boolean indicating if these are needed skills (for future use)
+        
+    Returns:
+        List of cleaned skill names
+        
+    Processing:
+        - Splits by commas
+        - Removes quotes and extra whitespace
+        - Skips empty skills
+        - Standardizes skill name format
+    """
     if not skills_str:
         return []
     

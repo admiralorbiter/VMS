@@ -1,3 +1,71 @@
+"""
+Client Projects Routes Module
+============================
+
+This module provides functionality for managing client-connected projects
+in the Volunteer Management System (VMS). It handles project creation,
+editing, deletion, and Google Sheets integration for data import.
+
+Key Features:
+- Client project CRUD operations
+- Google Sheets data import
+- Contact information management
+- Project status tracking
+- Admin-only access control
+- HTMX integration for dynamic updates
+
+Main Endpoints:
+- /management/client-projects/: Project listing page
+- /management/client-projects/form: Project creation form
+- /management/client-projects/create: Create new project (POST)
+- /management/client-projects/<id>/edit: Edit project form
+- /management/client-projects/<id>/update: Update project (POST)
+- /management/client-projects/<id>: Delete project (DELETE)
+- /management/client-projects/import-sheet: Import from Google Sheets (POST)
+
+Project Management:
+- Project creation with contact details
+- Status tracking and updates
+- Teacher and district association
+- Student count tracking
+- Project description and dates
+
+Contact Management:
+- Multiple contact support per project
+- Contact hours tracking
+- Name and hours parsing from Google Sheets
+- Dynamic contact form handling
+
+Google Sheets Integration:
+- CSV export from Google Sheets
+- Contact information parsing
+- Error handling for import failures
+- Fallback URL formats
+
+Security Features:
+- Admin-only access for all operations
+- Form validation and sanitization
+- Error handling with rollback
+- Unauthorized access prevention
+
+Dependencies:
+- Flask Blueprint for routing
+- ClientProject model for data persistence
+- Pandas for CSV processing
+- Google Sheets API integration
+- HTMX for dynamic updates
+
+Models Used:
+- ClientProject: Project data and metadata
+- ProjectStatus: Project status enumeration
+- Database session for persistence
+
+Template Dependencies:
+- client_connected_projects/client_connected_projects.html: Main listing page
+- client_connected_projects/client_project_form.html: Project form
+- client_connected_projects/partials/project_table.html: Project table partial
+"""
+
 import os
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
@@ -13,6 +81,21 @@ client_projects_bp = Blueprint('client_projects', __name__, url_prefix='/managem
 @client_projects_bp.route('/')
 @login_required
 def index():
+    """
+    Display the main client projects listing page.
+    
+    Shows all client projects in reverse chronological order.
+    Only accessible to admin users.
+    
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Rendered template with project list and configuration
+        
+    Raises:
+        Redirect to main index if unauthorized
+    """
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.index'))
@@ -26,6 +109,21 @@ def index():
 @client_projects_bp.route('/form')
 @login_required
 def form():
+    """
+    Display the project creation form.
+    
+    Returns the form template for creating new client projects.
+    Only accessible to admin users.
+    
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Rendered project creation form template
+        
+    Raises:
+        403: Unauthorized access attempt
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -38,6 +136,34 @@ def form():
 @client_projects_bp.route('/create', methods=['POST'])
 @login_required
 def create():
+    """
+    Create a new client project.
+    
+    Processes form data and creates a new ClientProject in the database.
+    Handles contact information parsing and validation.
+    
+    Form Parameters:
+        status: Project status
+        teacher: Teacher name
+        district: District name
+        organization: Organization name
+        project_title: Project title
+        project_description: Project description
+        project_dates: Project date range
+        number_of_students: Number of students involved
+        contact_names[]: Array of contact names
+        contact_hours[]: Array of contact hours
+        
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Rendered project table partial for HTMX updates
+        
+    Raises:
+        403: Unauthorized access attempt
+        500: Database or server error
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -77,6 +203,25 @@ def create():
 @client_projects_bp.route('/<int:project_id>/edit')
 @login_required
 def edit_form(project_id):
+    """
+    Display the project editing form.
+    
+    Returns the form template for editing existing client projects.
+    Only accessible to admin users.
+    
+    Args:
+        project_id: Database ID of the project to edit
+        
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Rendered project editing form template
+        
+    Raises:
+        403: Unauthorized access attempt
+        404: Project not found
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -90,6 +235,38 @@ def edit_form(project_id):
 @client_projects_bp.route('/<int:project_id>/update', methods=['POST'])
 @login_required
 def update(project_id):
+    """
+    Update an existing client project.
+    
+    Processes form data and updates the specified ClientProject in the database.
+    Handles contact information parsing and validation.
+    
+    Args:
+        project_id: Database ID of the project to update
+        
+    Form Parameters:
+        status: Project status
+        teacher: Teacher name
+        district: District name
+        organization: Organization name
+        project_title: Project title
+        project_description: Project description
+        project_dates: Project date range
+        number_of_students: Number of students involved
+        contact_names[]: Array of contact names
+        contact_hours[]: Array of contact hours
+        
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Rendered project table partial for HTMX updates
+        
+    Raises:
+        403: Unauthorized access attempt
+        404: Project not found
+        500: Database or server error
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -128,6 +305,26 @@ def update(project_id):
 @client_projects_bp.route('/<int:project_id>', methods=['DELETE'])
 @login_required
 def delete(project_id):
+    """
+    Delete a client project.
+    
+    Removes the specified project from the database.
+    Only accessible to admin users.
+    
+    Args:
+        project_id: Database ID of the project to delete
+        
+    Permission Requirements:
+        - Admin access required
+        
+    Returns:
+        Empty response with HTMX trigger for row removal
+        
+    Raises:
+        403: Unauthorized access attempt
+        404: Project not found
+        500: Database or server error
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -144,11 +341,42 @@ def delete(project_id):
 @client_projects_bp.route('/cancel')
 @login_required
 def cancel_form():
+    """
+    Cancel form operation.
+    
+    Returns empty content to clear the form via HTMX.
+    
+    Returns:
+        Empty string to clear form content
+    """
     return ''  # Returns empty content to clear the form
 
 @client_projects_bp.route('/import-sheet', methods=['POST'])
 @login_required
 def import_sheet():
+    """
+    Import client projects from Google Sheets.
+    
+    Fetches data from a configured Google Sheet and creates/updates
+    client projects in the database. Handles contact information parsing
+    and error handling for import failures.
+    
+    Permission Requirements:
+        - Admin access required
+        
+    Google Sheets Integration:
+        - Uses CLIENT_PROJECTS_SHEET_ID environment variable
+        - Supports multiple CSV export formats
+        - Handles contact information parsing
+        - Provides detailed import statistics
+        
+    Returns:
+        JSON response with import results and statistics
+        
+    Raises:
+        403: Unauthorized access attempt
+        500: Import or database error
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
 
