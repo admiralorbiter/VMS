@@ -16,6 +16,9 @@
                 <h1 class="section-title">Reports</h1>
                 <p class="section-description">Generate, filter, and export reports to gain insights and track performance in the VMS.</p>
             </div>
+            <p style="margin-bottom:2rem;font-size:1.08rem;color:var(--text-secondary);max-width:700px;">
+                The Reports section provides access to a variety of analytics and insights about volunteer engagement, events, and organizational impact. Use the tools below to explore detailed data and trends.
+            </p>
             
             <div class="expandable">
                 <div class="expandable-header">Common Features Across All Reports</div>
@@ -63,21 +66,20 @@
             </div>
             
             <div class="expandable">
-                <div class="expandable-header">Overview</div>
-                <div class="expandable-content">
-                    <p>The Reports section provides a variety of tools to analyze volunteer engagement, event success, and organizational impact. Use filters, exports, and summary stats to get the data you need.</p>
-                    <ul>
-                        <li>Virtual Session Usage, Thank You, End of Year, and more</li>
-                        <li>Filter by academic year, date, district, and more</li>
-                        <li>Export to Excel for further analysis</li>
-                        <li>Sortable tables and summary statistics</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="expandable">
                 <div class="expandable-header">Virtual Session Usage Report</div>
                 <div class="expandable-content">
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>This report displays <b>Virtual Sessions (Connector Sessions)</b> imported from the Connector Spreadsheets maintained by Brittany.</li>
+                            <li><b>Each academic year</b> is tied to a specific Google Sheet. Data is imported and not live-edited in the app.</li>
+                            <li>Session data includes teacher registrations, school/district info, and session details as recorded in the spreadsheet.</li>
+                            <li>Filters and summary stats are based on the imported data for the selected year.</li>
+                        </ul>
+                        <div style="margin-top:0.5rem;">
+                            <b>Spreadsheet Management:</b> <a href="#" style="color:var(--primary-color);text-decoration:underline;">Google Sheet/Virtual Spreadsheet Management (coming soon)</a>
+                        </div>
+                    </div>
                     <ol class="step-list">
                         <li class="step-item"><strong>Navigate to Reports:</strong> Click "Reports" in the sidebar.</li>
                         <li class="step-item"><strong>Select Virtual Session Usage:</strong> Choose the report from the list.</li>
@@ -95,22 +97,67 @@
             <div class="expandable">
                 <div class="expandable-header">Volunteer Thank You Report</div>
                 <div class="expandable-content">
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>This report provides a breakdown of volunteer engagement by <b>academic year</b>. You can filter by host (All Events or PREPKC Events Only) and export the data for further analysis.</li>
+                            <li>For each volunteer, the report tracks:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>Presenter Name</b></li>
+                                <li><b>Total Hours</b> volunteered</li>
+                                <li><b>Total Events</b> participated in</li>
+                                <li><b>Organization</b> affiliation</li>
+                            </ul>
+                            <li>Clicking a volunteer's name opens a detail view showing:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>All events</b> the volunteer participated in for the selected year</li>
+                                <li><b>Event date, title, type, hours, school, and district</b> for each event</li>
+                                <li>Totals for hours and events for the year</li>
+                            </ul>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">This report keeps a <b>running total</b> throughout the year, so you can monitor volunteer engagement as the year progresses.</p>
+                    </div>
                     <ol class="step-list">
                         <li class="step-item"><strong>Choose Volunteer Thank You:</strong> Select from the report list.</li>
                         <li class="step-item"><strong>Set Academic Year:</strong> Filter by year for targeted results.</li>
-                        <li class="step-item"><strong>View Details:</strong> Click on a volunteer for more info and summary stats.</li>
+                        <li class="step-item"><strong>View Details:</strong> Click on a volunteer for a detailed breakdown of their participation.</li>
                         <li class="step-item"><strong>Sort and Export:</strong> Sort columns and export as needed.</li>
                     </ol>
                 </div>
             </div>
-            
+
             <div class="expandable">
                 <div class="expandable-header">Organization Thank You Report</div>
                 <div class="expandable-content">
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>This report provides a breakdown of <b>organization contributions</b> by academic year. You can filter by host and export the data for further analysis.</li>
+                            <li>For each organization, the report tracks:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>Organization Name</b></li>
+                                <li><b>Unique Sessions</b> participated in</li>
+                                <li><b>Total Hours</b> volunteered by all members</li>
+                                <li><b>Number of Unique Volunteers</b> from the organization</li>
+                            </ul>
+                            <li>Clicking an organization name opens a detail view showing:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>All volunteers</b> from the organization for the selected year, with their events and hours</li>
+                                <li><b>All events</b> the organization participated in, with event details and hours</li>
+                            </ul>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">This report keeps a <b>running total</b> throughout the year, so you can monitor organization engagement as the year progresses.</p>
+                    </div>
                     <ol class="step-list">
                         <li class="step-item"><strong>Choose Organization Thank You:</strong> Select from the report list.</li>
                         <li class="step-item"><strong>Set Academic Year:</strong> Filter by year for targeted results.</li>
-                        <li class="step-item"><strong>View Details:</strong> Click on an organization for volunteer and event lists.</li>
+                        <li class="step-item"><strong>View Details:</strong> Click on an organization for a detailed breakdown of volunteers and events.</li>
                         <li class="step-item"><strong>Sort and Export:</strong> Sort columns and export as needed.</li>
                     </ol>
                 </div>
@@ -119,11 +166,41 @@
             <div class="expandable">
                 <div class="expandable-header">End of Year Report</div>
                 <div class="expandable-content">
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>The District Year-End Report is a powerful tool for breaking down <b>district engagement, participation, and event data</b>—not just for year-end reporting, but for ongoing analysis throughout the year.</li>
+                            <li><b>Dashboard View:</b> See a summary of all districts for the selected academic year, including:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>Total Events</b></li>
+                                <li><b>Students Reached</b> (with unique count)</li>
+                                <li><b>Volunteers</b> (with unique count)</li>
+                                <li><b>Volunteer Hours</b></li>
+                                <li><b>Breakdown by Event Type</b></li>
+                            </ul>
+                            <li><b>Detail View (per district):</b> Click a district to see:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>Summary stats</b> (events, students, volunteers, hours, organizations)</li>
+                                <li><b>Event Type Breakdown</b> (filterable, multi-select)</li>
+                                <li><b>Monthly Activity</b> (events, students, volunteers, hours by month)</li>
+                                <li><b>By-School Breakdown</b> (events, students, volunteers, hours by school and level)</li>
+                                <li><b>Detailed event tables</b> for each month and school</li>
+                            </ul>
+                            <li>Filter by <b>academic year</b>, <b>host</b> (All Events or PREPKC Events Only), and <b>event type</b> for custom breakdowns.</li>
+                            <li>Export all data and breakdowns to Excel for further analysis or reporting.</li>
+                            <li style="margin-top:0.7rem;"><b>Note:</b> The data in this report is <b>cached</b> for performance. Always check the <b>last updated</b> timestamp at the top to ensure you are viewing the freshest data. Use the <b>Refresh Data</b> button if needed.</li>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">Use this report for <b>ongoing monitoring</b> of district engagement, not just for year-end summaries. Filter by event type or month to spot trends and opportunities throughout the year.</p>
+                    </div>
                     <ol class="step-list">
                         <li class="step-item"><strong>Choose End of Year Report:</strong> Select from the report list.</li>
                         <li class="step-item"><strong>Set Academic Year:</strong> Filter by year for district stats and breakdowns.</li>
-                        <li class="step-item"><strong>Use Filters:</strong> Filter by event type and export to Excel.</li>
-                        <li class="step-item"><strong>View Summary:</strong> Review summary stats and sortable tables.</li>
+                        <li class="step-item"><strong>Use Filters:</strong> Filter by event type, host, or month for custom views.</li>
+                        <li class="step-item"><strong>View Details:</strong> Click a district for a full breakdown by event type, month, and school.</li>
+                        <li class="step-item"><strong>Export:</strong> Download all data and breakdowns to Excel.</li>
                     </ol>
                 </div>
             </div>
@@ -131,10 +208,35 @@
             <div class="expandable">
                 <div class="expandable-header">First Time Volunteer Report</div>
                 <div class="expandable-content">
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>This report identifies and analyzes <b>volunteers who participated for the first time</b> in the selected academic year.</li>
+                            <li>Use the <b>School Year</b> filter to view first-time volunteers for any year since 2020–21.</li>
+                            <li>Sort by volunteer name, events, hours, organization, or title by clicking the column headers.</li>
+                            <li>Paginate through results and adjust the number of rows per page as needed.</li>
+                            <li>Export the full report to Excel for further analysis or sharing.</li>
+                            <li>Click <b>Refresh</b> to update the cached data. Always check the <b>last refreshed</b> timestamp for data freshness.</li>
+                            <li>For each volunteer, the report shows:</li>
+                            <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                <li><b>Name</b> and <b>first volunteer date</b></li>
+                                <li><b>Total events</b> and <b>total hours</b> as a first-time volunteer</li>
+                                <li><b>Organization</b> and <b>title</b> (if available)</li>
+                                <li><b>List of events</b> participated in, with event name, date, and hours</li>
+                                <li><b>Salesforce link</b> to the volunteer’s contact (if available)</li>
+                            </ul>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">Use this report to <b>recognize new volunteers</b>, track recruitment efforts, and identify organizations or events that are most effective at bringing in new participants.</p>
+                    </div>
                     <ol class="step-list">
                         <li class="step-item"><strong>Choose First Time Volunteer:</strong> Select from the report list.</li>
-                        <li class="step-item"><strong>Set Academic Year:</strong> Filter by year for summary stats.</li>
-                        <li class="step-item"><strong>Sort and Export:</strong> Sort columns and export as needed.</li>
+                        <li class="step-item"><strong>Set Academic Year:</strong> Filter by year to see new volunteers for that period.</li>
+                        <li class="step-item"><strong>Sort and Paginate:</strong> Click column headers to sort, and use pagination controls to browse results.</li>
+                        <li class="step-item"><strong>Export:</strong> Download the full report to Excel.</li>
+                        <li class="step-item"><strong>Refresh:</strong> Click the refresh button to update the cached data if needed.</li>
                     </ol>
                 </div>
             </div>
@@ -142,21 +244,67 @@
             <div class="expandable">
                 <div class="expandable-header">Recruitment Tools</div>
                 <div class="expandable-content">
-                    <ul>
-                        <li><strong>Quick Recruitment Tool:</strong> Filter by upcoming event and search by multiple criteria.</li>
-                        <li><strong>Advanced Volunteer Search:</strong> Search by multiple terms and criteria for targeted recruitment.</li>
-                    </ul>
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About Recruitment Tools</div>
+                        <p>Recruitment Tools help you match volunteers with upcoming events and opportunities. Choose the tool that best fits your workflow:</p>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li><b>Quick Recruitment Tool:</b> <br>
+                                <span style="color:var(--text-secondary);">Best for when you already have a few volunteers in mind or want to quickly look up and match people to specific upcoming events.</span>
+                                <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                    <li>View upcoming unfilled events and filter by event type</li>
+                                    <li>Search volunteers by name, skills, or organization</li>
+                                    <li>See volunteer skills, last activity, and contact info next to event needs</li>
+                                    <li>Direct links to volunteer profiles and Salesforce records</li>
+                                    <li>Fast filtering for last-minute or targeted recruitment</li>
+                                </ul>
+                            </li>
+                            <li><b>Advanced Volunteer Search:</b> <br>
+                                <span style="color:var(--text-secondary);">Best for exploring your entire volunteer pool using powerful filters and analyzing volunteer history, skills, and engagement.</span>
+                                <ul style="margin:0.3rem 0 0.5rem 1.2rem;">
+                                    <li>Search by name, skills, organization, past events, and more</li>
+                                    <li>Flexible search modes: "Wide" (any term) or "Narrow" (all terms)</li>
+                                    <li>Detailed results table with sorting and pagination</li>
+                                    <li>Profile and Salesforce links for each volunteer</li>
+                                    <li>Ideal for planning campaigns or discovering new volunteers</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">Use the Quick Recruitment Tool for fast, targeted outreach when you know who you want, and the Advanced Volunteer Search for deeper analysis, discovery, and strategic recruitment.</p>
+                    </div>
+                    <ol class="step-list">
+                        <li class="step-item"><strong>Choose a Tool:</strong> Select either Quick Recruitment or Advanced Volunteer Search from the recruitment tools page.</li>
+                        <li class="step-item"><strong>Set Filters & Search:</strong> Use the available filters and search options to find the right volunteers for your needs.</li>
+                        <li class="step-item"><strong>Match & Contact:</strong> Review volunteer details, then reach out or assign as needed.</li>
+                    </ol>
                 </div>
             </div>
             
             <div class="expandable">
                 <div class="expandable-header">Event Contact Report</div>
                 <div class="expandable-content">
-                    <ul>
-                        <li>View list of events and contact details for each</li>
-                        <li>Sortable list for easy navigation</li>
-                        <li>View email and phone number lists for contacts</li>
-                    </ul>
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>This report provides <b>detailed contact information</b> for volunteers signed up for each event.</li>
+                            <li>Designed for <b>day-of-event coordination</b> and <b>emergency contact</b> needs—quickly access volunteer emails and phone numbers.</li>
+                            <li>Search and sort upcoming events, then click <b>View</b> to see a full list of volunteer contacts for that event.</li>
+                            <li>Contact info includes: <b>name, email, phone number, and organization</b> (if available).</li>
+                            <li>Future updates will add <b>automation tools</b> for bulk messaging, reminders, and more.</li>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">Use this report to quickly reach out to volunteers before or during an event, or to contact them in case of last-minute changes or emergencies.</p>
+                    </div>
+                    <ol class="step-list">
+                        <li class="step-item"><strong>Search or Browse Events:</strong> Use the search bar or sort columns to find the event you need.</li>
+                        <li class="step-item"><strong>View Contacts:</strong> Click <b>View</b> next to an event to see all volunteer contact details.</li>
+                        <li class="step-item"><strong>Contact Volunteers:</strong> Use the provided email and phone info for coordination or emergencies.</li>
+                        <li class="step-item"><strong>Stay Tuned:</strong> Future automation tools will make bulk messaging and reminders even easier.</li>
+                    </ol>
                 </div>
             </div>
             
@@ -168,6 +316,32 @@
                         <li>Export to Excel and view summary stats</li>
                         <li>Breakdown by organization, in-person, virtual, volunteer summary, and cancelled events</li>
                     </ul>
+                </div>
+            </div>
+            
+            <div class="expandable">
+                <div class="expandable-header">Attendance Details Report</div>
+                <div class="expandable-content">
+                    <div class="callout callout-info" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">About This Report</div>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                            <li>This report allows you to <b>view and edit detailed attendance data</b> for each event in a given academic year.</li>
+                            <li>Track the <b>number of students reached, classrooms/tables used, and students per volunteer</b>—key metrics for understanding event impact.</li>
+                            <li>Filter by academic year and event type using interactive checkboxes and dropdowns.</li>
+                            <li>Edit attendance details directly in the report to keep data accurate and up to date.</li>
+                            <li>Tracked info includes: event name, date, number of classrooms/tables, students per volunteer, total students, attendance in Salesforce, pathway, groups/rotations, STEM status, and attendance link.</li>
+                        </ul>
+                    </div>
+                    <div class="callout callout-tip" style="margin-bottom:1.2rem;">
+                        <div class="callout-title">💡 Pro Tip</div>
+                        <p style="margin:0.5rem 0 0 0;">Use this report to ensure your student reach numbers are accurate and to quickly update event details after each session. Keeping this data current helps with year-end reporting and impact analysis.</p>
+                    </div>
+                    <ol class="step-list">
+                        <li class="step-item"><strong>Select Academic Year:</strong> Use the dropdown to choose the year you want to review.</li>
+                        <li class="step-item"><strong>Filter by Event Type:</strong> Use the event type pills to focus on specific types of events.</li>
+                        <li class="step-item"><strong>Review & Edit Details:</strong> View and update the number of students, tables, and other attendance details for each event.</li>
+                        <li class="step-item"><strong>Monitor Impact:</strong> Use the students per volunteer metric to assess event effectiveness and reach.</li>
+                    </ol>
                 </div>
             </div>
             
