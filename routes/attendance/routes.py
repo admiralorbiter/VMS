@@ -823,9 +823,9 @@ def get_academic_year_range(today=None):
         end = date(year+1, 7, 31)
     return start, end
 
-@attendance.route('/attendance/impact')
+@attendance.route('/attendance/details')
 @login_required
-def attendance_impact():
+def attendance_details():
     year_param = request.args.get('year', type=int)
     today = date.today()
     current_year = today.year if today.month >= 8 else today.year - 1
@@ -847,11 +847,11 @@ def attendance_impact():
         {'value': et.value, 'label': et.value.replace('_', ' ').title()} for et in event_types
     ]
     event_types = sorted(event_types, key=lambda x: x['label'])
-    return render_template('attendance/impact.html', events=events, academic_years=academic_years, selected_year=selected_year, event_types=event_types)
+    return render_template('attendance/details.html', events=events, academic_years=academic_years, selected_year=selected_year, event_types=event_types)
 
-@attendance.route('/attendance/impact/events_json')
+@attendance.route('/attendance/details/events_json')
 @login_required
-def attendance_impact_events_json():
+def attendance_details_events_json():
     year = request.args.get('year', type=int)
     types = request.args.getlist('types[]')
     start = date(year, 8, 1)
@@ -885,7 +885,7 @@ def attendance_impact_events_json():
         return d
     return jsonify([event_to_dict(e) for e in events])
 
-@attendance.route('/attendance/impact/<int:event_id>/detail', methods=['GET'])
+@attendance.route('/attendance/details/<int:event_id>/detail', methods=['GET'])
 @login_required
 def get_attendance_detail(event_id):
     event = Event.query.get_or_404(event_id)
@@ -913,7 +913,7 @@ def get_attendance_detail(event_id):
         'attendance_link': detail.attendance_link
     })
 
-@attendance.route('/attendance/impact/<int:event_id>/detail', methods=['POST'])
+@attendance.route('/attendance/details/<int:event_id>/detail', methods=['POST'])
 @login_required
 def update_attendance_detail(event_id):
     event = Event.query.get_or_404(event_id)

@@ -71,7 +71,7 @@ def load_routes(bp):
                 'title': 'Attendance Report',
                 'description': 'View attendance statistics by event and district.',
                 'icon': 'fa-solid fa-calendar-check',
-                'url': '/attendance/impact',
+                'url': '/attendance/details',
                 'category': 'Attendance'
             }
         ]

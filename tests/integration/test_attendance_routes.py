@@ -84,9 +84,14 @@ def test_attendance_bulk_operations(client, auth_headers):
     response = safe_route_test(client, '/attendance/bulk', headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 202, 403, 404, 500])
 
-def test_attendance_impact_events_json(client, auth_headers):
-    """Test attendance impact events JSON endpoint"""
-    response = safe_route_test(client, '/attendance/impact/events.json', headers=auth_headers)
+def test_attendance_details_view(client, auth_headers):
+    """Test attendance details view"""
+    response = safe_route_test(client, '/attendance/details', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_attendance_details_events_json(client, auth_headers):
+    """Test attendance details events JSON endpoint"""
+    response = safe_route_test(client, '/attendance/details/events.json', headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 def test_get_attendance_detail(client, auth_headers):
@@ -148,9 +153,9 @@ def test_attendance_performance(client, auth_headers):
     assert (end_time - start_time) < 5.0
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
-def test_attendance_impact_event_relationships(client, auth_headers):
-    """Test attendance impact with event relationships"""
-    response = safe_route_test(client, '/attendance/impact', headers=auth_headers)
+def test_attendance_details_event_relationships(client, auth_headers):
+    """Test attendance details with event relationships"""
+    response = safe_route_test(client, '/attendance/details', headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 def test_attendance_metrics_dashboard(client, auth_headers):

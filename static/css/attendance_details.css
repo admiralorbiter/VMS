@@ -86,7 +86,7 @@
 }
 
 /* Attendance Impact Table Styles */
-.attendance-impact-container {
+.attendance-details-container {
     max-width: 1400px;
     width: 98vw;
     margin: 2rem auto;
@@ -96,7 +96,7 @@
     padding: 2rem 1.5rem;
 }
 
-.attendance-impact-table {
+.attendance-details-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
@@ -105,40 +105,40 @@
     display: block;
 }
 
-.attendance-impact-table th, .attendance-impact-table td {
+.attendance-details-table th, .attendance-details-table td {
     padding: 0.85rem 1rem;
     text-align: left;
 }
 
-.attendance-impact-table th {
+.attendance-details-table th {
     background: var(--delft-blue, #1d3354);
     color: var(--mint-green, #e9fff9);
     font-weight: 700;
 }
 
-.attendance-impact-table th:first-child {
+.attendance-details-table th:first-child {
     border-top-left-radius: 12px;
 }
 
-.attendance-impact-table th:last-child {
+.attendance-details-table th:last-child {
     border-top-right-radius: 12px;
 }
 
-.attendance-impact-table tr:nth-child(even) {
+.attendance-details-table tr:nth-child(even) {
     background: #f6fbfa;
 }
 
-.attendance-impact-table tr:hover {
+.attendance-details-table tr:hover {
     background: var(--non-photo-blue, #9ed8db);
     transition: background 0.2s;
 }
 
-.attendance-impact-table td {
+.attendance-details-table td {
     color: var(--delft-blue, #1d3354);
     vertical-align: middle;
 }
 
-.attendance-impact-table .btn-primary {
+.attendance-details-table .btn-primary {
     background: var(--ucla-blue, #467599);
     color: var(--mint-green, #e9fff9);
     border: none;
@@ -149,7 +149,7 @@
     transition: background 0.2s;
 }
 
-.attendance-impact-table .btn-primary:hover {
+.attendance-details-table .btn-primary:hover {
     background: var(--poppy, #d64045);
     color: #fff;
 }
@@ -245,11 +245,11 @@
 }
 
 @media (max-width: 1200px) {
-    .attendance-impact-container {
+    .attendance-details-container {
         max-width: 100vw;
         padding: 1rem 0.5rem;
     }
-    .attendance-impact-table {
+    .attendance-details-table {
         display: block;
         overflow-x: auto;
         width: 100%;

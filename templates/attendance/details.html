@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Event Attendance Impact{% endblock %}
+{% block title %}Event Attendance Details{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance_details.css') }}">
@@ -43,8 +43,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="attendance-impact-container">
-    <h1>Event Attendance Impact (Academic Year)</h1>
+<div class="attendance-details-container">
+    <h1>Event Attendance Details (Academic Year)</h1>
     <form id="yearSelectForm" method="get" style="margin-bottom: 1.5rem;">
         <label for="yearSelect"><strong>Academic Year:</strong></label>
         <select id="yearSelect" name="year" onchange="document.getElementById('yearSelectForm').submit()">
@@ -65,7 +65,7 @@
         {% endfor %}
         </div>
     </div>
-    <table class="table attendance-impact-table" id="impactTable">
+    <table class="table attendance-details-table" id="detailsTable">
         <thead>
             <tr>
                 <th>Event</th>
@@ -81,7 +81,7 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="impactTableBody">
+        <tbody id="detailsTableBody">
             {% for event in events %}
             <tr data-event-id="{{ event.id }}">
                 <td>{{ event.title }}</td>
@@ -118,10 +118,10 @@ function fetchAndRenderEvents() {
     const params = new URLSearchParams();
     params.append('year', year);
     checked.forEach(t => params.append('types[]', t));
-    fetch(`/attendance/impact/events_json?${params.toString()}`)
+    fetch(`/attendance/details/events_json?${params.toString()}`)
         .then(res => res.json())
         .then(events => {
-            const tbody = document.getElementById('impactTableBody');
+            const tbody = document.getElementById('detailsTableBody');
             tbody.innerHTML = '';
             events.forEach(event => {
                 const ad = event.attendance_detail || {};
