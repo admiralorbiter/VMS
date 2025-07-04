@@ -18,20 +18,20 @@
                     <i class="fa-solid fa-cloud"></i> Contact
                 </a>
                 {% endif %}
-                {% if volunteer.salesforce_account_url %}
+                <!-- {% if volunteer.salesforce_account_url %}
                 <a href="{{ volunteer.salesforce_account_url }}" class="btn salesforce-btn" target="_blank">
                     <i class="fa-solid fa-building-user"></i> Account
                 </a>
-                {% endif %}
+                {% endif %} -->
             </div>
             {% endif %}
         </div>
         <div class="header-actions">
-            {% if current_user.is_admin %}
+            <!-- {% if current_user.is_admin %}
             <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.id) }}" class="btn edit-volunteer-btn">
                 <i class="fa-solid fa-pencil"></i> Edit
             </a>
-            {% endif %}
+            {% endif %} -->
             <a href="{{ url_for('volunteers.volunteers') }}" class="btn back-btn">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>

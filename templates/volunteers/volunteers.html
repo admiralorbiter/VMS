@@ -9,10 +9,10 @@
 {% block content %}
 <div class="volunteers-container">
     <div class="volunteers-header">
-        <h1>Volunteer Directory</h1>
-        <a href="{{ url_for('volunteers.add_volunteer') }}" class="btn add-volunteer-btn">
+        <h1>Volunteers</h1>
+        <!-- <a href="{{ url_for('volunteers.add_volunteer') }}" class="btn add-volunteer-btn">
             <span class="btn-content">Add New Volunteer</span>
-        </a>
+        </a> -->
     </div>
 
     <div class="filter-panel">
@@ -160,15 +160,15 @@
                                 <i class="fa-solid fa-cloud"></i>
                             </a>
                             {% endif %}
-                            {% if volunteer.volunteer.salesforce_account_url %}
+                            <!-- {% if volunteer.volunteer.salesforce_account_url %}
                             <a href="{{ volunteer.volunteer.salesforce_account_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Account">
                                 <i class="fa-solid fa-building-user"></i>
                             </a>
-                            {% endif %}
+                            {% endif %} -->
                             <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn view-btn">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            {% if current_user.is_admin %}
+                            <!-- {% if current_user.is_admin %}
                             <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn edit-btn">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -176,7 +176,7 @@
                                     data-volunteer-name="{{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
                                 <i class="fas fa-trash"></i>
                             </button>
-                            {% endif %}
+                            {% endif %} -->
                         </div>
                     </td>
                 </tr>
