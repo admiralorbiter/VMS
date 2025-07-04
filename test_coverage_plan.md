@@ -12,7 +12,7 @@
 - ✅ `test_school.py` - Test coverage exists
 - ✅ `test_student.py` - Test coverage exists
 - ✅ `test_teacher.py` - Test coverage exists
-- ✅ `test_tech_job_board.py` - Test coverage exists
+
 - ✅ `test_user.py` - 6 test cases (good coverage)
 - ✅ `test_volunteer.py` - Test coverage exists
 

@@ -14,7 +14,6 @@ from models.student import Student
 from models.contact import RaceEthnicityEnum
 from models.teacher import Teacher
 from models.contact import GenderEnum
-from models.tech_job_board import JobOpportunity
 from models.volunteer import Volunteer, Skill, VolunteerSkill, Engagement, EventParticipation
 from models.contact import EducationEnum, LocalStatusEnum, SkillSourceEnum
 from models.history import History
@@ -593,33 +592,7 @@ def test_teacher(app):
             db.session.delete(existing)
             db.session.commit()
 
-@pytest.fixture
-def test_job_opportunity(app):
-    """Fixture for creating a test job opportunity"""
-    with app.app_context():
-        job_opp = JobOpportunity(
-            company_name='Test Company',
-            description='Test Description',
-            industry='Technology',
-            current_openings=5,
-            opening_types='Software Engineer, Data Scientist',
-            location='Kansas City, MO',
-            entry_level_available=True,
-            kc_based=True,
-            remote_available=True,
-            notes='Test notes',
-            job_link='https://example.com/jobs',
-            is_active=True
-        )
-        db.session.add(job_opp)
-        db.session.commit()
-        yield job_opp
-        
-        # Clean up
-        existing = db.session.get(JobOpportunity, job_opp.id)
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
+
 
 # @pytest.fixture
 # def test_upcoming_event(app):
