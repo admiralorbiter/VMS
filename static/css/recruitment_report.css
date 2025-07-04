@@ -1,217 +1,561 @@
-/* Extends base styles.css */
+/* Recruitment Report Styles */
 
-/* Layout adjustments */
 .recruitment-container {
-    display: grid;
-    grid-template-columns: 35% 65%; /* Adjust the ratio to give more space to the volunteer search */
-    gap: 2%; /* Adjust gap as needed */
-    width: 100%; /* Use full width */
-    margin: 0; /* Remove side margins */
-    padding: 20px; /* Add padding */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin: 2rem auto;
+    max-width: 1800px;
+    justify-content: space-between;
 }
 
-/* Events column styling */
-.events-column {
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
-    border: 1px solid var(--non-photo-blue);
-    padding: 1.5rem;
-}
-
-/* Volunteer search column styling */
-.volunteer-search-column {
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
-    border: 1px solid var(--non-photo-blue);
-    padding: 1.5rem;
-}
-
-/* Table header sorting styles */
-.sortable {
-    cursor: pointer;
-    position: relative;
-    padding-right: 1.5rem !important;
-}
-
-.sortable::after {
-    content: '↕️';
-    position: absolute;
-    right: 0.5rem;
-    opacity: 0.5;
-}
-
-.sortable.asc::after {
-    content: '↑';
-    opacity: 1;
-}
-
-.sortable.desc::after {
-    content: '↓';
-    opacity: 1;
-}
-
-/* Search input styling */
-.search-container {
-    margin-bottom: 1.5rem;
-}
-
-.search-input {
-    width: 100%; /* Make the search input full width */
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--non-photo-blue);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.2s ease;
-}
-
-.search-input:focus {
-    border-color: var(--ucla-blue);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(70, 117, 153, 0.1);
-}
-
-/* Table improvements */
-.recruitment-table {
-    width: 100%; /* Ensure the table takes full width */
-    border-collapse: separate;
-    border-spacing: 0;
-    margin-top: 1rem;
-}
-
-.recruitment-table th {
-    background-color: var(--delft-blue);
-    color: var(--mint-green);
-    padding: 1rem;
-    text-align: left;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.recruitment-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--non-photo-blue);
-}
-
-.recruitment-table tbody tr:hover {
-    background-color: rgba(158, 216, 219, 0.1);
-}
-
-/* Badge styling */
-.skill-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background-color: var(--ucla-blue);
-    color: var(--mint-green);
+.events-column, .volunteer-search-column {
+    background: white;
     border-radius: 12px;
-    font-size: 0.85rem;
-    margin: 0.25rem;
-    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(29, 51, 84, 0.10);
+    border: 1.5px solid var(--non-photo-blue, #9ed8dbff);
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+    flex: 1 1 48%;
+    min-width: 350px;
+    max-width: 900px;
 }
 
-/* Status indicators */
-.status-indicator {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 0.5rem;
+.events-column {
+    margin-right: 1rem;
 }
 
-.status-needed {
-    background-color: var(--poppy);
+.volunteer-search-column {
+    margin-left: 1rem;
 }
 
-/* Sign-up link styling */
-.sign-up-link {
-    margin-left: 8px;
-    color: #007bff;
-    text-decoration: none;
-}
-
-.sign-up-link:hover {
-    color: #0056b3;
-}
-
-.sign-up-link i {
-    font-size: 14px;
-}
-
-/* Responsive adjustments */
 @media (max-width: 1200px) {
     .recruitment-container {
-        grid-template-columns: 1fr; /* Stack columns on smaller screens */
+        flex-direction: column;
         gap: 2rem;
+    }
+    .events-column, .volunteer-search-column {
+        margin: 0;
+        max-width: 100%;
     }
 }
 
-/* Override styles for recruitment report */
-main {
-    max-width: 100%; /* Allow full width */
-    margin: 0; /* Remove auto margin */
-    padding: 20px; /* Keep padding for spacing */
+.filter-section, .search-container {
+    background: var(--mint-green, #e9fff9ff);
+    border-radius: 8px;
+    padding: 1.25rem 1rem;
+    margin-bottom: 1.5rem;
+    border: 1.5px solid var(--non-photo-blue, #9ed8dbff);
+    box-shadow: 0 2px 6px rgba(29, 51, 84, 0.07);
 }
 
-/* Button Styles */
-.btn-custom {
-    padding: 0.5rem 1.5rem; /* Adjust padding */
-    border-radius: 6px; /* Rounded corners */
-    font-weight: bold; /* Bold text */
-    transition: all 0.2s ease; /* Smooth transition */
-    border: none; /* No border */
-    cursor: pointer; /* Pointer cursor */
+/* Compact, clean recruitment table design */
+.recruitment-table {
+    width: 100%;
+    margin: 0;
+    border-radius: 8px;
+    background: white;
+    box-shadow: none;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 1em;
 }
 
-.btn-custom-primary {
-    background-color: var(--ucla-blue); /* Primary button color */
-    color: var(--mint-green); /* Text color */
+.recruitment-table th {
+    background: var(--delft-blue, #1d3354ff);
+    color: var(--mint-green, #e9fff9ff);
+    padding: 0.7em 0.7em;
+    font-weight: 600;
+    font-size: 1em;
+    border: none;
 }
 
-.btn-custom-primary:hover {
-    background-color: var(--delft-blue); /* Hover color */
-    color: var(--non-photo-blue); /* Text color on hover */
+.recruitment-table td {
+    padding: 0.5em 0.7em;
+    border-bottom: 1px solid var(--non-photo-blue, #9ed8dbff);
+    vertical-align: middle;
+    background: white;
+    font-size: 1em;
 }
 
-.btn-custom-secondary {
-    background-color: var(--poppy); /* Secondary button color */
-    color: var(--mint-green); /* Text color */
+.recruitment-table tr:nth-child(even) {
+    background: #f7fafb;
 }
 
-.btn-custom-secondary:hover {
-    background-color: #c13136; /* Hover color */
-    transform: translateY(1px); /* Slight lift effect */
-    box-shadow: 0 1px 0 #b53035; /* Shadow effect */
+.recruitment-table tr:hover {
+    background: #e9fff9;
+    transition: background 0.15s;
 }
 
-/* Pagination Styles */
+.skill-badge {
+    display: inline-block;
+    background: var(--ucla-blue, #467599ff);
+    color: var(--mint-green, #e9fff9ff);
+    padding: 0.3em 0.9em;
+    border-radius: 16px;
+    font-size: 0.92em;
+    font-weight: 500;
+    margin: 0.15em 0.2em 0.15em 0;
+    border: none;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.08);
+}
+
+.btn-custom-primary, .btn.btn-primary {
+    background: var(--ucla-blue, #467599ff);
+    color: var(--mint-green, #e9fff9ff);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 600;
+    box-shadow: 0 3px 0 var(--delft-blue, #1d3354ff);
+    transition: all 0.1s;
+}
+
+.btn-custom-primary:hover, .btn.btn-primary:hover {
+    background: var(--delft-blue, #1d3354ff);
+    color: var(--non-photo-blue, #9ed8dbff);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--delft-blue, #1d3354ff);
+}
+
+.sign-up-link {
+    color: var(--poppy, #d64045ff);
+    margin-left: 0.5em;
+    font-size: 1.1em;
+    vertical-align: middle;
+}
+
+.status-indicator.status-needed {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: var(--poppy, #d64045ff);
+    border-radius: 50%;
+    margin-right: 0.5em;
+    vertical-align: middle;
+}
+
 .pagination {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.page-item {
+    display: inline-block;
 }
 
 .page-link {
-    color: #0056b3;
-    background-color: #fff;
-    border: 1px solid #dee2e6;
+    background: var(--mint-green, #e9fff9ff);
+    color: var(--delft-blue, #1d3354ff);
+    border: 1px solid var(--non-photo-blue, #9ed8dbff);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    margin: 0 0.1rem;
+    font-weight: 500;
+    transition: background 0.1s, color 0.1s;
+    text-decoration: none;
 }
 
-.page-link:hover {
-    color: #003d7a;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-}
-
-.page-item.active .page-link {
-    background-color: #0056b3;
-    border-color: #0056b3;
-    color: white;
+.page-item.active .page-link, .page-link:hover {
+    background: var(--ucla-blue, #467599ff);
+    color: var(--mint-green, #e9fff9ff);
+    border-color: var(--ucla-blue, #467599ff);
 }
 
 .page-item.disabled .page-link {
-    color: #6c757d;
-    pointer-events: none;
-    background-color: #fff;
-    border-color: #dee2e6;
+    color: #aaa;
+    background: #f5f5f5;
+    border-color: #eee;
+    cursor: not-allowed;
+}
+
+/* Improve search/filter panel */
+.search-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.10);
+    border: 1.5px solid var(--non-photo-blue, #9ed8dbff);
+    padding: 1.25rem 1.5rem 1rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.search-form .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.search-form .col-md-8, .search-form .col-md-4 {
+    flex: 1 1 0;
+    min-width: 220px;
+}
+
+.search-form .form-group label {
+    font-weight: 600;
+    color: var(--delft-blue, #1d3354ff);
+    margin-bottom: 0.25rem;
+}
+
+.search-form .form-control {
+    border: 2px solid var(--non-photo-blue, #9ed8dbff);
+    border-radius: 8px;
+    padding: 0.7rem 1.1rem;
+    font-size: 1.05rem;
+    background: var(--mint-green, #e9fff9ff);
+    transition: border-color 0.2s;
+}
+
+.search-form .form-control:focus {
+    border-color: var(--ucla-blue, #467599ff);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(70, 117, 153, 0.10);
+}
+
+/* Search mode toggle as pill buttons */
+.btn-group-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-group-toggle .btn {
+    border-radius: 999px;
+    border: 2px solid var(--ucla-blue, #467599ff);
+    background: white;
+    color: var(--ucla-blue, #467599ff);
+    font-weight: 600;
+    padding: 0.45rem 1.2rem;
+    font-size: 1rem;
+    transition: background 0.15s, color 0.15s, border 0.15s;
+    box-shadow: none;
+}
+
+.btn-group-toggle .btn.active, .btn-group-toggle .btn:active, .btn-group-toggle input[type="radio"]:checked + .btn {
+    background: var(--ucla-blue, #467599ff);
+    color: var(--mint-green, #e9fff9ff);
+    border-color: var(--ucla-blue, #467599ff);
+}
+
+.btn-group-toggle .btn:hover {
+    background: var(--non-photo-blue, #9ed8dbff);
+    color: var(--delft-blue, #1d3354ff);
+}
+
+/* Search/clear buttons */
+.search-form .btn {
+    min-width: 120px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-radius: 8px;
+    margin-right: 0.5rem;
+    box-shadow: 0 2px 0 var(--delft-blue, #1d3354ff);
+}
+
+.search-form .btn-primary {
+    background: var(--ucla-blue, #467599ff);
+    color: var(--mint-green, #e9fff9ff);
+    border: none;
+}
+
+.search-form .btn-primary:hover {
+    background: var(--delft-blue, #1d3354ff);
+    color: var(--non-photo-blue, #9ed8dbff);
+}
+
+.search-form .btn-secondary {
+    background: var(--poppy, #d64045ff);
+    color: var(--mint-green, #e9fff9ff);
+    border: none;
+}
+
+.search-form .btn-secondary:hover {
+    background: var(--delft-blue, #1d3354ff);
+    color: var(--non-photo-blue, #9ed8dbff);
+}
+
+/* Volunteer name styling */
+.recruitment-table td:first-child a {
+    color: var(--delft-blue, #1d3354ff);
+    font-weight: 700;
+    font-size: 1.13em;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.recruitment-table td:first-child a:hover {
+    color: var(--ucla-blue, #467599ff);
+    text-decoration: underline;
+}
+
+.recruitment-table td:first-child strong {
+    font-weight: 700;
+    font-size: 1.13em;
+}
+
+.recruitment-table td:first-child small {
+    color: var(--ucla-blue, #467599ff);
+    font-size: 0.97em;
+    font-style: italic;
+}
+
+/* Salesforce cloud icon next to name */
+.recruitment-table td:first-child .salesforce-btn {
+    background: #00a1e0;
+    color: white;
+    border-radius: 6px;
+    padding: 0.2em 0.5em;
+    margin-left: 0.3em;
+    font-size: 1em;
+    vertical-align: middle;
+    transition: background 0.15s;
+}
+
+.recruitment-table td:first-child .salesforce-btn:hover {
+    background: #0089bd;
+}
+
+/* Table container: reduce side margins and padding */
+.table-responsive {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* Main content area: less margin on sides */
+.recruitment-search-container {
+    max-width: 1200px;
+    margin: 2rem auto 0 auto;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    .search-container, .recruitment-search-container {
+        max-width: 100%;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+    }
+    .table-responsive {
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .recruitment-container {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .events-column, .volunteer-search-column {
+        padding: 1rem;
+    }
+    .recruitment-table th, .recruitment-table td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.98rem;
+    }
+    .filter-section, .search-container {
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+/* Edge-to-edge look: reduce margins and padding further */
+.recruitment-search-container,
+.table-responsive {
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.recruitment-table {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    border-radius: 0 0 10px 10px;
+}
+
+/* Volunteer name cell: more prominent, compact, and visually separated */
+.recruitment-table td:first-child {
+    background: rgba(233, 255, 249, 0.7);
+    border-left: 4px solid var(--ucla-blue, #467599ff);
+    font-size: 1.18em !important;
+    font-weight: 700 !important;
+    padding-top: 0.7em !important;
+    padding-bottom: 0.7em !important;
+    vertical-align: middle !important;
+    letter-spacing: 0.01em;
+}
+
+.recruitment-table td:first-child a {
+    color: var(--delft-blue, #1d3354ff) !important;
+    font-weight: 800 !important;
+    font-size: 1.18em !important;
+    text-decoration: none !important;
+    display: inline-block;
+    margin-bottom: 0.1em;
+    line-height: 1.1;
+}
+
+.recruitment-table td:first-child a:hover {
+    color: var(--ucla-blue, #467599ff) !important;
+    text-decoration: underline !important;
+}
+
+.recruitment-table td:first-child strong {
+    font-weight: 800 !important;
+    font-size: 1.18em !important;
+    display: block;
+    margin-bottom: 0.1em;
+}
+
+.recruitment-table td:first-child small {
+    color: var(--ucla-blue, #467599ff) !important;
+    font-size: 0.98em !important;
+    font-style: italic;
+    display: block;
+    margin-bottom: 0.05em;
+    margin-top: 0.05em;
+    line-height: 1.1;
+}
+
+.recruitment-table td:first-child .salesforce-btn {
+    margin-left: 0.4em;
+    margin-bottom: 0.1em;
+}
+
+/* Remove extra vertical space between name/title/email */
+.recruitment-table td:first-child br {
+    display: none;
+}
+
+/* Responsive: keep edge-to-edge look on mobile */
+@media (max-width: 900px) {
+    .recruitment-search-container,
+    .table-responsive {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
+/* Force table to full width and override .table/.table-striped from style.css */
+.table, .table-striped, .recruitment-table {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.table-responsive, .recruitment-search-container {
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Remove .text-dark from links in table header */
+.table th a, .table th a.text-dark {
+    color: var(--mint-green, #e9fff9ff) !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+}
+
+.table th a:hover, .table th a:focus {
+    color: var(--non-photo-blue, #9ed8dbff) !important;
+    text-decoration: underline !important;
+}
+
+/* Name cell: visually distinct, compact, and on one line if possible */
+.table td:first-child, .recruitment-table td:first-child {
+    background: rgba(233, 255, 249, 0.7) !important;
+    border-left: 4px solid var(--ucla-blue, #467599ff) !important;
+    font-size: 1.13em !important;
+    font-weight: 700 !important;
+    padding: 0.6em 1em 0.6em 1em !important;
+    vertical-align: middle !important;
+    letter-spacing: 0.01em;
+    white-space: nowrap !important;
+}
+
+.table td:first-child a, .recruitment-table td:first-child a {
+    color: var(--delft-blue, #1d3354ff) !important;
+    font-weight: 800 !important;
+    font-size: 1.13em !important;
+    text-decoration: none !important;
+    display: inline-block;
+    margin-right: 0.4em;
+    line-height: 1.1;
+    vertical-align: middle;
+}
+
+.table td:first-child a:hover, .recruitment-table td:first-child a:hover {
+    color: var(--ucla-blue, #467599ff) !important;
+    text-decoration: underline !important;
+}
+
+.table td:first-child .salesforce-btn, .recruitment-table td:first-child .salesforce-btn {
+    margin-left: 0.2em;
+    margin-bottom: 0;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.table td:first-child small, .recruitment-table td:first-child small {
+    color: var(--ucla-blue, #467599ff) !important;
+    font-size: 0.98em !important;
+    font-style: italic;
+    display: inline-block;
+    margin-left: 0.5em;
+    margin-bottom: 0;
+    margin-top: 0;
+    line-height: 1.1;
+    vertical-align: middle;
+}
+
+/* Remove <br> in name cell for compactness */
+.table td:first-child br, .recruitment-table td:first-child br {
+    display: none !important;
+}
+
+/* Responsive: allow table to scroll horizontally on small screens */
+@media (max-width: 900px) {
+    .table-responsive, .recruitment-search-container {
+        padding: 0 !important;
+    }
+    .table, .table-striped, .recruitment-table {
+        font-size: 0.98em !important;
+    }
+}
+
+.recruitment-table-container {
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+    margin: 0.5rem auto 2rem auto;
+    max-width: 98vw;
+}
+
+@media (max-width: 900px) {
+    .recruitment-table-container {
+        max-width: 100vw;
+        padding: 0 0.1rem;
+    }
+}
+
+main {
+    max-width: 100vw !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
