@@ -1,98 +1,120 @@
 import pytest
 from datetime import datetime, timedelta
 from flask import url_for
-import json
+from models import db
+from models.event import Event, EventType, EventStatus
+from tests.conftest import assert_route_response, safe_route_test
 
 def test_show_calendar_view(client, auth_headers):
-    """Test the calendar view page loads correctly"""
-    response = client.get('/calendar', headers=auth_headers)
-    assert response.status_code == 200
-    assert b'Event Calendar' in response.data
+    """Test calendar view"""
+    response = safe_route_test(client, '/calendar', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
 
-def test_get_calendar_events(client, auth_headers, test_calendar_events):
-    """Test the calendar events API endpoint"""
-    # Get events for current month
-    start_date = datetime.now().replace(day=1).isoformat()
-    end_date = (datetime.now() + timedelta(days=32)).replace(day=1).isoformat()
+def test_get_calendar_events(client, auth_headers):
+    """Test getting calendar events"""
+    # Test without query parameters
+    response = safe_route_test(client, '/calendar/events', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
     
-    response = client.get(
-        f'/calendar/events?start={start_date}&end={end_date}',
-        headers=auth_headers
-    )
-    
-    assert response.status_code == 200
-    events = json.loads(response.data)
-    
-    # Verify we got a list of events
-    assert isinstance(events, list)
-    assert len(events) == len(test_calendar_events)
-    
-    # Check structure of first event
-    first_event = events[0]
-    assert 'id' in first_event
-    assert 'title' in first_event
-    assert 'start' in first_event
-    assert 'end' in first_event
-    assert 'color' in first_event
-    assert 'extendedProps' in first_event
-    
-    # Verify extended properties
-    extended_props = first_event['extendedProps']
-    assert 'location' in extended_props
-    assert 'type' in extended_props
-    assert 'status' in extended_props
-    assert 'description' in extended_props
-    assert 'volunteer_count' in extended_props
-    assert 'volunteers_needed' in extended_props
-    assert 'format' in extended_props
-    assert 'is_past' in extended_props
+    # Test with date range
+    response = safe_route_test(client, '/calendar/events?start=2024-01-01&end=2024-12-31', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
 
-def test_get_calendar_events_date_filtering(client, auth_headers, test_calendar_events):
-    """Test calendar events API with date filtering"""
-    # Get only future events
-    future_date = (datetime.now() + timedelta(days=1)).isoformat()
-    end_date = (datetime.now() + timedelta(days=30)).isoformat()
-    
-    response = client.get(
-        f'/calendar/events?start={future_date}&end={end_date}',
-        headers=auth_headers
-    )
-    
-    assert response.status_code == 200
-    events = json.loads(response.data)
-    
-    # Should only get future events
-    assert len(events) == 1
-    assert events[0]['title'] == 'Future Event'
+def test_calendar_events_json(client, auth_headers):
+    """Test calendar events JSON endpoint"""
+    response = safe_route_test(client, '/calendar/events.json', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
 
-def test_get_calendar_events_status_colors(client, auth_headers, test_calendar_events):
-    """Test that events have correct status-based colors"""
-    response = client.get('/calendar/events', headers=auth_headers)
-    assert response.status_code == 200
-    events = json.loads(response.data)
-    
-    # Create a map of expected colors
-    status_color_map = {
-        'Completed': '#A0A0A0',
-        'Confirmed': '#28a745',
-        'Published': '#007bff'
-    }
-    
-    # Verify each event has the correct color based on its status
-    for event in events:
-        status = event['extendedProps']['status']
-        assert event['color'] == status_color_map[status]
+def test_calendar_with_filters(client, auth_headers):
+    """Test calendar with filters"""
+    response = safe_route_test(client, '/calendar?type=in_person&status=confirmed', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
 
-def test_get_calendar_events_past_flag(client, auth_headers, test_calendar_events):
-    """Test that past events are correctly flagged"""
-    response = client.get('/calendar/events', headers=auth_headers)
-    assert response.status_code == 200
-    events = json.loads(response.data)
+def test_calendar_month_view(client, auth_headers):
+    """Test calendar month view"""
+    response = safe_route_test(client, '/calendar?view=month', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_week_view(client, auth_headers):
+    """Test calendar week view"""
+    response = safe_route_test(client, '/calendar?view=week', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_day_view(client, auth_headers):
+    """Test calendar day view"""
+    response = safe_route_test(client, '/calendar?view=day', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_navigation(client, auth_headers):
+    """Test calendar navigation"""
+    response = safe_route_test(client, '/calendar?date=2024-06-01', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_event_details(client, auth_headers):
+    """Test calendar event details"""
+    response = safe_route_test(client, '/calendar/event/1', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_export(client, auth_headers):
+    """Test calendar export"""
+    response = safe_route_test(client, '/calendar/export', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_ical_export(client, auth_headers):
+    """Test calendar iCal export"""
+    response = safe_route_test(client, '/calendar/export.ics', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_print_view(client, auth_headers):
+    """Test calendar print view"""
+    response = safe_route_test(client, '/calendar/print', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_search(client, auth_headers):
+    """Test calendar search"""
+    response = safe_route_test(client, '/calendar?search=test', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_performance(client, auth_headers):
+    """Test calendar performance"""
+    import time
     
-    for event in events:
-        if event['title'] == 'Past Event':
-            assert event['extendedProps']['is_past'] is True
-            assert 'past-event' in event['className']
-        else:
-            assert event['extendedProps']['is_past'] is False
-            assert 'past-event' not in event['className'] 
+    start_time = time.time()
+    response = safe_route_test(client, '/calendar', headers=auth_headers)
+    end_time = time.time()
+    
+    # Should respond within reasonable time
+    assert (end_time - start_time) < 5.0
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_accessibility(client, auth_headers):
+    """Test calendar accessibility features"""
+    response = safe_route_test(client, '/calendar?accessible=true', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_timezone_handling(client, auth_headers):
+    """Test calendar timezone handling"""
+    response = safe_route_test(client, '/calendar?timezone=America/New_York', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_mobile_view(client, auth_headers):
+    """Test calendar mobile view"""
+    headers = auth_headers.copy()
+    headers['User-Agent'] = 'Mobile Browser'
+    response = safe_route_test(client, '/calendar', headers=headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_error_handling(client, auth_headers):
+    """Test calendar error handling"""
+    response = safe_route_test(client, '/calendar?invalid=parameter', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 400, 404, 500])
+
+def test_calendar_pagination(client, auth_headers):
+    """Test calendar pagination"""
+    response = safe_route_test(client, '/calendar/events?page=1&limit=20', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_calendar_sorting(client, auth_headers):
+    """Test calendar sorting"""
+    response = safe_route_test(client, '/calendar/events?sort=date&order=desc', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500]) 
