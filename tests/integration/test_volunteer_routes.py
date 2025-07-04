@@ -37,7 +37,7 @@ def test_add_volunteer(client, auth_headers, app):
             'organization_name': 'Test Org',
             'title': 'Developer',
             'gender': GenderEnum.other.name,
-            'local_status': LocalStatusEnum.true.name,
+            'local_status': LocalStatusEnum.local.name,
             'race_ethnicity': RaceEthnicityEnum.white.name,
             'skills': json.dumps(skill_names)  # JSON string of skills
         }
@@ -90,7 +90,7 @@ def test_edit_volunteer(client, auth_headers, test_volunteer, app):
             'organization_name': 'New Org',
             'title': 'Senior Developer',
             'gender': GenderEnum.other.name,
-            'local_status': LocalStatusEnum.true.name,
+            'local_status': LocalStatusEnum.local.name,
             'race_ethnicity': RaceEthnicityEnum.white.name,
             'phone': '987-654-3210',
             'phone_type': 'personal',
@@ -201,7 +201,7 @@ def test_volunteer_skills(client, auth_headers, test_volunteer, app):
             'skills': json.dumps(["Python", "JavaScript"]),
             # Add required form fields
             'gender': GenderEnum.other.name,
-            'local_status': LocalStatusEnum.true.name,
+            'local_status': LocalStatusEnum.local.name,
             'race_ethnicity': RaceEthnicityEnum.white.name
         }
         
