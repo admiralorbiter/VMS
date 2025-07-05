@@ -35,7 +35,7 @@ from models import db
 from models.district_model import District
 from models.event import Event, EventType, EventStatus, EventFormat
 from models.volunteer import EventParticipation, Skill, Volunteer
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
 from sqlalchemy.orm import joinedload
@@ -322,32 +322,33 @@ def process_student_participation_row(row, success_count, error_count, errors):
 def events():
     """
     List all events with filtering, sorting, and pagination
-    
-    This endpoint provides a comprehensive view of all events in the system
-    with advanced filtering capabilities, sorting options, and pagination.
-    
-    Query Parameters:
-    - page: Page number for pagination
-    - per_page: Items per page (10, 25, 50, 100)
-    - search_title: Text search in event titles
-    - event_type: Filter by event type
-    - status: Filter by event status
-    - start_date: Filter by start date (YYYY-MM-DD)
-    - end_date: Filter by end date (YYYY-MM-DD)
-    - sort_by: Column to sort by (title, type, start_date)
-    - sort_direction: Sort direction (asc, desc)
-    
-    Returns:
-        Rendered template with filtered and paginated events
+    Now supports filtering by academic year (8/1 to 7/31).
     """
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
-    
-    # Validate per_page value
     allowed_per_page = [10, 25, 50, 100]
     if per_page not in allowed_per_page:
-        per_page = 25  # fallback to default if invalid value
+        per_page = 25
+
+    # Academic year calculation
+    today = date.today()
+    if today.month >= 8:
+        default_academic_year = f"{today.year}-{today.year+1}"
+    else:
+        default_academic_year = f"{today.year-1}-{today.year}"
+    academic_year = request.args.get('academic_year', default_academic_year)
+
+    # Build list of available academic years from events
+    min_event = Event.query.order_by(Event.start_date.asc()).first()
+    max_event = Event.query.order_by(Event.start_date.desc()).first()
+    academic_years = []
+    if min_event and max_event:
+        min_year = min_event.start_date.year if min_event.start_date.month >= 8 else min_event.start_date.year - 1
+        max_year = max_event.start_date.year if max_event.start_date.month >= 8 else max_event.start_date.year - 1
+        for y in range(max_year, min_year-1, -1):
+            academic_years.append(f"{y}-{y+1}")
+    academic_years.insert(0, 'All')
 
     # Create current_filters dictionary
     current_filters = {
@@ -356,17 +357,14 @@ def events():
         'status': request.args.get('status', ''),
         'start_date': request.args.get('start_date', ''),
         'end_date': request.args.get('end_date', ''),
-        'per_page': per_page
+        'per_page': per_page,
+        'academic_year': academic_year
     }
-
-    # Remove empty filters
-    current_filters = {k: v for k, v in current_filters.items() if v}
+    current_filters = {k: v for k, v in current_filters.items() if v or k == 'academic_year'}
 
     # Get sort parameters
-    sort_by = request.args.get('sort_by', 'start_date')  # default sort by start_date
-    sort_direction = request.args.get('sort_direction', 'desc')  # default direction
-    
-    # Add sort parameters to current_filters
+    sort_by = request.args.get('sort_by', 'start_date')
+    sort_direction = request.args.get('sort_direction', 'desc')
     current_filters['sort_by'] = sort_by
     current_filters['sort_direction'] = sort_direction
 
@@ -377,42 +375,34 @@ def events():
     if current_filters.get('search_title'):
         search_term = f"%{current_filters['search_title']}%"
         query = query.filter(Event.title.ilike(search_term))
-
     if current_filters.get('event_type'):
         try:
             event_type = EventType[current_filters['event_type'].upper()]
             query = query.filter(Event.type == event_type)
         except KeyError:
             flash(f"Invalid event type: {current_filters['event_type']}", 'warning')
-
     if current_filters.get('status'):
         status = current_filters['status']
-        # Handle case where imported status doesn't match enum
-        status_mapping = {
-            'Completed': 'COMPLETED',
-            'Confirmed': 'CONFIRMED',
-            'Cancelled': 'CANCELLED',
-            'Requested': 'REQUESTED',
-            'Draft': 'DRAFT',
-            'Published': 'PUBLISHED'
-        }
         query = query.filter(Event.status == status)
-
     if current_filters.get('start_date'):
         try:
             start_date = datetime.strptime(current_filters['start_date'], '%Y-%m-%d')
             query = query.filter(Event.start_date >= start_date)
         except ValueError:
             flash('Invalid start date format', 'warning')
-
     if current_filters.get('end_date'):
         try:
             end_date = datetime.strptime(current_filters['end_date'], '%Y-%m-%d')
-            # Add 23:59:59 to include the entire end date
             end_date = end_date + timedelta(days=1) - timedelta(seconds=1)
             query = query.filter(Event.start_date <= end_date)
         except ValueError:
             flash('Invalid end date format', 'warning')
+    # Academic year filter
+    if academic_year and academic_year != 'All':
+        start_year = int(academic_year.split('-')[0])
+        start_dt = datetime(start_year, 8, 1)
+        end_dt = datetime(start_year+1, 7, 31, 23, 59, 59)
+        query = query.filter(Event.start_date >= start_dt, Event.start_date <= end_dt)
 
     # Apply sorting
     sort_column = getattr(Event, sort_by, Event.start_date)
@@ -428,11 +418,7 @@ def events():
         error_out=False
     )
 
-    # Get all event types for the dropdown
-    event_types = [(t.name.lower(), t.name.replace('_', ' ').title()) 
-                  for t in EventType]
-
-    # Define valid statuses (matching exactly what's in the database)
+    event_types = [(t.name.lower(), t.name.replace('_', ' ').title()) for t in EventType]
     statuses = [
         ('Completed', 'Completed'),
         ('Confirmed', 'Confirmed'),
@@ -447,7 +433,8 @@ def events():
                          pagination=pagination,
                          current_filters=current_filters,
                          event_types=event_types,
-                         statuses=statuses)
+                         statuses=statuses,
+                         academic_years=academic_years)
 
 @events_bp.route('/events/add', methods=['GET', 'POST'])
 @login_required

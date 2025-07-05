@@ -64,6 +64,16 @@
     font-size: 0.95em;
     letter-spacing: 0.02em;
   }
+  .event-date {
+    font-weight: 500;
+    color: #1a355e;
+    background: #f4f8fb;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.98em;
+    letter-spacing: 0.01em;
+    display: inline-block;
+  }
 </style>
 {% endblock %}
 
@@ -82,7 +92,6 @@
     {# Filter panel with comprehensive filtering options #}
     <div class="filter-panel">
         <form method="GET" class="filter-form">
-            {# First row of filters: Search, Type, Status #}
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="search_title">Event Search</label>
@@ -91,7 +100,6 @@
                            class="form-control" 
                            placeholder="Search by title...">
                 </div>
-                
                 <div class="filter-group">
                     <label for="event_type">Event Type</label>
                     <select name="event_type" id="event_type" class="form-select">
@@ -103,7 +111,6 @@
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="filter-group">
                     <label for="status">Status</label>
                     <select name="status" id="status" class="form-control">
@@ -117,16 +124,21 @@
                     </select>
                 </div>
             </div>
-
-            {# Second row of filters: Date range #}
             <div class="filter-row">
+                <div class="filter-group">
+                    <label for="academic_year">Academic Year</label>
+                    <select name="academic_year" id="academic_year" class="form-select">
+                        {% for year in academic_years %}
+                        <option value="{{ year }}" {% if current_filters.academic_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="filter-group">
                     <label for="start_date">Start Date</label>
                     <input type="date" name="start_date" id="start_date" 
                            value="{{ current_filters.start_date }}"
                            class="form-control">
                 </div>
-
                 <div class="filter-group">
                     <label for="end_date">End Date</label>
                     <input type="date" name="end_date" id="end_date" 
@@ -134,8 +146,6 @@
                            class="form-control">
                 </div>
             </div>
-
-            {# Filter action buttons #}
             <div class="filter-actions">
                 <button type="submit" class="btn filter-btn">Apply Filters</button>
                 <a href="{{ url_for('events.events') }}" class="btn reset-btn">Reset</a>
@@ -180,7 +190,11 @@
                         </span>
                     </td>
                     {# Formatted start date #}
-                    <td>{{ event.start_date.strftime('%b %d, %y @ %I:%M %p') }}</td>
+                    <td>
+                      <span class="event-date" title="{{ event.start_date.strftime('%A, %B %d, %Y at %I:%M %p') }}">
+                        {{ event.start_date.strftime('%a, %b %d, %Y, %I:%M %p') }}
+                      </span>
+                    </td>
                     {#
                       Location Cell Logic
                       ------------------
