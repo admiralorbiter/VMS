@@ -440,94 +440,6 @@
     </div>
 
     {% if monthly_stats %}
-        <!-- Summary Stats -->
-        <div class="summary-stats">
-            <div class="stat-card">
-                <div class="stat-value">{{ total_teachers }}</div>
-                <div class="stat-label">Teachers</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_students }}</div>
-                <div class="stat-label">Students</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_unique_sessions }}</div>
-                <div class="stat-label">Unique Sessions</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_experiences }}</div>
-                <div class="stat-label">Experiences</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_organizations }}</div>
-                <div class="stat-label">Organizations</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_professionals }}</div>
-                <div class="stat-label">Professionals</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_professionals_of_color }}</div>
-                <div class="stat-label">Professionals of Color</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{{ total_schools }}</div>
-                <div class="stat-label">Schools</div>
-            </div>
-        </div>
-
-        <!-- Sessions Table (Aggregated by Session) -->
-        <div class="monthly-stats">
-            <h2 style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">All Sessions</h2>
-            <table class="breakdown-table" style="margin-bottom:0;">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Session Title</th>
-                        <th>Schools</th>
-                        <th>Teachers</th>
-                        <th>Presenter</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for session in session_data %}
-                    <tr>
-                        <td>{{ session.date }}</td>
-                        <td>
-                            <a href="{{ url_for('events.view_event', id=session.event_id) }}" class="session-link">{{ session.session_title }}</a>
-                            {% if session.session_link %}
-                                <a href="{{ session.session_link }}" target="_blank" title="External Session Link" style="margin-left:6px;"><i class="fas fa-external-link-alt"></i></a>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if session.schools and session.schools|length > 0 %}
-                                <span class="school-list">
-                                    {% for school in session.schools[:3] %}{{ school }}{% if not loop.last %}, {% endif %}{% endfor %}
-                                    {% if session.schools|length > 3 %}
-                                        <span class="more-schools" style="display:none;">, {% for school in session.schools[3:] %}{{ school }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
-                                        <a href="#" class="show-more-schools" onclick="this.previousElementSibling.style.display='inline'; this.style.display='none'; return false;">Show More</a>
-                                    {% endif %}
-                                </span>
-                            {% else %}N/A{% endif %}
-                        </td>
-                        <td>
-                            {% if session.teachers and session.teachers|length > 0 %}
-                                <span class="teacher-list">
-                                    {% for teacher in session.teachers[:3] %}{{ teacher }}{% if not loop.last %}, {% endif %}{% endfor %}
-                                    {% if session.teachers|length > 3 %}
-                                        <span class="more-teachers" style="display:none;">, {% for teacher in session.teachers[3:] %}{{ teacher }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
-                                        <a href="#" class="show-more-teachers" onclick="this.previousElementSibling.style.display='inline'; this.style.display='none'; return false;">Show More</a>
-                                    {% endif %}
-                                </span>
-                            {% else %}N/A{% endif %}
-                        </td>
-                        <td>{{ session.presenter or 'N/A' }}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
         <!-- Detailed Breakdown -->
         {% set max_teachers = school_breakdown|length %}
         <div class="detailed-breakdown">
@@ -617,49 +529,51 @@
                             <i class="fas fa-video"></i> {{ stats.total_sessions }} Sessions
                         </span>
                         <span class="summary-item">
-                            <i class="fas fa-users"></i> {{ stats.total_attended }}/{{ stats.total_registered }} Students
+                            <i class="fas fa-users"></i> {{ stats.educator_count }} Educators
                         </span>
                         <span class="summary-item">
-                            <i class="fas fa-percentage"></i> {{ "%.1f"|format(stats.avg_attendance_rate) }}% Attendance
+                            <i class="fas fa-school"></i> {{ stats.school_count }} Schools
                         </span>
                     </div>
                 </div>
 
                 <div class="month-details">
-                    <div class="stats-overview">
-                        <div class="stat-item">
-                            <span class="stat-label">Average Duration</span>
-                            <span class="stat-value">{{ "%.0f"|format(stats.avg_duration) }} min</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Schools</span>
-                            <span class="stat-value">{{ stats.school_count }}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Educators</span>
-                            <span class="stat-value">{{ stats.educator_count }}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Career Clusters</span>
-                            <span class="stat-value">{{ stats.career_cluster_count }}</span>
-                        </div>
-                    </div>
-
                     <div class="events-list">
                         <h3>Sessions</h3>
-                        <div class="events-table">
+                        <table class="breakdown-table" style="margin-bottom:0;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Session Title</th>
+                                    <th>Schools</th>
+                                    <th>Teachers</th>
+                                    <th>Presenter</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                             {% for event in stats.events %}
-                            <div class="event-row">
-                                <div class="event-date">{{ event.date }}</div>
-                                <div class="event-title">{{ event.title }}</div>
-                                <div class="event-school">{{ event.schools }}</div>
-                                <div class="event-stats">
-                                    <span>{{ event.attended }}/{{ event.registered }}</span>
-                                    <span>{{ event.duration }} min</span>
-                                </div>
-                            </div>
+                                <tr>
+                                    <td>{{ event.date }}</td>
+                                    <td>
+                                        {% if event.session_id and event.session_id|string|length > 0 %}
+                                            <a href="{{ url_for('events.view_event', id=event.session_id) }}" class="session-link">{{ event.title }}</a>
+                                            {% if event.session_link %}
+                                                <a href="{{ event.session_link }}" target="_blank" title="External Session Link" style="margin-left:6px;"><i class="fas fa-external-link-alt"></i></a>
+                                            {% endif %}
+                                        {% else %}
+                                            {{ event.title }}
+                                            {% if event.session_link %}
+                                                <a href="{{ event.session_link }}" target="_blank" title="External Session Link" style="margin-left:6px;"><i class="fas fa-external-link-alt"></i></a>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ event.schools or 'N/A' }}</td>
+                                    <td>{{ event.educators or 'N/A' }}</td>
+                                    <td>{{ event.presenter or 'N/A' }}</td>
+                                </tr>
                             {% endfor %}
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
