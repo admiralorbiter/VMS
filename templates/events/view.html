@@ -153,88 +153,43 @@
                 <div class="stats-grid single-column">
                     <div class="stat-item" title="Number of registered students">
                         <div class="stat-icon"><i class="fa-solid fa-user-graduate"></i></div>
-                        <div class="stat-number">{{ event.participant_count or 0 }}</div>
-                        <div class="stat-label">Students</div>
+                        <div class="stat-number">{{ estimated_students }}</div>
+                        <div class="stat-label">Students{% if event.format.value == 'virtual' or event.type.value == 'virtual_session' %} (Est.){% endif %}</div>
                     </div>
-                    <div class="stat-item" title="Number of registered volunteers">
+                    <div class="stat-item" title="Number of volunteers involved">
                         <div class="stat-icon"><i class="fa-solid fa-hands-helping"></i></div>
-                        <div class="stat-number">{{ volunteer_count }}</div>
+                        <div class="stat-number">
+                            {% set total_volunteers = (event.volunteers|length) + (participation_stats.get('Attended', [])|length) + (participation_stats.get('Registered', [])|length) %}
+                            {% set unique_volunteer_ids = [] %}
+                            {% for volunteer in event.volunteers %}
+                                {% if volunteer.id not in unique_volunteer_ids %}
+                                    {% set _ = unique_volunteer_ids.append(volunteer.id) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% for status_volunteers in participation_stats.values() %}
+                                {% for participant in status_volunteers %}
+                                    {% if participant.volunteer and participant.volunteer.id not in unique_volunteer_ids %}
+                                        {% set _ = unique_volunteer_ids.append(participant.volunteer.id) %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                            {{ unique_volunteer_ids|length }}
+                        </div>
                         <div class="stat-label">Volunteers</div>
                     </div>
                 </div>
                 {% if event.available_slots and event.available_slots > 0 %}
                 <div class="participation-progress-bar" title="Student capacity progress">
                     <div class="progress-labels">
-                        <span>{{ event.participant_count or 0 }} / {{ event.available_slots }} Students</span>
+                        <span>{{ estimated_students }} / {{ event.available_slots }} Students</span>
                     </div>
                     <div class="progress-bar-outer">
-                        <div class="progress-bar-inner" style="width: {{ ((event.participant_count or 0) / event.available_slots * 100) | round(1) }}%"></div>
+                        <div class="progress-bar-inner" style="width: {{ (estimated_students / event.available_slots * 100) | round(1) }}%"></div>
                     </div>
                 </div>
                 {% endif %}
             </div>
         </div>
-
-        {# People Involved Card - Volunteers, Teachers, Educators #}
-        {% if event.is_virtual %}
-        <div class="event-card people-info">
-            <div class="card-header">
-                <i class="fa-solid fa-user-group"></i>
-                <h2>People Involved (Virtual Session)</h2>
-            </div>
-            <div class="card-content">
-                {# Educators Section #}
-                {% if event.educators %}
-                <div class="people-section">
-                    <h4><i class="fa-solid fa-chalkboard-teacher"></i> Educators</h4>
-                    <div class="people-list">
-                        {{ event.educators|replace(';', ',') }}
-                    </div>
-                </div>
-                {% endif %}
-
-                {# Volunteers Section #}
-                {% if event.volunteers %}
-                <div class="people-section">
-                    <h4><i class="fa-solid fa-briefcase"></i> Volunteers</h4>
-                    <div class="people-list">
-                        {% for volunteer in event.volunteers %}
-                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="person-link">
-                                {{ volunteer.first_name }} {{ volunteer.last_name }}
-                                {% if volunteer.organizations %}
-                                    <span class="org-name">({{ volunteer.organizations[0].name }})</span>
-                                {% endif %}
-                            </a>{% if not loop.last %}, {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                {# Teachers Section #}
-                {% if event_teachers %}
-                <div class="people-section">
-                    <h4><i class="fa-solid fa-chalkboard-user"></i> Teachers</h4>
-                    <div class="teachers-grid compact">
-                        {% for event_teacher in event_teachers %}
-                        <div class="teacher-item">
-                            <span class="teacher-name">
-                                {{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}
-                            </span>
-                            <span class="teacher-status {{ event_teacher.status|lower }}">
-                                {% if event_teacher.is_simulcast %}
-                                    <i class="fa-solid fa-video"></i> Simulcast
-                                {% else %}
-                                    {{ event_teacher.status|title }}
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
 
         {# Skills Card - Event skills and requirements #}
         {% if event.skills %}
@@ -303,50 +258,147 @@
     <div class="participation-section redesigned-participation-section event-card full-width">
         <div class="participation-tabs">
             <button class="tab-btn active" id="volunteer-tab-btn" onclick="showTab('volunteer')">Volunteers</button>
+            <button class="tab-btn" id="teacher-tab-btn" onclick="showTab('teacher')">Teachers</button>
             <button class="tab-btn" id="student-tab-btn" onclick="showTab('student')">Students</button>
             <input type="text" id="participation-search" class="participation-search" placeholder="Search by name..." oninput="filterParticipationCards()">
         </div>
+        
+        {# Volunteer Tab - Combined data from participation_stats and event.volunteers #}
         <div class="tab-content" id="volunteer-tab">
+            {% set all_volunteer_ids = [] %}
             {% if participation_stats %}
-            {% for status, participants in participation_stats.items() %}
-            {% if participants %}
+                {% for status, participants in participation_stats.items() %}
+                    {% if participants %}
+                    <div class="participation-group">
+                        <h4 class="group-title">
+                            {% if status == 'Attended' %}
+                                <span class="status-badge completed">Attended</span>
+                            {% elif status == 'No Show' %}
+                                <span class="status-badge cancelled">No Show</span>
+                            {% elif status == 'Cancelled' %}
+                                <span class="status-badge requested">Cancelled</span>
+                            {% else %}
+                                <span class="status-badge">{{ status }}</span>
+                            {% endif %}
+                            ({{ participants|length }})
+                        </h4>
+                        <div class="participants-grid">
+                            {% for participation in participants %}
+                            {% if participation.volunteer %}
+                                {% set _ = all_volunteer_ids.append(participation.volunteer.id) %}
+                                <div class="participant-card volunteer-card" data-name="{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}">
+                                    <div class="participant-info">
+                                        <span class="participant-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                                        {% if participation.delivery_hours %}
+                                        <span class="delivery-hours">{{ participation.delivery_hours }} hrs</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-btn" title="View volunteer details">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            
+            {# Add volunteers from event.volunteers that aren't in participation_stats #}
+            {% if event.volunteers %}
+                {% set untracked_volunteers = [] %}
+                {% for volunteer in event.volunteers %}
+                    {% if volunteer.id not in all_volunteer_ids %}
+                        {% set _ = untracked_volunteers.append(volunteer) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if untracked_volunteers %}
+                <div class="participation-group">
+                    <h4 class="group-title">
+                        <span class="status-badge">Assigned</span>
+                        ({{ untracked_volunteers|length }})
+                    </h4>
+                    <div class="participants-grid">
+                        {% for volunteer in untracked_volunteers %}
+                        <div class="participant-card volunteer-card" data-name="{{ volunteer.first_name }} {{ volunteer.last_name }}">
+                            <div class="participant-info">
+                                <span class="participant-name">{{ volunteer.first_name }} {{ volunteer.last_name }}</span>
+                                {% if volunteer.organizations %}
+                                    <span class="org-name">({{ volunteer.organizations[0].name }})</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="view-btn" title="View volunteer details">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+            
+            {# Add text-based educators for virtual events #}
+            {% if event.educators and (event.format.value == 'virtual' or event.type.value == 'virtual_session') %}
             <div class="participation-group">
                 <h4 class="group-title">
-                    {% if status == 'Attended' %}
-                        <span class="status-badge completed">Attended</span>
-                    {% elif status == 'No-Show' %}
-                        <span class="status-badge cancelled">No Show</span>
-                    {% elif status == 'Cancelled' %}
-                        <span class="status-badge requested">Cancelled</span>
-                    {% else %}
-                        <span class="status-badge">{{ status }}</span>
-                    {% endif %}
-                    ({{ participants|length }})
+                    <span class="status-badge">Educators</span>
+                    ({{ event.educators.split(';')|length }})
                 </h4>
                 <div class="participants-grid">
-                    {% for participation in participants %}
-                    {% if participation.volunteer %}
-                    <div class="participant-card volunteer-card" data-name="{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}">
+                    {% for educator in event.educators.split(';') %}
+                    {% if educator.strip() %}
+                    <div class="participant-card volunteer-card" data-name="{{ educator.strip() }}">
                         <div class="participant-info">
-                            <span class="participant-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                            {% if participation.delivery_hours %}
-                            <span class="delivery-hours">{{ participation.delivery_hours }} hrs</span>
-                            {% endif %}
+                            <span class="participant-name">{{ educator.strip() }}</span>
+                            <span class="org-name">(Educator)</span>
                         </div>
-                        <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-btn" title="View volunteer details">
-                            <i class="fa-solid fa-eye"></i>
-                        </a>
                     </div>
                     {% endif %}
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
-            {% endfor %}
-            {% else %}
+            
+            {% if not participation_stats and not event.volunteers and not event.educators %}
             <div class="no-participation">No volunteer participation data available.</div>
             {% endif %}
         </div>
+        
+        {# Teacher Tab - Combined data from event_teachers and educators #}
+        <div class="tab-content" id="teacher-tab" style="display:none;">
+            {% if event_teachers %}
+            <div class="participation-group">
+                <h4 class="group-title">
+                    <span class="status-badge">Teachers</span>
+                    ({{ event_teachers|length }})
+                </h4>
+                <div class="participants-grid">
+                    {% for event_teacher in event_teachers %}
+                    <div class="participant-card teacher-card" data-name="{{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}">
+                        <div class="participant-info">
+                            <span class="participant-name">
+                                {{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}
+                            </span>
+                            <span class="teacher-status {{ event_teacher.status|lower }}">
+                                {% if event_teacher.is_simulcast %}
+                                    <i class="fa-solid fa-video"></i> Simulcast
+                                {% else %}
+                                    {{ event_teacher.status|title }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="no-participation">No teacher participation data available.</div>
+            {% endif %}
+        </div>
+        
+        {# Student Tab - Data from student_participations #}
         <div class="tab-content" id="student-tab" style="display:none;">
             {% if student_participations %}
             <div class="participants-grid">
@@ -385,6 +437,7 @@ function toggleCollapse(sectionId) {
         if (toggle) toggle.textContent = '▲';
     }
 }
+
 // Optionally collapse long sections by default
 window.addEventListener('DOMContentLoaded', function() {
     ['desc-section', 'addl-section'].forEach(function(id) {
@@ -399,14 +452,17 @@ window.addEventListener('DOMContentLoaded', function() {
 
 function showTab(tab) {
     document.getElementById('volunteer-tab').style.display = (tab === 'volunteer') ? '' : 'none';
+    document.getElementById('teacher-tab').style.display = (tab === 'teacher') ? '' : 'none';
     document.getElementById('student-tab').style.display = (tab === 'student') ? '' : 'none';
     document.getElementById('volunteer-tab-btn').classList.toggle('active', tab === 'volunteer');
+    document.getElementById('teacher-tab-btn').classList.toggle('active', tab === 'teacher');
     document.getElementById('student-tab-btn').classList.toggle('active', tab === 'student');
     filterParticipationCards();
 }
+
 function filterParticipationCards() {
     const search = document.getElementById('participation-search').value.toLowerCase();
-    ['volunteer-tab', 'student-tab'].forEach(function(tabId) {
+    ['volunteer-tab', 'teacher-tab', 'student-tab'].forEach(function(tabId) {
         const tab = document.getElementById(tabId);
         if (!tab) return;
         tab.querySelectorAll('.participant-card').forEach(function(card) {

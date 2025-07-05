@@ -572,13 +572,27 @@ def view_event(id):
             attended_volunteers.add(p['volunteer'].id)
     volunteer_count = len(attended_volunteers)
 
+    # Calculate estimated students for virtual events
+    estimated_students = 0
+    if (getattr(event.format, 'value', None) == 'virtual' or getattr(event.type, 'value', None) == 'virtual_session'):
+        for t in event_teachers:
+            # Accept both boolean and int for is_simulcast
+            is_simulcast = t.is_simulcast == True or t.is_simulcast == 1
+            status = (t.status or '').strip().lower()
+            if is_simulcast or status in ['simulcast', 'successfully completed', 'attended', 'completed']:
+                estimated_students += 1
+        estimated_students *= 20
+    else:
+        estimated_students = event.participant_count or 0
+
     return render_template(
         'events/view.html',
         event=event,
         volunteer_count=volunteer_count, # Now matches 'Attended' volunteers
         participation_stats=participation_stats,
         event_teachers=event_teachers,
-        student_participations=student_participations
+        student_participations=student_participations,
+        estimated_students=estimated_students
     )
 
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])
