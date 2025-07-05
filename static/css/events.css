@@ -2269,3 +2269,132 @@ th.sortable i {
     }
 }
 
+/* Responsive and Visual Polish */
+.event-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.08);
+}
+.event-card:hover {
+    box-shadow: 0 4px 16px rgba(29, 51, 84, 0.12);
+    transform: translateY(-1px);
+}
+.participant-card {
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(29, 51, 84, 0.06);
+}
+.participant-card:hover {
+    box-shadow: 0 3px 8px rgba(29, 51, 84, 0.12);
+    transform: translateY(-1px);
+}
+.status-badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.status-badge.completed {
+    background: #d4edda;
+    color: #155724;
+}
+.status-badge.cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+.status-badge.requested {
+    background: #fff3cd;
+    color: #856404;
+}
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .event-content-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .info-header-row {
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1.5rem;
+    }
+    .info-side-col {
+        min-width: 0;
+        max-width: none;
+    }
+    .stats-grid.single-column {
+        gap: 1rem;
+    }
+    .stats-grid.single-column .stat-number {
+        font-size: 1.8rem;
+    }
+    .participation-tabs {
+        padding: 1rem;
+    }
+    .tab-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    .participants-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+    .participant-card {
+        padding: 0.8rem;
+    }
+}
+@media (max-width: 480px) {
+    .event-card {
+        margin: 0.5rem 0;
+        padding: 1rem;
+    }
+    .card-header {
+        padding: 0.8rem 1rem;
+    }
+    .card-header h2 {
+        font-size: 1.2rem;
+    }
+    .info-item {
+        padding: 0.8rem 1rem;
+    }
+    .info-item label {
+        font-size: 0.9rem;
+    }
+    .info-item p {
+        font-size: 1rem;
+    }
+}
+/* Interactive Features */
+.copy-btn {
+    transition: all 0.2s ease;
+}
+.copy-btn:hover {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    transform: scale(1.05);
+}
+.view-btn {
+    transition: all 0.2s ease;
+}
+.view-btn:hover {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    transform: scale(1.1);
+}
+/* Smooth scrolling for anchor links */
+html {
+    scroll-behavior: smooth;
+}
+/* Loading states for interactive elements */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+/* Focus states for accessibility */
+.tab-btn:focus,
+.participation-search:focus,
+.copy-btn:focus,
+.view-btn:focus {
+    outline: 2px solid var(--ucla-blue);
+    outline-offset: 2px;
+}
+
