@@ -2398,3 +2398,97 @@ html {
     outline-offset: 2px;
 }
 
+/* Quick Actions Section */
+.quick-actions {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+.contact-btn {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border: 2px solid var(--ucla-blue);
+    transition: all 0.2s ease;
+}
+.contact-btn:hover {
+    background: #2a5a8a;
+    border-color: #2a5a8a;
+    transform: translateY(-1px);
+}
+.export-btn {
+    background: var(--mint-green);
+    color: var(--delft-blue);
+    border: 2px solid var(--mint-green);
+    transition: all 0.2s ease;
+}
+.export-btn:hover {
+    background: #4a9c7a;
+    border-color: #4a9c7a;
+    transform: translateY(-1px);
+}
+@media (max-width: 768px) {
+    .quick-actions {
+        margin-top: 0.8rem;
+        gap: 0.6rem;
+    }
+    .quick-actions .action-btn {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Quick Actions Row (below header) */
+.quick-actions-row {
+    display: flex;
+    gap: 1.2rem;
+    margin: 1.2rem 0 2rem 0;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.quick-actions-row .action-btn {
+    font-size: 1rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 7px;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(29, 51, 84, 0.07);
+}
+@media (max-width: 768px) {
+    .quick-actions-row {
+        gap: 0.7rem;
+        margin: 1rem 0 1.2rem 0;
+    }
+    .quick-actions-row .action-btn {
+        font-size: 0.95rem;
+        padding: 0.6rem 1rem;
+    }
+}
+
+/* Header badges and actions row */
+.header-badges-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.7rem;
+    flex-wrap: wrap;
+}
+.header-badges-actions .event-type-badge,
+.header-badges-actions .status-badge {
+    margin-right: 0.2rem;
+}
+.header-badges-actions .action-btn {
+    margin-left: 0.2rem;
+}
+@media (max-width: 700px) {
+    .header-badges-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .header-badges-actions .action-btn {
+        margin-left: 0;
+    }
+}
+

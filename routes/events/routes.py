@@ -525,6 +525,13 @@ def view_event(id):
         joinedload(EventParticipation.volunteer)
     ).filter_by(event_id=id).all()
 
+    # Calculate unique volunteer count from participations
+    unique_volunteers = set()
+    for participation in volunteer_participations:
+        if participation.volunteer:
+            unique_volunteers.add(participation.volunteer.id)
+    volunteer_count = len(unique_volunteers)
+
     # Get all event teachers with their statuses
     # Use joinedload to efficiently load teachers
     event_teachers = EventTeacher.query.options(
@@ -556,14 +563,20 @@ def view_event(id):
                     'delivery_hours': participation.delivery_hours
                 })
     
+    # Calculate unique volunteer count for 'Attended' status only
+    attended_volunteers = set()
+    for p in participation_stats.get('Attended', []):
+        if p['volunteer']:
+            attended_volunteers.add(p['volunteer'].id)
+    volunteer_count = len(attended_volunteers)
+
     return render_template(
         'events/view.html',
         event=event,
-        volunteer_count=len(event.volunteers), # This might be slightly inaccurate if participations exist for deleted volunteers
+        volunteer_count=volunteer_count, # Now matches 'Attended' volunteers
         participation_stats=participation_stats,
-        # volunteers=event.volunteers, # volunteers association might not be needed if using participation_stats
         event_teachers=event_teachers,
-        student_participations=student_participations # Pass student data to template
+        student_participations=student_participations
     )
 
 @events_bp.route('/events/edit/<int:id>', methods=['GET', 'POST'])

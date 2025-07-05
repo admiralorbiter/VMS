@@ -45,9 +45,15 @@
         <div class="header-content">
             <div class="title-info">
                 <h1 class="event-title">{{ event.title }}</h1>
-                <div class="header-badges">
+                <div class="header-badges-actions">
                     <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
                     <span class="status-badge {{ event.status|lower }}">{{ event.status|title }}</span>
+                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" class="action-btn contact-btn" title="View emergency contact list">
+                        <i class="fa-solid fa-address-book"></i> Contact Report
+                    </a>
+                    <button class="action-btn export-btn" onclick="exportEventData()" title="Export event data">
+                        <i class="fa-solid fa-download"></i> Export
+                    </button>
                 </div>
             </div>
             <div class="header-actions">
@@ -152,7 +158,7 @@
                     </div>
                     <div class="stat-item" title="Number of registered volunteers">
                         <div class="stat-icon"><i class="fa-solid fa-hands-helping"></i></div>
-                        <div class="stat-number">{{ event.volunteer_count }}</div>
+                        <div class="stat-number">{{ volunteer_count }}</div>
                         <div class="stat-label">Volunteers</div>
                     </div>
                 </div>
@@ -408,6 +414,45 @@ function filterParticipationCards() {
             card.style.display = name.includes(search) ? '' : 'none';
         });
     });
+}
+
+function exportEventData() {
+    // Create a simple CSV export of event data
+    const eventData = {
+        title: '{{ event.title|e }}',
+        startDate: '{{ event.start_date.strftime("%m/%d/%Y %I:%M %p") if event.start_date else "Not set" }}',
+        endDate: '{{ event.end_date.strftime("%m/%d/%Y %I:%M %p") if event.end_date else "Not set" }}',
+        location: '{{ event.location|e }}',
+        format: '{{ event.format.value|replace("_", " ")|title }}',
+        participantCount: {{ event.participant_count or 0 }},
+        volunteerCount: {{ event.volunteer_count }},
+        status: '{{ event.status|title }}',
+        type: '{{ event.type|title }}'
+    };
+    
+    // Create CSV content
+    const csvContent = [
+        ['Event Title', eventData.title],
+        ['Start Date', eventData.startDate],
+        ['End Date', eventData.endDate],
+        ['Location', eventData.location],
+        ['Format', eventData.format],
+        ['Student Count', eventData.participantCount],
+        ['Volunteer Count', eventData.volunteerCount],
+        ['Status', eventData.status],
+        ['Type', eventData.type]
+    ].map(row => row.join(',')).join('\n');
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `event-${eventData.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 }
 </script>
 {% endblock %}
