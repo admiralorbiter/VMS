@@ -196,10 +196,11 @@
         </div>
 
         {# People Involved Card - Volunteers, Teachers, Educators #}
+        {% if event.is_virtual %}
         <div class="event-card people-info">
             <div class="card-header">
                 <i class="fa-solid fa-user-group"></i>
-                <h2>People Involved</h2>
+                <h2>People Involved (Virtual Session)</h2>
             </div>
             <div class="card-content">
                 {# Educators Section #}
@@ -253,6 +254,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
 
         {# Skills Card - Event skills and requirements #}
         {% if event.skills %}
