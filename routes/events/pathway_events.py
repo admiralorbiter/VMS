@@ -38,7 +38,7 @@ from models.volunteer import Skill, EventParticipation, Volunteer # Need Skill f
 # Import helpers from routes.utils
 from routes.utils import map_session_type, map_event_format, parse_date, map_cancellation_reason, parse_event_skills, DISTRICT_MAPPINGS
 # Import the process_participation_row function from the events routes
-from routes.events.routes import process_participation_row
+from routes.events.routes import process_participation_row, process_student_participation_row
 # Adjust imports based on your actual model locations if needed
 
 # Create blueprint for pathway events functionality
@@ -384,8 +384,8 @@ def sync_unaffiliated_events():
         # NEW: After processing events, sync volunteer participants for the created/updated events
         print("Syncing volunteer participants for processed events...")
         
-        # Get the Salesforce IDs of events we just processed
-        processed_event_sf_ids = list(district_map_details.keys())
+        # Get the Salesforce IDs of ALL unaffiliated events we fetched from Salesforce
+        processed_event_sf_ids = [event['Id'] for event in unaffiliated_events_data]
         
         participant_success = 0
         participant_error = 0
@@ -437,6 +437,46 @@ def sync_unaffiliated_events():
 
             print(f"Successfully processed {participant_success} volunteer participations with {participant_error} errors")
 
+        # NEW: Sync student participants for the created/updated events
+        print("Syncing student participants for processed events...")
+        student_participant_success = 0
+        student_participant_error = 0
+
+        if processed_event_sf_ids:
+            batch_size = 50
+            for i in range(0, len(processed_event_sf_ids), batch_size):
+                batch_sf_ids = processed_event_sf_ids[i:i + batch_size]
+                print(f"Processing student participants batch {i//batch_size + 1} of {(len(processed_event_sf_ids) + batch_size - 1)//batch_size} ({len(batch_sf_ids)} events)")
+                student_participant_query = f"""
+                SELECT 
+                    Id,
+                    Name,
+                    Contact__c,
+                    Session__c,
+                    Status__c,
+                    Delivery_Hours__c,
+                    Age_Group__c,
+                    Email__c,
+                    Title__c
+                FROM Session_Participant__c
+                WHERE Participant_Type__c = 'Student' 
+                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
+                """
+                try:
+                    student_participant_result = sf.query_all(student_participant_query)
+                    student_participant_rows = student_participant_result.get('records', [])
+                    print(f"Found {len(student_participant_rows)} student participation records for batch {i//batch_size + 1}")
+                    for row in student_participant_rows:
+                        student_participant_success, student_participant_error = process_student_participation_row(
+                            row, student_participant_success, student_participant_error, errors
+                        )
+                except Exception as batch_error:
+                    error_msg = f"Error processing student participants batch {i//batch_size + 1}: {str(batch_error)}"
+                    print(error_msg)
+                    errors.append(error_msg)
+                    student_participant_error += len(batch_sf_ids)
+            print(f"Successfully processed {student_participant_success} student participations with {student_participant_error} errors")
+
         # Commit all changes
         db.session.commit()
         print("Database changes committed.")
@@ -444,11 +484,12 @@ def sync_unaffiliated_events():
         # Return comprehensive results
         return jsonify({
             'success': True,
-            'message': f'Processed {processed_count} unaffiliated events. Created: {created_count}, Updated: {updated_count}. Volunteer participations: {participant_success}.',
+            'message': f'Processed {processed_count} unaffiliated events. Created: {created_count}, Updated: {updated_count}. Volunteer participations: {participant_success}. Student participations: {student_participant_success}.',
             'processed_count': processed_count,
             'created_count': created_count,
             'updated_count': updated_count,
             'volunteer_participations': participant_success,
+            'student_participations': student_participant_success,
             'district_map_details': district_map_details,
             'errors': errors
         })
