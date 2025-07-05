@@ -216,6 +216,17 @@
 
 - [ ] ToDo
 
+## District Virtual Usage Detail Report
+
+- [x] Linked from main Virtual Session Usage Report
+- [x] District-level breakdown of virtual session data
+- [x] Summary stats for selected district (teachers, students, sessions, experiences, organizations, professionals, POC, schools)
+- [x] Monthly breakdown of sessions and stats
+- [x] School-by-session and teacher-by-session breakdown tables
+- [x] Filter by virtual year and date range
+- [x] Consistent aggregation logic with main report (numbers always match)
+- [x] Modern, responsive UI
+
 ## Admin
 
 - [x] User Management

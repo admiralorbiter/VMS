@@ -456,6 +456,7 @@
         </div>
 
         <!-- Detailed Breakdown -->
+        {% set max_teachers = school_breakdown|length %}
         <div class="detailed-breakdown">
             <div class="breakdown-section">
                 <div class="breakdown-header">
@@ -491,8 +492,8 @@
                             <th>Sessions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for teacher in teacher_breakdown %}
+                    <tbody id="teacher-table-body">
+                        {% for teacher in teacher_breakdown[:max_teachers] %}
                         <tr>
                             <td>{{ teacher.name }}</td>
                             <td>{{ teacher.school }}</td>
@@ -500,9 +501,36 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tbody id="teacher-table-body-extra" style="display:none;">
+                        {% for teacher in teacher_breakdown[max_teachers:] %}
+                        <tr>
+                            <td>{{ teacher.name }}</td>
+                            <td>{{ teacher.school }}</td>
+                            <td class="teacher-sessions">{{ teacher.sessions }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if teacher_breakdown|length > max_teachers %}
+                    <tr id="show-more-row">
+                        <td colspan="3" style="text-align:center;">
+                            <button id="show-more-teachers-btn" class="filter-btn" type="button">Show More</button>
+                        </td>
+                    </tr>
+                    {% endif %}
                 </table>
             </div>
         </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var btn = document.getElementById('show-more-teachers-btn');
+            if (btn) {
+                btn.addEventListener('click', function() {
+                    document.getElementById('teacher-table-body-extra').style.display = '';
+                    btn.style.display = 'none';
+                });
+            }
+        });
+        </script>
 
         <!-- Monthly Breakdown -->
         <div class="monthly-stats">
