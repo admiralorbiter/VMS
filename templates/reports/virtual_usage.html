@@ -5,6 +5,133 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+<style>
+.district-summaries {
+    margin: 30px 0;
+}
+
+.district-summaries h2 {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.district-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Always 3 columns on desktop */
+    gap: 32px;
+}
+
+.district-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+    min-width: 340px;
+}
+
+.district-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.district-header h3 {
+    margin: 0;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.district-link {
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.district-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+.district-stats {
+    padding: 24px 20px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 0;
+}
+
+.stat-item {
+    flex: 1 1 0;
+    min-width: 70px;
+    text-align: center;
+    margin: 0 2px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.7em;
+    font-weight: 700;
+    color: #007bff;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 600;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .district-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 700px) {
+    .district-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .district-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .district-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .stat-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -111,22 +238,94 @@
     {% if session_data %}
         <div class="summary-stats">
             <div class="stat-card">
-                <div class="stat-value">{{ session_data|length }}</div>
-                <div class="stat-label">Total Records</div>
+                <div class="stat-value">{{ overall_summary.student_count }}</div>
+                <div class="stat-label">STUDENTS</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{{ session_data|selectattr('session_title')|map(attribute='session_title')|unique|list|length }}</div>
-                <div class="stat-label">Unique Sessions</div>
+                <div class="stat-value">{{ overall_summary.teacher_count }}</div>
+                <div class="stat-label">TEACHERS</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{{ session_data|selectattr('district')|map(attribute='district')|unique|list|length }}</div>
-                <div class="stat-label">Districts</div>
+                <div class="stat-value">{{ overall_summary.session_count }}</div>
+                <div class="stat-label">SESSIONS</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{{ session_data|selectattr('school_name')|map(attribute='school_name')|unique|list|length }}</div>
-                <div class="stat-label">Schools</div>
+                <div class="stat-value">{{ overall_summary.experience_count }}</div>
+                <div class="stat-label">EXPS</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overall_summary.organization_count }}</div>
+                <div class="stat-label">ORG</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overall_summary.professional_count }}</div>
+                <div class="stat-label">PROS</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overall_summary.professional_of_color_count }}</div>
+                <div class="stat-label">POC</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overall_summary.school_count }}</div>
+                <div class="stat-label">SCHOOLS</div>
             </div>
         </div>
+
+        <!-- District Summaries -->
+        {% if district_summaries %}
+        <div class="district-summaries">
+            <h2>District Breakdown</h2>
+            <div class="district-grid">
+                {% for district_name, summary in district_summaries.items() %}
+                <div class="district-card">
+                    <div class="district-header">
+                        <h3>{{ district_name }}</h3>
+                        <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+                           class="district-link">View Details</a>
+                    </div>
+                    <div class="district-stats">
+                        <div class="stat-row">
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.teacher_count }}</span>
+                                <span class="stat-label">TEACHERS</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.total_students }}</span>
+                                <span class="stat-label">STUDENTS</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.session_count }}</span>
+                                <span class="stat-label">SESSIONS</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.total_experiences }}</span>
+                                <span class="stat-label">EXPS</span>
+                            </div>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.organization_count }}</span>
+                                <span class="stat-label">ORG</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.professional_count }}</span>
+                                <span class="stat-label">PROS</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.professional_of_color_count }}</span>
+                                <span class="stat-label">POC</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.school_count }}</span>
+                                <span class="stat-label">SCHOOLS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Sessions Table -->
         <div class="orgs-table-container">

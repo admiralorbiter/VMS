@@ -4,58 +4,513 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/district_usage.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+<style>
+.district-details-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.district-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.back-link:hover {
+    color: #f0f0f0;
+    text-decoration: underline;
+}
+
+.district-title {
+    margin: 0 0 10px 0;
+    font-size: 2.5em;
+    font-weight: 700;
+}
+
+.district-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.1em;
+}
+
+.filters-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9em;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    grid-column: 1 / -1;
+    margin-top: 15px;
+}
+
+.filter-btn, .reset-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.filter-btn {
+    background: #007bff;
+    color: white;
+}
+
+.filter-btn:hover {
+    background: #0056b3;
+}
+
+.reset-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #545b62;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    border-left: 4px solid #007bff;
+}
+
+.stat-value {
+    display: block;
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 600;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detailed-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.breakdown-section {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.breakdown-header {
+    background: #f8f9fa;
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.breakdown-title {
+    margin: 0;
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #333;
+}
+
+.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.breakdown-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.breakdown-table tr:hover {
+    background: #f8f9fa;
+}
+
+.school-sessions,
+.teacher-sessions {
+    font-weight: 600;
+    color: #007bff;
+}
+
+.monthly-stats {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.month-card {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.month-card:last-child {
+    border-bottom: none;
+}
+
+.month-header {
+    background: #f8f9fa;
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.month-title {
+    margin: 0 0 10px 0;
+    font-size: 1.4em;
+    font-weight: 600;
+    color: #333;
+}
+
+.month-summary {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #666;
+}
+
+.summary-item i {
+    color: #007bff;
+}
+
+.month-details {
+    padding: 20px;
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #007bff;
+}
+
+.events-list h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #333;
+}
+
+.events-table {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.event-row {
+    display: grid;
+    grid-template-columns: 100px 2fr 1fr 150px;
+    gap: 15px;
+    padding: 12px 15px;
+    border-bottom: 1px solid #dee2e6;
+    align-items: center;
+}
+
+.event-row:last-child {
+    border-bottom: none;
+}
+
+.event-row:hover {
+    background: #f8f9fa;
+}
+
+.event-date {
+    font-weight: 600;
+    color: #007bff;
+}
+
+.event-title {
+    font-weight: 500;
+}
+
+.event-school {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.event-stats {
+    display: flex;
+    gap: 10px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 1.1em;
+}
+
+@media (max-width: 768px) {
+    .detailed-breakdown {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-stats {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    
+    .event-row {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    .month-summary {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="district-usage-container">
+<div class="district-details-container">
     <div class="district-header">
-        <div class="header-content">
-            <a href="{{ url_for('report.virtual_usage', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="back-link">
-                <i class="fas fa-arrow-left"></i> Back to Districts
-            </a>
-            <h1>{{ district_name }}</h1>
-            <p>School Year: {{ current_filters.year }}</p>
-            <p>Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
-        </div>
-        
-        <!-- Filter Section -->
-        <div class="date-filters">
-            <form method="GET" class="date-filter-form">
-                <div class="filter-group">
-                    <label for="year">School Year:</label>
-                    <select id="year" name="year">
-                        {% for school_year in school_year_options %}
-                            <option value="{{ school_year }}" {% if school_year == current_filters.year %}selected{% endif %}>
-                                {{ school_year }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="date_from">From:</label>
-                    <input type="date" id="date_from" name="date_from" 
-                           value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
-                </div>
-                <div class="filter-group">
-                    <label for="date_to">To:</label>
-                    <input type="date" id="date_to" name="date_to" 
-                           value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
-                </div>
-                <button type="submit" class="filter-btn">Apply</button>
+        <a href="{{ url_for('report.virtual_usage', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Virtual Usage Report
+        </a>
+        <h1 class="district-title">{{ district_name }}</h1>
+        <p class="district-subtitle">Virtual Year: {{ current_filters.year }}</p>
+        <p class="district-subtitle">Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
+    </div>
+    
+    <!-- Filter Section -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            <div class="filter-group">
+                <label for="year">Virtual Year:</label>
+                <select id="year" name="year">
+                    {% for school_year in school_year_options %}
+                        <option value="{{ school_year }}" {% if school_year == current_filters.year %}selected{% endif %}>
+                            {{ school_year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="date_from">From:</label>
+                <input type="date" id="date_from" name="date_from" 
+                       value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
+            </div>
+            <div class="filter-group">
+                <label for="date_to">To:</label>
+                <input type="date" id="date_to" name="date_to" 
+                       value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('report.virtual_usage_district', district_name=district_name) }}" 
                    class="reset-btn">Reset</a>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     {% if monthly_stats %}
+        <!-- Summary Stats -->
+        <div class="summary-stats">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_teachers }}</div>
+                <div class="stat-label">Teachers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_students }}</div>
+                <div class="stat-label">Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_unique_sessions }}</div>
+                <div class="stat-label">Unique Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_experiences }}</div>
+                <div class="stat-label">Experiences</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_organizations }}</div>
+                <div class="stat-label">Organizations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_professionals }}</div>
+                <div class="stat-label">Professionals</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_professionals_of_color }}</div>
+                <div class="stat-label">Professionals of Color</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_schools }}</div>
+                <div class="stat-label">Schools</div>
+            </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div class="detailed-breakdown">
+            <div class="breakdown-section">
+                <div class="breakdown-header">
+                    <h3 class="breakdown-title">Schools by Sessions</h3>
+                </div>
+                <table class="breakdown-table">
+                    <thead>
+                        <tr>
+                            <th>School</th>
+                            <th>Sessions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for school in school_breakdown %}
+                        <tr>
+                            <td>{{ school.name }}</td>
+                            <td class="school-sessions">{{ school.sessions }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="breakdown-section">
+                <div class="breakdown-header">
+                    <h3 class="breakdown-title">Teachers by Sessions</h3>
+                </div>
+                <table class="breakdown-table">
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>School</th>
+                            <th>Sessions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in teacher_breakdown %}
+                        <tr>
+                            <td>{{ teacher.name }}</td>
+                            <td>{{ teacher.school }}</td>
+                            <td class="teacher-sessions">{{ teacher.sessions }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Monthly Breakdown -->
         <div class="monthly-stats">
+            <h2 style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">Monthly Breakdown</h2>
             {% for month, stats in monthly_stats.items() %}
             <div class="month-card">
                 <div class="month-header">
-                    <h2>{{ stats.month_name }}</h2>
+                    <h3 class="month-title">{{ stats.month_name }}</h3>
                     <div class="month-summary">
                         <span class="summary-item">
                             <i class="fas fa-video"></i> {{ stats.total_sessions }} Sessions
@@ -96,7 +551,7 @@
                             <div class="event-row">
                                 <div class="event-date">{{ event.date }}</div>
                                 <div class="event-title">{{ event.title }}</div>
-                                <div class="event-school">{{ event.school }}</div>
+                                <div class="event-school">{{ event.schools }}</div>
                                 <div class="event-stats">
                                     <span>{{ event.attended }}/{{ event.registered }}</span>
                                     <span>{{ event.duration }} min</span>
@@ -111,7 +566,7 @@
         </div>
     {% else %}
         <div class="no-data">
-            No virtual session data available for this district in the selected school year and date range.
+            No virtual session data available for this district in the selected virtual year and date range.
         </div>
     {% endif %}
 </div>
