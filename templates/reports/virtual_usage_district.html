@@ -227,16 +227,40 @@
 }
 
 .month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     background: #f8f9fa;
     padding: 20px;
     border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
 }
-
 .month-title {
     margin: 0 0 10px 0;
     font-size: 1.4em;
     font-weight: 600;
     color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.chevron {
+    transition: transform 0.2s;
+    font-size: 1.1em;
+    margin-right: 6px;
+}
+.chevron.collapsed {
+    transform: rotate(-90deg);
+}
+.month-details {
+    transition: max-height 0.3s, opacity 0.3s;
+    overflow: hidden;
+}
+.month-details.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding: 0 !important;
+    pointer-events: none;
 }
 
 .month-summary {
@@ -522,8 +546,11 @@
             <h2 style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">Monthly Breakdown</h2>
             {% for month, stats in monthly_stats.items() %}
             <div class="month-card">
-                <div class="month-header">
-                    <h3 class="month-title">{{ stats.month_name }}</h3>
+                <div class="month-header" onclick="toggleMonthDetails({{ loop.index }})">
+                    <span class="month-title">
+                        <i class="fas fa-chevron-down chevron" id="chevron-{{ loop.index }}"></i>
+                        {{ stats.month_name }}
+                    </span>
                     <div class="month-summary">
                         <span class="summary-item">
                             <i class="fas fa-video"></i> {{ stats.total_sessions }} Sessions
@@ -537,9 +564,8 @@
                     </div>
                 </div>
 
-                <div class="month-details">
+                <div class="month-details" id="month-details-{{ loop.index }}">
                     <div class="events-list">
-                        <h3>Sessions</h3>
                         <table class="breakdown-table" style="margin-bottom:0;">
                             <thead>
                                 <tr>
@@ -579,6 +605,19 @@
             </div>
             {% endfor %}
         </div>
+<script>
+function toggleMonthDetails(idx) {
+    var details = document.getElementById('month-details-' + idx);
+    var chevron = document.getElementById('chevron-' + idx);
+    if (details.classList.contains('collapsed')) {
+        details.classList.remove('collapsed');
+        chevron.classList.remove('collapsed');
+    } else {
+        details.classList.add('collapsed');
+        chevron.classList.add('collapsed');
+    }
+}
+</script>
     {% else %}
         <div class="no-data">
             No virtual session data available for this district in the selected virtual year and date range.
