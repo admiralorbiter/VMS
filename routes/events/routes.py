@@ -27,7 +27,7 @@ Dependencies:
 - Various utility functions from routes.utils
 """
 
-from flask import Blueprint, jsonify, request, render_template, flash, redirect, url_for, abort
+from flask import Blueprint, jsonify, request, render_template, flash, redirect, url_for, abort, send_file
 from flask_login import login_required, current_user
 from config import Config
 from forms import EventForm
@@ -39,6 +39,8 @@ from datetime import datetime, timedelta, date
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
 from sqlalchemy.orm import joinedload
+import io
+import openpyxl
 
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
 from models.school_model import School
@@ -969,3 +971,75 @@ def sync_student_participants():
         db.session.rollback()
         print(f"Error in sync_student_participants: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@events_bp.route('/events/export/<int:id>')
+@login_required
+def export_event_excel(id):
+    """
+    Export event data, including attended volunteer and student participation, as an Excel file.
+    """
+    event = db.session.get(Event, id)
+    if not event:
+        abort(404)
+
+    # Get participations
+    volunteer_participations = EventParticipation.query.options(
+        joinedload(EventParticipation.volunteer)
+    ).filter_by(event_id=id).all()
+    student_participations = EventStudentParticipation.query.options(
+        joinedload(EventStudentParticipation.student)
+    ).filter_by(event_id=id).all()
+
+    # Only attended volunteers
+    attended_volunteers = [p for p in volunteer_participations if p.status == 'Attended' and p.volunteer]
+    # All students (optionally filter by status)
+
+    wb = openpyxl.Workbook()
+    ws_event = wb.active
+    ws_event.title = 'Event Info'
+
+    # Event info
+    ws_event.append(['Event Title', event.title])
+    ws_event.append(['Start Date', event.start_date.strftime('%m/%d/%Y %I:%M %p') if event.start_date else 'Not set'])
+    ws_event.append(['End Date', event.end_date.strftime('%m/%d/%Y %I:%M %p') if event.end_date else 'Not set'])
+    ws_event.append(['Location', event.location or ''])
+    ws_event.append(['Format', event.format.value.replace('_', ' ').title()])
+    ws_event.append(['Status', event.status.value if hasattr(event.status, 'value') else str(event.status)])
+    ws_event.append(['Type', event.type.value if hasattr(event.type, 'value') else str(event.type)])
+    ws_event.append(['Student Count', event.participant_count or 0])
+    ws_event.append(['Volunteer Count', len(attended_volunteers)])
+    ws_event.append([])
+
+    # Volunteers sheet
+    ws_vols = wb.create_sheet('Attended Volunteers')
+    ws_vols.append(['First Name', 'Last Name', 'Email', 'Phone', 'Delivery Hours'])
+    for p in attended_volunteers:
+        v = p.volunteer
+        ws_vols.append([
+            v.first_name,
+            v.last_name,
+            getattr(v, 'primary_email', ''),
+            getattr(v, 'primary_phone', ''),
+            p.delivery_hours or ''
+        ])
+
+    # Students sheet
+    ws_students = wb.create_sheet('Students')
+    ws_students.append(['First Name', 'Last Name', 'Status', 'Delivery Hours', 'Age Group'])
+    for p in student_participations:
+        s = p.student
+        ws_students.append([
+            s.first_name if s else '',
+            s.last_name if s else '',
+            p.status or '',
+            p.delivery_hours or '',
+            p.age_group or ''
+        ])
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"event_{event.title.replace(' ', '_')}_{event.id}.xlsx"
+    return send_file(output, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
