@@ -70,65 +70,55 @@
     {# Main Content Grid - Responsive card layout #}
     <div class="event-content-grid">
         {# Event Details Card - Primary information #}
-        <div class="event-card primary-info">
-            <div class="card-header">
-                <i class="fa-solid fa-info-circle"></i>
-                <h2>Event Information</h2>
-            </div>
-            <div class="card-content">
-                <div class="info-grid compact">
-                    {# Date & Time Information #}
-                    <div class="info-item">
+        <div class="event-card primary-info redesigned-info-card">
+            <div class="info-header-row">
+                <div class="info-main-col">
+                    <div class="info-item highlight-bg">
                         <label><i class="fa-solid fa-calendar-plus"></i> Start Date</label>
                         <p>{{ event.start_date.strftime('%m/%d/%Y at %I:%M %p') if event.start_date else 'Not set' }}</p>
                     </div>
-                    <div class="info-item">
+                    <div class="info-item highlight-bg">
                         <label><i class="fa-solid fa-calendar-check"></i> End Date</label>
                         <p>{{ event.end_date.strftime('%m/%d/%Y at %I:%M %p') if event.end_date else 'Not set' }}</p>
                     </div>
-
-                    {# Format & Duration Information #}
                     <div class="info-item">
-                        <label><i class="fa-solid {% if event.format == 'virtual' %}fa-video{% else %}fa-person{% endif %}"></i> Format</label>
+                        <label><i class="fa-solid fa-person"></i> Format</label>
                         <p>{{ event.format.value|replace('_', ' ')|title }}</p>
                     </div>
-                    {% if event.duration %}
+                    {% if event.session_host %}
                     <div class="info-item">
-                        <label><i class="fa-solid fa-clock"></i> Duration</label>
-                        <p>{{ event.duration }} minutes</p>
+                        <label><i class="fa-solid fa-user-tie"></i> Session Host</label>
+                        <p>{{ event.session_host }}</p>
                     </div>
                     {% endif %}
-
-                    {# Location & School Information #}
-                    {#
-                      Location Field Logic
-                      -------------------
-                      - Shows the full address (event.location)
-                      - If a valid location, adds a Google Maps icon button linking to the address
-                      - Tooltip on the icon: "Open in Google Maps"
-                      - Uses event.has_location for clean logic
-                    #}
-                    {% if event.has_location %}
+                    {% if event.series %}
                     <div class="info-item">
+                        <label><i class="fa-solid fa-layer-group"></i> Series</label>
+                        <p>{{ event.series }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="info-side-col">
+                    <div class="info-item highlight-bg">
                         <label><i class="fa-solid fa-location-dot"></i> Location</label>
                         <p>
                             {{ event.location }}
+                            {% if event.has_location %}
                             <a href="https://www.google.com/maps/search/?api=1&query={{ event.location | urlencode }}" target="_blank" title="Open in Google Maps" class="map-link">
                                 <i class="fa-solid fa-map-marker-alt"></i>
                             </a>
+                            <button class="copy-btn" title="Copy address" onclick="navigator.clipboard.writeText('{{ event.location|e }}')"><i class="fa-solid fa-copy"></i></button>
+                            {% endif %}
                         </p>
                     </div>
-                    {% endif %}
                     {% if event.school_obj or event.school %}
                     <div class="info-item">
                         <label><i class="fa-solid fa-school"></i> School</label>
                         <p>{{ event.school_obj.name if event.school_obj else event.school }}</p>
                     </div>
                     {% endif %}
-
-                    {# District Information #}
                     {% if event.districts %}
-                    <div class="info-item {% if event.districts|length > 1 %}full-width{% endif %}">
+                    <div class="info-item">
                         <label><i class="fa-solid fa-building"></i> District{% if event.districts|length > 1 %}s{% endif %}</label>
                         <p>
                             {% for district in event.districts %}
@@ -143,55 +133,39 @@
                         <p>{{ event.district_partner }}</p>
                     </div>
                     {% endif %}
-
-                    {# Session Information (for virtual sessions) #}
-                    {% if event.session_id %}
-                    <div class="info-item">
-                        <label><i class="fa-solid fa-id-badge"></i> Session ID</label>
-                        <p>{{ event.session_id }}</p>
-                    </div>
-                    {% endif %}
-                    {% if event.session_host %}
-                    <div class="info-item">
-                        <label><i class="fa-solid fa-user-tie"></i> Session Host</label>
-                        <p>{{ event.session_host }}</p>
-                    </div>
-                    {% endif %}
-                    {% if event.series %}
-                    <div class="info-item">
-                        <label><i class="fa-solid fa-layer-group"></i> Series</label>
-                        <p>{{ event.series }}</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
         {# Capacity & Participation Card - Statistics #}
-        <div class="event-card participation-info">
+        <div class="event-card participation-info redesigned-participation-card" onclick="document.getElementById('participation-details').scrollIntoView({behavior: 'smooth'});" title="Click to view detailed participation">
             <div class="card-header">
                 <i class="fa-solid fa-users"></i>
                 <h2>Participation</h2>
             </div>
             <div class="card-content">
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-number">{{ event.available_slots or 0 }}</div>
-                        <div class="stat-label">Available Slots</div>
-                    </div>
-                    <div class="stat-item">
+                <div class="stats-grid single-column">
+                    <div class="stat-item" title="Number of registered students">
+                        <div class="stat-icon"><i class="fa-solid fa-user-graduate"></i></div>
                         <div class="stat-number">{{ event.participant_count or 0 }}</div>
                         <div class="stat-label">Students</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" title="Number of registered volunteers">
+                        <div class="stat-icon"><i class="fa-solid fa-hands-helping"></i></div>
                         <div class="stat-number">{{ event.volunteer_count }}</div>
                         <div class="stat-label">Volunteers</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number">{{ event.total_requested_volunteer_jobs or 0 }}</div>
-                        <div class="stat-label">Volunteer Jobs</div>
+                </div>
+                {% if event.available_slots and event.available_slots > 0 %}
+                <div class="participation-progress-bar" title="Student capacity progress">
+                    <div class="progress-labels">
+                        <span>{{ event.participant_count or 0 }} / {{ event.available_slots }} Students</span>
+                    </div>
+                    <div class="progress-bar-outer">
+                        <div class="progress-bar-inner" style="width: {{ ((event.participant_count or 0) / event.available_slots * 100) | round(1) }}%"></div>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
 
@@ -291,25 +265,27 @@
 
         {# Description Card - Event description #}
         {% if event.description %}
-        <div class="event-card description-info full-width">
-            <div class="card-header">
+        <div class="event-card description-info full-width collapsible-section">
+            <div class="card-header collapsible-header" onclick="toggleCollapse('desc-section')">
                 <i class="fa-solid fa-align-left"></i>
                 <h2>Description</h2>
+                <span class="collapse-toggle" id="desc-section-toggle">▼</span>
             </div>
-            <div class="card-content">
-                <div class="event-description">{{ event.description }}</div>
+            <div class="card-content collapsible-content" id="desc-section">
+                <div class="event-description">{{ event.description|safe }}</div>
             </div>
         </div>
         {% endif %}
 
         {# Additional Information Card - Extra details #}
         {% if event.additional_information %}
-        <div class="event-card additional-info full-width">
-            <div class="card-header">
+        <div class="event-card additional-info full-width collapsible-section">
+            <div class="card-header collapsible-header" onclick="toggleCollapse('addl-section')">
                 <i class="fa-solid fa-info"></i>
                 <h2>Additional Information</h2>
+                <span class="collapse-toggle" id="addl-section-toggle">▼</span>
             </div>
-            <div class="card-content">
+            <div class="card-content collapsible-content" id="addl-section">
                 <div class="additional-content">{{ event.additional_information|safe }}</div>
             </div>
         </div>
@@ -317,84 +293,121 @@
     </div>
 
     {# Participation Details Section - Detailed breakdown #}
-    <div class="participation-details">
-        {# Volunteer Participation Card #}
-        {% if participation_stats %}
-        <div class="event-card">
-            <div class="card-header">
-                <i class="fa-solid fa-users"></i>
-                <h2>Volunteer Participation</h2>
-            </div>
-            <div class="card-content">
-                <div class="participation-tabs">
-                    <div class="tab-content">
-                        {% for status, participants in participation_stats.items() %}
-                        {% if participants %}
-                        <div class="participation-group">
-                            <h4 class="group-title">
-                                {# Status-specific icons and colors #}
-                                {% if status == 'Attended' %}
-                                    <i class="fa-solid fa-check-circle text-success"></i>
-                                {% elif status == 'No-Show' %}
-                                    <i class="fa-solid fa-times-circle text-danger"></i>
-                                {% elif status == 'Cancelled' %}
-                                    <i class="fa-solid fa-ban text-warning"></i>
-                                {% else %}
-                                    <i class="fa-solid fa-clock text-info"></i>
-                                {% endif %}
-                                {{ status }} ({{ participants|length }})
-                            </h4>
-                            <div class="participants-grid">
-                                {% for participation in participants %}
-                                {% if participation.volunteer %}
-                                <div class="participant-card {{ status|lower|replace('-', '_') }}">
-                                    <div class="participant-info">
-                                        <span class="participant-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                        {% if participation.delivery_hours %}
-                                        <span class="delivery-hours">{{ participation.delivery_hours }} hrs</span>
-                                        {% endif %}
-                                    </div>
-                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-btn">
-                                        <i class="fa-solid fa-eye"></i>
-                                    </a>
-                                </div>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
+    <div id="participation-details"></div>
+    <div class="participation-section redesigned-participation-section event-card full-width">
+        <div class="participation-tabs">
+            <button class="tab-btn active" id="volunteer-tab-btn" onclick="showTab('volunteer')">Volunteers</button>
+            <button class="tab-btn" id="student-tab-btn" onclick="showTab('student')">Students</button>
+            <input type="text" id="participation-search" class="participation-search" placeholder="Search by name..." oninput="filterParticipationCards()">
         </div>
-        {% endif %}
-
-        {# Student Participation Card #}
-        {% if student_participations %}
-        <div class="event-card">
-            <div class="card-header">
-                <i class="fa-solid fa-user-graduate"></i>
-                <h2>Student Participation ({{ student_participations|length }})</h2>
-            </div>
-            <div class="card-content">
+        <div class="tab-content" id="volunteer-tab">
+            {% if participation_stats %}
+            {% for status, participants in participation_stats.items() %}
+            {% if participants %}
+            <div class="participation-group">
+                <h4 class="group-title">
+                    {% if status == 'Attended' %}
+                        <span class="status-badge completed">Attended</span>
+                    {% elif status == 'No-Show' %}
+                        <span class="status-badge cancelled">No Show</span>
+                    {% elif status == 'Cancelled' %}
+                        <span class="status-badge requested">Cancelled</span>
+                    {% else %}
+                        <span class="status-badge">{{ status }}</span>
+                    {% endif %}
+                    ({{ participants|length }})
+                </h4>
                 <div class="participants-grid">
-                    {% for participation in student_participations %}
-                    {% if participation.student %}
-                    <div class="participant-card student">
+                    {% for participation in participants %}
+                    {% if participation.volunteer %}
+                    <div class="participant-card volunteer-card" data-name="{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}">
                         <div class="participant-info">
-                            <span class="participant-name">{{ participation.student.first_name }} {{ participation.student.last_name }}</span>
-                            {% if participation.status %}
-                            <span class="participation-status {{ participation.status|lower|replace(' ', '-') }}">{{ participation.status }}</span>
+                            <span class="participant-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
+                            {% if participation.delivery_hours %}
+                            <span class="delivery-hours">{{ participation.delivery_hours }} hrs</span>
                             {% endif %}
                         </div>
+                        <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-btn" title="View volunteer details">
+                            <i class="fa-solid fa-eye"></i>
+                        </a>
                     </div>
                     {% endif %}
                     {% endfor %}
                 </div>
             </div>
+            {% endif %}
+            {% endfor %}
+            {% else %}
+            <div class="no-participation">No volunteer participation data available.</div>
+            {% endif %}
         </div>
-        {% endif %}
+        <div class="tab-content" id="student-tab" style="display:none;">
+            {% if student_participations %}
+            <div class="participants-grid">
+                {% for participation in student_participations %}
+                {% if participation.student %}
+                <div class="participant-card student-card" data-name="{{ participation.student.first_name }} {{ participation.student.last_name }}">
+                    <div class="participant-info">
+                        <span class="participant-name">{{ participation.student.first_name }} {{ participation.student.last_name }}</span>
+                        {% if participation.status %}
+                        <span class="participation-status {{ participation.status|lower|replace(' ', '-') }}">{{ participation.status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-participation">No student participation data available.</div>
+            {% endif %}
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+function toggleCollapse(sectionId) {
+    const content = document.getElementById(sectionId);
+    const toggle = document.getElementById(sectionId + '-toggle');
+    if (content.style.display === 'none') {
+        content.style.display = '';
+        if (toggle) toggle.textContent = '▼';
+    } else {
+        content.style.display = 'none';
+        if (toggle) toggle.textContent = '▲';
+    }
+}
+// Optionally collapse long sections by default
+window.addEventListener('DOMContentLoaded', function() {
+    ['desc-section', 'addl-section'].forEach(function(id) {
+        const content = document.getElementById(id);
+        if (content && content.textContent.length > 600) {
+            content.style.display = 'none';
+            const toggle = document.getElementById(id + '-toggle');
+            if (toggle) toggle.textContent = '▲';
+        }
+    });
+});
+
+function showTab(tab) {
+    document.getElementById('volunteer-tab').style.display = (tab === 'volunteer') ? '' : 'none';
+    document.getElementById('student-tab').style.display = (tab === 'student') ? '' : 'none';
+    document.getElementById('volunteer-tab-btn').classList.toggle('active', tab === 'volunteer');
+    document.getElementById('student-tab-btn').classList.toggle('active', tab === 'student');
+    filterParticipationCards();
+}
+function filterParticipationCards() {
+    const search = document.getElementById('participation-search').value.toLowerCase();
+    ['volunteer-tab', 'student-tab'].forEach(function(tabId) {
+        const tab = document.getElementById(tabId);
+        if (!tab) return;
+        tab.querySelectorAll('.participant-card').forEach(function(card) {
+            const name = card.getAttribute('data-name').toLowerCase();
+            card.style.display = name.includes(search) ? '' : 'none';
+        });
+    });
+}
+</script>
 {% endblock %}
