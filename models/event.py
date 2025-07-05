@@ -804,6 +804,25 @@ class Event(db.Model):
         """Check if event is at volunteer capacity"""
         return self.volunteer_count >= self.volunteers_needed if self.volunteers_needed else False
 
+    @property
+    def location_short(self):
+        """
+        Returns the first part of the address (street) for display in the UI.
+        Used to provide a concise location in event tables and lists.
+        Returns None if location is missing or set to 'None'.
+        """
+        if not self.location or self.location.lower() == 'none':
+            return None
+        return self.location.split(',')[0].strip()
+
+    @property
+    def has_location(self):
+        """
+        Returns True if the event has a valid, non-empty location that is not 'None'.
+        Used for conditional display logic in templates.
+        """
+        return bool(self.location and self.location.strip() and self.location.lower() != 'none')
+
     def __init__(self, *args, **kwargs):
         """Initialize event with validation"""
         super().__init__(*args, **kwargs)

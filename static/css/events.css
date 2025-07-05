@@ -1958,3 +1958,31 @@ th.sortable i {
     background-color: rgba(70, 117, 153, 0.12);
 }
 
+.event-location-short {
+  font-weight: 500;
+  color: var(--delft-blue, #1a355e);
+  margin-right: 0.5em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.map-link {
+  color: #2a7ae2;
+  margin-left: 0.2em;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: color 0.2s;
+}
+.map-link:hover {
+  color: #1a355e;
+}
+.no-location {
+  color: #b0b8c1;
+  font-style: italic;
+  font-size: 0.95em;
+  letter-spacing: 0.02em;
+}
+

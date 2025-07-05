@@ -36,6 +36,35 @@
 {% block extra_css %}
 {# Include events-specific CSS for styling and layout #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+<style>
+  .event-location-short {
+    font-weight: 500;
+    color: var(--delft-blue, #1a355e);
+    margin-right: 0.5em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .map-link {
+    color: #2a7ae2;
+    margin-left: 0.2em;
+    text-decoration: none;
+    vertical-align: middle;
+    transition: color 0.2s;
+  }
+  .map-link:hover {
+    color: #1a355e;
+  }
+  .no-location {
+    color: #b0b8c1;
+    font-style: italic;
+    font-size: 0.95em;
+    letter-spacing: 0.02em;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -152,7 +181,27 @@
                     </td>
                     {# Formatted start date #}
                     <td>{{ event.start_date.strftime('%b %d, %y @ %I:%M %p') }}</td>
-                    <td>{{ event.location }}</td>
+                    {#
+                      Location Cell Logic
+                      ------------------
+                      - Shows only the street part of the address (event.location_short)
+                      - If no valid location, shows a subtle dash with tooltip
+                      - Adds a Google Maps icon button that links to the full address
+                      - Tooltip on address shows the full address
+                      - Uses event.has_location for clean logic
+                    #}
+                    <td>
+                      {% if event.has_location %}
+                        <span class="event-location-short" title="{{ event.location }}">
+                          {{ event.location_short }}
+                        </span>
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ event.location | urlencode }}" target="_blank" title="Open in Google Maps" class="map-link">
+                          <i class="fa-solid fa-map-marker-alt"></i>
+                        </a>
+                      {% else %}
+                        <span class="no-location" title="No location provided">&mdash;</span>
+                      {% endif %}
+                    </td>
                     {# Status with styled badge #}
                     <td>
                         <span class="status-badge {{ event.status.lower() }}">
