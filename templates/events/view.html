@@ -100,10 +100,23 @@
                     {% endif %}
 
                     {# Location & School Information #}
-                    {% if event.location %}
+                    {#
+                      Location Field Logic
+                      -------------------
+                      - Shows the full address (event.location)
+                      - If a valid location, adds a Google Maps icon button linking to the address
+                      - Tooltip on the icon: "Open in Google Maps"
+                      - Uses event.has_location for clean logic
+                    #}
+                    {% if event.has_location %}
                     <div class="info-item">
                         <label><i class="fa-solid fa-location-dot"></i> Location</label>
-                        <p>{{ event.location }}</p>
+                        <p>
+                            {{ event.location }}
+                            <a href="https://www.google.com/maps/search/?api=1&query={{ event.location | urlencode }}" target="_blank" title="Open in Google Maps" class="map-link">
+                                <i class="fa-solid fa-map-marker-alt"></i>
+                            </a>
+                        </p>
                     </div>
                     {% endif %}
                     {% if event.school_obj or event.school %}
