@@ -507,8 +507,7 @@ def load_routes(bp):
             'date_to': date_to
         }
         virtual_year_options = generate_school_year_options()
-        # --- Use the same session_data logic as the main page, but filter for this district ---
-        # Build session_data for all events in the date range (same as main page)
+        # --- Aggregate session_data by event/session ---
         base_query = Event.query.options(
             joinedload(Event.districts),
             joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
@@ -518,85 +517,60 @@ def load_routes(bp):
             Event.start_date <= date_to
         )
         events = base_query.order_by(Event.start_date.desc()).all()
-        session_data = []
+        session_dict = {}
         for event in events:
-            teacher_registrations = event.teacher_registrations
-            if teacher_registrations:
-                for teacher_reg in teacher_registrations:
-                    teacher = teacher_reg.teacher
-                    school = None
-                    school_name = ''
-                    school_level = ''
-                    if teacher:
-                        if hasattr(teacher, 'school_obj') and teacher.school_obj:
-                            school = teacher.school_obj
-                            school_name = school.name
-                            school_level = getattr(school, 'level', '')
-                        elif teacher.school_id:
-                            school = School.query.get(teacher.school_id)
-                            if school:
-                                school_name = school.name
-                                school_level = getattr(school, 'level', '')
-                    district_name_val = None
-                    if event.districts:
-                        district_name_val = event.districts[0].name
-                    elif event.district_partner:
-                        district_name_val = event.district_partner
-                    elif school and hasattr(school, 'district') and school.district:
-                        district_name_val = school.district.name
-                    else:
-                        district_name_val = 'Unknown District'
-                    if district_name_val != district_name:
-                        continue
-                    session_data.append({
-                        'event_id': event.id,
-                        'status': teacher_reg.status or 'registered',
-                        'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
-                        'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
-                        'session_type': event.additional_information or '',
-                        'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
-                        'school_name': school_name,
-                        'school_level': school_level,
-                        'district': district_name_val,
-                        'session_title': event.title,
-                        'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                        'topic_theme': event.series or '',
-                        'session_link': event.registration_link or '',
-                        'session_id': event.session_id or '',
-                        'participant_count': event.participant_count or 0,
-                        'duration': event.duration or 0,
-                        'is_simulcast': teacher_reg.is_simulcast
-                    })
+            # Determine district for this event
+            district_name_val = None
+            if event.districts:
+                district_name_val = event.districts[0].name
+            elif event.district_partner:
+                district_name_val = event.district_partner
             else:
-                district_name_val = None
-                if event.districts:
-                    district_name_val = event.districts[0].name
-                elif event.district_partner:
-                    district_name_val = event.district_partner
-                else:
-                    district_name_val = 'Unknown District'
-                if district_name_val != district_name:
-                    continue
-                session_data.append({
-                    'event_id': event.id,
-                    'status': event.status.value if event.status else '',
-                    'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
-                    'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
-                    'session_type': event.additional_information or '',
-                    'teacher_name': '',
-                    'school_name': '',
-                    'school_level': '',
-                    'district': district_name_val,
-                    'session_title': event.title,
-                    'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                    'topic_theme': event.series or '',
-                    'session_link': event.registration_link or '',
-                    'session_id': event.session_id or '',
-                    'participant_count': event.participant_count or 0,
-                    'duration': event.duration or 0,
-                    'is_simulcast': False
-                })
-        # Now aggregate stats from session_data (same as main page logic)
+                district_name_val = 'Unknown District'
+            if district_name_val != district_name:
+                continue
+            # Aggregate teachers and schools for this event
+            teachers = set()
+            schools = set()
+            for teacher_reg in event.teacher_registrations:
+                teacher = teacher_reg.teacher
+                if teacher:
+                    teachers.add(f"{teacher.first_name} {teacher.last_name}")
+                    # School
+                    school_name = ''
+                    if hasattr(teacher, 'school_obj') and teacher.school_obj:
+                        school_name = teacher.school_obj.name
+                    elif teacher.school_id:
+                        school_obj = School.query.get(teacher.school_id)
+                        if school_obj:
+                            school_name = school_obj.name
+                    if school_name:
+                        schools.add(school_name)
+            # If no teacher registrations, leave teachers/schools empty
+            session_dict[event.id] = {
+                'event_id': event.id,
+                'status': event.status.value if event.status else '',
+                'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
+                'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
+                'session_type': event.additional_information or '',
+                'teachers': sorted(teachers) if teachers else [],
+                'schools': sorted(schools) if schools else [],
+                'district': district_name_val,
+                'session_title': event.title,
+                'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                'topic_theme': event.series or '',
+                'session_link': event.registration_link or '',
+                'session_id': event.session_id or '',
+                'participant_count': event.participant_count or 0,
+                'duration': event.duration or 0,
+                'is_simulcast': any([tr.is_simulcast for tr in event.teacher_registrations]) if event.teacher_registrations else False
+            }
+        # Convert to list and sort by date descending
+        session_data = list(session_dict.values())
+        session_data.sort(key=lambda s: s['date'], reverse=True)
+        # --- End aggregation ---
+
+        # Now aggregate stats from session_data (same as main page logic, but updated for new structure)
         total_teachers = set()
         total_students = 0
         total_unique_sessions = set()
@@ -608,32 +582,39 @@ def load_routes(bp):
         school_breakdown = {}
         teacher_breakdown = {}
         for session in session_data:
-            if session['teacher_name']:
-                total_teachers.add(session['teacher_name'])
+            # Teachers
+            for teacher_name in session['teachers']:
+                total_teachers.add(teacher_name)
                 # Teacher breakdown
-                if session['teacher_name'] not in teacher_breakdown:
-                    teacher_breakdown[session['teacher_name']] = {
-                        'name': session['teacher_name'],
-                        'school': session['school_name'],
+                if teacher_name not in teacher_breakdown:
+                    # Use first school if available, else N/A
+                    school_val = session['schools'][0] if session['schools'] else 'N/A'
+                    teacher_breakdown[teacher_name] = {
+                        'name': teacher_name,
+                        'school': school_val,
                         'sessions': 0
                     }
-                teacher_breakdown[session['teacher_name']]['sessions'] += 1
-            if session['school_name']:
-                total_schools.add(session['school_name'])
+                teacher_breakdown[teacher_name]['sessions'] += 1
+            # Schools
+            for school_name in session['schools']:
+                total_schools.add(school_name)
                 # School breakdown
-                if session['school_name'] not in school_breakdown:
-                    school_breakdown[session['school_name']] = {
-                        'name': session['school_name'],
+                if school_name not in school_breakdown:
+                    school_breakdown[school_name] = {
+                        'name': school_name,
                         'sessions': 0
                     }
-                school_breakdown[session['school_name']]['sessions'] += 1
+                school_breakdown[school_name]['sessions'] += 1
+            # Sessions
             if session['session_title']:
                 total_unique_sessions.add(session['session_title'])
+            # Students
             if session.get('participant_count', 0) > 0:
                 total_students += session['participant_count']
             else:
                 total_students += 25
             total_experiences += 1
+            # Presenters/Organizations
             if session['presenter']:
                 presenters = [p.strip() for p in session['presenter'].split(',')]
                 for presenter in presenters:
@@ -678,10 +659,10 @@ def load_routes(bp):
             stats['total_registered'] += session.get('participant_count', 0)
             stats['total_attended'] += session.get('participant_count', 0)
             stats['total_duration'] += session.get('duration', 0)
-            if session['school_name']:
-                stats['schools'].add(session['school_name'])
-            if session['teacher_name']:
-                stats['educators'].add(session['teacher_name'])
+            for school_name in session['schools']:
+                stats['schools'].add(school_name)
+            for teacher_name in session['teachers']:
+                stats['educators'].add(teacher_name)
             if session['topic_theme']:
                 stats['career_clusters'].add(session['topic_theme'])
             stats['events'].append({
@@ -691,8 +672,8 @@ def load_routes(bp):
                 'duration': session['duration'],
                 'registered': session.get('participant_count', 0),
                 'attended': session.get('participant_count', 0),
-                'schools': session['school_name'],
-                'educators': session['teacher_name'],
+                'schools': ', '.join(session['schools']) if session['schools'] else 'N/A',
+                'educators': ', '.join(session['teachers']) if session['teachers'] else 'N/A',
                 'career_cluster': session['topic_theme'],
                 'session_id': session['session_id']
             })
@@ -723,7 +704,8 @@ def load_routes(bp):
             total_professionals_of_color=total_professionals_of_color_count,
             total_schools=total_schools_count,
             school_breakdown=school_breakdown_list,
-            teacher_breakdown=teacher_breakdown_list
+            teacher_breakdown=teacher_breakdown_list,
+            session_data=session_data
         )
 
     @bp.route('/reports/virtual/usage/export')

@@ -7,9 +7,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
 <style>
 .district-details-container {
-    max-width: 1200px;
+    max-width: 98vw;
     margin: 0 auto;
-    padding: 20px;
+    padding: 8px 8px 20px 8px;
 }
 
 .district-header {
@@ -349,6 +349,27 @@
     font-size: 1.1em;
 }
 
+.session-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.session-link:hover {
+    text-decoration: underline;
+}
+
+.school-list, .teacher-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.more-schools, .more-teachers {
+    color: #007bff;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
 @media (max-width: 768px) {
     .detailed-breakdown {
         grid-template-columns: 1fr;
@@ -453,6 +474,58 @@
                 <div class="stat-value">{{ total_schools }}</div>
                 <div class="stat-label">Schools</div>
             </div>
+        </div>
+
+        <!-- Sessions Table (Aggregated by Session) -->
+        <div class="monthly-stats">
+            <h2 style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">All Sessions</h2>
+            <table class="breakdown-table" style="margin-bottom:0;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Session Title</th>
+                        <th>Schools</th>
+                        <th>Teachers</th>
+                        <th>Presenter</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for session in session_data %}
+                    <tr>
+                        <td>{{ session.date }}</td>
+                        <td>
+                            <a href="{{ url_for('events.view_event', id=session.event_id) }}" class="session-link">{{ session.session_title }}</a>
+                            {% if session.session_link %}
+                                <a href="{{ session.session_link }}" target="_blank" title="External Session Link" style="margin-left:6px;"><i class="fas fa-external-link-alt"></i></a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.schools and session.schools|length > 0 %}
+                                <span class="school-list">
+                                    {% for school in session.schools[:3] %}{{ school }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    {% if session.schools|length > 3 %}
+                                        <span class="more-schools" style="display:none;">, {% for school in session.schools[3:] %}{{ school }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                                        <a href="#" class="show-more-schools" onclick="this.previousElementSibling.style.display='inline'; this.style.display='none'; return false;">Show More</a>
+                                    {% endif %}
+                                </span>
+                            {% else %}N/A{% endif %}
+                        </td>
+                        <td>
+                            {% if session.teachers and session.teachers|length > 0 %}
+                                <span class="teacher-list">
+                                    {% for teacher in session.teachers[:3] %}{{ teacher }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    {% if session.teachers|length > 3 %}
+                                        <span class="more-teachers" style="display:none;">, {% for teacher in session.teachers[3:] %}{{ teacher }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                                        <a href="#" class="show-more-teachers" onclick="this.previousElementSibling.style.display='inline'; this.style.display='none'; return false;">Show More</a>
+                                    {% endif %}
+                                </span>
+                            {% else %}N/A{% endif %}
+                        </td>
+                        <td>{{ session.presenter or 'N/A' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         <!-- Detailed Breakdown -->
