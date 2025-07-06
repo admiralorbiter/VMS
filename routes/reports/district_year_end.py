@@ -875,12 +875,20 @@ def generate_schools_by_level_data(district, events):
         if school and school.id in school_events:
             # Calculate or get event data - handle both cached dictionaries and fresh Event objects
             volunteer_participations = []
+            event_id = getattr(event, 'id', None)
+            
             if hasattr(event, 'students') and hasattr(event, 'volunteers'):
                 # This is cached data (dictionary-like object)
                 students = getattr(event, 'students', 0)
                 volunteers = getattr(event, 'volunteers', 0)
                 volunteer_hours = getattr(event, 'volunteer_hours', 0)
-                # For cached data, we can't easily get unique volunteers, so we'll skip that part
+                
+                # For cached data, we need to query the database to get unique volunteers
+                if event_id:
+                    volunteer_participations = EventParticipation.query.filter(
+                        EventParticipation.event_id == event_id,
+                        EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+                    ).all()
             else:
                 # This is a fresh Event object - calculate the values
                 students = get_district_student_count_for_event(event, district.id)
@@ -891,7 +899,7 @@ def generate_schools_by_level_data(district, events):
             
             # Add event data
             event_data = {
-                'id': getattr(event, 'id', None),
+                'id': event_id,
                 'title': getattr(event, 'title', ''),
                 'date': event.start_date.strftime('%m/%d/%Y') if hasattr(event, 'start_date') else '',
                 'time': event.start_date.strftime('%I:%M %p') if hasattr(event, 'start_date') else '',
@@ -906,7 +914,7 @@ def generate_schools_by_level_data(district, events):
             school_events[school.id]['total_volunteers'] += event_data['volunteers']
             school_events[school.id]['total_volunteer_hours'] += event_data['volunteer_hours']
             
-            # Track unique volunteers for this school (only for fresh Event objects)
+            # Track unique volunteers for this school (works for both cached and fresh data)
             if volunteer_participations:
                 for p in volunteer_participations:
                     school_events[school.id]['unique_volunteers'].add(p.volunteer_id)
