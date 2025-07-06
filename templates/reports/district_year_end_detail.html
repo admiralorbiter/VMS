@@ -342,6 +342,156 @@
         opacity: 1;
         transition: all 0.3s ease;
     }
+
+    /* Enhanced Summary Stats Styles */
+    .enhanced-summary-stats {
+        margin-bottom: 2rem;
+    }
+
+    .summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-header h2 {
+        color: var(--ucla-blue);
+        margin: 0;
+    }
+
+    .summary-toggle-btn {
+        background: var(--ucla-blue);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .summary-toggle-btn:hover {
+        background: var(--delft-blue);
+        transform: translateY(-1px);
+    }
+
+    .quick-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .overview-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.2s ease;
+    }
+
+    .overview-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .detailed-breakdown {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-top: 1rem;
+    }
+
+    .breakdown-section {
+        margin-bottom: 2rem;
+    }
+
+    .breakdown-section h3 {
+        color: var(--ucla-blue);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .breakdown-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .breakdown-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid var(--ucla-blue);
+    }
+
+    .breakdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .breakdown-title {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .breakdown-total {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--ucla-blue);
+    }
+
+    .breakdown-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .breakdown-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    .breakdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .breakdown-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .breakdown-value {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .breakdown-percent {
+        color: var(--ucla-blue);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .breakdown-note {
+        color: #6c757d;
+        font-size: 0.75rem;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -366,36 +516,280 @@
         </form>
     </div>
 
-    <!-- Summary Stats -->
-    <div class="summary-stats">
-        <div class="stat-card">
-            <div class="stat-value">{{ total_events }}</div>
-            <div class="stat-label">Total Events</div>
+    <!-- Enhanced Summary Stats -->
+    <div class="enhanced-summary-stats">
+        <div class="summary-header">
+            <h2>District Overview</h2>
+            <div class="summary-toggle">
+                <button id="summary-toggle-btn" class="summary-toggle-btn" onclick="toggleSummaryView()">
+                    <i class="fas fa-chart-bar"></i> Show Detailed Breakdown
+                </button>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ unique_student_count }}</div>
-            <div class="stat-label">Unique Students Reached</div>
+        
+        <!-- Quick Overview (always visible) -->
+        <div class="quick-overview">
+            <div class="stat-card overview-card">
+                <div class="stat-value">{{ total_events }}</div>
+                <div class="stat-label">Total Events</div>
+            </div>
+            <div class="stat-card overview-card">
+                <div class="stat-value">{{ unique_student_count }}</div>
+                <div class="stat-label">Unique Students Reached</div>
+            </div>
+            <div class="stat-card overview-card">
+                <div class="stat-value">{{ stats.total_volunteers }}</div>
+                <div class="stat-label">Volunteer Engagements</div>
+                <div class="stat-sublabel">{{ unique_volunteer_count }} unique</div>
+            </div>
+            <div class="stat-card overview-card">
+                <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
+                <div class="stat-label">Volunteer Hours</div>
+            </div>
+            <div class="stat-card overview-card">
+                <div class="stat-value">{{ unique_organization_count }}</div>
+                <div class="stat-label">Volunteer Organizations</div>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.total_in_person_students }}</div>
-            <div class="stat-label">Total In-Person Students</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.total_virtual_students }}</div>
-            <div class="stat-label">Est. Virtual Students</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.total_volunteers }}</div>
-            <div class="stat-label">Volunteer Engagements</div>
-            <div class="stat-sublabel">{{ unique_volunteer_count }} unique</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
-            <div class="stat-label">Volunteer Hours</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ unique_organization_count }}</div>
-            <div class="stat-label">Volunteer Organizations</div>
+        
+        <!-- Detailed Breakdown (collapsible) -->
+        <div class="detailed-breakdown" id="detailed-breakdown" style="display: none;">
+            {% if stats.enhanced %}
+            
+            <!-- Events Breakdown -->
+            <div class="breakdown-section">
+                <h3><i class="fas fa-calendar-alt"></i> Events Breakdown</h3>
+                <div class="breakdown-grid">
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Total Events</div>
+                            <div class="breakdown-total">{{ stats.enhanced.events.total }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ stats.enhanced.events.in_person }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.events.in_person_pct }}%)</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ stats.enhanced.events.virtual }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.events.virtual_pct }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Students Breakdown -->
+            <div class="breakdown-section">
+                <h3><i class="fas fa-user-graduate"></i> Students Breakdown</h3>
+                <div class="breakdown-grid">
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Total Student Engagements</div>
+                            <div class="breakdown-total">{{ stats.enhanced.students.total }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ stats.enhanced.students.in_person }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.students.in_person_pct }}%)</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ stats.enhanced.students.virtual }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.students.virtual_pct }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Unique Students Reached</div>
+                            <div class="breakdown-total">{{ stats.enhanced.students.unique_total }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ stats.enhanced.students.unique_in_person }}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ stats.enhanced.students.unique_virtual }}</span>
+                                <span class="breakdown-note">*Virtual unique tracking limited</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            
+            <!-- Enhanced Volunteers Breakdown -->
+            <div class="breakdown-section">
+                <h3><i class="fas fa-users"></i> Enhanced Volunteers Breakdown</h3>
+                <div class="breakdown-grid">
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Volunteer Engagements</div>
+                            <div class="breakdown-total">{{ stats.enhanced.volunteers.total }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ stats.enhanced.volunteers.in_person }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.in_person_pct }}%)</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ stats.enhanced.volunteers.virtual }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.virtual_pct }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Unique Volunteers</div>
+                            <div class="breakdown-total">{{ stats.enhanced.volunteers.unique_total }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person Events</span>
+                                <span class="breakdown-value">{{ stats.enhanced.volunteers.unique_in_person }}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual Events</span>
+                                <span class="breakdown-value">{{ stats.enhanced.volunteers.unique_virtual }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Total Volunteer Hours</div>
+                            <div class="breakdown-total">{{ "%.1f"|format(stats.enhanced.volunteers.hours_total) }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.volunteers.hours_in_person) }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.hours_in_person_pct }}%)</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.volunteers.hours_virtual) }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.hours_virtual_pct }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Enhanced Organizations Breakdown -->
+            <div class="breakdown-section">
+                <h3><i class="fas fa-building"></i> Enhanced Organizations Breakdown</h3>
+                <div class="breakdown-grid">
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Unique Organizations</div>
+                            <div class="breakdown-total">{{ stats.enhanced.organizations.unique_total }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person Events</span>
+                                <span class="breakdown-value">{{ stats.enhanced.organizations.unique_in_person }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.organizations.unique_in_person_pct }}%)</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual Events</span>
+                                <span class="breakdown-value">{{ stats.enhanced.organizations.unique_virtual }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.organizations.unique_virtual_pct }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Organization Volunteer Hours</div>
+                            <div class="breakdown-total">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_total) }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_in_person) }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.organizations.volunteer_hours_in_person_pct }}%)</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_virtual) }}</span>
+                                <span class="breakdown-percent">({{ stats.enhanced.organizations.volunteer_hours_virtual_pct }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Virtual Sessions Breakdown -->
+            <div class="breakdown-section">
+                <h3><i class="fas fa-video"></i> Virtual Sessions Breakdown</h3>
+                <div class="breakdown-grid">
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Classrooms Reached</div>
+                            <div class="breakdown-total">{{ stats.enhanced.virtual_sessions.classrooms_reached }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Registered Teachers</span>
+                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.registered_teachers }}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Confirmed Teachers</span>
+                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.confirmed_teachers }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Unique Teachers</div>
+                            <div class="breakdown-total">{{ stats.enhanced.virtual_sessions.unique_teachers }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Total Registrations</span>
+                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.registered_teachers }}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Confirmed Attendance</span>
+                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.confirmed_teachers }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% else %}
+            <!-- Fallback to original stats display -->
+            <div class="breakdown-section">
+                <h3>Basic Stats</h3>
+                <div class="breakdown-grid">
+                    <div class="breakdown-card">
+                        <div class="breakdown-header">
+                            <div class="breakdown-title">Students</div>
+                            <div class="breakdown-total">{{ stats.total_in_person_students + stats.total_virtual_students }}</div>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">In-Person</span>
+                                <span class="breakdown-value">{{ stats.total_in_person_students }}</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Virtual</span>
+                                <span class="breakdown-value">{{ stats.total_virtual_students }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -678,23 +1072,107 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateTopLevelStats(filteredStats) {
-        // Update the summary stats at the top of the page
-        const statCards = document.querySelectorAll('.stat-card .stat-value');
-        if (statCards.length >= 7) {
-            statCards[0].textContent = filteredStats.totalEvents;
-            statCards[1].textContent = filteredStats.uniqueStudents;
-            statCards[2].textContent = filteredStats.totalInPersonStudents;
-            statCards[3].textContent = filteredStats.totalVirtualStudents;
-            statCards[4].textContent = filteredStats.totalVolunteers;
-            statCards[5].textContent = filteredStats.totalVolunteerHours.toFixed(1);
-            statCards[6].textContent = filteredStats.uniqueOrganizations;
+        // Update the overview cards
+        const overviewCards = document.querySelectorAll('.overview-card .stat-value');
+        if (overviewCards.length >= 5) {
+            overviewCards[0].textContent = filteredStats.totalEvents;
+            overviewCards[1].textContent = filteredStats.uniqueStudents;
+            overviewCards[2].textContent = filteredStats.totalVolunteers;
+            overviewCards[3].textContent = filteredStats.totalVolunteerHours.toFixed(1);
+            overviewCards[4].textContent = filteredStats.uniqueOrganizations;
         }
 
         // Update the unique volunteers sub-label
-        const volunteerCard = document.querySelector('.stat-card:nth-child(5) .stat-sublabel');
+        const volunteerCard = document.querySelector('.overview-card:nth-child(3) .stat-sublabel');
         if (volunteerCard) {
             volunteerCard.textContent = `${filteredStats.uniqueVolunteers} unique`;
         }
+        
+        // Update enhanced breakdown if available
+        if (filteredStats.enhanced) {
+            updateEnhancedBreakdown(filteredStats.enhanced);
+        }
+    }
+    
+    function updateEnhancedBreakdown(enhanced) {
+        // Update events breakdown
+        updateBreakdownCard('events', enhanced.events);
+        
+        // Update students breakdown
+        updateBreakdownCard('students', enhanced.students);
+        
+        // Update volunteers breakdown (enhanced with hours)
+        updateVolunteersBreakdown(enhanced.volunteers);
+        
+        // Update organizations breakdown (enhanced with hours)
+        updateOrganizationsBreakdown(enhanced.organizations);
+        
+        // Update virtual sessions breakdown
+        updateVirtualSessionsBreakdown(enhanced.virtual_sessions);
+    }
+    
+    function updateBreakdownCard(category, data) {
+        // Find breakdown cards by looking for specific titles
+        const breakdownCards = document.querySelectorAll('.breakdown-card');
+        
+        breakdownCards.forEach(card => {
+            const title = card.querySelector('.breakdown-title');
+            if (!title) return;
+            
+            const titleText = title.textContent.toLowerCase();
+            
+            // Update based on category and title matching
+            if (category === 'events' && titleText.includes('total events')) {
+                updateCardValues(card, data);
+            } else if (category === 'students' && titleText.includes('total student engagements')) {
+                updateCardValues(card, data);
+            } else if (category === 'students' && titleText.includes('unique students reached')) {
+                updateCardValues(card, data, true); // Skip percentages for unique counts
+            } else if (category === 'volunteers' && titleText.includes('total volunteer engagements')) {
+                updateCardValues(card, data);
+            } else if (category === 'volunteers' && titleText.includes('unique volunteers')) {
+                updateCardValues(card, data, true); // Skip percentages for unique counts
+            } else if (category === 'volunteer_hours' && titleText.includes('total volunteer hours')) {
+                updateCardValues(card, data, false, true); // Format as decimal
+            } else if (category === 'organizations' && titleText.includes('volunteer organizations')) {
+                updateCardValues(card, data);
+            }
+        });
+    }
+    
+    function updateCardValues(card, data, skipPercentages = false, isDecimal = false) {
+        // Update total
+        const total = card.querySelector('.breakdown-total');
+        if (total) {
+            total.textContent = isDecimal ? data.total.toFixed(1) : data.total;
+        }
+        
+        // Update breakdown items
+        const items = card.querySelectorAll('.breakdown-item');
+        items.forEach(item => {
+            const label = item.querySelector('.breakdown-label');
+            if (!label) return;
+            
+            const labelText = label.textContent.toLowerCase();
+            const value = item.querySelector('.breakdown-value');
+            const percent = item.querySelector('.breakdown-percent');
+            
+            if (labelText.includes('in-person')) {
+                if (value) {
+                    value.textContent = isDecimal ? data.in_person.toFixed(1) : data.in_person;
+                }
+                if (percent && !skipPercentages) {
+                    percent.textContent = `(${data.in_person_pct}%)`;
+                }
+            } else if (labelText.includes('virtual')) {
+                if (value) {
+                    value.textContent = isDecimal ? data.virtual.toFixed(1) : data.virtual;
+                }
+                if (percent && !skipPercentages) {
+                    percent.textContent = `(${data.virtual_pct}%)`;
+                }
+            }
+        });
     }
 
     function calculateFilteredStats(selectedTypes) {
@@ -1100,5 +1578,133 @@ window.toggleSchoolCard = function(schoolId) {
         console.error('Could not find school content or toggle icon elements for:', schoolId);
     }
 };
+
+window.toggleSummaryView = function() {
+    const detailedBreakdown = document.getElementById('detailed-breakdown');
+    const toggleBtn = document.getElementById('summary-toggle-btn');
+    
+    if (detailedBreakdown && toggleBtn) {
+        if (detailedBreakdown.style.display === 'none') {
+            detailedBreakdown.style.display = 'block';
+            toggleBtn.innerHTML = '<i class="fas fa-chart-line"></i> Hide Detailed Breakdown';
+        } else {
+            detailedBreakdown.style.display = 'none';
+            toggleBtn.innerHTML = '<i class="fas fa-chart-bar"></i> Show Detailed Breakdown';
+        }
+    }
+};
+
+// Enhanced breakdown update functions
+function updateVolunteersBreakdown(volunteers) {
+    // Find the Enhanced Volunteers Breakdown section
+    const volunteersSections = document.querySelectorAll('.breakdown-section');
+    let volunteersSection = null;
+    
+    volunteersSections.forEach(section => {
+        const header = section.querySelector('h3');
+        if (header && header.textContent.includes('Enhanced Volunteers')) {
+            volunteersSection = section;
+        }
+    });
+    
+    if (volunteersSection) {
+        const cards = volunteersSection.querySelectorAll('.breakdown-card');
+        if (cards.length >= 3) {
+            // Engagements card
+            updateBreakdownCardData(cards[0], volunteers.total, volunteers.in_person, volunteers.virtual, volunteers.in_person_pct, volunteers.virtual_pct);
+            
+            // Unique volunteers card
+            updateBreakdownCardData(cards[1], volunteers.unique_total, volunteers.unique_in_person, volunteers.unique_virtual);
+            
+            // Volunteer hours card
+            updateBreakdownCardData(cards[2], volunteers.hours_total.toFixed(1), volunteers.hours_in_person.toFixed(1), volunteers.hours_virtual.toFixed(1), volunteers.hours_in_person_pct, volunteers.hours_virtual_pct);
+        }
+    }
+}
+
+function updateOrganizationsBreakdown(organizations) {
+    // Find the Enhanced Organizations Breakdown section
+    const orgSections = document.querySelectorAll('.breakdown-section');
+    let orgSection = null;
+    
+    orgSections.forEach(section => {
+        const header = section.querySelector('h3');
+        if (header && header.textContent.includes('Enhanced Organizations')) {
+            orgSection = section;
+        }
+    });
+    
+    if (orgSection) {
+        const cards = orgSection.querySelectorAll('.breakdown-card');
+        if (cards.length >= 2) {
+            // Unique organizations card
+            updateBreakdownCardData(cards[0], organizations.unique_total, organizations.unique_in_person, organizations.unique_virtual, organizations.unique_in_person_pct, organizations.unique_virtual_pct);
+            
+            // Organization volunteer hours card
+            updateBreakdownCardData(cards[1], organizations.volunteer_hours_total.toFixed(1), organizations.volunteer_hours_in_person.toFixed(1), organizations.volunteer_hours_virtual.toFixed(1), organizations.volunteer_hours_in_person_pct, organizations.volunteer_hours_virtual_pct);
+        }
+    }
+}
+
+function updateVirtualSessionsBreakdown(virtualSessions) {
+    // Find the Virtual Sessions Breakdown section
+    const virtualSections = document.querySelectorAll('.breakdown-section');
+    let virtualSection = null;
+    
+    virtualSections.forEach(section => {
+        const header = section.querySelector('h3');
+        if (header && header.textContent.includes('Virtual Sessions')) {
+            virtualSection = section;
+        }
+    });
+    
+    if (virtualSection) {
+        const cards = virtualSection.querySelectorAll('.breakdown-card');
+        if (cards.length >= 2) {
+            // Classrooms reached card
+            const classroomsCard = cards[0];
+            const classroomsTotal = classroomsCard.querySelector('.breakdown-total');
+            const classroomsItems = classroomsCard.querySelectorAll('.breakdown-item .breakdown-value');
+            
+            if (classroomsTotal) classroomsTotal.textContent = virtualSessions.classrooms_reached;
+            if (classroomsItems.length >= 2) {
+                classroomsItems[0].textContent = virtualSessions.registered_teachers;
+                classroomsItems[1].textContent = virtualSessions.confirmed_teachers;
+            }
+            
+            // Unique teachers card
+            const teachersCard = cards[1];
+            const teachersTotal = teachersCard.querySelector('.breakdown-total');
+            const teachersItems = teachersCard.querySelectorAll('.breakdown-item .breakdown-value');
+            
+            if (teachersTotal) teachersTotal.textContent = virtualSessions.unique_teachers;
+            if (teachersItems.length >= 2) {
+                teachersItems[0].textContent = virtualSessions.registered_teachers;
+                teachersItems[1].textContent = virtualSessions.confirmed_teachers;
+            }
+        }
+    }
+}
+
+function updateBreakdownCardData(card, total, inPerson, virtual, inPersonPct, virtualPct) {
+    const totalElement = card.querySelector('.breakdown-total');
+    const items = card.querySelectorAll('.breakdown-item');
+    
+    if (totalElement) {
+        totalElement.textContent = total;
+    }
+    
+    if (items.length >= 2) {
+        const inPersonValue = items[0].querySelector('.breakdown-value');
+        const inPersonPercent = items[0].querySelector('.breakdown-percent');
+        const virtualValue = items[1].querySelector('.breakdown-value');
+        const virtualPercent = items[1].querySelector('.breakdown-percent');
+        
+        if (inPersonValue) inPersonValue.textContent = inPerson;
+        if (inPersonPercent && inPersonPct !== undefined) inPersonPercent.textContent = `(${inPersonPct}%)`;
+        if (virtualValue) virtualValue.textContent = virtual;
+        if (virtualPercent && virtualPct !== undefined) virtualPercent.textContent = `(${virtualPct}%)`;
+    }
+}
 </script>
 {% endblock %} 

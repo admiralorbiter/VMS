@@ -145,7 +145,7 @@ def load_routes(bp):
                 unique_organization_count = len(org_ids)
 
                 # Use cached data if we have both stats and events data
-                if stats:
+                if stats and 'enhanced' in stats:
                     # Generate schools_by_level data from cached events
                     cached_events = []
                     for month_data in events_by_month.values():
@@ -225,27 +225,22 @@ def load_routes(bp):
             )
         events = events_query.all()
         
-        # Calculate stats from filtered events (always recalculate when filter is applied)
-        if host_filter != 'all' or not stats:
+        # Calculate enhanced stats from filtered events (always recalculate when filter is applied)
+        # Also calculate if cached stats don't include enhanced data
+        if host_filter != 'all' or not stats or 'enhanced' not in stats:
+            enhanced_stats = calculate_enhanced_district_stats(events, district.id)
+            
+            # Keep backward compatibility with existing template variables
             stats = {
-                'total_events': len(events),
-                'total_in_person_students': sum(
-                    get_district_student_count_for_event(e, district.id) for e in events if e.type != EventType.VIRTUAL_SESSION
-                ),
-                'total_virtual_students': sum(
-                    get_district_student_count_for_event(e, district.id) for e in events if e.type == EventType.VIRTUAL_SESSION
-                ),
-                'total_volunteers': sum(
-                    len([p for p in e.volunteer_participations if p.status in ['Attended', 'Completed', 'Successfully Completed']]) for e in events
-                ),
-                'total_volunteer_hours': sum(
-                    sum(p.delivery_hours or 0 for p in e.volunteer_participations if p.status in ['Attended', 'Completed', 'Successfully Completed']) for e in events
-                ),
-                'event_types': {},
+                'total_events': enhanced_stats['events']['total'],
+                'total_in_person_students': enhanced_stats['students']['in_person'],
+                'total_virtual_students': enhanced_stats['students']['virtual'],
+                'total_volunteers': enhanced_stats['volunteers']['total'],
+                'total_volunteer_hours': enhanced_stats['volunteers']['hours_total'],
+                'event_types': enhanced_stats['event_types'],
+                # Add enhanced breakdown data
+                'enhanced': enhanced_stats
             }
-            for e in events:
-                t = e.type.value if e.type else 'Unknown'
-                stats['event_types'][t] = stats['event_types'].get(t, 0) + 1
         
         event_ids = [event.id for event in events]
         total_events = len(events)
@@ -330,9 +325,15 @@ def load_routes(bp):
                 unique_students.update(event_student_ids)
                 events_by_month[month]['unique_students'].update(event_student_ids)
 
-        # Calculate overall unique counts
-        unique_volunteer_count = len(unique_volunteers)
-        unique_student_count = len(unique_students) # Calculate overall unique students
+        # Calculate overall unique counts from enhanced stats if available
+        if 'enhanced' in stats:
+            unique_volunteer_count = stats['enhanced']['volunteers']['unique_total']
+            unique_student_count = stats['enhanced']['students']['unique_total']
+            unique_organization_count = stats['enhanced']['organizations']['unique_total']
+        else:
+            # Fallback to original calculation
+            unique_volunteer_count = len(unique_volunteers)
+            unique_student_count = len(unique_students)
 
         # Process the events data for storage/display
         for month, data in events_by_month.items():
@@ -369,21 +370,22 @@ def load_routes(bp):
             db.session.add(new_cache)
             db.session.commit()
 
-        # Calculate unique organization count
-        volunteer_ids = set()
-        for event in events:
-            for p in event.volunteer_participations:
-                if p.status in ['Attended', 'Completed', 'Successfully Completed']:
-                    volunteer_ids.add(p.volunteer_id)
+        # Calculate unique organization count (only if not already calculated in enhanced stats)
+        if 'enhanced' not in stats:
+            volunteer_ids = set()
+            for event in events:
+                for p in event.volunteer_participations:
+                    if p.status in ['Attended', 'Completed', 'Successfully Completed']:
+                        volunteer_ids.add(p.volunteer_id)
 
-        # Get all unique organization IDs for these volunteers
-        org_ids = (
-            db.session.query(VolunteerOrganization.organization_id)
-            .filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids))
-            .distinct()
-            .all()
-        )
-        unique_organization_count = len(org_ids)
+            # Get all unique organization IDs for these volunteers
+            org_ids = (
+                db.session.query(VolunteerOrganization.organization_id)
+                .filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids))
+                .distinct()
+                .all()
+            )
+            unique_organization_count = len(org_ids)
 
         # Generate schools_by_level data
         schools_by_level = generate_schools_by_level_data(district, events)
@@ -679,6 +681,9 @@ def load_routes(bp):
         else:
             unique_organization_count = 0
         
+        # Calculate enhanced stats for filtered events
+        enhanced_stats = calculate_enhanced_district_stats(events, district.id)
+        
         return jsonify({
             'totalEvents': total_events,
             'totalStudents': total_students,
@@ -688,7 +693,9 @@ def load_routes(bp):
             'totalVolunteers': total_volunteers,
             'uniqueVolunteers': len(unique_volunteers),
             'totalVolunteerHours': total_volunteer_hours,
-            'uniqueOrganizations': unique_organization_count
+            'uniqueOrganizations': unique_organization_count,
+            # Add enhanced breakdown data
+            'enhanced': enhanced_stats
         })
 
     @bp.route('/reports/district/year-end/detail/<district_name>/filtered-participants')
@@ -962,11 +969,10 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter='a
             report = DistrictYearEndReport(
                 district_id=district.id,
                 school_year=school_year,
-                host_filter=host_filter
+                host_filter=host_filter,
+                report_data={}  # Initialize with empty dict to satisfy NOT NULL constraint
             )
             db.session.add(report)
-        
-        report.report_data = stats
         
         # Generate events data (mostly for monthly breakdown)
         start_date, end_date = get_school_year_date_range(school_year)
@@ -1101,7 +1107,26 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter='a
             data['unique_student_count'] = len(data['unique_students']) # Calculate monthly unique student count
             data['unique_students'] = list(data['unique_students']) # Convert set to list for JSON
 
-        # Cache the events data
+        # Calculate enhanced stats for this district
+        enhanced_stats = calculate_enhanced_district_stats(events, district.id)
+        
+        # Update stats to include enhanced data
+        enhanced_stats_dict = {
+            'total_events': enhanced_stats['events']['total'],
+            'total_in_person_students': enhanced_stats['students']['in_person'],
+            'total_virtual_students': enhanced_stats['students']['virtual'],
+            'total_volunteers': enhanced_stats['volunteers']['total'],
+            'total_volunteer_hours': enhanced_stats['volunteers']['hours_total'],
+            'event_types': enhanced_stats['event_types'],
+            # Add enhanced breakdown data
+            'enhanced': enhanced_stats
+        }
+        
+        # Merge with existing stats (keep any additional fields from generate_district_stats)
+        stats.update(enhanced_stats_dict)
+        
+        # Cache both the enhanced stats and events data
+        report.report_data = stats
         report.events_data = {
             'events_by_month': events_by_month,
             'total_events': len(events),
@@ -1110,3 +1135,248 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter='a
         }
 
     db.session.commit()
+
+def calculate_enhanced_district_stats(events, district_id):
+    """
+    Calculate comprehensive district statistics with detailed breakdowns.
+    
+    Returns a dictionary with total stats and breakdowns by in-person vs virtual sessions.
+    Each major category includes detailed metrics for volunteers, organizations, and virtual-specific data.
+    """
+    from models.organization import Organization, VolunteerOrganization
+    from models.student import Student
+    from models.school_model import School
+    from models.teacher import Teacher
+    from models.event import EventTeacher
+    
+    # Initialize comprehensive counters
+    stats = {
+        'events': {'total': 0, 'in_person': 0, 'virtual': 0},
+        'students': {'total': 0, 'in_person': 0, 'virtual': 0, 'unique_total': 0, 'unique_in_person': 0, 'unique_virtual': 0},
+        'volunteers': {
+            'total': 0, 'in_person': 0, 'virtual': 0, 
+            'unique_total': 0, 'unique_in_person': 0, 'unique_virtual': 0,
+            'hours_total': 0, 'hours_in_person': 0, 'hours_virtual': 0
+        },
+        'organizations': {
+            'total': 0, 'in_person': 0, 'virtual': 0,
+            'unique_total': 0, 'unique_in_person': 0, 'unique_virtual': 0,
+            'volunteer_hours_total': 0, 'volunteer_hours_in_person': 0, 'volunteer_hours_virtual': 0
+        },
+        'virtual_sessions': {
+            'classrooms_reached': 0,
+            'unique_teachers': 0,
+            'confirmed_teachers': 0,
+            'registered_teachers': 0
+        },
+        'event_types': {},
+        'event_types_by_format': {'in_person': {}, 'virtual': {}}
+    }
+    
+    # Track unique IDs and enhanced metrics
+    unique_volunteers_total = set()
+    unique_volunteers_in_person = set()
+    unique_volunteers_virtual = set()
+    unique_students_total = set()
+    unique_students_in_person = set()
+    unique_students_virtual = set()
+    unique_orgs_total = set()
+    unique_orgs_in_person = set()
+    unique_orgs_virtual = set()
+    unique_teachers_virtual = set()
+    
+    # Track organization volunteer hours
+    org_hours_in_person = {}
+    org_hours_virtual = {}
+    org_hours_total = {}
+    
+    for event in events:
+        is_virtual = event.type == EventType.VIRTUAL_SESSION
+        
+        # Count events
+        stats['events']['total'] += 1
+        if is_virtual:
+            stats['events']['virtual'] += 1
+        else:
+            stats['events']['in_person'] += 1
+        
+        # Count event types
+        event_type = event.type.value if event.type else 'Unknown'
+        stats['event_types'][event_type] = stats['event_types'].get(event_type, 0) + 1
+        
+        # Count event types by format
+        format_key = 'virtual' if is_virtual else 'in_person'
+        stats['event_types_by_format'][format_key][event_type] = stats['event_types_by_format'][format_key].get(event_type, 0) + 1
+        
+        # Get student count for this district
+        student_count = get_district_student_count_for_event(event, district_id)
+        stats['students']['total'] += student_count
+        if is_virtual:
+            stats['students']['virtual'] += student_count
+        else:
+            stats['students']['in_person'] += student_count
+        
+        # Get volunteer participations
+        volunteer_participations = [p for p in event.volunteer_participations 
+                                  if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+        
+        volunteer_count = len(volunteer_participations)
+        stats['volunteers']['total'] += volunteer_count
+        if is_virtual:
+            stats['volunteers']['virtual'] += volunteer_count
+        else:
+            stats['volunteers']['in_person'] += volunteer_count
+        
+        # Calculate volunteer hours
+        volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+        stats['volunteers']['hours_total'] += volunteer_hours
+        if is_virtual:
+            stats['volunteers']['hours_virtual'] += volunteer_hours
+        else:
+            stats['volunteers']['hours_in_person'] += volunteer_hours
+        
+        # Track unique volunteers
+        event_volunteer_ids = set()
+        for p in volunteer_participations:
+            unique_volunteers_total.add(p.volunteer_id)
+            event_volunteer_ids.add(p.volunteer_id)
+            if is_virtual:
+                unique_volunteers_virtual.add(p.volunteer_id)
+            else:
+                unique_volunteers_in_person.add(p.volunteer_id)
+        
+        # Track unique students (for non-virtual events)
+        if not is_virtual:
+            district_student_ids = (
+                db.session.query(EventStudentParticipation.student_id)
+                .join(Student, EventStudentParticipation.student_id == Student.id)
+                .join(School, Student.school_id == School.id)
+                .filter(
+                    EventStudentParticipation.event_id == event.id,
+                    EventStudentParticipation.status == 'Attended',
+                    School.district_id == district_id
+                )
+                .all()
+            )
+            event_student_ids = {student_id[0] for student_id in district_student_ids}
+            unique_students_total.update(event_student_ids)
+            unique_students_in_person.update(event_student_ids)
+        
+        # Track unique organizations and their volunteer hours
+        if event_volunteer_ids:
+            event_org_ids = (
+                db.session.query(VolunteerOrganization.organization_id)
+                .filter(VolunteerOrganization.volunteer_id.in_(event_volunteer_ids))
+                .distinct()
+                .all()
+            )
+            event_org_ids = {org_id[0] for org_id in event_org_ids}
+            unique_orgs_total.update(event_org_ids)
+            
+            # Track organization volunteer hours
+            for org_id in event_org_ids:
+                # Calculate hours for this organization in this event
+                org_volunteer_ids = (
+                    db.session.query(VolunteerOrganization.volunteer_id)
+                    .filter(VolunteerOrganization.organization_id == org_id)
+                    .filter(VolunteerOrganization.volunteer_id.in_(event_volunteer_ids))
+                    .all()
+                )
+                org_volunteer_ids = {vol_id[0] for vol_id in org_volunteer_ids}
+                
+                org_event_hours = sum(
+                    p.delivery_hours or 0 for p in volunteer_participations 
+                    if p.volunteer_id in org_volunteer_ids
+                )
+                
+                # Add to organization hour tracking
+                org_hours_total[org_id] = org_hours_total.get(org_id, 0) + org_event_hours
+                
+                if is_virtual:
+                    unique_orgs_virtual.update(event_org_ids)
+                    org_hours_virtual[org_id] = org_hours_virtual.get(org_id, 0) + org_event_hours
+                else:
+                    unique_orgs_in_person.update(event_org_ids)
+                    org_hours_in_person[org_id] = org_hours_in_person.get(org_id, 0) + org_event_hours
+        
+        # Track virtual session specific metrics
+        if is_virtual:
+            # Count teachers for virtual sessions
+            teacher_registrations = event.teacher_registrations
+            stats['virtual_sessions']['registered_teachers'] += len(teacher_registrations)
+            
+            # Count confirmed teachers (those with attendance confirmed)
+            confirmed_teachers = [t for t in teacher_registrations if t.attendance_confirmed_at is not None]
+            stats['virtual_sessions']['confirmed_teachers'] += len(confirmed_teachers)
+            
+            # Track unique teachers
+            for teacher_reg in teacher_registrations:
+                unique_teachers_virtual.add(teacher_reg.teacher_id)
+            
+            # Count classrooms reached (assuming each teacher represents a classroom)
+            stats['virtual_sessions']['classrooms_reached'] += len(teacher_registrations)
+    
+    # Set unique counts
+    stats['volunteers']['unique_total'] = len(unique_volunteers_total)
+    stats['volunteers']['unique_in_person'] = len(unique_volunteers_in_person)
+    stats['volunteers']['unique_virtual'] = len(unique_volunteers_virtual)
+    
+    stats['students']['unique_total'] = len(unique_students_total)
+    stats['students']['unique_in_person'] = len(unique_students_in_person)
+    stats['students']['unique_virtual'] = len(unique_students_virtual)
+    
+    stats['organizations']['unique_total'] = len(unique_orgs_total)
+    stats['organizations']['unique_in_person'] = len(unique_orgs_in_person)
+    stats['organizations']['unique_virtual'] = len(unique_orgs_virtual)
+    
+    # Calculate organization volunteer hours totals
+    stats['organizations']['volunteer_hours_total'] = sum(org_hours_total.values())
+    stats['organizations']['volunteer_hours_in_person'] = sum(org_hours_in_person.values())
+    stats['organizations']['volunteer_hours_virtual'] = sum(org_hours_virtual.values())
+    
+    # Set virtual session unique teacher count
+    stats['virtual_sessions']['unique_teachers'] = len(unique_teachers_virtual)
+    
+    # Calculate percentages
+    def add_percentages(category_stats):
+        total = category_stats['total']
+        if total > 0:
+            category_stats['in_person_pct'] = round((category_stats['in_person'] / total) * 100, 1)
+            category_stats['virtual_pct'] = round((category_stats['virtual'] / total) * 100, 1)
+        else:
+            category_stats['in_person_pct'] = 0
+            category_stats['virtual_pct'] = 0
+    
+    add_percentages(stats['events'])
+    add_percentages(stats['students'])
+    
+    # Add percentages for volunteers (both engagements and hours)
+    add_percentages(stats['volunteers'])  # This handles total/in_person/virtual
+    # Add percentages for volunteer hours
+    total_hours = stats['volunteers']['hours_total']
+    if total_hours > 0:
+        stats['volunteers']['hours_in_person_pct'] = round((stats['volunteers']['hours_in_person'] / total_hours) * 100, 1)
+        stats['volunteers']['hours_virtual_pct'] = round((stats['volunteers']['hours_virtual'] / total_hours) * 100, 1)
+    else:
+        stats['volunteers']['hours_in_person_pct'] = 0
+        stats['volunteers']['hours_virtual_pct'] = 0
+    
+    # Add percentages for organizations (unique counts)
+    total_orgs = stats['organizations']['unique_total']
+    if total_orgs > 0:
+        stats['organizations']['unique_in_person_pct'] = round((stats['organizations']['unique_in_person'] / total_orgs) * 100, 1)
+        stats['organizations']['unique_virtual_pct'] = round((stats['organizations']['unique_virtual'] / total_orgs) * 100, 1)
+    else:
+        stats['organizations']['unique_in_person_pct'] = 0
+        stats['organizations']['unique_virtual_pct'] = 0
+    
+    # Add percentages for organization volunteer hours
+    total_org_hours = stats['organizations']['volunteer_hours_total']
+    if total_org_hours > 0:
+        stats['organizations']['volunteer_hours_in_person_pct'] = round((stats['organizations']['volunteer_hours_in_person'] / total_org_hours) * 100, 1)
+        stats['organizations']['volunteer_hours_virtual_pct'] = round((stats['organizations']['volunteer_hours_virtual'] / total_org_hours) * 100, 1)
+    else:
+        stats['organizations']['volunteer_hours_in_person_pct'] = 0
+        stats['organizations']['volunteer_hours_virtual_pct'] = 0
+    
+    return stats
