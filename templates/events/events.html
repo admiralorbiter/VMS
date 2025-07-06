@@ -184,9 +184,9 @@
                         </a>
                     </td>
                     {# Event type with styled badge #}
-                    <td>
-                        <span class="event-type-badge {{ event.type }}">
-                            {{ event.type|title }}
+                    <td class="event-type-cell">
+                        <span class="event-type-badge {{ event.type|replace('_', '-') }}">
+                            {{ event.type|replace('_', ' ')|title }}
                         </span>
                     </td>
                     {# Formatted start date #}

@@ -70,7 +70,9 @@
                                 <tr>
                                     <td>{{ event.start_date.strftime('%Y-%m-%d') }}</td>
                                     <td>{{ event.title }}</td>
-                                    <td>{{ event.type.value }}</td>
+                                    <td class="event-type-cell">
+                                        <span class="event-type-badge {{ event.type.value|replace('_', '-') }}">{{ event.type.value|replace('_', ' ')|title }}</span>
+                                    </td>
                                     <td>{{ event.status.value }}</td>
                                     <td>{{ event.registered_count }}</td>
                                     <td>{{ event.attended_count }}</td>

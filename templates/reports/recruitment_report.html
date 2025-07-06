@@ -54,7 +54,9 @@
                             <small>{{ event.description }}</small>
                         </td>
                         <td>{{ event.start_date.strftime('%m-%d') }}</td>
-                        <td>{{ event.type }}</td>
+                        <td class="event-type-cell">
+                            <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
+                        </td>
                         <td>
                             <div class="status-indicator status-needed"></div>
                             {{ event.filled_slots }}/{{ event.total_slots }}

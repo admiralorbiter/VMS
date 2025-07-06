@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import os
 from datetime import datetime, timezone  # Keep this as it might be used elsewhere
 from utils import short_date
+from utils import format_event_type_for_badge
 
 # Load environment variables from .env file first
 load_dotenv()
@@ -74,6 +75,7 @@ def inject_security_levels():
 init_routes(app)
 
 app.jinja_env.filters['short_date'] = short_date
+app.jinja_env.filters['event_type_badge'] = format_event_type_for_badge
 
 @app.route('/docs/<path:filename>')
 def documentation(filename):

@@ -46,7 +46,7 @@
             <div class="title-info">
                 <h1 class="event-title">{{ event.title }}</h1>
                 <div class="header-badges-actions">
-                    <span class="event-type-badge {{ event.type }}">{{ event.type|title }}</span>
+                    <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
                     <span class="status-badge {{ event.status|lower }}">{{ event.status|title }}</span>
                     <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" class="action-btn contact-btn" title="View emergency contact list">
                         <i class="fa-solid fa-address-book"></i> Contact Report

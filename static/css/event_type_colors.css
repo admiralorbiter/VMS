@@ -1,0 +1,368 @@
+/* 
+Event Type Color Mapping System
+===============================
+
+This file provides a centralized color mapping system for all event types in the VMS system.
+It ensures consistent styling across all templates and components that display event types.
+
+Usage:
+- Add the class 'event-type-badge' to any element displaying an event type
+- Add the specific event type as a class (e.g., 'career-fair', 'virtual-session')
+- The colors will be automatically applied
+
+Example:
+<span class="event-type-badge career-fair">Career Fair</span>
+<span class="event-type-badge virtual-session">Virtual Session</span>
+*/
+
+/* Base color variables for consistency */
+:root {
+    --delft-blue: #1d3354ff;
+    --ucla-blue: #467599ff;
+    --non-photo-blue: #9ed8dbff;
+    --mint-green: #e9fff9ff;
+    --poppy: #d63638ff;
+    
+    /* Event type color palette */
+    --career-primary: #2E8B57;      /* Sea Green */
+    --career-light: #98FB98;        /* Pale Green */
+    --education-primary: #4169E1;   /* Royal Blue */
+    --education-light: #ADD8E6;     /* Light Blue */
+    --virtual-primary: #8A2BE2;     /* Blue Violet */
+    --virtual-light: #E6E6FA;       /* Lavender */
+    --workplace-primary: #FF8C00;   /* Dark Orange */
+    --workplace-light: #FFE4B5;     /* Moccasin */
+    --college-primary: #DC143C;     /* Crimson */
+    --college-light: #FFB6C1;       /* Light Pink */
+    --mentoring-primary: #20B2AA;   /* Light Sea Green */
+    --mentoring-light: #AFEEEE;     /* Pale Turquoise */
+    --special-primary: #9370DB;     /* Medium Purple */
+    --special-light: #DDA0DD;       /* Plum */
+    --volunteer-primary: #FF6347;   /* Tomato */
+    --volunteer-light: #FFEFD5;     /* Papaya Whip */
+    --financial-primary: #32CD32;   /* Lime Green */
+    --financial-light: #F0FFF0;     /* Honeydew */
+    --historical-primary: #696969;  /* Dim Gray */
+    --historical-light: #D3D3D3;    /* Light Gray */
+    --math-primary: #FF1493;        /* Deep Pink */
+    --math-light: #FFE4E1;          /* Misty Rose */
+    --dia-primary: #FF4500;         /* Orange Red */
+    --dia-light: #FFF8DC;           /* Cornsilk */
+    --health-primary: #00CED1;      /* Dark Turquoise */
+    --health-light: #E0FFFF;        /* Light Cyan */
+    --internship-primary: #8B4513;  /* Saddle Brown */
+    --internship-light: #F5DEB3;    /* Wheat */
+}
+
+/* Base event type badge styling */
+.event-type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.event-type-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Career Development Events */
+.event-type-badge.career-fair,
+.event-type-badge.career_fair {
+    background-color: var(--career-primary);
+    color: white;
+    border-color: var(--career-primary);
+}
+
+.event-type-badge.career-speaker,
+.event-type-badge.career_speaker {
+    background-color: var(--career-light);
+    color: var(--career-primary);
+    border-color: var(--career-primary);
+}
+
+.event-type-badge.career-jumping,
+.event-type-badge.career_jumping {
+    background-color: var(--career-primary);
+    color: white;
+    border-color: var(--career-primary);
+}
+
+.event-type-badge.employability-skills,
+.event-type-badge.employability_skills {
+    background-color: var(--career-light);
+    color: var(--career-primary);
+    border-color: var(--career-primary);
+}
+
+/* Educational Events */
+.event-type-badge.classroom-speaker,
+.event-type-badge.classroom_speaker {
+    background-color: var(--education-primary);
+    color: white;
+    border-color: var(--education-primary);
+}
+
+.event-type-badge.classroom-activity,
+.event-type-badge.classroom_activity {
+    background-color: var(--education-light);
+    color: var(--education-primary);
+    border-color: var(--education-primary);
+}
+
+.event-type-badge.advisory-sessions,
+.event-type-badge.advisory_sessions {
+    background-color: var(--education-primary);
+    color: white;
+    border-color: var(--education-primary);
+}
+
+/* Virtual Events */
+.event-type-badge.virtual-session,
+.event-type-badge.virtual_session {
+    background-color: var(--virtual-primary);
+    color: white;
+    border-color: var(--virtual-primary);
+}
+
+.event-type-badge.connector-session,
+.event-type-badge.connector_session {
+    background-color: var(--virtual-light);
+    color: var(--virtual-primary);
+    border-color: var(--virtual-primary);
+}
+
+.event-type-badge.in-person,
+.event-type-badge.in_person {
+    background-color: var(--education-primary);
+    color: white;
+    border-color: var(--education-primary);
+}
+
+/* Workplace Events */
+.event-type-badge.workplace-visit,
+.event-type-badge.workplace_visit {
+    background-color: var(--workplace-primary);
+    color: white;
+    border-color: var(--workplace-primary);
+}
+
+.event-type-badge.pathway-workplace-visits,
+.event-type-badge.pathway_workplace_visits {
+    background-color: var(--workplace-light);
+    color: var(--workplace-primary);
+    border-color: var(--workplace-primary);
+}
+
+.event-type-badge.internship {
+    background-color: var(--internship-primary);
+    color: white;
+    border-color: var(--internship-primary);
+}
+
+/* College Preparation Events */
+.event-type-badge.college-options,
+.event-type-badge.college_options {
+    background-color: var(--college-primary);
+    color: white;
+    border-color: var(--college-primary);
+}
+
+.event-type-badge.college-application-fair,
+.event-type-badge.college_application_fair {
+    background-color: var(--college-light);
+    color: var(--college-primary);
+    border-color: var(--college-primary);
+}
+
+.event-type-badge.campus-visit,
+.event-type-badge.campus_visit {
+    background-color: var(--college-primary);
+    color: white;
+    border-color: var(--college-primary);
+}
+
+.event-type-badge.pathway-campus-visits,
+.event-type-badge.pathway_campus_visits {
+    background-color: var(--college-light);
+    color: var(--college-primary);
+    border-color: var(--college-primary);
+}
+
+.event-type-badge.fafsa {
+    background-color: var(--financial-primary);
+    color: white;
+    border-color: var(--financial-primary);
+}
+
+/* Mentoring Events */
+.event-type-badge.mentoring {
+    background-color: var(--mentoring-primary);
+    color: white;
+    border-color: var(--mentoring-primary);
+}
+
+/* Special Programs */
+.event-type-badge.ignite {
+    background-color: var(--special-primary);
+    color: white;
+    border-color: var(--special-primary);
+}
+
+.event-type-badge.dia {
+    background-color: var(--dia-primary);
+    color: white;
+    border-color: var(--dia-primary);
+}
+
+.event-type-badge.dia-classroom-speaker,
+.event-type-badge.dia_classroom_speaker {
+    background-color: var(--dia-light);
+    color: var(--dia-primary);
+    border-color: var(--dia-primary);
+}
+
+.event-type-badge.p2gd {
+    background-color: var(--special-primary);
+    color: white;
+    border-color: var(--special-primary);
+}
+
+.event-type-badge.sla {
+    background-color: var(--special-light);
+    color: var(--special-primary);
+    border-color: var(--special-primary);
+}
+
+.event-type-badge.healthstart {
+    background-color: var(--health-primary);
+    color: white;
+    border-color: var(--health-primary);
+}
+
+.event-type-badge.p2t {
+    background-color: var(--special-primary);
+    color: white;
+    border-color: var(--special-primary);
+}
+
+.event-type-badge.bfi {
+    background-color: var(--special-light);
+    color: var(--special-primary);
+    border-color: var(--special-primary);
+}
+
+/* Volunteer Management */
+.event-type-badge.volunteer-orientation,
+.event-type-badge.volunteer_orientation {
+    background-color: var(--volunteer-primary);
+    color: white;
+    border-color: var(--volunteer-primary);
+}
+
+.event-type-badge.volunteer-engagement,
+.event-type-badge.volunteer_engagement {
+    background-color: var(--volunteer-light);
+    color: var(--volunteer-primary);
+    border-color: var(--volunteer-primary);
+}
+
+/* Financial Education */
+.event-type-badge.financial-literacy,
+.event-type-badge.financial_literacy {
+    background-color: var(--financial-primary);
+    color: white;
+    border-color: var(--financial-primary);
+}
+
+/* Math Events */
+.event-type-badge.math-relays,
+.event-type-badge.math_relays {
+    background-color: var(--math-primary);
+    color: white;
+    border-color: var(--math-primary);
+}
+
+/* Client Projects */
+.event-type-badge.client-connected-project,
+.event-type-badge.client_connected_project {
+    background-color: var(--workplace-primary);
+    color: white;
+    border-color: var(--workplace-primary);
+}
+
+/* Historical/Data */
+.event-type-badge.historical {
+    background-color: var(--historical-primary);
+    color: white;
+    border-color: var(--historical-primary);
+}
+
+.event-type-badge.data-viz,
+.event-type-badge.data_viz {
+    background-color: var(--historical-light);
+    color: var(--historical-primary);
+    border-color: var(--historical-primary);
+}
+
+/* Default/Fallback styling for unknown event types */
+.event-type-badge:not([class*="career"]):not([class*="education"]):not([class*="virtual"]):not([class*="workplace"]):not([class*="college"]):not([class*="mentoring"]):not([class*="special"]):not([class*="volunteer"]):not([class*="financial"]):not([class*="math"]):not([class*="client"]):not([class*="historical"]):not([class*="data"]):not([class*="ignite"]):not([class*="dia"]):not([class*="p2gd"]):not([class*="sla"]):not([class*="healthstart"]):not([class*="p2t"]):not([class*="bfi"]):not([class*="fafsa"]):not([class*="internship"]):not([class*="classroom"]):not([class*="advisory"]):not([class*="connector"]):not([class*="in-person"]):not([class*="pathway"]):not([class*="campus"]):not([class*="employability"]) {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+    border-color: var(--ucla-blue);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .event-type-badge {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.8rem;
+        letter-spacing: 0.3px;
+    }
+}
+
+/* Utility classes for different sizes */
+.event-type-badge.small {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.8rem;
+}
+
+.event-type-badge.large {
+    font-size: 1rem;
+    padding: 0.5rem 1.2rem;
+}
+
+/* Special styling for table cells */
+.event-type-cell {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.event-type-cell .event-type-badge {
+    margin: 0 auto;
+}
+
+/* Hover effects for interactive badges */
+.event-type-badge.clickable {
+    cursor: pointer;
+}
+
+.event-type-badge.clickable:hover {
+    opacity: 0.8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Focus states for accessibility */
+.event-type-badge:focus {
+    outline: 2px solid var(--ucla-blue);
+    outline-offset: 2px;
+} 

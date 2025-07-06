@@ -402,7 +402,7 @@ Last Updated: 2024
                                 <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
                                     <div class="event-title">{{ event.event.title }}</div>
                                     <div class="event-details">
-                                        <span class="event-type {{ event.event.type }}">
+                                        <span class="event-type-badge {{ event.event.type|replace('_', '-') }}">
                                             {% if event.event.type == 'virtual_session' %}
                                                 <i class="fa-solid fa-video"></i> Virtual
                                             {% elif event.event.type == 'in_person' %}
@@ -431,7 +431,7 @@ Last Updated: 2024
                                     <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
                                         <div class="event-title">{{ event.event.title }}</div>
                                         <div class="event-details">
-                                            <span class="event-type {{ event.event.type }}">
+                                            <span class="event-type-badge {{ event.event.type|replace('_', '-') }}">
                                                 {% if event.event.type == 'virtual_session' %}
                                                     <i class="fa-solid fa-video"></i> Virtual
                                                 {% elif event.event.type == 'in_person' %}

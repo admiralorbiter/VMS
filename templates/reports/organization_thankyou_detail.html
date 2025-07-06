@@ -118,7 +118,9 @@
                     <tr>
                         <td>{{ event.date }}</td>
                         <td>{{ event.title }}</td>
-                        <td>{{ event.type }}</td>
+                        <td class="event-type-cell">
+                            <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
+                        </td>
                         <td>{{ event.volunteers }}</td>
                         <td>{{ event.hours }}</td>
                     </tr>
