@@ -820,27 +820,17 @@ def load_routes(bp):
             return jsonify({'success': False, 'error': 'Sheet ID is required'}), 400
         
         try:
-            # Check if sheet already exists for this academic year (district reports only)
-            existing_sheet = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').first()
-            
-            if existing_sheet:
-                # Update existing sheet
-                existing_sheet.update_sheet_id(sheet_id)
-                existing_sheet.sheet_name = sheet_name if sheet_name else None
-                db.session.commit()
-                message = f'Updated Google Sheet for {academic_year}'
-            else:
-                # Create new sheet
-                new_sheet = GoogleSheet(
-                    academic_year=academic_year,
-                    sheet_id=sheet_id,
-                    created_by=current_user.id,
-                    purpose='district_reports',
-                    sheet_name=sheet_name if sheet_name else None
-                )
-                db.session.add(new_sheet)
-                db.session.commit()
-                message = f'Added Google Sheet for {academic_year}'
+            # Always create a new sheet (multiple sheets per academic year allowed for district reports)
+            new_sheet = GoogleSheet(
+                academic_year=academic_year,
+                sheet_id=sheet_id,
+                created_by=current_user.id,
+                purpose='district_reports',
+                sheet_name=sheet_name if sheet_name else None
+            )
+            db.session.add(new_sheet)
+            db.session.commit()
+            message = f'Added Google Sheet for {academic_year}'
             
             return jsonify({
                 'success': True,
@@ -866,9 +856,17 @@ def load_routes(bp):
             return jsonify({'success': False, 'error': 'Sheet ID and academic year are required'}), 400
         
         try:
-            sheet = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').first()
-            if sheet and sheet.decrypted_sheet_id == sheet_id:
-                db.session.delete(sheet)
+            # Find the specific sheet by academic year, purpose, and sheet ID
+            sheets = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').all()
+            sheet_to_delete = None
+            
+            for sheet in sheets:
+                if sheet.decrypted_sheet_id == sheet_id:
+                    sheet_to_delete = sheet
+                    break
+            
+            if sheet_to_delete:
+                db.session.delete(sheet_to_delete)
                 db.session.commit()
                 return jsonify({'success': True, 'message': f'Removed Google Sheet for {academic_year}'})
             else:

@@ -144,10 +144,9 @@ class GoogleSheet(db.Model):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(Integer, db.ForeignKey('users.id'))
     
-    # Unique constraint on academic_year + purpose combination
-    __table_args__ = (
-        UniqueConstraint('academic_year', 'purpose', name='uq_academic_year_purpose'),
-    )
+    # Note: Unique constraint is handled at database level with partial index
+    # Virtual sessions: Only one sheet per academic year (enforced by partial unique index)
+    # District reports: Multiple sheets per academic year allowed (no constraint)
     
     # Relationship to user who created it
     creator = db.relationship('User', backref='created_sheets')
