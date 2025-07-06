@@ -4,6 +4,262 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
+<style>
+/* Improved header layout for better space usage */
+.detail-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.header-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.header-info {
+    flex: 1;
+}
+
+.header-info h1 {
+    color: var(--delft-blue);
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.2;
+}
+
+.school-year-display {
+    color: var(--ucla-blue);
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+.header-stats {
+    display: flex;
+    gap: 1.5rem;
+    flex-shrink: 0;
+}
+
+.compact-stat-card {
+    background: rgba(158, 216, 219, 0.1);
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.08);
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.compact-stat-card .stat-icon {
+    font-size: 1.2rem;
+    color: var(--ucla-blue);
+    opacity: 0.3;
+    position: absolute;
+    right: 0.8rem;
+    top: 0.8rem;
+    pointer-events: none;
+}
+
+.compact-stat-card .stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--delft-blue);
+    margin-bottom: 0.2rem;
+    z-index: 1;
+}
+
+.compact-stat-card .stat-label {
+    font-size: 0.9rem;
+    color: var(--delft-blue);
+    font-weight: 500;
+    z-index: 1;
+}
+
+/* Event title links styled like other pages */
+.event-title-link {
+    color: var(--delft-blue);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    position: relative;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.event-title-link:hover {
+    color: var(--ucla-blue);
+    background-color: rgba(70, 117, 153, 0.08);
+    transform: translateX(2px);
+    text-decoration: none;
+}
+
+.event-title-link:active {
+    transform: translateX(1px);
+    background-color: rgba(70, 117, 153, 0.12);
+}
+
+/* Collapsible sections */
+.detail-section {
+    margin-bottom: 2rem;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 10px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.08);
+}
+
+.section-header {
+    background: var(--delft-blue);
+    color: var(--mint-green);
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.section-header h2,
+.section-header .section-toggle,
+.section-header .toggle-icon {
+    color: var(--mint-green) !important;
+}
+
+.section-header:hover,
+.section-header:hover h2,
+.section-header:hover .section-toggle,
+.section-header:hover .toggle-icon {
+    color: #fff !important;
+    background: var(--ucla-blue);
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.toggle-icon {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.section-content {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.section-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+.section-content.expanded {
+    max-height: none;
+    opacity: 1;
+}
+
+/* Show more/less controls */
+.show-more-container {
+    padding: 1rem;
+    text-align: center;
+    background: rgba(158, 216, 219, 0.05);
+    border-top: 1px solid var(--non-photo-blue);
+}
+
+.show-more-btn {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.08);
+}
+
+.show-more-btn:hover {
+    background: var(--delft-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.12);
+}
+
+.show-more-btn i {
+    margin-left: 0.5rem;
+    transition: transform 0.2s ease;
+}
+
+.show-more-btn.expanded i {
+    transform: rotate(180deg);
+}
+
+/* Hidden rows */
+.table-row-hidden {
+    display: none;
+}
+
+.table-row-visible {
+    display: table-row;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .header-top-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-stats {
+        align-self: stretch;
+        justify-content: space-around;
+    }
+    
+    .compact-stat-card {
+        min-width: 100px;
+        padding: 0.8rem 1rem;
+    }
+    
+    .compact-stat-card .stat-number {
+        font-size: 1.5rem;
+    }
+    
+    .compact-stat-card .stat-label {
+        font-size: 0.8rem;
+    }
+    
+    .section-header {
+        padding: 0.8rem 1rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    .section-toggle {
+        font-size: 0.8rem;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -12,25 +268,29 @@
         <a href="{{ url_for('report.organization_thankyou', school_year=school_year) }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Summary
         </a>
-        <h1>{{ organization.name }}</h1>
-        <div class="school-year-display">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
         
-        {# Summary stats for this organization #}
-        <div class="stats-summary">
-            <div class="stat-card">
-                <i class="fa-solid fa-calendar-check stat-icon"></i>
-                <div class="stat-number">{{ volunteers|length + events|length }}</div>
-                <div class="stat-label">Total Sessions</div>
+        <div class="header-top-row">
+            <div class="header-info">
+                <h1>{{ organization.name }}</h1>
+                <div class="school-year-display">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
             </div>
-            <div class="stat-card">
-                <i class="fa-solid fa-clock stat-icon"></i>
-                <div class="stat-number">{{ total_hours if total_hours is defined else '0' }}</div>
-                <div class="stat-label">Total Hours</div>
-            </div>
-            <div class="stat-card">
-                <i class="fa-solid fa-users stat-icon"></i>
-                <div class="stat-number">{{ volunteers|length }}</div>
-                <div class="stat-label">Volunteers</div>
+            
+            <div class="header-stats">
+                <div class="compact-stat-card">
+                    <i class="fa-solid fa-calendar-check stat-icon"></i>
+                    <div class="stat-number">{{ total_sessions }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+                <div class="compact-stat-card">
+                    <i class="fa-solid fa-clock stat-icon"></i>
+                    <div class="stat-number">{{ total_hours }}</div>
+                    <div class="stat-label">Total Hours</div>
+                </div>
+                <div class="compact-stat-card">
+                    <i class="fa-solid fa-users stat-icon"></i>
+                    <div class="stat-number">{{ total_volunteers }}</div>
+                    <div class="stat-label">Volunteers</div>
+                </div>
             </div>
         </div>
     </div>
@@ -49,89 +309,190 @@
     </div>
 
     <div class="detail-section">
-        <h2>Volunteers</h2>
-        <div class="volunteer-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="sortable-header" data-table="vol" data-column="name">
-                            Name
-                            {% if sort_vol == 'name' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                        <th class="sortable-header" data-table="vol" data-column="events">
-                            Events
-                            {% if sort_vol == 'events' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                        <th class="sortable-header" data-table="vol" data-column="hours">
-                            Hours
-                            {% if sort_vol == 'hours' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for volunteer in volunteers %}
-                    <tr>
-                        <td>
-                            <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="org-link">
-                                {{ volunteer.name }}
-                            </a>
-                        </td>
-                        <td>{{ volunteer.events }}</td>
-                        <td>{{ volunteer.hours }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="section-header" onclick="toggleSection('volunteers')">
+            <h2>Volunteers ({{ volunteers|length }})</h2>
+            <div class="section-toggle">
+                <span>Click to collapse</span>
+                <i class="fas fa-chevron-up toggle-icon" id="volunteers-toggle"></i>
+            </div>
+        </div>
+        <div class="section-content expanded" id="volunteers-content">
+            <div class="volunteer-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable-header" data-table="vol" data-column="name">
+                                Name
+                                {% if sort_vol == 'name' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                            <th class="sortable-header" data-table="vol" data-column="events">
+                                Events
+                                {% if sort_vol == 'events' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                            <th class="sortable-header" data-table="vol" data-column="hours">
+                                Hours
+                                {% if sort_vol == 'hours' %}<span class="sort-indicator">{{ '▲' if order_vol == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="volunteers-tbody">
+                        {% for volunteer in volunteers %}
+                        <tr class="volunteer-row {% if loop.index > 8 %}table-row-hidden{% else %}table-row-visible{% endif %}">
+                            <td>
+                                <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="event-title-link">
+                                    {{ volunteer.name }}
+                                </a>
+                            </td>
+                            <td>{{ volunteer.events }}</td>
+                            <td>{{ volunteer.hours }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if volunteers|length > 8 %}
+            <div class="show-more-container">
+                <button class="show-more-btn" onclick="toggleTableRows('volunteers')" id="volunteers-show-more">
+                    Show More ({{ volunteers|length - 8 }} hidden)
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
 
     <div class="detail-section">
-        <h2>Events</h2>
-        <div class="events-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="sortable-header" data-table="evt" data-column="date">
-                            Date
-                            {% if sort_evt == 'date' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                        <th class="sortable-header" data-table="evt" data-column="title">
-                            Event
-                            {% if sort_evt == 'title' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                        <th class="sortable-header" data-table="evt" data-column="type">
-                            Type
-                            {% if sort_evt == 'type' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                        <th class="sortable-header" data-table="evt" data-column="volunteers">
-                            Volunteers
-                            {% if sort_evt == 'volunteers' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                        <th class="sortable-header" data-table="evt" data-column="hours">
-                            Hours
-                            {% if sort_evt == 'hours' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for event in events %}
-                    <tr>
-                        <td>{{ event.date }}</td>
-                        <td>{{ event.title }}</td>
-                        <td class="event-type-cell">
-                            <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
-                        </td>
-                        <td>{{ event.volunteers }}</td>
-                        <td>{{ event.hours }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="section-header" onclick="toggleSection('events')">
+            <h2>Events ({{ events|length }})</h2>
+            <div class="section-toggle">
+                <span>Click to collapse</span>
+                <i class="fas fa-chevron-up toggle-icon" id="events-toggle"></i>
+            </div>
+        </div>
+        <div class="section-content expanded" id="events-content">
+            <div class="events-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable-header" data-table="evt" data-column="date">
+                                Date
+                                {% if sort_evt == 'date' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                            <th class="sortable-header" data-table="evt" data-column="title">
+                                Event
+                                {% if sort_evt == 'title' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                            <th class="sortable-header" data-table="evt" data-column="type">
+                                Type
+                                {% if sort_evt == 'type' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                            <th class="sortable-header" data-table="evt" data-column="volunteers">
+                                Volunteers
+                                {% if sort_evt == 'volunteers' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                            <th class="sortable-header" data-table="evt" data-column="hours">
+                                Hours
+                                {% if sort_evt == 'hours' %}<span class="sort-indicator">{{ '▲' if order_evt == 'asc' else '▼' }}</span>{% endif %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-tbody">
+                        {% for event in events %}
+                        <tr class="event-row {% if loop.index > 10 %}table-row-hidden{% else %}table-row-visible{% endif %}">
+                            <td>{{ event.date }}</td>
+                            <td>
+                                <span class="event-title-link">{{ event.title }}</span>
+                            </td>
+                            <td class="event-type-cell">
+                                <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
+                            </td>
+                            <td>{{ event.volunteers }}</td>
+                            <td>{{ event.hours }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if events|length > 10 %}
+            <div class="show-more-container">
+                <button class="show-more-btn" onclick="toggleTableRows('events')" id="events-show-more">
+                    Show More ({{ events|length - 10 }} hidden)
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <script>
+// Track section and table states
+const sectionStates = {
+    volunteers: true,
+    events: true
+};
+
+const tableStates = {
+    volunteers: false,
+    events: false
+};
+
+// Toggle entire section collapse/expand
+function toggleSection(sectionName) {
+    const content = document.getElementById(sectionName + '-content');
+    const toggle = document.getElementById(sectionName + '-toggle');
+    const header = content.parentElement.querySelector('.section-header .section-toggle span');
+    
+    sectionStates[sectionName] = !sectionStates[sectionName];
+    
+    if (sectionStates[sectionName]) {
+        content.classList.remove('collapsed');
+        content.classList.add('expanded');
+        toggle.classList.remove('fa-chevron-down');
+        toggle.classList.add('fa-chevron-up');
+        header.textContent = 'Click to collapse';
+    } else {
+        content.classList.remove('expanded');
+        content.classList.add('collapsed');
+        toggle.classList.remove('fa-chevron-up');
+        toggle.classList.add('fa-chevron-down');
+        header.textContent = 'Click to expand';
+    }
+}
+
+// Toggle show more/less for table rows
+function toggleTableRows(tableName) {
+    const rows = document.querySelectorAll('.' + tableName.slice(0, -1) + '-row');
+    const button = document.getElementById(tableName + '-show-more');
+    const icon = button.querySelector('i');
+    
+    tableStates[tableName] = !tableStates[tableName];
+    
+    const limit = tableName === 'volunteers' ? 8 : 10;
+    const hiddenCount = rows.length - limit;
+    
+    if (tableStates[tableName]) {
+        // Show all rows
+        rows.forEach(row => {
+            row.classList.remove('table-row-hidden');
+            row.classList.add('table-row-visible');
+        });
+        button.innerHTML = `Show Less <i class="fas fa-chevron-up"></i>`;
+        button.classList.add('expanded');
+    } else {
+        // Hide rows beyond limit
+        rows.forEach((row, index) => {
+            if (index >= limit) {
+                row.classList.remove('table-row-visible');
+                row.classList.add('table-row-hidden');
+            }
+        });
+        button.innerHTML = `Show More (${hiddenCount} hidden) <i class="fas fa-chevron-down"></i>`;
+        button.classList.remove('expanded');
+    }
+}
+
+// Existing sorting functionality
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.sortable-header').forEach(header => {
         header.addEventListener('click', function() {

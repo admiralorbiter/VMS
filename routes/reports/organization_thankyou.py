@@ -331,6 +331,11 @@ def load_routes(bp):
             return evt['date_sort']
         events_data.sort(key=get_evt_sort_key, reverse=(order_evt=='desc'))
 
+        # Calculate summary statistics
+        total_sessions = len(events_data)
+        total_hours = sum(vol['hours'] for vol in volunteers_data)
+        total_volunteers = len(volunteers_data)
+
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
@@ -347,5 +352,8 @@ def load_routes(bp):
             sort_vol=sort_vol,
             order_vol=order_vol,
             sort_evt=sort_evt,
-            order_evt=order_evt
+            order_evt=order_evt,
+            total_sessions=total_sessions,
+            total_hours=total_hours,
+            total_volunteers=total_volunteers
         )
