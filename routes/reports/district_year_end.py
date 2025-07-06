@@ -146,13 +146,32 @@ def load_routes(bp):
 
                 # Use cached data if we have both stats and events data
                 if stats:
+                    # Generate schools_by_level data from cached events
+                    cached_events = []
+                    for month_data in events_by_month.values():
+                        for event_data in month_data.get('events', []):
+                            # Create a minimal event object for the function
+                            event_obj = type('Event', (), {
+                                'id': event_data['id'],
+                                'title': event_data['title'],
+                                'start_date': datetime.strptime(event_data['date'], '%m/%d/%Y'),
+                                'type': type('EventType', (), {'value': event_data['type']})() if event_data['type'] else None,
+                                'location': event_data['location'],
+                                'students': event_data['students'],
+                                'volunteers': event_data['volunteers'],
+                                'volunteer_hours': event_data.get('volunteer_hours', 0)
+                            })()
+                            cached_events.append(event_obj)
+                    
+                    schools_by_level = generate_schools_by_level_data(district, cached_events)
+                    
                     return render_template(
                         'reports/district_year_end_detail.html',
                         district=district,
                         school_year=school_year,
                         stats=stats,
                         events_by_month=events_by_month,
-                        schools_by_level={'High': [], 'Middle': [], 'Elementary': [], None: []}, # Placeholder - needs calculation if not cached
+                        schools_by_level=schools_by_level,
                         total_events=total_events,
                         unique_volunteer_count=unique_volunteer_count,
                         unique_student_count=unique_student_count, # Pass to template
@@ -366,13 +385,16 @@ def load_routes(bp):
         )
         unique_organization_count = len(org_ids)
 
+        # Generate schools_by_level data
+        schools_by_level = generate_schools_by_level_data(district, events)
+
         return render_template(
             'reports/district_year_end_detail.html',
             district=district,
             school_year=school_year,
             stats=stats,
             events_by_month=events_by_month,
-            schools_by_level={'High': [], 'Middle': [], 'Elementary': [], None: []}, # Placeholder
+            schools_by_level=schools_by_level,
             total_events=total_events,
             unique_volunteer_count=unique_volunteer_count,
             unique_student_count=unique_student_count, # Pass to template
@@ -752,6 +774,111 @@ def load_routes(bp):
             'student_ids': list(filtered_student_ids),
             'event_ids': [event.id for event in events]
         })
+
+def generate_schools_by_level_data(district, events):
+    """Generate schools data organized by level (High, Middle, Elementary, Other)"""
+    from models.school_model import School
+    
+    # Initialize the structure
+    schools_by_level = {
+        'High': [],
+        'Middle': [],
+        'Elementary': [],
+        None: []  # For schools with no level or 'Other'
+    }
+    
+    # Get all schools in the district
+    district_schools = School.query.filter_by(district_id=district.id).all()
+    
+    # Create a mapping of school_id to school for quick lookup
+    school_map = {school.id: school for school in district_schools}
+    
+    # Also create a mapping by school name for events that reference schools by name
+    school_name_map = {school.name.lower(): school for school in district_schools}
+    
+    # Track events by school
+    school_events = {}
+    
+    for event in events:
+        school = None
+        
+        # Try to find school by event.school (if it's a school ID)
+        if hasattr(event, 'school') and event.school:
+            if isinstance(event.school, str):
+                school = school_map.get(event.school)
+            else:
+                # If it's already a school object
+                school = event.school
+        
+        # If not found, try to match by event title or location
+        if not school:
+            event_text = f"{event.title} {getattr(event, 'location', '')}".lower()
+            for school_name, school_obj in school_name_map.items():
+                if school_name in event_text:
+                    school = school_obj
+                    break
+        
+        # If still not found, try to match by district partner field (if available)
+        if not school and hasattr(event, 'district_partner') and event.district_partner:
+            event_text = event.district_partner.lower()
+            for school_name, school_obj in school_name_map.items():
+                if school_name in event_text:
+                    school = school_obj
+                    break
+        
+        # If we found a school, add the event to that school
+        if school:
+            if school.id not in school_events:
+                school_events[school.id] = {
+                    'school': school,
+                    'events': [],
+                    'total_students': 0,
+                    'total_volunteers': 0,
+                    'total_volunteer_hours': 0,
+                    'unique_volunteers': set()
+                }
+            
+            # Add event data
+            event_data = {
+                'id': getattr(event, 'id', None),
+                'title': getattr(event, 'title', ''),
+                'date': event.start_date.strftime('%m/%d/%Y') if hasattr(event, 'start_date') else '',
+                'time': event.start_date.strftime('%I:%M %p') if hasattr(event, 'start_date') else '',
+                'type': event.type.value if hasattr(event, 'type') and event.type else 'Unknown',
+                'students': getattr(event, 'students', 0),
+                'volunteers': getattr(event, 'volunteers', 0),
+                'volunteer_hours': getattr(event, 'volunteer_hours', 0)
+            }
+            
+            school_events[school.id]['events'].append(event_data)
+            school_events[school.id]['total_students'] += event_data['students']
+            school_events[school.id]['total_volunteers'] += event_data['volunteers']
+            school_events[school.id]['total_volunteer_hours'] += event_data['volunteer_hours']
+    
+    # Organize schools by level
+    for school_id, school_data in school_events.items():
+        school = school_data['school']
+        school_info = {
+            'name': school.name,
+            'events': school_data['events'],
+            'total_students': school_data['total_students'],
+            'total_volunteers': school_data['total_volunteers'],
+            'total_volunteer_hours': school_data['total_volunteer_hours'],
+            'unique_volunteer_count': len(school_data['unique_volunteers'])
+        }
+        
+        # Categorize by level
+        level = school.level
+        if level in ['High', 'Middle', 'Elementary']:
+            schools_by_level[level].append(school_info)
+        else:
+            schools_by_level[None].append(school_info)
+    
+    # Sort schools within each level by name
+    for level in schools_by_level:
+        schools_by_level[level].sort(key=lambda x: x['name'])
+    
+    return schools_by_level
 
 def cache_district_stats_with_events(school_year, district_stats, host_filter='all'):
     """Cache district stats and events data for all districts"""

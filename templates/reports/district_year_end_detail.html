@@ -261,6 +261,30 @@
         border-color: var(--delft-blue);
         color: white;
     }
+
+    /* Event title link styles (matching events.html) */
+    .event-title-link {
+        color: var(--delft-blue);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        position: relative;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    .event-title-link:hover {
+        color: var(--ucla-blue);
+        background-color: rgba(70, 117, 153, 0.08);
+        transform: translateX(2px);
+        text-decoration: none;
+    }
+
+    .event-title-link:active {
+        transform: translateX(1px);
+        background-color: rgba(70, 117, 153, 0.12);
+    }
 </style>
 {% endblock %}
 
@@ -404,7 +428,11 @@
                             <tr>
                                 <td>{{ event.date }}</td>
                                 <td>{{ event.time }}</td>
-                                <td>{{ event.title }}</td>
+                                <td>
+                                    <a href="{{ url_for('events.view_event', id=event.id) }}" class="event-title-link">
+                                        {{ event.title }}
+                                    </a>
+                                </td>
                                 <td class="event-type-cell">
                                     <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
                                 </td>
@@ -476,7 +504,11 @@
                                 <tr>
                                     <td>{{ event.date }}</td>
                                     <td>{{ event.time }}</td>
-                                    <td>{{ event.title }}</td>
+                                    <td>
+                                        <a href="{{ url_for('events.view_event', id=event.id) }}" class="event-title-link">
+                                            {{ event.title }}
+                                        </a>
+                                    </td>
                                     <td>{{ event.students }}</td>
                                     <td>{{ event.volunteers }}</td>
                                     <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
