@@ -776,7 +776,11 @@ def load_routes(bp):
         })
 
 def generate_schools_by_level_data(district, events):
-    """Generate schools data organized by level (High, Middle, Elementary, Other)"""
+    """Generate schools data organized by level (High, Middle, Elementary, Other)
+    
+    This function ensures ALL schools in the district are shown, even if they have no events.
+    Schools without events will appear with zero counts.
+    """
     from models.school_model import School
     
     # Initialize the structure
@@ -796,9 +800,19 @@ def generate_schools_by_level_data(district, events):
     # Also create a mapping by school name for events that reference schools by name
     school_name_map = {school.name.lower(): school for school in district_schools}
     
-    # Track events by school
+    # Initialize school data for ALL schools in the district (ensures all schools are shown)
     school_events = {}
+    for school in district_schools:
+        school_events[school.id] = {
+            'school': school,
+            'events': [],
+            'total_students': 0,
+            'total_volunteers': 0,
+            'total_volunteer_hours': 0,
+            'unique_volunteers': set()
+        }
     
+    # Process events and associate them with schools
     for event in events:
         school = None
         
@@ -810,33 +824,68 @@ def generate_schools_by_level_data(district, events):
                 # If it's already a school object
                 school = event.school
         
+        # Also try using the school_obj relationship if available
+        if not school and hasattr(event, 'school_obj') and event.school_obj:
+            school = event.school_obj
+        
         # If not found, try to match by event title or location
         if not school:
             event_text = f"{event.title} {getattr(event, 'location', '')}".lower()
+            
+            # Try exact school name matches first
             for school_name, school_obj in school_name_map.items():
                 if school_name in event_text:
                     school = school_obj
                     break
+            
+            # If no exact match, try partial matching with common school name patterns
+            if not school:
+                for school_obj in district_schools:
+                    school_name_parts = school_obj.name.lower().split()
+                    # Check if any significant part of the school name appears in the event
+                    for part in school_name_parts:
+                        if len(part) > 3 and part in event_text:  # Only check meaningful parts
+                            school = school_obj
+                            break
+                    if school:
+                        break
         
         # If still not found, try to match by district partner field (if available)
         if not school and hasattr(event, 'district_partner') and event.district_partner:
             event_text = event.district_partner.lower()
+            
+            # Try exact school name matches first
             for school_name, school_obj in school_name_map.items():
                 if school_name in event_text:
                     school = school_obj
                     break
+            
+            # If no exact match, try partial matching
+            if not school:
+                for school_obj in district_schools:
+                    school_name_parts = school_obj.name.lower().split()
+                    for part in school_name_parts:
+                        if len(part) > 3 and part in event_text:
+                            school = school_obj
+                            break
+                    if school:
+                        break
         
-        # If we found a school, add the event to that school
-        if school:
-            if school.id not in school_events:
-                school_events[school.id] = {
-                    'school': school,
-                    'events': [],
-                    'total_students': 0,
-                    'total_volunteers': 0,
-                    'total_volunteer_hours': 0,
-                    'unique_volunteers': set()
-                }
+        # If we found a school and it's in our district, add the event to that school
+        if school and school.id in school_events:
+            # Calculate or get event data - handle both cached dictionaries and fresh Event objects
+            if hasattr(event, 'students') and hasattr(event, 'volunteers'):
+                # This is cached data (dictionary-like object)
+                students = getattr(event, 'students', 0)
+                volunteers = getattr(event, 'volunteers', 0)
+                volunteer_hours = getattr(event, 'volunteer_hours', 0)
+            else:
+                # This is a fresh Event object - calculate the values
+                students = get_district_student_count_for_event(event, district.id)
+                volunteer_participations = [p for p in event.volunteer_participations 
+                                          if p.status in ['Attended', 'Completed', 'Successfully Completed']]
+                volunteers = len(volunteer_participations)
+                volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
             
             # Add event data
             event_data = {
@@ -845,9 +894,9 @@ def generate_schools_by_level_data(district, events):
                 'date': event.start_date.strftime('%m/%d/%Y') if hasattr(event, 'start_date') else '',
                 'time': event.start_date.strftime('%I:%M %p') if hasattr(event, 'start_date') else '',
                 'type': event.type.value if hasattr(event, 'type') and event.type else 'Unknown',
-                'students': getattr(event, 'students', 0),
-                'volunteers': getattr(event, 'volunteers', 0),
-                'volunteer_hours': getattr(event, 'volunteer_hours', 0)
+                'students': students,
+                'volunteers': volunteers,
+                'volunteer_hours': volunteer_hours
             }
             
             school_events[school.id]['events'].append(event_data)
@@ -855,7 +904,7 @@ def generate_schools_by_level_data(district, events):
             school_events[school.id]['total_volunteers'] += event_data['volunteers']
             school_events[school.id]['total_volunteer_hours'] += event_data['volunteer_hours']
     
-    # Organize schools by level
+    # Organize ALL schools by level (including those with no events)
     for school_id, school_data in school_events.items():
         school = school_data['school']
         school_info = {

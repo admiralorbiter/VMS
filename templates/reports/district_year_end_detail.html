@@ -285,6 +285,21 @@
         transform: translateX(1px);
         background-color: rgba(70, 117, 153, 0.12);
     }
+
+    /* No events message styling */
+    .no-events-message {
+        padding: 2rem;
+        text-align: center;
+        color: #6c757d;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+
+    .no-events-message i {
+        margin-right: 0.5rem;
+        color: var(--ucla-blue);
+    }
 </style>
 {% endblock %}
 
@@ -516,6 +531,10 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                    {% else %}
+                    <div class="no-events-message">
+                        <p><i class="fas fa-info-circle"></i> No events recorded for this school in the selected time period.</p>
                     </div>
                     {% endif %}
                 </div>
