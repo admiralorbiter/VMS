@@ -93,7 +93,7 @@
                 {% endfor %}
             </select>
             <a href="{{ url_for('report.volunteer_thankyou_excel', school_year=school_year, sort=sort, order=order, host_filter=host_filter) }}" class="export-button">
-                📊 Export to Excel
+                <i class="fa-solid fa-file-excel"></i> Export to Excel
             </a>
         </form>
     </div>
@@ -111,6 +111,22 @@
             <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
         </form>
     </div>
+
+    {# Stat cards row (optional, if you want to show summary stats) #}
+    {#
+    <div class="stat-cards">
+        <div class="stat-card">
+            <i class="fa-solid fa-clock stat-icon"></i>
+            <div class="stat-number">{{ total_hours }}</div>
+            <div class="stat-label">Total Hours</div>
+        </div>
+        <div class="stat-card">
+            <i class="fa-solid fa-calendar-check stat-icon"></i>
+            <div class="stat-number">{{ total_events }}</div>
+            <div class="stat-label">Total Events</div>
+        </div>
+    </div>
+    #}
 
     <div class="volunteer-table">
         <table>
@@ -152,7 +168,7 @@
                     </td>
                     <td>{{ volunteer.total_hours }}</td>
                     <td>{{ volunteer.total_events }}</td>
-                    <td>{{ volunteer.organization }}</td>
+                    <td><span class="org-badge">{{ volunteer.organization }}</span></td>
                 </tr>
                 {% endfor %}
             </tbody>

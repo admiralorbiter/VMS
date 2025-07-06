@@ -31,14 +31,16 @@
         </a>
         <h1>{{ volunteer.first_name }} {{ volunteer.last_name }}</h1>
         <div class="school-year-display">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
-        <div class="volunteer-summary">
-            <div class="summary-item">
-                <span class="label">Total Hours:</span>
-                <span class="value">{{ total_hours }}</span>
+        <div class="stat-cards" style="margin-top: 1.5rem;">
+            <div class="stat-card">
+                <i class="fa-solid fa-clock stat-icon"></i>
+                <div class="stat-number">{{ total_hours }}</div>
+                <div class="stat-label">Total Hours</div>
             </div>
-            <div class="summary-item">
-                <span class="label">Total Events:</span>
-                <span class="value">{{ total_events }}</span>
+            <div class="stat-card">
+                <i class="fa-solid fa-calendar-check stat-icon"></i>
+                <div class="stat-number">{{ total_events }}</div>
+                <div class="stat-label">Total Events</div>
             </div>
         </div>
     </div>
@@ -56,7 +58,7 @@
         </form>
     </div>
 
-    <div class="events-table">
+    <div class="events-table volunteer-table">
         <table>
             <thead>
                 <tr>
