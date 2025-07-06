@@ -4,6 +4,85 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<style>
+#loadingIndicator {
+    text-align: center;
+    padding: 20px;
+}
+.districts-grid {
+    transition: opacity 0.3s ease;
+}
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.refresh-button {
+    background-color: var(--ucla-blue);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+.refresh-button:hover {
+    background-color: var(--delft-blue);
+}
+.refresh-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+.fa-spin {
+    animation: fa-spin 2s infinite linear;
+}
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.host-filter-toggle {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 1.5rem 0;
+    display: flex;
+    justify-content: center;
+}
+.host-filter-btn {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    color: #495057;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+.host-filter-btn.selected {
+    background: var(--ucla-blue);
+    border-color: var(--ucla-blue);
+    color: white;
+    box-shadow: 0 2px 4px rgba(70, 117, 153, 0.3);
+}
+.host-filter-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+    text-decoration: none;
+}
+.host-filter-btn.selected:hover {
+    background: var(--delft-blue);
+    border-color: var(--delft-blue);
+    color: white;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -82,45 +161,7 @@
                     </div>
                 </div>
 
-                <div class="detail-sections">
-                    {% if stats.event_types %}
-                    <div class="detail-section">
-                        <h3>Event Types</h3>
-                        <div class="event-types">
-                            {% for type, count in stats.event_types.items() %}
-                            <div class="event-type">
-                                <span class="type-name">{{ type|replace('_', ' ')|title }}</span>
-                                <span class="type-count">{{ count }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
 
-                    {% if stats.monthly_breakdown %}
-                    <div class="detail-section">
-                        <h3>Monthly Activity</h3>
-                        <div class="monthly-breakdown">
-                            {% for month, data in stats.monthly_breakdown.items() %}
-                            <div class="month-row">
-                                <span class="month-name">{{ month }}</span>
-                                <div class="month-stats">
-                                    <span>{{ data.events }} events</span>
-                                    <span>{{ data.students }} students</span>
-                                    {% if data.unique_student_count is defined %}
-                                    <span>({{ data.unique_student_count }} unique)</span>
-                                    {% endif %}
-                                    <span>{{ data.volunteers }} volunteers</span>
-                                    {% if data.unique_volunteer_count is defined %}
-                                    <span>({{ data.unique_volunteer_count }} unique)</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
             </a>
         </div>
         {% endfor %}
@@ -199,93 +240,7 @@ function refreshData() {
         districtsContainer.style.opacity = '1';
     });
 }
+
+
 </script>
-
-<style>
-#loadingIndicator {
-    text-align: center;
-    padding: 20px;
-}
-
-.districts-grid {
-    transition: opacity 0.3s ease;
-}
-
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.refresh-button {
-    background-color: var(--ucla-blue);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: background-color 0.2s ease;
-}
-
-.refresh-button:hover {
-    background-color: var(--delft-blue);
-}
-
-.refresh-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-.fa-spin {
-    animation: fa-spin 2s infinite linear;
-}
-
-@keyframes fa-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.host-filter-toggle {
-    background: white;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin: 1.5rem 0;
-    display: flex;
-    justify-content: center;
-}
-.host-filter-btn {
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    color: #495057;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    display: inline-block;
-    margin-right: 0.5rem;
-}
-.host-filter-btn.selected {
-    background: var(--ucla-blue);
-    border-color: var(--ucla-blue);
-    color: white;
-    box-shadow: 0 2px 4px rgba(70, 117, 153, 0.3);
-}
-.host-filter-btn:hover {
-    background: #e9ecef;
-    border-color: #adb5bd;
-    color: #495057;
-    text-decoration: none;
-}
-.host-filter-btn.selected:hover {
-    background: var(--delft-blue);
-    border-color: var(--delft-blue);
-    color: white;
-}
-</style>
 {% endblock %} 
