@@ -300,6 +300,48 @@
         margin-right: 0.5rem;
         color: var(--ucla-blue);
     }
+
+    /* School card collapsible styling */
+    .school-header.collapsible-header {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .school-header.collapsible-header:hover {
+        background-color: rgba(70, 117, 153, 0.05);
+    }
+
+    .school-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .school-toggle-icon {
+        font-size: 0.875rem;
+        color: var(--ucla-blue);
+        transition: transform 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .school-toggle-icon.rotated {
+        transform: rotate(90deg);
+    }
+
+    .school-card .events-table-wrapper.collapsed,
+    .school-card .no-events-message.collapsed {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    .school-card .events-table-wrapper.expanded,
+    .school-card .no-events-message.expanded {
+        max-height: 1000px;
+        opacity: 1;
+        transition: all 0.3s ease;
+    }
 </style>
 {% endblock %}
 
@@ -476,8 +518,11 @@
                 </div>
                 {% for school_data in level_schools %}
                 <div class="school-card">
-                    <div class="school-header">
-                        <div class="school-name">{{ school_data.name }}</div>
+                    <div class="school-header collapsible-header" onclick="toggleSchoolCard('{{ school_data.name|replace(' ', '_')|replace('-', '_')|replace('.', '_') }}')">
+                        <div class="school-title">
+                            <i class="fas fa-chevron-right school-toggle-icon" id="school-toggle-{{ school_data.name|replace(' ', '_')|replace('-', '_')|replace('.', '_') }}"></i>
+                            <div class="school-name">{{ school_data.name }}</div>
+                        </div>
                         <div class="school-stats">
                             <div class="school-stat">
                                 <i class="fas fa-calendar-check"></i>
@@ -502,11 +547,12 @@
                         </div>
                     </div>
                     {% if school_data.events %}
-                    <div class="events-table-wrapper">
+                    <div class="events-table-wrapper collapsed" id="school-content-{{ school_data.name|replace(' ', '_')|replace('-', '_')|replace('.', '_') }}">
                         <table class="events-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>
+                                    <th>Time</th>
                                     <th>Event</th>
                                     <th>Type</th>
                                     <th>Students</th>
@@ -524,6 +570,9 @@
                                             {{ event.title }}
                                         </a>
                                     </td>
+                                    <td class="event-type-cell">
+                                        <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
+                                    </td>
                                     <td>{{ event.students }}</td>
                                     <td>{{ event.volunteers }}</td>
                                     <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
@@ -533,7 +582,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="no-events-message">
+                    <div class="no-events-message collapsed" id="school-content-{{ school_data.name|replace(' ', '_')|replace('-', '_')|replace('.', '_') }}">
                         <p><i class="fas fa-info-circle"></i> No events recorded for this school in the selected time period.</p>
                     </div>
                     {% endif %}
@@ -1024,6 +1073,31 @@ window.toggleMonthCard = function(monthId) {
         }
     } else {
         console.error('Could not find month content or toggle icon elements for:', monthId);
+    }
+};
+
+window.toggleSchoolCard = function(schoolId) {
+    console.log('Toggle school card called for:', schoolId); // Debug log
+    const content = document.getElementById('school-content-' + schoolId);
+    const toggleIcon = document.getElementById('school-toggle-' + schoolId);
+    
+    console.log('School content element:', content); // Debug log
+    console.log('School toggle icon:', toggleIcon); // Debug log
+    
+    if (content && toggleIcon) {
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            toggleIcon.classList.add('rotated');
+            console.log('School expanded:', schoolId); // Debug log
+        } else {
+            content.classList.remove('expanded');
+            content.classList.add('collapsed');
+            toggleIcon.classList.remove('rotated');
+            console.log('School collapsed:', schoolId); // Debug log
+        }
+    } else {
+        console.error('Could not find school content or toggle icon elements for:', schoolId);
     }
 };
 </script>

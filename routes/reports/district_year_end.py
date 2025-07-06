@@ -874,11 +874,13 @@ def generate_schools_by_level_data(district, events):
         # If we found a school and it's in our district, add the event to that school
         if school and school.id in school_events:
             # Calculate or get event data - handle both cached dictionaries and fresh Event objects
+            volunteer_participations = []
             if hasattr(event, 'students') and hasattr(event, 'volunteers'):
                 # This is cached data (dictionary-like object)
                 students = getattr(event, 'students', 0)
                 volunteers = getattr(event, 'volunteers', 0)
                 volunteer_hours = getattr(event, 'volunteer_hours', 0)
+                # For cached data, we can't easily get unique volunteers, so we'll skip that part
             else:
                 # This is a fresh Event object - calculate the values
                 students = get_district_student_count_for_event(event, district.id)
@@ -903,6 +905,11 @@ def generate_schools_by_level_data(district, events):
             school_events[school.id]['total_students'] += event_data['students']
             school_events[school.id]['total_volunteers'] += event_data['volunteers']
             school_events[school.id]['total_volunteer_hours'] += event_data['volunteer_hours']
+            
+            # Track unique volunteers for this school (only for fresh Event objects)
+            if volunteer_participations:
+                for p in volunteer_participations:
+                    school_events[school.id]['unique_volunteers'].add(p.volunteer_id)
     
     # Organize ALL schools by level (including those with no events)
     for school_id, school_data in school_events.items():
