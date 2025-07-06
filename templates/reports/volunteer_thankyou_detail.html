@@ -31,7 +31,7 @@
         </a>
         <h1>{{ volunteer.first_name }} {{ volunteer.last_name }}</h1>
         <div class="school-year-display">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
-        <div class="stat-cards" style="margin-top: 1.5rem;">
+        <div class="stat-cards">
             <div class="stat-card">
                 <i class="fa-solid fa-clock stat-icon"></i>
                 <div class="stat-number">{{ total_hours }}</div>
@@ -91,11 +91,15 @@
             <tbody>
                 {% for event in events %}
                 <tr>
-                    <td>{{ event.date }}</td>
-                    <td>{{ event.title }}</td>
+                    <td>
+                        {% if event.date %}
+                            {{ event.date|short_date }}
+                        {% endif %}
+                    </td>
+                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.title }}</a></td>
                     <td>{{ event.type }}</td>
                     <td>{{ event.hours }}</td>
-                    <td>{{ event.school }}</td>
+                    <td>{% if event.school_obj %}{{ event.school_obj.name }}{% else %}{{ event.school }}{% endif %}</td>
                     <td>{{ event.district }}</td>
                 </tr>
                 {% endfor %}

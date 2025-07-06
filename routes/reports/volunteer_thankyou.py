@@ -266,20 +266,35 @@ def load_routes(bp):
         ).all()
         
         # Format the events data
-        events_data = [{
-            'date': event.start_date.strftime('%B %d, %Y'),
-            'date_sort': event.start_date,
-            'title': event.title,
-            'type': event.type.value if event.type else 'Unknown',
-            'hours': round(hours or 0, 2),
-            'school': event.school or 'N/A',
-            'district': event.district_partner or 'N/A'
-        } for event, hours in events]
+        events_data = []
+        for event, hours in events:
+            # Ensure date is a datetime object
+            start_date = event.start_date
+            if isinstance(start_date, str):
+                try:
+                    start_date = datetime.strptime(start_date, '%B %d, %Y')
+                except Exception:
+                    start_date = None
+            # School lookup
+            school_obj = None
+            if event.school:
+                from models.school_model import School
+                school_obj = School.query.get(event.school)
+            events_data.append({
+                'id': event.id,
+                'date': start_date,
+                'title': event.title,
+                'type': event.type.value if event.type else 'Unknown',
+                'hours': round(hours or 0, 2),
+                'school': event.school_obj.name if hasattr(event, 'school_obj') and event.school_obj else (school_obj.name if school_obj else event.school or 'N/A'),
+                'school_obj': school_obj or (event.school_obj if hasattr(event, 'school_obj') else None),
+                'district': event.district_partner or 'N/A'
+            })
         
         # Sort events_data in Python
         def get_sort_key(ev):
             if sort == 'date':
-                return ev['date_sort']
+                return ev['date']
             elif sort == 'title':
                 return ev['title'].lower() if ev['title'] else ''
             elif sort == 'type':
@@ -290,7 +305,7 @@ def load_routes(bp):
                 return ev['school'].lower() if ev['school'] else ''
             elif sort == 'district':
                 return ev['district'].lower() if ev['district'] else ''
-            return ev['date_sort']
+            return ev['date']
         events_data.sort(key=get_sort_key, reverse=(order=='desc'))
         
         # Calculate totals

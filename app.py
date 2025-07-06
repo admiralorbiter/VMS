@@ -11,6 +11,7 @@ from config import DevelopmentConfig, ProductionConfig
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timezone  # Keep this as it might be used elsewhere
+from utils import short_date
 
 # Load environment variables from .env file first
 load_dotenv()
@@ -71,6 +72,8 @@ def inject_security_levels():
 
 # Initialize routes
 init_routes(app)
+
+app.jinja_env.filters['short_date'] = short_date
 
 @app.route('/docs/<path:filename>')
 def documentation(filename):
