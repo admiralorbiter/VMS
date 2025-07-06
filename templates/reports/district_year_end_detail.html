@@ -66,6 +66,49 @@
         overflow: visible;
     }
 
+    /* Month card collapsible styles */
+    .month-header.collapsible-header {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .month-header.collapsible-header:hover {
+        background-color: rgba(158, 216, 219, 0.1);
+    }
+
+    .month-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .month-title h3 {
+        margin: 0;
+    }
+
+    .month-toggle-icon {
+        transition: transform 0.3s ease;
+        color: var(--ucla-blue);
+    }
+
+    .month-toggle-icon.rotated {
+        transform: rotate(90deg);
+    }
+
+    .events-table-wrapper.collapsed {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    .events-table-wrapper.expanded {
+        max-height: 2000px;
+        overflow: visible;
+        opacity: 1;
+        transition: all 0.3s ease;
+    }
+
     .event-type-card.filterable {
         cursor: pointer;
         transition: all 0.3s ease;
@@ -325,8 +368,11 @@
         <div id="monthly-view" class="view-content">
             {% for month, data in events_by_month.items() %}
             <div class="month-card">
-                <div class="month-header">
-                    <h3>{{ month }}</h3>
+                <div class="month-header collapsible-header" onclick="toggleMonthCard('{{ month|replace(' ', '_') }}')">
+                    <div class="month-title">
+                        <i class="fas fa-chevron-right month-toggle-icon" id="month-toggle-{{ month|replace(' ', '_') }}"></i>
+                        <h3>{{ month }}</h3>
+                    </div>
                     <div class="month-stats">
                         <span>{{ data.events|length }} Events</span>
                         <span>{{ data.total_students }} Students</span>
@@ -339,7 +385,7 @@
                     </div>
                 </div>
                 
-                <div class="events-table-wrapper">
+                <div class="events-table-wrapper collapsed" id="month-content-{{ month|replace(' ', '_') }}">
                     <table class="events-table">
                         <thead>
                             <tr>
@@ -903,6 +949,31 @@ window.clearEventTypeFilter = function() {
     // Reset stats to original values
     // This is a simplified reset - in a real implementation you'd want to call the original functions
     location.reload(); // Simple solution: reload the page to reset everything
+};
+
+window.toggleMonthCard = function(monthId) {
+    console.log('Toggle month card called for:', monthId); // Debug log
+    const content = document.getElementById('month-content-' + monthId);
+    const toggleIcon = document.getElementById('month-toggle-' + monthId);
+    
+    console.log('Month content element:', content); // Debug log
+    console.log('Month toggle icon:', toggleIcon); // Debug log
+    
+    if (content && toggleIcon) {
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            toggleIcon.classList.add('rotated');
+            console.log('Month expanded:', monthId); // Debug log
+        } else {
+            content.classList.remove('expanded');
+            content.classList.add('collapsed');
+            toggleIcon.classList.remove('rotated');
+            console.log('Month collapsed:', monthId); // Debug log
+        }
+    } else {
+        console.error('Could not find month content or toggle icon elements for:', monthId);
+    }
 };
 </script>
 {% endblock %} 

@@ -172,6 +172,35 @@
     align-items: center;
 }
 
+.month-header.collapsible-header {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.month-header.collapsible-header:hover {
+    background-color: rgba(158, 216, 219, 0.1);
+}
+
+.month-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.month-title h3 {
+    margin: 0;
+}
+
+.month-toggle-icon {
+    transition: transform 0.3s ease;
+    color: var(--ucla-blue);
+    font-size: 0.9rem;
+}
+
+.month-toggle-icon.rotated {
+    transform: rotate(90deg);
+}
+
 .month-header h3 {
     color: var(--ucla-blue);
     font-size: 1.2rem;
@@ -190,6 +219,22 @@
 .events-table-wrapper {
     overflow-x: auto;
     padding: 1rem;
+}
+
+.events-table-wrapper.collapsed {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    padding: 0 1rem;
+    transition: all 0.3s ease;
+}
+
+.events-table-wrapper.expanded {
+    max-height: 2000px;
+    overflow-x: auto;
+    opacity: 1;
+    padding: 1rem;
+    transition: all 0.3s ease;
 }
 
 .events-table {
