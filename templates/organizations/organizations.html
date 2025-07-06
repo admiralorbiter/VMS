@@ -94,8 +94,8 @@
                     <th class="sortable" data-sort="type">
                         Type <i class="fa-solid fa-sort"></i>
                     </th>
-                    <th class="sortable" data-sort="last_activity_date">
-                        Last Activity <i class="fa-solid fa-sort"></i>
+                    <th class="sortable" data-sort="volunteer_count">
+                        # Volunteers <i class="fa-solid fa-sort"></i>
                     </th>
                     <th>Actions</th>
                 </tr>
@@ -107,7 +107,7 @@
                     <td>
                         <span class="org-type-badge">{{ org.type or 'N/A' }}</span>
                     </td>
-                    <td>{{ org.last_activity_date|format_date if org.last_activity_date else 'Never' }}</td>
+                    <td>{{ org.volunteer_count }}</td>
                     <td>
                         <div class="org-action-buttons">
                             <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-action-btn org-view-btn">

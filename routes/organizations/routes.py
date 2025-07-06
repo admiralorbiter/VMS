@@ -169,7 +169,28 @@ def organizations():
         query = query.filter(Organization.type == current_filters['type'])
 
     # Apply sorting to the query
-    sort_column = getattr(Organization, sort_by, Organization.name)
+    if sort_by == 'volunteer_count':
+        from sqlalchemy import func
+        from models.contact import Contact
+        volunteer_count_subq = db.session.query(
+            VolunteerOrganization.organization_id,
+            func.count(VolunteerOrganization.volunteer_id).label('volunteer_count')
+        ).join(
+            Contact, VolunteerOrganization.volunteer_id == Contact.id
+        ).filter(
+            Contact.type == 'volunteer'
+        ).group_by(VolunteerOrganization.organization_id).subquery()
+        
+        # Join the subquery for sorting but don't add columns to preserve Organization objects
+        query = query.outerjoin(
+            volunteer_count_subq,
+            Organization.id == volunteer_count_subq.c.organization_id
+        )
+        
+        sort_column = func.coalesce(volunteer_count_subq.c.volunteer_count, 0)
+    else:
+        sort_column = getattr(Organization, sort_by, Organization.name)
+    
     if sort_dir == 'desc':
         sort_column = sort_column.desc()
     query = query.order_by(sort_column)

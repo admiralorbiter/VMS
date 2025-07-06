@@ -191,6 +191,13 @@ class Organization(db.Model):
             return f"https://prep-kc.lightning.force.com/lightning/r/Account/{self.salesforce_id}/view"
         return None
 
+    @property
+    def volunteer_count(self):
+        """
+        Returns the number of volunteers associated with this organization.
+        """
+        return len(self.volunteers)
+
 class VolunteerOrganization(db.Model):
     """
     Association model connecting volunteers to organizations.
