@@ -4,23 +4,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
-<style>
-.sortable-header {
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-    padding-right: 18px;
-}
-.sort-indicator {
-    position: absolute;
-    right: 4px;
-    font-size: 13px;
-    color: #007bff;
-}
-.sortable-header.active {
-    background: #e9ecef;
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -31,6 +14,25 @@
         </a>
         <h1>{{ organization.name }}</h1>
         <div class="school-year-display">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
+        
+        {# Summary stats for this organization #}
+        <div class="stats-summary">
+            <div class="stat-card">
+                <i class="fa-solid fa-calendar-check stat-icon"></i>
+                <div class="stat-number">{{ volunteers|length + events|length }}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-clock stat-icon"></i>
+                <div class="stat-number">{{ total_hours if total_hours is defined else '0' }}</div>
+                <div class="stat-label">Total Hours</div>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-users stat-icon"></i>
+                <div class="stat-number">{{ volunteers|length }}</div>
+                <div class="stat-label">Volunteers</div>
+            </div>
+        </div>
     </div>
 
     <div class="filters">
@@ -70,7 +72,7 @@
                     {% for volunteer in volunteers %}
                     <tr>
                         <td>
-                            <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, school_year=school_year) }}">
+                            <a href="{{ url_for('report.volunteer_thankyou_detail', volunteer_id=volunteer.id, school_year=school_year) }}" class="org-link">
                                 {{ volunteer.name }}
                             </a>
                         </td>

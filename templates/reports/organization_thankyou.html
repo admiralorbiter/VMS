@@ -4,78 +4,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organization_thankyou.css') }}">
-<style>
-.sortable-header {
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-    padding-right: 18px;
-}
-.sort-indicator {
-    position: absolute;
-    right: 4px;
-    font-size: 13px;
-    color: #007bff;
-}
-.sortable-header.active {
-    background: #e9ecef;
-}
-.export-button {
-    background-color: #28a745;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    margin-left: 10px;
-}
-.export-button:hover {
-    background-color: #218838;
-    color: white;
-    text-decoration: none;
-}
-.host-filter-container {
-    margin: 20px 0;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-}
-.host-filter-btn {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    margin-right: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-.host-filter-btn:hover {
-    background-color: #5a6268;
-}
-.host-filter-btn.selected {
-    background-color: #007bff;
-}
-.host-filter-btn.selected:hover {
-    background-color: #0056b3;
-}
-.filter-description {
-    margin: 10px 0 15px 0;
-    color: #495057;
-    font-size: 14px;
-    line-height: 1.5;
-}
-.filter-description strong {
-    color: #212529;
-}
-.filter-description em {
-    color: #6c757d;
-    font-style: italic;
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -93,7 +21,7 @@
                 {% endfor %}
             </select>
             <a href="{{ url_for('report.organization_thankyou_excel', school_year=school_year, sort=sort, order=order, host_filter=host_filter) }}" class="export-button">
-                📊 Export to Excel
+                <i class="fa-solid fa-file-excel"></i> Export to Excel
             </a>
         </form>
     </div>
@@ -111,6 +39,27 @@
             <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
         </form>
     </div>
+
+    {# Stat cards row (optional, if you want to show summary stats) #}
+    {#
+    <div class="stat-cards">
+        <div class="stat-card">
+            <i class="fa-solid fa-building stat-icon"></i>
+            <div class="stat-number">{{ total_organizations }}</div>
+            <div class="stat-label">Organizations</div>
+        </div>
+        <div class="stat-card">
+            <i class="fa-solid fa-clock stat-icon"></i>
+            <div class="stat-number">{{ total_hours }}</div>
+            <div class="stat-label">Total Hours</div>
+        </div>
+        <div class="stat-card">
+            <i class="fa-solid fa-users stat-icon"></i>
+            <div class="stat-number">{{ total_volunteers }}</div>
+            <div class="stat-label">Total Volunteers</div>
+        </div>
+    </div>
+    #}
 
     <div class="organization-table">
         <table>
