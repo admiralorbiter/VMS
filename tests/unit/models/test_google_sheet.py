@@ -84,26 +84,64 @@ def test_encryption_decryption(app, encryption_key):
         db.session.delete(sheet)
         db.session.commit()
 
-def test_academic_year_uniqueness(app, encryption_key):
+def test_multiple_district_reports_allowed(app, encryption_key):
+    """Test that multiple district_reports sheets can be created for the same academic year"""
     with app.app_context():
+        # Test that multiple district_reports sheets can be created for same academic year
         sheet1 = GoogleSheet(
             academic_year='2023-2024',
-            sheet_id='sheet1'
+            sheet_id='sheet1',
+            purpose='district_reports'
         )
         db.session.add(sheet1)
         db.session.commit()
         
-        # Try to create another sheet with same academic year
+        # Should be able to create another district_reports sheet with same academic year
         sheet2 = GoogleSheet(
             academic_year='2023-2024',
-            sheet_id='sheet2'
+            sheet_id='sheet2',
+            purpose='district_reports'
         )
         db.session.add(sheet2)
-        with pytest.raises(Exception):
-            db.session.commit()
-        db.session.rollback()
+        db.session.commit()  # Should not raise an exception
         
+        # Should be able to create a third one too
+        sheet3 = GoogleSheet(
+            academic_year='2023-2024',
+            sheet_id='sheet3',
+            purpose='district_reports'
+        )
+        db.session.add(sheet3)
+        db.session.commit()  # Should not raise an exception
+        
+        # Verify all sheets exist
+        sheets = GoogleSheet.query.filter_by(academic_year='2023-2024', purpose='district_reports').all()
+        assert len(sheets) == 3
+        
+        # Cleanup
         db.session.delete(sheet1)
+        db.session.delete(sheet2)
+        db.session.delete(sheet3)
+        db.session.commit()
+
+def test_virtual_sessions_basic_functionality(app, encryption_key):
+    """Test basic virtual sessions sheet functionality (constraint testing requires production DB)"""
+    with app.app_context():
+        # Test that virtual_sessions sheets can be created
+        virtual_sheet = GoogleSheet(
+            academic_year='2023-2024',
+            sheet_id='virtual1',
+            purpose='virtual_sessions'
+        )
+        db.session.add(virtual_sheet)
+        db.session.commit()
+        
+        # Verify the sheet exists
+        assert virtual_sheet.purpose == 'virtual_sessions'
+        assert virtual_sheet.academic_year == '2023-2024'
+        
+        # Cleanup
+        db.session.delete(virtual_sheet)
         db.session.commit()
 
 def test_user_relationship(app, test_user, encryption_key):
@@ -206,7 +244,20 @@ def test_repr_method(app, encryption_key):
         db.session.add(sheet)
         db.session.commit()
         
-        assert repr(sheet) == '<GoogleSheet 2023-2024>'
+        # The repr now includes the purpose field
+        assert repr(sheet) == '<GoogleSheet 2023-2024 - district_reports>'
+        
+        # Test with virtual_sessions purpose
+        virtual_sheet = GoogleSheet(
+            academic_year='2024-2025',
+            sheet_id='virtual_test_sheet',
+            purpose='virtual_sessions'
+        )
+        db.session.add(virtual_sheet)
+        db.session.commit()
+        
+        assert repr(virtual_sheet) == '<GoogleSheet 2024-2025 - virtual_sessions>'
         
         db.session.delete(sheet)
+        db.session.delete(virtual_sheet)
         db.session.commit() 
