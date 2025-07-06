@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Google Sheets Management - {{ academic_year }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.google-sheets-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.sheet-form {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.sheet-list {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sheet-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.sheet-item:last-child {
+    margin-bottom: 0;
+}
+
+.sheet-info {
+    flex: 1;
+}
+
+.sheet-id {
+    font-family: monospace;
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.sheet-meta {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.btn-remove {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-remove:hover {
+    background: #c82333;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.btn-primary {
+    background: var(--ucla-blue);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-primary:hover {
+    background: var(--delft-blue);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    text-decoration: none;
+    color: white;
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.no-sheets {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 2rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="google-sheets-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Google Sheets Management</h1>
+        <a href="{{ url_for('report.district_year_end', school_year=school_year) }}" class="btn-secondary">
+            ← Back to Reports
+        </a>
+    </div>
+    
+    <div class="mb-3">
+        <h2>Academic Year: {{ academic_year }}</h2>
+        <p class="text-muted">Manage Google Sheets associated with this academic year for district reporting.</p>
+    </div>
+
+    <!-- Alert Messages -->
+    <div id="alertContainer"></div>
+
+    <!-- Add/Update Sheet Form -->
+    <div class="sheet-form">
+        <h3>Add Google Sheet</h3>
+        <form id="sheetForm">
+            <input type="hidden" name="school_year" value="{{ school_year }}">
+            
+            <div class="form-group">
+                <label for="sheet_name">Sheet Name (Optional)</label>
+                <input type="text" id="sheet_name" name="sheet_name" 
+                       placeholder="Enter a descriptive name for this sheet (e.g., District Report 2024-2025)">
+                <small class="form-text text-muted">
+                    Optional: Give this sheet a descriptive name to help identify it
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="sheet_id">Google Sheet ID</label>
+                <input type="text" id="sheet_id" name="sheet_id" 
+                       placeholder="Enter Google Sheet ID (e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms)"
+                       required>
+                <small class="form-text text-muted">
+                    You can find the Sheet ID in the URL of your Google Sheet between '/d/' and '/edit'
+                </small>
+            </div>
+            
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-plus"></i> Add Sheet
+            </button>
+        </form>
+    </div>
+
+    <!-- Existing Sheets -->
+    <div class="sheet-list">
+        <h3>Current Google Sheets</h3>
+        
+        {% if sheets %}
+            <div id="sheetsList">
+                {% for sheet in sheets %}
+                <div class="sheet-item" data-sheet-id="{{ sheet.decrypted_sheet_id }}">
+                    <div class="sheet-info">
+                        {% if sheet.sheet_name %}
+                        <div class="sheet-name" style="font-weight: 500; color: #333; margin-bottom: 0.25rem;">
+                            {{ sheet.sheet_name }}
+                        </div>
+                        {% endif %}
+                        <div class="sheet-id">{{ sheet.decrypted_sheet_id }}</div>
+                        <div class="sheet-meta">
+                            Created by {{ sheet.creator.username if sheet.creator else 'Unknown' }} 
+                            on {{ sheet.created_at.strftime('%B %d, %Y at %I:%M %p') if sheet.created_at else 'Unknown date' }}
+                        </div>
+                        <div class="sheet-meta">
+                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" 
+                               target="_blank" class="text-primary">
+                                <i class="fas fa-external-link-alt"></i> Open in Google Sheets
+                            </a>
+                        </div>
+                    </div>
+                    <button class="btn-remove" onclick="removeSheet('{{ sheet.decrypted_sheet_id }}', '{{ academic_year }}')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-sheets">
+                <i class="fas fa-table fa-3x mb-3 text-muted"></i>
+                <p>No Google Sheets configured for {{ academic_year }}</p>
+                <p>Add a Google Sheet above to get started.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.getElementById('sheetForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    
+    fetch('{{ url_for("report.add_google_sheet") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Clear form
+            document.getElementById('sheet_id').value = '';
+            document.getElementById('sheet_name').value = '';
+            // Reload page to show updated sheets
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'An error occurred while adding the sheet.');
+        console.error('Error:', error);
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Sheet';
+    });
+});
+
+function removeSheet(sheetId, academicYear) {
+    if (!confirm('Are you sure you want to remove this Google Sheet?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('sheet_id', sheetId);
+    formData.append('academic_year', academicYear);
+    
+    fetch('{{ url_for("report.remove_google_sheet") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Remove the sheet item from the DOM
+            const sheetItem = document.querySelector(`[data-sheet-id="${sheetId}"]`);
+            if (sheetItem) {
+                sheetItem.remove();
+            }
+            
+            // Check if no sheets left
+            const sheetsList = document.getElementById('sheetsList');
+            if (sheetsList && sheetsList.children.length === 0) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        } else {
+            showAlert('error', data.error);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'An error occurred while removing the sheet.');
+        console.error('Error:', error);
+    });
+}
+
+function showAlert(type, message) {
+    const alertContainer = document.getElementById('alertContainer');
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+    
+    alertContainer.innerHTML = `
+        <div class="alert ${alertClass}">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            ${message}
+        </div>
+    `;
+    
+    // Auto-hide alert after 5 seconds
+    setTimeout(() => {
+        alertContainer.innerHTML = '';
+    }, 5000);
+}
+</script>
+{% endblock %} 

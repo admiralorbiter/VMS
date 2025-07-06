@@ -857,7 +857,7 @@ def import_sheet():
         if not academic_year:
             return jsonify({'success': False, 'error': 'Academic year is required.'}), 400
         from models.google_sheet import GoogleSheet
-        sheet_record = GoogleSheet.query.filter_by(academic_year=academic_year).first()
+        sheet_record = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='virtual_sessions').first()
         if not sheet_record:
             return jsonify({'success': False, 'error': f'No Google Sheet configured for academic year {academic_year}'}), 400
         sheet_id = sheet_record.decrypted_sheet_id

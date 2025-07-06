@@ -124,9 +124,9 @@ def admin():
         return redirect(url_for('main.index'))
     
     users = User.query.all()
-    # Provide academic years with Google Sheets for the dropdown
+    # Provide academic years with Google Sheets for the dropdown (virtual sessions only)
     from models.google_sheet import GoogleSheet
-    sheet_years = [sheet.academic_year for sheet in GoogleSheet.query.order_by(GoogleSheet.academic_year.desc()).all()]
+    sheet_years = [sheet.academic_year for sheet in GoogleSheet.query.filter_by(purpose='virtual_sessions').order_by(GoogleSheet.academic_year.desc()).all()]
     return render_template('management/admin.html', users=users, sheet_years=sheet_years)
 
 @management_bp.route('/admin/import', methods=['POST'])
@@ -300,7 +300,7 @@ def google_sheets():
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.index'))
-    sheets = GoogleSheet.query.order_by(GoogleSheet.academic_year.desc()).all()
+    sheets = GoogleSheet.query.filter_by(purpose='virtual_sessions').order_by(GoogleSheet.academic_year.desc()).all()
     all_years = get_academic_year_range(2018, 2032)
     used_years = {sheet.academic_year for sheet in sheets}
     available_years = [y for y in all_years if y not in used_years]
@@ -357,15 +357,16 @@ def create_google_sheet():
         if not all([academic_year, sheet_id]):
             return jsonify({'error': 'Academic year and sheet ID are required'}), 400
         
-        existing = GoogleSheet.query.filter_by(academic_year=academic_year).first()
+        existing = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='virtual_sessions').first()
         if existing:
-            return jsonify({'error': f'Sheet for academic year {academic_year} already exists'}), 400
+            return jsonify({'error': f'Virtual sessions sheet for academic year {academic_year} already exists'}), 400
         
         print(f"DEBUG: About to create GoogleSheet with sheet_id: {sheet_id}")
         new_sheet = GoogleSheet(
             academic_year=academic_year,
             sheet_id=sheet_id,
-            created_by=current_user.id
+            created_by=current_user.id,
+            purpose='virtual_sessions'
         )
         print("DEBUG: GoogleSheet created successfully")
         

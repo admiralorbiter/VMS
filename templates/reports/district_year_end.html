@@ -82,6 +82,38 @@
     border-color: var(--delft-blue);
     color: white;
 }
+
+/* Main content layout with sidebar */
+.main-content-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.sidebar-column {
+    position: relative;
+}
+
+.content-column {
+    min-width: 0; /* Prevents grid overflow */
+}
+
+/* Responsive layout */
+@media (max-width: 1024px) {
+    .main-content-layout {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .sidebar-column {
+        order: 2; /* Move sidebar below content on mobile */
+    }
+    
+    .content-column {
+        order: 1;
+    }
+}
 </style>
 {% endblock %}
 
@@ -127,7 +159,16 @@
         </div>
     </div>
 
-    <div class="districts-grid" id="districtsContainer">
+    <!-- Main content with sidebar layout -->
+    <div class="main-content-layout">
+        <!-- Google Sheets Sidebar -->
+        <aside class="sidebar-column">
+            {% include 'reports/google_sheets_sidebar.html' %}
+        </aside>
+        
+        <!-- Districts Grid -->
+        <main class="content-column">
+            <div class="districts-grid" id="districtsContainer">
         {% for district_name, stats in districts.items() %}
         <div class="district-card">
             <a href="{{ url_for('report.district_year_end_detail', district_name=district_name, school_year=school_year, host_filter=host_filter) }}" class="district-link">
@@ -165,6 +206,8 @@
             </a>
         </div>
         {% endfor %}
+            </div>
+        </main>
     </div>
 </div>
 
@@ -175,6 +218,15 @@ function updateReport(select) {
     
     loadingIndicator.style.display = 'block';
     districtsContainer.style.opacity = '0.5';
+    
+    // Also update the host filter form to include the new school year
+    const hostFilterForm = document.getElementById('hostFilterForm');
+    if (hostFilterForm) {
+        const hiddenYearInput = hostFilterForm.querySelector('input[name="school_year"]');
+        if (hiddenYearInput) {
+            hiddenYearInput.value = select.value;
+        }
+    }
     
     // Submit the form
     select.form.submit();

@@ -1,0 +1,261 @@
+<!-- Google Sheets Sidebar Component -->
+<div class="google-sheets-sidebar">
+    <div class="sidebar-header">
+        <h3>
+            <i class="fas fa-table"></i>
+            Google Sheets
+        </h3>
+        <span class="academic-year-badge">{{ academic_year }}</span>
+    </div>
+    
+    <div class="sidebar-content">
+        {% if google_sheets %}
+            <div class="sheets-list">
+                {% for sheet in google_sheets %}
+                <div class="sheet-item">
+                    <div class="sheet-info">
+                        <div class="sheet-title">
+                            <i class="fab fa-google"></i>
+                            {{ sheet.sheet_name if sheet.sheet_name else 'Sheet ' + loop.index|string }}
+                        </div>
+                        <div class="sheet-meta">
+                            Created by {{ sheet.creator.username if sheet.creator else 'Unknown' }}
+                        </div>
+                        <div class="sheet-meta">
+                            {{ sheet.created_at.strftime('%b %d, %Y') if sheet.created_at else 'Unknown date' }}
+                        </div>
+                    </div>
+                    <div class="sheet-actions">
+                        <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" 
+                           target="_blank" 
+                           class="btn-sheet-open"
+                           title="Open in Google Sheets">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                        <button class="btn-sheet-copy" 
+                                onclick="copySheetId('{{ sheet.decrypted_sheet_id }}')"
+                                title="Copy Sheet ID">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-sheets">
+                <i class="fas fa-table fa-2x text-muted mb-2"></i>
+                <p class="text-muted">No Google Sheets configured for {{ academic_year }}</p>
+            </div>
+        {% endif %}
+        
+        <div class="sidebar-actions">
+            <a href="{{ url_for('report.manage_google_sheets', school_year=school_year) }}" 
+               class="btn-manage-sheets">
+                <i class="fas fa-cog"></i>
+                Manage Sheets
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.google-sheets-sidebar {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+}
+
+.sidebar-header {
+    background: var(--ucla-blue);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.academic-year-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.sidebar-content {
+    padding: 1rem;
+}
+
+.sheets-list {
+    margin-bottom: 1rem;
+}
+
+.sheet-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    background: #f8f9fa;
+}
+
+.sheet-item:last-child {
+    margin-bottom: 0;
+}
+
+.sheet-info {
+    flex: 1;
+}
+
+.sheet-title {
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.sheet-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    line-height: 1.2;
+}
+
+.sheet-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: 0.5rem;
+}
+
+.btn-sheet-open,
+.btn-sheet-copy {
+    background: var(--ucla-blue);
+    color: white;
+    border: none;
+    padding: 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    width: 2rem;
+    height: 2rem;
+    transition: background-color 0.2s ease;
+}
+
+.btn-sheet-open:hover,
+.btn-sheet-copy:hover {
+    background: var(--delft-blue);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-sheet-copy:hover {
+    background: #28a745;
+}
+
+.no-sheets {
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+.no-sheets p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.sidebar-actions {
+    border-top: 1px solid #e9ecef;
+    padding-top: 1rem;
+}
+
+.btn-manage-sheets {
+    display: block;
+    width: 100%;
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.btn-manage-sheets:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+    text-decoration: none;
+}
+
+.btn-manage-sheets i {
+    margin-right: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .google-sheets-sidebar {
+        position: static;
+        margin-bottom: 2rem;
+    }
+    
+    .sheet-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .sheet-actions {
+        margin-left: 0;
+        align-self: flex-end;
+    }
+}
+</style>
+
+<script>
+function copySheetId(sheetId) {
+    navigator.clipboard.writeText(sheetId).then(function() {
+        // Show temporary success feedback
+        const btn = event.target.closest('.btn-sheet-copy');
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.style.background = '#28a745';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.style.background = '';
+        }, 1500);
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = sheetId;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        // Show feedback
+        alert('Sheet ID copied to clipboard');
+    });
+}
+</script> 

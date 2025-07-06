@@ -436,7 +436,7 @@ def load_routes(bp):
             'districts': sorted(list(all_districts)),
             'statuses': sorted(list(all_statuses))
         }
-        google_sheet = GoogleSheet.query.filter_by(academic_year=selected_virtual_year).first()
+        google_sheet = GoogleSheet.query.filter_by(academic_year=selected_virtual_year, purpose='virtual_sessions').first()
         google_sheet_url = None
         if google_sheet and google_sheet.decrypted_sheet_id:
             google_sheet_url = f"https://docs.google.com/spreadsheets/d/{google_sheet.decrypted_sheet_id}"

@@ -14,6 +14,8 @@ from models.volunteer import EventParticipation
 from models import db
 from models.organization import Organization, VolunteerOrganization
 from models.student import Student
+from models.google_sheet import GoogleSheet
+from flask_login import current_user
 
 from routes.reports.common import (
     DISTRICT_MAPPING, 
@@ -56,6 +58,10 @@ def load_routes(bp):
             central = pytz.timezone('America/Chicago')
             last_updated = utc_time.replace(tzinfo=pytz.UTC).astimezone(central)
         
+        # Get Google Sheets for this academic year (district reports only)
+        academic_year = convert_school_year_format(school_year)
+        google_sheets = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').all()
+
         return render_template(
             'reports/district_year_end.html',
             districts=district_stats,
@@ -63,7 +69,9 @@ def load_routes(bp):
             school_years=school_years,
             now=datetime.now(),
             last_updated=last_updated,
-            host_filter=host_filter
+            host_filter=host_filter,
+            google_sheets=google_sheets,
+            academic_year=academic_year
         )
 
     @bp.route('/reports/district/year-end/refresh', methods=['POST'])
@@ -782,6 +790,103 @@ def load_routes(bp):
             'event_ids': [event.id for event in events]
         })
 
+    @bp.route('/reports/district/year-end/google-sheets')
+    @login_required
+    def manage_google_sheets():
+        """Manage Google Sheets for district year-end reports"""
+        school_year = request.args.get('school_year', get_current_school_year())
+        academic_year = convert_school_year_format(school_year)
+        
+        # Get all Google Sheets for this academic year (district reports only)
+        sheets = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').all()
+        
+        return render_template(
+            'reports/google_sheets_management.html',
+            sheets=sheets,
+            academic_year=academic_year,
+            school_year=school_year
+        )
+
+    @bp.route('/reports/district/year-end/google-sheets/add', methods=['POST'])
+    @login_required
+    def add_google_sheet():
+        """Add a new Google Sheet for the academic year"""
+        school_year = request.form.get('school_year', get_current_school_year())
+        academic_year = convert_school_year_format(school_year)
+        sheet_id = request.form.get('sheet_id', '').strip()
+        sheet_name = request.form.get('sheet_name', '').strip()
+        
+        if not sheet_id:
+            return jsonify({'success': False, 'error': 'Sheet ID is required'}), 400
+        
+        try:
+            # Check if sheet already exists for this academic year (district reports only)
+            existing_sheet = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').first()
+            
+            if existing_sheet:
+                # Update existing sheet
+                existing_sheet.update_sheet_id(sheet_id)
+                existing_sheet.sheet_name = sheet_name if sheet_name else None
+                db.session.commit()
+                message = f'Updated Google Sheet for {academic_year}'
+            else:
+                # Create new sheet
+                new_sheet = GoogleSheet(
+                    academic_year=academic_year,
+                    sheet_id=sheet_id,
+                    created_by=current_user.id,
+                    purpose='district_reports',
+                    sheet_name=sheet_name if sheet_name else None
+                )
+                db.session.add(new_sheet)
+                db.session.commit()
+                message = f'Added Google Sheet for {academic_year}'
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'sheet': {
+                    'academic_year': academic_year,
+                    'sheet_id': sheet_id,
+                    'created_by': current_user.username
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @bp.route('/reports/district/year-end/google-sheets/remove', methods=['POST'])
+    @login_required
+    def remove_google_sheet():
+        """Remove a Google Sheet"""
+        sheet_id = request.form.get('sheet_id')
+        academic_year = request.form.get('academic_year')
+        
+        if not sheet_id or not academic_year:
+            return jsonify({'success': False, 'error': 'Sheet ID and academic year are required'}), 400
+        
+        try:
+            sheet = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').first()
+            if sheet and sheet.decrypted_sheet_id == sheet_id:
+                db.session.delete(sheet)
+                db.session.commit()
+                return jsonify({'success': True, 'message': f'Removed Google Sheet for {academic_year}'})
+            else:
+                return jsonify({'success': False, 'error': 'Sheet not found'}), 404
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @bp.route('/reports/district/year-end/google-sheets/api/<academic_year>')
+    @login_required
+    def get_google_sheets_api(academic_year):
+        """API endpoint to get Google Sheets for a specific academic year"""
+        sheets = GoogleSheet.query.filter_by(academic_year=academic_year, purpose='district_reports').all()
+        return jsonify({
+            'sheets': [sheet.to_dict() for sheet in sheets],
+            'academic_year': academic_year
+        })
+
 def generate_schools_by_level_data(district, events):
     """Generate schools data organized by level (High, Middle, Elementary, Other)
     
@@ -1380,3 +1485,19 @@ def calculate_enhanced_district_stats(events, district_id):
         stats['organizations']['volunteer_hours_virtual_pct'] = 0
     
     return stats
+
+def convert_school_year_format(school_year_yyzz):
+    """
+    Convert school year from 'YYZZ' format to 'YYYY-YYYY' format.
+    e.g., '2425' -> '2024-2025'
+    """
+    year = int(school_year_yyzz[:2]) + 2000
+    return f"{year}-{year + 1}"
+
+def convert_academic_year_format(academic_year):
+    """
+    Convert academic year from 'YYYY-YYYY' format to 'YYZZ' format.
+    e.g., '2024-2025' -> '2425'
+    """
+    start_year = int(academic_year.split('-')[0])
+    return f"{str(start_year)[-2:]}{str(start_year + 1)[-2:]}"

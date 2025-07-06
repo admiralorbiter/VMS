@@ -4,11 +4,11 @@ Google Sheet Models Module
 
 This module defines the GoogleSheet model for managing Google Sheets integration
 in the VMS system. It provides secure storage and encryption for Google Sheet IDs
-and academic year organization.
+with academic year and purpose-based organization.
 
 Key Features:
 - Secure encryption of Google Sheet IDs
-- Academic year-based organization
+- Academic year and purpose-based organization
 - User tracking for sheet creation
 - Automatic timestamp tracking
 - Environment-based encryption key management
@@ -26,7 +26,8 @@ Security Features:
 
 Academic Year Management:
 - Academic year organization (e.g., "2023-2024")
-- Unique academic year constraints
+- Purpose-based categorization (e.g., "virtual_sessions", "district_reports")
+- Unique academic year + purpose constraints
 - Year-based sheet identification
 - Temporal data organization
 
@@ -43,10 +44,21 @@ Integration Features:
 - User permission tracking
 
 Usage Examples:
-    # Create a new Google Sheet configuration
+    # Create a new Google Sheet configuration for district reports
     sheet = GoogleSheet(
         academic_year="2024-2025",
+        purpose="district_reports",
         sheet_id="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+        sheet_name="District Year-End Report 2024-2025",
+        created_by=user.id
+    )
+    
+    # Create a virtual sessions sheet
+    virtual_sheet = GoogleSheet(
+        academic_year="2024-2025",
+        purpose="virtual_sessions",
+        sheet_id="1CxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+        sheet_name="Virtual Sessions 2024-2025",
         created_by=user.id
     )
     
@@ -60,7 +72,7 @@ Usage Examples:
     sheet_dict = sheet.to_dict()
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from models import db
 from cryptography.fernet import Fernet
@@ -75,14 +87,14 @@ class GoogleSheet(db.Model):
     
     This model provides secure storage and management of Google Sheet IDs
     with encryption for data security. It organizes sheets by academic year
-    and tracks user creation for audit purposes.
+    and purpose, allowing multiple sheets per academic year for different uses.
     
     Database Table:
         google_sheets - Stores encrypted Google Sheet configurations
         
     Key Features:
         - Secure encryption of Google Sheet IDs using Fernet
-        - Academic year-based organization
+        - Academic year and purpose-based organization
         - User tracking for sheet creation and management
         - Automatic timestamp tracking for audit trails
         - Environment-based encryption key management
@@ -97,7 +109,8 @@ class GoogleSheet(db.Model):
         
     Academic Year Management:
         - Academic year organization (e.g., "2023-2024")
-        - Unique academic year constraints
+        - Purpose-based categorization (e.g., "virtual_sessions", "district_reports")
+        - Unique academic year + purpose constraints
         - Year-based sheet identification
         - Temporal data organization
         
@@ -115,7 +128,7 @@ class GoogleSheet(db.Model):
         
     Data Management:
         - Encrypted sheet ID storage
-        - Academic year organization
+        - Academic year and purpose organization
         - User creation tracking
         - Timestamp tracking for changes
         - Error handling for decryption failures
@@ -123,16 +136,23 @@ class GoogleSheet(db.Model):
     __tablename__ = 'google_sheets'
     
     id = Column(Integer, primary_key=True)
-    academic_year = Column(String(10), nullable=False, unique=True)  # e.g., "2023-2024"
+    academic_year = Column(String(10), nullable=False)  # e.g., "2023-2024"
+    purpose = Column(String(50), nullable=False, default='district_reports')  # e.g., "district_reports", "virtual_sessions"
     sheet_id = Column(Text, nullable=True)  # Encrypted Google Sheet ID (nullable for test compatibility)
+    sheet_name = Column(String(255), nullable=True)  # Display name for the sheet
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(Integer, db.ForeignKey('users.id'))
     
+    # Unique constraint on academic_year + purpose combination
+    __table_args__ = (
+        UniqueConstraint('academic_year', 'purpose', name='uq_academic_year_purpose'),
+    )
+    
     # Relationship to user who created it
     creator = db.relationship('User', backref='created_sheets')
     
-    def __init__(self, academic_year, sheet_id, created_by=None):
+    def __init__(self, academic_year, sheet_id, created_by=None, purpose='district_reports', sheet_name=None):
         """
         Initialize a new Google Sheet configuration.
         
@@ -140,9 +160,13 @@ class GoogleSheet(db.Model):
             academic_year: Academic year (e.g., "2023-2024")
             sheet_id: Google Sheet ID to encrypt and store
             created_by: User ID who created this configuration
+            purpose: Purpose of the sheet (e.g., "district_reports", "virtual_sessions")
+            sheet_name: Display name for the sheet
         """
         self.academic_year = academic_year
+        self.purpose = purpose
         self.sheet_id = self._encrypt_sheet_id(sheet_id)
+        self.sheet_name = sheet_name
         self.created_by = created_by
     
     def _get_encryption_key(self):
@@ -242,9 +266,11 @@ class GoogleSheet(db.Model):
         return {
             'id': self.id,
             'academic_year': self.academic_year,
+            'purpose': self.purpose,
             'sheet_id': self.decrypted_sheet_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'sheet_name': self.sheet_name,
+            'created_at': self.created_at.isoformat() if self.created_at is not None else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None,
             'created_by': self.created_by,
             'creator_name': self.creator.username if self.creator else None
         }
@@ -254,6 +280,6 @@ class GoogleSheet(db.Model):
         String representation for debugging.
         
         Returns:
-            str: Debug representation showing academic year
+            str: Debug representation showing academic year and purpose
         """
-        return f'<GoogleSheet {self.academic_year}>' 
+        return f'<GoogleSheet {self.academic_year} - {self.purpose}>' 
