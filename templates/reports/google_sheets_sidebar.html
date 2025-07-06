@@ -13,38 +13,37 @@
             <div class="sheets-list">
                 {% for sheet in google_sheets %}
                 <div class="sheet-item">
-                    <div class="sheet-info">
+                    <div class="sheet-header">
                         <div class="sheet-title">
                             <i class="fab fa-google"></i>
-                            {{ sheet.sheet_name if sheet.sheet_name else 'Sheet ' + loop.index|string }}
+                            <span>{{ sheet.sheet_name if sheet.sheet_name else 'Sheet ' + loop.index|string }}</span>
                         </div>
-                        <div class="sheet-meta">
-                            Created by {{ sheet.creator.username if sheet.creator else 'Unknown' }}
-                        </div>
-                        <div class="sheet-meta">
-                            {{ sheet.created_at.strftime('%b %d, %Y') if sheet.created_at else 'Unknown date' }}
+                        <div class="sheet-actions">
+                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" 
+                               target="_blank" 
+                               class="btn-sheet-action"
+                               title="Open in Google Sheets">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
                         </div>
                     </div>
-                    <div class="sheet-actions">
-                        <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" 
-                           target="_blank" 
-                           class="btn-sheet-open"
-                           title="Open in Google Sheets">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                        <button class="btn-sheet-copy" 
-                                onclick="copySheetId('{{ sheet.decrypted_sheet_id }}')"
-                                title="Copy Sheet ID">
-                            <i class="fas fa-copy"></i>
-                        </button>
+                    <div class="sheet-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-user"></i>
+                            {{ sheet.creator.username if sheet.creator else 'Unknown' }}
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            {{ sheet.created_at.strftime('%m/%d/%y') if sheet.created_at else 'Unknown' }}
+                        </span>
                     </div>
                 </div>
                 {% endfor %}
             </div>
         {% else %}
             <div class="no-sheets">
-                <i class="fas fa-table fa-2x text-muted mb-2"></i>
-                <p class="text-muted">No Google Sheets configured for {{ academic_year }}</p>
+                <i class="fas fa-table fa-lg text-muted"></i>
+                <p class="text-muted">No Google Sheets configured</p>
             </div>
         {% endif %}
         
@@ -67,12 +66,15 @@
     height: fit-content;
     position: sticky;
     top: 2rem;
+    width: 280px;
+    margin-left: -320px;
+    margin-right: 40px;
 }
 
 .sidebar-header {
     background: var(--ucla-blue);
     color: white;
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -80,7 +82,7 @@
 
 .sidebar-header h3 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -88,37 +90,39 @@
 
 .academic-year-badge {
     background: rgba(255, 255, 255, 0.2);
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
 }
 
 .sidebar-content {
-    padding: 1rem;
+    padding: 0.75rem;
 }
 
 .sheets-list {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .sheet-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
     border: 1px solid #e9ecef;
     border-radius: 6px;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     background: #f8f9fa;
+    overflow: hidden;
 }
 
 .sheet-item:last-child {
     margin-bottom: 0;
 }
 
-.sheet-info {
-    flex: 1;
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .sheet-title {
@@ -127,63 +131,91 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 0; /* Allow text to truncate */
 }
 
-.sheet-meta {
-    font-size: 0.8rem;
-    color: #6c757d;
-    line-height: 1.2;
+.sheet-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sheet-title i {
+    color: #4285f4;
+    flex-shrink: 0;
 }
 
 .sheet-actions {
     display: flex;
     gap: 0.25rem;
-    margin-left: 0.5rem;
+    flex-shrink: 0;
 }
 
-.btn-sheet-open,
-.btn-sheet-copy {
+.btn-sheet-action {
     background: var(--ucla-blue);
     color: white;
     border: none;
-    padding: 0.4rem;
-    border-radius: 4px;
+    padding: 0.25rem;
+    border-radius: 3px;
     cursor: pointer;
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
-    width: 2rem;
-    height: 2rem;
+    font-size: 0.7rem;
+    width: 1.5rem;
+    height: 1.5rem;
     transition: background-color 0.2s ease;
 }
 
-.btn-sheet-open:hover,
-.btn-sheet-copy:hover {
+.btn-sheet-action:hover {
     background: var(--delft-blue);
     color: white;
     text-decoration: none;
 }
 
-.btn-sheet-copy:hover {
-    background: #28a745;
+
+
+.sheet-meta {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.7rem;
+    color: #6c757d;
+    background: #f8f9fa;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.meta-item i {
+    width: 0.8rem;
+    text-align: center;
 }
 
 .no-sheets {
     text-align: center;
-    padding: 1.5rem 0;
+    padding: 1rem 0;
+}
+
+.no-sheets i {
+    display: block;
+    margin-bottom: 0.5rem;
 }
 
 .no-sheets p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .sidebar-actions {
     border-top: 1px solid #e9ecef;
-    padding-top: 1rem;
+    padding-top: 0.75rem;
 }
 
 .btn-manage-sheets {
@@ -192,12 +224,13 @@
     background: #f8f9fa;
     color: #495057;
     border: 1px solid #dee2e6;
-    padding: 0.75rem;
+    padding: 0.6rem;
     border-radius: 6px;
     text-decoration: none;
     text-align: center;
     transition: all 0.2s ease;
     font-weight: 500;
+    font-size: 0.85rem;
 }
 
 .btn-manage-sheets:hover {
@@ -212,50 +245,54 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
     .google-sheets-sidebar {
         position: static;
+        margin-left: 0;
+        margin-right: 0;
         margin-bottom: 2rem;
+        width: 100%;
     }
-    
-    .sheet-item {
+}
+
+@media (max-width: 768px) {
+    .sheet-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
     }
     
     .sheet-actions {
-        margin-left: 0;
         align-self: flex-end;
     }
+    
+    .sheet-meta {
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: flex-start;
+    }
+}
+
+/* Compact mode for when there are many sheets */
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-item {
+    margin-bottom: 0.25rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-header {
+    padding: 0.4rem 0.6rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-meta {
+    padding: 0.3rem 0.6rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-title {
+    font-size: 0.85rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-meta {
+    font-size: 0.65rem;
 }
 </style>
 
-<script>
-function copySheetId(sheetId) {
-    navigator.clipboard.writeText(sheetId).then(function() {
-        // Show temporary success feedback
-        const btn = event.target.closest('.btn-sheet-copy');
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.style.background = '#28a745';
-        
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
-            btn.style.background = '';
-        }, 1500);
-    }).catch(function(err) {
-        console.error('Could not copy text: ', err);
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = sheetId;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        // Show feedback
-        alert('Sheet ID copied to clipboard');
-    });
-}
-</script> 
+ 
