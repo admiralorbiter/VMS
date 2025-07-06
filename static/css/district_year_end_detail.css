@@ -48,19 +48,23 @@
 /* Summary Stats */
 .summary-stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 1rem;
     margin-bottom: 2rem;
 }
 
 .stat-card {
     background: white;
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 8px;
     text-align: center;
     box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
     border: 1px solid var(--non-photo-blue);
     transition: transform 0.2s ease;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .stat-card:hover {
@@ -77,64 +81,64 @@
 }
 
 .stat-value {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: var(--ucla-blue);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .stat-label {
     color: var(--delft-blue);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 500;
+    line-height: 1.2;
+}
+
+.stat-sublabel {
+    color: var(--delft-blue);
+    font-size: 0.7rem;
+    font-weight: 400;
+    margin-top: 0.25rem;
 }
 
 /* Event Types Section */
 .breakdown-section {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.15);
-    border: 1px solid var(--non-photo-blue);
     margin-bottom: 2rem;
-}
-
-.breakdown-section h2 {
-    color: var(--delft-blue);
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    font-weight: 600;
 }
 
 .event-types-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
 }
 
 .event-type-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 0.75rem;
     background-color: rgba(158, 216, 219, 0.1);
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid var(--non-photo-blue);
+    min-height: 50px;
 }
 
 .type-name {
     color: var(--delft-blue);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 500;
+    line-height: 1.2;
 }
 
 .type-count {
     background-color: var(--ucla-blue);
     color: var(--mint-green);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.9rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
     font-weight: 500;
+    min-width: 24px;
+    text-align: center;
 }
 
 /* Monthly Section */
@@ -404,6 +408,19 @@
     .summary-stats {
         grid-template-columns: repeat(2, 1fr);
     }
+    
+    .stat-card {
+        padding: 0.75rem;
+        min-height: 70px;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+    }
 
     .month-header {
         flex-direction: column;
@@ -417,6 +434,21 @@
 
     .event-types-grid {
         grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .event-type-card {
+        padding: 0.5rem;
+        min-height: 45px;
+    }
+    
+    .type-name {
+        font-size: 0.75rem;
+    }
+    
+    .type-count {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.5rem;
     }
 
     .school-header {

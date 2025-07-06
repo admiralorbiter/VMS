@@ -9,34 +9,71 @@
 
     /* Event type filtering styles */
     .event-types-section {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
         margin-bottom: 2rem;
-        overflow: hidden;
     }
 
     .event-types-header {
         background: var(--ucla-blue);
         color: white;
-        padding: 1rem 1.5rem;
+        padding: 0.75rem 1.25rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .event-types-header:hover {
+        background: var(--delft-blue);
+    }
+
+    .event-types-header h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .toggle-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .toggle-icon.rotated {
+        transform: rotate(90deg);
     }
 
     .event-types-content {
-        padding: 1rem 1.5rem;
+        padding: 1rem 1.25rem;
+        background: white;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .event-types-content.collapsed {
+        max-height: 0;
+        padding: 0 1.25rem;
+        opacity: 0;
+        overflow: hidden;
+    }
+
+    .event-types-content.expanded {
+        max-height: 1000px;
+        opacity: 1;
+        padding: 1rem 1.25rem;
+        overflow: visible;
     }
 
     .event-type-card.filterable {
         cursor: pointer;
         transition: all 0.3s ease;
         position: relative;
-        min-height: 70px;
+        min-height: 50px;
         display: flex;
-        flex-direction: column;
-        justify-content: center;
+        flex-direction: row;
+        justify-content: space-between;
         align-items: center;
     }
 
@@ -92,16 +129,16 @@
         font-size: 11px;
         color: #666;
         font-style: italic;
-        margin: 0;
-        padding: 0.5rem 0.75rem;
+        margin: 0.75rem 0 0 0;
+        padding: 0.4rem 0.6rem;
         background: #f8f9fa;
-        border-radius: 6px;
+        border-radius: 4px;
         border-left: 3px solid var(--ucla-blue);
     }
 
     .filter-tip::before {
         content: "💡";
-        margin-right: 0.5rem;
+        margin-right: 0.4rem;
     }
 
     .event-types-grid {
@@ -240,15 +277,17 @@
 
     <!-- Event Type Breakdown and Filtering -->
     <div class="breakdown-section">
-        <h2>Event Types</h2>
         <div class="event-types-section">
-            <div class="event-types-header">
-                <h3>Filter by Event Type</h3>
-                <button class="clear-filter-btn" onclick="clearEventTypeFilter()">
+            <div class="event-types-header" onclick="toggleEventTypeFilter()">
+                <h3>
+                    <i class="fas fa-chevron-right toggle-icon" id="event-filter-toggle"></i>
+                    Event Types Filter
+                </h3>
+                <button class="clear-filter-btn" onclick="event.stopPropagation(); clearEventTypeFilter()">
                     <i class="fas fa-times"></i> Clear Filter
                 </button>
             </div>
-            <div class="event-types-content">
+            <div class="event-types-content collapsed" id="event-types-filter-content">
                 <div class="event-types-grid">
                     {% for type, count in stats.event_types.items() %}
                     <div class="event-type-card filterable" data-type="{{ type }}">
@@ -745,7 +784,32 @@ document.addEventListener('DOMContentLoaded', function() {
         filterByEventTypes(selectedEventTypes);
     }
 
-    function toggleEventTypeFilter(eventType, event) {
+    function toggleEventTypeFilter() {
+        console.log('Toggle function called'); // Debug log
+        const content = document.getElementById('event-types-filter-content');
+        const toggleIcon = document.getElementById('event-filter-toggle');
+        
+        console.log('Content element:', content); // Debug log
+        console.log('Toggle icon:', toggleIcon); // Debug log
+        
+        if (content && toggleIcon) {
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+                toggleIcon.classList.add('rotated');
+                console.log('Expanded'); // Debug log
+            } else {
+                content.classList.remove('expanded');
+                content.classList.add('collapsed');
+                toggleIcon.classList.remove('rotated');
+                console.log('Collapsed'); // Debug log
+            }
+        } else {
+            console.error('Could not find content or toggle icon elements');
+        }
+    }
+
+    function toggleEventTypeSelection(eventType, event) {
         const card = document.querySelector(`[data-type="${eventType}"]`);
         if (!card) return;
         
@@ -789,7 +853,7 @@ document.addEventListener('DOMContentLoaded', function() {
     eventTypeCards.forEach(card => {
         card.addEventListener('click', function(e) {
             const type = this.dataset.type;
-            toggleEventTypeFilter(type, e);
+            toggleEventTypeSelection(type, e);
         });
     });
     
@@ -798,5 +862,47 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the view (default to monthly)
     switchView('monthly');
 });
+
+// Make functions available globally
+window.toggleEventTypeFilter = function() {
+    console.log('Global toggle function called'); // Debug log
+    const content = document.getElementById('event-types-filter-content');
+    const toggleIcon = document.getElementById('event-filter-toggle');
+    
+    console.log('Content element:', content); // Debug log
+    console.log('Toggle icon:', toggleIcon); // Debug log
+    
+    if (content && toggleIcon) {
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            toggleIcon.classList.add('rotated');
+            console.log('Expanded'); // Debug log
+        } else {
+            content.classList.remove('expanded');
+            content.classList.add('collapsed');
+            toggleIcon.classList.remove('rotated');
+            console.log('Collapsed'); // Debug log
+        }
+    } else {
+        console.error('Could not find content or toggle icon elements');
+    }
+};
+
+window.clearEventTypeFilter = function() {
+    console.log('Clear filter called'); // Debug log
+    // We need to access the variables from the DOMContentLoaded scope
+    const eventTypeCards = document.querySelectorAll('.event-type-card.filterable');
+    eventTypeCards.forEach(card => card.classList.remove('selected'));
+    
+    // Reset all table rows to visible
+    document.querySelectorAll('.events-table tbody tr').forEach(row => {
+        row.style.display = '';
+    });
+    
+    // Reset stats to original values
+    // This is a simplified reset - in a real implementation you'd want to call the original functions
+    location.reload(); // Simple solution: reload the page to reset everything
+};
 </script>
 {% endblock %} 
