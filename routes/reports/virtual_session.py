@@ -1424,16 +1424,29 @@ def load_routes(bp):
             if not event_categorized:
                 running_count['unfilled'] += 1
             
-            # District-wise completed sessions
-            if event.districts:
+            # District-wise completed sessions - check if this event is successfully completed
+            event_is_completed = False
+            
+            # Check multiple sources for "successfully completed" status
+            if 'successfully completed' in original_status:
+                event_is_completed = True
+            elif event_status == EventStatus.COMPLETED:
+                event_is_completed = True
+            else:
+                # Check teacher registrations for completion indicators
+                for teacher_reg in event.teacher_registrations:
+                    tr_status = (teacher_reg.status or '').lower().strip()
+                    if 'successfully completed' in tr_status or 'attended' in tr_status or 'completed' in tr_status:
+                        event_is_completed = True
+                        break
+            
+            # Count by district if successfully completed
+            if event_is_completed and event.districts:
                 for district in event.districts:
                     district_name = district.name
                     if district_name not in district_completed:
                         district_completed[district_name] = 0
-                    
-                    # Count if successfully completed
-                    if 'successfully completed' in original_status:
-                        district_completed[district_name] += 1
+                    district_completed[district_name] += 1
             
             # Topic-wise session counts (using series field which contains Topic/Theme)
             if event.series and event.series.strip():
@@ -1509,6 +1522,12 @@ def load_routes(bp):
         print(f"DEBUG: Running count totals: {running_count}")
         print(f"DEBUG: Topic counts: {topic_counts}")
         print(f"DEBUG: District completed: {district_completed}")
+        
+        # Show overall completion stats
+        total_completed = sum(district_completed.values()) if district_completed else 0
+        total_successfully_completed = running_count.get('successfully_completed', 0)
+        print(f"DEBUG: Total completed by district: {total_completed}")
+        print(f"DEBUG: Total successfully completed in running count: {total_successfully_completed}")
         
         # Prepare data for template
         virtual_year_options = generate_school_year_options()
