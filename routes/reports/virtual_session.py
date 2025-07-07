@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, make_response, send_file, flash, redirect, url_for
 from flask_login import login_required, current_user
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from sqlalchemy import extract, or_, func
 from sqlalchemy.orm import joinedload
 import io
@@ -14,6 +14,7 @@ from models.teacher import Teacher
 from models.school_model import School
 from models import db
 from models.google_sheet import GoogleSheet
+from models.reports import VirtualSessionReportCache, VirtualSessionDistrictCache
 
 # Create blueprint
 virtual_bp = Blueprint('virtual', __name__)
@@ -74,6 +75,908 @@ def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
 
 # --- End Helper Functions ---
 
+# --- Cache Management Functions ---
+
+def is_cache_valid(cache_record, max_age_hours=24):
+    """
+    Check if a cache record is still valid based on age.
+    
+    Args:
+        cache_record: The cache record to check
+        max_age_hours: Maximum age in hours before cache is considered stale
+        
+    Returns:
+        bool: True if cache is valid, False otherwise
+    """
+    if not cache_record:
+        return False
+    
+    from datetime import datetime, timezone, timedelta
+    
+    # Convert to timezone-aware datetime if needed
+    if cache_record.last_updated.tzinfo is None:
+        last_updated = cache_record.last_updated.replace(tzinfo=timezone.utc)
+    else:
+        last_updated = cache_record.last_updated
+    
+    now = datetime.now(timezone.utc)
+    max_age = timedelta(hours=max_age_hours)
+    
+    return (now - last_updated) < max_age
+
+
+def get_virtual_session_cache(virtual_year, date_from=None, date_to=None):
+    """
+    Get cached virtual session report data.
+    
+    Args:
+        virtual_year: The virtual year to get cache for
+        date_from: Optional start date filter
+        date_to: Optional end date filter
+        
+    Returns:
+        VirtualSessionReportCache or None if not found/expired
+    """
+    cache_query = VirtualSessionReportCache.query.filter_by(
+        virtual_year=virtual_year,
+        date_from=date_from.date() if date_from else None,
+        date_to=date_to.date() if date_to else None
+    )
+    
+    cache_record = cache_query.first()
+    
+    if is_cache_valid(cache_record):
+        return cache_record
+    
+    return None
+
+
+def save_virtual_session_cache(virtual_year, date_from, date_to, session_data, 
+                              district_summaries, overall_summary, filter_options):
+    """
+    Save virtual session report data to cache.
+    
+    Args:
+        virtual_year: The virtual year
+        date_from: Start date filter
+        date_to: End date filter
+        session_data: Session data to cache
+        district_summaries: District summary data
+        overall_summary: Overall summary data
+        filter_options: Filter options data
+    """
+    try:
+        # Check if cache record exists
+        cache_record = VirtualSessionReportCache.query.filter_by(
+            virtual_year=virtual_year,
+            date_from=date_from.date() if date_from else None,
+            date_to=date_to.date() if date_to else None
+        ).first()
+        
+        if cache_record:
+            # Update existing record
+            cache_record.session_data = session_data
+            cache_record.district_summaries = district_summaries
+            cache_record.overall_summary = overall_summary
+            cache_record.filter_options = filter_options
+            cache_record.last_updated = datetime.now(timezone.utc)
+        else:
+            # Create new record
+            cache_record = VirtualSessionReportCache(
+                virtual_year=virtual_year,
+                date_from=date_from.date() if date_from else None,
+                date_to=date_to.date() if date_to else None,
+                session_data=session_data,
+                district_summaries=district_summaries,
+                overall_summary=overall_summary,
+                filter_options=filter_options
+            )
+            db.session.add(cache_record)
+        
+        db.session.commit()
+        print(f"Virtual session cache saved for {virtual_year}")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error saving virtual session cache: {str(e)}")
+
+
+def get_virtual_session_district_cache(district_name, virtual_year, date_from=None, date_to=None):
+    """
+    Get cached district virtual session report data.
+    
+    Args:
+        district_name: The district name
+        virtual_year: The virtual year to get cache for
+        date_from: Optional start date filter
+        date_to: Optional end date filter
+        
+    Returns:
+        VirtualSessionDistrictCache or None if not found/expired
+    """
+    cache_query = VirtualSessionDistrictCache.query.filter_by(
+        district_name=district_name,
+        virtual_year=virtual_year,
+        date_from=date_from.date() if date_from else None,
+        date_to=date_to.date() if date_to else None
+    )
+    
+    cache_record = cache_query.first()
+    
+    if is_cache_valid(cache_record):
+        return cache_record
+    
+    return None
+
+
+def save_virtual_session_district_cache(district_name, virtual_year, date_from, date_to,
+                                      session_data, monthly_stats, school_breakdown,
+                                      teacher_breakdown, summary_stats):
+    """
+    Save district virtual session report data to cache.
+    
+    Args:
+        district_name: The district name
+        virtual_year: The virtual year
+        date_from: Start date filter
+        date_to: End date filter
+        session_data: Session data to cache
+        monthly_stats: Monthly statistics
+        school_breakdown: School breakdown data
+        teacher_breakdown: Teacher breakdown data
+        summary_stats: Summary statistics
+    """
+    try:
+        # Check if cache record exists
+        cache_record = VirtualSessionDistrictCache.query.filter_by(
+            district_name=district_name,
+            virtual_year=virtual_year,
+            date_from=date_from.date() if date_from else None,
+            date_to=date_to.date() if date_to else None
+        ).first()
+        
+        if cache_record:
+            # Update existing record
+            cache_record.session_data = session_data
+            cache_record.monthly_stats = monthly_stats
+            cache_record.school_breakdown = school_breakdown
+            cache_record.teacher_breakdown = teacher_breakdown
+            cache_record.summary_stats = summary_stats
+            cache_record.last_updated = datetime.now(timezone.utc)
+        else:
+            # Create new record
+            cache_record = VirtualSessionDistrictCache(
+                district_name=district_name,
+                virtual_year=virtual_year,
+                date_from=date_from.date() if date_from else None,
+                date_to=date_to.date() if date_to else None,
+                session_data=session_data,
+                monthly_stats=monthly_stats,
+                school_breakdown=school_breakdown,
+                teacher_breakdown=teacher_breakdown,
+                summary_stats=summary_stats
+            )
+            db.session.add(cache_record)
+        
+        db.session.commit()
+        print(f"Virtual session district cache saved for {district_name} {virtual_year}")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error saving virtual session district cache: {str(e)}")
+
+
+def invalidate_virtual_session_caches(virtual_year=None):
+    """
+    Invalidate virtual session caches for a specific year or all years.
+    
+    Args:
+        virtual_year: Specific year to invalidate, or None for all years
+    """
+    try:
+        if virtual_year:
+            # Invalidate specific year
+            VirtualSessionReportCache.query.filter_by(virtual_year=virtual_year).delete()
+            VirtualSessionDistrictCache.query.filter_by(virtual_year=virtual_year).delete()
+        else:
+            # Invalidate all caches
+            VirtualSessionReportCache.query.delete()
+            VirtualSessionDistrictCache.query.delete()
+        
+        db.session.commit()
+        print(f"Virtual session caches invalidated for {virtual_year or 'all years'}")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error invalidating virtual session caches: {str(e)}")
+
+# --- End Cache Management Functions ---
+
+# --- Data Processing Helper Functions ---
+
+def apply_runtime_filters(session_data, filters):
+    """
+    Apply runtime filters to session data.
+    
+    Args:
+        session_data: List of session records
+        filters: Dictionary of filter criteria
+        
+    Returns:
+        Filtered session data
+    """
+    filtered_data = []
+    
+    for session in session_data:
+        # Apply career cluster filter
+        if filters.get('career_cluster'):
+            if not session.get('topic_theme') or filters['career_cluster'].lower() not in session['topic_theme'].lower():
+                continue
+        
+        # Apply school filter
+        if filters.get('school'):
+            if not session.get('school_name') or filters['school'].lower() not in session['school_name'].lower():
+                continue
+        
+        # Apply district filter
+        if filters.get('district'):
+            if session.get('district') != filters['district']:
+                continue
+        
+        # Apply status filter
+        if filters.get('status'):
+            if session.get('status') != filters['status']:
+                continue
+        
+        filtered_data.append(session)
+    
+    return filtered_data
+
+
+def calculate_summaries_from_sessions(session_data):
+    """
+    Calculate district summaries and overall summary from session data.
+    
+    Args:
+        session_data: List of session records
+        
+    Returns:
+        Tuple of (district_summaries, overall_summary)
+    """
+    # Filter districts to only show allowed ones
+    allowed_districts = {
+        "Hickman Mills School District",
+        "Grandview School District",
+        "Kansas City Kansas Public Schools"
+    }
+    
+    district_summaries = {}
+    overall_stats = {
+        'teacher_count': 0,
+        'student_count': 0,
+        'session_count': set(),
+        'experience_count': 0,
+        'organization_count': set(),
+        'professional_count': set(),
+        'professional_of_color_count': set(),
+        'school_count': set()
+    }
+    
+    for session in session_data:
+        if session['district']:
+            if session['district'] not in district_summaries:
+                district_summaries[session['district']] = {
+                    'teachers': set(),
+                    'schools': set(),
+                    'sessions': set(),
+                    'total_students': 0,
+                    'total_experiences': 0,
+                    'organizations': set(),
+                    'professionals': set(),
+                    'professionals_of_color': set()
+                }
+            district_summary = district_summaries[session['district']]
+            if session['teacher_name']:
+                district_summary['teachers'].add(session['teacher_name'])
+                overall_stats['teacher_count'] += 1
+            if session['school_name']:
+                district_summary['schools'].add(session['school_name'])
+                overall_stats['school_count'].add(session['school_name'])
+            if session['session_title']:
+                district_summary['sessions'].add(session['session_title'])
+                overall_stats['session_count'].add(session['session_title'])
+            student_count = session.get('participant_count', 0)
+            if student_count > 0:
+                district_summary['total_students'] += student_count
+                overall_stats['student_count'] += student_count
+            else:
+                district_summary['total_students'] += 25
+                overall_stats['student_count'] += 25
+            district_summary['total_experiences'] += 1
+            overall_stats['experience_count'] += 1
+            if session['presenter']:
+                presenters = [p.strip() for p in session['presenter'].split(',')]
+                for presenter in presenters:
+                    if presenter:
+                        district_summary['professionals'].add(presenter)
+                        district_summary['professionals_of_color'].add(presenter)
+                        district_summary['organizations'].add(presenter)
+                        overall_stats['professional_count'].add(presenter)
+                        overall_stats['professional_of_color_count'].add(presenter)
+                        overall_stats['organization_count'].add(presenter)
+    
+    # Convert sets to counts and filter allowed districts
+    for district_name, summary in district_summaries.items():
+        summary['teacher_count'] = len(summary['teachers'])
+        summary['school_count'] = len(summary['schools'])
+        summary['session_count'] = len(summary['sessions'])
+        summary['organization_count'] = len(summary['organizations'])
+        summary['professional_count'] = len(summary['professionals'])
+        summary['professional_of_color_count'] = 0  # Always 0 until we have demographic data
+        del summary['teachers']
+        del summary['schools']
+        del summary['sessions']
+        del summary['organizations']
+        del summary['professionals']
+        del summary['professionals_of_color']
+    
+    district_summaries = {k: v for k, v in district_summaries.items() if k in allowed_districts}
+    
+    # Prepare overall summary stats
+    overall_summary = {
+        'teacher_count': overall_stats['teacher_count'],
+        'student_count': overall_stats['student_count'],
+        'session_count': len(overall_stats['session_count']),
+        'experience_count': overall_stats['experience_count'],
+        'organization_count': len(overall_stats['organization_count']),
+        'professional_count': len(overall_stats['professional_count']),
+        'professional_of_color_count': 0,  # Always 0 until we have demographic data
+        'school_count': len(overall_stats['school_count'])
+    }
+    
+    return district_summaries, overall_summary
+
+
+def apply_sorting_and_pagination(session_data, request_args, current_filters):
+    """
+    Apply sorting and pagination to session data.
+    
+    Args:
+        session_data: List of session records
+        request_args: Request arguments for sorting/pagination
+        current_filters: Current filter settings
+        
+    Returns:
+        Dictionary with paginated_data and pagination info
+    """
+    # Apply sorting
+    sort_column = request_args.get('sort', 'date')
+    sort_order = request_args.get('order', 'desc')
+    
+    # Define sortable columns mapping
+    sortable_columns = {
+        'status': 'status',
+        'date': 'date',
+        'time': 'time', 
+        'session_type': 'session_type',
+        'teacher_name': 'teacher_name',
+        'school_name': 'school_name',
+        'school_level': 'school_level',
+        'district': 'district',
+        'session_title': 'session_title',
+        'presenter': 'presenter',
+        'topic_theme': 'topic_theme'
+    }
+    
+    # Apply sorting if valid column
+    if sort_column in sortable_columns:
+        reverse_order = (sort_order == 'desc')
+        
+        # Handle special sorting for date/time columns
+        if sort_column == 'date':
+            def date_sort_key(session):
+                try:
+                    if session['date']:
+                        date_parts = session['date'].split('/')
+                        if len(date_parts) == 3:
+                            month = int(date_parts[0])
+                            day = int(date_parts[1])
+                            year = int(date_parts[2])
+                            if year < 50:
+                                year += 2000
+                            else:
+                                year += 1900
+                            return datetime(year, month, day)
+                        elif len(date_parts) == 2:
+                            month = int(date_parts[0])
+                            day = int(date_parts[1])
+                            virtual_year_start = int(current_filters['year'].split('-')[0])
+                            if month >= 7:
+                                year = virtual_year_start
+                            else:
+                                year = virtual_year_start + 1
+                            return datetime(year, month, day)
+                    return datetime.min
+                except (ValueError, IndexError):
+                    return datetime.min
+            session_data.sort(key=date_sort_key, reverse=reverse_order)
+        
+        elif sort_column == 'time':
+            def time_sort_key(session):
+                try:
+                    if session['time']:
+                        return datetime.strptime(session['time'], '%I:%M %p').time()
+                    return datetime.min.time()
+                except ValueError:
+                    return datetime.min.time()
+            session_data.sort(key=time_sort_key, reverse=reverse_order)
+        
+        else:
+            def string_sort_key(session):
+                value = session.get(sortable_columns[sort_column], '') or ''
+                return str(value).lower()
+            session_data.sort(key=string_sort_key, reverse=reverse_order)
+    
+    # Add sorting info to current_filters for template
+    current_filters['sort'] = sort_column
+    current_filters['order'] = sort_order
+    
+    # Apply pagination
+    try:
+        page = int(request_args.get('page', 1))
+        if page < 1:
+            page = 1
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request_args.get('per_page', 25))
+        if per_page < 1:
+            per_page = 25
+    except ValueError:
+        per_page = 25
+    
+    total_records = len(session_data)
+    total_pages = (total_records + per_page - 1) // per_page
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    paginated_data = session_data[start_idx:end_idx]
+    
+    pagination = {
+        'current_page': page,
+        'per_page': per_page,
+        'total_pages': total_pages,
+        'total_records': total_records
+    }
+    
+    return {
+        'paginated_data': paginated_data,
+        'pagination': pagination
+    }
+
+
+def get_google_sheet_url(virtual_year):
+    """
+    Get Google Sheet URL for a virtual year.
+    
+    Args:
+        virtual_year: The virtual year to get sheet for
+        
+    Returns:
+        Google Sheet URL or None
+    """
+    google_sheet = GoogleSheet.query.filter_by(academic_year=virtual_year, purpose='virtual_sessions').first()
+    if google_sheet and google_sheet.decrypted_sheet_id:
+        return f"https://docs.google.com/spreadsheets/d/{google_sheet.decrypted_sheet_id}"
+    return None
+
+
+def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
+    """
+    Compute virtual session data from database.
+    
+    Args:
+        virtual_year: The virtual year
+        date_from: Start date
+        date_to: End date
+        filters: Filter criteria
+        
+    Returns:
+        Tuple of (session_data, district_summaries, overall_summary, filter_options)
+    """
+    # Base query for virtual session events
+    base_query = Event.query.options(
+        joinedload(Event.districts),
+        joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
+    ).filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.start_date >= date_from,
+        Event.start_date <= date_to
+    )
+    
+    # Apply database-level filters
+    if filters.get('career_cluster'):
+        base_query = base_query.filter(Event.series.ilike(f'%{filters["career_cluster"]}%'))
+    
+    if filters.get('status'):
+        base_query = base_query.filter(Event.status == filters['status'])
+
+    # Get all events
+    events = base_query.order_by(Event.start_date.desc()).all()
+    
+    # Build session data
+    session_data = []
+    all_districts = set()
+    all_schools = set()
+    all_career_clusters = set()
+    all_statuses = set()
+    
+    for event in events:
+        # Get all teacher registrations for this event
+        teacher_registrations = event.teacher_registrations
+        
+        if teacher_registrations:
+            # Create a row for each teacher registration
+            for teacher_reg in teacher_registrations:
+                teacher = teacher_reg.teacher
+                
+                # Get school information
+                school = None
+                school_name = ''
+                school_level = ''
+                
+                if teacher:
+                    if hasattr(teacher, 'school_obj') and teacher.school_obj:
+                        school = teacher.school_obj
+                        school_name = school.name
+                        school_level = getattr(school, 'level', '')
+                    elif teacher.school_id:
+                        school = School.query.get(teacher.school_id)
+                        if school:
+                            school_name = school.name
+                            school_level = getattr(school, 'level', '')
+                
+                # Determine district from multiple sources
+                district_name = None
+                if event.districts:
+                    district_name = event.districts[0].name
+                elif event.district_partner:
+                    district_name = event.district_partner
+                elif school and hasattr(school, 'district') and school.district:
+                    district_name = school.district.name
+                else:
+                    district_name = 'Unknown District'
+                
+                # Apply district filter if specified
+                if filters.get('district') and district_name != filters['district']:
+                    continue
+                
+                # Apply school filter if specified
+                if filters.get('school') and school_name and filters['school'].lower() not in school_name.lower():
+                    continue
+                
+                session_data.append({
+                    'event_id': event.id,
+                    'status': teacher_reg.status or 'registered',
+                    'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
+                    'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
+                    'session_type': event.additional_information or '',
+                    'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
+                    'school_name': school_name,
+                    'school_level': school_level,
+                    'district': district_name,
+                    'session_title': event.title,
+                    'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                    'topic_theme': event.series or '',
+                    'session_link': event.registration_link or '',
+                    'session_id': event.session_id or '',
+                    'participant_count': event.participant_count or 0,
+                    'duration': event.duration or 0,
+                    'is_simulcast': teacher_reg.is_simulcast
+                })
+                
+                # Collect filter options
+                if district_name:
+                    all_districts.add(district_name)
+                if school_name:
+                    all_schools.add(school_name)
+                if event.series:
+                    all_career_clusters.add(event.series)
+                if teacher_reg.status:
+                    all_statuses.add(teacher_reg.status)
+                    
+        else:
+            # Event with no teacher registrations - show the event itself
+            district_name = None
+            if event.districts:
+                district_name = event.districts[0].name
+            elif event.district_partner:
+                district_name = event.district_partner
+            else:
+                district_name = 'Unknown District'
+            
+            # Apply district filter if specified
+            if filters.get('district') and district_name != filters['district']:
+                continue
+            
+            session_data.append({
+                'event_id': event.id,
+                'status': event.status.value if event.status else '',
+                'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
+                'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
+                'session_type': event.additional_information or '',
+                'teacher_name': '',
+                'school_name': '',
+                'school_level': '',
+                'district': district_name,
+                'session_title': event.title,
+                'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                'topic_theme': event.series or '',
+                'session_link': event.registration_link or '',
+                'session_id': event.session_id or '',
+                'participant_count': event.participant_count or 0,
+                'duration': event.duration or 0,
+                'is_simulcast': False
+            })
+            
+            # Collect filter options
+            if district_name:
+                all_districts.add(district_name)
+            if event.series:
+                all_career_clusters.add(event.series)
+            if event.status:
+                all_statuses.add(event.status.value)
+    
+    # Calculate summaries
+    district_summaries, overall_summary = calculate_summaries_from_sessions(session_data)
+    
+    # Filter districts to only show allowed ones
+    allowed_districts = {
+        "Hickman Mills School District",
+        "Grandview School District", 
+        "Kansas City Kansas Public Schools"
+    }
+    filtered_districts = [d for d in all_districts if d in allowed_districts]
+    
+    # Prepare filter options
+    virtual_year_options = generate_school_year_options()
+    filter_options = {
+        'school_years': virtual_year_options,
+        'career_clusters': sorted(list(all_career_clusters)),
+        'schools': sorted(list(all_schools)),
+        'districts': sorted(filtered_districts),
+        'statuses': sorted(list(all_statuses))
+    }
+    
+    return session_data, district_summaries, overall_summary, filter_options
+
+
+def compute_virtual_session_district_data(district_name, virtual_year, date_from, date_to):
+    """
+    Compute district-specific virtual session data from database.
+    
+    Args:
+        district_name: Name of the district
+        virtual_year: The virtual year
+        date_from: Start date
+        date_to: End date
+        
+    Returns:
+        Tuple of (session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats)
+    """
+    # Base query for virtual session events
+    base_query = Event.query.options(
+        joinedload(Event.districts),
+        joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
+    ).filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.start_date >= date_from,
+        Event.start_date <= date_to
+    )
+    
+    events = base_query.order_by(Event.start_date.desc()).all()
+    session_dict = {}
+    
+    for event in events:
+        # Determine district for this event
+        district_name_val = None
+        if event.districts:
+            district_name_val = event.districts[0].name
+        elif event.district_partner:
+            district_name_val = event.district_partner
+        else:
+            district_name_val = 'Unknown District'
+        
+        if district_name_val != district_name:
+            continue
+        
+        # Aggregate teachers and schools for this event
+        teachers = set()
+        schools = set()
+        for teacher_reg in event.teacher_registrations:
+            teacher = teacher_reg.teacher
+            if teacher:
+                teachers.add(f"{teacher.first_name} {teacher.last_name}")
+                # School
+                school_name = ''
+                if hasattr(teacher, 'school_obj') and teacher.school_obj:
+                    school_name = teacher.school_obj.name
+                elif teacher.school_id:
+                    school_obj = School.query.get(teacher.school_id)
+                    if school_obj:
+                        school_name = school_obj.name
+                if school_name:
+                    schools.add(school_name)
+        
+        # Create aggregated session record
+        session_dict[event.id] = {
+            'event_id': event.id,
+            'status': event.status.value if event.status else '',
+            'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
+            'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
+            'session_type': event.additional_information or '',
+            'teachers': sorted(teachers) if teachers else [],
+            'schools': sorted(schools) if schools else [],
+            'district': district_name_val,
+            'session_title': event.title,
+            'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+            'topic_theme': event.series or '',
+            'session_link': event.registration_link or '',
+            'session_id': event.session_id or '',
+            'participant_count': event.participant_count or 0,
+            'duration': event.duration or 0,
+            'is_simulcast': any([tr.is_simulcast for tr in event.teacher_registrations]) if event.teacher_registrations else False
+        }
+    
+    # Convert to list and sort by date descending
+    session_data = list(session_dict.values())
+    session_data.sort(key=lambda s: s['date'], reverse=True)
+    
+    # Calculate summary statistics
+    total_teachers = set()
+    total_students = 0
+    total_unique_sessions = set()
+    total_experiences = 0
+    total_organizations = set()
+    total_professionals = set()
+    total_professionals_of_color = set()
+    total_schools = set()
+    school_breakdown = {}
+    teacher_breakdown = {}
+    
+    for session in session_data:
+        # Teachers
+        for teacher_name in session['teachers']:
+            total_teachers.add(teacher_name)
+            # Teacher breakdown
+            if teacher_name not in teacher_breakdown:
+                # Use first school if available, else N/A
+                school_val = session['schools'][0] if session['schools'] else 'N/A'
+                teacher_breakdown[teacher_name] = {
+                    'name': teacher_name,
+                    'school': school_val,
+                    'sessions': 0
+                }
+            teacher_breakdown[teacher_name]['sessions'] += 1
+        
+        # Schools
+        for school_name in session['schools']:
+            total_schools.add(school_name)
+            # School breakdown
+            if school_name not in school_breakdown:
+                school_breakdown[school_name] = {
+                    'name': school_name,
+                    'sessions': 0
+                }
+            school_breakdown[school_name]['sessions'] += 1
+        
+        # Sessions
+        if session['session_title']:
+            total_unique_sessions.add(session['session_title'])
+        
+        # Students
+        if session.get('participant_count', 0) > 0:
+            total_students += session['participant_count']
+        else:
+            total_students += 25
+        total_experiences += 1
+        
+        # Presenters/Organizations
+        if session['presenter']:
+            presenters = [p.strip() for p in session['presenter'].split(',')]
+            for presenter in presenters:
+                if presenter:
+                    total_professionals.add(presenter)
+                    total_professionals_of_color.add(presenter)
+                    total_organizations.add(presenter)
+    
+    # Convert breakdowns to sorted lists
+    school_breakdown_list = sorted(school_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
+    teacher_breakdown_list = sorted(teacher_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
+    
+    # Calculate monthly statistics
+    monthly_stats = {}
+    for session in session_data:
+        # Parse month from date
+        try:
+            date_obj = datetime.strptime(session['date'], '%m/%d/%y')
+            month_key = date_obj.strftime('%Y-%m')
+            month_name = date_obj.strftime('%B %Y')
+        except Exception:
+            continue
+        
+        if month_key not in monthly_stats:
+            monthly_stats[month_key] = {
+                'month_name': month_name,
+                'total_sessions': 0,
+                'total_registered': 0,
+                'total_attended': 0,
+                'total_duration': 0,
+                'avg_attendance_rate': 0.0,
+                'avg_duration': 0.0,
+                'schools': set(),
+                'educators': set(),
+                'career_clusters': set(),
+                'events': []
+            }
+        
+        stats = monthly_stats[month_key]
+        stats['total_sessions'] += 1
+        stats['total_registered'] += session.get('participant_count', 0)
+        stats['total_attended'] += session.get('participant_count', 0)
+        stats['total_duration'] += session.get('duration', 0)
+        
+        for school_name in session['schools']:
+            stats['schools'].add(school_name)
+        for teacher_name in session['teachers']:
+            stats['educators'].add(teacher_name)
+        if session['topic_theme']:
+            stats['career_clusters'].add(session['topic_theme'])
+        
+        stats['events'].append({
+            'title': session['session_title'],
+            'date': session['date'],
+            'time': session['time'],
+            'duration': session['duration'],
+            'registered': session.get('participant_count', 0),
+            'attended': session.get('participant_count', 0),
+            'schools': ', '.join(session['schools']) if session['schools'] else 'N/A',
+            'educators': ', '.join(session['teachers']) if session['teachers'] else 'N/A',
+            'career_cluster': session['topic_theme'],
+            'session_id': session['session_id'],
+            'presenter': session['presenter']
+        })
+    
+    # Finalize monthly stats
+    for stats in monthly_stats.values():
+        if stats['total_registered'] > 0:
+            stats['avg_attendance_rate'] = (stats['total_attended'] / stats['total_registered']) * 100
+        if stats['total_sessions'] > 0:
+            stats['avg_duration'] = stats['total_duration'] / stats['total_sessions']
+        stats['school_count'] = len(stats['schools'])
+        stats['educator_count'] = len(stats['educators'])
+        stats['career_cluster_count'] = len(stats['career_clusters'])
+        del stats['schools']
+        del stats['educators']
+        del stats['career_clusters']
+    
+    sorted_monthly_stats = dict(sorted(monthly_stats.items()))
+    
+    # Prepare summary statistics
+    summary_stats = {
+        'total_teachers': len(total_teachers),
+        'total_students': total_students,
+        'total_unique_sessions': len(total_unique_sessions),
+        'total_experiences': total_experiences,
+        'total_organizations': len(total_organizations),
+        'total_professionals': len(total_professionals),
+        'total_professionals_of_color': 0,  # Always 0 until we have demographic data
+        'total_schools': len(total_schools)
+    }
+    
+    return session_data, sorted_monthly_stats, school_breakdown_list, teacher_breakdown_list, summary_stats
+
+# --- End Data Processing Helper Functions ---
+
 
 def load_routes(bp):
     @bp.route('/reports/virtual/usage')
@@ -82,6 +985,9 @@ def load_routes(bp):
         # Get filter parameters - Use virtual year instead of school year
         default_virtual_year = get_current_virtual_year()  # Changed from get_current_school_year()
         selected_virtual_year = request.args.get('year', default_virtual_year)  # Changed variable name
+        
+        # Check if refresh is requested
+        refresh_requested = request.args.get('refresh', '0') == '1'
         
         # Calculate default date range based on virtual session year
         default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)  # Changed from get_school_year_dates()
@@ -123,359 +1029,88 @@ def load_routes(bp):
             'status': request.args.get('status')
         }
         
-        # Base query for virtual session events
-        base_query = Event.query.options(
-            joinedload(Event.districts),
-            joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
-        ).filter(
-            Event.type == EventType.VIRTUAL_SESSION,
-            Event.start_date >= date_from,
-            Event.start_date <= date_to
+        # Check if we're using default full year date range (for caching)
+        is_full_year = (date_from == default_date_from and date_to == default_date_to)
+        
+        # If refresh is requested, invalidate cache for this virtual year
+        if refresh_requested and is_full_year:
+            invalidate_virtual_session_caches(selected_virtual_year)
+            print(f"Cache invalidated for virtual session report {selected_virtual_year}")
+        
+        # Try to get cached data for full year queries
+        cached_data = None
+        is_cached = False
+        last_refreshed = None
+        
+        if is_full_year and not refresh_requested:
+            cached_data = get_virtual_session_cache(selected_virtual_year, date_from, date_to)
+            if cached_data:
+                is_cached = True
+                last_refreshed = cached_data.last_updated
+                print(f"Using cached data for virtual session report {selected_virtual_year}")
+                # Use cached data
+                session_data = cached_data.session_data
+                district_summaries = cached_data.district_summaries
+                overall_summary = cached_data.overall_summary
+                filter_options = cached_data.filter_options
+                
+                # Apply runtime filters if any
+                if any([current_filters['career_cluster'], current_filters['school'], 
+                       current_filters['district'], current_filters['status']]):
+                    session_data = apply_runtime_filters(session_data, current_filters)
+                    # Recalculate summaries based on filtered data
+                    district_summaries, overall_summary = calculate_summaries_from_sessions(session_data)
+                
+                # Apply sorting and pagination as before
+                session_data = apply_sorting_and_pagination(session_data, request.args, current_filters)
+                
+                return render_template(
+                    'reports/virtual_usage.html',
+                    session_data=session_data['paginated_data'],
+                    filter_options=filter_options,
+                    current_filters=current_filters,
+                    pagination=session_data['pagination'],
+                    google_sheet_url=get_google_sheet_url(selected_virtual_year),
+                    district_summaries=district_summaries,
+                    overall_summary=overall_summary,
+                    last_refreshed=last_refreshed,
+                    is_cached=is_cached
+                )
+        
+        # If no cache or not full year, compute data fresh
+        print(f"Computing fresh data for virtual session report {selected_virtual_year}")
+        session_data, district_summaries, overall_summary, filter_options = compute_virtual_session_data(
+            selected_virtual_year, date_from, date_to, current_filters
         )
         
-        # Apply filters
-        if current_filters['career_cluster']:
-            base_query = base_query.filter(Event.series.ilike(f'%{current_filters["career_cluster"]}%'))
+        # Cache the data if it's a full year query
+        if is_full_year:
+            # Cache the unfiltered data
+            unfiltered_data, unfiltered_district_summaries, unfiltered_overall_summary, _ = compute_virtual_session_data(
+                selected_virtual_year, date_from, date_to, {}  # No filters for cache
+            )
+            save_virtual_session_cache(
+                selected_virtual_year, date_from, date_to,
+                unfiltered_data, unfiltered_district_summaries, 
+                unfiltered_overall_summary, filter_options
+            )
+            # Set the last refreshed time for this fresh data
+            last_refreshed = datetime.now(timezone.utc)
         
-        if current_filters['status']:
-            base_query = base_query.filter(Event.status == current_filters['status'])
-
-        # Get all events
-        events = base_query.order_by(Event.start_date.desc()).all()
+        # Apply sorting and pagination
+        session_result = apply_sorting_and_pagination(session_data, request.args, current_filters)
         
-        # Build session data similar to Google Sheet format
-        session_data = []
-        
-        for event in events:
-            # Get all teacher registrations for this event
-            teacher_registrations = event.teacher_registrations
-            
-            if teacher_registrations:
-                # Create a row for each teacher registration
-                for teacher_reg in teacher_registrations:
-                    teacher = teacher_reg.teacher
-                    
-                    # Get school information - handle both relationship and direct query
-                    school = None
-                    school_name = ''
-                    school_level = ''
-                    
-                    if teacher:
-                        if hasattr(teacher, 'school_obj') and teacher.school_obj:
-                            # Use relationship if available
-                            school = teacher.school_obj
-                            school_name = school.name
-                            school_level = getattr(school, 'level', '')
-                        elif teacher.school_id:
-                            # Fallback to direct query
-                            school = School.query.get(teacher.school_id)
-                            if school:
-                                school_name = school.name
-                                school_level = getattr(school, 'level', '')
-                    
-                    # Determine district from multiple sources
-                    district_name = None
-                    if event.districts:
-                        district_name = event.districts[0].name
-                    elif event.district_partner:
-                        district_name = event.district_partner
-                    elif school and hasattr(school, 'district') and school.district:
-                        district_name = school.district.name
-                    else:
-                        district_name = 'Unknown District'
-                    
-                    # Apply district filter if specified
-                    if current_filters['district'] and district_name != current_filters['district']:
-                        continue
-                    
-                    # Apply school filter if specified
-                    if current_filters['school'] and school_name and current_filters['school'].lower() not in school_name.lower():
-                        continue
-                    
-                    session_data.append({
-                        'event_id': event.id,
-                        'status': teacher_reg.status or 'registered',
-                        'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
-                        'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
-                        'session_type': event.additional_information or '',
-                        'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
-                        'school_name': school_name,
-                        'school_level': school_level,
-                        'district': district_name,
-                        'session_title': event.title,
-                        'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                        'topic_theme': event.series or '',
-                        'session_link': event.registration_link or '',
-                        'session_id': event.session_id or '',
-                        'participant_count': event.participant_count or 0,
-                        'duration': event.duration or 0,
-                        'is_simulcast': teacher_reg.is_simulcast
-                    })
-            else:
-                # Event with no teacher registrations - show the event itself
-                district_name = None
-                if event.districts:
-                    district_name = event.districts[0].name
-                elif event.district_partner:
-                    district_name = event.district_partner
-                else:
-                    district_name = 'Unknown District'
-                
-                # Apply district filter if specified
-                if current_filters['district'] and district_name != current_filters['district']:
-                    continue
-                
-                session_data.append({
-                    'event_id': event.id,
-                    'status': event.status.value if event.status else '',
-                    'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
-                    'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
-                    'session_type': event.additional_information or '',
-                    'teacher_name': '',
-                    'school_name': '',
-                    'school_level': '',
-                    'district': district_name,
-                    'session_title': event.title,
-                    'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                    'topic_theme': event.series or '',
-                    'session_link': event.registration_link or '',
-                    'session_id': event.session_id or '',
-                    'participant_count': event.participant_count or 0,
-                    'duration': event.duration or 0,
-                    'is_simulcast': False
-                })
-        
-        # Get filter options
-        # Apply sorting before building filter options
-        sort_column = request.args.get('sort', 'date')  # Default sort by date
-        sort_order = request.args.get('order', 'desc')  # Default descending
-        
-        # Define sortable columns mapping
-        sortable_columns = {
-            'status': 'status',
-            'date': 'date',
-            'time': 'time', 
-            'session_type': 'session_type',
-            'teacher_name': 'teacher_name',
-            'school_name': 'school_name',
-            'school_level': 'school_level',
-            'district': 'district',
-            'session_title': 'session_title',
-            'presenter': 'presenter',
-            'topic_theme': 'topic_theme'
-        }
-        
-        # Apply sorting if valid column
-        if sort_column in sortable_columns:
-            reverse_order = (sort_order == 'desc')
-            
-            # Handle special sorting for date/time columns
-            if sort_column == 'date':
-                def date_sort_key(session):
-                    try:
-                        # Convert MM/DD/YY format back to date for proper sorting
-                        if session['date']:
-                            # Handle both MM/DD/YY and MM/DD formats for backward compatibility
-                            date_parts = session['date'].split('/')
-                            if len(date_parts) == 3:  # MM/DD/YY format
-                                month = int(date_parts[0])
-                                day = int(date_parts[1])
-                                year = int(date_parts[2])
-                                # Convert 2-digit year to 4-digit year
-                                if year < 50:  # Assume 00-49 means 2000-2049
-                                    year += 2000
-                                else:  # Assume 50-99 means 1950-1999
-                                    year += 1900
-                                return datetime(year, month, day)
-                            elif len(date_parts) == 2:  # MM/DD format (fallback)
-                                month = int(date_parts[0])
-                                day = int(date_parts[1])
-                                # Determine the correct year based on virtual session year context
-                                # Virtual year runs July-June, so:
-                                # July-December = first year of virtual year
-                                # January-June = second year of virtual year
-                                virtual_year_start = int(selected_virtual_year.split('-')[0])  # Changed from school_year_start
-                                
-                                if month >= 7:  # July-December
-                                    year = virtual_year_start
-                                else:  # January-June
-                                    year = virtual_year_start + 1
-                                return datetime(year, month, day)
-                        return datetime.min
-                    except (ValueError, IndexError):
-                        return datetime.min
-                session_data.sort(key=date_sort_key, reverse=reverse_order)
-            
-            elif sort_column == 'time':
-                def time_sort_key(session):
-                    try:
-                        if session['time']:
-                            return datetime.strptime(session['time'], '%I:%M %p').time()
-                        return datetime.min.time()
-                    except ValueError:
-                        return datetime.min.time()
-                session_data.sort(key=time_sort_key, reverse=reverse_order)
-            
-            else:
-                # For other columns, sort by string value (case-insensitive)
-                def string_sort_key(session):
-                    value = session.get(sortable_columns[sort_column], '') or ''
-                    return str(value).lower()
-                session_data.sort(key=string_sort_key, reverse=reverse_order)
-        
-        # Add sorting info to current_filters for template
-        current_filters['sort'] = sort_column
-        current_filters['order'] = sort_order
-
-        # --- Pagination ---
-        # (Move pagination AFTER all summary/district aggregation)
-        
-        # Build district summary statistics and overall summary from ALL session_data (not paginated)
-        all_districts = set()
-        all_schools = set()
-        all_career_clusters = set()
-        all_statuses = set()
-        
-        district_summaries = {}
-        overall_stats = {
-            'teacher_count': 0,
-            'student_count': 0,
-            'session_count': set(),
-            'experience_count': 0,
-            'organization_count': set(),
-            'professional_count': set(),
-            'professional_of_color_count': set(),
-            'school_count': set()
-        }
-        
-        for session in session_data:
-            if session['district']:
-                all_districts.add(session['district'])
-                if session['district'] not in district_summaries:
-                    district_summaries[session['district']] = {
-                        'teachers': set(),
-                        'schools': set(),
-                        'sessions': set(),
-                        'total_students': 0,
-                        'total_experiences': 0,
-                        'organizations': set(),
-                        'professionals': set(),
-                        'professionals_of_color': set()
-                    }
-                district_summary = district_summaries[session['district']]
-                if session['teacher_name']:
-                    district_summary['teachers'].add(session['teacher_name'])
-                    overall_stats['teacher_count'] += 1
-                if session['school_name']:
-                    district_summary['schools'].add(session['school_name'])
-                    overall_stats['school_count'].add(session['school_name'])
-                if session['session_title']:
-                    district_summary['sessions'].add(session['session_title'])
-                    overall_stats['session_count'].add(session['session_title'])
-                student_count = session.get('participant_count', 0)
-                if student_count > 0:
-                    district_summary['total_students'] += student_count
-                    overall_stats['student_count'] += student_count
-                else:
-                    district_summary['total_students'] += 25
-                    overall_stats['student_count'] += 25
-                district_summary['total_experiences'] += 1
-                overall_stats['experience_count'] += 1
-                if session['presenter']:
-                    presenters = [p.strip() for p in session['presenter'].split(',')]
-                    for presenter in presenters:
-                        if presenter:
-                            district_summary['professionals'].add(presenter)
-                            district_summary['professionals_of_color'].add(presenter)
-                            district_summary['organizations'].add(presenter)
-                            overall_stats['professional_count'].add(presenter)
-                            overall_stats['professional_of_color_count'].add(presenter)
-                            overall_stats['organization_count'].add(presenter)
-            if session['school_name']:
-                all_schools.add(session['school_name'])
-            if session['topic_theme']:
-                all_career_clusters.add(session['topic_theme'])
-            if session['status']:
-                all_statuses.add(session['status'])
-        for district_name, summary in district_summaries.items():
-            summary['teacher_count'] = len(summary['teachers'])
-            summary['school_count'] = len(summary['schools'])
-            summary['session_count'] = len(summary['sessions'])
-            summary['organization_count'] = len(summary['organizations'])
-            summary['professional_count'] = len(summary['professionals'])
-            summary['professional_of_color_count'] = 0  # Always 0 until we have demographic data
-            del summary['teachers']
-            del summary['schools']
-            del summary['sessions']
-            del summary['organizations']
-            del summary['professionals']
-            del summary['professionals_of_color']
-        # Now paginate session_data for table display
-        try:
-            page = int(request.args.get('page', 1))
-            if page < 1:
-                page = 1
-        except ValueError:
-            page = 1
-        try:
-            per_page = int(request.args.get('per_page', 25))
-            if per_page < 1:
-                per_page = 25
-        except ValueError:
-            per_page = 25
-        total_records = len(session_data)
-        total_pages = (total_records + per_page - 1) // per_page
-        start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page
-        paginated_data = session_data[start_idx:end_idx]
-        virtual_year_options = generate_school_year_options()
-        
-        # Filter districts to only show allowed ones
-        allowed_districts = {
-            "Hickman Mills School District",
-            "Grandview School District",
-            "Kansas City Kansas Public Schools"
-        }
-        filtered_districts = [d for d in all_districts if d in allowed_districts]
-        
-        filter_options = {
-            'school_years': virtual_year_options,
-            'career_clusters': sorted(list(all_career_clusters)),
-            'schools': sorted(list(all_schools)),
-            'districts': sorted(filtered_districts),
-            'statuses': sorted(list(all_statuses))
-        }
-        google_sheet = GoogleSheet.query.filter_by(academic_year=selected_virtual_year, purpose='virtual_sessions').first()
-        google_sheet_url = None
-        if google_sheet and google_sheet.decrypted_sheet_id:
-            google_sheet_url = f"https://docs.google.com/spreadsheets/d/{google_sheet.decrypted_sheet_id}"
-        
-        district_summaries = {k: v for k, v in district_summaries.items() if k in allowed_districts}
-        # Prepare overall summary stats for template
-        overall_summary = {
-            'teacher_count': overall_stats['teacher_count'],
-            'student_count': overall_stats['student_count'],
-            'session_count': len(overall_stats['session_count']),
-            'experience_count': overall_stats['experience_count'],
-            'organization_count': len(overall_stats['organization_count']),
-            'professional_count': len(overall_stats['professional_count']),
-            'professional_of_color_count': 0,  # Always 0 until we have demographic data
-            'school_count': len(overall_stats['school_count'])
-        }
         return render_template(
             'reports/virtual_usage.html',
-            session_data=paginated_data,
+            session_data=session_result['paginated_data'],
             filter_options=filter_options,
             current_filters=current_filters,
-            pagination={
-                'current_page': page,
-                'per_page': per_page,
-                'total_pages': total_pages,
-                'total_records': total_records
-            },
-            google_sheet_url=google_sheet_url,
+            pagination=session_result['pagination'],
+            google_sheet_url=get_google_sheet_url(selected_virtual_year),
             district_summaries=district_summaries,
-            overall_summary=overall_summary
+            overall_summary=overall_summary,
+            last_refreshed=last_refreshed,
+            is_cached=is_cached
         )
 
     @bp.route('/reports/virtual/usage/district/<district_name>')
@@ -484,6 +1119,10 @@ def load_routes(bp):
         # Get filter parameters: Use virtual year instead of school year
         default_virtual_year = get_current_virtual_year()
         selected_virtual_year = request.args.get('year', default_virtual_year)
+        
+        # Check if refresh is requested
+        refresh_requested = request.args.get('refresh', '0') == '1'
+        
         default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)
         date_from_str = request.args.get('date_from')
         date_to_str = request.args.get('date_to')
@@ -512,205 +1151,97 @@ def load_routes(bp):
             'date_to': date_to
         }
         virtual_year_options = generate_school_year_options()
-        # --- Aggregate session_data by event/session ---
-        base_query = Event.query.options(
-            joinedload(Event.districts),
-            joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
-        ).filter(
-            Event.type == EventType.VIRTUAL_SESSION,
-            Event.start_date >= date_from,
-            Event.start_date <= date_to
+        
+        # Check if we're using default full year date range (for caching)
+        is_full_year = (date_from == default_date_from and date_to == default_date_to)
+        
+        # If refresh is requested, invalidate cache for this district and virtual year
+        if refresh_requested and is_full_year:
+            # Invalidate district cache
+            cached_data = VirtualSessionDistrictCache.query.filter_by(
+                district_name=district_name,
+                virtual_year=selected_virtual_year,
+                date_from=date_from.date(),
+                date_to=date_to.date()
+            ).first()
+            if cached_data:
+                db.session.delete(cached_data)
+                db.session.commit()
+            print(f"Cache invalidated for district {district_name} virtual session report {selected_virtual_year}")
+        
+        # Try to get cached data for full year queries
+        cached_data = None
+        is_cached = False
+        last_refreshed = None
+        
+        if is_full_year and not refresh_requested:
+            cached_data = get_virtual_session_district_cache(district_name, selected_virtual_year, date_from, date_to)
+            if cached_data:
+                is_cached = True
+                last_refreshed = cached_data.last_updated
+                print(f"Using cached data for district {district_name} virtual session report {selected_virtual_year}")
+                # Use cached data
+                session_data = cached_data.session_data
+                monthly_stats = cached_data.monthly_stats
+                school_breakdown = cached_data.school_breakdown
+                teacher_breakdown = cached_data.teacher_breakdown
+                summary_stats = cached_data.summary_stats
+                
+                return render_template(
+                    'reports/virtual_usage_district.html',
+                    district_name=district_name,
+                    monthly_stats=monthly_stats,
+                    current_filters=current_filters,
+                    school_year_options=virtual_year_options,
+                    total_teachers=summary_stats['total_teachers'],
+                    total_students=summary_stats['total_students'],
+                    total_unique_sessions=summary_stats['total_unique_sessions'],
+                    total_experiences=summary_stats['total_experiences'],
+                    total_organizations=summary_stats['total_organizations'],
+                    total_professionals=summary_stats['total_professionals'],
+                    total_professionals_of_color=summary_stats['total_professionals_of_color'],
+                    total_schools=summary_stats['total_schools'],
+                    school_breakdown=school_breakdown,
+                    teacher_breakdown=teacher_breakdown,
+                    session_data=session_data,
+                    last_refreshed=last_refreshed,
+                    is_cached=is_cached
+                )
+        
+        # If no cache or not full year, compute data fresh
+        print(f"Computing fresh data for district {district_name} virtual session report {selected_virtual_year}")
+        session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats = compute_virtual_session_district_data(
+            district_name, selected_virtual_year, date_from, date_to
         )
-        events = base_query.order_by(Event.start_date.desc()).all()
-        session_dict = {}
-        for event in events:
-            # Determine district for this event
-            district_name_val = None
-            if event.districts:
-                district_name_val = event.districts[0].name
-            elif event.district_partner:
-                district_name_val = event.district_partner
-            else:
-                district_name_val = 'Unknown District'
-            if district_name_val != district_name:
-                continue
-            # Aggregate teachers and schools for this event
-            teachers = set()
-            schools = set()
-            for teacher_reg in event.teacher_registrations:
-                teacher = teacher_reg.teacher
-                if teacher:
-                    teachers.add(f"{teacher.first_name} {teacher.last_name}")
-                    # School
-                    school_name = ''
-                    if hasattr(teacher, 'school_obj') and teacher.school_obj:
-                        school_name = teacher.school_obj.name
-                    elif teacher.school_id:
-                        school_obj = School.query.get(teacher.school_id)
-                        if school_obj:
-                            school_name = school_obj.name
-                    if school_name:
-                        schools.add(school_name)
-            # If no teacher registrations, leave teachers/schools empty
-            session_dict[event.id] = {
-                'event_id': event.id,
-                'status': event.status.value if event.status else '',
-                'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
-                'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
-                'session_type': event.additional_information or '',
-                'teachers': sorted(teachers) if teachers else [],
-                'schools': sorted(schools) if schools else [],
-                'district': district_name_val,
-                'session_title': event.title,
-                'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                'topic_theme': event.series or '',
-                'session_link': event.registration_link or '',
-                'session_id': event.session_id or '',
-                'participant_count': event.participant_count or 0,
-                'duration': event.duration or 0,
-                'is_simulcast': any([tr.is_simulcast for tr in event.teacher_registrations]) if event.teacher_registrations else False
-            }
-        # Convert to list and sort by date descending
-        session_data = list(session_dict.values())
-        session_data.sort(key=lambda s: s['date'], reverse=True)
-        # --- End aggregation ---
-
-        # Now aggregate stats from session_data (same as main page logic, but updated for new structure)
-        total_teachers = set()
-        total_students = 0
-        total_unique_sessions = set()
-        total_experiences = 0
-        total_organizations = set()
-        total_professionals = set()
-        total_professionals_of_color = set()
-        total_schools = set()
-        school_breakdown = {}
-        teacher_breakdown = {}
-        for session in session_data:
-            # Teachers
-            for teacher_name in session['teachers']:
-                total_teachers.add(teacher_name)
-                # Teacher breakdown
-                if teacher_name not in teacher_breakdown:
-                    # Use first school if available, else N/A
-                    school_val = session['schools'][0] if session['schools'] else 'N/A'
-                    teacher_breakdown[teacher_name] = {
-                        'name': teacher_name,
-                        'school': school_val,
-                        'sessions': 0
-                    }
-                teacher_breakdown[teacher_name]['sessions'] += 1
-            # Schools
-            for school_name in session['schools']:
-                total_schools.add(school_name)
-                # School breakdown
-                if school_name not in school_breakdown:
-                    school_breakdown[school_name] = {
-                        'name': school_name,
-                        'sessions': 0
-                    }
-                school_breakdown[school_name]['sessions'] += 1
-            # Sessions
-            if session['session_title']:
-                total_unique_sessions.add(session['session_title'])
-            # Students
-            if session.get('participant_count', 0) > 0:
-                total_students += session['participant_count']
-            else:
-                total_students += 25
-            total_experiences += 1
-            # Presenters/Organizations
-            if session['presenter']:
-                presenters = [p.strip() for p in session['presenter'].split(',')]
-                for presenter in presenters:
-                    if presenter:
-                        total_professionals.add(presenter)
-                        total_professionals_of_color.add(presenter)
-                        total_organizations.add(presenter)
-        total_unique_sessions_count = len(total_unique_sessions)
-        total_organizations_count = len(total_organizations)
-        total_professionals_count = len(total_professionals)
-        total_professionals_of_color_count = 0  # Always 0 until we have demographic data
-        total_schools_count = len(total_schools)
-        total_teachers_count = len(total_teachers)
-        school_breakdown_list = sorted(school_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
-        teacher_breakdown_list = sorted(teacher_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
-        # Monthly stats (reuse previous logic, but from session_data)
-        monthly_stats = {}
-        for session in session_data:
-            # Parse month from date
-            try:
-                date_obj = datetime.strptime(session['date'], '%m/%d/%y')
-                month_key = date_obj.strftime('%Y-%m')
-                month_name = date_obj.strftime('%B %Y')
-            except Exception:
-                continue
-            if month_key not in monthly_stats:
-                monthly_stats[month_key] = {
-                    'month_name': month_name,
-                    'total_sessions': 0,
-                    'total_registered': 0,
-                    'total_attended': 0,
-                    'total_duration': 0,
-                    'avg_attendance_rate': 0.0,
-                    'avg_duration': 0.0,
-                    'schools': set(),
-                    'educators': set(),
-                    'career_clusters': set(),
-                    'events': []
-                }
-            stats = monthly_stats[month_key]
-            stats['total_sessions'] += 1
-            stats['total_registered'] += session.get('participant_count', 0)
-            stats['total_attended'] += session.get('participant_count', 0)
-            stats['total_duration'] += session.get('duration', 0)
-            for school_name in session['schools']:
-                stats['schools'].add(school_name)
-            for teacher_name in session['teachers']:
-                stats['educators'].add(teacher_name)
-            if session['topic_theme']:
-                stats['career_clusters'].add(session['topic_theme'])
-            stats['events'].append({
-                'title': session['session_title'],
-                'date': session['date'],
-                'time': session['time'],
-                'duration': session['duration'],
-                'registered': session.get('participant_count', 0),
-                'attended': session.get('participant_count', 0),
-                'schools': ', '.join(session['schools']) if session['schools'] else 'N/A',
-                'educators': ', '.join(session['teachers']) if session['teachers'] else 'N/A',
-                'career_cluster': session['topic_theme'],
-                'session_id': session['session_id']
-            })
-        for stats in monthly_stats.values():
-            if stats['total_registered'] > 0:
-                stats['avg_attendance_rate'] = (stats['total_attended'] / stats['total_registered']) * 100
-            if stats['total_sessions'] > 0:
-                stats['avg_duration'] = stats['total_duration'] / stats['total_sessions']
-            stats['school_count'] = len(stats['schools'])
-            stats['educator_count'] = len(stats['educators'])
-            stats['career_cluster_count'] = len(stats['career_clusters'])
-            del stats['schools']
-            del stats['educators']
-            del stats['career_clusters']
-        sorted_stats = dict(sorted(monthly_stats.items()))
+        
+        # Cache the data if it's a full year query
+        if is_full_year:
+            save_virtual_session_district_cache(
+                district_name, selected_virtual_year, date_from, date_to,
+                session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats
+            )
+            # Set the last refreshed time for this fresh data
+            last_refreshed = datetime.now(timezone.utc)
+        
         return render_template(
             'reports/virtual_usage_district.html',
             district_name=district_name,
-            monthly_stats=sorted_stats,
+            monthly_stats=monthly_stats,
             current_filters=current_filters,
             school_year_options=virtual_year_options,
-            total_teachers=total_teachers_count,
-            total_students=total_students,
-            total_unique_sessions=total_unique_sessions_count,
-            total_experiences=total_experiences,
-            total_organizations=total_organizations_count,
-            total_professionals=total_professionals_count,
-            total_professionals_of_color=total_professionals_of_color_count,
-            total_schools=total_schools_count,
-            school_breakdown=school_breakdown_list,
-            teacher_breakdown=teacher_breakdown_list,
-            session_data=session_data
+            total_teachers=summary_stats['total_teachers'],
+            total_students=summary_stats['total_students'],
+            total_unique_sessions=summary_stats['total_unique_sessions'],
+            total_experiences=summary_stats['total_experiences'],
+            total_organizations=summary_stats['total_organizations'],
+            total_professionals=summary_stats['total_professionals'],
+            total_professionals_of_color=summary_stats['total_professionals_of_color'],
+            total_schools=summary_stats['total_schools'],
+            school_breakdown=school_breakdown,
+            teacher_breakdown=teacher_breakdown,
+            session_data=session_data,
+            last_refreshed=last_refreshed,
+            is_cached=is_cached
         )
 
     @bp.route('/reports/virtual/usage/export')

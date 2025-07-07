@@ -340,4 +340,122 @@ class FirstTimeVolunteerReportCache(db.Model):
     last_updated = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     __table_args__ = (
         db.UniqueConstraint('school_year', name='uq_first_time_volunteer_report_cache'),
-    ) 
+    )
+
+
+class VirtualSessionReportCache(db.Model):
+    """
+    Model for caching virtual session usage report data.
+    
+    This model stores pre-computed virtual session usage reports to improve
+    performance when generating complex reports with multiple filters and
+    aggregations.
+    
+    Database Table:
+        virtual_session_report_cache - Cached virtual session usage reports
+        
+    Key Features:
+        - Virtual year-based report caching
+        - Date range support for flexible filtering
+        - JSON storage for session data, summaries, and filter options
+        - Automatic timestamp tracking for cache invalidation
+        - Unique constraints to prevent duplicate reports
+        
+    Data Structure:
+        - virtual_year: Academic year for virtual sessions (e.g., "2024-2025")
+        - date_from, date_to: Optional date range filters
+        - session_data: Main session data as JSON
+        - district_summaries: District-level summary statistics
+        - overall_summary: Overall report statistics
+        - filter_options: Available filter options (districts, schools, etc.)
+        
+    Performance Features:
+        - Indexed virtual_year for fast filtering
+        - Composite index on virtual_year and last_updated
+        - Unique constraint prevents duplicate reports
+        - Cached data reduces computation time
+    """
+    __tablename__ = 'virtual_session_report_cache'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    virtual_year = db.Column(db.String(9), nullable=False, index=True)  # e.g., '2024-2025'
+    date_from = db.Column(db.Date, nullable=True)
+    date_to = db.Column(db.Date, nullable=True)
+    
+    # Cached report data as JSON
+    session_data = db.Column(db.JSON, nullable=False)  # All session records
+    district_summaries = db.Column(db.JSON, nullable=True)  # District breakdown
+    overall_summary = db.Column(db.JSON, nullable=True)  # Overall statistics
+    filter_options = db.Column(db.JSON, nullable=True)  # Available filter options
+    
+    last_updated = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    
+    __table_args__ = (
+        db.UniqueConstraint('virtual_year', 'date_from', 'date_to', 
+                          name='uq_virtual_session_report_cache'),
+        db.Index('idx_virtual_year_updated', 'virtual_year', 'last_updated')
+    )
+    
+    def __repr__(self):
+        return f'<VirtualSessionReportCache {self.virtual_year}>'
+
+
+class VirtualSessionDistrictCache(db.Model):
+    """
+    Model for caching district-specific virtual session reports.
+    
+    This model stores pre-computed district-level virtual session reports
+    including monthly breakdowns, school/teacher statistics, and session details.
+    
+    Database Table:
+        virtual_session_district_cache - Cached district virtual session reports
+        
+    Key Features:
+        - District-specific report caching
+        - Virtual year organization
+        - Monthly breakdown data
+        - School and teacher statistics
+        - Session-level details
+        - Automatic timestamp tracking for cache invalidation
+        
+    Data Structure:
+        - district_name: Name of the district
+        - virtual_year: Academic year for virtual sessions
+        - date_from, date_to: Optional date range filters
+        - session_data: District session data as JSON
+        - monthly_stats: Monthly breakdown statistics
+        - school_breakdown: School-level statistics
+        - teacher_breakdown: Teacher-level statistics
+        - summary_stats: Overall district statistics
+        
+    Performance Features:
+        - Indexed district_name and virtual_year for fast queries
+        - Composite index on virtual_year and last_updated
+        - Unique constraint prevents duplicate reports
+        - Cached data reduces computation time
+    """
+    __tablename__ = 'virtual_session_district_cache'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    district_name = db.Column(db.String(255), nullable=False, index=True)
+    virtual_year = db.Column(db.String(9), nullable=False, index=True)  # e.g., '2024-2025'
+    date_from = db.Column(db.Date, nullable=True)
+    date_to = db.Column(db.Date, nullable=True)
+    
+    # Cached district report data as JSON
+    session_data = db.Column(db.JSON, nullable=False)  # District session records
+    monthly_stats = db.Column(db.JSON, nullable=True)  # Monthly breakdown
+    school_breakdown = db.Column(db.JSON, nullable=True)  # School statistics
+    teacher_breakdown = db.Column(db.JSON, nullable=True)  # Teacher statistics
+    summary_stats = db.Column(db.JSON, nullable=True)  # Overall district stats
+    
+    last_updated = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    
+    __table_args__ = (
+        db.UniqueConstraint('district_name', 'virtual_year', 'date_from', 'date_to',
+                          name='uq_virtual_session_district_cache'),
+        db.Index('idx_district_virtual_year_updated', 'district_name', 'virtual_year', 'last_updated')
+    )
+    
+    def __repr__(self):
+        return f'<VirtualSessionDistrictCache {self.district_name} {self.virtual_year}>' 

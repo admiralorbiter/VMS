@@ -116,6 +116,75 @@
     }
 }
 
+/* Filter Actions Button Layout */
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.filter-btn, .reset-btn, .export-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn {
+    background: #007bff;
+    color: white;
+}
+
+.filter-btn:hover {
+    background: #0056b3;
+    color: white;
+    text-decoration: none;
+}
+
+.reset-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #c82333;
+    color: white;
+    text-decoration: none;
+}
+
+.export-btn {
+    background: #28a745;
+    color: white;
+}
+
+.export-btn:hover {
+    background: #218838;
+    color: white;
+    text-decoration: none;
+}
+
+@media (max-width: 1200px) {
+    .filter-actions {
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn, .reset-btn, .export-btn {
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+}
+
 @media (max-width: 768px) {
     .district-grid {
         grid-template-columns: 1fr;
@@ -129,6 +198,15 @@
     
     .stat-row {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .filter-actions {
+        justify-content: center;
+    }
+    
+    .filter-btn, .reset-btn, .export-btn {
+        font-size: 12px;
+        padding: 8px 10px;
     }
 }
 </style>
@@ -220,27 +298,47 @@
             <button type="submit" class="filter-btn">Apply Filters</button>
             <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
             {% if session_data %}
+            <a href="{{ url_for('report.virtual_usage', refresh=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+               class="export-btn" title="Refresh Data" style="background: #28a745;">
+                🔄 Refresh
+            </a>
             <a href="{{ url_for('report.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
                class="export-btn" title="Export to Excel">
-                📊 Export Excel
+                📊 Export
             </a>
             <a href="{{ url_for('report.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
                class="export-btn" title="View Detailed Breakdown">
-                📈 Detailed Breakdown
+                📈 Breakdown
             </a>
             <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
                class="export-btn" title="Manage District Google Sheets">
-                📋 Manage Google Sheets
+                📋 Manage Sheets
             </a>
             {% endif %}
             {% if google_sheet_url %}
             <a href="{{ google_sheet_url }}" target="_blank" class="export-btn" title="View Original Google Sheet">
-                📄 View Original Google Sheet for {{ current_filters.year }}
+                📄 View Sheet {{ current_filters.year }}
             </a>
             {% endif %}
         </div>
         </form>
     </div>
+
+    <!-- Last Refreshed Info -->
+    {% if session_data %}
+        <div class="data-info" style="text-align: center; margin: 20px 0; color: #666; font-size: 0.9em;">
+            {% if last_refreshed %}
+                Data last refreshed: {{ last_refreshed.strftime('%B %d, %Y at %I:%M %p') }}
+                {% if is_cached %}
+                    <span style="color: #28a745; font-weight: bold;">● Cached</span>
+                {% else %}
+                    <span style="color: #dc3545; font-weight: bold;">● Fresh</span>
+                {% endif %}
+            {% else %}
+                Data freshly loaded
+            {% endif %}
+        </div>
+    {% endif %}
 
     <!-- Summary Stats -->
     {% if session_data %}

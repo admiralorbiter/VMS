@@ -85,6 +85,7 @@
 
 .filter-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     align-items: center;
     grid-column: 1 / -1;
@@ -92,14 +93,19 @@
 }
 
 .filter-btn, .reset-btn {
-    padding: 10px 20px;
+    padding: 10px 16px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: 600;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     text-align: center;
+    white-space: nowrap;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
 .filter-btn {
@@ -109,15 +115,41 @@
 
 .filter-btn:hover {
     background: #0056b3;
+    color: white;
+    text-decoration: none;
 }
 
 .reset-btn {
-    background: #6c757d;
+    background: #dc3545;
     color: white;
 }
 
 .reset-btn:hover {
-    background: #545b62;
+    background: #c82333;
+    color: white;
+    text-decoration: none;
+}
+
+@media (max-width: 1200px) {
+    .filter-actions {
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn, .reset-btn {
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .filter-actions {
+        justify-content: center;
+    }
+    
+    .filter-btn, .reset-btn {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
 }
 
 .summary-stats {
@@ -429,8 +461,24 @@
         <h1 class="district-title">{{ district_name }}</h1>
         <p class="district-subtitle">Virtual Year: {{ current_filters.year }}</p>
         <p class="district-subtitle">Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
-    </div>
-    
+        </div>
+
+    <!-- Last Refreshed Info -->
+    {% if monthly_stats %}
+        <div class="data-info" style="text-align: center; margin: 20px 0; color: #666; font-size: 0.9em;">
+            {% if last_refreshed %}
+                Data last refreshed: {{ last_refreshed.strftime('%B %d, %Y at %I:%M %p') }}
+                {% if is_cached %}
+                    <span style="color: #28a745; font-weight: bold;">● Cached</span>
+                {% else %}
+                    <span style="color: #dc3545; font-weight: bold;">● Fresh</span>
+                {% endif %}
+            {% else %}
+                Data freshly loaded
+            {% endif %}
+        </div>
+    {% endif %}
+
     <!-- Filter Section -->
     <div class="filters-section">
         <form class="filters-form" method="GET">
@@ -459,8 +507,11 @@
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('report.virtual_usage_district', district_name=district_name) }}" 
                    class="reset-btn">Reset</a>
+                <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, refresh=1) }}" 
+                   class="filter-btn" style="background: #28a745;" title="Refresh Data">
+                   🔄 Refresh</a>
                 <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}" 
-                   class="filter-btn" style="background: #28a745;" title="View Google Sheet for {{ district_name }}">
+                   class="filter-btn" style="background: #17a2b8;" title="View Google Sheet for {{ district_name }}">
                    📊 View Google Sheet</a>
                 <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
                    class="filter-btn" style="background: #6c757d;" title="Manage All Google Sheets">
