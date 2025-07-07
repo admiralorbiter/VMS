@@ -459,6 +459,12 @@
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('report.virtual_usage_district', district_name=district_name) }}" 
                    class="reset-btn">Reset</a>
+                <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}" 
+                   class="filter-btn" style="background: #28a745;" title="View Google Sheet for {{ district_name }}">
+                   📊 View Google Sheet</a>
+                <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
+                   class="filter-btn" style="background: #6c757d;" title="Manage All Google Sheets">
+                   📋 Manage Sheets</a>
             </div>
         </form>
     </div>

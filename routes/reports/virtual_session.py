@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request, make_response, send_file
-from flask_login import login_required
+from flask import Blueprint, render_template, request, make_response, send_file, flash, redirect, url_for
+from flask_login import login_required, current_user
 from datetime import datetime, date
 from sqlalchemy import extract, or_, func
 from sqlalchemy.orm import joinedload
@@ -429,22 +429,27 @@ def load_routes(bp):
         end_idx = start_idx + per_page
         paginated_data = session_data[start_idx:end_idx]
         virtual_year_options = generate_school_year_options()
+        
+        # Filter districts to only show allowed ones
+        allowed_districts = {
+            "Hickman Mills School District",
+            "Grandview School District",
+            "Kansas City Kansas Public Schools"
+        }
+        filtered_districts = [d for d in all_districts if d in allowed_districts]
+        
         filter_options = {
             'school_years': virtual_year_options,
             'career_clusters': sorted(list(all_career_clusters)),
             'schools': sorted(list(all_schools)),
-            'districts': sorted(list(all_districts)),
+            'districts': sorted(filtered_districts),
             'statuses': sorted(list(all_statuses))
         }
         google_sheet = GoogleSheet.query.filter_by(academic_year=selected_virtual_year, purpose='virtual_sessions').first()
         google_sheet_url = None
         if google_sheet and google_sheet.decrypted_sheet_id:
             google_sheet_url = f"https://docs.google.com/spreadsheets/d/{google_sheet.decrypted_sheet_id}"
-        allowed_districts = {
-            "Hickman Mills School District",
-            "Grandview School District",
-            "Kansas City Kansas Public Schools"
-        }
+        
         district_summaries = {k: v for k, v in district_summaries.items() if k in allowed_districts}
         # Prepare overall summary stats for template
         overall_summary = {
@@ -1546,3 +1551,159 @@ def load_routes(bp):
             virtual_year_options=virtual_year_options,
             months=months
         )
+
+    @bp.route('/reports/virtual/google-sheets')
+    @login_required
+    def virtual_google_sheets():
+        """Manage Google Sheets for virtual district reports"""
+        virtual_year = request.args.get('year', get_current_virtual_year())
+        
+        # Get all Google Sheets for virtual district reports for this year
+        sheets = GoogleSheet.query.filter_by(
+            academic_year=virtual_year,
+            purpose='virtual_district_reports'
+        ).order_by(GoogleSheet.sheet_name).all()
+        
+        # Get only allowed districts for dropdown
+        allowed_district_names = {
+            "Hickman Mills School District",
+            "Grandview School District",
+            "Kansas City Kansas Public Schools"
+        }
+        districts = District.query.filter(
+            District.name.in_(allowed_district_names)
+        ).order_by(District.name).all()
+        
+        return render_template(
+            'reports/virtual_google_sheets.html',
+            sheets=sheets,
+            districts=districts,
+            virtual_year=virtual_year,
+            virtual_year_options=generate_school_year_options()
+        )
+    
+    @bp.route('/reports/virtual/google-sheets/create', methods=['POST'])
+    @login_required
+    def create_virtual_google_sheet():
+        """Create a new Google Sheet for virtual district reports"""
+        try:
+            virtual_year = request.form.get('virtual_year')
+            district_name = request.form.get('district_name')
+            sheet_id = request.form.get('sheet_id')
+            sheet_name = request.form.get('sheet_name')
+            
+            if not all([virtual_year, district_name, sheet_id, sheet_name]):
+                flash('All fields are required.', 'error')
+                return redirect(url_for('report.virtual_google_sheets', year=virtual_year))
+            
+            # Check if sheet already exists for this district and year
+            existing_sheet = GoogleSheet.query.filter_by(
+                academic_year=virtual_year,
+                purpose='virtual_district_reports',
+                sheet_name=sheet_name
+            ).first()
+            
+            if existing_sheet:
+                flash(f'A Google Sheet with this name already exists for {virtual_year}.', 'error')
+                return redirect(url_for('report.virtual_google_sheets', year=virtual_year))
+            
+            # Create new Google Sheet record
+            new_sheet = GoogleSheet(
+                academic_year=virtual_year,
+                purpose='virtual_district_reports',
+                sheet_id=sheet_id,
+                sheet_name=sheet_name,
+                created_by=current_user.id
+            )
+            
+            db.session.add(new_sheet)
+            db.session.commit()
+            
+            flash(f'Google Sheet "{sheet_name}" created successfully for {district_name}.', 'success')
+            return redirect(url_for('report.virtual_google_sheets', year=virtual_year))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating Google Sheet: {str(e)}', 'error')
+            return redirect(url_for('report.virtual_google_sheets', year=virtual_year))
+    
+    @bp.route('/reports/virtual/google-sheets/<int:sheet_id>/update', methods=['POST'])
+    @login_required
+    def update_virtual_google_sheet(sheet_id):
+        """Update an existing Google Sheet"""
+        try:
+            sheet = GoogleSheet.query.get_or_404(sheet_id)
+            
+            sheet_url = request.form.get('sheet_id')
+            sheet_name = request.form.get('sheet_name')
+            
+            if not all([sheet_url, sheet_name]):
+                flash('Sheet URL and name are required.', 'error')
+                return redirect(url_for('report.virtual_google_sheets', year=sheet.academic_year))
+            
+            sheet.update_sheet_id(sheet_url)
+            sheet.sheet_name = sheet_name
+            
+            db.session.commit()
+            
+            flash(f'Google Sheet "{sheet_name}" updated successfully.', 'success')
+            return redirect(url_for('report.virtual_google_sheets', year=sheet.academic_year))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating Google Sheet: {str(e)}', 'error')
+            return redirect(url_for('report.virtual_google_sheets'))
+    
+    @bp.route('/reports/virtual/google-sheets/<int:sheet_id>/delete', methods=['POST'])
+    @login_required
+    def delete_virtual_google_sheet(sheet_id):
+        """Delete a Google Sheet"""
+        try:
+            sheet = GoogleSheet.query.get_or_404(sheet_id)
+            virtual_year = sheet.academic_year
+            sheet_name = sheet.sheet_name
+            
+            db.session.delete(sheet)
+            db.session.commit()
+            
+            flash(f'Google Sheet "{sheet_name}" deleted successfully.', 'success')
+            return redirect(url_for('report.virtual_google_sheets', year=virtual_year))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error deleting Google Sheet: {str(e)}', 'error')
+            return redirect(url_for('report.virtual_google_sheets'))
+    
+    @bp.route('/reports/virtual/google-sheets/<int:sheet_id>/view')
+    @login_required
+    def view_virtual_google_sheet(sheet_id):
+        """Redirect to the Google Sheet"""
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        
+        if not sheet.decrypted_sheet_id:
+            flash('Google Sheet URL not available.', 'error')
+            return redirect(url_for('report.virtual_google_sheets', year=sheet.academic_year))
+        
+        # Create Google Sheets URL
+        google_sheets_url = f"https://docs.google.com/spreadsheets/d/{sheet.decrypted_sheet_id}/edit"
+        
+        return redirect(google_sheets_url)
+    
+    @bp.route('/reports/virtual/district/<district_name>/google-sheet')
+    @login_required
+    def get_district_google_sheet(district_name):
+        """Get Google Sheet for a specific district and year"""
+        virtual_year = request.args.get('year', get_current_virtual_year())
+        
+        # Look for a sheet that matches this district in the name
+        sheet = GoogleSheet.query.filter(
+            GoogleSheet.academic_year == virtual_year,
+            GoogleSheet.purpose == 'virtual_district_reports',
+            GoogleSheet.sheet_name.ilike(f'%{district_name}%')
+        ).first()
+        
+        if sheet:
+            return redirect(url_for('report.view_virtual_google_sheet', sheet_id=sheet.id))
+        else:
+            flash(f'No Google Sheet found for {district_name} in {virtual_year}.', 'warning')
+            return redirect(url_for('report.virtual_usage_district', district_name=district_name, year=virtual_year))

@@ -216,7 +216,7 @@
                 </select>
             </div>
             <!-- BUTTONS BELOW FILTERS -->
-        <div class="filter-actions">
+                    <div class="filter-actions">
             <button type="submit" class="filter-btn">Apply Filters</button>
             <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
             {% if session_data %}
@@ -227,6 +227,10 @@
             <a href="{{ url_for('report.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
                class="export-btn" title="View Detailed Breakdown">
                 📈 Detailed Breakdown
+            </a>
+            <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
+               class="export-btn" title="Manage District Google Sheets">
+                📋 Manage Google Sheets
             </a>
             {% endif %}
             {% if google_sheet_url %}
@@ -284,8 +288,13 @@
                 <div class="district-card">
                     <div class="district-header">
                         <h3>{{ district_name }}</h3>
-                        <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
-                           class="district-link">View Details</a>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+                               class="district-link">View Details</a>
+                            <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}" 
+                               class="district-link" style="background: rgba(255, 255, 255, 0.1);" title="View Google Sheet">
+                               📊 Sheet</a>
+                        </div>
                     </div>
                     <div class="district-stats">
                         <div class="stat-row">
