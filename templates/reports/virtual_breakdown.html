@@ -292,6 +292,157 @@
         grid-template-columns: 1fr;
     }
 }
+
+.analytics-sections {
+    margin-top: 40px;
+    padding: 20px;
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.analytics-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    border: 1px solid #e9ecef;
+}
+
+.analytics-card h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 1.3em;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-item.total-row {
+    border-top: 2px solid #007bff;
+    font-weight: 600;
+    background: #f8f9fa;
+    padding: 12px 0;
+    margin-top: 10px;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 500;
+    flex: 1;
+}
+
+.stat-value {
+    color: #007bff;
+    font-weight: 600;
+    font-size: 1.1em;
+    min-width: 50px;
+    text-align: right;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 10px;
+}
+
+.comparison-header {
+    display: contents;
+    font-weight: 600;
+    color: #333;
+}
+
+.comparison-header > span {
+    padding: 12px 8px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #007bff;
+    text-align: center;
+}
+
+.comparison-header > span:first-child {
+    text-align: left;
+}
+
+.comparison-row {
+    display: contents;
+}
+
+.comparison-row > span {
+    padding: 10px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+}
+
+.comparison-label {
+    color: #666;
+    font-weight: 500;
+    justify-content: flex-start;
+}
+
+.comparison-value {
+    color: #007bff;
+    font-weight: 600;
+    justify-content: center;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .analytics-card {
+        padding: 16px;
+    }
+    
+    .comparison-grid {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    .comparison-header > span,
+    .comparison-row > span {
+        padding: 8px;
+    }
+    
+    .comparison-header {
+        display: none;
+    }
+    
+    .comparison-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 8px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -450,4 +601,192 @@
         </div>
     </div>
 </div>
+
+<!-- Comprehensive Analytics Sections -->
+<div class="analytics-sections">
+    <div class="analytics-grid">
+        <!-- Current Running Count -->
+        <div class="analytics-card">
+            <h3>Current Running Count</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Unfilled</span>
+                    <span class="stat-value">{{ running_count.unfilled }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Successfully Completed</span>
+                    <span class="stat-value">{{ running_count.successfully_completed }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Teacher Cancelation</span>
+                    <span class="stat-value">{{ running_count.teacher_cancelation }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Formerly In-Person (Completed)</span>
+                    <span class="stat-value">{{ running_count.formerly_in_person_completed }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Formerly In-Person (Canceled)</span>
+                    <span class="stat-value">{{ running_count.formerly_in_person_canceled }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Professional Cancel/No-Show</span>
+                    <span class="stat-value">{{ running_count.professional_cancel_no_show }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Inclement Weather Cancellation</span>
+                    <span class="stat-value">{{ running_count.inclement_weather_cancellation }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Withdrawn--Time Constraint</span>
+                    <span class="stat-value">{{ running_count.withdrawn_time_constraint }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Moved to In-Person Session</span>
+                    <span class="stat-value">{{ running_count.moved_to_in_person_session }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Teacher No-Show</span>
+                    <span class="stat-value">{{ running_count.teacher_no_show }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">COVID19 Cancelation</span>
+                    <span class="stat-value">{{ running_count.covid19_cancelation }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">White Label Completed</span>
+                    <span class="stat-value">{{ running_count.white_label_completed }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">White Label Unfilled</span>
+                    <span class="stat-value">{{ running_count.white_label_unfilled }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Technical Difficulties</span>
+                    <span class="stat-value">{{ running_count.technical_difficulties }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Local Professional Cancellation</span>
+                    <span class="stat-value">{{ running_count.local_professional_cancellation }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Pathful Professional Cancellation</span>
+                    <span class="stat-value">{{ running_count.pathful_professional_cancellation }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Local Professional No-Show</span>
+                    <span class="stat-value">{{ running_count.local_professional_no_show }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Pathful Professional No-Show</span>
+                    <span class="stat-value">{{ running_count.pathful_professional_no_show }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Formerly In-Person (Duplicate)</span>
+                    <span class="stat-value">{{ running_count.formerly_in_person_duplicate }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">White Label Canceled</span>
+                    <span class="stat-value">{{ running_count.white_label_canceled }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Simulcast</span>
+                    <span class="stat-value">{{ running_count.simulcast }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Count</span>
+                    <span class="stat-value">{{ running_count.count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- District Breakdown -->
+        <div class="analytics-card">
+            <h3>Running Totals for Successfully Completed Sessions by DISTRICT</h3>
+            <div class="stats-grid">
+                {% for district, count in district_completed.items() %}
+                <div class="stat-item">
+                    <span class="stat-label">{{ district }}</span>
+                    <span class="stat-value">{{ count }}</span>
+                </div>
+                {% endfor %}
+                <div class="stat-item total-row">
+                    <span class="stat-label">TOTAL</span>
+                    <span class="stat-value">{{ district_completed.values() | sum }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topic Breakdown -->
+        <div class="analytics-card">
+            <h3>Total Sessions by Topic</h3>
+            <div class="stats-grid">
+                {% for topic, count in topic_counts.items() %}
+                <div class="stat-item">
+                    <span class="stat-label">{{ topic }}</span>
+                    <span class="stat-value">{{ count }}</span>
+                </div>
+                {% endfor %}
+                <div class="stat-item total-row">
+                    <span class="stat-label">TOTAL</span>
+                    <span class="stat-value">{{ topic_counts.values() | sum }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Type Breakdown -->
+        <div class="analytics-card">
+            <h3>Session Type</h3>
+            <div class="comparison-grid">
+                <div class="comparison-header">
+                    <span>Type</span>
+                    <span>All</span>
+                    <span>Completed</span>
+                </div>
+                {% for session_type, data in session_types.items() %}
+                <div class="comparison-row">
+                    <span class="comparison-label">{{ session_type.replace('_', ' ').title() }}</span>
+                    <span class="comparison-value">{{ data.all }}</span>
+                    <span class="comparison-value">{{ data.completed }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Grade Level Breakdown -->
+        <div class="analytics-card">
+            <h3>Grade Level</h3>
+            <div class="comparison-grid">
+                <div class="comparison-header">
+                    <span>Grade</span>
+                    <span>All</span>
+                    <span>Completed (No Simulcast)</span>
+                </div>
+                {% for grade, data in grade_levels.items() %}
+                <div class="comparison-row">
+                    <span class="comparison-label">{{ grade.replace('_', ' ').title() }}</span>
+                    <span class="comparison-value">{{ data.all }}</span>
+                    <span class="comparison-value">{{ data.completed_no_simulcast }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Teacher Attendance -->
+        <div class="analytics-card">
+            <h3>Teacher Attendance</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">More Than One Teacher Present</span>
+                    <span class="stat-value">{{ teacher_attendance.more_than_one_teacher_present }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Number of Sessions</span>
+                    <span class="stat-value">{{ teacher_attendance.total_number_of_sessions }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %} 

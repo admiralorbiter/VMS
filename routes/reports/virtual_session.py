@@ -1085,7 +1085,8 @@ def load_routes(bp):
         base_query = Event.query.options(
             joinedload(Event.districts),
             joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher),
-            joinedload(Event.volunteers)
+            joinedload(Event.volunteers),
+            joinedload(Event.school_obj)  # Add school relationship for grade level analysis
         ).filter(
             Event.type == EventType.VIRTUAL_SESSION,
             Event.start_date >= date_from,
@@ -1131,6 +1132,9 @@ def load_routes(bp):
         
         # Debug: Collect unique status strings to understand what we're working with
         unique_statuses = set()
+        unique_additional_info = set()
+        unique_series = set()
+        unique_school_levels = set()
         
         # Process each event
         for event in events:
@@ -1151,6 +1155,18 @@ def load_routes(bp):
             if original_status:
                 unique_statuses.add(original_status)
             
+            # Collect unique additional info (session types)
+            if event.additional_information:
+                unique_additional_info.add(event.additional_information)
+            
+            # Collect unique series (topics)
+            if event.series:
+                unique_series.add(event.series)
+            
+            # Collect unique school levels
+            if event.school_obj and event.school_obj.level:
+                unique_school_levels.add(event.school_obj.level)
+            
             # Categorize based on original status string (primary source of truth)
             if 'successfully completed' in original_status:
                 monthly_breakdown[month_key]['successfully_completed'] += 1
@@ -1166,11 +1182,9 @@ def load_routes(bp):
             
             elif 'pathful professional' in original_status:
                 monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
-                print(f"DEBUG: Counted Pathful Professional Issue - Status: '{original_status}' Event: {event.id}")
             
             elif 'local professional' in original_status:
                 monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
-                print(f"DEBUG: Counted Local Professional Issue - Status: '{original_status}' Event: {event.id}")
             
             elif 'technical difficulties' in original_status or original_status == 'count':
                 monthly_breakdown[month_key]['unfilled_sessions'] += 1
@@ -1180,9 +1194,7 @@ def load_routes(bp):
                 event_status = event.status
                 event_status_str = event_status.value.lower() if event_status else ''
                 
-                # Debug: Log event status for professional keywords
-                if 'professional' in event_status_str:
-                    print(f"DEBUG: Found professional in event status: '{event_status_str}' for event {event.id}")
+
                 
                 if event_status == EventStatus.COMPLETED:
                     monthly_breakdown[month_key]['successfully_completed'] += 1
@@ -1196,26 +1208,18 @@ def load_routes(bp):
                 # Check for professional statuses in main event status
                 elif 'pathful professional' in event_status_str:
                     monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
-                    print(f"DEBUG: Counted Pathful Professional Issue from Event Status - Status: '{event_status_str}' Event: {event.id}")
                 elif 'local professional' in event_status_str:
                     monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
-                    print(f"DEBUG: Counted Local Professional Issue from Event Status - Status: '{event_status_str}' Event: {event.id}")
             
             # Check teacher registrations for additional status information
             for teacher_reg in event.teacher_registrations:
                 tr_status = (teacher_reg.status or '').lower().strip()
                 
-                # Debug: Log all teacher registration statuses that contain professional
-                if 'professional' in tr_status:
-                    print(f"DEBUG: Found professional in teacher reg status: '{tr_status}' for event {event.id}")
-                
                 # Check for professional statuses FIRST (before teacher-specific logic)
                 if 'pathful professional' in tr_status:
                     monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
-                    print(f"DEBUG: Counted Pathful Professional Issue from Teacher Reg - Status: '{tr_status}' Event: {event.id}")
                 elif 'local professional' in tr_status:
                     monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
-                    print(f"DEBUG: Counted Local Professional Issue from Teacher Reg - Status: '{tr_status}' Event: {event.id}")
                 
                 # Count teacher-specific cancellations and no-shows (only if not professional)
                 elif 'cancel' in tr_status and 'teacher' not in original_status:
@@ -1243,26 +1247,194 @@ def load_routes(bp):
             for key in ytd_totals:
                 ytd_totals[key] += month_data[key]
         
-        # Debug output: Show unique status strings found
-        if unique_statuses:
-            print(f"DEBUG: Found {len(unique_statuses)} unique status strings:")
-            for status in sorted(unique_statuses):
-                print(f"  - '{status}'")
-                
-            # Show professional-related statuses specifically
-            professional_statuses = [s for s in unique_statuses if 'professional' in s]
-            if professional_statuses:
-                print(f"DEBUG: Professional statuses found: {professional_statuses}")
-            else:
-                print("DEBUG: No professional statuses found in original_status_string field")
-        else:
-            print("DEBUG: No original_status_string values found in events")
+        # COMPREHENSIVE ANALYTICS SECTIONS
         
-        # Debug output: Show totals for professional issues
-        total_pathful = sum(month_data['pathful_professional_canceled_no_shows'] for month_data in monthly_breakdown.values())
-        total_local = sum(month_data['local_professional_canceled_no_shows'] for month_data in monthly_breakdown.values())
-        print(f"DEBUG: Total Pathful Professional Issues: {total_pathful}")
-        print(f"DEBUG: Total Local Professional Issues: {total_local}")
+        # 1. Current Running Count - detailed status breakdown
+        running_count = {
+            'unfilled': 0,
+            'successfully_completed': 0,
+            'teacher_cancelation': 0,
+            'formerly_in_person_completed': 0,
+            'formerly_in_person_canceled': 0,
+            'professional_cancel_no_show': 0,
+            'inclement_weather_cancellation': 0,
+            'withdrawn_time_constraint': 0,
+            'moved_to_in_person_session': 0,
+            'teacher_no_show': 0,
+            'covid19_cancelation': 0,
+            'white_label_completed': 0,
+            'white_label_unfilled': 0,
+            'technical_difficulties': 0,
+            'local_professional_cancellation': 0,
+            'pathful_professional_cancellation': 0,
+            'local_professional_no_show': 0,
+            'pathful_professional_no_show': 0,
+            'formerly_in_person_duplicate': 0,
+            'white_label_canceled': 0,
+            'simulcast': 0,
+            'count': 0
+        }
+        
+        # 2. District-wise completed sessions
+        district_completed = {}
+        
+        # 3. Topic-wise session counts
+        topic_counts = {}
+        
+        # 4. Session type breakdown
+        session_types = {
+            'teacher_requested': {'all': 0, 'completed': 0},
+            'industry_chat': {'all': 0, 'completed': 0},
+            'formerly_in_person': {'all': 0, 'completed': 0},
+            'other': {'all': 0, 'completed': 0},
+            'kansas_city_series': {'all': 0, 'completed': 0}
+        }
+        
+        # 5. Grade level breakdown
+        grade_levels = {
+            'elementary': {'all': 0, 'completed_no_simulcast': 0},
+            'middle': {'all': 0, 'completed_no_simulcast': 0},
+            'high': {'all': 0, 'completed_no_simulcast': 0},
+            'grade_level_not_set': {'all': 0, 'completed_no_simulcast': 0},
+            'pre_k': {'all': 0, 'completed_no_simulcast': 0}
+        }
+        
+        # 6. Teacher attendance metrics
+        teacher_attendance = {
+            'more_than_one_teacher_present': 0,
+            'total_number_of_sessions': len(events)
+        }
+        
+        # Process events for comprehensive analytics
+        for event in events:
+            # Get status information
+            original_status_raw = getattr(event, 'original_status_string', None)
+            original_status = (original_status_raw or '').lower().strip()
+            event_status = event.status
+            
+            # Running count analysis
+            if 'successfully completed' in original_status:
+                running_count['successfully_completed'] += 1
+            elif 'simulcast' in original_status:
+                running_count['simulcast'] += 1
+            elif 'teacher' in original_status and ('cancelation' in original_status or 'cancellation' in original_status):
+                running_count['teacher_cancelation'] += 1
+            elif 'teacher no-show' in original_status or 'teacher no show' in original_status:
+                running_count['teacher_no_show'] += 1
+            elif 'pathful professional cancellation' in original_status:
+                running_count['pathful_professional_cancellation'] += 1
+            elif 'pathful professional no-show' in original_status or 'pathful professional no show' in original_status:
+                running_count['pathful_professional_no_show'] += 1
+            elif 'local professional cancellation' in original_status:
+                running_count['local_professional_cancellation'] += 1
+            elif 'local professional no-show' in original_status or 'local professional no show' in original_status:
+                running_count['local_professional_no_show'] += 1
+            elif 'technical difficulties' in original_status:
+                running_count['technical_difficulties'] += 1
+            elif 'inclement weather' in original_status:
+                running_count['inclement_weather_cancellation'] += 1
+            elif 'moved to in-person' in original_status:
+                running_count['moved_to_in_person_session'] += 1
+            elif 'white label completed' in original_status or 'white lable completed' in original_status:
+                running_count['white_label_completed'] += 1
+            elif 'white label unfilled' in original_status or 'white lable unfilled' in original_status:
+                running_count['white_label_unfilled'] += 1
+            elif 'formerly in-person' in original_status and 'completed' in original_status:
+                running_count['formerly_in_person_completed'] += 1
+            elif 'formerly in-person' in original_status and ('canceled' in original_status or 'cancelled' in original_status):
+                running_count['formerly_in_person_canceled'] += 1
+            elif 'covid' in original_status:
+                running_count['covid19_cancelation'] += 1
+            elif original_status == 'count':
+                running_count['count'] += 1
+            elif not original_status or 'unfilled' in original_status:
+                running_count['unfilled'] += 1
+            
+            # District-wise completed sessions
+            if event.districts:
+                for district in event.districts:
+                    district_name = district.name
+                    if district_name not in district_completed:
+                        district_completed[district_name] = 0
+                    
+                    # Count if successfully completed
+                    if 'successfully completed' in original_status:
+                        district_completed[district_name] += 1
+            
+            # Topic-wise session counts (using series field which contains Topic/Theme)
+            if event.series and event.series.strip():
+                topic = event.series.strip()
+                if topic not in topic_counts:
+                    topic_counts[topic] = 0
+                topic_counts[topic] += 1
+            
+            # Session type analysis (using additional_information field)
+            session_type = event.additional_information or 'other'
+            session_type_clean = session_type.lower().replace(' ', '_').replace('-', '_')
+            
+            # Map to our predefined session types or use 'other'
+            if session_type_clean in session_types:
+                session_types[session_type_clean]['all'] += 1
+                if 'successfully completed' in original_status:
+                    session_types[session_type_clean]['completed'] += 1
+            else:
+                session_types['other']['all'] += 1
+                if 'successfully completed' in original_status:
+                    session_types['other']['completed'] += 1
+            
+            # Grade level analysis (using school level)
+            grade_level = None
+            if event.school_obj and event.school_obj.level:
+                grade_level = event.school_obj.level.lower().strip()
+            
+            if grade_level:
+                # Map school levels to our grade level categories
+                if grade_level in ['elementary', 'elem']:
+                    grade_key = 'elementary'
+                elif grade_level in ['middle', 'mid']:
+                    grade_key = 'middle'
+                elif grade_level in ['high', 'secondary']:
+                    grade_key = 'high'
+                elif grade_level in ['pre-k', 'prek', 'pre_k']:
+                    grade_key = 'pre_k'
+                else:
+                    grade_key = 'grade_level_not_set'
+                
+                grade_levels[grade_key]['all'] += 1
+                # Count completed (no simulcast)
+                if 'successfully completed' in original_status:
+                    grade_levels[grade_key]['completed_no_simulcast'] += 1
+            else:
+                grade_levels['grade_level_not_set']['all'] += 1
+                if 'successfully completed' in original_status:
+                    grade_levels['grade_level_not_set']['completed_no_simulcast'] += 1
+            
+            # Teacher attendance analysis
+            teacher_count = len(event.teacher_registrations)
+            if teacher_count > 1:
+                teacher_attendance['more_than_one_teacher_present'] += 1
+        
+        # Calculate professional cancel/no-show total for running count
+        running_count['professional_cancel_no_show'] = (
+            running_count['pathful_professional_cancellation'] +
+            running_count['pathful_professional_no_show'] +
+            running_count['local_professional_cancellation'] +
+            running_count['local_professional_no_show']
+        )
+        
+        # Sort districts and topics for consistent display
+        district_completed = dict(sorted(district_completed.items()))
+        topic_counts = dict(sorted(topic_counts.items()))
+        
+        # Debug output to understand the data
+        print(f"DEBUG: Found {len(events)} events")
+        print(f"DEBUG: Unique statuses: {sorted(unique_statuses)}")
+        print(f"DEBUG: Unique additional info: {sorted(unique_additional_info)}")
+        print(f"DEBUG: Unique series: {sorted(unique_series)}")
+        print(f"DEBUG: Unique school levels: {sorted(unique_school_levels)}")
+        print(f"DEBUG: Running count totals: {running_count}")
+        print(f"DEBUG: Topic counts: {topic_counts}")
+        print(f"DEBUG: District completed: {district_completed}")
         
         # Prepare data for template
         virtual_year_options = generate_school_year_options()
@@ -1271,6 +1443,12 @@ def load_routes(bp):
             'reports/virtual_breakdown.html',
             monthly_breakdown=monthly_breakdown,
             ytd_totals=ytd_totals,
+            running_count=running_count,
+            district_completed=district_completed,
+            topic_counts=topic_counts,
+            session_types=session_types,
+            grade_levels=grade_levels,
+            teacher_attendance=teacher_attendance,
             current_filters=current_filters,
             virtual_year_options=virtual_year_options,
             months=months
