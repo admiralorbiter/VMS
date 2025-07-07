@@ -1164,11 +1164,13 @@ def load_routes(bp):
             elif 'teacher no-show' in original_status or 'teacher no show' in original_status:
                 monthly_breakdown[month_key]['teacher_no_shows'] += 1
             
-            elif 'pathful professional' in original_status and ('no-show' in original_status or 'no show' in original_status or 'cancelation' in original_status or 'cancellation' in original_status):
+            elif 'pathful professional' in original_status:
                 monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
+                print(f"DEBUG: Counted Pathful Professional Issue - Status: '{original_status}' Event: {event.id}")
             
-            elif 'local professional' in original_status and ('no-show' in original_status or 'no show' in original_status or 'cancelation' in original_status or 'cancellation' in original_status):
+            elif 'local professional' in original_status:
                 monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
+                print(f"DEBUG: Counted Local Professional Issue - Status: '{original_status}' Event: {event.id}")
             
             elif 'technical difficulties' in original_status or original_status == 'count':
                 monthly_breakdown[month_key]['unfilled_sessions'] += 1
@@ -1176,6 +1178,11 @@ def load_routes(bp):
             # Fallback to event status if no original status string
             elif not original_status:
                 event_status = event.status
+                event_status_str = event_status.value.lower() if event_status else ''
+                
+                # Debug: Log event status for professional keywords
+                if 'professional' in event_status_str:
+                    print(f"DEBUG: Found professional in event status: '{event_status_str}' for event {event.id}")
                 
                 if event_status == EventStatus.COMPLETED:
                     monthly_breakdown[month_key]['successfully_completed'] += 1
@@ -1185,13 +1192,33 @@ def load_routes(bp):
                     monthly_breakdown[month_key]['unfilled_sessions'] += 1
                 elif event_status == EventStatus.CANCELLED and not event.volunteers:
                     monthly_breakdown[month_key]['unfilled_sessions'] += 1
+                
+                # Check for professional statuses in main event status
+                elif 'pathful professional' in event_status_str:
+                    monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
+                    print(f"DEBUG: Counted Pathful Professional Issue from Event Status - Status: '{event_status_str}' Event: {event.id}")
+                elif 'local professional' in event_status_str:
+                    monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
+                    print(f"DEBUG: Counted Local Professional Issue from Event Status - Status: '{event_status_str}' Event: {event.id}")
             
             # Check teacher registrations for additional status information
             for teacher_reg in event.teacher_registrations:
                 tr_status = (teacher_reg.status or '').lower().strip()
                 
-                # Count teacher-specific cancellations and no-shows from teacher registration status
-                if 'cancel' in tr_status and 'teacher' not in original_status:
+                # Debug: Log all teacher registration statuses that contain professional
+                if 'professional' in tr_status:
+                    print(f"DEBUG: Found professional in teacher reg status: '{tr_status}' for event {event.id}")
+                
+                # Check for professional statuses FIRST (before teacher-specific logic)
+                if 'pathful professional' in tr_status:
+                    monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
+                    print(f"DEBUG: Counted Pathful Professional Issue from Teacher Reg - Status: '{tr_status}' Event: {event.id}")
+                elif 'local professional' in tr_status:
+                    monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
+                    print(f"DEBUG: Counted Local Professional Issue from Teacher Reg - Status: '{tr_status}' Event: {event.id}")
+                
+                # Count teacher-specific cancellations and no-shows (only if not professional)
+                elif 'cancel' in tr_status and 'teacher' not in original_status:
                     monthly_breakdown[month_key]['teacher_canceled'] += 1
                 elif ('no-show' in tr_status or 'no show' in tr_status) and 'teacher' not in original_status:
                     monthly_breakdown[month_key]['teacher_no_shows'] += 1
@@ -1221,8 +1248,21 @@ def load_routes(bp):
             print(f"DEBUG: Found {len(unique_statuses)} unique status strings:")
             for status in sorted(unique_statuses):
                 print(f"  - '{status}'")
+                
+            # Show professional-related statuses specifically
+            professional_statuses = [s for s in unique_statuses if 'professional' in s]
+            if professional_statuses:
+                print(f"DEBUG: Professional statuses found: {professional_statuses}")
+            else:
+                print("DEBUG: No professional statuses found in original_status_string field")
         else:
             print("DEBUG: No original_status_string values found in events")
+        
+        # Debug output: Show totals for professional issues
+        total_pathful = sum(month_data['pathful_professional_canceled_no_shows'] for month_data in monthly_breakdown.values())
+        total_local = sum(month_data['local_professional_canceled_no_shows'] for month_data in monthly_breakdown.values())
+        print(f"DEBUG: Total Pathful Professional Issues: {total_pathful}")
+        print(f"DEBUG: Total Local Professional Issues: {total_local}")
         
         # Prepare data for template
         virtual_year_options = generate_school_year_options()
