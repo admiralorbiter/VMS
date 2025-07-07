@@ -1129,6 +1129,9 @@ def load_routes(bp):
                 'unfilled_sessions': 0
             }
         
+        # Debug: Collect unique status strings to understand what we're working with
+        unique_statuses = set()
+        
         # Process each event
         for event in events:
             if not event.start_date:
@@ -1140,54 +1143,63 @@ def load_routes(bp):
             if month_key not in monthly_breakdown:
                 continue
             
-            # Analyze event status and categorize
-            event_status = event.status
-            
-            # Check if event is successfully completed
-            if event_status == EventStatus.COMPLETED:
-                monthly_breakdown[month_key]['successfully_completed'] += 1
-            
-            # Check if event is simulcast
-            elif event_status == EventStatus.SIMULCAST:
-                monthly_breakdown[month_key]['simulcast_sessions'] += 1
-            
-            # Check teacher registrations for cancellations and no-shows
-            teacher_canceled_count = 0
-            teacher_no_show_count = 0
-            
-            for teacher_reg in event.teacher_registrations:
-                if teacher_reg.status == 'cancelled':
-                    teacher_canceled_count += 1
-                elif teacher_reg.status == 'no_show':
-                    teacher_no_show_count += 1
-            
-            monthly_breakdown[month_key]['teacher_canceled'] += teacher_canceled_count
-            monthly_breakdown[month_key]['teacher_no_shows'] += teacher_no_show_count
-            
-            # Check for professional cancellations/no-shows based on original status string
+            # Get the original status string for analysis
             original_status_raw = getattr(event, 'original_status_string', None)
             original_status = (original_status_raw or '').lower().strip()
             
-            if original_status == 'pathful professional no-show':
+            # Collect unique statuses for debugging
+            if original_status:
+                unique_statuses.add(original_status)
+            
+            # Categorize based on original status string (primary source of truth)
+            if 'successfully completed' in original_status:
+                monthly_breakdown[month_key]['successfully_completed'] += 1
+            
+            elif 'simulcast' in original_status:
+                monthly_breakdown[month_key]['simulcast_sessions'] += 1
+            
+            elif 'teacher' in original_status and ('cancelation' in original_status or 'cancellation' in original_status):
+                monthly_breakdown[month_key]['teacher_canceled'] += 1
+            
+            elif 'teacher no-show' in original_status or 'teacher no show' in original_status:
+                monthly_breakdown[month_key]['teacher_no_shows'] += 1
+            
+            elif 'pathful professional' in original_status and ('no-show' in original_status or 'no show' in original_status or 'cancelation' in original_status or 'cancellation' in original_status):
                 monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
-            elif original_status == 'local professional no-show':
+            
+            elif 'local professional' in original_status and ('no-show' in original_status or 'no show' in original_status or 'cancelation' in original_status or 'cancellation' in original_status):
                 monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
-            elif original_status == 'pathful professional cancelation':
-                monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
-            elif original_status == 'local professional cancelation':
-                monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
-            elif original_status == 'technical difficulties':
-                monthly_breakdown[month_key]['unfilled_sessions'] += 1
-            elif event_status == EventStatus.NO_SHOW and not event.volunteers:
-                # If no original status available and event has no volunteers, consider unfilled
-                monthly_breakdown[month_key]['unfilled_sessions'] += 1
-            elif event_status == EventStatus.CANCELLED and not event.volunteers:
-                # If event was cancelled and has no volunteers, consider it unfilled
+            
+            elif 'technical difficulties' in original_status or original_status == 'count':
                 monthly_breakdown[month_key]['unfilled_sessions'] += 1
             
-            # Check for simulcast sessions among teacher registrations
-            simulcast_count = sum(1 for tr in event.teacher_registrations if tr.is_simulcast)
-            monthly_breakdown[month_key]['simulcast_sessions'] += simulcast_count
+            # Fallback to event status if no original status string
+            elif not original_status:
+                event_status = event.status
+                
+                if event_status == EventStatus.COMPLETED:
+                    monthly_breakdown[month_key]['successfully_completed'] += 1
+                elif event_status == EventStatus.SIMULCAST:
+                    monthly_breakdown[month_key]['simulcast_sessions'] += 1
+                elif event_status == EventStatus.NO_SHOW and not event.volunteers:
+                    monthly_breakdown[month_key]['unfilled_sessions'] += 1
+                elif event_status == EventStatus.CANCELLED and not event.volunteers:
+                    monthly_breakdown[month_key]['unfilled_sessions'] += 1
+            
+            # Check teacher registrations for additional status information
+            for teacher_reg in event.teacher_registrations:
+                tr_status = (teacher_reg.status or '').lower().strip()
+                
+                # Count teacher-specific cancellations and no-shows from teacher registration status
+                if 'cancel' in tr_status and 'teacher' not in original_status:
+                    monthly_breakdown[month_key]['teacher_canceled'] += 1
+                elif ('no-show' in tr_status or 'no show' in tr_status) and 'teacher' not in original_status:
+                    monthly_breakdown[month_key]['teacher_no_shows'] += 1
+            
+            # Check for simulcast from teacher registrations (additional simulcast detection)
+            simulcast_teacher_count = sum(1 for tr in event.teacher_registrations if tr.is_simulcast)
+            if simulcast_teacher_count > 0 and 'simulcast' not in original_status:
+                monthly_breakdown[month_key]['simulcast_sessions'] += 1
         
         # Calculate year-to-date totals
         ytd_totals = {
@@ -1203,6 +1215,14 @@ def load_routes(bp):
         for month_data in monthly_breakdown.values():
             for key in ytd_totals:
                 ytd_totals[key] += month_data[key]
+        
+        # Debug output: Show unique status strings found
+        if unique_statuses:
+            print(f"DEBUG: Found {len(unique_statuses)} unique status strings:")
+            for status in sorted(unique_statuses):
+                print(f"  - '{status}'")
+        else:
+            print("DEBUG: No original_status_string values found in events")
         
         # Prepare data for template
         virtual_year_options = generate_school_year_options()

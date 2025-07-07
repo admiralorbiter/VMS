@@ -131,15 +131,18 @@
 .breakdown-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9em;
+    font-size: 0.85em;
+    border: 1px solid #dee2e6;
 }
 
 .breakdown-table th,
 .breakdown-table td {
-    padding: 12px 8px;
+    padding: 8px 6px;
     text-align: center;
     border-bottom: 1px solid #dee2e6;
+    border-right: 1px solid #e9ecef;
     white-space: nowrap;
+    font-size: 0.9em;
 }
 
 .breakdown-table th {
@@ -161,6 +164,8 @@
     position: sticky;
     left: 0;
     z-index: 5;
+    min-width: 100px;
+    padding: 12px 16px;
 }
 
 .breakdown-table .ytd-row {
@@ -182,11 +187,16 @@
 }
 
 .category-header {
-    writing-mode: vertical-lr;
+    writing-mode: horizontal-tb;
     text-orientation: mixed;
-    min-width: 80px;
-    height: 120px;
-    vertical-align: bottom;
+    min-width: 120px;
+    max-width: 140px;
+    word-wrap: break-word;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.75em;
+    line-height: 1.2;
+    padding: 8px 4px;
 }
 
 .number-cell {
@@ -259,12 +269,23 @@
     }
     
     .breakdown-table {
-        font-size: 0.8em;
+        font-size: 0.7em;
     }
     
     .breakdown-table th,
     .breakdown-table td {
-        padding: 8px 4px;
+        padding: 6px 3px;
+    }
+    
+    .category-header {
+        min-width: 80px;
+        max-width: 100px;
+        font-size: 0.65em;
+    }
+    
+    .breakdown-table .month-column {
+        min-width: 80px;
+        padding: 6px 8px;
     }
     
     .legend-grid {
@@ -359,14 +380,14 @@
             <table class="breakdown-table">
                 <thead>
                     <tr>
-                        <th rowspan="2" class="month-column">Month</th>
-                        <th class="category-header">Successfully Completed Sessions</th>
-                        <th class="category-header">Number of Simulcast + Sessions</th>
-                        <th class="category-header">Number of Teacher Canceled Sessions</th>
-                        <th class="category-header">Number of Teacher No Shows</th>
-                        <th class="category-header">Number of Pathful Professional Canceled/No Shows</th>
-                        <th class="category-header">Number of Local Professional Canceled/No Shows</th>
-                        <th class="category-header">Number of Unfilled Sessions</th>
+                        <th class="month-column">Month</th>
+                        <th class="category-header">Successfully Completed</th>
+                        <th class="category-header">Simulcast Sessions</th>
+                        <th class="category-header">Teacher Canceled</th>
+                        <th class="category-header">Teacher No-Shows</th>
+                        <th class="category-header">Pathful Prof. Issues</th>
+                        <th class="category-header">Local Prof. Issues</th>
+                        <th class="category-header">Unfilled Sessions</th>
                     </tr>
                 </thead>
                 <tbody>

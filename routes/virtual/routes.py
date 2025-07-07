@@ -404,6 +404,10 @@ def find_or_create_volunteer(first_name, last_name, organization=None):
         )
         db.session.add(volunteer)
         db.session.flush()
+    else:
+        # Update existing volunteer's organization if it has changed
+        if organization and not pd.isna(organization) and organization != volunteer.organization_name:
+            volunteer.organization_name = organization
     
     return volunteer
 
@@ -433,6 +437,12 @@ def create_participation(event, volunteer, status):
             participation = EventParticipation(**participation_data)
         
         db.session.add(participation)
+    else:
+        # Update existing participation record
+        participation.status = 'Completed' if status == EventStatus.COMPLETED else 'Confirmed'
+        participation.participant_type = 'Presenter'
+        if hasattr(EventParticipation, 'delivery_hours'):
+            participation.delivery_hours = event.duration / 60 if event.duration else 1
 
 def update_volunteer_association(event, volunteer, is_simulcast):
     """Update volunteer associations for an event"""
@@ -505,8 +515,17 @@ def process_teacher_for_event(row, event, is_simulcast):
             
             db.session.add(teacher)
             db.session.flush()
+        else:
+            # Update existing teacher's school association if it has changed
+            school_name = row.get('School Name')
+            district_name = row.get('District')
+            if school_name and not pd.isna(school_name):
+                district = get_or_create_district(district_name) if district_name else None
+                school = get_or_create_school(school_name, district)
+                if school and school.id != teacher.school_id:
+                    teacher.school_id = school.id
 
-        # Create teacher participation record
+        # Create or update teacher participation record
         event_teacher = EventTeacher.query.filter_by(
             event_id=event.id,
             teacher_id=teacher.id
@@ -521,6 +540,14 @@ def process_teacher_for_event(row, event, is_simulcast):
                 attendance_confirmed_at=datetime.now(timezone.utc) if event.status == EventStatus.COMPLETED else None
             )
             db.session.add(event_teacher)
+        else:
+            # Update existing teacher participation record
+            event_teacher.status = row.get('Status')
+            event_teacher.is_simulcast = is_simulcast
+            if event.status == EventStatus.COMPLETED and not event_teacher.attendance_confirmed_at:
+                event_teacher.attendance_confirmed_at = datetime.now(timezone.utc)
+            elif event.status != EventStatus.COMPLETED:
+                event_teacher.attendance_confirmed_at = None
 
 def add_district_to_event(event, district_name):
     """Gets or creates the district and adds it to the event's districts list if not already present."""
@@ -1159,10 +1186,24 @@ def import_sheet():
                     event.status = EventStatus.map_status(status_str)
                     event.original_status_string = status_str  # Store original status string
                     event.session_id = extract_session_id(row_data.get('Session Link'))
+                    
+                    # Update title if it has changed
+                    if row_data.get('Session Title') and row_data.get('Session Title') != event.title:
+                        event.title = row_data.get('Session Title')
+                    
                     # Update other fields using existing Event model fields
                     event.series = row_data.get('Topic/Theme')  # Use series instead of topic
                     event.additional_information = row_data.get('Session Type')  # Store session type in additional_information
                     event.registration_link = row_data.get('Session Link')  # Use registration_link instead of session_link
+                    
+                    # Update date/time if they have changed (be careful with timezone handling)
+                    if current_datetime and current_datetime != event.start_date:
+                        event.start_date = current_datetime
+                        event.end_date = current_datetime + timedelta(hours=1)  # Default 1 hour duration
+                    
+                    # Always ensure session_host is set
+                    if not event.session_host:
+                        event.session_host = 'PREPKC'
 
                     # --- School Handling (following events import pattern) ---
                     primary_school_name = row_data.get('School Name')
@@ -1227,11 +1268,12 @@ def import_sheet():
 
         # Summary of results
         print(f"\n=== Import Complete ===")
-        print(f"Success: {success_count} events processed")
+        print(f"Success: {success_count} events processed (new + updated)")
         print(f"Warnings: {warning_count}")  
         print(f"Errors: {error_count}")
         if errors:
             print(f"Error details: {len(errors)} total issues")
+        print("💡 Note: Import updates existing events with latest data - no purge needed!")
         print("========================")
         
         return jsonify({
