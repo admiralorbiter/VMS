@@ -1312,42 +1312,116 @@ def load_routes(bp):
             original_status = (original_status_raw or '').lower().strip()
             event_status = event.status
             
-            # Running count analysis
+            # Running count analysis - check multiple sources like monthly breakdown
+            event_categorized = False
+            
+            # Check original status first
             if 'successfully completed' in original_status:
                 running_count['successfully_completed'] += 1
+                event_categorized = True
             elif 'simulcast' in original_status:
                 running_count['simulcast'] += 1
+                event_categorized = True
             elif 'teacher' in original_status and ('cancelation' in original_status or 'cancellation' in original_status):
                 running_count['teacher_cancelation'] += 1
+                event_categorized = True
             elif 'teacher no-show' in original_status or 'teacher no show' in original_status:
                 running_count['teacher_no_show'] += 1
+                event_categorized = True
             elif 'pathful professional cancellation' in original_status:
                 running_count['pathful_professional_cancellation'] += 1
+                event_categorized = True
             elif 'pathful professional no-show' in original_status or 'pathful professional no show' in original_status:
                 running_count['pathful_professional_no_show'] += 1
+                event_categorized = True
             elif 'local professional cancellation' in original_status:
                 running_count['local_professional_cancellation'] += 1
+                event_categorized = True
             elif 'local professional no-show' in original_status or 'local professional no show' in original_status:
                 running_count['local_professional_no_show'] += 1
+                event_categorized = True
             elif 'technical difficulties' in original_status:
                 running_count['technical_difficulties'] += 1
+                event_categorized = True
             elif 'inclement weather' in original_status:
                 running_count['inclement_weather_cancellation'] += 1
+                event_categorized = True
             elif 'moved to in-person' in original_status:
                 running_count['moved_to_in_person_session'] += 1
+                event_categorized = True
             elif 'white label completed' in original_status or 'white lable completed' in original_status:
                 running_count['white_label_completed'] += 1
+                event_categorized = True
             elif 'white label unfilled' in original_status or 'white lable unfilled' in original_status:
                 running_count['white_label_unfilled'] += 1
+                event_categorized = True
             elif 'formerly in-person' in original_status and 'completed' in original_status:
                 running_count['formerly_in_person_completed'] += 1
+                event_categorized = True
             elif 'formerly in-person' in original_status and ('canceled' in original_status or 'cancelled' in original_status):
                 running_count['formerly_in_person_canceled'] += 1
+                event_categorized = True
             elif 'covid' in original_status:
                 running_count['covid19_cancelation'] += 1
+                event_categorized = True
             elif original_status == 'count':
                 running_count['count'] += 1
-            elif not original_status or 'unfilled' in original_status:
+                event_categorized = True
+            
+            # If not categorized by original status, check teacher registrations
+            if not event_categorized:
+                for teacher_reg in event.teacher_registrations:
+                    tr_status = (teacher_reg.status or '').lower().strip()
+                    
+                    # Check for professional statuses FIRST
+                    if 'pathful professional' in tr_status:
+                        if 'no-show' in tr_status or 'no show' in tr_status:
+                            running_count['pathful_professional_no_show'] += 1
+                        else:
+                            running_count['pathful_professional_cancellation'] += 1
+                        event_categorized = True
+                        break
+                    elif 'local professional' in tr_status:
+                        if 'no-show' in tr_status or 'no show' in tr_status:
+                            running_count['local_professional_no_show'] += 1
+                        else:
+                            running_count['local_professional_cancellation'] += 1
+                        event_categorized = True
+                        break
+                    # Check for teacher-specific statuses
+                    elif 'cancel' in tr_status and 'professional' not in tr_status:
+                        running_count['teacher_cancelation'] += 1
+                        event_categorized = True
+                        break
+                    elif ('no-show' in tr_status or 'no show' in tr_status) and 'professional' not in tr_status:
+                        running_count['teacher_no_show'] += 1
+                        event_categorized = True
+                        break
+                
+                # Check for simulcast from teacher registrations
+                if not event_categorized:
+                    simulcast_teacher_count = sum(1 for tr in event.teacher_registrations if tr.is_simulcast)
+                    if simulcast_teacher_count > 0:
+                        running_count['simulcast'] += 1
+                        event_categorized = True
+            
+            # If still not categorized, check event status
+            if not event_categorized:
+                if event_status == EventStatus.COMPLETED:
+                    running_count['successfully_completed'] += 1
+                    event_categorized = True
+                elif event_status == EventStatus.SIMULCAST:
+                    running_count['simulcast'] += 1
+                    event_categorized = True
+                elif event_status == EventStatus.CANCELLED and not event.volunteers:
+                    running_count['unfilled'] += 1
+                    event_categorized = True
+                elif event_status == EventStatus.NO_SHOW and not event.volunteers:
+                    running_count['unfilled'] += 1
+                    event_categorized = True
+            
+            # Default to unfilled if still not categorized
+            if not event_categorized:
                 running_count['unfilled'] += 1
             
             # District-wise completed sessions
