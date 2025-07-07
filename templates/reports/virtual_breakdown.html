@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}Virtual Sessions Detailed Breakdown{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+<style>
+.breakdown-container {
+    max-width: 98vw;
+    margin: 0 auto;
+    padding: 8px 8px 20px 8px;
+}
+
+.breakdown-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.back-link:hover {
+    color: #f0f0f0;
+    text-decoration: underline;
+}
+
+.breakdown-title {
+    margin: 0 0 10px 0;
+    font-size: 2.5em;
+    font-weight: 700;
+}
+
+.breakdown-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.1em;
+}
+
+.filters-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9em;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    grid-column: 1 / -1;
+    margin-top: 15px;
+}
+
+.filter-btn, .reset-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.filter-btn {
+    background: #007bff;
+    color: white;
+}
+
+.filter-btn:hover {
+    background: #0056b3;
+}
+
+.reset-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #545b62;
+}
+
+.breakdown-table-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+    padding: 12px 8px;
+    text-align: center;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.breakdown-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.breakdown-table .month-column {
+    text-align: left;
+    font-weight: 600;
+    background: #f8f9fa;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+.breakdown-table .ytd-row {
+    background: #e9ecef;
+    font-weight: 700;
+}
+
+.breakdown-table .ytd-row td {
+    border-top: 2px solid #007bff;
+    font-size: 1.1em;
+}
+
+.breakdown-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.breakdown-table tbody tr:hover .month-column {
+    background: #e9ecef;
+}
+
+.category-header {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    min-width: 80px;
+    height: 120px;
+    vertical-align: bottom;
+}
+
+.number-cell {
+    font-weight: 600;
+    color: #007bff;
+}
+
+.zero-cell {
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.positive-cell {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.negative-cell {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.legend {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.legend h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.legend-color.completed { background: #28a745; }
+.legend-color.simulcast { background: #17a2b8; }
+.legend-color.teacher-canceled { background: #ffc107; }
+.legend-color.teacher-no-show { background: #fd7e14; }
+.legend-color.pathful-canceled { background: #dc3545; }
+.legend-color.local-canceled { background: #e83e8c; }
+.legend-color.unfilled { background: #6c757d; }
+
+@media (max-width: 768px) {
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .breakdown-table {
+        font-size: 0.8em;
+    }
+    
+    .breakdown-table th,
+    .breakdown-table td {
+        padding: 8px 4px;
+    }
+    
+    .legend-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breakdown-container">
+    <div class="breakdown-header">
+        <a href="{{ url_for('report.virtual_usage', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Virtual Usage Report
+        </a>
+        <h1 class="breakdown-title">Virtual Sessions Detailed Breakdown</h1>
+        <p class="breakdown-subtitle">Virtual Year: {{ current_filters.year }}</p>
+        <p class="breakdown-subtitle">Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
+    </div>
+    
+    <!-- Filter Section -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            <div class="filter-group">
+                <label for="year">Virtual Year:</label>
+                <select id="year" name="year">
+                    {% for virtual_year in virtual_year_options %}
+                        <option value="{{ virtual_year }}" {% if virtual_year == current_filters.year %}selected{% endif %}>
+                            {{ virtual_year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="date_from">From:</label>
+                <input type="date" id="date_from" name="date_from" 
+                       value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="date_to">To:</label>
+                <input type="date" id="date_to" name="date_to" 
+                       value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="filter-btn">Apply Filters</button>
+                <a href="{{ url_for('report.virtual_breakdown') }}" class="reset-btn">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <h3>Category Definitions</h3>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <div class="legend-color completed"></div>
+                <span><strong>Successfully Completed:</strong> Sessions marked as completed</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color simulcast"></div>
+                <span><strong>Simulcast Sessions:</strong> Sessions broadcast to multiple locations</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color teacher-canceled"></div>
+                <span><strong>Teacher Canceled:</strong> Sessions canceled by participating teachers</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color teacher-no-show"></div>
+                <span><strong>Teacher No-Shows:</strong> Registered teachers who didn't attend</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color pathful-canceled"></div>
+                <span><strong>Pathful Professional Issues:</strong> Cancellations/no-shows by Pathful professionals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color local-canceled"></div>
+                <span><strong>Local Professional Issues:</strong> Cancellations/no-shows by local professionals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color unfilled"></div>
+                <span><strong>Unfilled Sessions:</strong> Sessions with no available professionals</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breakdown Table -->
+    <div class="breakdown-table-container">
+        <div class="table-scroll">
+            <table class="breakdown-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="month-column">Month</th>
+                        <th class="category-header">Successfully Completed Sessions</th>
+                        <th class="category-header">Number of Simulcast + Sessions</th>
+                        <th class="category-header">Number of Teacher Canceled Sessions</th>
+                        <th class="category-header">Number of Teacher No Shows</th>
+                        <th class="category-header">Number of Pathful Professional Canceled/No Shows</th>
+                        <th class="category-header">Number of Local Professional Canceled/No Shows</th>
+                        <th class="category-header">Number of Unfilled Sessions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for year, month_num, month_name in months %}
+                        {% set month_key = "%04d-%02d"|format(year, month_num) %}
+                        {% set month_data = monthly_breakdown.get(month_key, {}) %}
+                        <tr>
+                            <td class="month-column">{{ month_name }}</td>
+                            <td class="{% if month_data.get('successfully_completed', 0) > 0 %}positive-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('successfully_completed', 0) }}
+                            </td>
+                            <td class="{% if month_data.get('simulcast_sessions', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('simulcast_sessions', 0) }}
+                            </td>
+                            <td class="{% if month_data.get('teacher_canceled', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('teacher_canceled', 0) }}
+                            </td>
+                            <td class="{% if month_data.get('teacher_no_shows', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('teacher_no_shows', 0) }}
+                            </td>
+                            <td class="{% if month_data.get('pathful_professional_canceled_no_shows', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('pathful_professional_canceled_no_shows', 0) }}
+                            </td>
+                            <td class="{% if month_data.get('local_professional_canceled_no_shows', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('local_professional_canceled_no_shows', 0) }}
+                            </td>
+                            <td class="{% if month_data.get('unfilled_sessions', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('unfilled_sessions', 0) }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    
+                    <!-- Year to Date Row -->
+                    <tr class="ytd-row">
+                        <td class="month-column">Year to Date</td>
+                        <td class="{% if ytd_totals.get('successfully_completed', 0) > 0 %}positive-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('successfully_completed', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('simulcast_sessions', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('simulcast_sessions', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('teacher_canceled', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('teacher_canceled', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('teacher_no_shows', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('teacher_no_shows', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('pathful_professional_canceled_no_shows', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('pathful_professional_canceled_no_shows', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('local_professional_canceled_no_shows', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('local_professional_canceled_no_shows', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('unfilled_sessions', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('unfilled_sessions', 0) }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

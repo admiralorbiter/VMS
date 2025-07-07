@@ -1025,3 +1025,193 @@ def load_routes(bp):
         response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response
+
+    @bp.route('/reports/virtual/breakdown')
+    @login_required
+    def virtual_breakdown():
+        """
+        Detailed breakdown of virtual sessions by month and category.
+        
+        Categories:
+        - Successfully completed sessions
+        - Number of simulcast + Sessions
+        - Number of teacher canceled sessions
+        - Number of teacher no shows
+        - Number of pathful professional canceled/no shows sessions
+        - Number of local professional canceled/no show sessions
+        - Number of unfilled sessions
+        """
+        # Get filter parameters - Use virtual year instead of school year
+        default_virtual_year = get_current_virtual_year()
+        selected_virtual_year = request.args.get('year', default_virtual_year)
+        
+        # Calculate default date range based on virtual session year
+        default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)
+        
+        # Handle explicit date range parameters
+        date_from_str = request.args.get('date_from')
+        date_to_str = request.args.get('date_to')
+        
+        date_from = default_date_from
+        date_to = default_date_to
+        
+        if date_from_str:
+            try:
+                parsed_date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+                if default_date_from.date() <= parsed_date_from.date() <= default_date_to.date():
+                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                parsed_date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+                if default_date_from.date() <= parsed_date_to.date() <= default_date_to.date():
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                pass
+
+        if date_from > date_to:
+            date_from = default_date_from
+            date_to = default_date_to
+
+        current_filters = {
+            'year': selected_virtual_year,
+            'date_from': date_from,
+            'date_to': date_to
+        }
+        
+        # Base query for virtual session events
+        base_query = Event.query.options(
+            joinedload(Event.districts),
+            joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher),
+            joinedload(Event.volunteers)
+        ).filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to
+        )
+        
+        events = base_query.all()
+        
+        # Initialize monthly breakdown data
+        monthly_breakdown = {}
+        
+        # Create month entries for the full virtual year (August to July)
+        virtual_year_start = int(selected_virtual_year.split('-')[0])
+        months = [
+            (virtual_year_start, 8, 'August'),
+            (virtual_year_start, 9, 'September'),
+            (virtual_year_start, 10, 'October'),
+            (virtual_year_start, 11, 'November'),
+            (virtual_year_start, 12, 'December'),
+            (virtual_year_start + 1, 1, 'January'),
+            (virtual_year_start + 1, 2, 'February'),
+            (virtual_year_start + 1, 3, 'March'),
+            (virtual_year_start + 1, 4, 'April'),
+            (virtual_year_start + 1, 5, 'May'),
+            (virtual_year_start + 1, 6, 'June'),
+            (virtual_year_start + 1, 7, 'July')
+        ]
+        
+        for year, month_num, month_name in months:
+            month_key = f"{year}-{month_num:02d}"
+            monthly_breakdown[month_key] = {
+                'month_name': month_name,
+                'year': year,
+                'month': month_num,
+                'successfully_completed': 0,
+                'simulcast_sessions': 0,
+                'teacher_canceled': 0,
+                'teacher_no_shows': 0,
+                'pathful_professional_canceled_no_shows': 0,
+                'local_professional_canceled_no_shows': 0,
+                'unfilled_sessions': 0
+            }
+        
+        # Process each event
+        for event in events:
+            if not event.start_date:
+                continue
+                
+            month_key = f"{event.start_date.year}-{event.start_date.month:02d}"
+            
+            # Skip if not in our breakdown range
+            if month_key not in monthly_breakdown:
+                continue
+            
+            # Analyze event status and categorize
+            event_status = event.status
+            
+            # Check if event is successfully completed
+            if event_status == EventStatus.COMPLETED:
+                monthly_breakdown[month_key]['successfully_completed'] += 1
+            
+            # Check if event is simulcast
+            elif event_status == EventStatus.SIMULCAST:
+                monthly_breakdown[month_key]['simulcast_sessions'] += 1
+            
+            # Check teacher registrations for cancellations and no-shows
+            teacher_canceled_count = 0
+            teacher_no_show_count = 0
+            
+            for teacher_reg in event.teacher_registrations:
+                if teacher_reg.status == 'cancelled':
+                    teacher_canceled_count += 1
+                elif teacher_reg.status == 'no_show':
+                    teacher_no_show_count += 1
+            
+            monthly_breakdown[month_key]['teacher_canceled'] += teacher_canceled_count
+            monthly_breakdown[month_key]['teacher_no_shows'] += teacher_no_show_count
+            
+            # Check for professional cancellations/no-shows based on original status string
+            original_status_raw = getattr(event, 'original_status_string', None)
+            original_status = (original_status_raw or '').lower().strip()
+            
+            if original_status == 'pathful professional no-show':
+                monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
+            elif original_status == 'local professional no-show':
+                monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
+            elif original_status == 'pathful professional cancelation':
+                monthly_breakdown[month_key]['pathful_professional_canceled_no_shows'] += 1
+            elif original_status == 'local professional cancelation':
+                monthly_breakdown[month_key]['local_professional_canceled_no_shows'] += 1
+            elif original_status == 'technical difficulties':
+                monthly_breakdown[month_key]['unfilled_sessions'] += 1
+            elif event_status == EventStatus.NO_SHOW and not event.volunteers:
+                # If no original status available and event has no volunteers, consider unfilled
+                monthly_breakdown[month_key]['unfilled_sessions'] += 1
+            elif event_status == EventStatus.CANCELLED and not event.volunteers:
+                # If event was cancelled and has no volunteers, consider it unfilled
+                monthly_breakdown[month_key]['unfilled_sessions'] += 1
+            
+            # Check for simulcast sessions among teacher registrations
+            simulcast_count = sum(1 for tr in event.teacher_registrations if tr.is_simulcast)
+            monthly_breakdown[month_key]['simulcast_sessions'] += simulcast_count
+        
+        # Calculate year-to-date totals
+        ytd_totals = {
+            'successfully_completed': 0,
+            'simulcast_sessions': 0,
+            'teacher_canceled': 0,
+            'teacher_no_shows': 0,
+            'pathful_professional_canceled_no_shows': 0,
+            'local_professional_canceled_no_shows': 0,
+            'unfilled_sessions': 0
+        }
+        
+        for month_data in monthly_breakdown.values():
+            for key in ytd_totals:
+                ytd_totals[key] += month_data[key]
+        
+        # Prepare data for template
+        virtual_year_options = generate_school_year_options()
+        
+        return render_template(
+            'reports/virtual_breakdown.html',
+            monthly_breakdown=monthly_breakdown,
+            ytd_totals=ytd_totals,
+            current_filters=current_filters,
+            virtual_year_options=virtual_year_options,
+            months=months
+        )

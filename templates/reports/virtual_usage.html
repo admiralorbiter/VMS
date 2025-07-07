@@ -224,6 +224,10 @@
                class="export-btn" title="Export to Excel">
                 📊 Export Excel
             </a>
+            <a href="{{ url_for('report.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+               class="export-btn" title="View Detailed Breakdown">
+                📈 Detailed Breakdown
+            </a>
             {% endif %}
             {% if google_sheet_url %}
             <a href="{{ google_sheet_url }}" target="_blank" class="export-btn" title="View Original Google Sheet">

@@ -1045,6 +1045,7 @@ def import_sheet():
                                 type=EventType.VIRTUAL_SESSION,
                                 format=EventFormat.VIRTUAL,
                                 status=EventStatus.map_status(status_str), # Status from creating row
+                                original_status_string=status_str,  # Store original status string
                                 session_id=extract_session_id(row_data.get('Session Link')),
                                 session_host='PREPKC'  # Set default host for virtual sessions
                             )
@@ -1156,6 +1157,7 @@ def import_sheet():
 
                     # Update core event details from this primary row
                     event.status = EventStatus.map_status(status_str)
+                    event.original_status_string = status_str  # Store original status string
                     event.session_id = extract_session_id(row_data.get('Session Link'))
                     # Update other fields using existing Event model fields
                     event.series = row_data.get('Topic/Theme')  # Use series instead of topic

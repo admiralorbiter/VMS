@@ -426,6 +426,7 @@ class Event(db.Model):
     session_host = db.Column(db.String(255), default='PREPKC')  # Store Session_Host__c from Salesforce
     series = db.Column(db.String(255))
     registration_link = db.Column(db.String(1300))
+    original_status_string = db.Column(db.String(255))  # Store original status string for detailed analysis
     
     # Participant details - Consider moving to separate tables for better normalization
     educators = db.Column(db.Text)  # Semicolon-separated list - candidate for normalization
