@@ -357,3 +357,187 @@ def load_routes(bp):
             total_hours=total_hours,
             total_volunteers=total_volunteers
         )
+
+    @bp.route('/reports/organization/thankyou/detail/<int:org_id>/excel')
+    @login_required
+    def organization_thankyou_detail_excel(org_id):
+        """Generate Excel file for organization detail report"""
+        # Get filter parameters
+        school_year = request.args.get('school_year', get_current_school_year())
+        sort_vol = request.args.get('sort_vol', 'hours')
+        order_vol = request.args.get('order_vol', 'desc')
+        sort_evt = request.args.get('sort_evt', 'date')
+        order_evt = request.args.get('order_evt', 'asc')
+        
+        # Get date range for the school year
+        start_date, end_date = get_school_year_date_range(school_year)
+        
+        # Get organization details
+        organization = Organization.query.get_or_404(org_id)
+        
+        # Query volunteers and their participation for this organization
+        volunteer_stats = db.session.query(
+            Volunteer,
+            db.func.count(db.distinct(Event.id)).label('event_count'),
+            db.func.sum(EventParticipation.delivery_hours).label('total_hours')
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).join(
+            EventParticipation, Volunteer.id == EventParticipation.volunteer_id
+        ).join(
+            Event, EventParticipation.event_id == Event.id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            EventParticipation.status == 'Attended'
+        ).group_by(
+            Volunteer.id
+        ).all()
+
+        # Format volunteer data for Excel
+        volunteers_data = [{
+            'Name': f"{v.first_name} {v.last_name}",
+            'Events': events,
+            'Hours': round(hours or 0, 2)
+        } for v, events, hours in volunteer_stats]
+
+        # Sort volunteers in Python
+        def get_vol_sort_key(vol):
+            if sort_vol == 'name':
+                return vol['Name'].lower() if vol['Name'] else ''
+            elif sort_vol == 'events':
+                return vol['Events']
+            elif sort_vol == 'hours':
+                return vol['Hours']
+            return vol['Hours']
+        volunteers_data.sort(key=get_vol_sort_key, reverse=(order_vol=='desc'))
+
+        # Get event details
+        events = db.session.query(
+            Event,
+            db.func.count(db.distinct(EventParticipation.volunteer_id)).label('volunteer_count'),
+            db.func.sum(EventParticipation.delivery_hours).label('total_hours')
+        ).join(
+            EventParticipation, Event.id == EventParticipation.event_id
+        ).join(
+            Volunteer, EventParticipation.volunteer_id == Volunteer.id
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            EventParticipation.status == 'Attended'
+        ).group_by(
+            Event.id
+        ).all()
+
+        # Format event data for Excel
+        events_data = [{
+            'Date': event.start_date.strftime('%B %d, %Y'),
+            'Event': event.title,
+            'Type': event.type.value if event.type else 'Unknown',
+            'Volunteers': vol_count,
+            'Hours': round(hours or 0, 2)
+        } for event, vol_count, hours in events]
+
+        # Sort events in Python
+        def get_evt_sort_key(evt):
+            if sort_evt == 'date':
+                return evt['Date']
+            elif sort_evt == 'title':
+                return evt['Event'].lower() if evt['Event'] else ''
+            elif sort_evt == 'type':
+                return evt['Type'].lower() if evt['Type'] else ''
+            elif sort_evt == 'volunteers':
+                return evt['Volunteers']
+            elif sort_evt == 'hours':
+                return evt['Hours']
+            return evt['Date']
+        events_data.sort(key=get_evt_sort_key, reverse=(order_evt=='desc'))
+
+        # Calculate summary statistics
+        total_sessions = len(events_data)
+        total_hours = sum(vol['Hours'] for vol in volunteers_data)
+        total_volunteers = len(volunteers_data)
+
+        # Create Excel file
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        workbook = writer.book
+        
+        # Add formatting
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#467599',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        # Summary Sheet
+        summary_data = {
+            'Metric': [
+                'Organization',
+                'School Year',
+                'Total Sessions',
+                'Total Hours',
+                'Total Volunteers'
+            ],
+            'Value': [
+                organization.name,
+                f"{school_year[:2]}-{school_year[2:]} School Year",
+                total_sessions,
+                total_hours,
+                total_volunteers
+            ]
+        }
+        
+        summary_df = pd.DataFrame(summary_data)
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # Format summary sheet
+        worksheet = writer.sheets['Summary']
+        worksheet.set_column('A:A', 25)
+        worksheet.set_column('B:B', 40)
+        worksheet.conditional_format('A1:B6', {'type': 'no_blanks', 'format': header_format})
+        
+        # Volunteers Sheet
+        if volunteers_data:
+            volunteers_df = pd.DataFrame(volunteers_data)
+            volunteers_df.to_excel(writer, sheet_name='Volunteers', index=False)
+            
+            # Format volunteers sheet
+            worksheet = writer.sheets['Volunteers']
+            worksheet.set_column('A:A', 30)  # Name
+            worksheet.set_column('B:B', 15)  # Events
+            worksheet.set_column('C:C', 15)  # Hours
+            worksheet.conditional_format('A1:C1', {'type': 'no_blanks', 'format': header_format})
+        
+        # Events Sheet
+        if events_data:
+            events_df = pd.DataFrame(events_data)
+            events_df.to_excel(writer, sheet_name='Events', index=False)
+            
+            # Format events sheet
+            worksheet = writer.sheets['Events']
+            worksheet.set_column('A:A', 20)  # Date
+            worksheet.set_column('B:B', 40)  # Event
+            worksheet.set_column('C:C', 20)  # Type
+            worksheet.set_column('D:D', 15)  # Volunteers
+            worksheet.set_column('E:E', 15)  # Hours
+            worksheet.conditional_format('A1:E1', {'type': 'no_blanks', 'format': header_format})
+        
+        writer.close()
+        output.seek(0)
+        
+        # Create filename
+        org_name_clean = organization.name.replace('/', '_').replace(' ', '_')
+        filename = f"{org_name_clean}_{school_year[:2]}-{school_year[2:]}_Detail_Report.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            download_name=filename,
+            as_attachment=True
+        )

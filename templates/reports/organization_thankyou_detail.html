@@ -222,6 +222,40 @@
     display: table-row;
 }
 
+/* Filters layout */
+.filters {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+}
+
+.year-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.year-filter label {
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.year-filter select {
+    padding: 0.5rem;
+    border: 1px solid var(--non-photo-blue);
+    border-radius: 4px;
+    background: white;
+    color: var(--delft-blue);
+    font-weight: 500;
+}
+
+.download-section {
+    display: flex;
+    align-items: center;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .header-top-row {
@@ -257,6 +291,17 @@
     
     .section-toggle {
         font-size: 0.8rem;
+    }
+    
+    .filters {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .export-button {
+        justify-content: center;
+        padding: 1rem 1.5rem;
     }
 }
 </style>
@@ -306,6 +351,14 @@
                 {% endfor %}
             </select>
         </form>
+        
+        <div class="download-section">
+            <a href="{{ url_for('report.organization_thankyou_detail_excel', org_id=organization.id, school_year=school_year, sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}" 
+               class="export-button">
+                <i class="fas fa-download"></i>
+                Download Excel Report
+            </a>
+        </div>
     </div>
 
     <div class="detail-section">
