@@ -409,6 +409,33 @@ def find_or_create_volunteer(first_name, last_name, organization=None):
         if organization and not pd.isna(organization) and organization != volunteer.organization_name:
             volunteer.organization_name = organization
     
+    # Create or update organization link if organization is provided
+    if organization and not pd.isna(organization):
+        # Find or create the organization
+        from models.organization import Organization, VolunteerOrganization
+        org = Organization.query.filter_by(name=organization).first()
+        if not org:
+            org = Organization(name=organization)
+            db.session.add(org)
+            db.session.flush()
+        
+        # Check if VolunteerOrganization link already exists
+        vol_org = VolunteerOrganization.query.filter_by(
+            volunteer_id=volunteer.id,
+            organization_id=org.id
+        ).first()
+        
+        if not vol_org:
+            # Create the missing link
+            vol_org = VolunteerOrganization(
+                volunteer_id=volunteer.id,
+                organization_id=org.id,
+                role='Professional',
+                is_primary=True,
+                status='Current'
+            )
+            db.session.add(vol_org)
+    
     return volunteer
 
 def create_participation(event, volunteer, status):

@@ -45,7 +45,7 @@ def load_routes(bp):
         ).filter(
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         )
         
         # Apply host filter if specified
@@ -130,7 +130,7 @@ def load_routes(bp):
         ).filter(
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         )
         
         # Apply host filter if specified
@@ -262,7 +262,7 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         ).group_by(
             Volunteer.id
         ).all()
@@ -301,7 +301,7 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         ).group_by(
             Event.id
         ).all()
@@ -390,7 +390,7 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         ).group_by(
             Volunteer.id
         ).all()
@@ -428,7 +428,7 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         ).group_by(
             Event.id
         ).all()
