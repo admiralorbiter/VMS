@@ -164,3 +164,26 @@ function changePerPage() {
     
     window.location.href = currentUrl.toString();
 }
+
+/**
+ * Search teachers by name in the teachers table
+ * Filters table rows based on search input
+ */
+function searchTeachers() {
+    const searchInput = document.getElementById('teacherSearch');
+    const searchTerm = searchInput.value.toLowerCase();
+    const table = document.getElementById('teachersTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const nameCell = rows[i].getElementsByTagName('td')[0]; // Name is first column
+        if (nameCell) {
+            const name = nameCell.textContent || nameCell.innerText;
+            if (name.toLowerCase().indexOf(searchTerm) > -1) {
+                rows[i].style.display = '';
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    }
+}

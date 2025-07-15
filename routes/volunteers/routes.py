@@ -1451,6 +1451,36 @@ def import_from_salesforce():
             'message': str(e)
         }), 500
 
+@volunteers_bp.route('/volunteers/toggle-exclude-reports/<int:id>', methods=['POST'])
+@login_required
+def toggle_exclude_reports(id):
+    """Toggle the exclude_from_reports field for a volunteer"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        
+    try:
+        volunteer = db.session.get(Volunteer, id)
+        if not volunteer:
+            return jsonify({'success': False, 'message': 'Volunteer not found'}), 404
+        
+        # Get the new value from the request
+        data = request.get_json()
+        exclude_from_reports = data.get('exclude_from_reports', False)
+        
+        # Update the field
+        volunteer.exclude_from_reports = exclude_from_reports
+        db.session.commit()
+        
+        status = 'excluded from' if exclude_from_reports else 'included in'
+        return jsonify({
+            'success': True, 
+            'message': f'Volunteer {status} reports successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @volunteers_bp.route('/volunteers/update-local-statuses', methods=['POST'])
 @login_required
 def update_local_statuses():

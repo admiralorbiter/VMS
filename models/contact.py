@@ -341,6 +341,7 @@ class Contact(db.Model):
     do_not_contact = db.Column(Boolean, default=False)   # Indicates no contact preference
     email_opt_out = db.Column(Boolean, default=False)    # Email marketing preference
     email_bounced_date = db.Column(DateTime)            # Tracks failed email deliveries
+    exclude_from_reports = db.Column(Boolean, default=False)  # Excludes from all reports and statistics
     
     # Activity Tracking
     last_email_date = db.Column(Date)                   # Date of last email communication

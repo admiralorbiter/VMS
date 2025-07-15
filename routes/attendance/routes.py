@@ -18,7 +18,7 @@ from models.school_model import School
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from config import Config
 from routes.utils import parse_date
-from models.event import Event, EventType
+from models.event import Event, EventType, EventTeacher
 from models.attendance import EventAttendanceDetail
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
@@ -46,12 +46,45 @@ def view_attendance():
         error_out=False
     )
     
-    # Query teachers with pagination
-    teachers = Teacher.query.paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
-    )
+    # Query teachers with pagination - include teachers who participate in events
+    teachers_query = db.session.query(Teacher).distinct()
+    
+    # Add teachers who participate in events (including virtual sessions)
+    teachers_with_events = db.session.query(Teacher).join(EventTeacher).distinct()
+    
+    # Combine both queries and remove duplicates
+    all_teachers = teachers_query.union(teachers_with_events).order_by(Teacher.last_name, Teacher.first_name)
+    
+    # Apply pagination manually since union doesn't work well with paginate
+    total_teachers = all_teachers.count()
+    offset = (page - 1) * per_page
+    teachers_list = all_teachers.offset(offset).limit(per_page).all()
+    
+    # Create a pagination-like object
+    class Pagination:
+        def __init__(self, items, page, per_page, total):
+            self.items = items
+            self.page = page
+            self.per_page = per_page
+            self.total = total
+            self.pages = (total + per_page - 1) // per_page
+            self.has_prev = page > 1
+            self.has_next = page < self.pages
+            self.prev_num = page - 1 if page > 1 else None
+            self.next_num = page + 1 if page < self.pages else None
+            
+        def iter_pages(self, left_edge=2, left_current=2, right_current=2, right_edge=2):
+            last = 0
+            for num in range(1, self.pages + 1):
+                if (num <= left_edge or 
+                    (num > self.page - left_current - 1 and num < self.page + right_current) or 
+                    num > self.pages - right_edge):
+                    if last + 1 != num:
+                        yield None
+                    yield num
+                    last = num
+    
+    teachers = Pagination(teachers_list, page, per_page, total_teachers)
     
     # Calculate total counts for pagination info
     total_students = Student.query.count()
@@ -124,6 +157,33 @@ def purge_attendance():
             'status': 'error',
             'message': str(e)
         })
+
+@attendance.route('/attendance/toggle-teacher-exclude-reports/<int:id>', methods=['POST'])
+@login_required
+def toggle_teacher_exclude_reports(id):
+    """Toggle the exclude_from_reports field for a teacher"""
+    try:
+        teacher = db.session.get(Teacher, id)
+        if not teacher:
+            return jsonify({'success': False, 'message': 'Teacher not found'}), 404
+        
+        # Get the new value from the request
+        data = request.get_json()
+        exclude_from_reports = data.get('exclude_from_reports', False)
+        
+        # Update the field
+        teacher.exclude_from_reports = exclude_from_reports
+        db.session.commit()
+        
+        status = 'excluded' if exclude_from_reports else 'included'
+        return jsonify({
+            'success': True, 
+            'message': f'Teacher {status} from reports successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance.route('/attendance/view/<type>/<int:id>')
 @login_required

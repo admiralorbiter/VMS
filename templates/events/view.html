@@ -388,6 +388,23 @@
                                     {{ event_teacher.status|title }}
                                 {% endif %}
                             </span>
+                            {% if event_teacher.teacher.exclude_from_reports %}
+                                <span class="exclude-badge">Excluded from Reports</span>
+                            {% endif %}
+                        </div>
+                        <div class="participant-actions">
+                            <a href="{{ url_for('attendance.view_details', type='teacher', id=event_teacher.teacher.id) }}" class="view-btn" title="View teacher details">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                            {% if event_teacher.teacher.exclude_from_reports %}
+                                <button class="exclude-btn include-btn" onclick="toggleTeacherExclude({{ event_teacher.teacher.id }}, false)" title="Include in reports">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            {% else %}
+                                <button class="exclude-btn" onclick="toggleTeacherExclude({{ event_teacher.teacher.id }}, true)" title="Exclude from reports">
+                                    <i class="fa-solid fa-eye-slash"></i>
+                                </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -469,6 +486,31 @@ function filterParticipationCards() {
             const name = card.getAttribute('data-name').toLowerCase();
             card.style.display = name.includes(search) ? '' : 'none';
         });
+    });
+}
+
+function toggleTeacherExclude(teacherId, exclude) {
+    fetch(`/attendance/toggle-teacher-exclude-reports/${teacherId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            exclude_from_reports: exclude
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to show the updated status
+            window.location.reload();
+        } else {
+            alert('Error updating teacher status: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating teacher status. Please try again.');
     });
 }
 </script>

@@ -198,6 +198,15 @@
 
         {# Teachers table section (hidden by default) #}
         <div id="teachersTableWrapper" class="attendance-table-wrapper hidden">
+            {# Search bar for teachers #}
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="teacherSearch" placeholder="Search teachers by name..." 
+                           onkeyup="searchTeachers()" class="search-input">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+            </div>
+            
             <table class="table attendance-table" id="teachersTable">
                 <thead>
                     <tr>
@@ -218,6 +227,10 @@
                             <span>Role</span>
                             <i class="fa-solid fa-sort"></i>
                         </th>
+                        <th class="sortable" data-sort="exclude">
+                            <span>Reports</span>
+                            <i class="fa-solid fa-sort"></i>
+                        </th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -226,9 +239,16 @@
                     {% for teacher in teachers.items %}
                     <tr>
                         <td>{{ teacher.first_name }} {{ teacher.last_name }}</td>
-                        <td>{{ teacher.department }}</td>
-                        <td>{{ teacher.school_code }}</td>
-                        <td>{{ teacher.connector_role }}</td>
+                        <td>{{ teacher.department or 'None' }}</td>
+                        <td>{{ teacher.school_code or 'None' }}</td>
+                        <td>{{ teacher.connector_role or 'None' }}</td>
+                        <td>
+                            {% if teacher.exclude_from_reports %}
+                                <span class="badge badge-excluded">Excluded</span>
+                            {% else %}
+                                <span class="badge badge-included">Included</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {# View details button for each teacher #}
                             <button class="action-icon" onclick="viewDetails('teacher', {{ teacher.id }})">

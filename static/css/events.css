@@ -2492,3 +2492,45 @@ html {
     }
 }
 
+.participant-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.exclude-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.exclude-btn:hover {
+    background: #c82333;
+}
+
+.exclude-btn.include-btn {
+    background: #28a745;
+}
+
+.exclude-btn.include-btn:hover {
+    background: #218838;
+}
+
+.exclude-badge {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+}
+

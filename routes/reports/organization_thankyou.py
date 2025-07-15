@@ -9,6 +9,7 @@ import xlsxwriter
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Volunteer, EventParticipation
 from models.event import Event, EventTeacher
+from models.teacher import Teacher
 from models import db
 from routes.reports.common import get_current_school_year, get_school_year_date_range
 
@@ -262,7 +263,8 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Volunteer.id
         ).all()
@@ -301,7 +303,8 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Event.id
         ).all()
@@ -350,7 +353,8 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Event.type
         ).all()
@@ -379,7 +383,8 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation'])
+            EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation']),
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Event.id
         ).all()
@@ -408,7 +413,8 @@ def load_routes(bp):
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             Event.type != EventType.VIRTUAL_SESSION,
-            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Event.id
         ).all()
@@ -440,7 +446,8 @@ def load_routes(bp):
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
-            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast'])
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Event.id
         ).all()
@@ -461,7 +468,8 @@ def load_routes(bp):
             Event.start_date >= start_date,
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
-            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast'])
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
+            Volunteer.exclude_from_reports == False
         ).order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
         ).all()
@@ -484,13 +492,34 @@ def load_routes(bp):
         # Get classroom counts for each virtual event
         for event_key, event_data in virtual_events_by_event.items():
             event = event_data['event']
-            classroom_count = db.session.query(
-                db.func.count(db.distinct(EventTeacher.teacher_id))
+            
+            # Check if any participating volunteer is excluded from reports
+            excluded_volunteer_participated = db.session.query(
+                EventParticipation
+            ).join(
+                Volunteer, EventParticipation.volunteer_id == Volunteer.id
             ).filter(
-                EventTeacher.event_id == event.id,
-                EventTeacher.status.in_(['simulcast', 'successfully completed'])
-            ).scalar()
-            event_data['classroom_count'] = classroom_count or 0
+                EventParticipation.event_id == event.id,
+                Volunteer.exclude_from_reports == True
+            ).first()
+            
+            # If an excluded volunteer participated, don't count classrooms for this event
+            if excluded_volunteer_participated:
+                event_data['classroom_count'] = 0
+            else:
+                # Count classrooms (teachers) for this event, excluding teachers marked as excluded
+                classroom_count = db.session.query(
+                    db.func.count(db.distinct(EventTeacher.teacher_id))
+                ).join(
+                    Event, EventTeacher.event_id == Event.id
+                ).join(
+                    Teacher, EventTeacher.teacher_id == Teacher.id
+                ).filter(
+                    EventTeacher.event_id == event.id,
+                    EventTeacher.status.in_(['simulcast', 'successfully completed']),
+                    Teacher.exclude_from_reports == False
+                ).scalar()
+                event_data['classroom_count'] = classroom_count or 0
         
         # Format virtual events with volunteer names and time
         virtual_events_data = []
@@ -525,7 +554,8 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Successfully Completed', 'Simulcast']),
-            EventTeacher.status.in_(['simulcast', 'successfully completed'])
+            EventTeacher.status.in_(['simulcast', 'successfully completed']),
+            Volunteer.exclude_from_reports == False
         ).scalar()
         
         virtual_class_reach = virtual_class_reach or 0
@@ -545,7 +575,8 @@ def load_routes(bp):
         ).filter(
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
-            Event.start_date <= end_date
+            Event.start_date <= end_date,
+            Volunteer.exclude_from_reports == False
         ).order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
         ).all()
@@ -823,13 +854,34 @@ def load_routes(bp):
         # Get classroom counts for each virtual event for Excel
         for event_key, event_data in virtual_events_by_event.items():
             event = event_data['event']
-            classroom_count = db.session.query(
-                db.func.count(db.distinct(EventTeacher.teacher_id))
+            
+            # Check if any participating volunteer is excluded from reports
+            excluded_volunteer_participated = db.session.query(
+                EventParticipation
+            ).join(
+                Volunteer, EventParticipation.volunteer_id == Volunteer.id
             ).filter(
-                EventTeacher.event_id == event.id,
-                EventTeacher.status.in_(['simulcast', 'successfully completed'])
-            ).scalar()
-            event_data['classroom_count'] = classroom_count or 0
+                EventParticipation.event_id == event.id,
+                Volunteer.exclude_from_reports == True
+            ).first()
+            
+            # If an excluded volunteer participated, don't count classrooms for this event
+            if excluded_volunteer_participated:
+                event_data['classroom_count'] = 0
+            else:
+                # Count classrooms (teachers) for this event, excluding teachers marked as excluded
+                classroom_count = db.session.query(
+                    db.func.count(db.distinct(EventTeacher.teacher_id))
+                ).join(
+                    Event, EventTeacher.event_id == Event.id
+                ).join(
+                    Teacher, EventTeacher.teacher_id == Teacher.id
+                ).filter(
+                    EventTeacher.event_id == event.id,
+                    EventTeacher.status.in_(['simulcast', 'successfully completed']),
+                    Teacher.exclude_from_reports == False
+                ).scalar()
+                event_data['classroom_count'] = classroom_count or 0
         
         # Calculate virtual class reach for Excel
         virtual_class_reach = db.session.query(
@@ -848,7 +900,8 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Successfully Completed', 'Simulcast']),
-            EventTeacher.status.in_(['simulcast', 'successfully completed'])
+            EventTeacher.status.in_(['simulcast', 'successfully completed']),
+            Volunteer.exclude_from_reports == False
         ).scalar()
         
         virtual_class_reach = virtual_class_reach or 0
