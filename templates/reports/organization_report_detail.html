@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}{{ organization.name }} - Organization Report Detail{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">{{ organization.name }}</h1>
+                    <p class="text-muted mb-0">Organization Report Detail - {{ school_year[:2] }}-{{ school_year[2:] }} School Year</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-sync"></i> Refresh
+                    </a>
+                    <a href="{{ url_for('report.organization_report') }}?school_year={{ school_year }}&host_filter={{ request.args.get('host_filter', 'all') }}" 
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left"></i> Back to Report
+                    </a>
+                </div>
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-2">
+                    <div class="card bg-primary text-white text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ total_volunteers }}</h4>
+                            <p class="card-text small">Volunteers</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-success text-white text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ total_sessions }}</h4>
+                            <p class="card-text small">Total Sessions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-info text-white text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ "%.1f"|format(total_hours) }}</h4>
+                            <p class="card-text small">Total Hours</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-warning text-white text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ total_inperson_sessions }}</h4>
+                            <p class="card-text small">In-Person Sessions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-secondary text-white text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ total_virtual_sessions }}</h4>
+                            <p class="card-text small">Virtual Sessions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-danger text-white text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ total_cancelled }}</h4>
+                            <p class="card-text small">Cancelled Events</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-2">
+                            <label for="school_year" class="form-label">School Year</label>
+                            <select class="form-select" id="school_year" name="school_year">
+                                {% for year in school_years %}
+                                <option value="{{ year }}" {% if year == school_year %}selected{% endif %}>
+                                    {{ year[:2] }}-{{ year[2:] }} School Year
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="sort_vol" class="form-label">Sort Volunteers</label>
+                            <select class="form-select" id="sort_vol" name="sort_vol">
+                                <option value="hours" {% if sort_vol == 'hours' %}selected{% endif %}>Hours</option>
+                                <option value="events" {% if sort_vol == 'events' %}selected{% endif %}>Events</option>
+                                <option value="name" {% if sort_vol == 'name' %}selected{% endif %}>Name</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="order_vol" class="form-label">Volunteer Order</label>
+                            <select class="form-select" id="order_vol" name="order_vol">
+                                <option value="desc" {% if order_vol == 'desc' %}selected{% endif %}>Descending</option>
+                                <option value="asc" {% if order_vol == 'asc' %}selected{% endif %}>Ascending</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="sort_evt" class="form-label">Sort Events</label>
+                            <select class="form-select" id="sort_evt" name="sort_evt">
+                                <option value="date" {% if sort_evt == 'date' %}selected{% endif %}>Date</option>
+                                <option value="title" {% if sort_evt == 'title' %}selected{% endif %}>Title</option>
+                                <option value="volunteers" {% if sort_evt == 'volunteers' %}selected{% endif %}>Volunteers</option>
+                                <option value="hours" {% if sort_evt == 'hours' %}selected{% endif %}>Hours</option>
+                                <option value="students" {% if sort_evt == 'students' %}selected{% endif %}>Students</option>
+                                <option value="classrooms" {% if sort_evt == 'classrooms' %}selected{% endif %}>Classrooms</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="order_evt" class="form-label">Event Order</label>
+                            <select class="form-select" id="order_evt" name="order_evt">
+                                <option value="desc" {% if order_evt == 'desc' %}selected{% endif %}>Descending</option>
+                                <option value="asc" {% if order_evt == 'asc' %}selected{% endif %}>Ascending</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary d-block w-100">
+                                <i class="fas fa-filter"></i> Apply
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- In-Person Experiences -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users"></i> In-Person Experiences
+                        <span class="badge bg-primary ms-2">{{ total_inperson_sessions }} sessions</span>
+                        <span class="badge bg-success ms-2">{{ total_students_reached }} students reached</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if in_person_events %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Volunteer</th>
+                                    <th>Session</th>
+                                    <th class="text-center">Students</th>
+                                    <th class="text-center">Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in in_person_events %}
+                                <tr>
+                                    <td>{{ event.date }}</td>
+                                    <td>{{ event.volunteers|join(', ') }}</td>
+                                    <td>{{ event.title }}</td>
+                                    <td class="text-center">{{ event.students }}</td>
+                                    <td class="text-center">{{ event.hours }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">No in-person events found for this organization.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Virtual Experiences -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-video"></i> Virtual Experiences
+                        <span class="badge bg-primary ms-2">{{ total_virtual_sessions }} sessions</span>
+                        <span class="badge bg-success ms-2">{{ total_classrooms_reached }} classrooms reached</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if virtual_events %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th class="text-center">Classrooms</th>
+                                    <th>Session Name</th>
+                                    <th>Volunteer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in virtual_events %}
+                                <tr>
+                                    <td>{{ event.date }}</td>
+                                    <td>{{ event.time }}</td>
+                                    <td class="text-center">{{ event.classrooms }}</td>
+                                    <td>{{ event.title }}</td>
+                                    <td>{{ event.volunteers|join(', ') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">No virtual events found for this organization.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Cancelled Events -->
+            {% if cancelled_events %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-times-circle"></i> Cancelled Events
+                        <span class="badge bg-danger ms-2">{{ total_cancelled }} events</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Event</th>
+                                    <th class="text-center">Volunteers</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in cancelled_events %}
+                                <tr>
+                                    <td>{{ event.date }}</td>
+                                    <td>{{ event.title }}</td>
+                                    <td class="text-center">{{ event.volunteers }}</td>
+                                    <td>{{ event.status }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Volunteers -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user-friends"></i> Volunteers
+                        <span class="badge bg-primary ms-2">{{ total_volunteers }} volunteers</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if volunteers %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th class="text-center">Events</th>
+                                    <th class="text-center">Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for volunteer in volunteers %}
+                                <tr>
+                                    <td>{{ volunteer.name }}</td>
+                                    <td class="text-center">{{ volunteer.events }}</td>
+                                    <td class="text-center">{{ volunteer.hours }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">No volunteers found for this organization.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie"></i> Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>In-Person Summary</h6>
+                            <p>Total: {{ total_volunteers }} {{ organization.name }} volunteers engaged in {{ total_inperson_sessions }} in-person experiences reaching approximately {{ total_students_reached }} students.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Virtual Summary</h6>
+                            <p>Total: {{ total_virtual_sessions }} virtual sessions reaching approximately {{ total_classrooms_reached }} classrooms.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+}
+
+.btn-group .btn {
+    margin-left: 0.25rem;
+}
+
+.btn-group .btn:first-child {
+    margin-left: 0;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+{% endblock %} 

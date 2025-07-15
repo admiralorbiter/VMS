@@ -126,6 +126,13 @@ def load_routes(bp):
                 'category': 'Organization Recognition'
             },
             {
+                'title': 'Organization Report',
+                'description': 'View detailed organization engagement with in-person and virtual experiences, student counts, and classroom breakdowns.',
+                'icon': 'fa-solid fa-chart-line',
+                'url': '/reports/organization/report',
+                'category': 'Organization Recognition'
+            },
+            {
                 'title': 'District Year-End Report',
                 'description': 'View comprehensive year-end statistics for each district with event type filtering and detailed engagement data.',
                 'icon': 'fa-solid fa-chart-pie',
