@@ -488,7 +488,7 @@ def load_routes(bp):
                 db.func.count(db.distinct(EventTeacher.teacher_id))
             ).filter(
                 EventTeacher.event_id == event.id,
-                EventTeacher.status.in_(['attended', 'registered', 'confirmed'])
+                EventTeacher.status.in_(['simulcast', 'successfully completed'])
             ).scalar()
             event_data['classroom_count'] = classroom_count or 0
         
@@ -508,7 +508,7 @@ def load_routes(bp):
                 'classrooms': event_data['classroom_count']
             })
         
-        # Calculate class reach for virtual events (teachers with Simulcast or Successfully Completed)
+        # Calculate class reach for virtual events (teachers with simulcast or successfully completed)
         virtual_class_reach = db.session.query(
             db.func.count(db.distinct(EventTeacher.teacher_id)).label('teacher_count')
         ).join(
@@ -525,7 +525,7 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Successfully Completed', 'Simulcast']),
-            EventTeacher.status.in_(['attended', 'registered', 'confirmed'])
+            EventTeacher.status.in_(['simulcast', 'successfully completed'])
         ).scalar()
         
         virtual_class_reach = virtual_class_reach or 0
@@ -827,7 +827,7 @@ def load_routes(bp):
                 db.func.count(db.distinct(EventTeacher.teacher_id))
             ).filter(
                 EventTeacher.event_id == event.id,
-                EventTeacher.status.in_(['attended', 'registered', 'confirmed'])
+                EventTeacher.status.in_(['simulcast', 'successfully completed'])
             ).scalar()
             event_data['classroom_count'] = classroom_count or 0
         
@@ -848,7 +848,7 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Successfully Completed', 'Simulcast']),
-            EventTeacher.status.in_(['attended', 'registered', 'confirmed'])
+            EventTeacher.status.in_(['simulcast', 'successfully completed'])
         ).scalar()
         
         virtual_class_reach = virtual_class_reach or 0
