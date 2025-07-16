@@ -47,16 +47,11 @@ def load_routes(bp):
         volunteer_stats = db.session.query(
             Volunteer,
             db.func.sum(EventParticipation.delivery_hours).label('total_hours'),
-            db.func.count(EventParticipation.id).label('total_events'),
-            Organization.name.label('organization_name')
+            db.func.count(EventParticipation.id).label('total_events')
         ).join(
             EventParticipation, Volunteer.id == EventParticipation.volunteer_id
         ).join(
             Event, EventParticipation.event_id == Event.id
-        ).outerjoin(
-            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
-        ).outerjoin(
-            Organization, VolunteerOrganization.organization_id == Organization.id
         ).filter(
             Event.start_date >= start_date,
             Event.start_date <= end_date,
@@ -74,20 +69,30 @@ def load_routes(bp):
             )
         
         volunteer_stats = volunteer_stats.group_by(
-            Volunteer.id,
-            Organization.name
+            Volunteer.id
         ).order_by(
             order_by
         ).all()
 
         # Format the data for the template
-        volunteer_data = [{
-            'id': v.id,
-            'name': f"{v.first_name} {v.last_name}",
-            'total_hours': round(float(hours or 0), 2) if hours is not None else 0,
-            'total_events': events,
-            'organization': org or 'Independent'
-        } for v, hours, events, org in volunteer_stats]
+        volunteer_data = []
+        for v, hours, events in volunteer_stats:
+            # Get organization information for this volunteer
+            organizations = []
+            for vol_org in v.volunteer_organizations:
+                if vol_org.organization:
+                    organizations.append(vol_org.organization.name)
+            
+            # Use the first organization or 'Independent' if none
+            organization = organizations[0] if organizations else 'Independent'
+            
+            volunteer_data.append({
+                'id': v.id,
+                'name': f"{v.first_name} {v.last_name}",
+                'total_hours': round(float(hours or 0), 2) if hours is not None else 0,
+                'total_events': events,
+                'organization': organization
+            })
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -135,16 +140,11 @@ def load_routes(bp):
         volunteer_stats = db.session.query(
             Volunteer,
             db.func.sum(EventParticipation.delivery_hours).label('total_hours'),
-            db.func.count(EventParticipation.id).label('total_events'),
-            Organization.name.label('organization_name')
+            db.func.count(EventParticipation.id).label('total_events')
         ).join(
             EventParticipation, Volunteer.id == EventParticipation.volunteer_id
         ).join(
             Event, EventParticipation.event_id == Event.id
-        ).outerjoin(
-            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
-        ).outerjoin(
-            Organization, VolunteerOrganization.organization_id == Organization.id
         ).filter(
             Event.start_date >= start_date,
             Event.start_date <= end_date,
@@ -162,19 +162,29 @@ def load_routes(bp):
             )
         
         volunteer_stats = volunteer_stats.group_by(
-            Volunteer.id,
-            Organization.name
+            Volunteer.id
         ).order_by(
             order_by
         ).all()
 
         # Format the data for Excel
-        volunteer_data = [{
-            'Presenter': f"{v.first_name} {v.last_name}",
-            'Total Hours': round(float(hours or 0), 2) if hours is not None else 0,
-            'Total Events': events,
-            'Organization': org or 'Independent'
-        } for v, hours, events, org in volunteer_stats]
+        volunteer_data = []
+        for v, hours, events in volunteer_stats:
+            # Get organization information for this volunteer
+            organizations = []
+            for vol_org in v.volunteer_organizations:
+                if vol_org.organization:
+                    organizations.append(vol_org.organization.name)
+            
+            # Use the first organization or 'Independent' if none
+            organization = organizations[0] if organizations else 'Independent'
+            
+            volunteer_data.append({
+                'Presenter': f"{v.first_name} {v.last_name}",
+                'Total Hours': round(float(hours or 0), 2) if hours is not None else 0,
+                'Total Events': events,
+                'Organization': organization
+            })
 
         # Create Excel file
         output = io.BytesIO()
