@@ -582,4 +582,445 @@ def load_routes(bp):
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             download_name=filename,
             as_attachment=True
+        )
+
+    @bp.route('/reports/organization/report/detail/<int:org_id>/excel')
+    @login_required
+    def organization_report_detail_excel(org_id):
+        """Generate comprehensive Excel file for organization report detail with all granular data"""
+        # Get filter parameters
+        school_year = request.args.get('school_year', get_current_school_year())
+        sort_vol = request.args.get('sort_vol', 'hours')
+        order_vol = request.args.get('order_vol', 'desc')
+        sort_evt = request.args.get('sort_evt', 'date')
+        order_evt = request.args.get('order_evt', 'asc')
+        
+        # Get date range for the school year
+        start_date, end_date = get_school_year_date_range(school_year)
+        
+        # Get organization details
+        organization = Organization.query.get_or_404(org_id)
+        
+        # Query volunteers and their participation for this organization
+        volunteer_stats = db.session.query(
+            Volunteer,
+            db.func.count(db.distinct(Event.id)).label('event_count'),
+            db.func.sum(EventParticipation.delivery_hours).label('total_hours')
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).join(
+            EventParticipation, Volunteer.id == EventParticipation.volunteer_id
+        ).join(
+            Event, EventParticipation.event_id == Event.id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
+        ).group_by(
+            Volunteer.id
+        ).all()
+
+        # Format volunteer data
+        volunteers_data = [{
+            'Name': f"{v.first_name} {v.last_name}",
+            'Events': events,
+            'Hours': round(hours or 0, 2)
+        } for v, events, hours in volunteer_stats]
+
+        # Sort volunteers in Python
+        def get_vol_sort_key(vol):
+            if sort_vol == 'name':
+                return vol['Name'].lower() if vol['Name'] else ''
+            elif sort_vol == 'events':
+                return vol['Events']
+            elif sort_vol == 'hours':
+                return vol['Hours']
+            return vol['Hours']
+        volunteers_data.sort(key=get_vol_sort_key, reverse=(order_vol=='desc'))
+
+        # Get in-person events with student counts and volunteer details
+        in_person_events = db.session.query(
+            Event,
+            db.func.count(db.distinct(EventParticipation.volunteer_id)).label('volunteer_count'),
+            db.func.sum(EventParticipation.delivery_hours).label('total_hours')
+        ).join(
+            EventParticipation, Event.id == EventParticipation.event_id
+        ).join(
+            Volunteer, EventParticipation.volunteer_id == Volunteer.id
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.type != EventType.VIRTUAL_SESSION,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
+        ).group_by(
+            Event.id
+        ).all()
+
+        # Get detailed in-person events with volunteer names
+        detailed_inperson_events = db.session.query(
+            Event,
+            Volunteer,
+            EventParticipation.status,
+            EventParticipation.delivery_hours
+        ).join(
+            EventParticipation, Event.id == EventParticipation.event_id
+        ).join(
+            Volunteer, EventParticipation.volunteer_id == Volunteer.id
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.type != EventType.VIRTUAL_SESSION,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed']),
+            Volunteer.exclude_from_reports == False
+        ).order_by(
+            Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
+        ).all()
+
+        # Group in-person events by event with volunteer names
+        inperson_events_by_event = {}
+        for event, volunteer, status, hours in detailed_inperson_events:
+            event_key = f"{event.id}_{event.title}"
+            if event_key not in inperson_events_by_event:
+                inperson_events_by_event[event_key] = {
+                    'event': event,
+                    'volunteers': [],
+                    'total_hours': 0
+                }
+            inperson_events_by_event[event_key]['volunteers'].append({
+                'name': f"{volunteer.first_name} {volunteer.last_name}",
+                'status': status,
+                'hours': hours or 0
+            })
+            inperson_events_by_event[event_key]['total_hours'] += hours or 0
+
+        # Format in-person events data with volunteer names
+        in_person_events_data = []
+        for event_key, event_data in inperson_events_by_event.items():
+            event = event_data['event']
+            volunteer_names = [v['name'] for v in event_data['volunteers']]
+            
+            # Calculate student count for this event
+            student_count = event.participant_count or 0
+            
+            in_person_events_data.append({
+                'Date': event.start_date.strftime('%m/%d/%y'),
+                'Title': event.title,
+                'Type': event.type.value if event.type else 'Unknown',
+                'Volunteers': ', '.join(volunteer_names) if volunteer_names else 'None',
+                'Volunteer Count': len(volunteer_names),
+                'Hours': round(event_data['total_hours'], 2),
+                'Students': student_count
+            })
+
+        # Sort in-person events in Python
+        def get_inperson_sort_key(evt):
+            if sort_evt == 'date':
+                return datetime.strptime(evt['Date'], '%m/%d/%y')
+            elif sort_evt == 'title':
+                return evt['Title'].lower() if evt['Title'] else ''
+            elif sort_evt == 'type':
+                return evt['Type'].lower() if evt['Type'] else ''
+            elif sort_evt == 'volunteers':
+                return evt['Volunteer Count']
+            elif sort_evt == 'hours':
+                return evt['Hours']
+            elif sort_evt == 'students':
+                return evt['Students']
+            return datetime.strptime(evt['Date'], '%m/%d/%y')
+        in_person_events_data.sort(key=get_inperson_sort_key, reverse=(order_evt=='desc'))
+
+        # Get virtual events with classroom counts
+        virtual_events = db.session.query(
+            Event,
+            db.func.count(db.distinct(EventParticipation.volunteer_id)).label('volunteer_count'),
+            db.func.count(db.distinct(EventTeacher.teacher_id)).label('classroom_count')
+        ).join(
+            EventParticipation, Event.id == EventParticipation.event_id
+        ).join(
+            Volunteer, EventParticipation.volunteer_id == Volunteer.id
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).outerjoin(
+            EventTeacher, Event.id == EventTeacher.event_id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.type == EventType.VIRTUAL_SESSION,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
+            Volunteer.exclude_from_reports == False
+        ).group_by(
+            Event.id
+        ).all()
+
+        # Get detailed virtual events with volunteer names
+        detailed_virtual_events = db.session.query(
+            Event,
+            Volunteer,
+            EventParticipation.status
+        ).join(
+            EventParticipation, Event.id == EventParticipation.event_id
+        ).join(
+            Volunteer, EventParticipation.volunteer_id == Volunteer.id
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.type == EventType.VIRTUAL_SESSION,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
+            Volunteer.exclude_from_reports == False
+        ).order_by(
+            Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
+        ).all()
+
+        # Group virtual events by event with volunteer names
+        virtual_events_by_event = {}
+        for event, volunteer, status in detailed_virtual_events:
+            event_key = f"{event.id}_{event.title}"
+            if event_key not in virtual_events_by_event:
+                virtual_events_by_event[event_key] = {
+                    'event': event,
+                    'volunteers': [],
+                    'classroom_count': 0
+                }
+            virtual_events_by_event[event_key]['volunteers'].append({
+                'name': f"{volunteer.first_name} {volunteer.last_name}",
+                'status': status
+            })
+
+        # Get classroom counts for each virtual event
+        for event_key, event_data in virtual_events_by_event.items():
+            event = event_data['event']
+            
+            # Check if any participating volunteer is excluded from reports
+            excluded_volunteer_participated = db.session.query(
+                EventParticipation
+            ).join(
+                Volunteer, EventParticipation.volunteer_id == Volunteer.id
+            ).filter(
+                EventParticipation.event_id == event.id,
+                Volunteer.exclude_from_reports == True
+            ).first()
+            
+            # If an excluded volunteer participated, don't count classrooms for this event
+            if excluded_volunteer_participated:
+                event_data['classroom_count'] = 0
+            else:
+                # Count classrooms (teachers) for this event, excluding teachers marked as excluded
+                classroom_count = db.session.query(
+                    db.func.count(db.distinct(EventTeacher.teacher_id))
+                ).join(
+                    Event, EventTeacher.event_id == Event.id
+                ).join(
+                    Teacher, EventTeacher.teacher_id == Teacher.id
+                ).filter(
+                    EventTeacher.event_id == event.id,
+                    EventTeacher.status.in_(['simulcast', 'successfully completed']),
+                    Teacher.exclude_from_reports == False
+                ).scalar()
+                event_data['classroom_count'] = classroom_count or 0
+
+        # Format virtual events with volunteer names and time
+        virtual_events_data = []
+        for event_key, event_data in virtual_events_by_event.items():
+            event = event_data['event']
+            volunteer_names = [v['name'] for v in event_data['volunteers']]
+            virtual_events_data.append({
+                'Date': event.start_date.strftime('%m/%d/%y'),
+                'Time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
+                'Title': event.title,
+                'Type': event.type.value if event.type else 'Unknown',
+                'Volunteers': ', '.join(volunteer_names) if volunteer_names else 'None',
+                'Volunteer Count': len(volunteer_names),
+                'Classrooms': event_data['classroom_count']
+            })
+
+        # Sort virtual events in Python
+        def get_virtual_sort_key(evt):
+            if sort_evt == 'date':
+                return datetime.strptime(evt['Date'], '%m/%d/%y')
+            elif sort_evt == 'title':
+                return evt['Title'].lower() if evt['Title'] else ''
+            elif sort_evt == 'type':
+                return evt['Type'].lower() if evt['Type'] else ''
+            elif sort_evt == 'volunteers':
+                return evt['Volunteer Count']
+            elif sort_evt == 'classrooms':
+                return evt['Classrooms']
+            return datetime.strptime(evt['Date'], '%m/%d/%y')
+        virtual_events_data.sort(key=get_virtual_sort_key, reverse=(order_evt=='desc'))
+
+        # Get cancelled events
+        cancelled_events = db.session.query(
+            Event,
+            db.func.count(db.distinct(EventParticipation.volunteer_id)).label('volunteer_count')
+        ).join(
+            EventParticipation, Event.id == EventParticipation.event_id
+        ).join(
+            Volunteer, EventParticipation.volunteer_id == Volunteer.id
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).filter(
+            VolunteerOrganization.organization_id == org_id,
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            db.or_(
+                # Event-level cancellation
+                Event.status == EventStatus.CANCELLED,
+                # Volunteer participation cancellation statuses
+                EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation'])
+            ),
+            Volunteer.exclude_from_reports == False
+        ).group_by(
+            Event.id
+        ).all()
+
+        cancelled_events_data = [{
+            'Date': event.start_date.strftime('%m/%d/%y'),
+            'Title': event.title,
+            'Type': event.type.value if event.type else 'Unknown',
+            'Volunteers': vol_count,
+            'Status': 'Cancelled/No Show'
+        } for event, vol_count in cancelled_events]
+
+        # Calculate summary statistics
+        total_inperson_sessions = len(in_person_events_data)
+        total_virtual_sessions = len(virtual_events_data)
+        total_sessions = total_inperson_sessions + total_virtual_sessions
+        total_hours = sum(vol['Hours'] for vol in volunteers_data)
+        total_volunteers = len(volunteers_data)
+        total_cancelled = len(cancelled_events_data)
+        total_students_reached = sum(evt['Students'] for evt in in_person_events_data)
+        total_classrooms_reached = sum(evt['Classrooms'] for evt in virtual_events_data)
+
+        # Create Excel file
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        workbook = writer.book
+        
+        # Add formatting
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#467599',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        # Summary Sheet
+        summary_data = {
+            'Metric': [
+                'Organization',
+                'School Year',
+                'Total Sessions',
+                'Total Hours',
+                'Total Volunteers',
+                'Cancelled/No Show Events',
+                'In-Person Sessions',
+                'Virtual Sessions',
+                'Students Reached (In-Person)',
+                'Classrooms Reached (Virtual)'
+            ],
+            'Value': [
+                organization.name,
+                f"{school_year[:2]}-{school_year[2:]} School Year",
+                total_sessions,
+                total_hours,
+                total_volunteers,
+                total_cancelled,
+                total_inperson_sessions,
+                total_virtual_sessions,
+                total_students_reached,
+                total_classrooms_reached
+            ]
+        }
+        
+        summary_df = pd.DataFrame(summary_data)
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # Format summary sheet
+        worksheet = writer.sheets['Summary']
+        worksheet.set_column('A:A', 30)
+        worksheet.set_column('B:B', 40)
+        worksheet.conditional_format('A1:B10', {'type': 'no_blanks', 'format': header_format})
+        
+        # Volunteers Sheet
+        if volunteers_data:
+            volunteers_df = pd.DataFrame(volunteers_data)
+            volunteers_df.to_excel(writer, sheet_name='Volunteers', index=False)
+            
+            # Format volunteers sheet
+            worksheet = writer.sheets['Volunteers']
+            worksheet.set_column('A:A', 30)  # Name
+            worksheet.set_column('B:B', 15)  # Events
+            worksheet.set_column('C:C', 15)  # Hours
+            worksheet.conditional_format('A1:C1', {'type': 'no_blanks', 'format': header_format})
+        
+        # In-Person Events Sheet
+        if in_person_events_data:
+            in_person_df = pd.DataFrame(in_person_events_data)
+            in_person_df.to_excel(writer, sheet_name='In-Person Events', index=False)
+            
+            # Format in-person events sheet
+            worksheet = writer.sheets['In-Person Events']
+            worksheet.set_column('A:A', 15)  # Date
+            worksheet.set_column('B:B', 40)  # Title
+            worksheet.set_column('C:C', 20)  # Type
+            worksheet.set_column('D:D', 40)  # Volunteers
+            worksheet.set_column('E:E', 15)  # Volunteer Count
+            worksheet.set_column('F:F', 15)  # Hours
+            worksheet.set_column('G:G', 15)  # Students
+            worksheet.conditional_format('A1:G1', {'type': 'no_blanks', 'format': header_format})
+        
+        # Virtual Events Sheet
+        if virtual_events_data:
+            virtual_df = pd.DataFrame(virtual_events_data)
+            virtual_df.to_excel(writer, sheet_name='Virtual Events', index=False)
+            
+            # Format virtual events sheet
+            worksheet = writer.sheets['Virtual Events']
+            worksheet.set_column('A:A', 15)  # Date
+            worksheet.set_column('B:B', 15)  # Time
+            worksheet.set_column('C:C', 40)  # Title
+            worksheet.set_column('D:D', 20)  # Type
+            worksheet.set_column('E:E', 40)  # Volunteers
+            worksheet.set_column('F:F', 15)  # Volunteer Count
+            worksheet.set_column('G:G', 15)  # Classrooms
+            worksheet.conditional_format('A1:G1', {'type': 'no_blanks', 'format': header_format})
+        
+        # Cancelled Events Sheet
+        if cancelled_events_data:
+            cancelled_df = pd.DataFrame(cancelled_events_data)
+            cancelled_df.to_excel(writer, sheet_name='Cancelled Events', index=False)
+            
+            # Format cancelled events sheet
+            worksheet = writer.sheets['Cancelled Events']
+            worksheet.set_column('A:A', 15)  # Date
+            worksheet.set_column('B:B', 40)  # Title
+            worksheet.set_column('C:C', 20)  # Type
+            worksheet.set_column('D:D', 15)  # Volunteers
+            worksheet.set_column('E:E', 20)  # Status
+            worksheet.conditional_format('A1:E1', {'type': 'no_blanks', 'format': header_format})
+        
+        writer.close()
+        output.seek(0)
+        
+        # Create filename
+        filename = f"Organization_Detail_{organization.name.replace(' ', '_')}_{school_year[:2]}-{school_year[2:]}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            download_name=filename,
+            as_attachment=True
         ) 

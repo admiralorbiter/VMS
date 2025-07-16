@@ -13,6 +13,10 @@
                     <p class="text-muted mb-0">Organization Report Detail - {{ school_year[:2] }}-{{ school_year[2:] }} School Year</p>
                 </div>
                 <div class="btn-group" role="group">
+                    <a href="{{ url_for('report.organization_report_detail_excel', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
                     <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}" 
                        class="btn btn-outline-secondary">
                         <i class="fas fa-sync"></i> Refresh
