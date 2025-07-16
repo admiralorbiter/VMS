@@ -8,7 +8,7 @@ import xlsxwriter
 
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Volunteer, EventParticipation
-from models.event import Event, EventTeacher
+from models.event import Event, EventTeacher, EventStatus
 from models.teacher import Teacher
 from models import db
 from routes.reports.common import get_current_school_year, get_school_year_date_range
@@ -369,7 +369,7 @@ def load_routes(bp):
                 'volunteers': volunteers
             }
         
-        # Cancelled and No-show events
+        # Cancelled and No-show events - include both event-level cancellations and volunteer participation cancellations
         cancelled_events = db.session.query(
             Event,
             db.func.count(db.distinct(EventParticipation.volunteer_id)).label('volunteer_count')
@@ -383,7 +383,12 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation']),
+            db.or_(
+                # Event-level cancellation
+                Event.status == EventStatus.CANCELLED,
+                # Volunteer participation cancellation statuses
+                EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation'])
+            ),
             Volunteer.exclude_from_reports == False
         ).group_by(
             Event.id
@@ -929,7 +934,7 @@ def load_routes(bp):
                 'Classrooms': event_data['classroom_count']
             })
         
-        # Cancelled and No-show events
+        # Cancelled and No-show events - include both event-level cancellations and volunteer participation cancellations
         cancelled_events = db.session.query(
             Event,
             db.func.count(db.distinct(EventParticipation.volunteer_id)).label('volunteer_count')
@@ -943,7 +948,12 @@ def load_routes(bp):
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation'])
+            db.or_(
+                # Event-level cancellation
+                Event.status == EventStatus.CANCELLED,
+                # Volunteer participation cancellation statuses
+                EventParticipation.status.in_(['Cancelled', 'No Show', 'Did Not Attend', 'Teacher No-Show', 'Volunteer canceling due to snow', 'Weather Cancellation', 'School Closure', 'Emergency Cancellation'])
+            )
         ).group_by(
             Event.id
         ).all()
