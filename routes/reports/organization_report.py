@@ -14,6 +14,7 @@ from models import db
 from routes.reports.common import get_current_school_year, get_school_year_date_range
 from models.school_model import School
 from models.district_model import District
+from sqlalchemy.orm import aliased
 
 # Create blueprint
 organization_report_bp = Blueprint('organization_report', __name__)
@@ -284,14 +285,18 @@ def load_routes(bp):
         ).all()
 
         # Get detailed virtual events with volunteer names and teacher details
+        TeacherAlias = aliased(Teacher, flat=True)
+        SchoolAlias = aliased(School, flat=True)
+        DistrictAlias = aliased(District, flat=True)
+        
         detailed_virtual_events = db.session.query(
             Event,
             Volunteer,
             EventParticipation.status,
             EventTeacher,
-            Teacher,
-            School,
-            District
+            TeacherAlias,
+            SchoolAlias,
+            DistrictAlias
         ).join(
             EventParticipation, Event.id == EventParticipation.event_id
         ).join(
@@ -301,11 +306,11 @@ def load_routes(bp):
         ).outerjoin(
             EventTeacher, Event.id == EventTeacher.event_id
         ).outerjoin(
-            Teacher, EventTeacher.teacher_id == Teacher.id
+            TeacherAlias, EventTeacher.teacher_id == TeacherAlias.id
         ).outerjoin(
-            School, Teacher.salesforce_school_id == School.id
+            SchoolAlias, TeacherAlias.salesforce_school_id == SchoolAlias.id
         ).outerjoin(
-            District, School.district_id == District.id
+            DistrictAlias, SchoolAlias.district_id == DistrictAlias.id
         ).filter(
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
@@ -773,14 +778,18 @@ def load_routes(bp):
         ).all()
 
         # Get detailed virtual events with volunteer names and teacher details
+        TeacherAlias = aliased(Teacher, flat=True)
+        SchoolAlias = aliased(School, flat=True)
+        DistrictAlias = aliased(District, flat=True)
+        
         detailed_virtual_events = db.session.query(
             Event,
             Volunteer,
             EventParticipation.status,
             EventTeacher,
-            Teacher,
-            School,
-            District
+            TeacherAlias,
+            SchoolAlias,
+            DistrictAlias
         ).join(
             EventParticipation, Event.id == EventParticipation.event_id
         ).join(
@@ -790,11 +799,11 @@ def load_routes(bp):
         ).outerjoin(
             EventTeacher, Event.id == EventTeacher.event_id
         ).outerjoin(
-            Teacher, EventTeacher.teacher_id == Teacher.id
+            TeacherAlias, EventTeacher.teacher_id == TeacherAlias.id
         ).outerjoin(
-            School, Teacher.salesforce_school_id == School.id
+            SchoolAlias, TeacherAlias.salesforce_school_id == SchoolAlias.id
         ).outerjoin(
-            District, School.district_id == District.id
+            DistrictAlias, SchoolAlias.district_id == DistrictAlias.id
         ).filter(
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
