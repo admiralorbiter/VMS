@@ -12,6 +12,8 @@ from models.event import Event, EventTeacher, EventType, EventStatus
 from models.teacher import Teacher
 from models import db
 from routes.reports.common import get_current_school_year, get_school_year_date_range
+from models.school_model import School
+from models.district_model import District
 
 # Create blueprint
 organization_report_bp = Blueprint('organization_report', __name__)
@@ -281,17 +283,29 @@ def load_routes(bp):
             Event.id
         ).all()
 
-        # Get detailed virtual events with volunteer names
+        # Get detailed virtual events with volunteer names and teacher details
         detailed_virtual_events = db.session.query(
             Event,
             Volunteer,
-            EventParticipation.status
+            EventParticipation.status,
+            EventTeacher,
+            Teacher,
+            School,
+            District
         ).join(
             EventParticipation, Event.id == EventParticipation.event_id
         ).join(
             Volunteer, EventParticipation.volunteer_id == Volunteer.id
         ).join(
             VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).outerjoin(
+            EventTeacher, Event.id == EventTeacher.event_id
+        ).outerjoin(
+            Teacher, EventTeacher.teacher_id == Teacher.id
+        ).outerjoin(
+            School, Teacher.salesforce_school_id == School.id
+        ).outerjoin(
+            District, School.district_id == District.id
         ).filter(
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
@@ -303,68 +317,64 @@ def load_routes(bp):
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
         ).all()
 
-        # Group virtual events by event with volunteer names
+        # Group virtual events by event with volunteer names and teacher details
         virtual_events_by_event = {}
-        for event, volunteer, status in detailed_virtual_events:
+        for event, volunteer, status, event_teacher, teacher, school, district in detailed_virtual_events:
             event_key = f"{event.id}_{event.title}"
             if event_key not in virtual_events_by_event:
                 virtual_events_by_event[event_key] = {
                     'event': event,
                     'volunteers': [],
-                    'classroom_count': 0
+                    'classrooms': [],
+                    'unique_classroom_count': 0
                 }
             virtual_events_by_event[event_key]['volunteers'].append({
                 'name': f"{volunteer.first_name} {volunteer.last_name}",
                 'status': status
             })
+            
+            # Add teacher/classroom information if available
+            if teacher and event_teacher and event_teacher.status in ['simulcast', 'successfully completed']:
+                classroom_info = {
+                    'teacher_name': f"{teacher.first_name} {teacher.last_name}",
+                    'school_name': school.name if school else 'Unknown School',
+                    'district_name': district.name if district else 'Unknown District',
+                    'status': event_teacher.status
+                }
+                virtual_events_by_event[event_key]['classrooms'].append(classroom_info)
 
-        # Get classroom counts for each virtual event
+        # Calculate unique classroom count for each event
         for event_key, event_data in virtual_events_by_event.items():
-            event = event_data['event']
-            
-            # Check if any participating volunteer is excluded from reports
-            excluded_volunteer_participated = db.session.query(
-                EventParticipation
-            ).join(
-                Volunteer, EventParticipation.volunteer_id == Volunteer.id
-            ).filter(
-                EventParticipation.event_id == event.id,
-                Volunteer.exclude_from_reports == True
-            ).first()
-            
-            # If an excluded volunteer participated, don't count classrooms for this event
-            if excluded_volunteer_participated:
-                event_data['classroom_count'] = 0
-            else:
-                # Count classrooms (teachers) for this event, excluding teachers marked as excluded
-                classroom_count = db.session.query(
-                    db.func.count(db.distinct(EventTeacher.teacher_id))
-                ).join(
-                    Event, EventTeacher.event_id == Event.id
-                ).join(
-                    Teacher, EventTeacher.teacher_id == Teacher.id
-                ).filter(
-                    EventTeacher.event_id == event.id,
-                    EventTeacher.status.in_(['simulcast', 'successfully completed']),
-                    Teacher.exclude_from_reports == False
-                ).scalar()
-                event_data['classroom_count'] = classroom_count or 0
+            # Get unique teachers for this event
+            unique_teachers = set()
+            for classroom in event_data['classrooms']:
+                unique_teachers.add(classroom['teacher_name'])
+            event_data['unique_classroom_count'] = len(unique_teachers)
 
-        # Format virtual events with volunteer names and time
+        # Format virtual events with volunteer names, time, and classroom details
         virtual_events_data = []
         for event_key, event_data in virtual_events_by_event.items():
             event = event_data['event']
-            volunteer_names = [v['name'] for v in event_data['volunteers']]
+            # Get unique volunteer names (remove duplicates)
+            unique_volunteer_names = list(set([v['name'] for v in event_data['volunteers']]))
             virtual_events_data.append({
                 'date': event.start_date.strftime('%m/%d/%y'),
                 'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                 'date_sort': event.start_date,
                 'title': event.title,
                 'type': event.type.value if event.type else 'Unknown',
-                'volunteers': volunteer_names,
-                'volunteer_count': len(volunteer_names),
-                'classrooms': event_data['classroom_count']
+                'volunteers': unique_volunteer_names,
+                'volunteer_count': len(unique_volunteer_names),
+                'classrooms': event_data['unique_classroom_count'],
+                'classroom_details': event_data['classrooms']
             })
+
+        # Calculate total unique classrooms across all virtual events
+        all_unique_teachers = set()
+        for event_data in virtual_events_by_event.values():
+            for classroom in event_data['classrooms']:
+                all_unique_teachers.add(classroom['teacher_name'])
+        total_unique_classrooms = len(all_unique_teachers)
 
         # Sort virtual events in Python
         def get_virtual_sort_key(evt):
@@ -422,7 +432,7 @@ def load_routes(bp):
         total_volunteers = len(volunteers_data)
         total_cancelled = len(cancelled_events_data)
         total_students_reached = sum(evt['students'] for evt in in_person_events_data)
-        total_classrooms_reached = sum(evt['classrooms'] for evt in virtual_events_data)
+        total_classrooms_reached = total_unique_classrooms
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -762,17 +772,29 @@ def load_routes(bp):
             Event.id
         ).all()
 
-        # Get detailed virtual events with volunteer names
+        # Get detailed virtual events with volunteer names and teacher details
         detailed_virtual_events = db.session.query(
             Event,
             Volunteer,
-            EventParticipation.status
+            EventParticipation.status,
+            EventTeacher,
+            Teacher,
+            School,
+            District
         ).join(
             EventParticipation, Event.id == EventParticipation.event_id
         ).join(
             Volunteer, EventParticipation.volunteer_id == Volunteer.id
         ).join(
             VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).outerjoin(
+            EventTeacher, Event.id == EventTeacher.event_id
+        ).outerjoin(
+            Teacher, EventTeacher.teacher_id == Teacher.id
+        ).outerjoin(
+            School, Teacher.salesforce_school_id == School.id
+        ).outerjoin(
+            District, School.district_id == District.id
         ).filter(
             VolunteerOrganization.organization_id == org_id,
             Event.start_date >= start_date,
@@ -784,54 +806,41 @@ def load_routes(bp):
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
         ).all()
 
-        # Group virtual events by event with volunteer names
+        # Group virtual events by event with volunteer names and teacher details
         virtual_events_by_event = {}
-        for event, volunteer, status in detailed_virtual_events:
+        for event, volunteer, status, event_teacher, teacher, school, district in detailed_virtual_events:
             event_key = f"{event.id}_{event.title}"
             if event_key not in virtual_events_by_event:
                 virtual_events_by_event[event_key] = {
                     'event': event,
                     'volunteers': [],
-                    'classroom_count': 0
+                    'classrooms': [],
+                    'unique_classroom_count': 0
                 }
             virtual_events_by_event[event_key]['volunteers'].append({
                 'name': f"{volunteer.first_name} {volunteer.last_name}",
                 'status': status
             })
+            
+            # Add teacher/classroom information if available
+            if teacher and event_teacher and event_teacher.status in ['simulcast', 'successfully completed']:
+                classroom_info = {
+                    'teacher_name': f"{teacher.first_name} {teacher.last_name}",
+                    'school_name': school.name if school else 'Unknown School',
+                    'district_name': district.name if district else 'Unknown District',
+                    'status': event_teacher.status
+                }
+                virtual_events_by_event[event_key]['classrooms'].append(classroom_info)
 
-        # Get classroom counts for each virtual event
+        # Calculate unique classroom count for each event
         for event_key, event_data in virtual_events_by_event.items():
-            event = event_data['event']
-            
-            # Check if any participating volunteer is excluded from reports
-            excluded_volunteer_participated = db.session.query(
-                EventParticipation
-            ).join(
-                Volunteer, EventParticipation.volunteer_id == Volunteer.id
-            ).filter(
-                EventParticipation.event_id == event.id,
-                Volunteer.exclude_from_reports == True
-            ).first()
-            
-            # If an excluded volunteer participated, don't count classrooms for this event
-            if excluded_volunteer_participated:
-                event_data['classroom_count'] = 0
-            else:
-                # Count classrooms (teachers) for this event, excluding teachers marked as excluded
-                classroom_count = db.session.query(
-                    db.func.count(db.distinct(EventTeacher.teacher_id))
-                ).join(
-                    Event, EventTeacher.event_id == Event.id
-                ).join(
-                    Teacher, EventTeacher.teacher_id == Teacher.id
-                ).filter(
-                    EventTeacher.event_id == event.id,
-                    EventTeacher.status.in_(['simulcast', 'successfully completed']),
-                    Teacher.exclude_from_reports == False
-                ).scalar()
-                event_data['classroom_count'] = classroom_count or 0
+            # Get unique teachers for this event
+            unique_teachers = set()
+            for classroom in event_data['classrooms']:
+                unique_teachers.add(classroom['teacher_name'])
+            event_data['unique_classroom_count'] = len(unique_teachers)
 
-        # Format virtual events with volunteer names and time
+        # Format virtual events with volunteer names, time, and classroom details
         virtual_events_data = []
         for event_key, event_data in virtual_events_by_event.items():
             event = event_data['event']
@@ -843,7 +852,8 @@ def load_routes(bp):
                 'Type': event.type.value if event.type else 'Unknown',
                 'Volunteers': ', '.join(volunteer_names) if volunteer_names else 'None',
                 'Volunteer Count': len(volunteer_names),
-                'Classrooms': event_data['classroom_count']
+                'Classrooms': event_data['unique_classroom_count'],
+                'classroom_details': event_data['classrooms']
             })
 
         # Sort virtual events in Python
@@ -894,6 +904,13 @@ def load_routes(bp):
             'Status': 'Cancelled/No Show'
         } for event, vol_count in cancelled_events]
 
+        # Calculate total unique classrooms across all virtual events for Excel
+        all_unique_teachers_excel = set()
+        for event_data in virtual_events_by_event.items():
+            for classroom in event_data[1]['classrooms']:
+                all_unique_teachers_excel.add(classroom['teacher_name'])
+        total_unique_classrooms_excel = len(all_unique_teachers_excel)
+
         # Calculate summary statistics
         total_inperson_sessions = len(in_person_events_data)
         total_virtual_sessions = len(virtual_events_data)
@@ -902,7 +919,7 @@ def load_routes(bp):
         total_volunteers = len(volunteers_data)
         total_cancelled = len(cancelled_events_data)
         total_students_reached = sum(evt['Students'] for evt in in_person_events_data)
-        total_classrooms_reached = sum(evt['Classrooms'] for evt in virtual_events_data)
+        total_classrooms_reached = total_unique_classrooms_excel
 
         # Create Excel file
         output = io.BytesIO()
@@ -997,6 +1014,34 @@ def load_routes(bp):
             worksheet.set_column('F:F', 15)  # Volunteer Count
             worksheet.set_column('G:G', 15)  # Classrooms
             worksheet.conditional_format('A1:G1', {'type': 'no_blanks', 'format': header_format})
+            
+            # Classroom Details Sheet (Unique Teachers)
+            unique_classroom_details_data = []
+            unique_teachers_seen = set()
+            
+            for event in virtual_events_data:
+                if 'classroom_details' in event and event['classroom_details']:
+                    for classroom in event['classroom_details']:
+                        if classroom['teacher_name'] not in unique_teachers_seen:
+                            unique_teachers_seen.add(classroom['teacher_name'])
+                            unique_classroom_details_data.append({
+                                'Teacher Name': classroom['teacher_name'],
+                                'School': classroom['school_name'],
+                                'District': classroom['district_name'],
+                                'Status': classroom['status']
+                            })
+            
+            if unique_classroom_details_data:
+                classroom_df = pd.DataFrame(unique_classroom_details_data)
+                classroom_df.to_excel(writer, sheet_name='Unique Teachers', index=False)
+                
+                # Format classroom details sheet
+                worksheet = writer.sheets['Unique Teachers']
+                worksheet.set_column('A:A', 30)  # Teacher Name
+                worksheet.set_column('B:B', 40)  # School
+                worksheet.set_column('C:C', 30)  # District
+                worksheet.set_column('D:D', 20)  # Status
+                worksheet.conditional_format('A1:D1', {'type': 'no_blanks', 'format': header_format})
         
         # Cancelled Events Sheet
         if cancelled_events_data:

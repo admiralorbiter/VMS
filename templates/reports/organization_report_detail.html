@@ -216,6 +216,54 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Classroom Breakdown -->
+                    <div class="mt-4">
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-chalkboard-teacher"></i> Unique Teachers Reached
+                        </h6>
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    All Virtual Sessions - {{ total_classrooms_reached }} unique teachers
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th>Teacher</th>
+                                                <th>School</th>
+                                                <th>District</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% set unique_teachers = [] %}
+                                            {% for event in virtual_events %}
+                                                {% if event.classroom_details %}
+                                                    {% for classroom in event.classroom_details %}
+                                                        {% if classroom.teacher_name not in unique_teachers %}
+                                                            {% set _ = unique_teachers.append(classroom.teacher_name) %}
+                                                            <tr>
+                                                                <td>{{ classroom.teacher_name }}</td>
+                                                                <td>{{ classroom.school_name }}</td>
+                                                                <td>{{ classroom.district_name }}</td>
+                                                                <td>
+                                                                    <span class="badge bg-success">{{ classroom.status }}</span>
+                                                                </td>
+                                                            </tr>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% else %}
                     <div class="text-center py-4">
                         <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
