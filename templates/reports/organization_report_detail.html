@@ -162,7 +162,7 @@
                             <tbody>
                                 {% for event in in_person_events %}
                                 <tr>
-                                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.date }}</a></td>
+                                    <td>{{ event.date }}</td>
                                     <td>
                                         {% for volunteer in volunteers %}
                                             {% if volunteer.name in event.volunteers %}
@@ -212,7 +212,7 @@
                             <tbody>
                                 {% for event in virtual_events %}
                                 <tr>
-                                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.date }}</a></td>
+                                    <td>{{ event.date }}</td>
                                     <td>{{ event.time }}</td>
                                     <td class="text-center">{{ event.classrooms }}</td>
                                     <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.title }}</a></td>

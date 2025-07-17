@@ -318,7 +318,11 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
-            Volunteer.exclude_from_reports == False
+            Volunteer.exclude_from_reports == False,
+            db.or_(
+                TeacherAlias.id == None,  # No teacher associated with event
+                TeacherAlias.exclude_from_reports == False  # Teacher is not excluded
+            )
         ).order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
         ).all()
@@ -775,7 +779,11 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
-            Volunteer.exclude_from_reports == False
+            Volunteer.exclude_from_reports == False,
+            db.or_(
+                TeacherAlias.id == None,  # No teacher associated with event
+                TeacherAlias.exclude_from_reports == False  # Teacher is not excluded
+            )
         ).group_by(
             Event.id
         ).all()
@@ -813,7 +821,11 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
-            Volunteer.exclude_from_reports == False
+            Volunteer.exclude_from_reports == False,
+            db.or_(
+                TeacherAlias.id == None,  # No teacher associated with event
+                TeacherAlias.exclude_from_reports == False  # Teacher is not excluded
+            )
         ).order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
         ).all()
@@ -834,8 +846,8 @@ def load_routes(bp):
                 'status': status
             })
             
-            # Add teacher/classroom information if available
-            if teacher and event_teacher and event_teacher.status in ['simulcast', 'successfully completed']:
+            # Add teacher/classroom information if available and not excluded
+            if teacher and event_teacher and event_teacher.status in ['simulcast', 'successfully completed'] and not teacher.exclude_from_reports:
                 classroom_info = {
                     'teacher_name': f"{teacher.first_name} {teacher.last_name}",
                     'school_name': school.name if school else 'Unknown School',
@@ -846,7 +858,6 @@ def load_routes(bp):
 
         # Calculate unique classroom count for each event
         for event_key, event_data in virtual_events_by_event.items():
-            # Get unique teachers for this event
             unique_teachers = set()
             for classroom in event_data['classrooms']:
                 unique_teachers.add(classroom['teacher_name'])

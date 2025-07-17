@@ -6,7 +6,7 @@
 # - Data purging operations
 
 from flask import Blueprint, render_template, request, jsonify, current_app, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 import pandas as pd
 import os
 from models import db
