@@ -161,7 +161,10 @@ def purge_attendance():
 @attendance.route('/attendance/toggle-teacher-exclude-reports/<int:id>', methods=['POST'])
 @login_required
 def toggle_teacher_exclude_reports(id):
-    """Toggle the exclude_from_reports field for a teacher"""
+    """Toggle the exclude_from_reports field for a teacher - Admin only"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+        
     try:
         teacher = db.session.get(Teacher, id)
         if not teacher:

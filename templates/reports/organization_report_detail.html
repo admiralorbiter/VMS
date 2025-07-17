@@ -162,9 +162,15 @@
                             <tbody>
                                 {% for event in in_person_events %}
                                 <tr>
-                                    <td>{{ event.date }}</td>
-                                    <td>{{ event.volunteers|join(', ') }}</td>
-                                    <td>{{ event.title }}</td>
+                                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.date }}</a></td>
+                                    <td>
+                                        {% for volunteer in volunteers %}
+                                            {% if volunteer.name in event.volunteers %}
+                                                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">{{ volunteer.name }}</a>{% if not loop.last %}, {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.title }}</a></td>
                                     <td class="text-center">{{ event.students }}</td>
                                     <td class="text-center">{{ event.hours }}</td>
                                 </tr>
@@ -206,11 +212,17 @@
                             <tbody>
                                 {% for event in virtual_events %}
                                 <tr>
-                                    <td>{{ event.date }}</td>
+                                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.date }}</a></td>
                                     <td>{{ event.time }}</td>
                                     <td class="text-center">{{ event.classrooms }}</td>
-                                    <td>{{ event.title }}</td>
-                                    <td>{{ event.volunteers|join(', ') }}</td>
+                                    <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.title }}</a></td>
+                                    <td>
+                                        {% for volunteer in volunteers %}
+                                            {% if volunteer.name in event.volunteers %}
+                                                <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">{{ volunteer.name }}</a>{% if not loop.last %}, {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -247,7 +259,7 @@
                                                         {% if classroom.teacher_name not in unique_teachers %}
                                                             {% set _ = unique_teachers.append(classroom.teacher_name) %}
                                                             <tr>
-                                                                <td>{{ classroom.teacher_name }}</td>
+                                                                <td><a href="{{ url_for('attendance.view_details', type='teacher', id=classroom.teacher_id) }}">{{ classroom.teacher_name }}</a></td>
                                                                 <td>{{ classroom.school_name }}</td>
                                                                 <td>{{ classroom.district_name }}</td>
                                                                 <td>
@@ -331,7 +343,7 @@
                             <tbody>
                                 {% for volunteer in volunteers %}
                                 <tr>
-                                    <td>{{ volunteer.name }}</td>
+                                    <td><a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">{{ volunteer.name }}</a></td>
                                     <td class="text-center">{{ volunteer.events }}</td>
                                     <td class="text-center">{{ volunteer.hours }}</td>
                                 </tr>

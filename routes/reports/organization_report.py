@@ -233,6 +233,7 @@ def load_routes(bp):
             student_count = event.participant_count or 0
             
             in_person_events_data.append({
+                'id': event.id,
                 'date': event.start_date.strftime('%m/%d/%y'),
                 'date_sort': event.start_date,
                 'title': event.title,
@@ -341,6 +342,7 @@ def load_routes(bp):
             # Add teacher/classroom information if available
             if teacher and event_teacher and event_teacher.status in ['simulcast', 'successfully completed']:
                 classroom_info = {
+                    'teacher_id': teacher.id,
                     'teacher_name': f"{teacher.first_name} {teacher.last_name}",
                     'school_name': school.name if school else 'Unknown School',
                     'district_name': district.name if district else 'Unknown District',
@@ -363,6 +365,7 @@ def load_routes(bp):
             # Get unique volunteer names (remove duplicates)
             unique_volunteer_names = list(set([v['name'] for v in event_data['volunteers']]))
             virtual_events_data.append({
+                'id': event.id,
                 'date': event.start_date.strftime('%m/%d/%y'),
                 'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                 'date_sort': event.start_date,

@@ -1454,9 +1454,9 @@ def import_from_salesforce():
 @volunteers_bp.route('/volunteers/toggle-exclude-reports/<int:id>', methods=['POST'])
 @login_required
 def toggle_exclude_reports(id):
-    """Toggle the exclude_from_reports field for a volunteer"""
+    """Toggle the exclude_from_reports field for a volunteer - Admin only"""
     if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
         
     try:
         volunteer = db.session.get(Volunteer, id)

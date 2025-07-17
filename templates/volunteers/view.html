@@ -85,22 +85,32 @@ Last Updated: 2024
                 </div>
                 {% endif %}
                 
-                {# Excluded from Reports warning if applicable #}
-                {% if volunteer.exclude_from_reports %}
-                <div class="alert alert-info mb-3" role="alert">
-                    <i class="fas fa-chart-line"></i> <strong>Excluded from Reports</strong>
-                    <p class="mb-0 mt-1">This volunteer is excluded from all reports and statistics.</p>
-                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="toggleExcludeFromReports({{ volunteer.id }}, false)">
-                        <i class="fas fa-eye"></i> Include in Reports
+                {# Admin-only Report Exclusion Controls #}
+                {% if current_user.is_admin %}
+                <div class="admin-controls mb-3">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="toggleExcludeControls()">
+                        <i class="fas fa-cog"></i> Admin: Manage Report Exclusion
                     </button>
-                </div>
-                {% else %}
-                <div class="alert alert-warning mb-3" role="alert">
-                    <i class="fas fa-chart-line"></i> <strong>Included in Reports</strong>
-                    <p class="mb-0 mt-1">This volunteer is included in all reports and statistics.</p>
-                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="toggleExcludeFromReports({{ volunteer.id }}, true)">
-                        <i class="fas fa-eye-slash"></i> Exclude from Reports
-                    </button>
+                    
+                    <div id="exclude-controls" style="display: none;" class="mt-3">
+                        {% if volunteer.exclude_from_reports %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-chart-line"></i> <strong>Excluded from Reports</strong>
+                            <p class="mb-0 mt-1">This volunteer is excluded from all reports and statistics.</p>
+                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="toggleExcludeFromReports({{ volunteer.id }}, false)">
+                                <i class="fas fa-eye"></i> Include in Reports
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-chart-line"></i> <strong>Included in Reports</strong>
+                            <p class="mb-0 mt-1">This volunteer is included in all reports and statistics.</p>
+                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="toggleExcludeFromReports({{ volunteer.id }}, true)">
+                                <i class="fas fa-eye-slash"></i> Exclude from Reports
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
                 
@@ -613,6 +623,24 @@ function toggleExcludeFromReports(volunteerId, exclude) {
         console.error('Error:', error);
         alert('Error updating volunteer status');
     });
+}
+
+function toggleExcludeControls() {
+    const excludeControls = document.getElementById('exclude-controls');
+    const adminControls = document.querySelector('.admin-controls');
+    const toggleButton = adminControls.querySelector('button');
+
+    if (excludeControls.style.display === 'none' || excludeControls.style.display === '') {
+        excludeControls.style.display = 'block';
+        toggleButton.innerHTML = '<i class="fas fa-xmark"></i> Hide Admin Controls';
+        toggleButton.classList.remove('btn-outline-secondary');
+        toggleButton.classList.add('btn-outline-danger');
+    } else {
+        excludeControls.style.display = 'none';
+        toggleButton.innerHTML = '<i class="fas fa-cog"></i> Admin: Manage Report Exclusion';
+        toggleButton.classList.remove('btn-outline-danger');
+        toggleButton.classList.add('btn-outline-secondary');
+    }
 }
 </script>
 {% endblock %}
