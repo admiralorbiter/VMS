@@ -64,7 +64,7 @@
                         {% for student in students.items %}
                         <tr>
                             <td>
-                                <a href="{{ url_for('students.view_student', student_id=student.id) }}" class="text-decoration-none">
+                                <a href="{{ url_for('students.view_student_details', id=student.id) }}" class="text-decoration-none">
                                     {{ student.first_name }} {{ student.last_name }}
                                 </a>
                             </td>
@@ -105,15 +105,12 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ url_for('students.view_student', student_id=student.id) }}" 
+                                    <a href="{{ url_for('students.view_student_details', id=student.id) }}" 
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     {% if current_user.is_admin %}
-                                    <a href="{{ url_for('students.edit_student', student_id=student.id) }}" 
-                                       class="btn btn-sm btn-outline-secondary">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
+                                    <!-- Edit functionality not yet implemented -->
                                     {% endif %}
                                 </div>
                             </td>
@@ -129,7 +126,7 @@
                 <ul class="pagination justify-content-center">
                     {% if students.has_prev %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('students.list_students', page=students.prev_num, **request.args) }}">Previous</a>
+                        <a class="page-link" href="{{ url_for('students.view_students', page=students.prev_num, **request.args) }}">Previous</a>
                     </li>
                     {% endif %}
                     
@@ -137,7 +134,7 @@
                         {% if page_num %}
                             {% if page_num != students.page %}
                             <li class="page-item">
-                                <a class="page-link" href="{{ url_for('students.list_students', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                <a class="page-link" href="{{ url_for('students.view_students', page=page_num, **request.args) }}">{{ page_num }}</a>
                             </li>
                             {% else %}
                             <li class="page-item active">
@@ -153,7 +150,7 @@
                     
                     {% if students.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('students.list_students', page=students.next_num, **request.args) }}">Next</a>
+                        <a class="page-link" href="{{ url_for('students.view_students', page=students.next_num, **request.args) }}">Next</a>
                     </li>
                     {% endif %}
                 </ul>

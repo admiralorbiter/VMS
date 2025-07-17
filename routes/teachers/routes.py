@@ -34,7 +34,7 @@ teachers_bp = Blueprint('teachers', __name__)
 
 @teachers_bp.route('/teachers')
 @login_required
-def view_teachers():
+def list_teachers():
     """
     Main teacher management page showing paginated list of teachers.
     
@@ -88,9 +88,13 @@ def view_teachers():
     # Calculate total counts for pagination info
     total_teachers_count = Teacher.query.count()
     
+    # Get schools for the filter dropdown
+    schools = School.query.order_by(School.name).all()
+    
     return render_template(
         'teachers/teachers.html',
         teachers=teachers,
+        schools=schools,
         current_page=page,
         per_page=per_page,
         total_teachers=total_teachers_count,
@@ -230,9 +234,9 @@ def toggle_teacher_exclude_reports(id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@teachers_bp.route('/teachers/view/<int:id>')
+@teachers_bp.route('/teachers/view/<int:teacher_id>')
 @login_required
-def view_teacher_details(id):
+def view_teacher(teacher_id):
     """
     View detailed information for a specific teacher.
     
@@ -243,15 +247,21 @@ def view_teacher_details(id):
         Rendered template with detailed teacher information
     """
     try:
-        teacher = Teacher.query.get_or_404(id)
+        teacher = Teacher.query.get_or_404(teacher_id)
         
         # Get related contact information
         primary_email = teacher.emails.filter_by(primary=True).first()
         primary_phone = teacher.phones.filter_by(primary=True).first()
         primary_address = teacher.addresses.filter_by(primary=True).first()
         
+        # Debug: Print school relationship info
+        print(f"Teacher: {teacher.first_name} {teacher.last_name}")
+        print(f"School ID: {teacher.school_id}")
+        print(f"Salesforce School ID: {teacher.salesforce_school_id}")
+        print(f"School relationship: {teacher.school}")
+        
         return render_template(
-            'teachers/view_details.html',
+            'teachers/view.html',
             teacher=teacher,
             primary_email=primary_email,
             primary_phone=primary_phone,
@@ -260,6 +270,53 @@ def view_teacher_details(id):
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
+@teachers_bp.route('/teachers/edit/<int:teacher_id>', methods=['GET', 'POST'])
+@login_required
+def edit_teacher(teacher_id):
+    """
+    Edit teacher information - Admin only
+    
+    Args:
+        teacher_id: Database ID of the teacher
+        
+    Returns:
+        Rendered template with edit form or redirect on success
+    """
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+        
+    try:
+        teacher = Teacher.query.get_or_404(teacher_id)
+        
+        if request.method == 'POST':
+            # Update teacher information
+            teacher.first_name = request.form.get('first_name', teacher.first_name)
+            teacher.last_name = request.form.get('last_name', teacher.last_name)
+            teacher.salesforce_id = request.form.get('salesforce_id', teacher.salesforce_id)
+            teacher.status = TeacherStatus(request.form.get('status', teacher.status.value))
+            teacher.school_id = request.form.get('school_id', teacher.school_id)
+            teacher.exclude_from_reports = 'exclude_from_reports' in request.form
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Teacher {teacher.first_name} {teacher.last_name} updated successfully'
+            })
+        
+        # GET request - show edit form
+        schools = School.query.order_by(School.name).all()
+        
+        return render_template(
+            'teachers/edit.html',
+            teacher=teacher,
+            schools=schools
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 def load_routes(bp):
     """Load teacher routes into the main blueprint"""

@@ -190,7 +190,7 @@ class Teacher(Contact):
 
     # Salesforce Integration Fields
     salesforce_contact_id = db.Column(String(18), unique=True, nullable=True, index=True)
-    salesforce_school_id = db.Column(String(18), ForeignKey('school.id'), nullable=True)
+    salesforce_school_id = db.Column(String(18), nullable=True)  # Remove ForeignKey constraint
     
     # Metadata
     created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -216,7 +216,8 @@ class Teacher(Contact):
     
     school = relationship(
         'School',
-        foreign_keys=[salesforce_school_id],
+        foreign_keys=[school_id],
+        primaryjoin="Teacher.school_id == School.id",
         backref=db.backref('teachers', lazy='dynamic')
     )
     
@@ -332,12 +333,11 @@ class Teacher(Contact):
             ).first()
             
             if not existing_phone:
-                phone = Phone(
-                    contact_id=self.id,
-                    number=phone_number,
-                    type=ContactTypeEnum.personal,
-                    primary=True
-                )
+                phone = Phone()
+                phone.contact_id = self.id
+                phone.number = phone_number
+                phone.type = ContactTypeEnum.personal
+                phone.primary = True
                 db.session.add(phone)
         
         # Email
@@ -351,12 +351,11 @@ class Teacher(Contact):
             ).first()
             
             if not existing_email:
-                email = Email(
-                    contact_id=self.id,
-                    email=email_address,
-                    type=ContactTypeEnum.personal,
-                    primary=True
-                )
+                email = Email()
+                email.contact_id = self.id
+                email.email = email_address
+                email.type = ContactTypeEnum.personal
+                email.primary = True
                 db.session.add(email)
         
         # Email tracking
@@ -374,13 +373,13 @@ class Teacher(Contact):
             list: List of upcoming events for this teacher
         """
         now = datetime.now(timezone.utc)
-        return [reg.event for reg in self.event_registrations 
+        return [reg.event for reg in self.event_registrations.all() 
                 if reg.event.start_date > now]
     
     @property
     def past_events(self):
         """Get teacher's past events."""
-        return [reg.event for reg in self.event_registrations 
+        return [reg.event for reg in self.event_registrations.all() 
                 if reg.event and reg.event.start_date < datetime.now()]
 
     @classmethod
@@ -419,6 +418,7 @@ class Teacher(Contact):
             teacher.first_name = first_name
             teacher.last_name = last_name
             teacher.school_id = sf_data.get('npsp__Primary_Affiliation__c')
+            teacher.salesforce_school_id = sf_data.get('npsp__Primary_Affiliation__c')  # Keep both for compatibility
             teacher.department = sf_data.get('Department')
             
             # Set default status for new teachers
@@ -473,12 +473,11 @@ class Teacher(Contact):
                     ).first()
                     
                     if not existing_email:
-                        email = Email(
-                            contact_id=self.id,
-                            email=email_address,
-                            type=ContactTypeEnum.professional,
-                            primary=True
-                        )
+                        email = Email()
+                        email.contact_id = self.id
+                        email.email = email_address
+                        email.type = ContactTypeEnum.professional
+                        email.primary = True
                         db_session.add(email)
             
             # Handle phone
@@ -493,12 +492,11 @@ class Teacher(Contact):
                     ).first()
                     
                     if not existing_phone:
-                        phone = Phone(
-                            contact_id=self.id,
-                            number=phone_number,
-                            type=ContactTypeEnum.professional,
-                            primary=True
-                        )
+                        phone = Phone()
+                        phone.contact_id = self.id
+                        phone.number = phone_number
+                        phone.type = ContactTypeEnum.professional
+                        phone.primary = True
                         db_session.add(phone)
             
             return True, None
