@@ -273,6 +273,15 @@
                     </div>
                 </div>
                 
+                {# Teachers Management #}
+                <div class="import-item">
+                    <a href="{{ url_for('teachers.list_teachers') }}" class="btn admin-btn-import" id="manageTeachersBtn" style="display: flex; align-items: center;">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>Manage Teachers</span>
+                    </a>
+                    <div class="import-status" id="manageTeachersStatus"></div>
+                </div>
+                
                 {# Students import #}
                 <div class="import-item">
                     <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
@@ -283,6 +292,15 @@
                     <div class="import-progress" id="importStudentsProgress">
                         <div class="import-progress-bar"></div>
                     </div>
+                </div>
+                
+                {# Students Management #}
+                <div class="import-item">
+                    <a href="{{ url_for('students.list_students') }}" class="btn admin-btn-import" id="manageStudentsBtn" style="display: flex; align-items: center;">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>Manage Students</span>
+                    </a>
+                    <div class="import-status" id="manageStudentsStatus"></div>
                 </div>
                 
                 {# Volunteers import #}
@@ -725,7 +743,7 @@ function importOrganizations() {
 
 function importTeachers() {
     if (confirm('Are you sure you want to import teachers from Salesforce?')) {
-        fetch('/attendance/import-from-salesforce', {
+        fetch('/teachers/import-from-salesforce', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -771,7 +789,7 @@ function importStudents() {
 
     async function processChunk(lastId = null) {
         try {
-            const response = await fetch('/attendance/import-students-from-salesforce', {
+            const response = await fetch('/students/import-from-salesforce', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -961,8 +979,8 @@ async function importAllSequentially() {
         { route: '/organizations/import-from-salesforce', name: 'Organizations', btnId: 'importOrganizationsBtn' },
         { route: '/management/import-schools', name: 'Schools', btnId: 'importSchoolsBtn' },
         { route: '/management/import-classes', name: 'Classes', btnId: 'importClassesBtn' },
-        { route: '/attendance/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
-        { route: '/attendance/import-students-from-salesforce', name: 'Students', btnId: 'importStudentsBtn' },
+        { route: '/teachers/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
+        { route: '/students/import-from-salesforce', name: 'Students', btnId: 'importStudentsBtn' },
         { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
         { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
         { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },

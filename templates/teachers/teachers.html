@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Teachers</h1>
+        <div class="d-flex gap-2">
+            <button onclick="importTeachersFromSalesforce()" class="btn btn-primary">
+                <i class="fas fa-download"></i> Import from Salesforce
+            </button>
+        </div>
+    </div>
+
+    {# Search and Filter Section #}
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" name="search" class="form-control" placeholder="Search teachers..." value="{{ request.args.get('search', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="school" class="form-select">
+                        <option value="">All Schools</option>
+                        {% for school in schools %}
+                        <option value="{{ school.id }}" {% if request.args.get('school')|int == school.id %}selected{% endif %}>{{ school.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Teachers Table #}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>School</th>
+                            <th>Status</th>
+                            <th>Excluded from Reports</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in teachers.items %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('teachers.view_teacher', teacher_id=teacher.id) }}" class="text-decoration-none">
+                                    {{ teacher.first_name }} {{ teacher.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if teacher.emails %}
+                                    {{ teacher.emails[0].email if teacher.emails else 'No email' }}
+                                {% else %}
+                                    No email
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if teacher.phones %}
+                                    {{ teacher.phones[0].number if teacher.phones else 'No phone' }}
+                                {% else %}
+                                    No phone
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if teacher.school %}
+                                    {{ teacher.school.name }}
+                                {% else %}
+                                    No school assigned
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if teacher.status.value == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ teacher.status.value.title() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if current_user.is_admin %}
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="exclude_{{ teacher.id }}"
+                                           {% if teacher.exclude_from_reports %}checked{% endif %}
+                                           onchange="toggleExcludeFromReports({{ teacher.id }}, this.checked)">
+                                    <label class="form-check-label" for="exclude_{{ teacher.id }}">
+                                        Exclude
+                                    </label>
+                                </div>
+                                {% else %}
+                                    <span class="badge {% if teacher.exclude_from_reports %}bg-danger{% else %}bg-success{% endif %}">
+                                        {% if teacher.exclude_from_reports %}Excluded{% else %}Included{% endif %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('teachers.view_teacher', teacher_id=teacher.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if current_user.is_admin %}
+                                    <a href="{{ url_for('teachers.edit_teacher', teacher_id=teacher.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {# Pagination #}
+            {% if teachers.pages > 1 %}
+            <nav aria-label="Teachers pagination">
+                <ul class="pagination justify-content-center">
+                    {% if teachers.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('teachers.list_teachers', page=teachers.prev_num, **request.args) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in teachers.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != teachers.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('teachers.list_teachers', page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if teachers.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('teachers.list_teachers', page=teachers.next_num, **request.args) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function importTeachersFromSalesforce() {
+    if (confirm('Are you sure you want to import teachers from Salesforce?')) {
+        fetch('/teachers/import-from-salesforce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert('Error importing teachers: ' + (data.message || data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Import error:', error);
+            alert('Error importing teachers: ' + error.message);
+        });
+    }
+}
+
+function toggleExcludeFromReports(teacherId, excluded) {
+    if (!confirm(`Are you sure you want to ${excluded ? 'exclude' : 'include'} this teacher from reports?`)) {
+        return;
+    }
+    
+    fetch(`/teachers/${teacherId}/toggle-exclude`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            exclude_from_reports: excluded
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            toast.style.top = '20px';
+            toast.style.right = '20px';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(toast);
+            
+            // Remove toast after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        } else {
+            alert('Error updating teacher: ' + (data.message || data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Update error:', error);
+        alert('Error updating teacher: ' + error.message);
+    });
+}
+</script>
+{% endblock %} 

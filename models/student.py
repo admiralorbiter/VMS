@@ -75,6 +75,8 @@ from models import db
 from models.contact import Contact, RaceEthnicityEnum
 from sqlalchemy import Enum, String, Integer, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship, validates
+import pandas as pd
+from models.contact import Email, Phone, ContactTypeEnum, GenderEnum
 
 class Student(Contact):
     """
@@ -272,14 +274,150 @@ class Student(Contact):
         Returns:
             str: Debug representation showing student ID and full name
         """
-        return f'<Student {self.student_id}: {self.get_full_name()}>'
+        return f'<Student {self.student_id}: {self.get_full_name}>'
 
     @property
     def get_full_name(self):
-        """
-        Returns the student's full name from Contact parent class.
-        
-        Returns:
-            str: Student's full name (first_name + last_name)
-        """
+        """Get student's full name."""
         return f"{self.first_name} {self.last_name}"
+
+    @classmethod
+    def import_from_salesforce(cls, sf_data, db_session):
+        """
+        Import student data from Salesforce.
+        
+        Args:
+            sf_data: Dictionary containing Salesforce student data
+            db_session: SQLAlchemy database session
+            
+        Returns:
+            tuple: (student_object, is_new_student, error_message)
+        """
+        try:
+            # Extract required fields
+            sf_id = sf_data.get('Id')
+            first_name = sf_data.get('FirstName', '').strip()
+            last_name = sf_data.get('LastName', '').strip()
+            
+            if not sf_id or not first_name or not last_name:
+                return None, False, f"Missing required fields for student: {first_name} {last_name}"
+            
+            # Check if student already exists
+            student = cls.query.filter_by(salesforce_individual_id=sf_id).first()
+            is_new = False
+            
+            if not student:
+                student = cls()
+                student.salesforce_individual_id = sf_id
+                student.salesforce_account_id = sf_data.get('AccountId')
+                db_session.add(student)
+                is_new = True
+            
+            # Update student fields
+            student.first_name = first_name
+            student.last_name = last_name
+            student.middle_name = sf_data.get('MiddleName', '').strip() or None
+            student.birthdate = pd.to_datetime(sf_data['Birthdate']).date() if sf_data.get('Birthdate') else None
+            student.student_id = str(sf_data.get('Local_Student_ID__c', '')).strip() or None
+            student.school_id = str(sf_data.get('npsp__Primary_Affiliation__c', '')).strip() or None
+            student.class_salesforce_id = str(sf_data.get('Class__c', '')).strip() or None
+            student.legacy_grade = str(sf_data.get('Legacy_Grade__c', '')).strip() or None
+            student.current_grade = int(sf_data.get('Current_Grade__c', 0)) if pd.notna(sf_data.get('Current_Grade__c')) else None
+            
+            # Handle gender
+            gender_value = sf_data.get('Gender__c')
+            if gender_value:
+                gender_key = gender_value.lower().replace(' ', '_')
+                try:
+                    student.gender = GenderEnum[gender_key]
+                except KeyError:
+                    # Log invalid gender but don't fail the import
+                    print(f"Invalid gender value for {first_name} {last_name}: {gender_value}")
+            
+            # Handle racial/ethnic background
+            racial_ethnic = sf_data.get('Racial_Ethnic_Background__c')
+            if racial_ethnic:
+                try:
+                    student.racial_ethnic = cls.map_racial_ethnic_value(racial_ethnic)
+                except Exception as e:
+                    print(f"Error processing racial/ethnic value for {first_name} {last_name}: {racial_ethnic}")
+            
+            return student, is_new, None
+            
+        except Exception as e:
+            return None, False, f"Error processing student {sf_data.get('FirstName', '')} {sf_data.get('LastName', '')}: {str(e)}"
+    
+    @staticmethod
+    def map_racial_ethnic_value(value):
+        """
+        Clean and standardize racial/ethnic values from Salesforce.
+        
+        Args:
+            value: Raw racial/ethnic value from Salesforce
+            
+        Returns:
+            Cleaned and standardized value or None if empty
+        """
+        if not value:
+            return None
+            
+        # Clean the input by stripping whitespace
+        value = value.strip()
+        
+        # Return the cleaned value directly
+        return value
+    
+    def update_contact_info(self, sf_data, db_session):
+        """
+        Update student's contact information from Salesforce data.
+        
+        Args:
+            sf_data: Dictionary containing Salesforce student data
+            db_session: SQLAlchemy database session
+            
+        Returns:
+            tuple: (success, error_message)
+        """
+        try:
+            # Handle email
+            email_address = str(sf_data.get('Email', '')).strip()
+            if email_address:
+                existing_email = Email.query.filter_by(
+                    contact_id=self.id,
+                    type=ContactTypeEnum.personal
+                ).first()
+                
+                if existing_email:
+                    existing_email.email = email_address
+                else:
+                    email_record = Email(
+                        contact_id=self.id,
+                        email=email_address,
+                        type=ContactTypeEnum.personal,
+                        primary=True
+                    )
+                    db_session.add(email_record)
+            
+            # Handle phone
+            phone_number = str(sf_data.get('Phone', '')).strip()
+            if phone_number:
+                existing_phone = Phone.query.filter_by(
+                    contact_id=self.id,
+                    type=ContactTypeEnum.personal
+                ).first()
+                
+                if existing_phone:
+                    existing_phone.number = phone_number
+                else:
+                    phone_record = Phone(
+                        contact_id=self.id,
+                        number=phone_number,
+                        type=ContactTypeEnum.personal,
+                        primary=True
+                    )
+                    db_session.add(phone_record)
+            
+            return True, None
+            
+        except Exception as e:
+            return False, f"Error updating contact info for {self.first_name} {self.last_name}: {str(e)}"

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Edit Student</h1>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('students.view_student', student_id=student.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Student
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Edit Student Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ student.first_name }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ student.last_name }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="salesforce_id" class="form-label">Salesforce ID</label>
+                                <input type="text" class="form-control" id="salesforce_id" name="salesforce_id" 
+                                       value="{{ student.salesforce_id or '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="gender" class="form-label">Gender</label>
+                                <select class="form-select" id="gender" name="gender">
+                                    <option value="">Not specified</option>
+                                    <option value="male" {% if student.gender and student.gender.value == 'male' %}selected{% endif %}>Male</option>
+                                    <option value="female" {% if student.gender and student.gender.value == 'female' %}selected{% endif %}>Female</option>
+                                    <option value="other" {% if student.gender and student.gender.value == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="school_id" class="form-label">School</label>
+                                <select class="form-select" id="school_id" name="school_id">
+                                    <option value="">No school assigned</option>
+                                    {% for school in schools %}
+                                    <option value="{{ school.id }}" {% if student.school_id == school.id %}selected{% endif %}>
+                                        {{ school.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="racial_ethnic_background" class="form-label">Racial/Ethnic Background</label>
+                                <input type="text" class="form-control" id="racial_ethnic_background" name="racial_ethnic_background" 
+                                       value="{{ student.racial_ethnic_background or '' }}">
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <a href="{{ url_for('students.view_student', student_id=student.id) }}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {# Contact Information #}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Contact Information</h5>
+                </div>
+                <div class="card-body">
+                    {# Emails #}
+                    <h6>Email Addresses</h6>
+                    {% if student.emails %}
+                        <ul class="list-unstyled">
+                            {% for email in student.emails %}
+                            <li class="mb-2">
+                                <i class="fas fa-envelope me-2"></i>
+                                <a href="mailto:{{ email.email }}">{{ email.email }}</a>
+                                {% if email.primary %}
+                                    <span class="badge bg-primary ms-2">Primary</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No email addresses found</p>
+                    {% endif %}
+
+                    {# Phone Numbers #}
+                    <h6 class="mt-3">Phone Numbers</h6>
+                    {% if student.phones %}
+                        <ul class="list-unstyled">
+                            {% for phone in student.phones %}
+                            <li class="mb-2">
+                                <i class="fas fa-phone me-2"></i>
+                                <a href="tel:{{ phone.number }}">{{ phone.number }}</a>
+                                {% if phone.primary %}
+                                    <span class="badge bg-primary ms-2">Primary</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No phone numbers found</p>
+                    {% endif %}
+
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Contact information is managed through Salesforce imports and cannot be edited directly.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

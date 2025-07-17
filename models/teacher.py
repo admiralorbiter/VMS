@@ -335,6 +335,7 @@ class Teacher(Contact):
                 phone = Phone(
                     contact_id=self.id,
                     number=phone_number,
+                    type=ContactTypeEnum.personal,
                     primary=True
                 )
                 db.session.add(phone)
@@ -378,12 +379,129 @@ class Teacher(Contact):
     
     @property
     def past_events(self):
-        """
-        Get teacher's past events.
-        
-        Returns:
-            list: List of past events for this teacher
-        """
-        now = datetime.now(timezone.utc)
+        """Get teacher's past events."""
         return [reg.event for reg in self.event_registrations 
-                if reg.event.start_date <= now]
+                if reg.event and reg.event.start_date < datetime.now()]
+
+    @classmethod
+    def import_from_salesforce(cls, sf_data, db_session):
+        """
+        Import teacher data from Salesforce.
+        
+        Args:
+            sf_data: Dictionary containing Salesforce teacher data
+            db_session: SQLAlchemy database session
+            
+        Returns:
+            tuple: (teacher_object, is_new_teacher, error_message)
+        """
+        try:
+            # Extract required fields
+            sf_id = sf_data.get('Id')
+            first_name = sf_data.get('FirstName', '').strip()
+            last_name = sf_data.get('LastName', '').strip()
+            
+            if not sf_id or not first_name or not last_name:
+                return None, False, f"Missing required fields for teacher: {first_name} {last_name}"
+            
+            # Check if teacher already exists
+            teacher = cls.query.filter_by(salesforce_individual_id=sf_id).first()
+            is_new = False
+            
+            if not teacher:
+                teacher = cls()
+                teacher.salesforce_individual_id = sf_id
+                db_session.add(teacher)
+                is_new = True
+            
+            # Update teacher fields
+            teacher.salesforce_account_id = sf_data.get('AccountId')
+            teacher.first_name = first_name
+            teacher.last_name = last_name
+            teacher.school_id = sf_data.get('npsp__Primary_Affiliation__c')
+            teacher.department = sf_data.get('Department')
+            
+            # Set default status for new teachers
+            if is_new and not teacher.status:
+                teacher.status = TeacherStatus.ACTIVE
+            
+            # Handle gender
+            gender_value = sf_data.get('Gender__c')
+            if gender_value:
+                gender_key = gender_value.lower().replace(' ', '_')
+                try:
+                    teacher.gender = GenderEnum[gender_key]
+                except KeyError:
+                    # Log invalid gender but don't fail the import
+                    print(f"Invalid gender value for {first_name} {last_name}: {gender_value}")
+            
+            # Handle date fields
+            if sf_data.get('Last_Email_Message__c'):
+                from routes.utils import parse_date
+                teacher.last_email_message = parse_date(sf_data['Last_Email_Message__c'])
+            
+            if sf_data.get('Last_Mailchimp_Email_Date__c'):
+                from routes.utils import parse_date
+                teacher.last_mailchimp_date = parse_date(sf_data['Last_Mailchimp_Email_Date__c'])
+            
+            return teacher, is_new, None
+            
+        except Exception as e:
+            return None, False, f"Error processing teacher {sf_data.get('FirstName', '')} {sf_data.get('LastName', '')}: {str(e)}"
+    
+    def update_contact_info(self, sf_data, db_session):
+        """
+        Update teacher's contact information from Salesforce data.
+        
+        Args:
+            sf_data: Dictionary containing Salesforce teacher data
+            db_session: SQLAlchemy database session
+            
+        Returns:
+            tuple: (success, error_message)
+        """
+        try:
+            # Handle email
+            email_address = sf_data.get('Email')
+            if email_address and isinstance(email_address, str):
+                email_address = email_address.strip()
+                if email_address:
+                    existing_email = Email.query.filter_by(
+                        contact_id=self.id,
+                        email=email_address,
+                        primary=True
+                    ).first()
+                    
+                    if not existing_email:
+                        email = Email(
+                            contact_id=self.id,
+                            email=email_address,
+                            type=ContactTypeEnum.professional,
+                            primary=True
+                        )
+                        db_session.add(email)
+            
+            # Handle phone
+            phone_number = sf_data.get('Phone')
+            if phone_number and isinstance(phone_number, str):
+                phone_number = phone_number.strip()
+                if phone_number:
+                    existing_phone = Phone.query.filter_by(
+                        contact_id=self.id,
+                        number=phone_number,
+                        primary=True
+                    ).first()
+                    
+                    if not existing_phone:
+                        phone = Phone(
+                            contact_id=self.id,
+                            number=phone_number,
+                            type=ContactTypeEnum.professional,
+                            primary=True
+                        )
+                        db_session.add(phone)
+            
+            return True, None
+            
+        except Exception as e:
+            return False, f"Error updating contact info for {self.first_name} {self.last_name}: {str(e)}"
