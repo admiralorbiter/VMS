@@ -36,7 +36,8 @@ from models.district_model import District
 from models.event import Event, EventType, EventStatus, EventFormat
 from models.volunteer import EventParticipation, Skill, Volunteer
 from datetime import datetime, timedelta, date
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce.api import Salesforce
+from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 from sqlalchemy.sql import func
 from sqlalchemy.orm import joinedload
 import io
@@ -342,6 +343,81 @@ def process_student_participation_row(row, success_count, error_count, errors):
         # print(traceback.format_exc())
         return success_count, error_count + 1
 
+def fix_missing_participation_records(event):
+    """
+    Fix missing EventParticipation records for volunteers linked to an event.
+    
+    This function ensures that all volunteers linked to an event through the
+    many-to-many relationship have proper EventParticipation records with
+    appropriate delivery hours.
+    
+    Args:
+        event: Event object to fix participation records for
+    """
+    from models.volunteer import EventParticipation
+    
+    # Get all volunteers linked to this event
+    event_volunteers = event.volunteers
+    
+    for volunteer in event_volunteers:
+        # Check if participation record exists
+        participation = EventParticipation.query.filter_by(
+            event_id=event.id,
+            volunteer_id=volunteer.id
+        ).first()
+        
+        if not participation:
+            # Create missing participation record
+            # Calculate delivery hours based on event duration
+            delivery_hours = None
+            if event.duration:
+                delivery_hours = event.duration / 60  # Convert minutes to hours
+            elif event.start_date and event.end_date:
+                # Calculate from start/end times
+                duration_minutes = (event.end_date - event.start_date).total_seconds() / 60
+                delivery_hours = max(1.0, duration_minutes / 60)  # Minimum 1 hour
+            else:
+                delivery_hours = 1.0  # Default to 1 hour
+            
+            # Determine status based on event status
+            status = 'Attended'
+            if event.status == EventStatus.COMPLETED:
+                status = 'Completed'
+            elif event.status == EventStatus.CANCELLED:
+                status = 'Cancelled'
+            elif event.status == EventStatus.NO_SHOW:
+                status = 'No Show'
+            
+            # Create new participation record
+            participation = EventParticipation(
+                volunteer_id=volunteer.id,
+                event_id=event.id,
+                status=status,
+                delivery_hours=delivery_hours,
+                participant_type='Volunteer'
+            )
+            db.session.add(participation)
+            print(f"Created missing participation record for volunteer {volunteer.first_name} {volunteer.last_name} in event {event.title}")
+        
+        elif participation.delivery_hours is None:
+            # Fix existing participation record with missing delivery hours
+            if event.duration:
+                participation.delivery_hours = event.duration / 60
+            elif event.start_date and event.end_date:
+                duration_minutes = (event.end_date - event.start_date).total_seconds() / 60
+                participation.delivery_hours = max(1.0, duration_minutes / 60)
+            else:
+                participation.delivery_hours = 1.0
+            print(f"Fixed delivery hours for volunteer {volunteer.first_name} {volunteer.last_name} in event {event.title}")
+    
+    # Commit changes
+    try:
+        db.session.commit()
+        print(f"Successfully fixed participation records for event: {event.title}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error fixing participation records: {str(e)}")
+
 @events_bp.route('/events')
 @login_required
 def events():
@@ -537,6 +613,37 @@ def view_event(id):
     event = db.session.get(Event, id)
     if not event:
         abort(404)
+    
+    # Fix missing participation records and null delivery hours before displaying
+    fix_missing_participation_records(event)
+    
+    # Also fix any remaining null delivery hours
+    null_hours_participations = EventParticipation.query.filter(
+        EventParticipation.event_id == event.id,
+        EventParticipation.delivery_hours.is_(None)
+    ).all()
+    
+    if null_hours_participations:
+        # Calculate delivery hours based on event data
+        delivery_hours = None
+        if event.duration:
+            delivery_hours = event.duration / 60  # Convert minutes to hours
+        elif event.start_date and event.end_date:
+            # Calculate from start/end times
+            duration_minutes = (event.end_date - event.start_date).total_seconds() / 60
+            delivery_hours = max(1.0, duration_minutes / 60)  # Minimum 1 hour
+        else:
+            delivery_hours = 1.0  # Default to 1 hour
+        
+        # Update all null delivery hours for this event
+        for participation in null_hours_participations:
+            participation.delivery_hours = delivery_hours
+        
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error fixing delivery hours: {str(e)}")
     
     # Set default dates if None
     if event.start_date is None:
