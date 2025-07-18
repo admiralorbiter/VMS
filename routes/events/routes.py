@@ -50,6 +50,32 @@ from models.event import EventStudentParticipation
 from models.teacher import Teacher
 from models.pathways import pathway_events
 
+def safe_parse_delivery_hours(value):
+    """
+    Safely parse delivery hours from Salesforce data
+    
+    Args:
+        value: Raw value from Salesforce Delivery_Hours__c field
+        
+    Returns:
+        float or None: Parsed hours value or None if invalid
+    """
+    if value is None:
+        return None
+    
+    # Convert to string and strip whitespace
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:  # Empty string
+            return None
+    
+    try:
+        hours = float(value)
+        # Return None for zero or negative values (they might indicate missing data)
+        return hours if hours > 0 else None
+    except (ValueError, TypeError):
+        return None
+
 # Create blueprint for events functionality
 events_bp = Blueprint('events', __name__)
 
@@ -224,7 +250,7 @@ def process_participation_row(row, success_count, error_count, errors):
             volunteer_id=volunteer.id,
             event_id=event.id,
             status=row['Status__c'],
-            delivery_hours=float(row['Delivery_Hours__c']) if row['Delivery_Hours__c'] else None,
+            delivery_hours=safe_parse_delivery_hours(row.get('Delivery_Hours__c')),
             salesforce_id=row['Id']
         )
         
@@ -293,10 +319,7 @@ def process_student_participation_row(row, success_count, error_count, errors):
             return success_count, error_count
         else:
             # --- Create New Participation Record ---
-            try:
-                delivery_hours = float(delivery_hours_str) if delivery_hours_str else None
-            except (ValueError, TypeError):
-                delivery_hours = None # Gracefully handle non-numeric delivery hours
+            delivery_hours = safe_parse_delivery_hours(delivery_hours_str)
 
             new_participation = EventStudentParticipation(
                 event_id=event.id,
