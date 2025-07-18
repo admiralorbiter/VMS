@@ -381,12 +381,16 @@ def load_routes(bp):
                 'classroom_details': event_data['classrooms']
             })
 
-        # Calculate total unique classrooms across all virtual events
-        all_unique_teachers = set()
+        # Calculate total unique classrooms across all virtual events and track session counts
+        teacher_session_counts = {}
         for event_data in virtual_events_by_event.values():
             for classroom in event_data['classrooms']:
-                all_unique_teachers.add(classroom['teacher_name'])
-        total_unique_classrooms = len(all_unique_teachers)
+                teacher_name = classroom['teacher_name']
+                if teacher_name not in teacher_session_counts:
+                    teacher_session_counts[teacher_name] = 0
+                teacher_session_counts[teacher_name] += 1
+        
+        total_unique_classrooms = len(teacher_session_counts)
 
         # Sort virtual events in Python
         def get_virtual_sort_key(evt):
@@ -923,12 +927,16 @@ def load_routes(bp):
             'Status': 'Cancelled/No Show'
         } for event, vol_count in cancelled_events]
 
-        # Calculate total unique classrooms across all virtual events for Excel
-        all_unique_teachers_excel = set()
+        # Calculate total unique classrooms across all virtual events for Excel and track session counts
+        teacher_session_counts_excel = {}
         for event_data in virtual_events_by_event.items():
             for classroom in event_data[1]['classrooms']:
-                all_unique_teachers_excel.add(classroom['teacher_name'])
-        total_unique_classrooms_excel = len(all_unique_teachers_excel)
+                teacher_name = classroom['teacher_name']
+                if teacher_name not in teacher_session_counts_excel:
+                    teacher_session_counts_excel[teacher_name] = 0
+                teacher_session_counts_excel[teacher_name] += 1
+        
+        total_unique_classrooms_excel = len(teacher_session_counts_excel)
 
         # Calculate summary statistics
         total_inperson_sessions = len(in_person_events_data)
@@ -1043,11 +1051,11 @@ def load_routes(bp):
                     for classroom in event['classroom_details']:
                         if classroom['teacher_name'] not in unique_teachers_seen:
                             unique_teachers_seen.add(classroom['teacher_name'])
+                            session_count = teacher_session_counts_excel.get(classroom['teacher_name'], 1)
                             unique_classroom_details_data.append({
                                 'Teacher Name': classroom['teacher_name'],
                                 'School': classroom['school_name'],
-                                'District': classroom['district_name'],
-                                'Status': classroom['status']
+                                'District': classroom['district_name']
                             })
             
             if unique_classroom_details_data:
@@ -1059,8 +1067,7 @@ def load_routes(bp):
                 worksheet.set_column('A:A', 30)  # Teacher Name
                 worksheet.set_column('B:B', 40)  # School
                 worksheet.set_column('C:C', 30)  # District
-                worksheet.set_column('D:D', 20)  # Status
-                worksheet.conditional_format('A1:D1', {'type': 'no_blanks', 'format': header_format})
+                worksheet.conditional_format('A1:C1', {'type': 'no_blanks', 'format': header_format})
         
         # Cancelled Events Sheet
         if cancelled_events_data:

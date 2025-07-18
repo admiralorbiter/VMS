@@ -248,23 +248,41 @@
                                                 <th>Teacher</th>
                                                 <th>School</th>
                                                 <th>District</th>
-                                                <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% set unique_teachers = [] %}
+                                            {% set teacher_session_counts = {} %}
+                                            
+                                            {# First pass: count sessions per teacher #}
+                                            {% for event in virtual_events %}
+                                                {% if event.classroom_details %}
+                                                    {% for classroom in event.classroom_details %}
+                                                        {% if classroom.teacher_name not in teacher_session_counts %}
+                                                            {% set _ = teacher_session_counts.update({classroom.teacher_name: 1}) %}
+                                                        {% else %}
+                                                            {% set _ = teacher_session_counts.update({classroom.teacher_name: teacher_session_counts[classroom.teacher_name] + 1}) %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            {# Second pass: display unique teachers #}
                                             {% for event in virtual_events %}
                                                 {% if event.classroom_details %}
                                                     {% for classroom in event.classroom_details %}
                                                         {% if classroom.teacher_name not in unique_teachers %}
                                                             {% set _ = unique_teachers.append(classroom.teacher_name) %}
-                                                            <tr>
-                                                                <td><a href="{{ url_for('attendance.view_details', type='teacher', id=classroom.teacher_id) }}">{{ classroom.teacher_name }}</a></td>
+                                                            {% set session_count = teacher_session_counts[classroom.teacher_name] %}
+                                                            <tr class="{% if session_count > 1 %}table-warning{% endif %}">
+                                                                <td>
+                                                                    <a href="{{ url_for('attendance.view_details', type='teacher', id=classroom.teacher_id) }}">{{ classroom.teacher_name }}</a>
+                                                                    {% if session_count > 1 %}
+                                                                        <span class="badge bg-warning text-dark ms-2">{{ session_count }} sessions</span>
+                                                                    {% endif %}
+                                                                </td>
                                                                 <td>{{ classroom.school_name }}</td>
                                                                 <td>{{ classroom.district_name }}</td>
-                                                                <td>
-                                                                    <span class="badge bg-success">{{ classroom.status }}</span>
-                                                                </td>
                                                             </tr>
                                                         {% endif %}
                                                     {% endfor %}
@@ -405,6 +423,14 @@
 
 .badge {
     font-size: 0.75em;
+}
+
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.table-warning:hover {
+    background-color: rgba(255, 193, 7, 0.2) !important;
 }
 </style>
 {% endblock %} 
