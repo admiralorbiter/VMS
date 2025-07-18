@@ -102,6 +102,57 @@ def test_first_time_volunteer_report(client, auth_headers):
     response = safe_route_test(client, '/reports/first-time-volunteer', headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
+# Organization Report Tests
+def test_organization_report_main(client, auth_headers):
+    """Test organization report main view"""
+    response = safe_route_test(client, '/reports/organization/report', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_with_filters(client, auth_headers):
+    """Test organization report with filters"""
+    response = safe_route_test(client, '/reports/organization/report?school_year=2425&host_filter=prepkc&sort=name&order=asc', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_excel_export(client, auth_headers):
+    """Test organization report Excel export"""
+    response = safe_route_test(client, '/reports/organization/report/excel', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_excel_export_with_filters(client, auth_headers):
+    """Test organization report Excel export with filters"""
+    response = safe_route_test(client, '/reports/organization/report/excel?school_year=2425&host_filter=prepkc&sort=total_hours&order=desc', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_detail(client, auth_headers):
+    """Test organization report detail view"""
+    response = safe_route_test(client, '/reports/organization/report/detail/1', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_detail_with_filters(client, auth_headers):
+    """Test organization report detail with filters"""
+    response = safe_route_test(client, '/reports/organization/report/detail/1?school_year=2425&sort_vol=hours&order_vol=desc&sort_evt=date&order_evt=asc', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_detail_excel_export(client, auth_headers):
+    """Test organization report detail Excel export"""
+    response = safe_route_test(client, '/reports/organization/report/detail/1/excel', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_detail_excel_export_with_filters(client, auth_headers):
+    """Test organization report detail Excel export with filters"""
+    response = safe_route_test(client, '/reports/organization/report/detail/1/excel?school_year=2425&sort_vol=name&order_vol=asc&sort_evt=title&order_evt=desc', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+def test_organization_report_invalid_org_id(client, auth_headers):
+    """Test organization report detail with invalid organization ID"""
+    response = safe_route_test(client, '/reports/organization/report/detail/999999', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[404, 500])
+
+def test_organization_report_excel_invalid_org_id(client, auth_headers):
+    """Test organization report detail Excel export with invalid organization ID"""
+    response = safe_route_test(client, '/reports/organization/report/detail/999999/excel', headers=auth_headers)
+    assert_route_response(response, expected_statuses=[404, 500])
+
 def test_reports_with_filters(client, auth_headers):
     """Test reports with filters"""
     response = safe_route_test(client, '/reports?district=test&year=2024', headers=auth_headers)

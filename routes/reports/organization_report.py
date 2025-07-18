@@ -779,11 +779,7 @@ def load_routes(bp):
             Event.start_date <= end_date,
             Event.type == EventType.VIRTUAL_SESSION,
             EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed', 'Simulcast']),
-            Volunteer.exclude_from_reports == False,
-            db.or_(
-                TeacherAlias.id == None,  # No teacher associated with event
-                TeacherAlias.exclude_from_reports == False  # Teacher is not excluded
-            )
+            Volunteer.exclude_from_reports == False
         ).group_by(
             Event.id
         ).all()
