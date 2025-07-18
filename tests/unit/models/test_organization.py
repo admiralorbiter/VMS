@@ -102,7 +102,7 @@ def test_organization_timestamps(app):
             # Create organization
             org = Organization(name='Timestamp Test Org')
             db.session.add(org)
-            db.session.flush()
+            db.session.commit()
             
             # Store initial timestamps
             created_at = org.created_at
@@ -110,13 +110,12 @@ def test_organization_timestamps(app):
             
             # Update organization
             org.name = 'Updated Org Name'
-            db.session.flush()
+            db.session.commit()
             
             # Verify timestamps
             assert org.created_at == created_at  # Should not change
             assert org.updated_at > updated_at  # Should be updated
             
-            db.session.commit()
         except:
             db.session.rollback()
             raise

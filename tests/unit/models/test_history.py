@@ -299,11 +299,11 @@ def test_history_timestamps(app, test_event, test_volunteer):
     with app.app_context():
         db.session.remove()
         db.session.begin()
-        
+
         # Get fresh instances in this session
         event = db.session.get(Event, test_event.id)
         volunteer = db.session.get(Volunteer, test_volunteer.id)
-        
+
         try:
             history = History(
                 event_id=event.id,
@@ -312,21 +312,20 @@ def test_history_timestamps(app, test_event, test_volunteer):
                 summary='Test timestamps summary'
             )
             db.session.add(history)
-            db.session.flush()
-            
+            db.session.commit()
+
             # Store initial timestamps
             created_at = history.created_at
             last_modified = history.last_modified_at
-            
+
             # Update the record
             history.summary = 'Updated summary'
-            db.session.flush()
-            
+            db.session.commit()
+
             # Verify timestamps
             assert history.created_at == created_at  # Should not change
             assert history.last_modified_at > last_modified  # Should be updated
-            
-            db.session.commit()
+
         except:
             db.session.rollback()
             raise

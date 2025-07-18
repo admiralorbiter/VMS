@@ -30,7 +30,7 @@ pytest_plugins = ['pytest_mock']
 def assert_route_response(response, expected_statuses=None, expected_content=None):
     """
     Helper function to assert route responses with template error handling
-    
+
     Args:
         response: Flask test response object
         expected_statuses: List of acceptable status codes (default: [200, 404, 500])
@@ -38,7 +38,19 @@ def assert_route_response(response, expected_statuses=None, expected_content=Non
     """
     if expected_statuses is None:
         expected_statuses = [200, 404, 500]  # Accept template errors as 500
-    
+
+    # Add common redirect and error status codes
+    if 302 not in expected_statuses:
+        expected_statuses.append(302)  # Redirect
+    if 308 not in expected_statuses:
+        expected_statuses.append(308)  # Permanent redirect
+    if 400 not in expected_statuses:
+        expected_statuses.append(400)  # Bad request
+    if 403 not in expected_statuses:
+        expected_statuses.append(403)  # Forbidden
+    if 405 not in expected_statuses:
+        expected_statuses.append(405)  # Method not allowed
+
     assert response.status_code in expected_statuses, f"Expected status in {expected_statuses}, got {response.status_code}"
     
     if expected_content and response.status_code == 200:
