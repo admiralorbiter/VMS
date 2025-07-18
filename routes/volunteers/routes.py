@@ -877,8 +877,9 @@ def import_from_salesforce():
 
         success_count = 0
         error_count = 0
+        created_count = 0
+        updated_count = 0
         errors = []
-        processed_volunteers = []
 
         # Add comprehensive education mapping
         education_mapping = {
@@ -1401,9 +1402,8 @@ def import_from_salesforce():
                             updates.append(f'connector_{field}')
 
                 success_count += 1
-                status = 'Created' if is_new else 'Updated'
-                if updates:
-                    processed_volunteers.append(f"{volunteer.first_name} {volunteer.last_name} ({status}: {', '.join(updates)})")
+                created_count = created_count + 1 if is_new else created_count
+                updated_count = updated_count + 1 if not is_new and updates else updated_count
                 
             except Exception as e:
                 error_count += 1
@@ -1418,20 +1418,17 @@ def import_from_salesforce():
         # Commit all successful changes
         try:
             db.session.commit()
-            print(f"\nImport complete - Created/Updated: {success_count}, Errors: {error_count}")
+            print(f"\nImport complete - Created: {created_count}, Updated: {updated_count}, Errors: {error_count}")
             if errors:
-                print("\nErrors encountered:")
-                for error in errors:
+                print(f"\nErrors encountered: {len(errors)}")
+                for error in errors[:5]:  # Show only first 5 errors
                     print(f"- {error['name']}: {error['error']}")
-
-            if processed_volunteers:
-                print("\nVolunteers with changes:")
-                for volunteer in processed_volunteers:
-                    print(f"- {volunteer}")
+                if len(errors) > 5:
+                    print(f"... and {len(errors) - 5} more errors")
 
             return jsonify({
                 'success': True,
-                'message': f'Successfully processed {success_count} volunteers ({len(processed_volunteers)} with changes) with {error_count} errors'
+                'message': f'Successfully processed {success_count} volunteers (Created: {created_count}, Updated: {updated_count}) with {error_count} errors'
             })
         except Exception as e:
             db.session.rollback()
