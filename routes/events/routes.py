@@ -377,7 +377,7 @@ def fix_missing_participation_records(event):
                 duration_minutes = (event.end_date - event.start_date).total_seconds() / 60
                 delivery_hours = max(1.0, duration_minutes / 60)  # Minimum 1 hour
             else:
-                delivery_hours = 1.0  # Default to 1 hour
+                delivery_hours = 0.0  # Default to 0 hours if no timing data
             
             # Determine status based on event status
             status = 'Attended'
@@ -407,7 +407,7 @@ def fix_missing_participation_records(event):
                 duration_minutes = (event.end_date - event.start_date).total_seconds() / 60
                 participation.delivery_hours = max(1.0, duration_minutes / 60)
             else:
-                participation.delivery_hours = 1.0
+                participation.delivery_hours = 0.0
             print(f"Fixed delivery hours for volunteer {volunteer.first_name} {volunteer.last_name} in event {event.title}")
     
     # Commit changes
@@ -633,7 +633,7 @@ def view_event(id):
             duration_minutes = (event.end_date - event.start_date).total_seconds() / 60
             delivery_hours = max(1.0, duration_minutes / 60)  # Minimum 1 hour
         else:
-            delivery_hours = 1.0  # Default to 1 hour
+            delivery_hours = 0.0  # Default to 0 hours if no timing data
         
         # Update all null delivery hours for this event
         for participation in null_hours_participations:
