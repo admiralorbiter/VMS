@@ -185,6 +185,18 @@
     }
 }
 
+/* Session Title Link Styling */
+.session-title-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.session-external-btn:hover {
+    background: #218838 !important;
+    color: white !important;
+    text-decoration: none !important;
+}
+
 @media (max-width: 768px) {
     .district-grid {
         grid-template-columns: 1fr;
@@ -207,6 +219,12 @@
     .filter-btn, .reset-btn, .export-btn {
         font-size: 12px;
         padding: 8px 10px;
+    }
+    
+    /* Mobile adjustments for session links */
+    .session-external-btn {
+        font-size: 0.7em !important;
+        padding: 3px 6px !important;
     }
 }
 </style>
@@ -505,13 +523,18 @@
                         <td>{{ session.school_level }}</td>
                         <td>{{ session.district }}</td>
                         <td>
-                            {% if session.session_link %}
-                                <a href="{{ session.session_link }}" target="_blank" class="session-link">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <a href="{{ url_for('events.view_event', id=session.event_id) }}" class="session-title-link" style="flex: 1; color: #007bff; text-decoration: none;">
                                     {{ session.session_title }}
                                 </a>
-                            {% else %}
-                                {{ session.session_title }}
-                            {% endif %}
+                                {% if session.session_link %}
+                                    <a href="{{ session.session_link }}" target="_blank" class="session-external-btn" 
+                                       style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;" 
+                                       title="Go to session website">
+                                        🔗 Link
+                                    </a>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>{{ session.presenter }}</td>
                         <td>{{ session.topic_theme }}</td>
