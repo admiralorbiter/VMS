@@ -661,11 +661,13 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                     'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                     'session_type': event.additional_information or '',
                     'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
+                    'teacher_id': teacher.id if teacher else None,
                     'school_name': school_name,
                     'school_level': school_level,
                     'district': district_name,
                     'session_title': event.title,
                     'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                    'presenter_data': [{'id': v.id, 'name': v.full_name} for v in event.volunteers] if event.volunteers else [],
                     'topic_theme': event.series or '',
                     'session_link': event.registration_link or '',
                     'session_id': event.session_id or '',
@@ -705,11 +707,13 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                 'session_type': event.additional_information or '',
                 'teacher_name': '',
+                'teacher_id': None,
                 'school_name': '',
                 'school_level': '',
                 'district': district_name,
                 'session_title': event.title,
                 'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                'presenter_data': [{'id': v.id, 'name': v.full_name} for v in event.volunteers] if event.volunteers else [],
                 'topic_theme': event.series or '',
                 'session_link': event.registration_link or '',
                 'session_id': event.session_id or '',
@@ -1054,6 +1058,18 @@ def load_routes(bp):
                 overall_summary = cached_data.overall_summary
                 filter_options = cached_data.filter_options
                 
+                # Check if cached data has the new fields and invalidate if missing
+                if session_data and len(session_data) > 0:
+                    sample_session = session_data[0]
+                    if 'teacher_id' not in sample_session or 'presenter_data' not in sample_session:
+                        # Force fresh data if new fields are missing
+                        invalidate_virtual_session_caches(selected_virtual_year)
+                        # Recompute
+                        session_data, district_summaries, overall_summary, filter_options = compute_virtual_session_data(
+                            selected_virtual_year, date_from, date_to, current_filters
+                        )
+                        is_cached = False
+                
                 # Apply runtime filters if any
                 if any([current_filters['career_cluster'], current_filters['school'], 
                        current_filters['district'], current_filters['status']]):
@@ -1357,11 +1373,13 @@ def load_routes(bp):
                         'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                         'session_type': event.additional_information or '',
                         'teacher_name': f"{teacher.first_name} {teacher.last_name}" if teacher else '',
+                        'teacher_id': teacher.id if teacher else None,
                         'school_name': school_name,
                         'school_level': school_level,
                         'district': district_name,
                         'session_title': event.title,
                         'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                        'presenter_data': [{'id': v.id, 'name': v.full_name} for v in event.volunteers] if event.volunteers else [],
                         'topic_theme': event.series or '',
                         'session_link': event.registration_link or '',
                         'participant_count': event.participant_count or 0,
@@ -1385,11 +1403,13 @@ def load_routes(bp):
                     'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
                     'session_type': event.additional_information or '',
                     'teacher_name': '',
+                    'teacher_id': None,
                     'school_name': '',
                     'school_level': '',
                     'district': district_name,
                     'session_title': event.title,
                     'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+                    'presenter_data': [{'id': v.id, 'name': v.full_name} for v in event.volunteers] if event.volunteers else [],
                     'topic_theme': event.series or '',
                     'session_link': event.registration_link or '',
                     'participant_count': event.participant_count or 0,

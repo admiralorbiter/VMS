@@ -185,8 +185,10 @@
     }
 }
 
-/* Session Title Link Styling */
-.session-title-link:hover {
+/* Link Styling for Session Titles, Teachers, and Presenters */
+.session-title-link:hover,
+.teacher-link:hover,
+.presenter-link:hover {
     color: #0056b3;
     text-decoration: underline;
 }
@@ -457,6 +459,8 @@
         {% endif %}
 
         <!-- Sessions Table -->
+
+
         <div class="orgs-table-container">
             <table class="orgs-table">
                 <thead>
@@ -518,7 +522,15 @@
                         <td>{{ session.date }}</td>
                         <td>{{ session.time }}</td>
                         <td>{{ session.session_type }}</td>
-                        <td>{{ session.teacher_name }}</td>
+                        <td>
+                            {% if session.teacher_id and session.teacher_name %}
+                                <a href="{{ url_for('teachers.view_teacher', teacher_id=session.teacher_id) }}" class="teacher-link" style="color: #007bff; text-decoration: none;">
+                                    {{ session.teacher_name }}
+                                </a>
+                            {% else %}
+                                {{ session.teacher_name }}
+                            {% endif %}
+                        </td>
                         <td>{{ session.school_name }}</td>
                         <td>{{ session.school_level }}</td>
                         <td>{{ session.district }}</td>
@@ -536,7 +548,17 @@
                                 {% endif %}
                             </div>
                         </td>
-                        <td>{{ session.presenter }}</td>
+                        <td>
+                            {% if session.presenter_data %}
+                                {% for presenter in session.presenter_data %}
+                                    <a href="{{ url_for('volunteers.view_volunteer', id=presenter.id) }}" class="presenter-link" style="color: #007bff; text-decoration: none;">
+                                        {{ presenter.name }}
+                                    </a>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {{ session.presenter }}
+                            {% endif %}
+                        </td>
                         <td>{{ session.topic_theme }}</td>
                     </tr>
                     {% endfor %}
