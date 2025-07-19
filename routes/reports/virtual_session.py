@@ -847,20 +847,62 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     school_breakdown = {}
     teacher_breakdown = {}
     
+    # We need to track teachers by their actual database objects to get IDs
+    # Re-query events with teacher data to get proper teacher IDs
+    teacher_sessions = {}  # teacher_id -> session_count
+    teacher_details = {}   # teacher_id -> {name, school, id}
+    
+    for event in events:
+        # Determine district for this event
+        district_name_val = None
+        if event.districts:
+            district_name_val = event.districts[0].name
+        elif event.district_partner:
+            district_name_val = event.district_partner
+        else:
+            district_name_val = 'Unknown District'
+        
+        if district_name_val != district_name:
+            continue
+            
+        # Process teacher registrations to get proper IDs
+        for teacher_reg in event.teacher_registrations:
+            teacher = teacher_reg.teacher
+            if teacher:
+                teacher_id = teacher.id
+                teacher_name = f"{teacher.first_name} {teacher.last_name}"
+                
+                # Get school info
+                school_name = 'N/A'
+                if hasattr(teacher, 'school_obj') and teacher.school_obj:
+                    school_name = teacher.school_obj.name
+                elif teacher.school_id:
+                    school_obj = School.query.get(teacher.school_id)
+                    if school_obj:
+                        school_name = school_obj.name
+                
+                # Track teacher sessions
+                if teacher_id not in teacher_sessions:
+                    teacher_sessions[teacher_id] = 0
+                    teacher_details[teacher_id] = {
+                        'id': teacher_id,
+                        'name': teacher_name,
+                        'school': school_name
+                    }
+                teacher_sessions[teacher_id] += 1
+                total_teachers.add(teacher_name)
+    
+    # Build teacher breakdown from the collected data
+    for teacher_id, session_count in teacher_sessions.items():
+        teacher_info = teacher_details[teacher_id]
+        teacher_breakdown[teacher_id] = {
+            'id': teacher_info['id'],
+            'name': teacher_info['name'],
+            'school': teacher_info['school'],
+            'sessions': session_count
+        }
+    
     for session in session_data:
-        # Teachers
-        for teacher_name in session['teachers']:
-            total_teachers.add(teacher_name)
-            # Teacher breakdown
-            if teacher_name not in teacher_breakdown:
-                # Use first school if available, else N/A
-                school_val = session['schools'][0] if session['schools'] else 'N/A'
-                teacher_breakdown[teacher_name] = {
-                    'name': teacher_name,
-                    'school': school_val,
-                    'sessions': 0
-                }
-            teacher_breakdown[teacher_name]['sessions'] += 1
         
         # Schools
         for school_name in session['schools']:
@@ -966,9 +1008,12 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     sorted_monthly_stats = dict(sorted(monthly_stats.items()))
     
     # Prepare summary statistics
+    # Calculate estimated students as unique teachers * 25
+    estimated_students = len(total_teachers) * 25
+    
     summary_stats = {
         'total_teachers': len(total_teachers),
-        'total_students': total_students,
+        'total_students': estimated_students,
         'total_unique_sessions': len(total_unique_sessions),
         'total_experiences': total_experiences,
         'total_organizations': len(total_organizations),
@@ -1196,12 +1241,49 @@ def load_routes(bp):
                 is_cached = True
                 last_refreshed = cached_data.last_updated
                 print(f"Using cached data for district {district_name} virtual session report {selected_virtual_year}")
-                # Use cached data
-                session_data = cached_data.session_data
-                monthly_stats = cached_data.monthly_stats
-                school_breakdown = cached_data.school_breakdown
+                
+                # Check if cached data has the new teacher ID fields and correct student calculation
                 teacher_breakdown = cached_data.teacher_breakdown
                 summary_stats = cached_data.summary_stats
+                
+                needs_refresh = False
+                
+                # Check for missing teacher ID field
+                if teacher_breakdown and len(teacher_breakdown) > 0:
+                    sample_teacher = teacher_breakdown[0]
+                    if 'id' not in sample_teacher:
+                        print(f"DEBUG: Cached data missing teacher ID field, invalidating cache")
+                        needs_refresh = True
+                
+                # Check if student calculation is using old method (not unique teachers * 25)
+                if summary_stats and 'total_teachers' in summary_stats and 'total_students' in summary_stats:
+                    expected_students = summary_stats['total_teachers'] * 25
+                    actual_students = summary_stats['total_students']
+                    if actual_students != expected_students:
+                        print(f"DEBUG: Cached data using old student calculation ({actual_students} vs expected {expected_students}), invalidating cache")
+                        needs_refresh = True
+                
+                if needs_refresh:
+                    db.session.delete(cached_data)
+                    db.session.commit()
+                    # Force fresh data computation
+                    session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats = compute_virtual_session_district_data(
+                        district_name, selected_virtual_year, date_from, date_to
+                    )
+                    is_cached = False
+                    last_refreshed = datetime.now(timezone.utc)
+                    
+                    # Cache the new data
+                    save_virtual_session_district_cache(
+                        district_name, selected_virtual_year, date_from, date_to,
+                        session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats
+                    )
+                else:
+                    # Use cached data
+                    session_data = cached_data.session_data
+                    monthly_stats = cached_data.monthly_stats
+                    school_breakdown = cached_data.school_breakdown
+                    summary_stats = cached_data.summary_stats
                 
                 return render_template(
                     'reports/virtual_usage_district.html',

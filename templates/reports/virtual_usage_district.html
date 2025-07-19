@@ -426,6 +426,11 @@
     text-decoration: underline;
 }
 
+.teacher-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
 @media (max-width: 768px) {
     .detailed-breakdown {
         grid-template-columns: 1fr;
@@ -477,6 +482,44 @@
                 Data freshly loaded
             {% endif %}
         </div>
+    {% endif %}
+
+    <!-- Summary Statistics -->
+    {% if monthly_stats %}
+    <div class="summary-stats">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_teachers }}</span>
+            <span class="stat-label">Teachers</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_students }}</span>
+            <span class="stat-label">Students</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_unique_sessions }}</span>
+            <span class="stat-label">Unique Experiences</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_experiences }}</span>
+            <span class="stat-label">Experiences</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_organizations }}</span>
+            <span class="stat-label">Organizations</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_professionals }}</span>
+            <span class="stat-label">Professionals</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_professionals_of_color }}</span>
+            <span class="stat-label">Professionals of Color</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_schools }}</span>
+            <span class="stat-label">Schools</span>
+        </div>
+    </div>
     {% endif %}
 
     <!-- Filter Section -->
@@ -548,7 +591,7 @@
 
             <div class="breakdown-section">
                 <div class="breakdown-header">
-                    <h3 class="breakdown-title">Teachers by Sessions</h3>
+                    <h3 class="breakdown-title">Teachers by Sessions ({{ teacher_breakdown|length }} unique teachers)</h3>
                 </div>
                 <table class="breakdown-table">
                     <thead>
@@ -561,7 +604,15 @@
                     <tbody id="teacher-table-body">
                         {% for teacher in teacher_breakdown[:max_teachers] %}
                         <tr>
-                            <td>{{ teacher.name }}</td>
+                            <td>
+                                {% if teacher.id %}
+                                    <a href="{{ url_for('teachers.view_teacher', teacher_id=teacher.id) }}" class="teacher-link" style="color: #007bff; text-decoration: none;">
+                                        {{ teacher.name }}
+                                    </a>
+                                {% else %}
+                                    {{ teacher.name }}
+                                {% endif %}
+                            </td>
                             <td>{{ teacher.school }}</td>
                             <td class="teacher-sessions">{{ teacher.sessions }}</td>
                         </tr>
@@ -570,7 +621,15 @@
                     <tbody id="teacher-table-body-extra" style="display:none;">
                         {% for teacher in teacher_breakdown[max_teachers:] %}
                         <tr>
-                            <td>{{ teacher.name }}</td>
+                            <td>
+                                {% if teacher.id %}
+                                    <a href="{{ url_for('teachers.view_teacher', teacher_id=teacher.id) }}" class="teacher-link" style="color: #007bff; text-decoration: none;">
+                                        {{ teacher.name }}
+                                    </a>
+                                {% else %}
+                                    {{ teacher.name }}
+                                {% endif %}
+                            </td>
                             <td>{{ teacher.school }}</td>
                             <td class="teacher-sessions">{{ teacher.sessions }}</td>
                         </tr>
