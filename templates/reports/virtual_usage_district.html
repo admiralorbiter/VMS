@@ -559,6 +559,9 @@
                 <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
                    class="filter-btn" style="background: #6c757d;" title="Manage All Google Sheets">
                    📋 Manage Sheets</a>
+                <a href="{{ url_for('report.virtual_district_teacher_breakdown', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+                   class="filter-btn" style="background: #20c997;" title="View Teacher Breakdown by School">
+                   👥 Teacher Breakdown</a>
             </div>
         </form>
     </div>

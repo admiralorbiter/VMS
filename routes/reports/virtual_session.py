@@ -2340,3 +2340,198 @@ def load_routes(bp):
         else:
             flash(f'No Google Sheet found for {district_name} in {virtual_year}.', 'warning')
             return redirect(url_for('report.virtual_usage_district', district_name=district_name, year=virtual_year))
+
+    @bp.route('/reports/virtual/usage/district/<district_name>/teachers')
+    @login_required
+    def virtual_district_teacher_breakdown(district_name):
+        """
+        Show detailed teacher breakdown by school for a specific district.
+        
+        Args:
+            district_name: Name of the district
+            
+        Returns:
+            Rendered template with teachers grouped by school
+        """
+        # Get filter parameters
+        default_virtual_year = get_current_virtual_year()
+        selected_virtual_year = request.args.get('year', default_virtual_year)
+        
+        # Calculate default date range
+        default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)
+        
+        # Handle date parameters
+        date_from_str = request.args.get('date_from')
+        date_to_str = request.args.get('date_to')
+        date_from = default_date_from
+        date_to = default_date_to
+        
+        if date_from_str:
+            try:
+                parsed_date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+                if default_date_from.date() <= parsed_date_from.date() <= default_date_to.date():
+                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+            except ValueError:
+                pass
+                
+        if date_to_str:
+            try:
+                parsed_date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+                if default_date_from.date() <= parsed_date_to.date() <= default_date_to.date():
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                pass
+                
+        if date_from > date_to:
+            date_from = default_date_from
+            date_to = default_date_to
+            
+        current_filters = {
+            'year': selected_virtual_year,
+            'date_from': date_from,
+            'date_to': date_to
+        }
+        
+        # Get detailed teacher breakdown data
+        teacher_school_breakdown = compute_teacher_school_breakdown(
+            district_name, selected_virtual_year, date_from, date_to
+        )
+        
+        virtual_year_options = generate_school_year_options()
+        
+        return render_template(
+            'reports/virtual_teacher_breakdown.html',
+            district_name=district_name,
+            teacher_school_breakdown=teacher_school_breakdown,
+            current_filters=current_filters,
+            virtual_year_options=virtual_year_options
+        )
+
+def compute_teacher_school_breakdown(district_name, virtual_year, date_from, date_to):
+    """
+    Compute teacher breakdown grouped by school for a specific district.
+    Only includes teachers who have completed at least one virtual session.
+    
+    Args:
+        district_name: Name of the district
+        virtual_year: The virtual year
+        date_from: Start date
+        date_to: End date
+        
+    Returns:
+        Dictionary with schools as keys and teacher data as values
+    """
+    # Base query for virtual session events
+    base_query = Event.query.options(
+        joinedload(Event.districts),
+        joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
+    ).filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.start_date >= date_from,
+        Event.start_date <= date_to
+    )
+    
+    events = base_query.all()
+    
+    # Dictionary to store school -> teachers -> session counts
+    school_teacher_data = {}
+    
+    for event in events:
+        # Determine if this event belongs to our district
+        event_district = None
+        if event.districts:
+            event_district = event.districts[0].name
+        elif event.district_partner:
+            event_district = event.district_partner
+        else:
+            event_district = 'Unknown District'
+        
+        if event_district != district_name:
+            continue
+        
+        # Check if this is a completed session
+        is_completed = False
+        
+        # Check original status string for completion
+        original_status_raw = getattr(event, 'original_status_string', None)
+        original_status = (original_status_raw or '').lower().strip()
+        
+        if 'successfully completed' in original_status:
+            is_completed = True
+        elif event.status == EventStatus.COMPLETED:
+            is_completed = True
+        
+        # If not completed at event level, check teacher registrations
+        if not is_completed:
+            for teacher_reg in event.teacher_registrations:
+                tr_status = (teacher_reg.status or '').lower().strip()
+                if ('successfully completed' in tr_status or 
+                    'attended' in tr_status or 
+                    'completed' in tr_status):
+                    is_completed = True
+                    break
+        
+        # Only count completed sessions
+        if not is_completed:
+            continue
+        
+        # Process each teacher registration for completed sessions
+        for teacher_reg in event.teacher_registrations:
+            teacher = teacher_reg.teacher
+            if not teacher:
+                continue
+            
+            # Get teacher info
+            teacher_name = f"{teacher.first_name} {teacher.last_name}"
+            teacher_id = teacher.id
+            
+            # Get school info
+            school_name = 'Unknown School'
+            if hasattr(teacher, 'school_obj') and teacher.school_obj:
+                school_name = teacher.school_obj.name
+            elif teacher.school_id:
+                school_obj = School.query.get(teacher.school_id)
+                if school_obj:
+                    school_name = school_obj.name
+            
+            # Initialize school if not exists
+            if school_name not in school_teacher_data:
+                school_teacher_data[school_name] = {}
+            
+            # Initialize teacher if not exists
+            if teacher_id not in school_teacher_data[school_name]:
+                school_teacher_data[school_name][teacher_id] = {
+                    'id': teacher_id,
+                    'name': teacher_name,
+                    'sessions': 0
+                }
+            
+            # Increment session count
+            school_teacher_data[school_name][teacher_id]['sessions'] += 1
+    
+    # Convert to sorted structure for template
+    school_breakdown = {}
+    for school_name, teachers_dict in school_teacher_data.items():
+        # Convert teachers dict to sorted list
+        teachers_list = sorted(
+            teachers_dict.values(), 
+            key=lambda x: (-x['sessions'], x['name'])  # Sort by session count desc, then name asc
+        )
+        
+        # Only include teachers with at least 1 completed session
+        teachers_with_sessions = [t for t in teachers_list if t['sessions'] > 0]
+        
+        if teachers_with_sessions:  # Only include schools that have teachers with sessions
+            school_breakdown[school_name] = {
+                'teachers': teachers_with_sessions,
+                'total_teachers': len(teachers_with_sessions),
+                'total_sessions': sum(t['sessions'] for t in teachers_with_sessions)
+            }
+    
+    # Sort schools by total sessions (descending)
+    sorted_schools = dict(sorted(
+        school_breakdown.items(),
+        key=lambda x: (-x[1]['total_sessions'], x[0])  # Sort by total sessions desc, then school name asc
+    ))
+    
+    return sorted_schools
