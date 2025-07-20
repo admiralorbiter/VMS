@@ -371,13 +371,6 @@ def process_presenter(row, event, is_simulcast):
         
         # Only proceed if we have at least a first name
         if first_name:
-            # Debug logging for POC processing
-            poc_status = map_people_of_color(people_of_color)
-            if people_of_color and not pd.isna(people_of_color) and str(people_of_color).strip():
-                print(f"DEBUG: Processing presenter '{presenter_name}' - POC data: '{people_of_color}' -> {poc_status}")
-            else:
-                print(f"DEBUG: Processing presenter '{presenter_name}' - No POC data (blank/empty)")
-            
             volunteer = find_or_create_volunteer(first_name, last_name, presenter_org, people_of_color)
             
             if volunteer:
@@ -422,7 +415,6 @@ def find_or_create_volunteer(first_name, last_name, organization=None, people_of
         # Update People of Color status only if explicitly "Yes"
         if people_of_color and not pd.isna(people_of_color) and str(people_of_color).strip().lower() == 'yes':
             if not volunteer.is_people_of_color:
-                print(f"DEBUG: Updating POC status for {volunteer.first_name} {volunteer.last_name} from False to True (raw value: '{people_of_color}')")
                 volunteer.is_people_of_color = True
     
     # Create or update organization link if organization is provided

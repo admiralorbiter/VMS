@@ -12,6 +12,7 @@ from models.event import Event, EventType, EventStatus, EventTeacher
 from models.district_model import District
 from models.teacher import Teacher
 from models.school_model import School
+from models.volunteer import Volunteer
 from models import db
 from models.google_sheet import GoogleSheet
 from models.reports import VirtualSessionReportCache, VirtualSessionDistrictCache
@@ -353,10 +354,10 @@ def calculate_summaries_from_sessions(session_data):
     
     district_summaries = {}
     overall_stats = {
-        'teacher_count': 0,
+        'teacher_count': set(),  # Changed to set for unique counting
         'student_count': 0,
         'session_count': set(),
-        'experience_count': 0,
+        'experience_count': 0,  # Changed back to integer for counting every row
         'organization_count': set(),
         'professional_count': set(),
         'professional_of_color_count': set(),
@@ -377,37 +378,56 @@ def calculate_summaries_from_sessions(session_data):
                     'professionals_of_color': set()
                 }
             district_summary = district_summaries[session['district']]
+            
+            # Count unique teachers
             if session['teacher_name']:
                 district_summary['teachers'].add(session['teacher_name'])
-                overall_stats['teacher_count'] += 1
+                overall_stats['teacher_count'].add(session['teacher_name'])
+            
+            # Count unique schools
             if session['school_name']:
                 district_summary['schools'].add(session['school_name'])
                 overall_stats['school_count'].add(session['school_name'])
+            
+            # Count unique sessions (by title)
             if session['session_title']:
                 district_summary['sessions'].add(session['session_title'])
                 overall_stats['session_count'].add(session['session_title'])
-            student_count = session.get('participant_count', 0)
-            if student_count > 0:
-                district_summary['total_students'] += student_count
-                overall_stats['student_count'] += student_count
-            else:
-                district_summary['total_students'] += 25
-                overall_stats['student_count'] += 25
+            
+            # Count experiences (every row counts as an experience)
             district_summary['total_experiences'] += 1
             overall_stats['experience_count'] += 1
+            
+            # Student count will be calculated after we have unique teacher count
             
             # Process presenters and check for People of Color
             if session['presenter_data']:
                 for presenter_data in session['presenter_data']:
                     presenter_name = presenter_data.get('name', '')
+                    presenter_id = presenter_data.get('id')
                     if presenter_name:
-                        district_summary['professionals'].add(presenter_name)
-                        overall_stats['professional_count'].add(presenter_name)
+                        # Count unique professionals by ID if available, otherwise by name
+                        if presenter_id:
+                            district_summary['professionals'].add(presenter_id)
+                            overall_stats['professional_count'].add(presenter_id)
+                        else:
+                            district_summary['professionals'].add(presenter_name)
+                            overall_stats['professional_count'].add(presenter_name)
+                        
+                        # Count only primary organization from this presenter
+                        organization_name = presenter_data.get('organization_name')
+                        if organization_name:
+                            district_summary['organizations'].add(organization_name)
+                            overall_stats['organization_count'].add(organization_name)
                         
                         # Check if this presenter is marked as People of Color
                         if presenter_data.get('is_people_of_color', False):
-                            district_summary['professionals_of_color'].add(presenter_name)
-                            overall_stats['professional_of_color_count'].add(presenter_name)
+                            if presenter_id:
+                                district_summary['professionals_of_color'].add(presenter_id)
+                                overall_stats['professional_of_color_count'].add(presenter_id)
+                            else:
+                                district_summary['professionals_of_color'].add(presenter_name)
+                                overall_stats['professional_of_color_count'].add(presenter_name)
             elif session['presenter']:
                 # Fallback to old presenter format
                 presenters = [p.strip() for p in session['presenter'].split(',')]
@@ -425,6 +445,10 @@ def calculate_summaries_from_sessions(session_data):
         summary['organization_count'] = len(summary['organizations'])
         summary['professional_count'] = len(summary['professionals'])
         summary['professional_of_color_count'] = len(summary['professionals_of_color'])
+        
+        # Calculate student count as unique teachers × 25
+        summary['total_students'] = summary['teacher_count'] * 25
+        
         del summary['teachers']
         del summary['schools']
         del summary['sessions']
@@ -434,12 +458,16 @@ def calculate_summaries_from_sessions(session_data):
     
     district_summaries = {k: v for k, v in district_summaries.items() if k in allowed_districts}
     
+    # Calculate overall student count as unique teachers × 25
+    unique_teacher_count = len(overall_stats['teacher_count'])
+    overall_student_count = unique_teacher_count * 25
+    
     # Prepare overall summary stats
     overall_summary = {
-        'teacher_count': overall_stats['teacher_count'],
-        'student_count': overall_stats['student_count'],
+        'teacher_count': unique_teacher_count,
+        'student_count': overall_student_count,
         'session_count': len(overall_stats['session_count']),
-        'experience_count': overall_stats['experience_count'],
+        'experience_count': overall_stats['experience_count'],  # Use integer value
         'organization_count': len(overall_stats['organization_count']),
         'professional_count': len(overall_stats['professional_count']),
         'professional_of_color_count': len(overall_stats['professional_of_color_count']),
@@ -598,7 +626,8 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     # Base query for virtual session events
     base_query = Event.query.options(
         joinedload(Event.districts),
-        joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school)
+        joinedload(Event.teacher_registrations).joinedload(EventTeacher.teacher).joinedload(Teacher.school),
+        joinedload(Event.volunteers).joinedload(Volunteer.organizations)
     ).filter(
         Event.type == EventType.VIRTUAL_SESSION,
         Event.start_date >= date_from,
@@ -681,7 +710,13 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                     'district': district_name,
                     'session_title': event.title,
                     'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                    'presenter_data': [{'id': v.id, 'name': v.full_name, 'is_people_of_color': v.is_people_of_color} for v in event.volunteers] if event.volunteers else [],
+                    'presenter_data': [{
+                        'id': v.id, 
+                        'name': v.full_name, 
+                        'is_people_of_color': v.is_people_of_color,
+                        'organization_name': v.organization_name,
+                        'organizations': [org.name for org in v.organizations] if v.organizations else []
+                    } for v in event.volunteers] if event.volunteers else [],
                     'topic_theme': event.series or '',
                     'session_link': event.registration_link or '',
                     'session_id': event.session_id or '',
@@ -727,7 +762,13 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 'district': district_name,
                 'session_title': event.title,
                 'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                'presenter_data': [{'id': v.id, 'name': v.full_name, 'is_people_of_color': v.is_people_of_color} for v in event.volunteers] if event.volunteers else [],
+                'presenter_data': [{
+                    'id': v.id, 
+                    'name': v.full_name, 
+                    'is_people_of_color': v.is_people_of_color,
+                    'organization_name': v.organization_name,
+                    'organizations': [org.name for org in v.organizations] if v.organizations else []
+                } for v in event.volunteers] if event.volunteers else [],
                 'topic_theme': event.series or '',
                 'session_link': event.registration_link or '',
                 'session_id': event.session_id or '',
