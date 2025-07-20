@@ -1118,9 +1118,6 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         if session['session_title']:
             total_unique_sessions_completed.add(session['session_title'])
         
-        # Count experiences for completed sessions
-        total_experiences_completed += 1
-        
         # Count presenters/organizations for completed sessions
         if session['presenter_data']:
             for presenter_data in session['presenter_data']:
@@ -1148,6 +1145,9 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             for presenter in presenters:
                 if presenter:
                     total_professionals_completed.add(presenter)
+    
+    # Count experiences as total teacher sessions (each teacher attending counts as an experience)
+    total_experiences_completed = sum(teacher_sessions.values())
     
     # Calculate monthly statistics - only for completed sessions
     monthly_stats = {}
