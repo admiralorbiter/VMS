@@ -325,9 +325,28 @@ def apply_runtime_filters(session_data, filters):
             if session.get('district') != filters['district']:
                 continue
         
-        # Apply status filter
+        # Apply status filter (case-insensitive with mapping)
         if filters.get('status'):
-            if session.get('status') != filters['status']:
+            session_status = session.get('status', '').strip().lower()
+            filter_status = filters['status'].strip().lower()
+            
+            # Map common status variations
+            status_mapping = {
+                'completed': ['completed', 'successfully completed', 'white lable completed'],
+                'simulcast': ['simulcast'],
+                'no show': ['no show', 'teacher no-show', 'local professional no-show', 'pathful professional no-show', 'local professional no show'],
+                'cancelled': ['cancelled', 'teacher cancelation', 'local professional cancellation', 'pathful professional cancellation', 'inclement weather cancellation', 'technical difficulties'],
+                'draft': ['draft', 'moved to in-person session', 'unfilled', 'registered', 'count', 'white lable unfilled']
+            }
+            
+            # Check if the filter status matches any of the mapped statuses
+            filter_matched = False
+            for mapped_status, variations in status_mapping.items():
+                if filter_status == mapped_status and session_status in variations:
+                    filter_matched = True
+                    break
+            
+            if not filter_matched and session_status != filter_status:
                 continue
         
         filtered_data.append(session)
@@ -382,7 +401,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                 }
             district_summary = district_summaries[session['district']]
             
-            # Count unique teachers
+            # Count unique teachers (only from completed sessions)
             if session['teacher_name']:
                 district_summary['teachers'].add(session['teacher_name'])
                 overall_stats['teacher_count'].add(session['teacher_name'])
@@ -687,13 +706,15 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                             school_level = getattr(school, 'level', '')
                 
                 # Determine district from multiple sources
+                # Prioritize teacher's school district over event's district
                 district_name = None
-                if event.districts:
+                if school and hasattr(school, 'district') and school.district:
+                    # Teacher's school district takes priority
+                    district_name = school.district.name
+                elif event.districts:
                     district_name = event.districts[0].name
                 elif event.district_partner:
                     district_name = event.district_partner
-                elif school and hasattr(school, 'district') and school.district:
-                    district_name = school.district.name
                 else:
                     district_name = 'Unknown District'
                 
@@ -851,19 +872,25 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     session_dict = {}
     
     for event in events:
-        # Determine district for this event
-        district_name_val = None
-        if event.districts:
-            district_name_val = event.districts[0].name
-        elif event.district_partner:
-            district_name_val = event.district_partner
-        else:
-            district_name_val = 'Unknown District'
+        # Check if any teacher in this event belongs to the target district
+        event_has_target_district_teacher = False
+        target_district_teachers = set()
+        target_district_schools = set()
         
-        if district_name_val != district_name:
+        for teacher_reg in event.teacher_registrations:
+            teacher = teacher_reg.teacher
+            if teacher and teacher.school_id:
+                school = School.query.get(teacher.school_id)
+                if school and school.district and school.district.name == district_name:
+                    event_has_target_district_teacher = True
+                    target_district_teachers.add(f"{teacher.first_name} {teacher.last_name}")
+                    target_district_schools.add(school.name)
+        
+        # If no teachers from target district, skip this event
+        if not event_has_target_district_teacher:
             continue
         
-        # Aggregate teachers and schools for this event
+        # Aggregate all teachers and schools for this event (for display purposes)
         teachers = set()
         schools = set()
         for teacher_reg in event.teacher_registrations:
@@ -890,7 +917,7 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             'session_type': event.additional_information or '',
             'teachers': sorted(teachers) if teachers else [],
             'schools': sorted(schools) if schools else [],
-            'district': district_name_val,
+            'district': district_name,
             'session_title': event.title,
             'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
             'presenter_data': [{
@@ -930,21 +957,22 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     teacher_details = {}   # teacher_id -> {name, school, id}
     
     for event in events:
-        # Determine district for this event
-        district_name_val = None
-        if event.districts:
-            district_name_val = event.districts[0].name
-        elif event.district_partner:
-            district_name_val = event.district_partner
-        else:
-            district_name_val = 'Unknown District'
+        # Check if any teacher in this event belongs to the target district
+        event_has_target_district_teacher = False
         
-        if district_name_val != district_name:
+        for teacher_reg in event.teacher_registrations:
+            teacher = teacher_reg.teacher
+            if teacher and teacher.school_id:
+                school = School.query.get(teacher.school_id)
+                if school and school.district and school.district.name == district_name:
+                    event_has_target_district_teacher = True
+                    break
+        
+        # If no teachers from target district, skip this event
+        if not event_has_target_district_teacher:
             continue
             
         # Only count completed sessions for teacher breakdown
-        print(f"DEBUG: Event {event.id} has status '{event.status.value}' and original_status_string '{event.original_status_string}'")
-        
         # Check both mapped status and original status string
         should_skip = False
         if event.status and event.status.value not in ['Completed', 'Simulcast']:
@@ -953,28 +981,33 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             should_skip = True
             
         if should_skip:
-            print(f"DEBUG: Skipping event {event.id} with status '{event.status.value}' for teacher breakdown")
             continue
             
         # Process teacher registrations to get proper IDs
-        print(f"DEBUG: Processing event {event.id} with status '{event.status.value}' for teacher breakdown")
         for teacher_reg in event.teacher_registrations:
-            print(f"DEBUG: Teacher {teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name} has registration status '{teacher_reg.status}' for event {event.id}")
-            
             # Only count teachers who actually attended
             # Check if attendance was confirmed (this is more reliable than status)
             if teacher_reg.attendance_confirmed_at is None:
-                print(f"DEBUG: Skipping teacher {teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name} - no attendance confirmation for event {event.id}")
                 continue
                 
             # Also check status as backup
             no_show_statuses = ['no_show', 'cancelled', 'No Show', 'Teacher No-Show', 'Did Not Attend', 'teacher no-show', 'unfilled']
             if teacher_reg.status in no_show_statuses:
-                print(f"DEBUG: Skipping teacher {teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name} with status '{teacher_reg.status}' for event {event.id}")
                 continue
                 
             teacher = teacher_reg.teacher
             if teacher:
+                # Only count teachers from the target district
+                teacher_school_district = None
+                if teacher.school_id:
+                    school = School.query.get(teacher.school_id)
+                    if school and school.district:
+                        teacher_school_district = school.district.name
+                
+                # Skip teachers not from the target district
+                if teacher_school_district != district_name:
+                    continue
+                
                 teacher_id = teacher.id
                 teacher_name = f"{teacher.first_name} {teacher.last_name}"
                 
@@ -1015,16 +1048,19 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         if session_status not in ['Completed', 'Simulcast']:
             continue
             
-        # Schools
+        # Schools - only count schools from the target district
         for school_name in session['schools']:
-            total_schools.add(school_name)
-            # School breakdown
-            if school_name not in school_breakdown:
-                school_breakdown[school_name] = {
-                    'name': school_name,
-                    'sessions': 0
-                }
-            school_breakdown[school_name]['sessions'] += 1
+            # Check if this school belongs to the target district
+            school = School.query.filter_by(name=school_name).first()
+            if school and school.district and school.district.name == district_name:
+                total_schools.add(school_name)
+                # School breakdown
+                if school_name not in school_breakdown:
+                    school_breakdown[school_name] = {
+                        'name': school_name,
+                        'sessions': 0
+                    }
+                school_breakdown[school_name]['sessions'] += 1
         
         # Sessions
         if session['session_title']:
@@ -1059,10 +1095,8 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     school_breakdown_list = sorted(school_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
     teacher_breakdown_list = sorted(teacher_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
     
-    # Calculate summary statistics - only for completed sessions
-    completed_sessions = [s for s in session_data if s.get('status', '').strip() in ['Completed', 'Simulcast']]
-    
-    # Recalculate summary stats for completed sessions only
+    # Calculate summary statistics - only for completed sessions with confirmed attendance
+    # Use the same teacher counting logic as the teacher breakdown
     total_teachers_completed = set()
     total_unique_sessions_completed = set()
     total_experiences_completed = 0
@@ -1070,12 +1104,15 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     total_professionals_completed = set()
     total_professionals_of_color_completed = set()
     
+    # Use the same teacher counting logic as the teacher breakdown
+    for teacher_id, teacher_info in teacher_details.items():
+        if teacher_sessions[teacher_id] > 0:  # Only count teachers who actually attended
+            total_teachers_completed.add(teacher_info['name'])
+    
+    # Count sessions and other stats for completed sessions
+    completed_sessions = [s for s in session_data if s.get('status', '').strip().lower() in ['completed', 'simulcast', 'successfully completed']]
+    
     for session in completed_sessions:
-        # Count unique teachers for completed sessions
-        if session.get('teachers'):
-            for teacher_name in session['teachers']:
-                if teacher_name:
-                    total_teachers_completed.add(teacher_name)
         
         # Count unique sessions for completed sessions
         if session['session_title']:
@@ -1116,8 +1153,8 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     monthly_stats = {}
     for session in session_data:
         # Only count completed sessions for monthly stats
-        session_status = session.get('status', '').strip()
-        if session_status not in ['Completed', 'Simulcast']:
+        session_status = session.get('status', '').strip().lower()
+        if session_status not in ['completed', 'simulcast', 'successfully completed']:
             continue
             
         # Parse month from date
