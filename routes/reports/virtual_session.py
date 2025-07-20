@@ -934,11 +934,36 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             continue
             
         # Only count completed sessions for teacher breakdown
+        print(f"DEBUG: Event {event.id} has status '{event.status.value}' and original_status_string '{event.original_status_string}'")
+        
+        # Check both mapped status and original status string
+        should_skip = False
         if event.status and event.status.value not in ['Completed', 'Simulcast']:
+            should_skip = True
+        elif event.original_status_string and 'no-show' in event.original_status_string.lower():
+            should_skip = True
+            
+        if should_skip:
+            print(f"DEBUG: Skipping event {event.id} with status '{event.status.value}' for teacher breakdown")
             continue
             
         # Process teacher registrations to get proper IDs
+        print(f"DEBUG: Processing event {event.id} with status '{event.status.value}' for teacher breakdown")
         for teacher_reg in event.teacher_registrations:
+            print(f"DEBUG: Teacher {teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name} has registration status '{teacher_reg.status}' for event {event.id}")
+            
+            # Only count teachers who actually attended
+            # Check if attendance was confirmed (this is more reliable than status)
+            if teacher_reg.attendance_confirmed_at is None:
+                print(f"DEBUG: Skipping teacher {teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name} - no attendance confirmation for event {event.id}")
+                continue
+                
+            # Also check status as backup
+            no_show_statuses = ['no_show', 'cancelled', 'No Show', 'Teacher No-Show', 'Did Not Attend', 'teacher no-show', 'unfilled']
+            if teacher_reg.status in no_show_statuses:
+                print(f"DEBUG: Skipping teacher {teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name} with status '{teacher_reg.status}' for event {event.id}")
+                continue
+                
             teacher = teacher_reg.teacher
             if teacher:
                 teacher_id = teacher.id
@@ -1406,6 +1431,14 @@ def load_routes(bp):
                     if actual_students != expected_students:
                         print(f"DEBUG: Cached data using old student calculation ({actual_students} vs expected {expected_students}), invalidating cache")
                         needs_refresh = True
+                
+                # Force refresh to ensure completed session filtering is applied
+                print(f"DEBUG: Forcing cache refresh to ensure completed session filtering is applied")
+                needs_refresh = True
+                
+
+                
+
                 
                 if needs_refresh:
                     db.session.delete(cached_data)
