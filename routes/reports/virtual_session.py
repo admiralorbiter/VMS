@@ -879,12 +879,32 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         
         for teacher_reg in event.teacher_registrations:
             teacher = teacher_reg.teacher
-            if teacher and teacher.school_id:
-                school = School.query.get(teacher.school_id)
-                if school and school.district and school.district.name == district_name:
+            if teacher:
+                # Determine district using the same logic as main function
+                teacher_district = None
+                
+                # Check teacher's school district first
+                if teacher.school_id:
+                    school = School.query.get(teacher.school_id)
+                    if school and school.district:
+                        teacher_district = school.district.name
+                
+                # If no school district, check event's districts
+                if not teacher_district and event.districts:
+                    teacher_district = event.districts[0].name
+                
+                # If still no district, check event's district_partner
+                if not teacher_district and event.district_partner:
+                    teacher_district = event.district_partner
+                
+                # If teacher belongs to target district, include this event
+                if teacher_district == district_name:
                     event_has_target_district_teacher = True
                     target_district_teachers.add(f"{teacher.first_name} {teacher.last_name}")
-                    target_district_schools.add(school.name)
+                    if teacher.school_id:
+                        school = School.query.get(teacher.school_id)
+                        if school:
+                            target_district_schools.add(school.name)
         
         # If no teachers from target district, skip this event
         if not event_has_target_district_teacher:
@@ -962,9 +982,26 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         
         for teacher_reg in event.teacher_registrations:
             teacher = teacher_reg.teacher
-            if teacher and teacher.school_id:
-                school = School.query.get(teacher.school_id)
-                if school and school.district and school.district.name == district_name:
+            if teacher:
+                # Determine district using the same logic as main function
+                teacher_district = None
+                
+                # Check teacher's school district first
+                if teacher.school_id:
+                    school = School.query.get(teacher.school_id)
+                    if school and school.district:
+                        teacher_district = school.district.name
+                
+                # If no school district, check event's districts
+                if not teacher_district and event.districts:
+                    teacher_district = event.districts[0].name
+                
+                # If still no district, check event's district_partner
+                if not teacher_district and event.district_partner:
+                    teacher_district = event.district_partner
+                
+                # If teacher belongs to target district, include this event
+                if teacher_district == district_name:
                     event_has_target_district_teacher = True
                     break
         
@@ -997,15 +1034,25 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
                 
             teacher = teacher_reg.teacher
             if teacher:
-                # Only count teachers from the target district
-                teacher_school_district = None
+                # Determine district using the same logic as main function
+                teacher_district = None
+                
+                # Check teacher's school district first
                 if teacher.school_id:
                     school = School.query.get(teacher.school_id)
                     if school and school.district:
-                        teacher_school_district = school.district.name
+                        teacher_district = school.district.name
+                
+                # If no school district, check event's districts
+                if not teacher_district and event.districts:
+                    teacher_district = event.districts[0].name
+                
+                # If still no district, check event's district_partner
+                if not teacher_district and event.district_partner:
+                    teacher_district = event.district_partner
                 
                 # Skip teachers not from the target district
-                if teacher_school_district != district_name:
+                if teacher_district != district_name:
                     continue
                 
                 teacher_id = teacher.id
