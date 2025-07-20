@@ -338,6 +338,7 @@ def apply_runtime_filters(session_data, filters):
 def calculate_summaries_from_sessions(session_data):
     """
     Calculate district summaries and overall summary from session data.
+    Only counts sessions with status "Completed" or "Simulcast".
     
     Args:
         session_data: List of session records
@@ -365,6 +366,11 @@ def calculate_summaries_from_sessions(session_data):
     }
     
     for session in session_data:
+        # Only count sessions with completed status
+        session_status = session.get('status', '').strip()
+        if session_status not in ['Completed', 'Simulcast']:
+            continue
+            
         if session['district']:
             if session['district'] not in district_summaries:
                 district_summaries[session['district']] = {
@@ -878,7 +884,13 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             'district': district_name_val,
             'session_title': event.title,
             'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-            'presenter_data': [{'id': v.id, 'name': v.full_name, 'is_people_of_color': v.is_people_of_color} for v in event.volunteers] if event.volunteers else [],
+            'presenter_data': [{
+                'id': v.id, 
+                'name': v.full_name, 
+                'is_people_of_color': v.is_people_of_color,
+                'organization_name': v.organization_name,
+                'organizations': [org.name for org in v.organizations] if v.organizations else []
+            } for v in event.volunteers] if event.volunteers else [],
             'topic_theme': event.series or '',
             'session_link': event.registration_link or '',
             'session_id': event.session_id or '',
@@ -921,6 +933,10 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         if district_name_val != district_name:
             continue
             
+        # Only count completed sessions for teacher breakdown
+        if event.status and event.status.value not in ['Completed', 'Simulcast']:
+            continue
+            
         # Process teacher registrations to get proper IDs
         for teacher_reg in event.teacher_registrations:
             teacher = teacher_reg.teacher
@@ -958,8 +974,13 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             'sessions': session_count
         }
     
+    # Calculate breakdowns - only for completed sessions
     for session in session_data:
-        
+        # Only count completed sessions for breakdowns
+        session_status = session.get('status', '').strip()
+        if session_status not in ['Completed', 'Simulcast']:
+            continue
+            
         # Schools
         for school_name in session['schools']:
             total_schools.add(school_name)
@@ -1004,9 +1025,67 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     school_breakdown_list = sorted(school_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
     teacher_breakdown_list = sorted(teacher_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
     
-    # Calculate monthly statistics
+    # Calculate summary statistics - only for completed sessions
+    completed_sessions = [s for s in session_data if s.get('status', '').strip() in ['Completed', 'Simulcast']]
+    
+    # Recalculate summary stats for completed sessions only
+    total_teachers_completed = set()
+    total_unique_sessions_completed = set()
+    total_experiences_completed = 0
+    total_organizations_completed = set()
+    total_professionals_completed = set()
+    total_professionals_of_color_completed = set()
+    
+    for session in completed_sessions:
+        # Count unique teachers for completed sessions
+        if session.get('teachers'):
+            for teacher_name in session['teachers']:
+                if teacher_name:
+                    total_teachers_completed.add(teacher_name)
+        
+        # Count unique sessions for completed sessions
+        if session['session_title']:
+            total_unique_sessions_completed.add(session['session_title'])
+        
+        # Count experiences for completed sessions
+        total_experiences_completed += 1
+        
+        # Count presenters/organizations for completed sessions
+        if session['presenter_data']:
+            for presenter_data in session['presenter_data']:
+                presenter_name = presenter_data.get('name', '')
+                if presenter_name:
+                    total_professionals_completed.add(presenter_name)
+                    
+                    # Check if this presenter is marked as People of Color
+                    if presenter_data.get('is_people_of_color', False):
+                        total_professionals_of_color_completed.add(presenter_name)
+                    
+                    # Count organizations - only count the main/current organization
+                    if presenter_data.get('organization_name'):
+                        org_name = presenter_data['organization_name']
+                        if org_name:
+                            total_organizations_completed.add(org_name)
+                    elif presenter_data.get('organizations') and presenter_data['organizations']:
+                        # Fallback to first organization if no main organization is set
+                        org_name = presenter_data['organizations'][0]
+                        if org_name:
+                            total_organizations_completed.add(org_name)
+        elif session['presenter']:
+            # Fallback to old presenter format
+            presenters = [p.strip() for p in session['presenter'].split(',')]
+            for presenter in presenters:
+                if presenter:
+                    total_professionals_completed.add(presenter)
+    
+    # Calculate monthly statistics - only for completed sessions
     monthly_stats = {}
     for session in session_data:
+        # Only count completed sessions for monthly stats
+        session_status = session.get('status', '').strip()
+        if session_status not in ['Completed', 'Simulcast']:
+            continue
+            
         # Parse month from date
         try:
             date_obj = datetime.strptime(session['date'], '%m/%d/%y')
@@ -1072,18 +1151,18 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
     
     sorted_monthly_stats = dict(sorted(monthly_stats.items()))
     
-    # Prepare summary statistics
+    # Prepare summary statistics - use completed sessions only for summary stats
     # Calculate estimated students as unique teachers * 25
-    estimated_students = len(total_teachers) * 25
+    estimated_students = len(total_teachers_completed) * 25
     
     summary_stats = {
-        'total_teachers': len(total_teachers),
+        'total_teachers': len(total_teachers_completed),
         'total_students': estimated_students,
-        'total_unique_sessions': len(total_unique_sessions),
-        'total_experiences': total_experiences,
-        'total_organizations': len(total_organizations),
-        'total_professionals': len(total_professionals),
-        'total_professionals_of_color': len(total_professionals_of_color),
+        'total_unique_sessions': len(total_unique_sessions_completed),
+        'total_experiences': total_experiences_completed,
+        'total_organizations': len(total_organizations_completed),
+        'total_professionals': len(total_professionals_completed),
+        'total_professionals_of_color': len(total_professionals_of_color_completed),
         'total_schools': len(total_schools)
     }
     
