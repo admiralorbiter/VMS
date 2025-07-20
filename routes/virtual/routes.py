@@ -11,6 +11,7 @@ Key Features:
 - Google Sheets data import and processing
 - Event creation and updating from CSV data
 - Teacher and presenter data processing
+- Multiple teacher handling (slash-separated names)
 - District and organization association
 - Simulcast session handling
 - Data validation and error handling
@@ -26,6 +27,7 @@ Virtual Session Processing:
 - CSV data parsing and validation
 - Event creation from session data
 - Teacher and presenter association
+- Multiple teacher name splitting and processing
 - District and organization linking
 - Status tracking and updates
 - Simulcast session handling
@@ -37,6 +39,7 @@ Data Import Features:
 - Data validation and cleanup
 - Duplicate detection and handling
 - Progress tracking and statistics
+- Multiple teacher name handling
 
 Event Management:
 - Virtual event creation and updates
@@ -45,10 +48,12 @@ Event Management:
 - Status mapping and updates
 - District and organization associations
 - Teacher and presenter relationships
+- Multiple teacher event associations
 
 Helper Functions:
 - Data cleaning and standardization
 - Name parsing and validation
+- Teacher name splitting (slash-separated)
 - Organization name mapping
 - District and school creation
 - Session ID extraction
@@ -83,6 +88,13 @@ Template Dependencies:
 - virtual/virtual.html: Main virtual sessions page
 - virtual/events.html: Virtual events listing
 - virtual/event_detail.html: Individual event view
+
+Teacher Name Processing:
+- Supports multiple teachers separated by slashes (e.g., "James Brockway/Megan Gasser")
+- Automatic splitting and individual teacher record creation
+- Proper event association for each teacher
+- School and district assignment for each teacher
+- Status tracking per teacher
 """
 
 import traceback
@@ -130,185 +142,36 @@ def virtual():
     """
     return render_template('virtual/virtual.html')
 
-def process_csv_row(row, success_count, warning_count, error_count, errors, all_rows=None):
+def split_teacher_names(teacher_name):
     """
-    Process a single CSV row from virtual session data.
-    
-    Handles the creation and updating of virtual events from CSV data,
-    including teacher and presenter associations, district linking, and
-    simulcast session processing.
+    Split teacher names that may contain multiple teachers separated by slashes.
     
     Args:
-        row: Dictionary containing CSV row data
-        success_count: Current count of successful processing operations
-        warning_count: Current count of warnings during processing
-        error_count: Current count of processing errors
-        errors: List to collect error messages
-        all_rows: Optional list of all rows for simulcast processing
+        teacher_name: String containing one or more teacher names
         
     Returns:
-        tuple: Updated (success_count, warning_count, error_count)
+        list: List of individual teacher name strings
         
-    Processing Features:
-        - Event creation and updating
-        - Teacher and presenter data processing
-        - District and organization association
-        - Simulcast session handling
-        - Date/time parsing and validation
-        - Status mapping and updates
+    Examples:
+        "James Brockway/Megan Gasser" -> ["James Brockway", "Megan Gasser"]
+        "John Smith" -> ["John Smith"]
+        "Jane Doe / Bob Wilson" -> ["Jane Doe", "Bob Wilson"]
     """
-    try:
-        db.session.rollback()
-        
-        # Skip empty rows
-        if not any(row.values()):
-            return success_count, warning_count, error_count
-
-        # Get status early to determine processing logic
-        status_str = safe_str(row.get('Status', '')).lower()
-        is_simulcast = status_str == 'simulcast'
-        
-        # Parse the date early since we'll need it in multiple places
-        date_str = row.get('Date')
-        time_str = row.get('Time', '')
-        parsed_date = parse_datetime(date_str, time_str) if date_str else None
-        
-        # For simulcast entries or entries without dates, we only process teacher data
-        if is_simulcast or not date_str:
-            # Only process teacher information
-            if row.get('Teacher Name'):
-                process_teacher_data(row, is_simulcast)
-                success_count += 1
-            return success_count, warning_count, error_count
-
-        # For regular entries, proceed with full processing
-        session_id = extract_session_id(row.get('Session Link'))
-        event = Event.query.filter_by(session_id=session_id).first() if session_id else None
-        
-        if not event:
-            event = Event()
-            event.session_id = session_id
-            event.title = row.get('Session Title')
-            event.type = EventType.VIRTUAL_SESSION
-            event.format = EventFormat.VIRTUAL
-            event.status = EventStatus.map_status(status_str)
-            event.series = row.get('Topic/Theme')
-            event.additional_information = row.get('Session Type')
-            event.registration_link = row.get('Session Link')
-            event.session_host = 'PREPKC'  # Set default host for virtual sessions
-            
-            # Set date/time for new events
-            try:
-                date_str = row.get('Date')
-                time_str = row.get('Time', '')
-                if date_str:
-                    date_parts = date_str.split('/')
-                    current_year = datetime.now(timezone.utc).year
-                    # Create full datetime for start_date
-                    event_date = datetime.strptime(f"{date_parts[0]}/{date_parts[1]}/{current_year}", '%m/%d/%Y')
-                    
-                    if time_str:
-                        time_obj = datetime.strptime(time_str, '%I:%M %p').time()
-                        event_date = event_date.replace(hour=time_obj.hour, minute=time_obj.minute)
-                    
-                    # Set start_date (timezone-aware datetime)
-                    event.start_date = event_date.replace(tzinfo=timezone.utc)
-                    # Set end_date (1 hour later by default)
-                    event.end_date = event.start_date + timedelta(hours=1)
-                    event.duration = 60  # Default 60 minutes
-                    
-            except ValueError as e:
-                error_count += 1
-                errors.append(f"Error parsing date/time for {event.title}: {str(e)}")
-                return success_count, warning_count, error_count
-        else:
-            # Update existing event with latest data
-            updated_fields = []
-            
-            # Update title if different
-            if row.get('Session Title') and row.get('Session Title') != event.title:
-                event.title = row.get('Session Title')
-                updated_fields.append('title')
-            
-            # Update session host if not set or different
-            if not event.session_host or event.session_host != 'PREPKC':
-                event.session_host = 'PREPKC'
-                updated_fields.append('session_host')
-            
-            # Update status if different
-            new_status = EventStatus.map_status(status_str)
-            if new_status != event.status:
-                event.status = new_status
-                updated_fields.append('status')
-            
-            # Update other fields if they exist in the model
-            if row.get('Topic/Theme') and row.get('Topic/Theme') != event.series:
-                event.series = row.get('Topic/Theme')
-                updated_fields.append('series')
-            
-            if row.get('Session Type') and row.get('Session Type') != event.additional_information:
-                event.additional_information = row.get('Session Type')
-                updated_fields.append('additional_information')
-            
-            if row.get('Session Link') and row.get('Session Link') != event.registration_link:
-                event.registration_link = row.get('Session Link')
-                updated_fields.append('registration_link')
-            
-            if updated_fields:
-                print(f"UPDATED existing virtual event {session_id} ({event.title}) with fields: {updated_fields}")
-
-        # Handle presenter information
-        process_presenter(row, event, is_simulcast)
-
-        # Handle teacher information
-        if row.get('Teacher Name') and not pd.isna(row.get('Teacher Name')):
-            process_teacher_for_event(row, event, is_simulcast)
-
-        # Collect all districts (main event + simulcast) before adding them
-        districts_to_add = set()
-        
-        # Add the main event's district if it exists
-        main_district = row.get('District')
-        if main_district and not pd.isna(main_district):
-            districts_to_add.add(main_district)
-            # Set district_partner to the main event's district if not already set
-            if not event.district_partner:
-                event.district_partner = main_district
-
-        # For completed sessions, collect all simulcast districts
-        if status_str == 'successfully completed' and all_rows and parsed_date:
-            session_title = row.get('Session Title')
-            date_key = parsed_date.date().isoformat()
-            if session_title:
-                # Find all simulcast entries with matching title and date
-                for sim_row in all_rows:
-                    sim_title = clean_string_value(sim_row.get('Session Title'))
-                    sim_status = safe_str(sim_row.get('Status', '')).lower()
-                    sim_district = safe_str(sim_row.get('District'))
-                    sim_date = parse_datetime(sim_row.get('Date'), sim_row.get('Time'))
-                    
-                    if (sim_title == session_title and 
-                        sim_status == 'simulcast' and 
-                        sim_district and not pd.isna(sim_district) and
-                        (not sim_date or sim_date.date().isoformat() == date_key)):
-                        districts_to_add.add(sim_district)
-
-        # Now add all collected districts to the event
-        for district_name in districts_to_add:
-            add_district_to_event(event, district_name)
-
-        db.session.add(event)
-        db.session.commit()
-        success_count += 1
-        
-    except Exception as e:
-        error_count += 1
-        title = row.get('Session Title', 'Unknown session')
-        errors.append(f"Error processing {title}: {str(e)}")
-        db.session.rollback()
-        current_app.logger.error(f"Import error: {e}", exc_info=True)
+    if not teacher_name or pd.isna(teacher_name):
+        return []
     
-    return success_count, warning_count, error_count
+    teacher_name = safe_str(teacher_name)
+    if not teacher_name.strip():
+        return []
+    
+    # Split by slash and clean up each name
+    teacher_names = []
+    for name in teacher_name.split('/'):
+        cleaned_name = name.strip()
+        if cleaned_name:
+            teacher_names.append(cleaned_name)
+    
+    return teacher_names
 
 def process_teacher_data(row, is_simulcast=False):
     """
@@ -326,37 +189,40 @@ def process_teacher_data(row, is_simulcast=False):
         - Teacher record creation or updating
         - Organization association if available
         - Contact information handling
+        - Multiple teacher handling (separated by slashes)
     """
     if not row.get('Teacher Name') or pd.isna(row.get('Teacher Name')):
         return
         
-    teacher_name = safe_str(row.get('Teacher Name'))
-    name_parts = teacher_name.split(' ', 1)
-    if len(name_parts) >= 2:
-        first_name, last_name = name_parts[0], name_parts[1]
-        
-        # Find or create teacher
-        teacher = Teacher.query.filter(
-            func.lower(Teacher.first_name) == func.lower(first_name),
-            func.lower(Teacher.last_name) == func.lower(last_name)
-        ).first()
-        
-        if not teacher:
-            teacher = Teacher(
-                first_name=first_name,
-                last_name=last_name,
-                middle_name=''
-            )
+    teacher_names = split_teacher_names(row.get('Teacher Name'))
+    
+    for teacher_name in teacher_names:
+        name_parts = teacher_name.split(' ', 1)
+        if len(name_parts) >= 2:
+            first_name, last_name = name_parts[0], name_parts[1]
             
-            # Handle school association
-            school_name = row.get('School Name')
-            district_name = row.get('District')
-            if school_name:
-                school = get_or_create_school(school_name, get_or_create_district(district_name))
-                teacher.school_id = school.id
+            # Find or create teacher
+            teacher = Teacher.query.filter(
+                func.lower(Teacher.first_name) == func.lower(first_name),
+                func.lower(Teacher.last_name) == func.lower(last_name)
+            ).first()
             
-            db.session.add(teacher)
-            db.session.commit()
+            if not teacher:
+                teacher = Teacher(
+                    first_name=first_name,
+                    last_name=last_name,
+                    middle_name=''
+                )
+                
+                # Handle school association
+                school_name = row.get('School Name')
+                district_name = row.get('District')
+                if school_name:
+                    school = get_or_create_school(school_name, get_or_create_district(district_name))
+                    teacher.school_id = school.id
+                
+                db.session.add(teacher)
+                db.session.commit()
 
 def process_presenter(row, event, is_simulcast):
     """Helper function to process presenter data"""
@@ -521,68 +387,70 @@ def process_teacher_for_event(row, event, is_simulcast):
     if not row.get('Teacher Name') or pd.isna(row.get('Teacher Name')):
         return
         
-    teacher_name = safe_str(row.get('Teacher Name'))
-    name_parts = teacher_name.split(' ', 1)
-    if len(name_parts) >= 2:
-        first_name, last_name = name_parts[0], name_parts[1]
-        
-        # Find or create teacher
-        teacher = Teacher.query.filter(
-            func.lower(Teacher.first_name) == func.lower(first_name),
-            func.lower(Teacher.last_name) == func.lower(last_name)
-        ).first()
-        
-        if not teacher:
-            teacher = Teacher(
-                first_name=first_name,
-                last_name=last_name,
-                middle_name=''
-            )
+    teacher_names = split_teacher_names(row.get('Teacher Name'))
+    
+    for teacher_name in teacher_names:
+        name_parts = teacher_name.split(' ', 1)
+        if len(name_parts) >= 2:
+            first_name, last_name = name_parts[0], name_parts[1]
             
-            # Handle school association
-            school_name = row.get('School Name')
-            district_name = row.get('District')
-            if school_name and not pd.isna(school_name):
-                district = get_or_create_district(district_name) if district_name else None
-                school = get_or_create_school(school_name, district)
-                if school:  # Only set school_id if school exists
-                    teacher.school_id = school.id
+            # Find or create teacher
+            teacher = Teacher.query.filter(
+                func.lower(Teacher.first_name) == func.lower(first_name),
+                func.lower(Teacher.last_name) == func.lower(last_name)
+            ).first()
             
-            db.session.add(teacher)
-            db.session.flush()
-        else:
-            # Update existing teacher's school association if it has changed
-            school_name = row.get('School Name')
-            district_name = row.get('District')
-            if school_name and not pd.isna(school_name):
-                district = get_or_create_district(district_name) if district_name else None
-                school = get_or_create_school(school_name, district)
-                if school and school.id != teacher.school_id:
-                    teacher.school_id = school.id
+            if not teacher:
+                teacher = Teacher(
+                    first_name=first_name,
+                    last_name=last_name,
+                    middle_name=''
+                )
+                
+                # Handle school association
+                school_name = row.get('School Name')
+                district_name = row.get('District')
+                if school_name and not pd.isna(school_name):
+                    district = get_or_create_district(district_name) if district_name else None
+                    school = get_or_create_school(school_name, district)
+                    if school:  # Only set school_id if school exists
+                        teacher.school_id = school.id
+                
+                db.session.add(teacher)
+                db.session.flush()
+            else:
+                # Update existing teacher's school association if it has changed
+                school_name = row.get('School Name')
+                district_name = row.get('District')
+                if school_name and not pd.isna(school_name):
+                    district = get_or_create_district(district_name) if district_name else None
+                    school = get_or_create_school(school_name, district)
+                    if school and school.id != teacher.school_id:
+                        teacher.school_id = school.id
 
-        # Create or update teacher participation record
-        event_teacher = EventTeacher.query.filter_by(
-            event_id=event.id,
-            teacher_id=teacher.id
-        ).first()
-        
-        if not event_teacher:
-            event_teacher = EventTeacher(
+            # Create or update teacher participation record
+            event_teacher = EventTeacher.query.filter_by(
                 event_id=event.id,
-                teacher_id=teacher.id,
-                status=row.get('Status'),
-                is_simulcast=is_simulcast,
-                attendance_confirmed_at=datetime.now(timezone.utc) if event.status == EventStatus.COMPLETED else None
-            )
-            db.session.add(event_teacher)
-        else:
-            # Update existing teacher participation record
-            event_teacher.status = row.get('Status')
-            event_teacher.is_simulcast = is_simulcast
-            if event.status == EventStatus.COMPLETED and not event_teacher.attendance_confirmed_at:
-                event_teacher.attendance_confirmed_at = datetime.now(timezone.utc)
-            elif event.status != EventStatus.COMPLETED:
-                event_teacher.attendance_confirmed_at = None
+                teacher_id=teacher.id
+            ).first()
+            
+            if not event_teacher:
+                event_teacher = EventTeacher(
+                    event_id=event.id,
+                    teacher_id=teacher.id,
+                    status=row.get('Status'),
+                    is_simulcast=is_simulcast,
+                    attendance_confirmed_at=datetime.now(timezone.utc) if event.status == EventStatus.COMPLETED else None
+                )
+                db.session.add(event_teacher)
+            else:
+                # Update existing teacher participation record
+                event_teacher.status = row.get('Status')
+                event_teacher.is_simulcast = is_simulcast
+                if event.status == EventStatus.COMPLETED and not event_teacher.attendance_confirmed_at:
+                    event_teacher.attendance_confirmed_at = datetime.now(timezone.utc)
+                elif event.status != EventStatus.COMPLETED:
+                    event_teacher.attendance_confirmed_at = None
 
 def add_district_to_event(event, district_name):
     """Gets or creates the district and adds it to the event's districts list if not already present."""
@@ -600,25 +468,57 @@ def add_district_to_event(event, district_name):
 @virtual_bp.route('/purge', methods=['POST'])
 @login_required
 def purge_virtual():
-    """Remove all virtual session records"""
+    """Remove all virtual session records and related data"""
     try:
-        # First delete all event-teacher associations
-        EventTeacher.query.join(Event).filter(
+        # Get all virtual session event IDs first
+        virtual_event_ids = db.session.query(Event.id).filter(
             Event.type == EventType.VIRTUAL_SESSION
-        ).delete(synchronize_session=False)
+        ).all()
+        virtual_event_ids = [event_id[0] for event_id in virtual_event_ids]
         
-        # Then delete the events
+        # Delete event-teacher associations for virtual sessions
+        event_teacher_deleted = 0
+        if virtual_event_ids:
+            event_teacher_deleted = EventTeacher.query.filter(
+                EventTeacher.event_id.in_(virtual_event_ids)
+            ).delete(synchronize_session=False)
+        
+        # Delete event participations for virtual sessions (presenters/volunteers)
+        event_participation_deleted = 0
+        if virtual_event_ids:
+            event_participation_deleted = EventParticipation.query.filter(
+                EventParticipation.event_id.in_(virtual_event_ids)
+            ).delete(synchronize_session=False)
+        
+        # Then delete the virtual session events
         deleted_count = Event.query.filter_by(
             type=EventType.VIRTUAL_SESSION
         ).delete(synchronize_session=False)
         
-        # Commit the changes
+        # Clean up orphaned teachers that were only created for virtual sessions
+        # Find teachers who have no remaining event associations
+        orphaned_teachers = Teacher.query.filter(
+            ~Teacher.event_registrations.any()
+        ).all()
+        
+        teacher_deleted_count = 0
+        for teacher in orphaned_teachers:
+            # Only delete teachers who were likely created for virtual sessions
+            # (teachers without schools or with minimal data)
+            if not teacher.school_id or not teacher.department:
+                db.session.delete(teacher)
+                teacher_deleted_count += 1
+        
+        # Commit all changes
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': f'Successfully purged {deleted_count} virtual sessions',
-            'count': deleted_count
+            'message': f'Successfully purged {deleted_count} virtual sessions, {teacher_deleted_count} orphaned teachers, {event_teacher_deleted} teacher associations, and {event_participation_deleted} event participations',
+            'count': deleted_count,
+            'teachers_deleted': teacher_deleted_count,
+            'event_teachers_deleted': event_teacher_deleted,
+            'event_participations_deleted': event_participation_deleted
         })
     except Exception as e:
         db.session.rollback()
@@ -1472,3 +1372,5 @@ def extract_session_id(session_link):
     except Exception as e:
         current_app.logger.warning(f"Error extracting session ID: {e} from {session_link}")
         return None
+
+

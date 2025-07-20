@@ -335,23 +335,20 @@ def apply_runtime_filters(session_data, filters):
     return filtered_data
 
 
-def calculate_summaries_from_sessions(session_data):
+def calculate_summaries_from_sessions(session_data, show_all_districts=False):
     """
     Calculate district summaries and overall summary from session data.
     Only counts sessions with status "Completed" or "Simulcast".
     
     Args:
         session_data: List of session records
+        show_all_districts: If True, show all districts. If False, only show main districts.
         
     Returns:
         Tuple of (district_summaries, overall_summary)
     """
-    # Filter districts to only show allowed ones
-    allowed_districts = {
-        "Hickman Mills School District",
-        "Grandview School District",
-        "Kansas City Kansas Public Schools"
-    }
+    # Include all districts that have data
+    # Note: We don't filter districts here anymore - show all districts with data
     
     district_summaries = {}
     overall_stats = {
@@ -366,9 +363,9 @@ def calculate_summaries_from_sessions(session_data):
     }
     
     for session in session_data:
-        # Only count sessions with completed status
-        session_status = session.get('status', '').strip()
-        if session_status not in ['Completed', 'Simulcast']:
+        # Only count sessions with completed status (case-insensitive)
+        session_status = session.get('status', '').strip().lower()
+        if session_status not in ['completed', 'simulcast', 'successfully completed']:
             continue
             
         if session['district']:
@@ -462,7 +459,14 @@ def calculate_summaries_from_sessions(session_data):
         del summary['professionals']
         del summary['professionals_of_color']
     
-    district_summaries = {k: v for k, v in district_summaries.items() if k in allowed_districts}
+    # Filter to only show main districts by default (unless admin requests all)
+    if not show_all_districts:
+        main_districts = {
+            "Hickman Mills School District",
+            "Grandview School District", 
+            "Kansas City Kansas Public Schools"
+        }
+        district_summaries = {k: v for k, v in district_summaries.items() if k in main_districts}
     
     # Calculate overall student count as unique teachers × 25
     unique_teacher_count = len(overall_stats['teacher_count'])
@@ -792,15 +796,20 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 all_statuses.add(event.status.value)
     
     # Calculate summaries
-    district_summaries, overall_summary = calculate_summaries_from_sessions(session_data)
+    show_all_districts = filters.get('show_all_districts', False)
+    district_summaries, overall_summary = calculate_summaries_from_sessions(session_data, show_all_districts)
     
-    # Filter districts to only show allowed ones
-    allowed_districts = {
+    # Show all districts that have data, but prioritize the main districts
+    main_districts = {
         "Hickman Mills School District",
         "Grandview School District", 
         "Kansas City Kansas Public Schools"
     }
-    filtered_districts = [d for d in all_districts if d in allowed_districts]
+    # Include all districts that have data, but put main districts first
+    all_districts_list = sorted(list(all_districts))
+    main_districts_list = [d for d in all_districts_list if d in main_districts]
+    other_districts_list = [d for d in all_districts_list if d not in main_districts]
+    filtered_districts = main_districts_list + other_districts_list
     
     # Prepare filter options
     virtual_year_options = generate_school_year_options()
@@ -1237,6 +1246,9 @@ def load_routes(bp):
             date_from = default_date_from
             date_to = default_date_to
 
+        # Check if admin wants to see all districts
+        show_all_districts = request.args.get('show_all_districts', '0') == '1'
+        
         current_filters = {
             'year': selected_virtual_year,  # Updated variable name
             'date_from': date_from,
@@ -1244,7 +1256,8 @@ def load_routes(bp):
             'career_cluster': request.args.get('career_cluster'),
             'school': request.args.get('school'),
             'district': request.args.get('district'),
-            'status': request.args.get('status')
+            'status': request.args.get('status'),
+            'show_all_districts': show_all_districts
         }
         
         # Check if we're using default full year date range (for caching)
@@ -1289,7 +1302,7 @@ def load_routes(bp):
                        current_filters['district'], current_filters['status']]):
                     session_data = apply_runtime_filters(session_data, current_filters)
                     # Recalculate summaries based on filtered data
-                    district_summaries, overall_summary = calculate_summaries_from_sessions(session_data)
+                    district_summaries, overall_summary = calculate_summaries_from_sessions(session_data, current_filters.get('show_all_districts', False))
                 
                 # Apply sorting and pagination as before
                 session_data = apply_sorting_and_pagination(session_data, request.args, current_filters)

@@ -452,6 +452,13 @@
                     </button>
                     <div class="purge-status" id="purgeEventsStatus"></div>
                 </div>
+                <div class="purge-item">
+                    <button onclick="purgeVirtualSessions()" class="btn admin-btn-danger" id="purgeVirtualSessionsBtn">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Purge Virtual Sessions</span>
+                    </button>
+                    <div class="purge-status" id="purgeVirtualSessionsStatus"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -966,6 +973,51 @@ function purgeEvents() {
             document.getElementById('purgeEventsBtn').innerHTML = '<i class="fas fa-trash-alt"></i> Purge All Events';
         });
     }
+}
+
+function purgeVirtualSessions() {
+    if (!confirm('WARNING: This will permanently delete ALL virtual session data including events, teachers, and related records. This action cannot be undone. Are you sure you want to continue?')) {
+        return;
+    }
+
+    const btn = document.getElementById('purgeVirtualSessionsBtn');
+    const status = document.getElementById('purgeVirtualSessionsStatus');
+    
+    btn.disabled = true;
+    status.textContent = 'Purging virtual session data...';
+    status.className = 'purge-status';
+
+    fetch('/virtual/purge', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const details = [
+                `${data.count || 0} virtual sessions`,
+                `${data.teachers_deleted || 0} orphaned teachers`,
+                `${data.event_teachers_deleted || 0} teacher associations`,
+                `${data.event_participations_deleted || 0} event participations`
+            ].filter(count => count !== '0').join(', ');
+            
+            status.textContent = `Successfully purged: ${details}`;
+            status.classList.add('success');
+            showToast('Success', `Virtual session data has been purged from the system`, 'success');
+        } else {
+            throw new Error(data.error || 'Failed to purge virtual session data');
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Error: ' + error.message;
+        status.classList.add('error');
+        showToast('Error', 'Failed to purge virtual session data: ' + error.message, 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
 }
 
 async function importAllSequentially() {

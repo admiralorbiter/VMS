@@ -334,6 +334,19 @@
                class="export-btn" title="Manage District Google Sheets">
                 📋 Manage Sheets
             </a>
+            {% if current_user.is_admin %}
+                {% if request.args.get('show_all_districts') == '1' %}
+                <a href="{{ url_for('report.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+                   class="export-btn" title="Show Main Districts Only" style="background: #17a2b8;">
+                    🏠 Main Districts
+                </a>
+                {% else %}
+                <a href="{{ url_for('report.virtual_usage', show_all_districts=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+                   class="export-btn" title="Show All Districts" style="background: #6c757d;">
+                    🌐 All Districts
+                </a>
+                {% endif %}
+            {% endif %}
             {% endif %}
             {% if google_sheet_url %}
             <a href="{{ google_sheet_url }}" target="_blank" class="export-btn" title="View Original Google Sheet">
