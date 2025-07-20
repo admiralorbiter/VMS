@@ -82,4 +82,45 @@ def test_virtual_session_performance(client, auth_headers):
 def test_virtual_session_data_validation(client, auth_headers):
     """Test virtual session data validation"""
     response = safe_route_test(client, '/virtual/validate', method='POST', headers=auth_headers)
-    assert_route_response(response, expected_statuses=[200, 400, 404, 500]) 
+    assert_route_response(response, expected_statuses=[200, 400, 404, 500])
+
+def test_people_of_color_mapping():
+    """Test People of Color column mapping functionality"""
+    from routes.virtual.routes import map_people_of_color
+    from models.contact import RaceEthnicityEnum
+    
+    # Test with "Yes" value
+    result = map_people_of_color("Yes")
+    assert result == RaceEthnicityEnum.people_of_color
+    
+    # Test with "yes" (lowercase)
+    result = map_people_of_color("yes")
+    assert result == RaceEthnicityEnum.people_of_color
+    
+    # Test with empty value
+    result = map_people_of_color("")
+    assert result is None
+    
+    # Test with None value
+    result = map_people_of_color(None)
+    assert result is None
+    
+    # Test with pandas NaN
+    import pandas as pd
+    result = map_people_of_color(pd.NA)
+    assert result is None
+    
+    # Test with other values
+    result = map_people_of_color("No")
+    assert result is None
+    
+    result = map_people_of_color("Maybe")
+    assert result is None
+
+def test_people_of_color_enum_exists():
+    """Test that the people_of_color enum value exists"""
+    from models.contact import RaceEthnicityEnum
+    
+    # Verify the enum value exists
+    assert hasattr(RaceEthnicityEnum, 'people_of_color')
+    assert RaceEthnicityEnum.people_of_color == 'People of Color' 

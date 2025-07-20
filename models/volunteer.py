@@ -52,7 +52,7 @@ from models.contact import (
     Contact, EducationEnum, LocalStatusEnum, RaceEthnicityEnum, SkillSourceEnum,
     FormEnum, Enum, ContactTypeEnum
 )
-from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime, or_
+from sqlalchemy import Integer, String, Date, ForeignKey, Text, Float, DateTime, Boolean, or_
 from sqlalchemy.orm import relationship, declared_attr, validates
 from models.history import History
 from datetime import date, datetime
@@ -240,6 +240,9 @@ class Volunteer(Contact):
     education = db.Column(Enum(EducationEnum), nullable=True)
     local_status = db.Column(Enum(LocalStatusEnum), default=LocalStatusEnum.unknown, index=True)
     local_status_last_updated = db.Column(DateTime)
+    
+    # People of Color tracking for virtual sessions
+    is_people_of_color = db.Column(Boolean, default=False, index=True)
 
     # Volunteer Activity Tracking
     first_volunteer_date = db.Column(Date)                    # First time they volunteered

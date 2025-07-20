@@ -130,6 +130,9 @@
 - [x] Summary Stats
 - [x] Column Sort
 - [x] Pagination
+- [x] People of Color Data Import
+  - [x] Automatic mapping of "Yes" values to race/ethnicity field
+  - [x] Support for presenters/volunteers demographic tracking
 
 ### Volunteer Thank You Report
 

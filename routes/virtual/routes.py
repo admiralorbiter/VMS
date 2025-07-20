@@ -106,11 +106,12 @@ from sqlalchemy import func
 import re
 from models.history import History
 import hashlib
-from models.contact import Contact
+from models.contact import Contact, RaceEthnicityEnum
 from models.event import EventTeacher
 from models.contact import ContactTypeEnum
 from sqlalchemy.orm import joinedload # Import for potential optimization if needed
 from routes.reports.common import DISTRICT_MAPPING
+from routes.reports.virtual_session import invalidate_virtual_session_caches
 import requests
 from requests.adapters import HTTPAdapter
 
@@ -362,6 +363,7 @@ def process_presenter(row, event, is_simulcast):
     volunteer_id = None
     presenter_name = row.get('Presenter')
     presenter_org = standardize_organization(row.get('Organization', ''))
+    people_of_color = row.get('Presenter of Color?', '')
     
     if presenter_name and not pd.isna(presenter_name):
         presenter_name = safe_str(presenter_name)
@@ -369,7 +371,14 @@ def process_presenter(row, event, is_simulcast):
         
         # Only proceed if we have at least a first name
         if first_name:
-            volunteer = find_or_create_volunteer(first_name, last_name, presenter_org)
+            # Debug logging for POC processing
+            poc_status = map_people_of_color(people_of_color)
+            if people_of_color and not pd.isna(people_of_color) and str(people_of_color).strip():
+                print(f"DEBUG: Processing presenter '{presenter_name}' - POC data: '{people_of_color}' -> {poc_status}")
+            else:
+                print(f"DEBUG: Processing presenter '{presenter_name}' - No POC data (blank/empty)")
+            
+            volunteer = find_or_create_volunteer(first_name, last_name, presenter_org, people_of_color)
             
             if volunteer:
                 # Create or update participation record
@@ -378,7 +387,7 @@ def process_presenter(row, event, is_simulcast):
                 # Handle volunteer association
                 update_volunteer_association(event, volunteer, is_simulcast)
 
-def find_or_create_volunteer(first_name, last_name, organization=None):
+def find_or_create_volunteer(first_name, last_name, organization=None, people_of_color=None):
     """Find an existing volunteer or create a new one"""
     # First try exact match on first and last name (case-insensitive)
     volunteer = Volunteer.query.filter(
@@ -400,7 +409,8 @@ def find_or_create_volunteer(first_name, last_name, organization=None):
             first_name=first_name,
             last_name=last_name,
             middle_name='',
-            organization_name=organization if not pd.isna(organization) else None
+            organization_name=organization if not pd.isna(organization) else None,
+            is_people_of_color=map_people_of_color(people_of_color)
         )
         db.session.add(volunteer)
         db.session.flush()
@@ -408,6 +418,12 @@ def find_or_create_volunteer(first_name, last_name, organization=None):
         # Update existing volunteer's organization if it has changed
         if organization and not pd.isna(organization) and organization != volunteer.organization_name:
             volunteer.organization_name = organization
+        
+        # Update People of Color status only if explicitly "Yes"
+        if people_of_color and not pd.isna(people_of_color) and str(people_of_color).strip().lower() == 'yes':
+            if not volunteer.is_people_of_color:
+                print(f"DEBUG: Updating POC status for {volunteer.first_name} {volunteer.last_name} from False to True (raw value: '{people_of_color}')")
+                volunteer.is_people_of_color = True
     
     # Create or update organization link if organization is provided
     if organization and not pd.isna(organization):
@@ -884,6 +900,16 @@ def safe_str(value):
         return ''
     return str(value)
 
+def map_people_of_color(value):
+    """Map People of Color column value to boolean"""
+    if pd.isna(value) or not value or str(value).strip() == '':
+        return False
+    
+    value_str = str(value).strip().lower()
+    
+    # Map "Yes" to True, everything else to False
+    return value_str == 'yes'
+
 def map_status(status_str):
     """Enhanced status mapping"""
     status_str = safe_str(status_str).strip().lower()
@@ -1245,12 +1271,9 @@ def import_sheet():
                             event.school = school.id
                             # REMOVED: School setting success log
 
-                    # --- Presenter/Volunteer Handling ---
-                    presenter_name = row_data.get('Presenter')
-                    if presenter_name and not pd.isna(presenter_name):
-                        # REMOVED: Presenter processing log
-                        process_presenter(row_data, event, is_simulcast)
-                        # REMOVED: Event volunteers log
+                    # --- Presenter/Volunteer Handling (moved to run for all rows) ---
+                    # Note: Presenter processing is now handled outside the primary logic block
+                    # to ensure POC data is processed for all rows, including simulcast rows
 
                     # --- Update Metrics (if applicable, from primary row) ---
                     if event.status == EventStatus.COMPLETED:
@@ -1272,6 +1295,13 @@ def import_sheet():
                      # Pass the correct 'is_simulcast' flag for the *current row*
                      # Associate teacher with the specific event instance found/created above
                      process_teacher_for_event(row_data, event, is_simulcast)
+
+                # --- Presenter Processing (runs for EVERY row with a presenter, regardless of primary logic) ---
+                # This ensures POC data is processed for all rows, including simulcast rows
+                presenter_name = row_data.get('Presenter')
+                if presenter_name and not pd.isna(presenter_name):
+                    # REMOVED: Presenter processing log
+                    process_presenter(row_data, event, is_simulcast)
 
 
                 # Commit changes potentially made in this iteration (event creation/update, teacher association)
@@ -1302,6 +1332,13 @@ def import_sheet():
             print(f"Error details: {len(errors)} total issues")
         print("💡 Note: Import updates existing events with latest data - no purge needed!")
         print("========================")
+        
+        # Invalidate virtual session caches to ensure reports show updated data
+        try:
+            invalidate_virtual_session_caches()
+            print("✅ Virtual session caches invalidated - reports will show fresh data")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not invalidate caches: {str(e)}")
         
         return jsonify({
             'success': True,

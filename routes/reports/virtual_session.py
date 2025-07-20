@@ -16,6 +16,7 @@ from models import db
 from models.google_sheet import GoogleSheet
 from models.reports import VirtualSessionReportCache, VirtualSessionDistrictCache
 
+
 # Create blueprint
 virtual_bp = Blueprint('virtual', __name__)
 
@@ -394,16 +395,27 @@ def calculate_summaries_from_sessions(session_data):
                 overall_stats['student_count'] += 25
             district_summary['total_experiences'] += 1
             overall_stats['experience_count'] += 1
-            if session['presenter']:
+            
+            # Process presenters and check for People of Color
+            if session['presenter_data']:
+                for presenter_data in session['presenter_data']:
+                    presenter_name = presenter_data.get('name', '')
+                    if presenter_name:
+                        district_summary['professionals'].add(presenter_name)
+                        overall_stats['professional_count'].add(presenter_name)
+                        
+                        # Check if this presenter is marked as People of Color
+                        if presenter_data.get('is_people_of_color', False):
+                            district_summary['professionals_of_color'].add(presenter_name)
+                            overall_stats['professional_of_color_count'].add(presenter_name)
+            elif session['presenter']:
+                # Fallback to old presenter format
                 presenters = [p.strip() for p in session['presenter'].split(',')]
                 for presenter in presenters:
                     if presenter:
                         district_summary['professionals'].add(presenter)
-                        district_summary['professionals_of_color'].add(presenter)
-                        district_summary['organizations'].add(presenter)
                         overall_stats['professional_count'].add(presenter)
-                        overall_stats['professional_of_color_count'].add(presenter)
-                        overall_stats['organization_count'].add(presenter)
+                        # For old format, we can't determine POC status, so don't count them
     
     # Convert sets to counts and filter allowed districts
     for district_name, summary in district_summaries.items():
@@ -412,7 +424,7 @@ def calculate_summaries_from_sessions(session_data):
         summary['session_count'] = len(summary['sessions'])
         summary['organization_count'] = len(summary['organizations'])
         summary['professional_count'] = len(summary['professionals'])
-        summary['professional_of_color_count'] = 0  # Always 0 until we have demographic data
+        summary['professional_of_color_count'] = len(summary['professionals_of_color'])
         del summary['teachers']
         del summary['schools']
         del summary['sessions']
@@ -430,7 +442,7 @@ def calculate_summaries_from_sessions(session_data):
         'experience_count': overall_stats['experience_count'],
         'organization_count': len(overall_stats['organization_count']),
         'professional_count': len(overall_stats['professional_count']),
-        'professional_of_color_count': 0,  # Always 0 until we have demographic data
+        'professional_of_color_count': len(overall_stats['professional_of_color_count']),
         'school_count': len(overall_stats['school_count'])
     }
     
@@ -654,6 +666,8 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 if filters.get('school') and school_name and filters['school'].lower() not in school_name.lower():
                     continue
                 
+
+                
                 session_data.append({
                     'event_id': event.id,
                     'status': teacher_reg.status or 'registered',
@@ -667,7 +681,7 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                     'district': district_name,
                     'session_title': event.title,
                     'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                    'presenter_data': [{'id': v.id, 'name': v.full_name} for v in event.volunteers] if event.volunteers else [],
+                    'presenter_data': [{'id': v.id, 'name': v.full_name, 'is_people_of_color': v.is_people_of_color} for v in event.volunteers] if event.volunteers else [],
                     'topic_theme': event.series or '',
                     'session_link': event.registration_link or '',
                     'session_id': event.session_id or '',
@@ -713,7 +727,7 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 'district': district_name,
                 'session_title': event.title,
                 'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
-                'presenter_data': [{'id': v.id, 'name': v.full_name} for v in event.volunteers] if event.volunteers else [],
+                'presenter_data': [{'id': v.id, 'name': v.full_name, 'is_people_of_color': v.is_people_of_color} for v in event.volunteers] if event.volunteers else [],
                 'topic_theme': event.series or '',
                 'session_link': event.registration_link or '',
                 'session_id': event.session_id or '',
@@ -823,6 +837,7 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             'district': district_name_val,
             'session_title': event.title,
             'presenter': ', '.join([v.full_name for v in event.volunteers]) if event.volunteers else '',
+            'presenter_data': [{'id': v.id, 'name': v.full_name, 'is_people_of_color': v.is_people_of_color} for v in event.volunteers] if event.volunteers else [],
             'topic_theme': event.series or '',
             'session_link': event.registration_link or '',
             'session_id': event.session_id or '',
@@ -927,13 +942,22 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         total_experiences += 1
         
         # Presenters/Organizations
-        if session['presenter']:
+        if session['presenter_data']:
+            for presenter_data in session['presenter_data']:
+                presenter_name = presenter_data.get('name', '')
+                if presenter_name:
+                    total_professionals.add(presenter_name)
+                    
+                    # Check if this presenter is marked as People of Color
+                    if presenter_data.get('is_people_of_color', False):
+                        total_professionals_of_color.add(presenter_name)
+        elif session['presenter']:
+            # Fallback to old presenter format
             presenters = [p.strip() for p in session['presenter'].split(',')]
             for presenter in presenters:
                 if presenter:
                     total_professionals.add(presenter)
-                    total_professionals_of_color.add(presenter)
-                    total_organizations.add(presenter)
+                    # For old format, we can't determine POC status, so don't count them
     
     # Convert breakdowns to sorted lists
     school_breakdown_list = sorted(school_breakdown.values(), key=lambda x: x['sessions'], reverse=True)
@@ -1018,7 +1042,7 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         'total_experiences': total_experiences,
         'total_organizations': len(total_organizations),
         'total_professionals': len(total_professionals),
-        'total_professionals_of_color': 0,  # Always 0 until we have demographic data
+        'total_professionals_of_color': len(total_professionals_of_color),
         'total_schools': len(total_schools)
     }
     
