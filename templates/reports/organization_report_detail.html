@@ -354,6 +354,7 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>Name</th>
+                                    <th>Email</th>
                                     <th class="text-center">Events</th>
                                     <th class="text-center">Hours</th>
                                 </tr>
@@ -362,6 +363,7 @@
                                 {% for volunteer in volunteers %}
                                 <tr>
                                     <td><a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}">{{ volunteer.name }}</a></td>
+                                    <td>{{ volunteer.email or 'No email' }}</td>
                                     <td class="text-center">{{ volunteer.events }}</td>
                                     <td class="text-center">{{ volunteer.hours }}</td>
                                 </tr>

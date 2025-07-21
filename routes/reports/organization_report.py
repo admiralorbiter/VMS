@@ -145,6 +145,7 @@ def load_routes(bp):
         volunteers_data = [{
             'id': v.id,
             'name': f"{v.first_name} {v.last_name}",
+            'email': v.primary_email,
             'events': events,
             'hours': round(hours or 0, 2)
         } for v, events, hours in volunteer_stats]
@@ -651,6 +652,7 @@ def load_routes(bp):
         # Format volunteer data
         volunteers_data = [{
             'Name': f"{v.first_name} {v.last_name}",
+            'Email': v.primary_email,
             'Events': events,
             'Hours': round(hours or 0, 2)
         } for v, events, hours in volunteer_stats]
@@ -1006,9 +1008,10 @@ def load_routes(bp):
             # Format volunteers sheet
             worksheet = writer.sheets['Volunteers']
             worksheet.set_column('A:A', 30)  # Name
-            worksheet.set_column('B:B', 15)  # Events
-            worksheet.set_column('C:C', 15)  # Hours
-            worksheet.conditional_format('A1:C1', {'type': 'no_blanks', 'format': header_format})
+            worksheet.set_column('B:B', 35)  # Email
+            worksheet.set_column('C:C', 15)  # Events
+            worksheet.set_column('D:D', 15)  # Hours
+            worksheet.conditional_format('A1:D1', {'type': 'no_blanks', 'format': header_format})
         
         # In-Person Events Sheet
         if in_person_events_data:
