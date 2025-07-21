@@ -1554,17 +1554,47 @@ main {
 }
 
 .email-body {
-    padding: 0.75rem;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid var(--non-photo-blue);
-    margin-top: 0.75rem;
-    color: var(--delft-blue);
-    line-height: 1.6;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
-    box-sizing: border-box;
+    background-color: white;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.email-header {
+    color: #6c757d;
+    font-weight: bold;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 3px;
+}
+
+.email-subject {
+    color: #495057;
+    font-weight: bold;
+    font-size: 1.1em;
+    margin: 10px 0;
+    padding: 5px;
+    background-color: #f8f9fa;
+    border-left: 3px solid #007bff;
+}
+
+.email-body-start {
+    color: #6c757d;
+    font-weight: bold;
+    margin: 10px 0 5px 0;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 3px;
+}
+
+.email-body-line {
+    margin: 2px 0;
+    word-wrap: break-word;
 }
 
 /* Responsive adjustments */
@@ -3041,4 +3071,42 @@ main {
 .event-status.published {
     background-color: #007bff;
     color: white;
+}
+
+/* Email content styling in history section */
+.history-email-content {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 3px solid #007bff;
+}
+
+.email-preview {
+    color: #6c757d;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.full-email-content {
+    margin-top: 10px;
+}
+
+.email-body {
+    background-color: white;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-description {
+    margin-top: 10px;
+    color: #6c757d;
+    font-style: italic;
 }
