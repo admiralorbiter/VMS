@@ -99,6 +99,14 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Avg Students/Volunteer</h5>
+                    <h2 class="card-text" id="avgStudentsPerVolunteer">0</h2>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Detailed Results Card Grid -->
@@ -169,6 +177,7 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
             document.getElementById('totalStudents').textContent = data.summary.total_students;
             document.getElementById('uniqueVolunteers').textContent = data.summary.unique_volunteers;
             document.getElementById('uniqueStudents').textContent = data.summary.unique_students;
+            document.getElementById('avgStudentsPerVolunteer').textContent = data.summary.avg_students_per_volunteer || 'N/A';
             
             // Update table
             const grid = document.getElementById('eventCardGrid');
@@ -178,6 +187,13 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
                 const card = document.createElement('div');
                 card.className = 'col-md-6 col-lg-4 mb-4';
 
+                // Calculate students per volunteer if we have the required data
+                let studentsPerVolunteerText = 'N/A';
+                if (event.total_students && event.num_classrooms && event.rotations) {
+                    const calculated = Math.floor((event.total_students / event.num_classrooms) * event.rotations);
+                    studentsPerVolunteerText = calculated;
+                }
+
                 card.innerHTML = `
                     <div class="card h-100 shadow-sm">
                         <div class="card-header bg-primary text-white">
@@ -185,6 +201,26 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
                         </div>
                         <div class="card-body">
                             <p><strong>District:</strong> ${event.district}</p>
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    <small class="text-muted">Total Students:</small><br>
+                                    <strong>${event.total_students || 'N/A'}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Students/Volunteer:</small><br>
+                                    <strong>${studentsPerVolunteerText}</strong>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    <small class="text-muted">Classrooms/Tables:</small><br>
+                                    <strong>${event.num_classrooms || 'N/A'}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Rotations:</small><br>
+                                    <strong>${event.rotations || 'N/A'}</strong>
+                                </div>
+                            </div>
                             <div class="row">
                                 <div class="col-6">
                                     <h6>Volunteers (${event.volunteers})</h6>

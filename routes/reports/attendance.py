@@ -3,9 +3,11 @@ from flask_login import login_required
 from models.event import Event, EventAttendance, EventType, EventStatus, EventStudentParticipation
 from models.volunteer import EventParticipation
 from models.district_model import District
+from models.attendance import EventAttendanceDetail
 from models import db
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
+import math
 
 # Create blueprint
 attendance_bp = Blueprint('reports_attendance', __name__)
@@ -81,6 +83,8 @@ def load_routes(bp):
         unique_student_set = set()
         unique_volunteer_names = set()
         unique_student_names = set()
+        total_students_per_volunteer = 0
+        events_with_ratio = 0
         
         for event in events:
             # Get volunteer participation
@@ -98,6 +102,29 @@ def load_routes(bp):
             ).all()
             students = [sp.student for sp in student_participations if sp.student]
             student_names = [f"{s.first_name} {s.last_name}" for s in students]
+            
+            # Get attendance detail information
+            attendance_detail = event.attendance_detail
+            total_students_count = attendance_detail.total_students if attendance_detail else None
+            num_classrooms = attendance_detail.num_classrooms if attendance_detail else None
+            rotations = attendance_detail.rotations if attendance_detail else None
+            students_per_volunteer = attendance_detail.students_per_volunteer if attendance_detail else None
+            
+            # Calculate students per volunteer if we have the required data
+            calculated_students_per_volunteer = None
+            if total_students_count and num_classrooms and rotations:
+                # Ensure values are integers for comparison
+                try:
+                    total_students_count = int(total_students_count)
+                    num_classrooms = int(num_classrooms)
+                    rotations = int(rotations)
+                    if num_classrooms > 0 and rotations > 0:
+                        calculated_students_per_volunteer = math.floor((total_students_count / num_classrooms) * rotations)
+                        total_students_per_volunteer += calculated_students_per_volunteer
+                        events_with_ratio += 1
+                except (ValueError, TypeError):
+                    # If conversion fails, skip calculation
+                    pass
             
             # Add to unique sets
             for v in volunteers:
@@ -121,11 +148,20 @@ def load_routes(bp):
                 'volunteers': volunteer_count,
                 'students': student_count,
                 'volunteer_names': volunteer_names,
-                'student_names': student_names
+                'student_names': student_names,
+                'total_students': total_students_count,
+                'num_classrooms': num_classrooms,
+                'rotations': rotations,
+                'students_per_volunteer': calculated_students_per_volunteer
             })
             
             total_volunteers += volunteer_count
             total_students += student_count
+        
+        # Calculate average students per volunteer across all events
+        avg_students_per_volunteer = None
+        if events_with_ratio > 0:
+            avg_students_per_volunteer = round(total_students_per_volunteer / events_with_ratio, 1)
         
         return jsonify({
             'events': event_data,
@@ -134,7 +170,8 @@ def load_routes(bp):
                 'total_volunteers': total_volunteers,
                 'total_students': total_students,
                 'unique_volunteers': len(unique_volunteer_set),
-                'unique_students': len(unique_student_set)
+                'unique_students': len(unique_student_set),
+                'avg_students_per_volunteer': avg_students_per_volunteer
             },
             'unique_volunteer_names': sorted(unique_volunteer_names),
             'unique_student_names': sorted(unique_student_names)

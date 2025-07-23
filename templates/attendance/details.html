@@ -81,9 +81,10 @@
             <tr>
                 <th>Event</th>
                 <th>Date</th>
-                <th>No. of Classrooms/Tables</th>
-                <th>Students per Volunteer</th>
                 <th>Total Students</th>
+                <th>No. of Classrooms/Tables</th>
+                <th>Rotations</th>
+                <th>Students per Volunteer</th>
                 <th>Attendance in SF</th>
                 <th>Pathway</th>
                 <th>Groups & Rotations</th>
@@ -98,9 +99,10 @@
             <tr data-event-id="{{ event.id }}">
                 <td>{{ event.title }}</td>
                 <td>{{ event.start_date.strftime('%Y-%m-%d') if event.start_date else '' }}</td>
-                <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
-                <td>{{ event.attendance_detail.students_per_volunteer if event.attendance_detail else '' }}</td>
                 <td>{{ event.attendance_detail.total_students if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.rotations if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.students_per_volunteer if event.attendance_detail else '' }}</td>
                 <td>{% if event.attendance_detail and event.attendance_detail.attendance_in_sf %}✔{% endif %}</td>
                 <td>{{ event.attendance_detail.pathway if event.attendance_detail else '' }}</td>
                 <td>{{ event.attendance_detail.groups_rotations if event.attendance_detail else '' }}</td>
@@ -150,9 +152,10 @@ function fetchAndRenderEvents() {
                 <tr data-event-id="${event.id}">
                     <td>${event.title}</td>
                     <td>${event.start_date}</td>
-                    <td>${ad.num_classrooms || ''}</td>
-                    <td>${ad.students_per_volunteer || ''}</td>
                     <td>${ad.total_students || ''}</td>
+                    <td>${ad.num_classrooms || ''}</td>
+                    <td>${ad.rotations || ''}</td>
+                    <td>${ad.students_per_volunteer || ''}</td>
                     <td>${ad.attendance_in_sf ? '✔' : ''}</td>
                     <td>${ad.pathway || ''}</td>
                     <td>${ad.groups_rotations || ''}</td>

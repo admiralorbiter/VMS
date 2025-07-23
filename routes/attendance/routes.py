@@ -335,6 +335,7 @@ def attendance_details_events_json():
             ad = event.attendance_detail
             d['attendance_detail'] = {
                 'num_classrooms': ad.num_classrooms,
+                'rotations': ad.rotations,
                 'students_per_volunteer': ad.students_per_volunteer,
                 'total_students': ad.total_students,
                 'attendance_in_sf': ad.attendance_in_sf,
@@ -365,6 +366,7 @@ def get_attendance_detail(event_id):
         # Return empty/default values if not set
         return jsonify({
             'num_classrooms': '',
+            'rotations': '',
             'students_per_volunteer': '',
             'total_students': '',
             'attendance_in_sf': False,
@@ -375,6 +377,7 @@ def get_attendance_detail(event_id):
         })
     return jsonify({
         'num_classrooms': detail.num_classrooms,
+        'rotations': detail.rotations,
         'students_per_volunteer': detail.students_per_volunteer,
         'total_students': detail.total_students,
         'attendance_in_sf': detail.attendance_in_sf,
@@ -403,15 +406,44 @@ def update_attendance_detail(event_id):
         detail = EventAttendanceDetail(event_id=event.id)
         db.session.add(detail)
     
+    # Convert string values to integers for numeric fields
+    total_students = data.get('total_students')
+    num_classrooms = data.get('num_classrooms')
+    rotations = data.get('rotations')
+    
+    # Convert to integers if they're not empty
+    if total_students:
+        try:
+            total_students = int(total_students)
+        except (ValueError, TypeError):
+            total_students = None
+    
+    if num_classrooms:
+        try:
+            num_classrooms = int(num_classrooms)
+        except (ValueError, TypeError):
+            num_classrooms = None
+                
+    if rotations:
+        try:
+            rotations = int(rotations)
+        except (ValueError, TypeError):
+            rotations = None
+    
     # Update attendance detail fields
-    detail.num_classrooms = data.get('num_classrooms')
-    detail.students_per_volunteer = data.get('students_per_volunteer')
-    detail.total_students = data.get('total_students')
+    detail.num_classrooms = num_classrooms
+    detail.rotations = rotations
+    detail.total_students = total_students
     detail.attendance_in_sf = data.get('attendance_in_sf', False)
     detail.pathway = data.get('pathway')
     detail.groups_rotations = data.get('groups_rotations')
     detail.is_stem = data.get('is_stem', False)
     detail.attendance_link = data.get('attendance_link')
+    
+    # Calculate students per volunteer if we have the required data
+    if detail.total_students and detail.num_classrooms and detail.rotations:
+        if detail.num_classrooms > 0 and detail.rotations > 0:
+            detail.students_per_volunteer = detail.calculate_students_per_volunteer()
     
     db.session.commit()
     return jsonify({'success': True})
