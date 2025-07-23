@@ -76,6 +76,10 @@ def load_routes(bp):
 
         # Format the data for the template
         volunteer_data = []
+        unique_organizations = set()
+        total_hours_sum = 0
+        total_events_sum = 0
+        
         for v, hours, events in volunteer_stats:
             # Get organization information for this volunteer
             organizations = []
@@ -86,13 +90,29 @@ def load_routes(bp):
             # Use the first organization or 'Independent' if none
             organization = organizations[0] if organizations else 'Independent'
             
+            # Track unique organizations
+            unique_organizations.add(organization)
+            
+            # Sum up totals
+            volunteer_hours = round(float(hours or 0), 2) if hours is not None else 0
+            total_hours_sum += volunteer_hours
+            total_events_sum += events
+            
             volunteer_data.append({
                 'id': v.id,
                 'name': f"{v.first_name} {v.last_name}",
-                'total_hours': round(float(hours or 0), 2) if hours is not None else 0,
+                'total_hours': volunteer_hours,
                 'total_events': events,
                 'organization': organization
             })
+        
+        # Calculate summary statistics
+        summary_stats = {
+            'unique_volunteers': len(volunteer_data),
+            'total_hours': round(total_hours_sum, 2),
+            'total_events': total_events_sum,
+            'unique_organizations': len(unique_organizations)
+        }
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -102,6 +122,7 @@ def load_routes(bp):
         return render_template(
             'reports/volunteer_thankyou.html',
             volunteers=volunteer_data,
+            summary_stats=summary_stats,
             school_year=school_year,
             school_years=school_years,
             now=datetime.now(),
