@@ -99,6 +99,69 @@
     transform: translateX(1px);
     background-color: rgba(70, 117, 153, 0.12);
 }
+
+/* Summary Statistics Styling */
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    border-left: 4px solid #007bff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    font-size: 2em;
+    color: #007bff;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 600;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+    .stat-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .stat-card {
+        padding: 20px;
+    }
+    
+    .stat-number {
+        font-size: 2em;
+    }
+    
+    .stat-icon {
+        font-size: 1.5em;
+    }
+}
 </style>
 {% endblock %}
 
@@ -136,26 +199,29 @@
         </form>
     </div>
 
-    {# Stat cards row (optional, if you want to show summary stats) #}
-    {#
+    {# Summary Statistics Section #}
     <div class="stat-cards">
         <div class="stat-card">
             <i class="fa-solid fa-building stat-icon"></i>
-            <div class="stat-number">{{ total_organizations }}</div>
-            <div class="stat-label">Organizations</div>
+            <div class="stat-number">{{ summary_stats.unique_organizations }}</div>
+            <div class="stat-label">Unique Organizations</div>
+        </div>
+        <div class="stat-card">
+            <i class="fa-solid fa-calendar-check stat-icon"></i>
+            <div class="stat-number">{{ summary_stats.total_sessions }}</div>
+            <div class="stat-label">Total Sessions</div>
         </div>
         <div class="stat-card">
             <i class="fa-solid fa-clock stat-icon"></i>
-            <div class="stat-number">{{ total_hours }}</div>
+            <div class="stat-number">{{ summary_stats.total_hours }}</div>
             <div class="stat-label">Total Hours</div>
         </div>
         <div class="stat-card">
             <i class="fa-solid fa-users stat-icon"></i>
-            <div class="stat-number">{{ total_volunteers }}</div>
-            <div class="stat-label">Total Volunteers</div>
+            <div class="stat-number">{{ summary_stats.unique_volunteers }}</div>
+            <div class="stat-label">Unique Volunteers</div>
         </div>
     </div>
-    #}
 
     <div class="organization-table">
         <table>

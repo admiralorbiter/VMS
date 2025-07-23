@@ -64,13 +64,33 @@ def load_routes(bp):
         ).all()
 
         # Format the data for the template
-        org_data = [{
-            'id': org.id,
-            'name': org.name,
-            'unique_sessions': sessions,
-            'total_hours': round(hours or 0, 2),
-            'unique_volunteers': volunteers
-        } for org, sessions, hours, volunteers in org_stats]
+        org_data = []
+        total_sessions_sum = 0
+        total_hours_sum = 0
+        total_volunteers_sum = 0
+        
+        for org, sessions, hours, volunteers in org_stats:
+            # Sum up totals
+            org_hours = round(hours or 0, 2)
+            total_sessions_sum += sessions
+            total_hours_sum += org_hours
+            total_volunteers_sum += volunteers
+            
+            org_data.append({
+                'id': org.id,
+                'name': org.name,
+                'unique_sessions': sessions,
+                'total_hours': org_hours,
+                'unique_volunteers': volunteers
+            })
+        
+        # Calculate summary statistics
+        summary_stats = {
+            'unique_organizations': len(org_data),
+            'total_sessions': total_sessions_sum,
+            'total_hours': round(total_hours_sum, 2),
+            'unique_volunteers': total_volunteers_sum
+        }
 
         # Sort in Python
         def get_sort_key(org):
@@ -93,6 +113,7 @@ def load_routes(bp):
         return render_template(
             'reports/organization_thankyou.html',
             organizations=org_data,
+            summary_stats=summary_stats,
             school_year=school_year,
             school_years=school_years,
             now=datetime.now(),
