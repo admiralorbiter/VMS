@@ -98,6 +98,15 @@
     border-radius: 5px;
     cursor: pointer;
     font-weight: 600;
+}
+
+/* Link Styling for Presenters */
+.presenter-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.filter-btn, .reset-btn {
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -714,7 +723,17 @@
                                     </td>
                                     <td>{{ event.schools or 'N/A' }}</td>
                                     <td>{{ event.educators or 'N/A' }}</td>
-                                    <td>{{ event.presenter or 'N/A' }}</td>
+                                    <td>
+                                        {% if event.presenter_data %}
+                                            {% for presenter in event.presenter_data %}
+                                                <a href="{{ url_for('volunteers.view_volunteer', id=presenter.id) }}" class="presenter-link" style="color: #007bff; text-decoration: none;">
+                                                    {{ presenter.name }}
+                                                </a>{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            {{ event.presenter or 'N/A' }}
+                                        {% endif %}
+                                    </td>
                                 </tr>
                             {% endfor %}
                             </tbody>

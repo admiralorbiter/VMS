@@ -1251,7 +1251,8 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             'educators': ', '.join(session['teachers']) if session['teachers'] else 'N/A',
             'career_cluster': session['topic_theme'],
             'session_id': session['session_id'],
-            'presenter': session['presenter']
+            'presenter': session['presenter'],
+            'presenter_data': session.get('presenter_data', [])
         })
     
     # Finalize monthly stats
