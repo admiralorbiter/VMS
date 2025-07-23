@@ -2723,34 +2723,29 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
         if event_district != district_name:
             continue
         
-        # Check if this is a completed session
-        is_completed = False
-        
-        # Check original status string for completion
-        original_status_raw = getattr(event, 'original_status_string', None)
-        original_status = (original_status_raw or '').lower().strip()
-        
-        if 'successfully completed' in original_status:
-            is_completed = True
-        elif event.status == EventStatus.COMPLETED:
-            is_completed = True
-        
-        # If not completed at event level, check teacher registrations
-        if not is_completed:
-            for teacher_reg in event.teacher_registrations:
-                tr_status = (teacher_reg.status or '').lower().strip()
-                if ('successfully completed' in tr_status or 
-                    'attended' in tr_status or 
-                    'completed' in tr_status):
-                    is_completed = True
-                    break
-        
-        # Only count completed sessions
-        if not is_completed:
+        # Only count completed sessions and simulcast sessions
+        # Check both mapped status and original status string
+        should_skip = False
+        if event.status and event.status.value not in ['Completed', 'Simulcast']:
+            should_skip = True
+        elif event.original_status_string and 'no-show' in event.original_status_string.lower():
+            should_skip = True
+            
+        if should_skip:
             continue
         
         # Process each teacher registration for completed sessions
         for teacher_reg in event.teacher_registrations:
+            # Only count teachers who actually attended
+            # Check if attendance was confirmed (this is more reliable than status)
+            if teacher_reg.attendance_confirmed_at is None:
+                continue
+                
+            # Also check status as backup
+            no_show_statuses = ['no_show', 'cancelled', 'No Show', 'Teacher No-Show', 'Did Not Attend', 'teacher no-show', 'unfilled']
+            if teacher_reg.status in no_show_statuses:
+                continue
+                
             teacher = teacher_reg.teacher
             if not teacher:
                 continue
