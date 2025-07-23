@@ -171,7 +171,13 @@
                                         {% endfor %}
                                     </td>
                                     <td><a href="{{ url_for('events.view_event', id=event.id) }}">{{ event.title }}</a></td>
-                                    <td class="text-center">{{ event.students }}</td>
+                                    <td class="text-center">
+                                        {% if event.students_per_volunteer %}
+                                            <span class="badge bg-info" title="Students per volunteer (calculated)">{{ event.students_per_volunteer }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary" title="Total student count">{{ event.students }}</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-center">{{ event.hours }}</td>
                                 </tr>
                                 {% endfor %}
@@ -433,6 +439,30 @@
 
 .table-warning:hover {
     background-color: rgba(255, 193, 7, 0.2) !important;
+}
+
+/* Student count badge styling */
+.badge.bg-info {
+    background-color: #17a2b8 !important;
+    color: white;
+    font-weight: 600;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+    color: white;
+}
+
+/* Tooltip styling */
+[title] {
+    cursor: help;
+}
+
+/* Add a subtle border to make badges more prominent */
+.badge {
+    border: 1px solid rgba(0,0,0,0.1);
+    font-size: 0.85em;
+    padding: 0.35em 0.65em;
 }
 </style>
 {% endblock %} 

@@ -327,8 +327,9 @@ def attendance_details_events_json():
         d = {
             'id': event.id,
             'title': event.title,
-            'start_date': event.start_date.strftime('%Y-%m-%d') if event.start_date else '',
+            'start_date': event.start_date.strftime('%m/%d') if event.start_date else '',
             'type': event.type.value if event.type else '',
+            'event_url': f'/events/view/{event.id}',
             'attendance_detail': None
         }
         if event.attendance_detail:

@@ -5,11 +5,13 @@ from sqlalchemy import extract
 import io
 import pandas as pd
 import xlsxwriter
+import math
 
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import Volunteer, EventParticipation
 from models.event import Event, EventTeacher, EventType, EventStatus
 from models.teacher import Teacher
+from models.attendance import EventAttendanceDetail
 from models import db
 from routes.reports.common import get_current_school_year, get_school_year_date_range
 from models.school_model import School
@@ -66,14 +68,16 @@ def load_routes(bp):
             Organization.id
         ).all()
 
-        # Format the data for the template
-        org_data = [{
-            'id': org.id,
-            'name': org.name,
-            'unique_sessions': sessions,
-            'total_hours': round(hours or 0, 2),
-            'unique_volunteers': volunteers
-        } for org, sessions, hours, volunteers in org_stats]
+        # Format organization data
+        org_data = []
+        for org, sessions, hours, volunteers in org_stats:
+            org_data.append({
+                'name': org.name,
+                'id': org.id,
+                'unique_sessions': sessions,
+                'total_hours': round(hours or 0, 2),
+                'unique_volunteers': volunteers
+            })
 
         # Sort in Python
         def get_sort_key(org):
@@ -229,9 +233,26 @@ def load_routes(bp):
             event = event_data['event']
             volunteer_names = [v['name'] for v in event_data['volunteers']]
             
-            # Calculate student count for this event
-            # For in-person events, we'll use participant_count as a fallback
+            # Get attendance detail for this event
+            attendance_detail = event.attendance_detail
             student_count = event.participant_count or 0
+            students_per_volunteer = None
+            is_calculated = False
+            
+            # Calculate students per volunteer if attendance detail exists
+            if attendance_detail and attendance_detail.total_students and attendance_detail.num_classrooms and attendance_detail.rotations:
+                try:
+                    total_students = int(attendance_detail.total_students)
+                    num_classrooms = int(attendance_detail.num_classrooms)
+                    rotations = int(attendance_detail.rotations)
+                    
+                    if num_classrooms > 0 and rotations > 0:
+                        students_per_volunteer = math.floor((total_students / num_classrooms) * rotations)
+                        student_count = total_students  # Use the attendance detail total
+                        is_calculated = True
+                except (ValueError, TypeError):
+                    # If conversion fails, use fallback values
+                    pass
             
             in_person_events_data.append({
                 'id': event.id,
@@ -242,7 +263,9 @@ def load_routes(bp):
                 'volunteers': volunteer_names,
                 'volunteer_count': len(volunteer_names),
                 'hours': round(event_data['total_hours'], 2),
-                'students': student_count
+                'students': student_count,
+                'students_per_volunteer': students_per_volunteer,
+                'is_calculated': is_calculated
             })
 
         # Sort in-person events in Python
@@ -258,7 +281,8 @@ def load_routes(bp):
             elif sort_evt == 'hours':
                 return evt['hours']
             elif sort_evt == 'students':
-                return evt['students']
+                # Use students_per_volunteer if available, otherwise use students count
+                return evt['students_per_volunteer'] or evt['students']
             return evt['date_sort']
         in_person_events_data.sort(key=get_inperson_sort_key, reverse=(order_evt=='desc'))
 
@@ -527,13 +551,18 @@ def load_routes(bp):
             Organization.id
         ).all()
 
+        # Format organization data for Excel
+        org_data = []
+        for org, sessions, hours, volunteers in org_stats:
+            org_data.append({
+                'Organization': org.name,
+                'Unique Sessions': sessions,
+                'Total Hours': round(hours or 0, 2),
+                'Unique Volunteers': volunteers
+            })
+
         # Format the data for Excel
-        org_data = [{
-            'Organization': org.name,
-            'Unique Sessions': sessions,
-            'Total Hours': round(hours or 0, 2),
-            'Unique Volunteers': volunteers
-        } for org, sessions, hours, volunteers in org_stats]
+        # org_data is already calculated above with the new field
 
         # Sort in Python
         def get_sort_key(org):
@@ -736,8 +765,26 @@ def load_routes(bp):
             event = event_data['event']
             volunteer_names = [v['name'] for v in event_data['volunteers']]
             
-            # Calculate student count for this event
+            # Get attendance detail for this event
+            attendance_detail = event.attendance_detail
             student_count = event.participant_count or 0
+            students_per_volunteer = None
+            is_calculated = False
+            
+            # Calculate students per volunteer if attendance detail exists
+            if attendance_detail and attendance_detail.total_students and attendance_detail.num_classrooms and attendance_detail.rotations:
+                try:
+                    total_students = int(attendance_detail.total_students)
+                    num_classrooms = int(attendance_detail.num_classrooms)
+                    rotations = int(attendance_detail.rotations)
+                    
+                    if num_classrooms > 0 and rotations > 0:
+                        students_per_volunteer = math.floor((total_students / num_classrooms) * rotations)
+                        student_count = total_students  # Use the attendance detail total
+                        is_calculated = True
+                except (ValueError, TypeError):
+                    # If conversion fails, use fallback values
+                    pass
             
             in_person_events_data.append({
                 'Date': event.start_date.strftime('%m/%d/%y'),
@@ -746,7 +793,8 @@ def load_routes(bp):
                 'Volunteers': ', '.join(volunteer_names) if volunteer_names else 'None',
                 'Volunteer Count': len(volunteer_names),
                 'Hours': round(event_data['total_hours'], 2),
-                'Students': student_count
+                'Students': students_per_volunteer if students_per_volunteer else student_count,
+                'Is Calculated': is_calculated
             })
 
         # Sort in-person events in Python
@@ -762,6 +810,7 @@ def load_routes(bp):
             elif sort_evt == 'hours':
                 return evt['Hours']
             elif sort_evt == 'students':
+                # Use students_per_volunteer if available, otherwise use students count
                 return evt['Students']
             return datetime.strptime(evt['Date'], '%m/%d/%y')
         in_person_events_data.sort(key=get_inperson_sort_key, reverse=(order_evt=='desc'))
@@ -1020,9 +1069,9 @@ def load_routes(bp):
             
             # Format in-person events sheet
             worksheet = writer.sheets['In-Person Events']
-            worksheet.set_column('A:A', 15)  # Date
-            worksheet.set_column('B:B', 40)  # Title
-            worksheet.set_column('C:C', 20)  # Type
+            worksheet.set_column('A:A', 12)  # Date
+            worksheet.set_column('B:B', 50)  # Title
+            worksheet.set_column('C:C', 15)  # Type
             worksheet.set_column('D:D', 40)  # Volunteers
             worksheet.set_column('E:E', 15)  # Volunteer Count
             worksheet.set_column('F:F', 15)  # Hours

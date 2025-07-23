@@ -97,8 +97,8 @@
             <!-- Server-side rendered event rows -->
             {% for event in events %}
             <tr data-event-id="{{ event.id }}">
-                <td>{{ event.title }}</td>
-                <td>{{ event.start_date.strftime('%Y-%m-%d') if event.start_date else '' }}</td>
+                <td><a href="{{ url_for('events.view_event', id=event.id) }}" title="View event details">{{ event.title }}</a></td>
+                <td>{{ event.start_date.strftime('%m/%d') if event.start_date else '' }}</td>
                 <td>{{ event.attendance_detail.total_students if event.attendance_detail else '' }}</td>
                 <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
                 <td>{{ event.attendance_detail.rotations if event.attendance_detail else '' }}</td>
@@ -148,10 +148,13 @@ function fetchAndRenderEvents() {
             // Render each event row
             events.forEach(event => {
                 const ad = event.attendance_detail || {};
+                // The server now returns dates in MM/DD format, so we can use them directly
+                const formattedDate = event.start_date || '';
+                
                 tbody.innerHTML += `
                 <tr data-event-id="${event.id}">
-                    <td>${event.title}</td>
-                    <td>${event.start_date}</td>
+                    <td><a href="/events/view/${event.id}" title="View event details">${event.title}</a></td>
+                    <td>${formattedDate}</td>
                     <td>${ad.total_students || ''}</td>
                     <td>${ad.num_classrooms || ''}</td>
                     <td>${ad.rotations || ''}</td>

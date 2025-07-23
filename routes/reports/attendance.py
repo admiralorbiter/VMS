@@ -142,7 +142,7 @@ def load_routes(bp):
             district_names = [d.name for d in event.districts]
             
             event_data.append({
-                'date': event.start_date.strftime('%Y-%m-%d'),
+                'date': event.start_date.strftime('%m/%d') if event.start_date else '',
                 'name': event.title,
                 'district': ', '.join(district_names),
                 'volunteers': volunteer_count,
