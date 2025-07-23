@@ -84,12 +84,38 @@ def load_routes(bp):
                 'unique_volunteers': volunteers
             })
         
-        # Calculate summary statistics
+        # Calculate summary statistics - use unique volunteers across all organizations
+        unique_volunteers = db.session.query(
+            db.func.count(db.distinct(Volunteer.id))
+        ).join(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        ).join(
+            EventParticipation, Volunteer.id == EventParticipation.volunteer_id
+        ).join(
+            Event, EventParticipation.event_id == Event.id
+        ).filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            unique_volunteers = unique_volunteers.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
+        
+        unique_volunteers_count = unique_volunteers.scalar() or 0
+        
         summary_stats = {
             'unique_organizations': len(org_data),
             'total_sessions': total_sessions_sum,
             'total_hours': round(total_hours_sum, 2),
-            'unique_volunteers': total_volunteers_sum
+            'unique_volunteers': unique_volunteers_count
         }
 
         # Sort in Python

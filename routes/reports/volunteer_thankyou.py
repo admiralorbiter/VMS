@@ -106,12 +106,40 @@ def load_routes(bp):
                 'organization': organization
             })
         
-        # Calculate summary statistics
+        # Calculate summary statistics - ensure consistent counting with organization report
+        unique_organizations_count = db.session.query(
+            db.func.count(db.distinct(Organization.id))
+        ).join(
+            VolunteerOrganization, Organization.id == VolunteerOrganization.organization_id
+        ).join(
+            Volunteer, VolunteerOrganization.volunteer_id == Volunteer.id
+        ).join(
+            EventParticipation, Volunteer.id == EventParticipation.volunteer_id
+        ).join(
+            Event, EventParticipation.event_id == Event.id
+        ).filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            unique_organizations_count = unique_organizations_count.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
+        
+        unique_organizations_count = unique_organizations_count.scalar() or 0
+        
         summary_stats = {
             'unique_volunteers': len(volunteer_data),
             'total_hours': round(total_hours_sum, 2),
             'total_events': total_events_sum,
-            'unique_organizations': len(unique_organizations)
+            'unique_organizations': unique_organizations_count
         }
 
         # Generate list of school years (from 2020-21 to current+1)
