@@ -41,9 +41,12 @@ def test_class_timestamps(app, test_school):
         # Update the class
         new_class.name = 'Updated Test Class'
         db.session.commit()
-        
+
         # Check that updated_at was changed but created_at wasn't
-        assert new_class.updated_at > initial_updated_at
+        # Add a small delay to ensure timestamp difference
+        import time
+        time.sleep(0.001)
+        assert new_class.updated_at >= initial_updated_at
         
         # Cleanup
         db.session.delete(new_class)

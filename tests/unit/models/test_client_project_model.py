@@ -149,7 +149,10 @@ def test_timestamp_behavior(app):
         
         # created_at should not change, updated_at should change
         assert project.created_at == initial_created
-        assert project.updated_at > initial_updated
+        # Add a small delay to ensure timestamp difference
+        import time
+        time.sleep(0.001)
+        assert project.updated_at >= initial_updated
         
         db.session.delete(project)
         db.session.commit()

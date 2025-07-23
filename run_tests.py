@@ -54,15 +54,18 @@ def main():
         description = "Unit Tests"
     elif args.type == 'integration':
         cmd.extend(['-m', 'integration'])
+        cmd.append('tests/')  # Add tests directory
         description = "Integration Tests"
     elif args.type == 'all':
         cmd.append('tests/')
         description = "All Tests"
     elif args.type == 'fast':
         cmd.extend(['-m', 'not slow'])
+        cmd.append('tests/')  # Add tests directory
         description = "Fast Tests (excluding slow tests)"
     elif args.type == 'salesforce':
         cmd.extend(['-m', 'salesforce'])
+        cmd.append('tests/')  # Add tests directory
         description = "Salesforce Integration Tests"
     
     # Add specific file if provided
