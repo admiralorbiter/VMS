@@ -84,11 +84,9 @@ def load_routes(bp):
                 'unique_volunteers': volunteers
             })
         
-        # Calculate summary statistics - use unique volunteers across all organizations
+        # Calculate summary statistics - use unique volunteers who participated in events (same as volunteer report)
         unique_volunteers = db.session.query(
             db.func.count(db.distinct(Volunteer.id))
-        ).join(
-            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
         ).join(
             EventParticipation, Volunteer.id == EventParticipation.volunteer_id
         ).join(
