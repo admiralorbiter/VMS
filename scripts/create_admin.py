@@ -2,7 +2,8 @@
 
 from getpass import getpass
 import sys
-from models.user import db, User
+from models import db
+from models.user import User
 from werkzeug.security import generate_password_hash
 from app import app
 

@@ -60,6 +60,7 @@ from routes.auth.api import api_bp
 from routes.events.pathway_events import pathway_events_bp
 from routes.teachers.routes import teachers_bp
 from routes.students.routes import students_bp
+from routes.prefect_routes import prefect_bp
 
 def init_routes(app):
     """
@@ -105,6 +106,7 @@ def init_routes(app):
     app.register_blueprint(pathway_events_bp)
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
+    app.register_blueprint(prefect_bp)
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     
     @app.route('/')

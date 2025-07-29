@@ -21,7 +21,7 @@ from workflows.base_workflow import (
 from workflows.utils.prefect_helpers import get_workflow_logger
 from workflows.utils.error_handling import resilient_task, PrefectErrorHandler
 from models.teacher import Teacher, TeacherStatus
-from models.school import School
+from models.school_model import School
 from models.contact import Contact, Email, Phone, ContactTypeEnum
 
 

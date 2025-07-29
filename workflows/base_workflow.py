@@ -7,9 +7,11 @@ This module provides the foundation for all other workflows.
 """
 
 import time
+import os
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Callable
 from prefect import flow, task, get_run_logger
+from sqlalchemy import text
 
 from workflows.utils.prefect_helpers import (
     log_workflow_start, 
@@ -80,9 +82,11 @@ def database_connection():
     
     try:
         from models import db
+        from app import app
         
-        # Test database connection
-        db.session.execute("SELECT 1")
+        # Test database connection within Flask app context
+        with app.app_context():
+            db.session.execute(text("SELECT 1"))
         
         logger.info("Database connection established successfully")
         return db.session
@@ -117,14 +121,16 @@ def validate_environment():
         if hasattr(Config, 'SF_USERNAME') and Config.SF_USERNAME:
             validation_results['salesforce_configured'] = True
         else:
-            validation_results['errors'].append("Salesforce username not configured")
+            validation_results['errors'].append("Salesforce username not configured (set SF_USERNAME, SF_PASSWORD, SF_SECURITY_TOKEN)")
     except Exception as e:
         validation_results['errors'].append(f"Salesforce configuration error: {str(e)}")
     
     # Check database configuration
     try:
         from models import db
-        db.session.execute("SELECT 1")
+        from app import app
+        with app.app_context():
+            db.session.execute(text("SELECT 1"))
         validation_results['database_configured'] = True
     except Exception as e:
         validation_results['errors'].append(f"Database configuration error: {str(e)}")
@@ -275,7 +281,9 @@ def salesforce_sync_flow():
     env_validation = validate_environment.submit()
     env_result = env_validation.result()
     
-    if not env_result['salesforce_configured'] or not env_result['database_configured']:
+    # In development, allow the sync to proceed even with missing credentials
+    # The actual Salesforce connection will fail gracefully if credentials are missing
+    if os.environ.get('FLASK_ENV') == 'production' and (not env_result['salesforce_configured'] or not env_result['database_configured']):
         raise ValueError("Environment not properly configured for Salesforce sync")
     
     # Establish connections

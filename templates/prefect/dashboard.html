@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Prefect Workflow Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Prefect Workflow Dashboard</h1>
+    <p class="text-muted">Manage and monitor Salesforce sync workflows</p>
+
+    <!-- Full Sync Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Full Salesforce Sync</h5>
+        </div>
+        <div class="card-body">
+            <p>Run all Salesforce sync operations in the correct order:</p>
+            <ol>
+                <li>Schools and Districts (foundation)</li>
+                <li>Organizations (independent)</li>
+                <li>Classes (depend on schools)</li>
+                <li>Teachers (depend on schools)</li>
+                <li>Students (depend on schools and classes)</li>
+                <li>Volunteers (independent)</li>
+                <li>Events (depend on schools/districts)</li>
+                <li>Pathways (depend on events and contacts)</li>
+                <li>History (depends on all other entities)</li>
+            </ol>
+            <button id="trigger-full-sync" class="btn btn-primary">
+                <i class="fas fa-sync"></i> Start Full Sync
+            </button>
+            <div id="full-sync-status" class="mt-3" style="display: none;">
+                <div class="alert alert-info">
+                    <strong>Status:</strong> <span id="full-sync-status-text">Starting...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Sync Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Individual Sync Operations</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Foundation Data</h6>
+                    <button class="btn btn-outline-primary btn-sm mb-2 trigger-sync" data-sync="schools-districts">
+                        <i class="fas fa-school"></i> Schools & Districts
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm mb-2 trigger-sync" data-sync="organizations">
+                        <i class="fas fa-building"></i> Organizations
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm mb-2 trigger-sync" data-sync="classes">
+                        <i class="fas fa-chalkboard"></i> Classes
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <h6>People Data</h6>
+                    <button class="btn btn-outline-success btn-sm mb-2 trigger-sync" data-sync="teachers">
+                        <i class="fas fa-chalkboard-teacher"></i> Teachers
+                    </button>
+                    <button class="btn btn-outline-success btn-sm mb-2 trigger-sync" data-sync="students">
+                        <i class="fas fa-user-graduate"></i> Students
+                    </button>
+                    <button class="btn btn-outline-success btn-sm mb-2 trigger-sync" data-sync="volunteers">
+                        <i class="fas fa-hands-helping"></i> Volunteers
+                    </button>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6>Event Data</h6>
+                    <button class="btn btn-outline-warning btn-sm mb-2 trigger-sync" data-sync="events">
+                        <i class="fas fa-calendar-alt"></i> Events
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm mb-2 trigger-sync" data-sync="pathways">
+                        <i class="fas fa-route"></i> Pathways
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <h6>Historical Data</h6>
+                    <button class="btn btn-outline-info btn-sm mb-2 trigger-sync" data-sync="history">
+                        <i class="fas fa-history"></i> History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Workflows Section -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Workflow Runs</h5>
+        </div>
+        <div class="card-body">
+            <div id="recent-workflows">
+                <p class="text-muted">Loading recent workflows...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Full sync trigger
+    document.getElementById('trigger-full-sync').addEventListener('click', function() {
+        const button = this;
+        const statusDiv = document.getElementById('full-sync-status');
+        const statusText = document.getElementById('full-sync-status-text');
+        
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+        statusDiv.style.display = 'block';
+        statusText.textContent = 'Starting full sync...';
+        
+        fetch('/prefect/trigger-sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                statusText.textContent = `Started successfully! Flow Run ID: ${data.flow_run_id}`;
+                statusDiv.className = 'mt-3 alert alert-success';
+                monitorWorkflow(data.flow_run_id, statusText);
+            } else {
+                statusText.textContent = `Error: ${data.error}`;
+                statusDiv.className = 'mt-3 alert alert-danger';
+            }
+        })
+        .catch(error => {
+            statusText.textContent = `Error: ${error.message}`;
+            statusDiv.className = 'mt-3 alert alert-danger';
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-sync"></i> Start Full Sync';
+        });
+    });
+
+    // Individual sync triggers
+    document.querySelectorAll('.trigger-sync').forEach(button => {
+        button.addEventListener('click', function() {
+            const syncType = this.getAttribute('data-sync');
+            const originalText = this.innerHTML;
+            
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+            
+            fetch(`/prefect/trigger-${syncType}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.className = this.className.replace('btn-outline-', 'btn-');
+                    this.innerHTML = '<i class="fas fa-check"></i> Started';
+                    setTimeout(() => {
+                        this.className = this.className.replace('btn-', 'btn-outline-');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }, 3000);
+                } else {
+                    this.className = this.className.replace('btn-outline-', 'btn-').replace('btn-primary', 'btn-danger').replace('btn-success', 'btn-danger').replace('btn-warning', 'btn-danger').replace('btn-info', 'btn-danger');
+                    this.innerHTML = '<i class="fas fa-times"></i> Error';
+                    setTimeout(() => {
+                        this.className = this.className.replace('btn-danger', 'btn-outline-primary');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                this.className = this.className.replace('btn-outline-', 'btn-').replace('btn-primary', 'btn-danger').replace('btn-success', 'btn-danger').replace('btn-warning', 'btn-danger').replace('btn-info', 'btn-danger');
+                this.innerHTML = '<i class="fas fa-times"></i> Error';
+                setTimeout(() => {
+                    this.className = this.className.replace('btn-danger', 'btn-outline-primary');
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }, 3000);
+            });
+        });
+    });
+
+    // Monitor workflow status
+    function monitorWorkflow(flowRunId, statusElement) {
+        const checkStatus = () => {
+            fetch(`/prefect/status/${flowRunId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'COMPLETED') {
+                    statusElement.textContent = 'Completed successfully!';
+                    return;
+                } else if (data.status === 'FAILED') {
+                    statusElement.textContent = 'Failed!';
+                    return;
+                } else if (data.status === 'RUNNING') {
+                    statusElement.textContent = 'Running...';
+                    setTimeout(checkStatus, 5000); // Check again in 5 seconds
+                } else {
+                    statusElement.textContent = `Status: ${data.status}`;
+                    setTimeout(checkStatus, 5000);
+                }
+            })
+            .catch(error => {
+                statusElement.textContent = `Error checking status: ${error.message}`;
+            });
+        };
+        
+        checkStatus();
+    }
+
+    // Load recent workflows
+    function loadRecentWorkflows() {
+        // This would need to be implemented on the backend
+        // For now, just show a placeholder
+        document.getElementById('recent-workflows').innerHTML = `
+            <p class="text-muted">Recent workflow monitoring will be implemented in a future update.</p>
+        `;
+    }
+
+    loadRecentWorkflows();
+});
+</script>
+{% endblock %} 

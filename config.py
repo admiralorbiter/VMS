@@ -21,7 +21,9 @@ class Config:
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
 
     def __init__(self):
-        self.validate_config()
+        # Only validate in production
+        if os.environ.get('FLASK_ENV') == 'production':
+            self.validate_config()
 
     @classmethod
     def validate_config(cls):

@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from prefect import get_run_logger
-from prefect.client import get_client
+from prefect.client.orchestration import get_client
 from prefect.utilities.annotations import quote
 
 

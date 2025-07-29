@@ -16,6 +16,7 @@ Features:
 """
 
 import time
+import os
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from prefect import flow, task, get_run_logger
@@ -177,7 +178,7 @@ def process_volunteers_chunk(volunteer_data: Dict[str, Any], db_session: Session
     
     from models.volunteer import Volunteer, ConnectorData
     from models.contact import Contact, ContactTypeEnum
-    from utils.academic_year import parse_date
+    from routes.utils import parse_date
     
     volunteers = volunteer_data['volunteers']
     success_count = 0
@@ -406,7 +407,9 @@ def volunteers_sync_flow(chunk_size: int = 2000) -> Dict[str, Any]:
         env_validation = validate_environment.submit()
         env_result = env_validation.result()
         
-        if not env_result['salesforce_configured'] or not env_result['database_configured']:
+        # In development, allow the sync to proceed even with missing credentials
+        # The actual Salesforce connection will fail gracefully if credentials are missing
+        if os.environ.get('FLASK_ENV') == 'production' and (not env_result['salesforce_configured'] or not env_result['database_configured']):
             raise ValueError("Environment not properly configured for Salesforce sync")
         
         # Establish connections
