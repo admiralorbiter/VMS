@@ -930,7 +930,7 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
         
         # Create aggregated session record
         session_dict[event.id] = {
-            'event_id': event.id,
+            'event_id': event.id,  # This should always be the correct event ID
             'status': event.status.value if event.status else '',
             'date': event.start_date.strftime('%m/%d/%y') if event.start_date else '',
             'time': event.start_date.strftime('%I:%M %p') if event.start_date else '',
@@ -949,7 +949,6 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             } for v in event.volunteers] if event.volunteers else [],
             'topic_theme': event.series or '',
             'session_link': event.registration_link or '',
-            'session_id': event.session_id or '',
             'participant_count': event.participant_count or 0,
             'duration': event.duration or 0,
             'is_simulcast': any([tr.is_simulcast for tr in event.teacher_registrations]) if event.teacher_registrations else False
@@ -1250,7 +1249,8 @@ def compute_virtual_session_district_data(district_name, virtual_year, date_from
             'schools': ', '.join(session['schools']) if session['schools'] else 'N/A',
             'educators': ', '.join(session['teachers']) if session['teachers'] else 'N/A',
             'career_cluster': session['topic_theme'],
-            'session_id': session['session_id'],
+            'event_id': session['event_id'],
+            'session_link': session.get('session_link', ''),
             'presenter': session['presenter'],
             'presenter_data': session.get('presenter_data', [])
         })
