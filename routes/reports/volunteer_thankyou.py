@@ -319,7 +319,7 @@ def load_routes(bp):
             EventParticipation.volunteer_id == volunteer_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         ).order_by(
             Event.start_date
         ).all()
