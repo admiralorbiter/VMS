@@ -120,7 +120,10 @@ Last Updated: 2024
                         Name <i class="fa-solid"></i>
                     </th>
                     <th>
-                        Organization & Title
+                        Current Position
+                    </th>
+                    <th>
+                        Organization
                     </th>
                     {# Sortable times volunteered column with default desc sort #}
                     <th class="sortable times-col" data-sort="times_volunteered" data-default-sort="desc">
@@ -133,44 +136,95 @@ Last Updated: 2024
             <tbody>
                 {# Loop through volunteers and display their information #}
                 {% for volunteer in volunteers %}
-                <tr>
-                    {# Volunteer name and title information #}
+                <tr data-volunteer-id="{{ volunteer.volunteer.id }}">
+                    {# Volunteer name and current position information #}
                     <td>
                         <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="volunteer-name-link">
                             {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}
                         </a>
-                        <br>
-                        {% if volunteer.volunteer.title %}
-                        <div class="org-title">{{ volunteer.volunteer.title }}</div>
+                    </td>
+                    
+                    {# Current position/role information #}
+                    <td>
+                        {% if volunteer.organizations %}
+                            {# Display current position from primary organization #}
+                            {% set primary_org = volunteer.organizations|selectattr('is_primary', 'equalto', true)|first %}
+                            {% if not primary_org %}
+                                {% set primary_org = volunteer.organizations|first %}
+                            {% endif %}
+                            
+                            {% if primary_org.role %}
+                                <div class="current-position">
+                                    <span class="position-badge">{{ primary_org.role }}</span>
+                                </div>
+                            {% elif volunteer.volunteer.title %}
+                                <div class="current-position">
+                                    <span class="position-badge">{{ volunteer.volunteer.title }}</span>
+                                </div>
+                            {% else %}
+                                <div class="current-position">
+                                    <span class="position-badge no-position">No position specified</span>
+                                </div>
+                            {% endif %}
+                            
+                            {% if volunteer.volunteer.department %}
+                                <div class="department-info">
+                                    <small class="department-text">{{ volunteer.volunteer.department }}</small>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            {# Fallback to direct title if no organization relationship exists #}
+                            {% if volunteer.volunteer.title %}
+                                <div class="current-position">
+                                    <span class="position-badge">{{ volunteer.volunteer.title }}</span>
+                                </div>
+                            {% else %}
+                                <div class="current-position">
+                                    <span class="position-badge no-position">No position specified</span>
+                                </div>
+                            {% endif %}
+                            
+                            {% if volunteer.volunteer.department %}
+                                <div class="department-info">
+                                    <small class="department-text">{{ volunteer.volunteer.department }}</small>
+                                </div>
+                            {% endif %}
                         {% endif %}
                     </td>
                     
-                    {# Organization and role information #}
+                    {# Organization information #}
                     <td>
                         {% if volunteer.organizations %}
-                            {# Display multiple organizations if volunteer has them #}
-                            {% for org_info in volunteer.organizations %}
-                                <div class="org-title-container">
-                                    <div class="org-name">
-                                        <a href="{{ url_for('organizations.view_organization', id=org_info.organization.id) }}">
-                                            {{ org_info.organization.name }}
-                                        </a>
-                                    </div>
-                                    {% if org_info.organization.name %}
-                                        <div class="org-title">{{ org_info.organization.name }}</div>
-                                    {% endif %}
-                                    {% if org_info.role %}
-                                        <span class="org-role">{{ org_info.role }}</span>
-                                    {% endif %}
+                            {# Display primary organization first #}
+                            {% set primary_org = volunteer.organizations|selectattr('is_primary', 'equalto', true)|first %}
+                            {% if not primary_org %}
+                                {% set primary_org = volunteer.organizations|first %}
+                            {% endif %}
+                            
+                            <div class="org-name">
+                                <a href="{{ url_for('organizations.view_organization', id=primary_org.organization.id) }}">
+                                    {{ primary_org.organization.name }}
+                                </a>
+                            </div>
+                            
+                            {# Show additional organizations if any #}
+                            {% set additional_orgs = volunteer.organizations|rejectattr('is_primary', 'equalto', true)|list %}
+                            {% if additional_orgs and additional_orgs|length >= 2 %}
+                                <div class="additional-orgs">
+                                    <button class="org-expand-btn" 
+                                            onclick="showOrganizations({{ volunteer.volunteer.id }})"
+                                            title="Click to see all organizations for {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
+                                        <small class="additional-org-text">
+                                            +{{ additional_orgs|length }} more organization{{ 's' if additional_orgs|length != 1 else '' }}
+                                        </small>
+                                        <i class="fa-solid fa-chevron-down expand-icon"></i>
+                                    </button>
                                 </div>
-                            {% endfor %}
+                            {% endif %}
                         {% else %}
                             {# Fallback to direct organization name if no relationship exists #}
-                            <div class="org-title-container">
-                                <div class="org-name">{{ volunteer.volunteer.organization_name }}</div>
-                                {% if volunteer.volunteer.title %}
-                                    <div class="org-title">{{ volunteer.volunteer.title }}</div>
-                                {% endif %}
+                            <div class="org-name">
+                                {{ volunteer.volunteer.organization_name or 'No organization specified' }}
                             </div>
                         {% endif %}
                     </td>
@@ -272,6 +326,21 @@ Last Updated: 2024
     </div>
 </div>
 
+{# Organizations Modal #}
+<div id="organizationsModal" class="organizations-modal" style="display: none;">
+    <div class="organizations-modal-content">
+        <div class="organizations-modal-header">
+            <h3 id="organizationsModalTitle">Organizations</h3>
+            <button class="organizations-modal-close" onclick="closeOrganizationsModal()">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="organizations-modal-body">
+            <div id="organizationsList"></div>
+        </div>
+    </div>
+</div>
+
 {# Delete confirmation modal (currently disabled) #}
 <div id="deleteModal" class="confirm-modal" style="display: none;">
     <h3>Confirm Delete</h3>
@@ -286,4 +355,136 @@ Last Updated: 2024
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/volunteers.js') }}"></script>
+<script>
+// Organizations Modal Functions
+function showOrganizations(volunteerId) {
+    console.log('showOrganizations called with:', volunteerId);
+    
+    // Get organizations data from the server
+    fetch(`/volunteers/${volunteerId}/organizations`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched organizations data:', data);
+            showAllOrganizations(volunteerId, data);
+        })
+        .catch(error => {
+            console.error('Error fetching organizations data:', error);
+            alert('Error loading organizations for this volunteer.');
+        });
+}
+
+function showAllOrganizations(volunteerId, organizations) {
+    console.log('showAllOrganizations called with:', { volunteerId, organizations });
+    
+    // Validate input
+    if (!organizations || !Array.isArray(organizations)) {
+        console.error('Invalid organizations data:', organizations);
+        alert('Error: Invalid organization data');
+        return;
+    }
+    
+    const modal = document.getElementById('organizationsModal');
+    const title = document.getElementById('organizationsModalTitle');
+    const list = document.getElementById('organizationsList');
+    
+    if (!modal) {
+        console.error('Modal element not found!');
+        return;
+    }
+    
+    if (!title || !list) {
+        console.error('Modal title or list element not found!');
+        return;
+    }
+    
+    // Get volunteer name from the table row
+    const volunteerRow = document.querySelector(`tr[data-volunteer-id="${volunteerId}"]`);
+    let volunteerName = 'Volunteer';
+    if (volunteerRow) {
+        const nameLink = volunteerRow.querySelector('.volunteer-name-link');
+        if (nameLink) {
+            volunteerName = nameLink.textContent.trim();
+        }
+    } else {
+        // Fallback: try to find by volunteer ID in the href
+        const nameLinks = document.querySelectorAll('.volunteer-name-link');
+        for (const link of nameLinks) {
+            if (link.href.includes(`/volunteers/view/${volunteerId}`)) {
+                volunteerName = link.textContent.trim();
+                break;
+            }
+        }
+    }
+    
+    console.log('Volunteer name:', volunteerName);
+    
+    title.textContent = `Organizations for ${volunteerName}`;
+    
+    // Build the organizations list
+    let html = '<div class="organizations-list">';
+    
+    if (organizations.length === 0) {
+        html += '<div class="no-organizations">No organizations found for this volunteer.</div>';
+    } else {
+        organizations.forEach((orgInfo, index) => {
+            console.log('Processing organization:', orgInfo);
+            
+            const isPrimary = orgInfo.is_primary;
+            const role = orgInfo.role || 'No role specified';
+            const status = orgInfo.status || 'Current';
+            const orgName = orgInfo.organization?.name || 'Unknown Organization';
+            const orgId = orgInfo.organization?.id || 0;
+            
+            html += `
+                <div class="organization-item ${isPrimary ? 'primary-org' : ''}">
+                    <div class="org-header">
+                        <div class="org-name">
+                            <a href="/organizations/view/${orgId}" target="_blank">
+                                ${orgName}
+                            </a>
+                        </div>
+                        ${isPrimary ? '<span class="primary-badge">Primary</span>' : ''}
+                    </div>
+                    <div class="org-details">
+                        <div class="org-role">
+                            <strong>Role:</strong> ${role}
+                        </div>
+                        <div class="org-status">
+                            <strong>Status:</strong> ${status}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    
+    console.log('Generated HTML:', html);
+    
+    list.innerHTML = html;
+    modal.style.display = 'block';
+    
+    console.log('Modal should now be visible');
+    
+    // Add click outside to close
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeOrganizationsModal();
+        }
+    };
+}
+
+function closeOrganizationsModal() {
+    const modal = document.getElementById('organizationsModal');
+    modal.style.display = 'none';
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeOrganizationsModal();
+    }
+});
+</script>
 {% endblock %}
