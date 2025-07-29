@@ -215,7 +215,7 @@ Last Updated: 2024
                                             onclick="showOrganizations({{ volunteer.volunteer.id }})"
                                             title="Click to see all organizations for {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
                                         <small class="additional-org-text">
-                                            +{{ additional_orgs|length }} more organization{{ 's' if additional_orgs|length != 1 else '' }}
+                                            +{{ additional_orgs|length -1}} more organization{{ 's' if additional_orgs|length != 1 else '' }}
                                         </small>
                                         <i class="fa-solid fa-chevron-down expand-icon"></i>
                                     </button>
