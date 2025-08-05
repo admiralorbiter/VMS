@@ -133,7 +133,23 @@ Currently implemented:
   pytest --cov
   ```
 
-## 7. Future Plans
+## 7. Documentation
+
+Comprehensive documentation is available in the `/docs` folder:
+
+- **[System Overview](docs/01-overview.md)** - Complete system overview and purpose
+- **[Architecture](docs/02-architecture.md)** - Technical architecture and design patterns
+- **[Data Model](docs/03-data-model.md)** - Database schema and relationships
+- **[API Specification](docs/04-api-spec.md)** - API endpoints and usage
+- **[Development Guide](docs/05-dev-guide.md)** - Setup and development guidelines
+- **[Operations Guide](docs/06-ops-guide.md)** - Deployment and maintenance
+- **[Test Guide](docs/07-test-guide.md)** - Testing strategies and practices
+- **[FAQ](docs/09-faq.md)** - Frequently asked questions
+- **[Feature Matrix](docs/FEATURE_MATRIX.md)** - Feature tracking and status
+
+For quick navigation, see the [Documentation Index](docs/README.md).
+
+## 8. Future Plans
 
 - Email Management System
 - Enhanced reporting capabilities
@@ -143,4 +159,4 @@ Currently implemented:
 
 ---
 
-For support or questions, please contact the development team.
+For support or questions, please contact the development team or check the [FAQ](docs/09-faq.md).
