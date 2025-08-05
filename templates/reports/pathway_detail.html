@@ -68,7 +68,7 @@
                             <tbody>
                                 {% for event in pathway.events %}
                                 <tr>
-                                    <td>{{ event.start_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ event.start_date.strftime('%m/%d') if event.start_date else '' }}</td>
                                     <td>{{ event.title }}</td>
                                     <td class="event-type-cell">
                                         <span class="event-type-badge {{ event.type.value|replace('_', '-') }}">{{ event.type.value|replace('_', ' ')|title }}</span>
@@ -106,7 +106,7 @@
                                     <td>{{ contact.full_name }}</td>
                                     <td>{{ contact.primary_email }}</td>
                                     <td>{{ contact.events|length }}</td>
-                                    <td>{{ contact.last_event_date.strftime('%Y-%m-%d') if contact.last_event_date else 'N/A' }}</td>
+                                    <td>{{ contact.last_event_date.strftime('%m/%d') if contact.last_event_date else 'N/A' }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

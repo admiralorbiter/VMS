@@ -21,38 +21,78 @@ def test_event(app):
         db.session.commit()
 
 def test_create_attendance_detail(app, test_event):
+    """Test creating an attendance detail record."""
     with app.app_context():
-        detail = EventAttendanceDetail(
+        attendance = EventAttendanceDetail(
             event_id=test_event.id,
+            total_students=25,
             num_classrooms=3,
-            students_per_volunteer=10,
-            total_students=30,
-            attendance_in_sf=True,
-            pathway='STEM',
-            groups_rotations='Group A',
+            rotations=2,
             is_stem=True,
-            attendance_link='http://example.com/attendance'
+            pathway="STEM"
         )
-        db.session.add(detail)
+        db.session.add(attendance)
         db.session.commit()
-        assert detail.id is not None
-        assert detail.event_id == test_event.id
-        assert detail.num_classrooms == 3
-        assert detail.students_per_volunteer == 10
-        assert detail.total_students == 30
-        assert detail.attendance_in_sf is True
-        assert detail.pathway == 'STEM'
-        assert detail.groups_rotations == 'Group A'
-        assert detail.is_stem is True
-        assert detail.attendance_link == 'http://example.com/attendance'
-        # Relationship
-        assert detail.event.id == test_event.id
-        # __repr__ and __str__
-        assert str(detail) == f'AttendanceDetail for Event {test_event.id}'
-        assert f'<EventAttendanceDetail event_id={test_event.id}' in repr(detail)
-        # Cleanup
-        db.session.delete(detail)
-        db.session.commit()
+        
+        assert attendance.event_id == test_event.id
+        assert attendance.total_students == 25
+        assert attendance.num_classrooms == 3
+        assert attendance.rotations == 2
+        assert attendance.is_stem == True
+        assert attendance.pathway == "STEM"
+
+def test_calculate_students_per_volunteer(app, test_event):
+    """Test the calculate_students_per_volunteer method."""
+    with app.app_context():
+        # Test case 1: Normal calculation
+        attendance = EventAttendanceDetail(
+            event_id=test_event.id,
+            total_students=30,
+            num_classrooms=3,
+            rotations=2
+        )
+        result = attendance.calculate_students_per_volunteer()
+        assert result == 20  # (30 / 3) * 2 = 10 * 2 = 20
+        
+        # Test case 2: Decimal result should be rounded down
+        attendance.total_students = 25
+        result = attendance.calculate_students_per_volunteer()
+        assert result == 16  # (25 / 3) * 2 = 8.333... * 2 = 16.666... -> 16
+        
+        # Test case 3: Missing data should return None
+        attendance.total_students = None
+        result = attendance.calculate_students_per_volunteer()
+        assert result is None
+        
+        # Test case 4: Zero values should return None
+        attendance.total_students = 30
+        attendance.num_classrooms = 0
+        result = attendance.calculate_students_per_volunteer()
+        assert result is None
+        
+        # Test case 5: Zero rotations should return None
+        attendance.num_classrooms = 3
+        attendance.rotations = 0
+        result = attendance.calculate_students_per_volunteer()
+        assert result is None
+
+def test_update_students_per_volunteer(app, test_event):
+    """Test the update_students_per_volunteer method."""
+    with app.app_context():
+        attendance = EventAttendanceDetail(
+            event_id=test_event.id,
+            total_students=30,
+            num_classrooms=3,
+            rotations=2
+        )
+        
+        # Initially should be None
+        assert attendance.students_per_volunteer is None
+        
+        # Update should calculate and set the value
+        result = attendance.update_students_per_volunteer()
+        assert result == 20  # (30 / 3) * 2 = 20
+        assert attendance.students_per_volunteer == 20
 
 def test_unique_event_id_constraint(app, test_event):
     with app.app_context():

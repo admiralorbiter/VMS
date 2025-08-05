@@ -76,6 +76,10 @@ def load_routes(bp):
 
         # Format the data for the template
         volunteer_data = []
+        unique_organizations = set()
+        total_hours_sum = 0
+        total_events_sum = 0
+        
         for v, hours, events in volunteer_stats:
             # Get organization information for this volunteer
             organizations = []
@@ -86,13 +90,57 @@ def load_routes(bp):
             # Use the first organization or 'Independent' if none
             organization = organizations[0] if organizations else 'Independent'
             
+            # Track unique organizations
+            unique_organizations.add(organization)
+            
+            # Sum up totals
+            volunteer_hours = round(float(hours or 0), 2) if hours is not None else 0
+            total_hours_sum += volunteer_hours
+            total_events_sum += events
+            
             volunteer_data.append({
                 'id': v.id,
                 'name': f"{v.first_name} {v.last_name}",
-                'total_hours': round(float(hours or 0), 2) if hours is not None else 0,
+                'total_hours': volunteer_hours,
                 'total_events': events,
                 'organization': organization
             })
+        
+        # Calculate summary statistics - ensure consistent counting with organization report
+        unique_organizations_count = db.session.query(
+            db.func.count(db.distinct(Organization.id))
+        ).join(
+            VolunteerOrganization, Organization.id == VolunteerOrganization.organization_id
+        ).join(
+            Volunteer, VolunteerOrganization.volunteer_id == Volunteer.id
+        ).join(
+            EventParticipation, Volunteer.id == EventParticipation.volunteer_id
+        ).join(
+            Event, EventParticipation.event_id == Event.id
+        ).filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
+        )
+        
+        # Apply host filter if specified
+        if host_filter == 'prepkc':
+            unique_organizations_count = unique_organizations_count.filter(
+                db.or_(
+                    Event.session_host.ilike('%PREPKC%'),
+                    Event.session_host.ilike('%prepkc%'),
+                    Event.session_host.ilike('%PrepKC%')
+                )
+            )
+        
+        unique_organizations_count = unique_organizations_count.scalar() or 0
+        
+        summary_stats = {
+            'unique_volunteers': len(volunteer_data),
+            'total_hours': round(total_hours_sum, 2),
+            'total_events': total_events_sum,
+            'unique_organizations': unique_organizations_count
+        }
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -102,6 +150,7 @@ def load_routes(bp):
         return render_template(
             'reports/volunteer_thankyou.html',
             volunteers=volunteer_data,
+            summary_stats=summary_stats,
             school_year=school_year,
             school_years=school_years,
             now=datetime.now(),
@@ -270,7 +319,7 @@ def load_routes(bp):
             EventParticipation.volunteer_id == volunteer_id,
             Event.start_date >= start_date,
             Event.start_date <= end_date,
-            EventParticipation.status == 'Attended'
+            EventParticipation.status.in_(['Attended', 'Completed', 'Successfully Completed'])
         ).order_by(
             Event.start_date
         ).all()

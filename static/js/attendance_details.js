@@ -46,16 +46,24 @@ function showAttendanceDetailModal(eventId, data, row) {
             <h2>Edit Attendance Details</h2>
             <form id="attendanceDetailForm">
                 <div class="form-group">
-                    <label for="num_classrooms">Number of Classrooms/Tables:</label>
-                    <input type="number" id="num_classrooms" name="num_classrooms" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label for="students_per_volunteer">Students per Volunteer:</label>
-                    <input type="number" id="students_per_volunteer" name="students_per_volunteer" class="form-control">
-                </div>
-                <div class="form-group">
                     <label for="total_students">Total Students:</label>
-                    <input type="number" id="total_students" name="total_students" class="form-control">
+                    <input type="number" id="total_students" name="total_students" class="form-control" min="0">
+                    <small class="form-text text-muted">Estimated total number of students who attended</small>
+                </div>
+                <div class="form-group">
+                    <label for="num_classrooms">Number of Classrooms/Tables:</label>
+                    <input type="number" id="num_classrooms" name="num_classrooms" class="form-control" min="0">
+                    <small class="form-text text-muted">Number of classrooms or tables used for the event</small>
+                </div>
+                <div class="form-group">
+                    <label for="rotations">Rotations:</label>
+                    <input type="number" id="rotations" name="rotations" class="form-control" min="0">
+                    <small class="form-text text-muted">Number of rotations for the event</small>
+                </div>
+                <div class="form-group">
+                    <label for="students_per_volunteer">Students per Volunteer (Calculated):</label>
+                    <input type="number" id="students_per_volunteer" name="students_per_volunteer" class="form-control" readonly>
+                    <small class="form-text text-muted">Automatically calculated as: (Total Students / Classrooms) × Rotations</small>
                 </div>
                 <div class="form-group">
                     <label>
@@ -94,21 +102,46 @@ function showAttendanceDetailModal(eventId, data, row) {
     
     // Populate form with data
     const form = document.getElementById('attendanceDetailForm');
-    form.num_classrooms.value = data.num_classrooms || '';
-    form.students_per_volunteer.value = data.students_per_volunteer || '';
     form.total_students.value = data.total_students || '';
+    form.num_classrooms.value = data.num_classrooms || '';
+    form.rotations.value = data.rotations || '';
+    form.students_per_volunteer.value = data.students_per_volunteer || '';
     form.attendance_in_sf.checked = !!data.attendance_in_sf;
     form.pathway.value = data.pathway || '';
     form.groups_rotations.value = data.groups_rotations || '';
     form.is_stem.checked = !!data.is_stem;
     form.attendance_link.value = data.attendance_link || '';
+    
+    // Add event listeners for automatic calculation
+    const calculateStudentsPerVolunteer = () => {
+        const totalStudents = parseInt(form.total_students.value) || 0;
+        const numClassrooms = parseInt(form.num_classrooms.value) || 0;
+        const rotations = parseInt(form.rotations.value) || 0;
+        
+        if (totalStudents > 0 && numClassrooms > 0 && rotations > 0) {
+            const calculated = Math.floor((totalStudents / numClassrooms) * rotations);
+            form.students_per_volunteer.value = calculated;
+        } else {
+            form.students_per_volunteer.value = '';
+        }
+    };
+    
+    // Add event listeners to the calculation fields
+    form.total_students.addEventListener('input', calculateStudentsPerVolunteer);
+    form.num_classrooms.addEventListener('input', calculateStudentsPerVolunteer);
+    form.rotations.addEventListener('input', calculateStudentsPerVolunteer);
+    
+    // Calculate initial value
+    calculateStudentsPerVolunteer();
+    
     // Submit logic
     form.onsubmit = function(e) {
         e.preventDefault();
         const payload = {
-            num_classrooms: form.num_classrooms.value,
-            students_per_volunteer: form.students_per_volunteer.value,
             total_students: form.total_students.value,
+            num_classrooms: form.num_classrooms.value,
+            rotations: form.rotations.value,
+            students_per_volunteer: form.students_per_volunteer.value,
             attendance_in_sf: form.attendance_in_sf.checked,
             pathway: form.pathway.value,
             groups_rotations: form.groups_rotations.value,

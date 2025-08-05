@@ -379,21 +379,21 @@ def import_history_from_salesforce():
             domain='login'
         )
 
-        # Fixed SOQL Query - removed SQL comment style
-        history_query = """
+        # Query Task records (activities, calls, meetings, emails)
+        task_query = """
             SELECT Id, Subject, Description, Type, Status, 
                    ActivityDate, WhoId, WhatId
             FROM Task 
             WHERE WhoId != null
         """
 
-        result = sf.query_all(history_query)
-        history_rows = result.get('records', [])
-        print(f"Found {len(history_rows)} history records in Salesforce")
+        result = sf.query_all(task_query)
+        task_rows = result.get('records', [])
+        print(f"Found {len(task_rows)} Task records in Salesforce")
 
         # Use no_autoflush to prevent premature flushing
         with db.session.no_autoflush:
-            for row in history_rows:
+            for row in task_rows:
                 try:
                     # First check if we have a valid volunteer
                     if not row.get('WhoId'):
@@ -406,7 +406,7 @@ def import_history_from_salesforce():
 
                     if not volunteer:
                         skipped_count += 1
-                        errors.append(f"Skipped record {row.get('Subject', 'Unknown')}: No matching volunteer found")
+                        errors.append(f"Skipped Task record {row.get('Subject', 'Unknown')}: No matching volunteer found")
                         continue
 
                     # Check if history exists
@@ -426,14 +426,29 @@ def import_history_from_salesforce():
                     # Update history fields with proper type conversion
                     history.salesforce_id = row['Id']
                     history.summary = row.get('Subject', '')
-                    history.description = row.get('Description', '')
                     history.activity_type = row.get('Type', '')
                     history.activity_status = row.get('Status', '')
                     history.activity_date = activity_date
 
-                    # Map Salesforce type to history_type
+                    # Process description field - this contains email content for email tasks
+                    description = row.get('Description', '')
+                    if description:
+                        # Clean up the description content
+                        import re
+                        # Remove HTML tags if present
+                        description = re.sub(r'<[^>]+>', '', description)
+                        # Clean up extra whitespace
+                        description = re.sub(r'\s+', ' ', description).strip()
+                        history.description = description
+                    
+                    # Map Salesforce type to history_type and handle email content
                     sf_type = (row.get('Type', '') or '').lower()
-                    if sf_type in ['email', 'call']:
+                    if sf_type == 'email':
+                        history.history_type = 'activity'
+                        history.activity_type = 'Email'
+                        # Store email message ID for reference
+                        history.email_message_id = row['Id']
+                    elif sf_type in ['call']:
                         history.history_type = 'activity'
                     elif sf_type in ['status_update']:
                         history.history_type = 'status_change'
@@ -457,7 +472,7 @@ def import_history_from_salesforce():
 
                 except Exception as e:
                     error_count += 1
-                    errors.append(f"Error processing record {row.get('Subject', 'Unknown')}: {str(e)}")
+                    errors.append(f"Error processing Task record {row.get('Subject', 'Unknown')}: {str(e)}")
                     continue
 
             # Final commit

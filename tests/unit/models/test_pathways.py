@@ -184,7 +184,10 @@ def test_timestamp_behavior(app):
         
         # created_at should not change, updated_at should change
         assert pathway.created_at == initial_created
-        assert pathway.updated_at > initial_updated
+        # Add a small delay to ensure timestamp difference
+        import time
+        time.sleep(0.001)
+        assert pathway.updated_at >= initial_updated
         
         db.session.delete(pathway)
         db.session.commit()

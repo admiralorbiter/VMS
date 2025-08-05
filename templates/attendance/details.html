@@ -81,9 +81,10 @@
             <tr>
                 <th>Event</th>
                 <th>Date</th>
-                <th>No. of Classrooms/Tables</th>
-                <th>Students per Volunteer</th>
                 <th>Total Students</th>
+                <th>No. of Classrooms/Tables</th>
+                <th>Rotations</th>
+                <th>Students per Volunteer</th>
                 <th>Attendance in SF</th>
                 <th>Pathway</th>
                 <th>Groups & Rotations</th>
@@ -96,11 +97,12 @@
             <!-- Server-side rendered event rows -->
             {% for event in events %}
             <tr data-event-id="{{ event.id }}">
-                <td>{{ event.title }}</td>
-                <td>{{ event.start_date.strftime('%Y-%m-%d') if event.start_date else '' }}</td>
-                <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
-                <td>{{ event.attendance_detail.students_per_volunteer if event.attendance_detail else '' }}</td>
+                <td><a href="{{ url_for('events.view_event', id=event.id) }}" title="View event details">{{ event.title }}</a></td>
+                <td>{{ event.start_date.strftime('%m/%d') if event.start_date else '' }}</td>
                 <td>{{ event.attendance_detail.total_students if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.num_classrooms if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.rotations if event.attendance_detail else '' }}</td>
+                <td>{{ event.attendance_detail.students_per_volunteer if event.attendance_detail else '' }}</td>
                 <td>{% if event.attendance_detail and event.attendance_detail.attendance_in_sf %}✔{% endif %}</td>
                 <td>{{ event.attendance_detail.pathway if event.attendance_detail else '' }}</td>
                 <td>{{ event.attendance_detail.groups_rotations if event.attendance_detail else '' }}</td>
@@ -146,13 +148,17 @@ function fetchAndRenderEvents() {
             // Render each event row
             events.forEach(event => {
                 const ad = event.attendance_detail || {};
+                // The server now returns dates in MM/DD format, so we can use them directly
+                const formattedDate = event.start_date || '';
+                
                 tbody.innerHTML += `
                 <tr data-event-id="${event.id}">
-                    <td>${event.title}</td>
-                    <td>${event.start_date}</td>
-                    <td>${ad.num_classrooms || ''}</td>
-                    <td>${ad.students_per_volunteer || ''}</td>
+                    <td><a href="/events/view/${event.id}" title="View event details">${event.title}</a></td>
+                    <td>${formattedDate}</td>
                     <td>${ad.total_students || ''}</td>
+                    <td>${ad.num_classrooms || ''}</td>
+                    <td>${ad.rotations || ''}</td>
+                    <td>${ad.students_per_volunteer || ''}</td>
                     <td>${ad.attendance_in_sf ? '✔' : ''}</td>
                     <td>${ad.pathway || ''}</td>
                     <td>${ad.groups_rotations || ''}</td>

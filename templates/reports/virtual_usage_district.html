@@ -98,6 +98,30 @@
     border-radius: 5px;
     cursor: pointer;
     font-weight: 600;
+}
+
+/* Link Styling for Presenters */
+.presenter-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Session External Link Button Styling */
+.session-external-btn:hover {
+    background: #218838 !important;
+    color: white !important;
+    text-decoration: none !important;
+}
+
+@media (max-width: 768px) {
+    /* Mobile adjustments for session links */
+    .session-external-btn {
+        font-size: 0.7em !important;
+        padding: 3px 6px !important;
+    }
+}
+
+.filter-btn, .reset-btn {
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -657,7 +681,28 @@
                     btn.style.display = 'none';
                 });
             }
+            
+            // Handle month header clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.month-header')) {
+                    const monthHeader = e.target.closest('.month-header');
+                    const monthIndex = monthHeader.getAttribute('data-month-index');
+                    toggleMonthDetails(monthIndex);
+                }
+            });
         });
+
+        function toggleMonthDetails(idx) {
+            var details = document.getElementById('month-details-' + idx);
+            var chevron = document.getElementById('chevron-' + idx);
+            if (details.classList.contains('collapsed')) {
+                details.classList.remove('collapsed');
+                chevron.classList.remove('collapsed');
+            } else {
+                details.classList.add('collapsed');
+                chevron.classList.add('collapsed');
+            }
+        }
         </script>
 
         <!-- Monthly Breakdown -->
@@ -665,7 +710,7 @@
             <h2 style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">Monthly Breakdown</h2>
             {% for month, stats in monthly_stats.items() %}
             <div class="month-card">
-                <div class="month-header" onclick="toggleMonthDetails({{ loop.index }})">
+                <div class="month-header" data-month-index="{{ loop.index }}">
                     <span class="month-title">
                         <i class="fas fa-chevron-down chevron" id="chevron-{{ loop.index }}"></i>
                         {{ stats.month_name }}
@@ -700,21 +745,34 @@
                                 <tr>
                                     <td>{{ event.date }}</td>
                                     <td>
-                                        {% if event.session_id and event.session_id|string|length > 0 %}
-                                            <a href="{{ url_for('events.view_event', id=event.session_id) }}" class="session-link">{{ event.title }}</a>
-                                            {% if event.session_link %}
-                                                <a href="{{ event.session_link }}" target="_blank" title="External Session Link" style="margin-left:6px;"><i class="fas fa-external-link-alt"></i></a>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            {% if event.event_id and event.event_id|string|length > 0 %}
+                                                <a href="{{ url_for('events.view_event', id=event.event_id) }}" class="session-link" style="flex: 1; color: #007bff; text-decoration: none;">{{ event.title }}</a>
+                                            {% else %}
+                                                <span style="flex: 1;">{{ event.title }}</span>
                                             {% endif %}
-                                        {% else %}
-                                            {{ event.title }}
                                             {% if event.session_link %}
-                                                <a href="{{ event.session_link }}" target="_blank" title="External Session Link" style="margin-left:6px;"><i class="fas fa-external-link-alt"></i></a>
+                                                <a href="{{ event.session_link }}" target="_blank" class="session-external-btn" 
+                                                   style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;" 
+                                                   title="Go to session website">
+                                                    🔗 Link
+                                                </a>
                                             {% endif %}
-                                        {% endif %}
+                                        </div>
                                     </td>
                                     <td>{{ event.schools or 'N/A' }}</td>
                                     <td>{{ event.educators or 'N/A' }}</td>
-                                    <td>{{ event.presenter or 'N/A' }}</td>
+                                    <td>
+                                        {% if event.presenter_data %}
+                                            {% for presenter in event.presenter_data %}
+                                                <a href="{{ url_for('volunteers.view_volunteer', id=presenter.id) }}" class="presenter-link" style="color: #007bff; text-decoration: none;">
+                                                    {{ presenter.name }}
+                                                </a>{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            {{ event.presenter or 'N/A' }}
+                                        {% endif %}
+                                    </td>
                                 </tr>
                             {% endfor %}
                             </tbody>
@@ -724,19 +782,6 @@
             </div>
             {% endfor %}
         </div>
-<script>
-function toggleMonthDetails(idx) {
-    var details = document.getElementById('month-details-' + idx);
-    var chevron = document.getElementById('chevron-' + idx);
-    if (details.classList.contains('collapsed')) {
-        details.classList.remove('collapsed');
-        chevron.classList.remove('collapsed');
-    } else {
-        details.classList.add('collapsed');
-        chevron.classList.add('collapsed');
-    }
-}
-</script>
     {% else %}
         <div class="no-data">
             No virtual session data available for this district in the selected virtual year and date range.

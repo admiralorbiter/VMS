@@ -41,10 +41,13 @@ Usage Examples:
         event_id=event.id,
         total_students=25,
         num_classrooms=3,
-        students_per_volunteer=5,
+        rotations=2,
         is_stem=True,
         pathway="STEM"
     )
+    
+    # Calculate students per volunteer
+    students_per_volunteer = attendance.calculate_students_per_volunteer()
     
     # Check if attendance is synced to Salesforce
     if attendance.attendance_in_sf:
@@ -57,6 +60,7 @@ Usage Examples:
 from models import db
 from sqlalchemy import Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
+import math
 
 class EventAttendanceDetail(db.Model):
     """
@@ -85,7 +89,8 @@ class EventAttendanceDetail(db.Model):
     Attendance Metrics:
         - total_students: Total number of students who attended
         - num_classrooms: Number of classrooms or tables used
-        - students_per_volunteer: Average students per volunteer ratio
+        - rotations: Number of rotations for the event
+        - students_per_volunteer: Calculated students per volunteer ratio
         
     Event Categorization:
         - is_stem: Whether this is a STEM-focused event
@@ -113,6 +118,7 @@ class EventAttendanceDetail(db.Model):
     
     # Attendance tracking fields
     num_classrooms = db.Column(db.Integer, nullable=True)  # Number of classrooms or tables used
+    rotations = db.Column(db.Integer, nullable=True)  # Number of rotations for the event
     students_per_volunteer = db.Column(db.Integer, nullable=True)  # Average students per volunteer ratio
     total_students = db.Column(db.Integer, nullable=True)  # Total number of students who attended
     
@@ -131,6 +137,35 @@ class EventAttendanceDetail(db.Model):
 
     # Relationship to Event model - back_populates creates bidirectional relationship
     event = relationship('Event', back_populates='attendance_detail')
+
+    def calculate_students_per_volunteer(self):
+        """
+        Calculate students per volunteer based on the formula:
+        (Total Students / Classrooms) × Rotations
+        
+        Returns:
+            int: Calculated students per volunteer, rounded down
+                 Returns None if insufficient data for calculation
+        """
+        if not self.total_students or not self.num_classrooms or not self.rotations:
+            return None
+        
+        if self.num_classrooms <= 0 or self.rotations <= 0:
+            return None
+        
+        # Calculate: (Total Students / Classrooms) × Rotations
+        result = (self.total_students / self.num_classrooms) * self.rotations
+        
+        # Round down to nearest integer
+        return math.floor(result)
+
+    def update_students_per_volunteer(self):
+        """
+        Update the students_per_volunteer field with the calculated value.
+        """
+        calculated_value = self.calculate_students_per_volunteer()
+        self.students_per_volunteer = calculated_value
+        return calculated_value
 
     def __repr__(self):
         """

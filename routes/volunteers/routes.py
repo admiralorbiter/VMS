@@ -341,7 +341,8 @@ def volunteers():
         volunteer_data = {
             'volunteer': result[0],
             'attended_count': result[1] or 0,
-            'organizations': []
+            'organizations': [],
+            'organizations_json': []  # JSON-serializable version
         }
         
         # Get organization info with roles
@@ -353,6 +354,27 @@ def volunteers():
                 'is_primary': vol_org.is_primary
             }
             volunteer_data['organizations'].append(org_info)
+            
+            # Create JSON-serializable version
+            org_json = {
+                'organization': {
+                    'id': vol_org.organization.id,
+                    'name': vol_org.organization.name
+                },
+                'role': vol_org.role,
+                'status': vol_org.status,
+                'is_primary': vol_org.is_primary
+            }
+            volunteer_data['organizations_json'].append(org_json)
+        
+        # Ensure organizations_json is always a list, even if empty
+        if volunteer_data['organizations_json'] is None:
+            volunteer_data['organizations_json'] = []
+        
+        # Debug: Print the organizations_json for the first few volunteers
+        if len(volunteers_with_counts) < 3:
+            print(f"Volunteer {result[0].id}: {len(volunteer_data['organizations_json'])} organizations")
+            print(f"Organizations JSON: {volunteer_data['organizations_json']}")
         
         volunteers_with_counts.append(volunteer_data)
 
@@ -1515,3 +1537,27 @@ def update_local_statuses():
             'success': False,
             'message': f'Error updating local statuses: {str(e)}'
         }), 500
+
+@volunteers_bp.route('/volunteers/<int:volunteer_id>/organizations')
+@login_required
+def get_organizations_json(volunteer_id):
+    """Get organizations data for a specific volunteer as JSON"""
+    try:
+        volunteer = Volunteer.query.get_or_404(volunteer_id)
+        organizations_data = []
+        
+        for vol_org in volunteer.volunteer_organizations:
+            org_data = {
+                'organization': {
+                    'id': vol_org.organization.id,
+                    'name': vol_org.organization.name
+                },
+                'role': vol_org.role,
+                'status': vol_org.status,
+                'is_primary': vol_org.is_primary
+            }
+            organizations_data.append(org_data)
+        
+        return jsonify(organizations_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

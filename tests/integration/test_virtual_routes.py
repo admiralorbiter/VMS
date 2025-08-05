@@ -87,43 +87,43 @@ def test_virtual_session_data_validation(client, auth_headers):
 def test_people_of_color_mapping():
     """Test People of Color column mapping functionality"""
     from routes.virtual.routes import map_people_of_color
-    from models.contact import RaceEthnicityEnum
     
     # Test with "Yes" value
     result = map_people_of_color("Yes")
-    assert result == RaceEthnicityEnum.people_of_color
+    assert result == True
     
     # Test with "yes" (lowercase)
     result = map_people_of_color("yes")
-    assert result == RaceEthnicityEnum.people_of_color
+    assert result == True
     
     # Test with empty value
     result = map_people_of_color("")
-    assert result is None
+    assert result == False
     
     # Test with None value
     result = map_people_of_color(None)
-    assert result is None
+    assert result == False
     
     # Test with pandas NaN
     import pandas as pd
     result = map_people_of_color(pd.NA)
-    assert result is None
+    assert result == False
     
     # Test with other values
     result = map_people_of_color("No")
-    assert result is None
+    assert result == False
     
     result = map_people_of_color("Maybe")
-    assert result is None
+    assert result == False
 
-def test_people_of_color_enum_exists():
-    """Test that the people_of_color enum value exists"""
-    from models.contact import RaceEthnicityEnum
+def test_people_of_color_boolean_field():
+    """Test that the is_people_of_color field exists as a boolean"""
+    from models.volunteer import Volunteer
     
-    # Verify the enum value exists
-    assert hasattr(RaceEthnicityEnum, 'people_of_color')
-    assert RaceEthnicityEnum.people_of_color == 'People of Color'
+    # Verify the field exists and is a boolean
+    assert hasattr(Volunteer, 'is_people_of_color')
+    # The field should be a Boolean column
+    assert Volunteer.is_people_of_color.type.python_type == bool
 
 # New tests for teacher name splitting functionality
 def test_split_teacher_names():
@@ -164,22 +164,23 @@ def test_split_teacher_names():
     
     # Test with pandas NaN
     import pandas as pd
-    result = split_teacher_names(pd.NA)
+    result = split_teacher_names(pd.NaT)  # Use NaT instead of NA
     assert result == []
 
-def test_process_teacher_data_with_multiple_teachers():
+def test_process_teacher_data_with_multiple_teachers(app):
     """Test processing teacher data with multiple teachers"""
     from routes.virtual.routes import process_teacher_data
     
-    # Create test data with multiple teachers
-    row_data = {
-        'Teacher Name': 'James Brockway/Megan Gasser',
-        'School Name': 'Test School',
-        'District': 'Test District'
-    }
-    
-    # This should create two separate teacher records
-    process_teacher_data(row_data)
+    with app.app_context():
+        # Create test data with multiple teachers
+        row_data = {
+            'Teacher Name': 'James Brockway/Megan Gasser',
+            'School Name': 'Test School',
+            'District': 'Test District'
+        }
+        
+        # This should create two separate teacher records
+        process_teacher_data(row_data)
     
     # Verify both teachers were created
     james = Teacher.query.filter_by(first_name='James', last_name='Brockway').first()
@@ -188,66 +189,80 @@ def test_process_teacher_data_with_multiple_teachers():
     assert james is not None
     assert megan is not None
 
-def test_process_teacher_for_event_with_multiple_teachers():
+def test_process_teacher_for_event_with_multiple_teachers(app):
     """Test processing teacher data for events with multiple teachers"""
     from routes.virtual.routes import process_teacher_for_event
+    from models.event import Event, EventType, EventStatus
+    from models import db
     
-    # Create a test event
-    event = Event(
-        title="Test Virtual Session",
-        type=EventType.VIRTUAL_SESSION,
-        status=EventStatus.COMPLETED
-    )
-    db.session.add(event)
-    db.session.commit()
-    
-    # Create test data with multiple teachers
-    row_data = {
-        'Teacher Name': 'James Brockway/Megan Gasser',
-        'School Name': 'Test School',
-        'District': 'Test District',
-        'Status': 'Completed'
-    }
-    
-    # Process teacher data for the event
-    process_teacher_for_event(row_data, event, False)
-    
-    # Verify both teachers are associated with the event
-    from models.event import EventTeacher
-    event_teachers = EventTeacher.query.filter_by(event_id=event.id).all()
-    assert len(event_teachers) == 2
-    
-    # Clean up
-    db.session.delete(event)
-    db.session.commit()
+    with app.app_context():
+        # Create a test event
+        from datetime import datetime, timezone
+        event = Event(
+            title="Test Virtual Session",
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.COMPLETED,
+            start_date=datetime.now(timezone.utc)
+        )
+        db.session.add(event)
+        db.session.commit()
+        
+        # Create test data with multiple teachers
+        row_data = {
+            'Teacher Name': 'James Brockway/Megan Gasser',
+            'School Name': 'Test School',
+            'District': 'Test District',
+            'Status': 'Completed'
+        }
+        
+        # Process teacher data for the event
+        process_teacher_for_event(row_data, event, False)
+        
+        # Verify both teachers are associated with the event
+        from models.event import EventTeacher
+        event_teachers = EventTeacher.query.filter_by(event_id=event.id).all()
+        assert len(event_teachers) == 2
+        
+        # Clean up
+        db.session.delete(event)
+        db.session.commit()
 
 # New tests for district filtering functionality
 def test_calculate_summaries_with_main_districts_only():
     """Test district summaries calculation with main districts only"""
     from routes.reports.virtual_session import calculate_summaries_from_sessions
-    
+
     # Create test session data with multiple districts
     session_data = [
         {
             'district': 'Hickman Mills School District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 1', 'Teacher 2'],
-            'students': 50
+            'teacher_name': 'Teacher 1',
+            'school_name': 'Test School 1',
+            'session_title': 'Test Session 1',
+            'presenter_data': [],
+            'presenter': None
         },
         {
             'district': 'Grandview School District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 3'],
-            'students': 25
+            'teacher_name': 'Teacher 2',
+            'school_name': 'Test School 2',
+            'session_title': 'Test Session 2',
+            'presenter_data': [],
+            'presenter': None
         },
         {
             'district': 'Unknown District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 4'],
-            'students': 25
+            'teacher_name': 'Teacher 3',
+            'school_name': 'Test School 3',
+            'session_title': 'Test Session 3',
+            'presenter_data': [],
+            'presenter': None
         }
     ]
-    
+
     # Test with show_all_districts=False (default)
     district_summaries, overall_summary = calculate_summaries_from_sessions(session_data, show_all_districts=False)
     
@@ -259,29 +274,38 @@ def test_calculate_summaries_with_main_districts_only():
 def test_calculate_summaries_with_all_districts():
     """Test district summaries calculation with all districts"""
     from routes.reports.virtual_session import calculate_summaries_from_sessions
-    
+
     # Create test session data with multiple districts
     session_data = [
         {
             'district': 'Hickman Mills School District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 1', 'Teacher 2'],
-            'students': 50
+            'teacher_name': 'Teacher 1',
+            'school_name': 'Test School 1',
+            'session_title': 'Test Session 1',
+            'presenter_data': [],
+            'presenter': None
         },
         {
             'district': 'Grandview School District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 3'],
-            'students': 25
+            'teacher_name': 'Teacher 2',
+            'school_name': 'Test School 2',
+            'session_title': 'Test Session 2',
+            'presenter_data': [],
+            'presenter': None
         },
         {
             'district': 'Unknown District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 4'],
-            'students': 25
+            'teacher_name': 'Teacher 3',
+            'school_name': 'Test School 3',
+            'session_title': 'Test Session 3',
+            'presenter_data': [],
+            'presenter': None
         }
     ]
-    
+
     # Test with show_all_districts=True
     district_summaries, overall_summary = calculate_summaries_from_sessions(session_data, show_all_districts=True)
     
@@ -313,10 +337,14 @@ def test_virtual_usage_report_district_filtering(client, auth_headers):
 def test_enhanced_virtual_purge_functionality(client, auth_headers):
     """Test enhanced virtual purge functionality"""
     # Create test virtual session data
+    from models.event import Event, EventType, EventStatus
+    from datetime import datetime, timezone
+    
     event = Event(
         title="Test Virtual Session",
         type=EventType.VIRTUAL_SESSION,
-        status=EventStatus.COMPLETED
+        status=EventStatus.COMPLETED,
+        start_date=datetime.now(timezone.utc)
     )
     db.session.add(event)
     db.session.commit()
@@ -337,29 +365,38 @@ def test_enhanced_virtual_purge_functionality(client, auth_headers):
 def test_virtual_session_status_filtering():
     """Test virtual session status filtering with case-insensitive matching"""
     from routes.reports.virtual_session import calculate_summaries_from_sessions
-    
+
     # Create test session data with different status formats
     session_data = [
         {
             'district': 'Hickman Mills School District',
             'status': 'SUCCESSFULLY COMPLETED',
-            'teachers': ['Teacher 1'],
-            'students': 25
+            'teacher_name': 'Teacher 1',
+            'school_name': 'Test School 1',
+            'session_title': 'Test Session 1',
+            'presenter_data': [],
+            'presenter': None
         },
         {
             'district': 'Grandview School District',
             'status': 'successfully completed',
-            'teachers': ['Teacher 2'],
-            'students': 25
+            'teacher_name': 'Teacher 2',
+            'school_name': 'Test School 2',
+            'session_title': 'Test Session 2',
+            'presenter_data': [],
+            'presenter': None
         },
         {
             'district': 'Kansas City Kansas Public Schools',
             'status': 'Simulcast',
-            'teachers': ['Teacher 3'],
-            'students': 25
+            'teacher_name': 'Teacher 3',
+            'school_name': 'Test School 3',
+            'session_title': 'Test Session 3',
+            'presenter_data': [],
+            'presenter': None
         }
     ]
-    
+
     # Test that all valid statuses are counted
     district_summaries, overall_summary = calculate_summaries_from_sessions(session_data)
     
