@@ -35,5 +35,6 @@ repos:
     rev: 1.8.6
     hooks:
       - id: bandit
-        args: ["-q", "-r", ".", "-x", "tests/", "-x", "tests/unit/", "-x", "tests/integration/"]
+        args: ["-q", "-ll"]
+        exclude: ^tests/
         stages: [pre-push]
