@@ -50,7 +50,7 @@ Create a new `/docs` folder and add these files:
 - [x] Setup pre-commit:
   - `black`, `isort`, `flake8`, `bandit`
 - [x] Add CI fail on test or lint failure
-- [ ] Convert current feature list into `/docs/FEATURE_MATRIX.md`
+- [x] Convert current feature list into `/docs/FEATURE_MATRIX.md`
 
 ### 🟢 Phase B – Harden Core Functionality (Weeks 2–3)
 
