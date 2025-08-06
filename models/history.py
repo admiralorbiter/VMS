@@ -62,32 +62,33 @@ Usage Examples:
         history_type="activity",
         created_by_id=user.id
     )
-    
+
     # Soft delete a record
     history.soft_delete(user_id=admin_user.id)
-    
+
     # Check if record is recent
     if history.is_recent:
         print("This is a recent activity")
-    
+
     # Convert to dictionary for API
     history_dict = history.to_dict()
 """
 
-from sqlalchemy.orm import validates
-from models import db
-from models.utils import get_utc_now
 from datetime import datetime, timezone
 from enum import Enum
-from sqlalchemy import event
+
+from sqlalchemy.orm import validates
+
+from models import db
+
 
 class HistoryType(Enum):
     """
     Enum for categorizing different types of history records.
-    
+
     Provides standardized categories for organizing and filtering
     history records based on their purpose and content.
-    
+
     Categories:
         - NOTE: General notes and comments about volunteers
         - ACTIVITY: Volunteer activities and engagements
@@ -96,23 +97,25 @@ class HistoryType(Enum):
         - SYSTEM: System-generated records and automated actions
         - OTHER: Miscellaneous history records that don't fit other categories
     """
-    NOTE = 'note'
-    ACTIVITY = 'activity'
-    STATUS_CHANGE = 'status_change'
-    ENGAGEMENT = 'engagement'
-    SYSTEM = 'system'
-    OTHER = 'other'
+
+    NOTE = "note"
+    ACTIVITY = "activity"
+    STATUS_CHANGE = "status_change"
+    ENGAGEMENT = "engagement"
+    SYSTEM = "system"
+    OTHER = "other"
+
 
 class History(db.Model):
     """
     History model for tracking volunteer activities and notes.
-    
+
     This model maintains an audit trail of volunteer interactions, status changes,
     and administrative notes. Each record is timestamped and can be soft-deleted.
-    
+
     Database Table:
         history - Stores all volunteer activity and note records
-        
+
     Key Features:
         - Comprehensive audit trail for volunteer activities
         - Soft deletion support for data preservation
@@ -122,12 +125,12 @@ class History(db.Model):
         - Email integration for communication tracking
         - JSON metadata storage for flexible data
         - Recent activity detection
-        
+
     Relationships:
         - Many-to-one with Volunteer model
         - Many-to-one with Event model (optional)
         - Many-to-one with User model (created_by, updated_by)
-        
+
     Activity Tracking:
         - action: Type of action performed (e.g., "created", "updated")
         - summary: Brief overview of the activity
@@ -135,128 +138,117 @@ class History(db.Model):
         - activity_type: Categorization of activity
         - activity_date: When the activity occurred
         - activity_status: Current status of the activity
-        
+
     User Tracking:
         - created_by_id: User who created the record
         - updated_by_id: User who last updated the record
         - Automatic timestamp tracking for all changes
-        
+
     Integration Features:
         - salesforce_id: Salesforce record synchronization
         - email_message_id: Email communication tracking
         - additional_metadata: JSON field for flexible data storage
-        
+
     Data Management:
         - Soft deletion with is_deleted flag
         - Validation for data integrity
         - Indexed fields for performance optimization
         - Composite indexes for common queries
-        
+
     Performance Optimizations:
         - Lazy loading for related records
         - Cascade delete for proper cleanup
         - Indexed foreign keys for fast joins
         - Composite indexes for common query patterns
     """
-    __tablename__ = 'history'
+
+    __tablename__ = "history"
 
     # Primary Key
     id = db.Column(db.Integer, primary_key=True)
-    
+
     # Foreign Keys - Define relationships with other models
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'))
+    event_id = db.Column(db.Integer, db.ForeignKey("event.id"))
     # CASCADE ensures that when a volunteer is deleted, all related history records are also deleted
-    volunteer_id = db.Column(db.Integer, db.ForeignKey('volunteer.id'), nullable=False, index=True)
-    
+    volunteer_id = db.Column(db.Integer, db.ForeignKey("volunteer.id"), nullable=False, index=True)
+
     # Core Activity Fields
     action = db.Column(db.String(255))  # Type of action performed (e.g., "created", "updated")
-    summary = db.Column(db.Text)        # Brief overview of the activity (mapped from "Subject")
-    description = db.Column(db.Text)    # Detailed description of the activity
-    
+    summary = db.Column(db.Text)  # Brief overview of the activity (mapped from "Subject")
+    description = db.Column(db.Text)  # Detailed description of the activity
+
     # Activity Metadata
-    activity_type = db.Column(db.String(100), index=True)    # Categorization of activity
+    activity_type = db.Column(db.String(100), index=True)  # Categorization of activity
     activity_date = db.Column(db.DateTime, nullable=False, index=True)
-    activity_status = db.Column(db.String(50), index=True)   # Current status of the activity
-    
+    activity_status = db.Column(db.String(50), index=True)  # Current status of the activity
+
     # Timestamp Fields - Track record lifecycle
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    completed_at = db.Column(db.DateTime)                    # When the activity was completed
-    last_modified_at = db.Column(
-        db.DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
-    )
-    
+    completed_at = db.Column(db.DateTime)  # When the activity was completed
+    last_modified_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
     # Status and Integration Fields
-    is_deleted = db.Column(db.Boolean, default=False, index=True)        # Soft delete flag
+    is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete flag
     email_message_id = db.Column(db.String(255), nullable=True)  # For email integration
-    salesforce_id = db.Column(db.String(18), 
-                            unique=True, 
-                            nullable=True)    # For Salesforce integration
-    
+    salesforce_id = db.Column(db.String(18), unique=True, nullable=True)  # For Salesforce integration
+
     # New columns for enhanced tracking
-    history_type = db.Column(db.String(50), nullable=False, default='note', index=True)
-    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    history_type = db.Column(db.String(50), nullable=False, default="note", index=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     additional_metadata = db.Column(db.JSON, nullable=True)  # For storing additional structured data
-    
+
     # Notes
     notes = db.Column(db.Text, nullable=True)
-    
+
     # Relationship Definitions
     # cascade='all, delete-orphan' ensures proper cleanup of related records
     event = db.relationship(
-        'Event', 
+        "Event",
         backref=db.backref(
-            'histories',
-            lazy='dynamic',           # Lazy loading for better performance
-            cascade='all, delete-orphan'  # Automatically handle related records
-        )
-    )
-    
-    volunteer = db.relationship(
-        'Volunteer',
-        backref=db.backref(
-            'histories',
-            lazy='dynamic',
-            cascade='all, delete-orphan'
+            "histories", lazy="dynamic", cascade="all, delete-orphan"  # Lazy loading for better performance  # Automatically handle related records
         ),
-        passive_deletes=True  # Works with ondelete="CASCADE" for better performance
     )
 
-    created_by = db.relationship('User', foreign_keys=[created_by_id])
-    updated_by = db.relationship('User', foreign_keys=[updated_by_id])
+    volunteer = db.relationship(
+        "Volunteer",
+        backref=db.backref("histories", lazy="dynamic", cascade="all, delete-orphan"),
+        passive_deletes=True,  # Works with ondelete="CASCADE" for better performance
+    )
+
+    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
     __table_args__ = (
         # Composite index for common queries
-        db.Index('idx_volunteer_activity_date', 'volunteer_id', 'activity_date', 'is_deleted'),
+        db.Index("idx_volunteer_activity_date", "volunteer_id", "activity_date", "is_deleted"),
     )
 
     def __init__(self, **kwargs):
         """
         Initialize history record with validation.
-        
+
         Automatically sets activity_date to current time if not provided.
-        
+
         Args:
             **kwargs: History record attributes
         """
-        if 'activity_date' not in kwargs:
-            kwargs['activity_date'] = datetime.now(timezone.utc)
+        if "activity_date" not in kwargs:
+            kwargs["activity_date"] = datetime.now(timezone.utc)
         super().__init__(**kwargs)
 
-    @validates('notes')
+    @validates("notes")
     def validate_notes(self, key, value):
         """
         Ensure notes field is not empty when provided.
-        
+
         Args:
             key: Field name being validated
             value: Value to validate
-            
+
         Returns:
             Validated value
-            
+
         Raises:
             ValueError: If notes is provided but empty
         """
@@ -267,13 +259,13 @@ class History(db.Model):
     def soft_delete(self, user_id=None):
         """
         Soft delete the history record.
-        
+
         Marks the record as deleted without actually removing it from the database.
         Updates the updated_by_id and timestamp.
-        
+
         Args:
             user_id: ID of user performing the deletion
-            
+
         Returns:
             self: For method chaining
         """
@@ -285,12 +277,12 @@ class History(db.Model):
     def restore(self, user_id=None):
         """
         Restore a soft-deleted history record.
-        
+
         Unmarks the record as deleted and updates the updated_by_id and timestamp.
-        
+
         Args:
             user_id: ID of user performing the restoration
-            
+
         Returns:
             self: For method chaining
         """
@@ -303,7 +295,7 @@ class History(db.Model):
     def is_recent(self):
         """
         Check if history record is from the last 30 days.
-        
+
         Returns:
             bool: True if activity occurred within last 30 days
         """
@@ -314,38 +306,38 @@ class History(db.Model):
     def to_dict(self):
         """
         Convert history record to dictionary for API responses.
-        
+
         Returns:
             dict: Dictionary representation of the history record
         """
         return {
-            'id': self.id,
-            'volunteer_id': self.volunteer_id,
-            'activity_date': self.activity_date.isoformat() if self.activity_date else None,
-            'notes': self.notes,
-            'history_type': self.history_type,
-            'is_deleted': self.is_deleted,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.last_modified_at.isoformat() if self.last_modified_at else None,
-            'created_by': self.created_by.username if self.created_by and self.created_by.username else None,
-            'metadata': self.additional_metadata
+            "id": self.id,
+            "volunteer_id": self.volunteer_id,
+            "activity_date": self.activity_date.isoformat() if self.activity_date else None,
+            "notes": self.notes,
+            "history_type": self.history_type,
+            "is_deleted": self.is_deleted,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.last_modified_at.isoformat() if self.last_modified_at else None,
+            "created_by": self.created_by.username if self.created_by and self.created_by.username else None,
+            "metadata": self.additional_metadata,
         }
 
     def __repr__(self):
         """
         String representation for debugging.
-        
+
         Returns:
             str: Debug representation showing id, type, and date
         """
-        return f'<History {self.id}: {self.history_type} on {self.activity_date}>'
+        return f"<History {self.id}: {self.history_type} on {self.activity_date}>"
 
     # Add a property to handle Enum conversion
     @property
     def history_type_enum(self):
         """
         Get the HistoryType enum value.
-        
+
         Returns:
             HistoryType: Enum value corresponding to history_type field
         """
@@ -358,7 +350,7 @@ class History(db.Model):
     def history_type_enum(self, value):
         """
         Set history_type from enum value.
-        
+
         Args:
             value: HistoryType enum or string value
         """

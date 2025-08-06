@@ -44,35 +44,38 @@ Usage:
     pathway = Pathway(name="Computer Science", salesforce_id="a1b2c3d4e5f6g7h8i9")
     db.session.add(pathway)
     db.session.commit()
-    
+
     # Associate with contacts and events
     pathway.contacts.append(student_contact)
     pathway.events.append(event)
     db.session.commit()
-    
+
     # Query pathways for a student
     student_pathways = student_contact.pathways.all()
-    
+
     # Query events for a pathway
     pathway_events = pathway.events.all()
 """
 
 from datetime import datetime
-from sqlalchemy import Integer, String, ForeignKey
+
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from models import db
+
 
 class Pathway(db.Model):
     """
     Pathway Model
-    
+
     Represents a career or educational pathway that can be associated with
     multiple contacts (students) and events. Pathways help organize and
     categorize educational experiences and career development activities.
-    
+
     Database Table:
         pathway - Stores career and educational pathway information
-        
+
     Key Features:
         - Career pathway definition and organization
         - Student pathway assignment and tracking
@@ -81,24 +84,24 @@ class Pathway(db.Model):
         - Career development tracking
         - Salesforce integration for data synchronization
         - Automatic timestamp tracking for audit trails
-        
+
     Relationships:
         - Many-to-many with Contact via pathway_contacts table
         - Many-to-many with Event via pathway_events table
-        
+
     Data Management:
         - Pathway name and identification
         - Salesforce ID mapping for synchronization
         - Student pathway assignments
         - Event pathway categorizations
         - Timestamp tracking for changes
-        
+
     Integration Features:
         - Salesforce bi-directional synchronization
         - Student pathway tracking
         - Event pathway categorization
         - Career development monitoring
-        
+
     Attributes:
         id: Primary key identifier
         salesforce_id: Unique Salesforce identifier for integration
@@ -107,15 +110,16 @@ class Pathway(db.Model):
         events: Many-to-many relationship with Event model
         created_at: Timestamp when record was created
         updated_at: Timestamp when record was last updated
-        
+
     Performance Features:
         - Indexed salesforce_id for fast lookups
         - Lazy loading for related collections
         - Efficient many-to-many relationships
         - Optimized query patterns
     """
-    __tablename__ = 'pathway'
-    
+
+    __tablename__ = "pathway"
+
     # Primary identifier and Salesforce integration fields
     id = db.Column(Integer, primary_key=True)
 
@@ -126,34 +130,27 @@ class Pathway(db.Model):
     name = db.Column(String(255), nullable=False)
 
     # Add relationships to Contact and Event
-    contacts = relationship(
-        'Contact',
-        secondary='pathway_contacts',  # Association table name
-        backref=db.backref('pathways', lazy='dynamic'),
-        lazy='dynamic'
-    )
+    contacts = relationship("Contact", secondary="pathway_contacts", backref=db.backref("pathways", lazy="dynamic"), lazy="dynamic")  # Association table name
 
-    events = relationship(
-        'Event',
-        secondary='pathway_events',  # Association table name
-        backref=db.backref('pathways', lazy='dynamic'),
-        lazy='dynamic'
-    )
+    events = relationship("Event", secondary="pathway_events", backref=db.backref("pathways", lazy="dynamic"), lazy="dynamic")  # Association table name
 
     # Automatic timestamp fields for auditing and tracking
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
+
 # Association table for Pathway-Contact relationship
 # This table enables many-to-many relationship between pathways and contacts (students)
-pathway_contacts = db.Table('pathway_contacts',
-    db.Column('pathway_id', Integer, ForeignKey('pathway.id'), primary_key=True),
-    db.Column('contact_id', Integer, ForeignKey('contact.id'), primary_key=True)
+pathway_contacts = db.Table(
+    "pathway_contacts",
+    db.Column("pathway_id", Integer, ForeignKey("pathway.id"), primary_key=True),
+    db.Column("contact_id", Integer, ForeignKey("contact.id"), primary_key=True),
 )
 
 # Association table for Pathway-Event relationship
 # This table enables many-to-many relationship between pathways and events
-pathway_events = db.Table('pathway_events',
-    db.Column('pathway_id', Integer, ForeignKey('pathway.id'), primary_key=True),
-    db.Column('event_id', Integer, ForeignKey('event.id'), primary_key=True)
+pathway_events = db.Table(
+    "pathway_events",
+    db.Column("pathway_id", Integer, ForeignKey("pathway.id"), primary_key=True),
+    db.Column("event_id", Integer, ForeignKey("event.id"), primary_key=True),
 )

@@ -356,4 +356,4 @@ tags: [features, tracking, status, implementation]
 
 ---
 
-*Last updated: August 2025* 
+*Last updated: August 2025*

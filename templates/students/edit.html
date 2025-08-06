@@ -25,12 +25,12 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="first_name" class="form-label">First Name</label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                <input type="text" class="form-control" id="first_name" name="first_name"
                                        value="{{ student.first_name }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="last_name" class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                <input type="text" class="form-control" id="last_name" name="last_name"
                                        value="{{ student.last_name }}" required>
                             </div>
                         </div>
@@ -38,7 +38,7 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="salesforce_id" class="form-label">Salesforce ID</label>
-                                <input type="text" class="form-control" id="salesforce_id" name="salesforce_id" 
+                                <input type="text" class="form-control" id="salesforce_id" name="salesforce_id"
                                        value="{{ student.salesforce_id or '' }}">
                             </div>
                             <div class="col-md-6">
@@ -66,7 +66,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="racial_ethnic_background" class="form-label">Racial/Ethnic Background</label>
-                                <input type="text" class="form-control" id="racial_ethnic_background" name="racial_ethnic_background" 
+                                <input type="text" class="form-control" id="racial_ethnic_background" name="racial_ethnic_background"
                                        value="{{ student.racial_ethnic_background or '' }}">
                             </div>
                         </div>
@@ -137,4 +137,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

@@ -453,16 +453,16 @@
     .summary-stats {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .stat-card {
         padding: 0.75rem;
         min-height: 70px;
     }
-    
+
     .stat-value {
         font-size: 1.25rem;
     }
-    
+
     .stat-label {
         font-size: 0.75rem;
     }
@@ -481,16 +481,16 @@
         grid-template-columns: 1fr;
         gap: 0.5rem;
     }
-    
+
     .event-type-card {
         padding: 0.5rem;
         min-height: 45px;
     }
-    
+
     .type-name {
         font-size: 0.75rem;
     }
-    
+
     .type-count {
         font-size: 0.75rem;
         padding: 0.15rem 0.5rem;
@@ -519,8 +519,8 @@
     .school-card .events-table-wrapper {
         overflow-x: auto;
     }
-    
+
     .school-card .events-table {
         min-width: 600px;
     }
-} 
+}

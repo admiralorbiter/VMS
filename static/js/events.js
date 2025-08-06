@@ -1,11 +1,11 @@
 /**
  * Events Management JavaScript Module
  * ==================================
- * 
+ *
  * This module provides comprehensive functionality for managing events
  * in the VMS, including search, sorting, pagination, deletion, purge
  * operations, and dynamic skills management.
- * 
+ *
  * Key Features:
  * - Advanced search with debouncing
  * - Sortable table columns with visual indicators
@@ -15,61 +15,61 @@
  * - Dynamic skills management with API integration
  * - Notification system for user feedback
  * - URL parameter management
- * 
+ *
  * Search Functionality:
  * - Debounced input handling (600ms delay)
  * - Real-time form submission
  * - Multiple search field support
  * - URL parameter preservation
- * 
+ *
  * Sorting System:
  * - Clickable column headers with data-sort attributes
  * - Visual sort direction indicators
  * - Toggle between ascending/descending
  * - URL state management
  * - Reset to first page on sort
- * 
+ *
  * Pagination:
  * - Per-page selection (10, 25, 50, 100)
  * - URL parameter management
  * - Reset to first page on change
  * - Preserve existing filters and sort
- * 
+ *
  * Delete Operations:
  * - Confirmation modal for safety
  * - AJAX delete requests
  * - Error handling and user feedback
  * - Page reload after successful deletion
- * 
+ *
  * Purge Operations:
  * - Confirmation dialog for bulk deletion
  * - AJAX purge requests
  * - Success/error notifications
  * - Automatic page reload
- * 
+ *
  * Skills Management:
  * - Dynamic skill addition via API
  * - Duplicate skill prevention
  * - Visual skill tags with remove functionality
  * - Real-time skill creation and association
- * 
+ *
  * Dependencies:
  * - Bootstrap 5.3.3 CSS/JS for modal functionality
  * - FontAwesome icons for visual indicators
  * - Custom CSS for skill tag styling
- * 
+ *
  * API Endpoints:
  * - DELETE /events/delete/{id}: Delete specific event
  * - POST /events/purge: Purge all events
  * - POST /api/skills/find-or-create: Create or find skill
- * 
+ *
  * CSS Classes:
  * - .sortable: Sortable column headers
  * - .skill-tag: Skill tag styling
  * - .notification: Notification styling
  * - .show: Show notification
  * - .success/.error: Notification types
- * 
+ *
  * Data Attributes:
  * - data-sort: Column identifier for sorting
  * - data-skill-id: Skill ID for API operations
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
             header.classList.add(`sort-${currentSortDirection}`);
             updateSortIcon(header, currentSortDirection);
         }
-        
+
         header.addEventListener('click', () => handleSort(header));
     });
 
@@ -136,20 +136,20 @@ function debounce(func, wait) {
 function handleSort(header) {
     const sortField = header.dataset.sort;
     const url = new URL(window.location);
-    
+
     // Determine new sort direction
     let newDirection = 'asc';
     if (url.searchParams.get('sort_by') === sortField) {
         newDirection = url.searchParams.get('sort_direction') === 'asc' ? 'desc' : 'asc';
     }
-    
+
     // Update URL with sort parameters
     url.searchParams.set('sort_by', sortField);
     url.searchParams.set('sort_direction', newDirection);
-    
+
     // Preserve existing filters
     url.searchParams.set('page', '1'); // Reset to first page when sorting
-    
+
     window.location = url.toString();
 }
 
@@ -181,7 +181,7 @@ function handleSearch(event) {
  */
 function confirmPurge() {
     if (confirm('Are you sure you want to purge all event data? This action cannot be undone.')) {
-        fetch('/events/purge', { 
+        fetch('/events/purge', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -209,13 +209,13 @@ function confirmPurge() {
  */
 function handlePerPageChange(event) {
     const url = new URL(window.location);
-    
+
     // Update per_page parameter
     url.searchParams.set('per_page', event.target.value);
-    
+
     // Reset to first page when changing items per page
     url.searchParams.set('page', '1');
-    
+
     // Maintain other existing parameters (sort, filters, etc)
     window.location = url.toString();
 }
@@ -231,11 +231,11 @@ function deleteEvent(eventId) {
     eventToDelete = eventId;
     const modal = document.getElementById('deleteModal');
     modal.style.display = 'block';
-    
+
     // Add event listeners
     document.getElementById('cancelDelete').onclick = closeDeleteModal;
     document.getElementById('confirmDelete').onclick = confirmDelete;
-    
+
     // Close on background click
     modal.onclick = function(event) {
         if (event.target === modal) {
@@ -258,7 +258,7 @@ function closeDeleteModal() {
  */
 function confirmDelete() {
     if (!eventToDelete) return;
-    
+
     fetch(`/events/delete/${eventToDelete}`, {
         method: 'DELETE',
         headers: {
@@ -289,9 +289,9 @@ function confirmDelete() {
 function addSkill() {
     const input = document.getElementById('skill-input');
     const skillName = input.value.trim();
-    
+
     if (!skillName) return;
-    
+
     // Check if skill already exists
     const existingSkills = document.querySelectorAll('.skill-tag span');
     for (let skill of existingSkills) {
@@ -300,7 +300,7 @@ function addSkill() {
             return;
         }
     }
-    
+
     // Create new skill tag
     fetch('/api/skills/find-or-create', {
         method: 'POST',
@@ -322,7 +322,7 @@ function addSkill() {
                     <i class="fa-solid fa-times"></i>
                 </button>
             `;
-            
+
             skillsContainer.appendChild(skillTag);
             input.value = '';
             showNotification('success', 'Skill added successfully');
@@ -358,12 +358,12 @@ function showNotification(type, message) {
         <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
         <span>${message}</span>
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     // Fade in
     setTimeout(() => notification.classList.add('show'), 100);
-    
+
     // Remove after 5 seconds
     setTimeout(() => {
         notification.classList.remove('show');

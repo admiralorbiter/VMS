@@ -1,11 +1,11 @@
-{# 
+{#
   Client Project Form Template
   ===========================
-  
+
   This template provides a dynamic form for creating and editing client-connected projects
   in the Volunteer Management System. It uses HTMX for dynamic form submission and
   includes dynamic contact management functionality.
-  
+
   Key Features:
   - HTMX integration for dynamic form submission
   - Dynamic contact management (add/remove contacts)
@@ -13,7 +13,7 @@
   - Responsive Bootstrap grid layout
   - Cancel functionality with HTMX
   - URL push state management
-  
+
   Form Fields:
   - Status selection (dropdown)
   - Teacher information
@@ -21,36 +21,36 @@
   - Project title and description
   - Project dates and student count
   - Dynamic primary contacts list
-  
+
   HTMX Integration:
   - Form submission via HTMX POST
   - Dynamic form replacement
   - URL state management
   - Cancel functionality
-  
+
   Dynamic Features:
   - Add/remove contact entries
   - Form validation
   - Responsive layout
   - Auto-population for editing
-  
+
   JavaScript Functionality:
   - addContact(): Adds new contact input group
   - removeContact(): Removes contact input group
   - Form validation
   - Dynamic content management
-  
+
   Template Variables:
   - form_title: Title for the form (Create/Edit)
   - form_action: HTMX POST URL
   - project: Project object for editing (optional)
   - ProjectStatus: Enum of available statuses
-  
+
   Dependencies:
   - Bootstrap 5.3.3 CSS/JS
   - HTMX library
   - Custom styling via Bootstrap classes
-  
+
   Form Validation:
   - Required field validation
   - Client-side form checks
@@ -62,15 +62,15 @@
     {# Card header with title and close button #}
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">{{ form_title }}</h5>
-        <button type="button" class="btn-close" 
-                hx-get="/management/client-projects/cancel" 
+        <button type="button" class="btn-close"
+                hx-get="/management/client-projects/cancel"
                 hx-target="#projectFormContainer"
                 hx-swap="innerHTML"></button>
     </div>
     {# Card body containing the form #}
     <div class="card-body">
         {# HTMX form with dynamic submission and URL management #}
-        <form hx-post="{{ form_action }}" 
+        <form hx-post="{{ form_action }}"
               hx-target="#mainContainer"
               hx-swap="innerHTML"
               hx-push-url="true">
@@ -142,9 +142,9 @@
                     {% if project and project.primary_contacts %}
                         {% for contact in project.primary_contacts %}
                         <div class="input-group mb-2">
-                            <input type="text" name="contact_names[]" class="form-control" placeholder="Contact Name" 
+                            <input type="text" name="contact_names[]" class="form-control" placeholder="Contact Name"
                                    value="{{ contact.name }}" required>
-                            <input type="number" name="contact_hours[]" class="form-control" placeholder="Hours" 
+                            <input type="number" name="contact_hours[]" class="form-control" placeholder="Hours"
                                    value="{{ contact.hours }}" required>
                             <button type="button" class="btn btn-danger" onclick="removeContact(this)">Remove</button>
                         </div>
@@ -189,4 +189,4 @@ function removeContact(button) {
         button.closest('.input-group').remove();
     }
 }
-</script> 
+</script>

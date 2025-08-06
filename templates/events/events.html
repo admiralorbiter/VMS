@@ -1,9 +1,9 @@
-{# 
+{#
   Events List Template
   ===================
-  
+
   This template displays a paginated list of events with filtering and sorting capabilities.
-  
+
   Key Features:
   - Advanced filtering by title, type, status, and date range
   - Sortable table columns with visual indicators
@@ -11,21 +11,21 @@
   - Action buttons for view, edit, delete, and Salesforce integration
   - Responsive design with mobile-friendly layout
   - Delete confirmation modal for safety
-  
+
   Template Variables:
   - events: Paginated list of Event objects
   - pagination: Pagination object with navigation controls
   - current_filters: Dictionary of active filter parameters
   - event_types: List of available event types for dropdown
   - statuses: List of available statuses for dropdown
-  
+
   Filter Options:
   - Search by event title (text search)
   - Filter by event type (dropdown)
   - Filter by status (dropdown)
   - Date range filtering (start/end dates)
   - Items per page selection (10, 25, 50, 100)
-  
+
   Sorting: Clickable column headers for title, type, and start date
 #}
 
@@ -95,9 +95,9 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="search_title">Event Search</label>
-                    <input type="text" name="search_title" id="search_title" 
+                    <input type="text" name="search_title" id="search_title"
                            value="{{ current_filters.search_title }}"
-                           class="form-control" 
+                           class="form-control"
                            placeholder="Search by title...">
                 </div>
                 <div class="filter-group">
@@ -116,7 +116,7 @@
                     <select name="status" id="status" class="form-control">
                         <option value="">All Statuses</option>
                         {% for status in statuses %}
-                        <option value="{{ status[0] }}" 
+                        <option value="{{ status[0] }}"
                                 {% if current_filters.status == status[0] %}selected{% endif %}>
                             {{ status[1] }}
                         </option>
@@ -135,13 +135,13 @@
                 </div>
                 <div class="filter-group">
                     <label for="start_date">Start Date</label>
-                    <input type="date" name="start_date" id="start_date" 
+                    <input type="date" name="start_date" id="start_date"
                            value="{{ current_filters.start_date }}"
                            class="form-control">
                 </div>
                 <div class="filter-group">
                     <label for="end_date">End Date</label>
-                    <input type="date" name="end_date" id="end_date" 
+                    <input type="date" name="end_date" id="end_date"
                            value="{{ current_filters.end_date }}"
                            class="form-control">
                 </div>
@@ -262,7 +262,7 @@
                     <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 per page</option>
                     <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
                 </select>
-                
+
                 {# Pagination navigation buttons #}
                 <div class="pagination-buttons">
                     {% if pagination.has_prev %}
@@ -271,19 +271,19 @@
                         {% for key, value in current_filters.items() if key != 'per_page' %}
                             {% set _ = filtered_params.update({key: value}) %}
                         {% endfor %}
-                        <a href="{{ url_for('events.events', page=pagination.prev_num, per_page=current_filters.per_page, **filtered_params) }}" 
+                        <a href="{{ url_for('events.events', page=pagination.prev_num, per_page=current_filters.per_page, **filtered_params) }}"
                            class="pagination-btn">
                             <i class="fa-solid fa-chevron-left"></i> Previous
                         </a>
                     {% endif %}
-                    
+
                     {% if pagination.has_next %}
                         {# Next page button with preserved filters #}
                         {% set filtered_params = {} %}
                         {% for key, value in current_filters.items() if key != 'per_page' %}
                             {% set _ = filtered_params.update({key: value}) %}
                         {% endfor %}
-                        <a href="{{ url_for('events.events', page=pagination.next_num, per_page=current_filters.per_page, **filtered_params) }}" 
+                        <a href="{{ url_for('events.events', page=pagination.next_num, per_page=current_filters.per_page, **filtered_params) }}"
                            class="pagination-btn">
                             Next <i class="fa-solid fa-chevron-right"></i>
                         </a>
@@ -291,10 +291,10 @@
                 </div>
             </div>
         </div>
-        
+
         {# Pagination summary showing current page info #}
         <div class="pagination-summary">
-            Showing {{ pagination.items|length }} of {{ pagination.total }} events 
+            Showing {{ pagination.items|length }} of {{ pagination.total }} events
             (Page {{ pagination.page }} of {{ pagination.pages }})
         </div>
     </div>

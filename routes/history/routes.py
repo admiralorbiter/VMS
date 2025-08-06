@@ -66,32 +66,32 @@ Template Dependencies:
 - history/view.html: Individual history item template
 """
 
-import csv
-import os
-from flask import Blueprint, request, flash, render_template, jsonify
+from datetime import datetime, timedelta, timezone
+
+from flask import Blueprint, flash, jsonify, render_template, request
 from flask_login import login_required
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from sqlalchemy import or_
+
+from config import Config
+from models import db
 from models.event import Event
 from models.history import History
-from models import db
-from sqlalchemy import or_
-from datetime import datetime, timezone, timedelta
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
-from config import Config
-
 from models.volunteer import Volunteer
 from routes.utils import parse_date
 
-history_bp = Blueprint('history', __name__)
+history_bp = Blueprint("history", __name__)
 
-@history_bp.route('/history_table')
+
+@history_bp.route("/history_table")
 @login_required
 def history_table():
     """
     Display the main history table with filtering and pagination.
-    
+
     Provides a comprehensive view of all history entries with advanced
     filtering, sorting, and pagination capabilities.
-    
+
     Query Parameters:
         page: Current page number for pagination
         per_page: Number of items per page
@@ -102,21 +102,21 @@ def history_table():
         activity_status: Filter by activity status
         start_date: Filter by start date (YYYY-MM-DD)
         end_date: Filter by end date (YYYY-MM-DD)
-        
+
     Filtering Features:
         - Text search across summary and description fields
         - Activity type and status dropdown filtering
         - Date range filtering with validation
         - Dynamic filter options based on available data
-        
+
     Sorting Features:
         - Multi-column sorting capability
         - Configurable sort direction
         - Default sort by activity_date descending
-        
+
     Returns:
         Rendered history table template with filtered and paginated data
-        
+
     Template Variables:
         history: List of history items for current page
         pagination: Pagination object with navigation
@@ -125,23 +125,23 @@ def history_table():
         activity_statuses: List of available activity statuses
     """
     # Get pagination parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 25, type=int)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
 
     # Get sort parameters
-    sort_by = request.args.get('sort_by', 'activity_date')  # default sort by activity_date
-    sort_direction = request.args.get('sort_direction', 'desc')  # default direction
-    
+    sort_by = request.args.get("sort_by", "activity_date")  # default sort by activity_date
+    sort_direction = request.args.get("sort_direction", "desc")  # default direction
+
     # Create current_filters dictionary
     current_filters = {
-        'search_summary': request.args.get('search_summary', '').strip(),
-        'activity_type': request.args.get('activity_type', ''),
-        'activity_status': request.args.get('activity_status', ''),
-        'start_date': request.args.get('start_date', ''),
-        'end_date': request.args.get('end_date', ''),
-        'per_page': per_page,
-        'sort_by': sort_by,
-        'sort_direction': sort_direction
+        "search_summary": request.args.get("search_summary", "").strip(),
+        "activity_type": request.args.get("activity_type", ""),
+        "activity_status": request.args.get("activity_status", ""),
+        "start_date": request.args.get("start_date", ""),
+        "end_date": request.args.get("end_date", ""),
+        "per_page": per_page,
+        "sort_by": sort_by,
+        "sort_direction": sort_direction,
     }
 
     # Remove empty filters
@@ -151,104 +151,90 @@ def history_table():
     query = History.query.filter_by(is_deleted=False)
 
     # Apply filters
-    if current_filters.get('search_summary'):
+    if current_filters.get("search_summary"):
         search_term = f"%{current_filters['search_summary']}%"
-        query = query.filter(or_(
-            History.summary.ilike(search_term),
-            History.description.ilike(search_term)
-        ))
+        query = query.filter(or_(History.summary.ilike(search_term), History.description.ilike(search_term)))
 
-    if current_filters.get('activity_type'):
-        query = query.filter(History.activity_type == current_filters['activity_type'])
+    if current_filters.get("activity_type"):
+        query = query.filter(History.activity_type == current_filters["activity_type"])
 
-    if current_filters.get('activity_status'):
-        query = query.filter(History.activity_status == current_filters['activity_status'])
+    if current_filters.get("activity_status"):
+        query = query.filter(History.activity_status == current_filters["activity_status"])
 
-    if current_filters.get('start_date'):
+    if current_filters.get("start_date"):
         try:
-            start_date = datetime.strptime(current_filters['start_date'], '%Y-%m-%d')
+            start_date = datetime.strptime(current_filters["start_date"], "%Y-%m-%d")
             query = query.filter(History.activity_date >= start_date)
         except ValueError:
-            flash('Invalid start date format', 'warning')
+            flash("Invalid start date format", "warning")
 
-    if current_filters.get('end_date'):
+    if current_filters.get("end_date"):
         try:
-            end_date = datetime.strptime(current_filters['end_date'], '%Y-%m-%d')
+            end_date = datetime.strptime(current_filters["end_date"], "%Y-%m-%d")
             # Add 23:59:59 to include the entire end date
             end_date = end_date + timedelta(days=1) - timedelta(seconds=1)
             query = query.filter(History.activity_date <= end_date)
         except ValueError:
-            flash('Invalid end date format', 'warning')
+            flash("Invalid end date format", "warning")
 
     # Apply sorting
     sort_column = getattr(History, sort_by, History.activity_date)
-    if sort_direction == 'desc':
+    if sort_direction == "desc":
         query = query.order_by(sort_column.desc())
     else:
         query = query.order_by(sort_column.asc())
 
     # Apply pagination
-    pagination = query.paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
-    )
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Get unique activity types and statuses for filters
-    activity_types = db.session.query(History.activity_type)\
-        .filter(History.is_deleted == False)\
-        .distinct()\
-        .order_by(History.activity_type)\
-        .all()
+    activity_types = db.session.query(History.activity_type).filter(History.is_deleted is False).distinct().order_by(History.activity_type).all()
     activity_types = [t[0] for t in activity_types if t[0]]  # Remove None values
 
-    activity_statuses = db.session.query(History.activity_status)\
-        .filter(History.is_deleted == False)\
-        .distinct()\
-        .order_by(History.activity_status)\
-        .all()
+    activity_statuses = db.session.query(History.activity_status).filter(History.is_deleted is False).distinct().order_by(History.activity_status).all()
     activity_statuses = [s[0] for s in activity_statuses if s[0]]  # Remove None values
 
-    return render_template('history/history.html',
-                            history=pagination.items,
-                            pagination=pagination,
-                            current_filters=current_filters,
-                            activity_types=activity_types,
-                            activity_statuses=activity_statuses)
+    return render_template(
+        "history/history.html",
+        history=pagination.items,
+        pagination=pagination,
+        current_filters=current_filters,
+        activity_types=activity_types,
+        activity_statuses=activity_statuses,
+    )
 
-@history_bp.route('/history/view/<int:id>')
+
+@history_bp.route("/history/view/<int:id>")
 @login_required
 def view_history(id):
     """
     Display detailed view of a specific history item.
-    
+
     Shows comprehensive information about a single history entry
     including all associated data and metadata.
-    
+
     Args:
         id: Database ID of the history item to view
-        
+
     Returns:
         Rendered template with detailed history item information
-        
+
     Raises:
         404: History item not found
     """
     history_item = History.query.get_or_404(id)
-    return render_template(
-        'history/view.html',
-        history=history_item
-    )
+    return render_template("history/view.html", history=history_item)
 
-@history_bp.route('/history/add', methods=['POST'])
+
+@history_bp.route("/history/add", methods=["POST"])
 @login_required
 def add_history():
     """
     Add a new history entry.
-    
+
     Creates a new history record with the provided data and
     associates it with events, volunteers, and other entities.
-    
+
     Request Body (JSON):
         event_id: Associated event ID (optional)
         volunteer_id: Associated volunteer ID (optional)
@@ -258,60 +244,54 @@ def add_history():
         activity_type: Type of activity performed
         activity_status: Status of the activity (default: 'Completed')
         email_message_id: Associated email message ID (optional)
-        
+
     Returns:
         JSON response with success status and history ID
-        
+
     Raises:
         500: Database or server error
     """
     try:
         data = request.get_json()
-        
+
         history = History(
-            event_id=data.get('event_id'),
-            volunteer_id=data.get('volunteer_id'),
-            action=data.get('action'),
-            summary=data.get('summary'),
-            description=data.get('description'),
-            activity_type=data.get('activity_type'),
+            event_id=data.get("event_id"),
+            volunteer_id=data.get("volunteer_id"),
+            action=data.get("action"),
+            summary=data.get("summary"),
+            description=data.get("description"),
+            activity_type=data.get("activity_type"),
             activity_date=datetime.now(timezone.utc),
-            activity_status=data.get('activity_status', 'Completed'),
-            completed_at=datetime.now(timezone.utc) if data.get('activity_status') == 'Completed' else None,
-            email_message_id=data.get('email_message_id')
+            activity_status=data.get("activity_status", "Completed"),
+            completed_at=datetime.now(timezone.utc) if data.get("activity_status") == "Completed" else None,
+            email_message_id=data.get("email_message_id"),
         )
-        
+
         db.session.add(history)
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'History entry added successfully',
-            'history_id': history.id
-        })
-        
+
+        return jsonify({"success": True, "message": "History entry added successfully", "history_id": history.id})
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error adding history entry: {str(e)}'
-        }), 500
+        return jsonify({"success": False, "message": f"Error adding history entry: {str(e)}"}), 500
 
-@history_bp.route('/history/delete/<int:id>', methods=['POST'])
+
+@history_bp.route("/history/delete/<int:id>", methods=["POST"])
 @login_required
 def delete_history(id):
     """
     Soft delete a history entry.
-    
+
     Marks a history item as deleted without permanently removing
     it from the database, preserving data integrity.
-    
+
     Args:
         id: Database ID of the history item to delete
-        
+
     Returns:
         JSON response with success status
-        
+
     Raises:
         404: History item not found
         500: Database or server error
@@ -320,46 +300,39 @@ def delete_history(id):
         history = History.query.get_or_404(id)
         history.is_deleted = True
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'History entry deleted successfully'
-        })
-        
+
+        return jsonify({"success": True, "message": "History entry deleted successfully"})
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error deleting history entry: {str(e)}'
-        }), 500
+        return jsonify({"success": False, "message": f"Error deleting history entry: {str(e)}"}), 500
 
 
-
-@history_bp.route('/history/import-from-salesforce', methods=['POST'])
+@history_bp.route("/history/import-from-salesforce", methods=["POST"])
 @login_required
 def import_history_from_salesforce():
     """
     Import history data from Salesforce.
-    
+
     Fetches historical activity data from Salesforce and synchronizes
     it with the local database. Handles batch processing with error
     reporting and import statistics.
-    
+
     Salesforce Integration:
         - Connects to Salesforce using configured credentials
         - Executes SOQL queries for historical data
         - Processes records in batches
         - Provides detailed import statistics
-        
+
     Error Handling:
         - Salesforce authentication failures
         - Data validation errors
         - Database transaction rollback
         - Detailed error reporting
-        
+
     Returns:
         JSON response with import results and statistics
-        
+
     Raises:
         401: Salesforce authentication failure
         500: Import or database error
@@ -372,23 +345,18 @@ def import_history_from_salesforce():
         skipped_count = 0
 
         # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain='login'
-        )
+        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
 
         # Query Task records (activities, calls, meetings, emails)
         task_query = """
-            SELECT Id, Subject, Description, Type, Status, 
+            SELECT Id, Subject, Description, Type, Status,
                    ActivityDate, WhoId, WhatId
-            FROM Task 
+            FROM Task
             WHERE WhoId != null
         """
 
         result = sf.query_all(task_query)
-        task_rows = result.get('records', [])
+        task_rows = result.get("records", [])
         print(f"Found {len(task_rows)} Task records in Salesforce")
 
         # Use no_autoflush to prevent premature flushing
@@ -396,13 +364,11 @@ def import_history_from_salesforce():
             for row in task_rows:
                 try:
                     # First check if we have a valid volunteer
-                    if not row.get('WhoId'):
+                    if not row.get("WhoId"):
                         skipped_count += 1
                         continue
 
-                    volunteer = Volunteer.query.filter_by(
-                        salesforce_individual_id=row['WhoId']
-                    ).first()
+                    volunteer = Volunteer.query.filter_by(salesforce_individual_id=row["WhoId"]).first()
 
                     if not volunteer:
                         skipped_count += 1
@@ -410,56 +376,51 @@ def import_history_from_salesforce():
                         continue
 
                     # Check if history exists
-                    history = History.query.filter_by(salesforce_id=row['Id']).first()
-                    
+                    history = History.query.filter_by(salesforce_id=row["Id"]).first()
+
                     # Handle activity date before creating new record
-                    activity_date = parse_date(row.get('ActivityDate')) or datetime.now(timezone.utc)
-                    
+                    activity_date = parse_date(row.get("ActivityDate")) or datetime.now(timezone.utc)
+
                     if not history:
-                        history = History(
-                            volunteer_id=volunteer.id,
-                            activity_date=activity_date,
-                            history_type='note'  # Default type
-                        )
+                        history = History(volunteer_id=volunteer.id, activity_date=activity_date, history_type="note")  # Default type
                         db.session.add(history)
 
                     # Update history fields with proper type conversion
-                    history.salesforce_id = row['Id']
-                    history.summary = row.get('Subject', '')
-                    history.activity_type = row.get('Type', '')
-                    history.activity_status = row.get('Status', '')
+                    history.salesforce_id = row["Id"]
+                    history.summary = row.get("Subject", "")
+                    history.activity_type = row.get("Type", "")
+                    history.activity_status = row.get("Status", "")
                     history.activity_date = activity_date
 
                     # Process description field - this contains email content for email tasks
-                    description = row.get('Description', '')
+                    description = row.get("Description", "")
                     if description:
                         # Clean up the description content
                         import re
+
                         # Remove HTML tags if present
-                        description = re.sub(r'<[^>]+>', '', description)
+                        description = re.sub(r"<[^>]+>", "", description)
                         # Clean up extra whitespace
-                        description = re.sub(r'\s+', ' ', description).strip()
+                        description = re.sub(r"\s+", " ", description).strip()
                         history.description = description
-                    
+
                     # Map Salesforce type to history_type and handle email content
-                    sf_type = (row.get('Type', '') or '').lower()
-                    if sf_type == 'email':
-                        history.history_type = 'activity'
-                        history.activity_type = 'Email'
+                    sf_type = (row.get("Type", "") or "").lower()
+                    if sf_type == "email":
+                        history.history_type = "activity"
+                        history.activity_type = "Email"
                         # Store email message ID for reference
-                        history.email_message_id = row['Id']
-                    elif sf_type in ['call']:
-                        history.history_type = 'activity'
-                    elif sf_type in ['status_update']:
-                        history.history_type = 'status_change'
+                        history.email_message_id = row["Id"]
+                    elif sf_type in ["call"]:
+                        history.history_type = "activity"
+                    elif sf_type in ["status_update"]:
+                        history.history_type = "status_change"
                     else:
-                        history.history_type = 'note'
+                        history.history_type = "note"
 
                     # Handle event relationship
-                    if row.get('WhatId'):
-                        event = Event.query.filter_by(
-                            salesforce_id=row['WhatId']
-                        ).first()
+                    if row.get("WhatId"):
+                        event = Event.query.filter_by(salesforce_id=row["WhatId"]).first()
                         if event:
                             history.event_id = event.id
 
@@ -480,28 +441,18 @@ def import_history_from_salesforce():
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                return jsonify({
-                    'success': False,
-                    'message': f'Error during final commit: {str(e)}',
-                    'processed': success_count,
-                    'errors': errors
-                }), 500
+                return jsonify({"success": False, "message": f"Error during final commit: {str(e)}", "processed": success_count, "errors": errors}), 500
 
-        return jsonify({
-            'success': True,
-            'message': f'Successfully processed {success_count} history records',
-            'stats': {
-                'success': success_count,
-                'errors': error_count,
-                'skipped': skipped_count
-            },
-            'errors': errors[:100]
-        })
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully processed {success_count} history records",
+                "stats": {"success": success_count, "errors": error_count, "skipped": skipped_count},
+                "errors": errors[:100],
+            }
+        )
 
     except SalesforceAuthenticationFailed:
-        return jsonify({
-            'success': False,
-            'message': 'Failed to authenticate with Salesforce'
-        }), 401
+        return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500

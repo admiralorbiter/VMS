@@ -1,0 +1,8 @@
+[flake8]
+max-line-length = 160
+extend-ignore = E203,E501,E402
+
+# quiet down tests/scripts
+per-file-ignores =
+    tests/*: F401,F403,F405,F811,F841,E711,E712,E722
+    scripts/*: E402,F401,F541,W291

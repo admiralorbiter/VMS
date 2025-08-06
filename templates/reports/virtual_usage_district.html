@@ -158,7 +158,7 @@
     .filter-actions {
         flex-wrap: wrap;
     }
-    
+
     .filter-btn, .reset-btn {
         font-size: 13px;
         padding: 8px 12px;
@@ -169,7 +169,7 @@
     .filter-actions {
         justify-content: center;
     }
-    
+
     .filter-btn, .reset-btn {
         font-size: 12px;
         padding: 8px 10px;
@@ -459,20 +459,20 @@
     .detailed-breakdown {
         grid-template-columns: 1fr;
     }
-    
+
     .filters-form {
         grid-template-columns: 1fr;
     }
-    
+
     .summary-stats {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
-    
+
     .event-row {
         grid-template-columns: 1fr;
         gap: 5px;
     }
-    
+
     .month-summary {
         flex-direction: column;
         gap: 10px;
@@ -559,31 +559,31 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="date_from">From:</label>
-                <input type="date" id="date_from" name="date_from" 
+                <input type="date" id="date_from" name="date_from"
                        value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
             </div>
             <div class="filter-group">
                 <label for="date_to">To:</label>
-                <input type="date" id="date_to" name="date_to" 
+                <input type="date" id="date_to" name="date_to"
                        value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
             </div>
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
-                <a href="{{ url_for('report.virtual_usage_district', district_name=district_name) }}" 
+                <a href="{{ url_for('report.virtual_usage_district', district_name=district_name) }}"
                    class="reset-btn">Reset</a>
-                <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, refresh=1) }}" 
+                <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, refresh=1) }}"
                    class="filter-btn" style="background: #28a745;" title="Refresh Data">
                    🔄 Refresh</a>
-                <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}" 
+                <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}"
                    class="filter-btn" style="background: #17a2b8;" title="View Google Sheet for {{ district_name }}">
                    📊 View Google Sheet</a>
-                <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
+                <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}"
                    class="filter-btn" style="background: #6c757d;" title="Manage All Google Sheets">
                    📋 Manage Sheets</a>
-                <a href="{{ url_for('report.virtual_district_teacher_breakdown', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+                <a href="{{ url_for('report.virtual_district_teacher_breakdown', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                    class="filter-btn" style="background: #20c997;" title="View Teacher Breakdown by School">
                    👥 Teacher Breakdown</a>
             </div>
@@ -681,7 +681,7 @@
                     btn.style.display = 'none';
                 });
             }
-            
+
             // Handle month header clicks
             document.addEventListener('click', function(e) {
                 if (e.target.closest('.month-header')) {
@@ -752,8 +752,8 @@
                                                 <span style="flex: 1;">{{ event.title }}</span>
                                             {% endif %}
                                             {% if event.session_link %}
-                                                <a href="{{ event.session_link }}" target="_blank" class="session-external-btn" 
-                                                   style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;" 
+                                                <a href="{{ event.session_link }}" target="_blank" class="session-external-btn"
+                                                   style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;"
                                                    title="Go to session website">
                                                     🔗 Link
                                                 </a>
@@ -788,4 +788,4 @@
         </div>
     {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}

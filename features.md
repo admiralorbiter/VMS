@@ -301,7 +301,7 @@
 - [x] Link to Event Attendance Impact (Used to calculate per student voluneer number)
 - [ ] To Do
 
-## Event Attendance Impact 
+## Event Attendance Impact
 
 - [x] Academic Year Filter
 - [x] Event Type Filter

@@ -179,15 +179,15 @@
     .filter-row {
         grid-template-columns: 1fr;
     }
-    
+
     .history-table td:nth-child(4) {
         max-width: 200px;
     }
-    
+
     .action-buttons {
         flex-direction: column;
     }
-    
+
     .action-btn {
         width: 100%;
         justify-content: center;
@@ -258,7 +258,7 @@
     .header-actions {
         flex-direction: column;
     }
-    
+
     .action-btn {
         width: 100%;
         justify-content: center;
@@ -460,8 +460,8 @@
     .results-stats {
         grid-template-columns: 1fr;
     }
-    
+
     .upload-container {
         padding: 1rem;
     }
-} 
+}

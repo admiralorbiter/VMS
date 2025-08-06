@@ -1,11 +1,11 @@
-{# 
+{#
   Admin Dashboard Template
   =======================
-  
+
   This template provides the main administrative interface for the Volunteer Management System.
   It includes user management, password changes, data import functionality, and various
   administrative tools for system management.
-  
+
   Key Features:
   - User creation and management (admin only)
   - Password change functionality
@@ -14,44 +14,44 @@
   - Modal dialogs for user editing
   - Responsive design with Bootstrap
   - Real-time import status updates
-  
+
   Admin Functions:
   - Create new users with role assignment
   - Change user passwords
   - Import data from Salesforce (organizations, schools, classes)
   - Sequential import with progress tracking
   - User management and editing
-  
+
   Import System:
   - Sequential import with dependency order
   - Progress bars for each import type
   - Status messages and error handling
   - Import all functionality
   - Individual import options
-  
+
   Modal Features:
   - User editing modal
   - Custom modal styling
   - Form validation
   - Dynamic content loading
-  
+
   Template Variables:
   - current_user: Current authenticated user object
   - users: List of system users (for management)
   - import_status: Status of import operationsadd
-  
+
   Dependencies:
   - Bootstrap 5.3.3 CSS/JS
   - FontAwesome icons
   - Custom admin.css for styling
   - Custom JavaScript for import functionality
-  
+
   Security Features:
   - Admin-only access controls
   - CSRF protection
   - Form validation
   - User authentication checks
-  
+
   JavaScript Integration:
   - Import functionality with AJAX
   - Progress tracking
@@ -74,11 +74,11 @@
         z-index: 1000;
         display: none;
     }
-    
+
     .modal-backdrop.show {
         display: block;
     }
-    
+
     .modal-container {
         position: fixed;
         top: 50%;
@@ -93,11 +93,11 @@
         width: 90%;
         display: none;
     }
-    
+
     .modal-container.show {
         display: block;
     }
-    
+
     .modal-header {
         display: flex;
         justify-content: space-between;
@@ -106,30 +106,30 @@
         border-bottom: 1px solid #eee;
         padding-bottom: 10px;
     }
-    
+
     .modal-close {
         background: none;
         border: none;
         font-size: 20px;
         cursor: pointer;
     }
-    
+
     .modal-form {
         display: flex;
         flex-direction: column;
         gap: 15px;
     }
-    
+
     .form-group {
         display: flex;
         flex-direction: column;
         gap: 5px;
     }
-    
+
     .form-group label {
         font-weight: bold;
     }
-    
+
     .modal-footer {
         display: flex;
         justify-content: flex-end;
@@ -146,7 +146,7 @@
 {% block content %}
 <div class="container mt-4">
     <h1>Admin Dashboard</h1>
-    
+
     {% if current_user.is_admin %}
     {# User Creation Form - Admin only #}
     <div class="card admin-card mt-4">
@@ -210,7 +210,7 @@
         <div class="card-body">
             <h5 class="card-title mb-0">Import Data from Salesforce</h5>
             <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
-            
+
             {# Import All button with progress tracking #}
             <div class="mb-4">
                 <button onclick="importAllSequentially()" class="btn admin-btn-import" id="importAllBtn">
@@ -236,7 +236,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Schools import #}
                 <div class="import-item">
                     <button onclick="importSchools()" class="btn admin-btn-import" id="importSchoolsBtn">
@@ -248,7 +248,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Classes import #}
                 <div class="import-item">
                     <button onclick="importClasses()" class="btn admin-btn-import" id="importClassesBtn">
@@ -260,7 +260,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Teachers import #}
                 <div class="import-item">
                     <button onclick="importTeachers()" class="btn admin-btn-import" id="importTeachersBtn">
@@ -272,7 +272,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Teachers Management #}
                 <div class="import-item">
                     <a href="{{ url_for('teachers.list_teachers') }}" class="btn admin-btn-import" id="manageTeachersBtn" style="display: flex; align-items: center;">
@@ -281,7 +281,7 @@
                     </a>
                     <div class="import-status" id="manageTeachersStatus"></div>
                 </div>
-                
+
                 {# Students import #}
                 <div class="import-item">
                     <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
@@ -293,7 +293,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Students Management #}
                 <div class="import-item">
                     <a href="{{ url_for('students.view_students') }}" class="btn admin-btn-import" id="manageStudentsBtn" style="display: flex; align-items: center;">
@@ -302,7 +302,7 @@
                     </a>
                     <div class="import-status" id="manageStudentsStatus"></div>
                 </div>
-                
+
                 {# Volunteers import #}
                 <div class="import-item">
                     <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
@@ -314,7 +314,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Volunteer-Organization Affiliations import #}
                 <div class="import-item">
                     <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
@@ -326,7 +326,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Events import #}
                 <div class="import-item">
                     <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
@@ -338,7 +338,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# Student Participations (NEW) import #}
                 <div class="import-item">
                     <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
@@ -350,7 +350,7 @@
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
-                
+
                 {# History import #}
                 <div class="import-item">
                     <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
@@ -527,7 +527,7 @@
                             <td>{{ user.created_at|format_date }}</td>
                             <td>
                                 {# Add the Edit button with htmx #}
-                                <button 
+                                <button
                                     hx-get="/management/users/{{ user.id }}/edit"
                                     hx-target="#userEditModal"
                                     hx-trigger="click"
@@ -535,7 +535,7 @@
                                     _="on click add .show to #modalBackdrop">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                
+
                                 {% if current_user.can_manage_user(user) %}
                                 <button onclick="deleteUser('{{ user.id }}')" class="btn admin-btn-danger btn-sm">
                                     <i class="fas fa-trash"></i> Delete
@@ -560,7 +560,7 @@ document.getElementById('updateLocalStatus').addEventListener('click', function(
     if (confirm('Are you sure you want to update local statuses for all volunteers? This may take a few moments.')) {
         this.disabled = true;
         this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
-        
+
         fetch('/volunteers/update-local-statuses', {
             method: 'POST',
             headers: {
@@ -808,7 +808,7 @@ function importStudents() {
             });
 
             const data = await response.json();
-            
+
             if (data.status === 'error') {
                 throw new Error(data.message);
             }
@@ -818,7 +818,7 @@ function importStudents() {
             processedCount += data.processed_count;
             const progressPercent = (processedCount / totalRecords) * 100;
             progressBar.style.width = `${progressPercent}%`;
-            
+
             // Update status
             status.textContent = `Processed ${processedCount.toLocaleString()} of ${totalRecords.toLocaleString()} records`;
 
@@ -915,7 +915,7 @@ function purgeVolunteers() {
 
     const btn = document.getElementById('purgeVolunteersBtn');
     const status = document.getElementById('purgeVolunteersStatus');
-    
+
     btn.disabled = true;
     status.textContent = 'Purging volunteer data...';
     status.className = 'purge-status';
@@ -950,7 +950,7 @@ function purgeEvents() {
     if (confirm('WARNING: This will permanently delete ALL events and their participations. This action cannot be undone. Are you sure you want to continue?')) {
         document.getElementById('purgeEventsBtn').disabled = true;
         document.getElementById('purgeEventsBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Purging...';
-        
+
         fetch('/events/purge', {
             method: 'POST',
             headers: {
@@ -982,7 +982,7 @@ function purgeVirtualSessions() {
 
     const btn = document.getElementById('purgeVirtualSessionsBtn');
     const status = document.getElementById('purgeVirtualSessionsStatus');
-    
+
     btn.disabled = true;
     status.textContent = 'Purging virtual session data...';
     status.className = 'purge-status';
@@ -1002,7 +1002,7 @@ function purgeVirtualSessions() {
                 `${data.event_teachers_deleted || 0} teacher associations`,
                 `${data.event_participations_deleted || 0} event participations`
             ].filter(count => count !== '0').join(', ');
-            
+
             status.textContent = `Successfully purged: ${details}`;
             status.classList.add('success');
             showToast('Success', `Virtual session data has been purged from the system`, 'success');
@@ -1025,7 +1025,7 @@ async function importAllSequentially() {
     const importAllStatus = document.getElementById('importAllStatus');
     const importAllProgress = document.getElementById('importAllProgress');
     const progressBar = importAllProgress.querySelector('.import-progress-bar');
-    
+
     // Define the import sequence with routes and button IDs
     const importSequence = [
         { route: '/organizations/import-from-salesforce', name: 'Organizations', btnId: 'importOrganizationsBtn' },
@@ -1049,7 +1049,7 @@ async function importAllSequentially() {
     // Disable the main import button
     importAllBtn.disabled = true;
     importAllProgress.classList.add('active');
-    
+
     let successCount = 0;
     let errorCount = 0;
 
@@ -1057,9 +1057,9 @@ async function importAllSequentially() {
         const item = importSequence[i];
         const progress = ((i) / importSequence.length) * 100;
         progressBar.style.width = `${progress}%`;
-        
+
         importAllStatus.textContent = `Importing ${item.name}...`;
-        
+
         try {
             const response = await fetch(item.route, {
                 method: 'POST',
@@ -1067,9 +1067,9 @@ async function importAllSequentially() {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 successCount++;
                 const btn = document.getElementById(item.btnId);
@@ -1089,10 +1089,10 @@ async function importAllSequentially() {
 
     // Complete the progress bar
     progressBar.style.width = '100%';
-    
+
     // Update final status
     importAllStatus.textContent = `Import complete: ${successCount} successful, ${errorCount} failed`;
-    
+
     // Re-enable all buttons
     importSequence.forEach(item => {
         const btn = document.getElementById(item.btnId);
@@ -1120,9 +1120,9 @@ function showToast(title, message, type = 'success') {
             <div>${message}</div>
         </div>
     `;
-    
+
     toastContainer.appendChild(toast);
-    
+
     // Remove toast after 5 seconds
     setTimeout(() => {
         toast.style.opacity = '0';
@@ -1134,21 +1134,21 @@ function refreshDistrictReport() {
     if (!confirm('Are you sure you want to refresh the district year-end report cache?')) {
         return;
     }
-    
+
     const btn = document.getElementById('refreshDistrictReportBtn');
     const status = document.getElementById('refreshDistrictReportStatus');
-    
+
     btn.disabled = true;
     status.textContent = 'Refreshing report cache...';
-    
+
     // Get current school year
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth() + 1; // JavaScript months are 0-based
-    const schoolYear = month < 6 ? 
-        `${(year-1).toString().slice(-2)}${year.toString().slice(-2)}` : 
+    const schoolYear = month < 6 ?
+        `${(year-1).toString().slice(-2)}${year.toString().slice(-2)}` :
         `${year.toString().slice(-2)}${(year+1).toString().slice(-2)}`;
-    
+
     fetch(`/reports/district/year-end/refresh?school_year=${schoolYear}`, {
         method: 'POST',
         headers: {
@@ -1185,11 +1185,11 @@ function importPathways() {
     const button = document.getElementById('importPathwaysBtn');
     const status = document.getElementById('importPathwaysStatus');
     const progress = document.getElementById('importPathwaysProgress');
-    
+
     button.disabled = true;
     status.textContent = 'Importing pathways...';
     progress.style.display = 'block';
-    
+
     // Make the API call
     fetch('/pathways/import-from-salesforce', {
         method: 'POST',
@@ -1206,7 +1206,7 @@ function importPathways() {
             status.textContent = data.message || 'Import failed';
             status.style.color = 'red';
         }
-        
+
         // Show errors if any
         if (data.errors && data.errors.length > 0) {
             console.log('Import errors:', data.errors);
@@ -1228,11 +1228,11 @@ function importPathwayParticipants() {
     const button = document.getElementById('importPathwayParticipantsBtn');
     const status = document.getElementById('importPathwayParticipantsStatus');
     const progress = document.getElementById('importPathwayParticipantsProgress');
-    
+
     button.disabled = true;
     status.textContent = 'Importing pathway participants...';
     progress.style.display = 'block';
-    
+
     // Make the API call
     fetch('/pathways/import-participants-from-salesforce', {
         method: 'POST',
@@ -1249,7 +1249,7 @@ function importPathwayParticipants() {
             status.textContent = data.message || 'Import failed';
             status.style.color = 'red';
         }
-        
+
         // Show errors if any
         if (data.errors && data.errors.length > 0) {
             console.log('Import errors:', data.errors);
@@ -1335,14 +1335,14 @@ function syncUnaffiliatedEvents() {
         headers: {
             'Content-Type': 'application/json',
             // If you use Flask-WTF CSRF protection, uncomment and ensure csrf_token() is available in JS scope
-            // 'X-CSRFToken': /* some_js_variable_holding_the_token */ 
+            // 'X-CSRFToken': /* some_js_variable_holding_the_token */
         }
     })
     .then(response => {
         const contentType = response.headers.get("content-type");
         if (response.ok && contentType && contentType.indexOf("application/json") !== -1) {
             // It's likely JSON, proceed to parse
-            return response.json(); 
+            return response.json();
         } else {
             // Not JSON or not an OK status, read as text and throw an error
             return response.text().then(text => {
@@ -1354,7 +1354,7 @@ function syncUnaffiliatedEvents() {
                    errorMsg += ` Response body: ${text.substring(0, 200)}...`; // Show beginning of text
                 }
                 // Throw an error object to be caught by .catch()
-                throw new Error(errorMsg); 
+                throw new Error(errorMsg);
             });
         }
     })

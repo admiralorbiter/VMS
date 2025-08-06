@@ -43,13 +43,13 @@ Create a new `/docs` folder and add these files:
 
 ### 🟢 Phase A – Establish Baseline (Week 1)
 
-- [ ] Create `docs/` folder structure
-- [ ] Improve README:
+- [x] Create `docs/` folder structure
+- [x] Improve README:
   - Add architecture summary or Mermaid diagram
   - Add project purpose at top
-- [ ] Setup pre-commit:
+- [x] Setup pre-commit:
   - `black`, `isort`, `flake8`, `bandit`
-- [ ] Add CI fail on test or lint failure
+- [x] Add CI fail on test or lint failure
 - [ ] Convert current feature list into `/docs/FEATURE_MATRIX.md`
 
 ### 🟢 Phase B – Harden Core Functionality (Weeks 2–3)
@@ -94,11 +94,11 @@ Create a new `/docs` folder and add these files:
 
 ### ✅ Pull Request Checklist
 
-- [ ] Linked to issue  
-- [ ] Relevant docs updated  
-- [ ] Tests pass  
-- [ ] Lint passes  
-- [ ] Clear explanation  
+- [ ] Linked to issue
+- [ ] Relevant docs updated
+- [ ] Tests pass
+- [ ] Lint passes
+- [ ] Clear explanation
 
 ### ✅ Feature Spec Template
 
@@ -126,7 +126,7 @@ Create a new `/docs` folder and add these files:
 
 ### ✅ Data Import Runbook
 
-1. Confirm `.env` is up to date  
+1. Confirm `.env` is up to date
 2. Run:
    \`\`\`bash
    python manage_imports.py --sequential
@@ -167,8 +167,8 @@ Create a new `/docs` folder and add these files:
 
 By following this plan, you’ll:
 
-✅ Complete unfinished key functionality  
-✅ Provide AI-usable, human-readable documentation  
-✅ Establish a safe, automated dev pipeline  
-✅ Support new contributors and future integrations  
+✅ Complete unfinished key functionality
+✅ Provide AI-usable, human-readable documentation
+✅ Establish a safe, automated dev pipeline
+✅ Support new contributors and future integrations
 ✅ Ship a 1.0 milestone with confidence

@@ -1,29 +1,29 @@
-import requests
 import os
 
+import requests
+
 # Replace with your actual PythonAnywhere URL for the Flask app
-BASE_URL = 'https://polaris-jlane.pythonanywhere.com'
-TOKEN = os.getenv('TOKEN')
+BASE_URL = "https://polaris-jlane.pythonanywhere.com"
+TOKEN = os.getenv("TOKEN")
 
 # Add debug print and token validation
 if TOKEN is None:
     raise ValueError("TOKEN environment variable is not set")
 
+
 def trigger_sync():
-    endpoints = [
-        ('/sync_recent_salesforce_data', 'Full Data Sync')
-    ]
+    endpoints = [("/sync_recent_salesforce_data", "Full Data Sync")]
 
     for endpoint, name in endpoints:
         try:
             print(f"\nStarting {name} sync...")
-            print(f"Using token: {TOKEN[:5]}...") # Print first 5 chars for verification
-            
+            print(f"Using token: {TOKEN[:5]}...")  # Print first 5 chars for verification
+
             response = requests.post(f"{BASE_URL}{endpoint}?token={TOKEN}")
             response.raise_for_status()
             print(f"Response status code: {response.status_code}")
             print(f"Response content: {response.text}")  # Print raw response
-            
+
             try:
                 json_response = response.json()
                 print(f"{name} sync completed successfully: {json_response}")
@@ -33,5 +33,6 @@ def trigger_sync():
         except requests.exceptions.RequestException as e:
             print(f"{name} sync failed: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     trigger_sync()

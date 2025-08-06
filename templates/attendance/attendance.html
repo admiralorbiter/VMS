@@ -1,11 +1,11 @@
-{# 
+{#
   Attendance Management Template
   ============================
-  
+
   This template provides the main interface for managing attendance data in the
   Volunteer Management System. It includes tabbed views for students and teachers,
   with pagination, sorting, and detailed view functionality.
-  
+
   Key Features:
   - Tabbed interface for students and teachers
   - Paginated data tables with sorting
@@ -14,27 +14,27 @@
   - Responsive design with Bootstrap
   - Search and filter capabilities
   - Export and reporting options
-  
+
   Table Features:
   - Sortable columns with visual indicators
   - Pagination with navigation controls
   - Per-page selection (10, 25, 50, 100)
   - Action buttons for detailed views
   - Responsive table layout
-  
+
   Tab Navigation:
   - Students tab (default active)
   - Teachers tab
   - Dynamic content switching
   - State preservation
-  
+
   Pagination System:
   - Page number navigation
   - Previous/Next buttons
   - Ellipsis for large page counts
   - Current page highlighting
   - Disabled states for edge cases
-  
+
   Template Variables:
   - students: Paginated student data
   - teachers: Paginated teacher data
@@ -42,13 +42,13 @@
   - per_page_options: Available page size options
   - total_students: Total student count
   - total_teachers: Total teacher count
-  
+
   Dependencies:
   - Bootstrap 5.3.3 CSS/JS
   - FontAwesome icons
   - Custom attendance.css for styling
   - Custom JavaScript for tab switching and pagination
-  
+
   JavaScript Functions:
   - switchTab(): Switch between students/teachers tabs
   - changePage(): Navigate between pages
@@ -152,7 +152,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-            
+
             {# Pagination controls for students table #}
             <div class="pagination-controls">
                 <div class="pagination-info">
@@ -166,7 +166,7 @@
                     </select>
                     <span>Showing {{ students.items|length }} of {{ total_students }} students</span>
                 </div>
-                
+
                 {# Pagination navigation buttons #}
                 <div class="pagination-buttons">
                     {# Previous page button (disabled if no previous page) #}
@@ -174,7 +174,7 @@
                             {% if not students.has_prev %}disabled{% endif %}>
                         Previous
                     </button>
-                    
+
                     {# Page number buttons with ellipsis for large page counts #}
                     {% for page_num in students.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
                         {% if page_num %}
@@ -186,7 +186,7 @@
                             <span class="page-btn">...</span>
                         {% endif %}
                     {% endfor %}
-                    
+
                     {# Next page button (disabled if no next page) #}
                     <button class="page-btn" onclick="changePage({{ students.next_num }}, 'students')"
                             {% if not students.has_next %}disabled{% endif %}>
@@ -201,12 +201,12 @@
             {# Search bar for teachers #}
             <div class="search-container">
                 <div class="search-box">
-                    <input type="text" id="teacherSearch" placeholder="Search teachers by name..." 
+                    <input type="text" id="teacherSearch" placeholder="Search teachers by name..."
                            onkeyup="searchTeachers()" class="search-input">
                     <i class="fas fa-search search-icon"></i>
                 </div>
             </div>
-            
+
             <table class="table attendance-table" id="teachersTable">
                 <thead>
                     <tr>
@@ -259,7 +259,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-            
+
             {# Pagination controls for teachers table #}
             <div class="pagination-controls">
                 <div class="pagination-info">
@@ -273,14 +273,14 @@
                     </select>
                     <span>Showing {{ teachers.items|length }} of {{ total_teachers }} teachers</span>
                 </div>
-                
+
                 {# Pagination navigation buttons for teachers #}
                 <div class="pagination-buttons">
                     <button class="page-btn" onclick="changePage({{ teachers.prev_num }}, 'teachers')"
                             {% if not teachers.has_prev %}disabled{% endif %}>
                         Previous
                     </button>
-                    
+
                     {% for page_num in teachers.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
                         {% if page_num %}
                             <button class="page-btn {% if page_num == teachers.page %}active{% endif %}"
@@ -291,7 +291,7 @@
                             <span class="page-btn">...</span>
                         {% endif %}
                     {% endfor %}
-                    
+
                     <button class="page-btn" onclick="changePage({{ teachers.next_num }}, 'teachers')"
                             {% if not teachers.has_next %}disabled{% endif %}>
                         Next

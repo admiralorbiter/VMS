@@ -1,10 +1,10 @@
-{# 
+{#
   Event View Template
   ==================
-  
+
   This template displays detailed information about a single event with comprehensive
   participation data and related information.
-  
+
   Key Features:
   - Comprehensive event information display
   - Participation statistics and details
@@ -13,19 +13,19 @@
   - Responsive card-based layout
   - Salesforce integration links
   - Action buttons for editing and navigation
-  
+
   Template Variables:
   - event: Event object with all related data
   - volunteer_count: Number of volunteers associated with event
   - participation_stats: Dictionary of volunteer participation by status
   - event_teachers: List of EventTeacher objects with teacher details
   - student_participations: List of EventStudentParticipation objects
-  
+
   Layout Sections:
   1. Header: Event title, badges, and action buttons
   2. Main Content Grid: Event details, participation, people, skills
   3. Participation Details: Volunteer and student participation breakdown
-  
+
   Security: All links properly escaped and validated
 #}
 
@@ -262,7 +262,7 @@
             <button class="tab-btn" id="student-tab-btn" onclick="showTab('student')">Students</button>
             <input type="text" id="participation-search" class="participation-search" placeholder="Search by name..." oninput="filterParticipationCards()">
         </div>
-        
+
         {# Volunteer Tab - Combined data from participation_stats and event.volunteers #}
         <div class="tab-content" id="volunteer-tab">
             {% set all_volunteer_ids = [] %}
@@ -304,7 +304,7 @@
                     {% endif %}
                 {% endfor %}
             {% endif %}
-            
+
             {# Add volunteers from event.volunteers that aren't in participation_stats #}
             {% if event.volunteers %}
                 {% set untracked_volunteers = [] %}
@@ -313,7 +313,7 @@
                         {% set _ = untracked_volunteers.append(volunteer) %}
                     {% endif %}
                 {% endfor %}
-                
+
                 {% if untracked_volunteers %}
                 <div class="participation-group">
                     <h4 class="group-title">
@@ -338,7 +338,7 @@
                 </div>
                 {% endif %}
             {% endif %}
-            
+
             {# Add text-based educators for virtual events #}
             {% if event.educators and (event.format.value == 'virtual' or event.type.value == 'virtual_session') %}
             <div class="participation-group">
@@ -360,12 +360,12 @@
                 </div>
             </div>
             {% endif %}
-            
+
             {% if not participation_stats and not event.volunteers and not event.educators %}
             <div class="no-participation">No volunteer participation data available.</div>
             {% endif %}
         </div>
-        
+
         {# Teacher Tab - Combined data from event_teachers and educators #}
         <div class="tab-content" id="teacher-tab" style="display:none;">
             {% if event_teachers %}
@@ -414,7 +414,7 @@
             <div class="no-participation">No teacher participation data available.</div>
             {% endif %}
         </div>
-        
+
         {# Student Tab - Data from student_participations #}
         <div class="tab-content" id="student-tab" style="display:none;">
             {% if student_participations %}

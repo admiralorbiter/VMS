@@ -17,14 +17,14 @@ sequenceDiagram
     participant Client
     participant API
     participant Database
-    
+
     Client->>API: POST /api/v1/token (username, password)
     API->>Database: Validate credentials
     Database-->>API: User data
     API->>API: Generate API token
     API->>Database: Store token with expiry
     API-->>Client: Token response
-    
+
     Client->>API: GET /api/v1/users/sync (X-API-Token)
     API->>API: Validate token
     API->>Database: Query user data
@@ -447,7 +447,7 @@ class VMSClient:
     def __init__(self, base_url, username, password):
         self.base_url = base_url
         self.token = self._authenticate(username, password)
-    
+
     def _authenticate(self, username, password):
         response = requests.post(
             f"{self.base_url}/api/v1/token",
@@ -455,13 +455,13 @@ class VMSClient:
         )
         response.raise_for_status()
         return response.json()["token"]
-    
+
     def get_users(self, since_date=None, limit=100, offset=0):
         headers = {"X-API-Token": self.token}
         params = {"limit": limit, "offset": offset}
         if since_date:
             params["since_date"] = since_date
-        
+
         response = requests.get(
             f"{self.base_url}/api/v1/users/sync",
             headers=headers,
@@ -469,7 +469,7 @@ class VMSClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def revoke_token(self):
         headers = {"X-API-Token": self.token}
         response = requests.post(
@@ -494,7 +494,7 @@ class VMSClient {
         this.token = null;
         this.authenticate(username, password);
     }
-    
+
     async authenticate(username, password) {
         const response = await fetch(`${this.baseUrl}/api/v1/token`, {
             method: 'POST',
@@ -503,42 +503,42 @@ class VMSClient {
             },
             body: JSON.stringify({ username, password })
         });
-        
+
         if (!response.ok) {
             throw new Error('Authentication failed');
         }
-        
+
         const data = await response.json();
         this.token = data.token;
     }
-    
+
     async getUsers(sinceDate = null, limit = 100, offset = 0) {
         const headers = {
             'X-API-Token': this.token,
             'Accept': 'application/json'
         };
-        
+
         const params = new URLSearchParams({
             limit: limit.toString(),
             offset: offset.toString()
         });
-        
+
         if (sinceDate) {
             params.append('since_date', sinceDate);
         }
-        
+
         const response = await fetch(
             `${this.baseUrl}/api/v1/users/sync?${params}`,
             { headers }
         );
-        
+
         if (!response.ok) {
             throw new Error('Failed to fetch users');
         }
-        
+
         return await response.json();
     }
-    
+
     async revokeToken() {
         const response = await fetch(`${this.baseUrl}/api/v1/token/revoke`, {
             method: 'POST',
@@ -546,11 +546,11 @@ class VMSClient {
                 'X-API-Token': this.token
             }
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to revoke token');
         }
-        
+
         return await response.json();
     }
 }
@@ -572,4 +572,4 @@ client.getUsers('2024-01-01').then(users => {
 
 ---
 
-*Last updated: January 2025* 
+*Last updated: January 2025*

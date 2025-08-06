@@ -1,9 +1,9 @@
-{# 
+{#
   Event Edit Template
   ==================
-  
+
   This template provides a form for editing existing events in the VMS system.
-  
+
   Key Features:
   - Pre-populated form with existing event data
   - Form validation with error display
@@ -12,16 +12,16 @@
   - FontAwesome icons for visual enhancement
   - Responsive grid layout for form fields
   - CSRF protection for security
-  
+
   Template Variables:
   - form: EventForm instance with validation and field definitions
   - event: Event object with current data to be edited
-  
+
   Form Sections:
   1. Basic Information: Title, type, dates, location, format, status, volunteers needed
   2. Event Details: Description field for detailed event information
   3. Skills Required: Dynamic skills management with add/remove functionality
-  
+
   Security: CSRF token included for POST request protection
 #}
 
@@ -53,7 +53,7 @@
     <form method="POST" class="event-form">
         {# CSRF protection token - required for all POST requests #}
         {{ form.csrf_token }}
-        
+
         {# Error display section - shows validation errors if form submission fails #}
         {% if form.errors %}
             <div class="alert alert-danger">
@@ -170,7 +170,7 @@
                     <label for="skill-input">Add Skills</label>
                     {# Skills input group with add button #}
                     <div class="skill-input-group">
-                        <input type="text" id="skill-input" class="form-control skill-input" 
+                        <input type="text" id="skill-input" class="form-control skill-input"
                                placeholder="Enter a skill...">
                         <button type="button" class="add-skill-btn" onclick="addSkill()">
                             <i class="fa-solid fa-plus"></i>

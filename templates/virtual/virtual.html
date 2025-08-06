@@ -1,11 +1,11 @@
-{# 
+{#
   Virtual Sessions Management Template
   ===================================
-  
+
   This template provides the interface for managing virtual session data in the VMS.
   It includes functionality to view virtual session information and purge virtual data
   with confirmation dialogs and status feedback.
-  
+
   Key Features:
   - Virtual session data display
   - Purge functionality with confirmation modal
@@ -13,41 +13,41 @@
   - AJAX-based purge operation
   - Responsive design with modern UI
   - Safety confirmation for destructive operations
-  
+
   Page Sections:
   - Header with title and purge button
   - Status message display area
   - Virtual session content area
   - Confirmation modal for purge operation
-  
+
   JavaScript Functionality:
   - showDeleteConfirmation(): Displays purge confirmation modal
   - showStatus(): Shows status messages with auto-hide
   - Modal event handlers for cancel/confirm actions
   - AJAX fetch for purge operation
   - Page reload after successful purge
-  
+
   Modal Features:
   - Overlay background
   - Confirmation dialog with warning text
   - Cancel and confirm buttons
   - Responsive design
-  
+
   Status Messages:
   - Success messages (green styling)
   - Error messages (red styling)
   - Auto-hide after 5 seconds
   - Dynamic content updates
-  
+
   Template Variables:
   - current_user: Current authenticated user object
-  
+
   Dependencies:
   - Bootstrap 5.3.3 CSS/JS
   - Custom virtual.css for styling
   - FontAwesome icons
   - Fetch API for AJAX requests
-  
+
   Security Considerations:
   - Confirmation required for destructive operations
   - Server-side validation of purge requests
@@ -107,7 +107,7 @@ function showStatus(message, isError = false) {
     statusDiv.textContent = message;
     statusDiv.className = `status-message ${isError ? 'error' : 'success'}`;
     statusDiv.style.display = 'block';
-    
+
     // Hide after 5 seconds
     setTimeout(() => {
         statusDiv.style.display = 'none';
@@ -128,9 +128,9 @@ document.getElementById('confirmDelete').addEventListener('click', async functio
                 'Content-Type': 'application/json',
             },
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             showStatus(data.message);
             // Reload the page after successful purge

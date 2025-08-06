@@ -14,7 +14,7 @@
             <i class="fa-solid fa-arrow-left"></i> Back to Events
         </a>
     </div>
-    
+
     <div class="event-info">
         <div class="row">
             <div class="col-md-4">
@@ -48,7 +48,7 @@
                         <thead>
                             <tr>
                                 <th>
-                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id, 
+                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
                                                       sort='name', order='desc' if sort == 'name' and order == 'asc' else 'asc') }}"
                                        class="text-decoration-none d-flex align-items-center">
                                         Name
@@ -128,7 +128,7 @@
                         <thead>
                             <tr>
                                 <th>
-                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id, 
+                                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id,
                                                       sort='name', order='desc' if sort == 'name' and order == 'asc' else 'asc') }}"
                                        class="text-decoration-none d-flex align-items-center">
                                         Name

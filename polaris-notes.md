@@ -96,7 +96,7 @@ Polaris is a custom web application designed to supplement Salesforce by capturi
 Data Sources (Salesforce + Google Sheets)
     ↓
 Ingestion Layer (Flask API + Bulk API 2.0)
-    ↓  
+    ↓
 Processing Layer (SQLAlchemy + Great Expectations)
     ↓
 Database Layer (SQLite → PostgreSQL migration path)
@@ -124,7 +124,7 @@ CREATE TABLE salesforce_contacts (
     sync_timestamp TEXT,
     sync_batch_id TEXT,
     record_hash TEXT, -- SHA-256 for change detection
-    
+
     -- Reconciliation-optimized indexes
     INDEX idx_reconciliation (salesforce_id, record_hash),
     INDEX idx_sync_batch (sync_batch_id, modified_date),
@@ -145,7 +145,7 @@ CREATE TABLE salesforce_events (
     sync_timestamp TEXT,
     sync_batch_id TEXT,
     record_hash TEXT,
-    
+
     INDEX idx_event_reconciliation (salesforce_id, record_hash),
     INDEX idx_contact_events (who_id, start_datetime)
 );
@@ -165,51 +165,51 @@ class DataReconciliationEngine:
             'date_variance_days': 0,
             'string_similarity_threshold': 0.95
         }
-    
+
     def perform_reconciliation(self, object_type='Contact'):
         """Execute comprehensive reconciliation with detailed reporting"""
-        
+
         # 1. Row count validation
         source_count = self.get_source_count(object_type)
         target_count = self.get_target_count(object_type)
-        
+
         count_diff = abs(source_count - target_count)
         count_variance = count_diff / max(source_count, 1)
-        
+
         # 2. Hash-based change detection
         hash_mismatches = self.detect_hash_mismatches(object_type)
-        
+
         # 3. Field-level tolerance checks
         field_discrepancies = self.validate_field_tolerances(object_type)
-        
+
         # 4. Schema drift detection
         schema_changes = self.detect_schema_changes(object_type)
-        
+
         return self.generate_reconciliation_report({
             'row_count_variance': count_variance,
             'hash_mismatches': hash_mismatches,
             'field_discrepancies': field_discrepancies,
             'schema_changes': schema_changes
         })
-    
+
     def detect_hash_mismatches(self, object_type):
         """Compare record hashes between source and target"""
         query = f"""
         WITH source_hashes AS (
-            SELECT salesforce_id, record_hash 
+            SELECT salesforce_id, record_hash
             FROM {object_type.lower()}_staging
         ),
         target_hashes AS (
-            SELECT salesforce_id, record_hash 
+            SELECT salesforce_id, record_hash
             FROM salesforce_{object_type.lower()}s
         )
-        SELECT s.salesforce_id, s.record_hash as source_hash, 
+        SELECT s.salesforce_id, s.record_hash as source_hash,
                t.record_hash as target_hash
         FROM source_hashes s
         LEFT JOIN target_hashes t ON s.salesforce_id = t.salesforce_id
         WHERE s.record_hash != t.record_hash OR t.record_hash IS NULL
         """
-        
+
         return self.db.execute(query).fetchall()
 ```
 
@@ -244,7 +244,7 @@ def validate_salesforce_data(data_as_dict_list):
     # 3. Validity: Amount should be a positive number.
     validator.expect_column_values_to_be_of_type("Amount", "float")
     validator.expect_column_values_to_be_between("Amount", min_value=0)
-    
+
     # 4. Consistency: Stage should be one of the predefined values.
     validator.expect_column_values_to_be_in_set("StageName", ["Prospecting", "Closed Won", "Closed Lost"])
 
@@ -254,7 +254,7 @@ def validate_salesforce_data(data_as_dict_list):
     if not results["success"]:
         print("Data validation failed!")
         # You can inspect results["results"] for details
-        
+
     return results["success"], results
 ```
 
@@ -288,7 +288,7 @@ def run_reconciliation():
         {'Id': '0068c00001AbCdEf', 'Name': 'Test Opp 1', 'Amount': 5000.0, 'StageName': 'Closed Won'},
         {'Id': '0068c00001AbCdEg', 'Name': 'Test Opp 2', 'Amount': 12000.0, 'StageName': 'Prospecting'}
     ] # Example data
-    
+
     # 2. Validate it
     is_valid, validation_results = validate_salesforce_data(sfdc_data)
     if not is_valid:
@@ -304,7 +304,7 @@ def run_reconciliation():
     # 4. Perform reconciliation checks
     sfdc_count = len(sfdc_data)
     local_count = len(local_data)
-    
+
     if sfdc_count != local_count:
         send_alert("Row Count Mismatch", f"Salesforce has {sfdc_count} rows, local DB has {local_count}.")
 
@@ -315,10 +315,10 @@ def run_reconciliation():
 
     if sfdc_checksums != local_checksums:
         send_alert("Checksum Mismatch", "Row-level data does not match.")
-        
+
     # 5. If all checks pass, perform the upsert
     upsert_data(sfdc_data)
-    
+
     print("Reconciliation job completed successfully.")
 ```
 
@@ -357,7 +357,7 @@ def send_alert(subject, body):
     password = os.environ.get("EMAIL_PASSWORD")
 
     message = f"Subject: {subject}\n\n{body}"
-    
+
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server: # Example for Gmail
             server.login(sender_email, password)
@@ -371,13 +371,13 @@ def send_alert(subject, body):
 
 - [ ]  Company Reports
     - [ ]  In Person Per Student Numbers (from spreadhseet)
-        
+
         [https://docs.google.com/spreadsheets/d/10V31qXxe99J7OOtvCHNu9G3G-O6krq8nOadXlcrRF2g/edit?gid=1722227486#gid=1722227486](https://docs.google.com/spreadsheets/d/10V31qXxe99J7OOtvCHNu9G3G-O6krq8nOadXlcrRF2g/edit?gid=1722227486#gid=1722227486)
-        
+
         [https://docs.google.com/spreadsheets/d/12RSd5AqDzpYVpiT6O6sd4CHDgSbOY1txTIMJdbVBd6Y/edit?gid=0#gid=0](https://docs.google.com/spreadsheets/d/12RSd5AqDzpYVpiT6O6sd4CHDgSbOY1txTIMJdbVBd6Y/edit?gid=0#gid=0)
-        
+
         https://docs.google.com/spreadsheets/d/16qEwzCNxS_5gEex3PDQIv-87XBNYv5qD/edit?gid=240271802#gid=240271802
-        
+
 - [ ]  pull data twice a week and automate it
 
 Virtual Sessions
@@ -508,10 +508,10 @@ Our meeting tomorrow with Andra will walk her through how she can access the dis
 Pathway Data
 
 ```html
-SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c, 
-       End_Date_and_Time__c, Session_Status__c, Location_Information__c, 
-       Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c, 
-       District__c, School__c, Legacy_Skill_Covered_for_the_Session__c, 
+SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
+       End_Date_and_Time__c, Session_Status__c, Location_Information__c,
+       Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
+       District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
        Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
        Total_Requested_Volunteer_Jobs__c, Available_Slots__c
 FROM Session__c
@@ -574,7 +574,7 @@ Defines Pathways
 
 [Pathway_Session__c.csv](Pathway_Session__c.csv)
 
-Pathway Tied Session: 
+Pathway Tied Session:
 
 - Relevant Data: Salesforce ID / Session Salesforce ID / Pathway Salesforce ID
 
@@ -599,10 +599,10 @@ https://docs.google.com/spreadsheets/d/1uNZo8RqjSXiQeg--F9asTiSvDfbpqGlo7VH4aEb9
 BFI:
 
 [https://mail.google.com/mail/u/1/#inbox/FMfcgzQZTVlkDbSlxzmKmCWgCwqBZjfm](https://mail.google.com/mail/u/1/#inbox/FMfcgzQZTVlkDbSlxzmKmCWgCwqBZjfm)
- I'd like to be able to run the report for the number/ list of BFI 
-campus/ worksite visits and numbers of unique students that have been 
+ I'd like to be able to run the report for the number/ list of BFI
+campus/ worksite visits and numbers of unique students that have been
 involved.  I'd also like to see how many K-8 students were engaged in an
- event that BF was represented (which you'll see Linda tags our Career 
+ event that BF was represented (which you'll see Linda tags our Career
 Jumping/ Career Speaker events to indicate which "count" as business, or
- health, or trades, etc.  This is the [spreadsheet](https://docs.google.com/spreadsheets/d/12RSd5AqDzpYVpiT6O6sd4CHDgSbOY1txTIMJdbVBd6Y/edit?gid=0#gid=0) she uses to mark the pathways represented and then adds it to Salesforce (but it might be that not everything is in Salesforce 
+ health, or trades, etc.  This is the [spreadsheet](https://docs.google.com/spreadsheets/d/12RSd5AqDzpYVpiT6O6sd4CHDgSbOY1txTIMJdbVBd6Y/edit?gid=0#gid=0) she uses to mark the pathways represented and then adds it to Salesforce (but it might be that not everything is in Salesforce
 Just so you know, the volunteer numbers are numbers of total volunteers at the event, but not number of volunteers discussing business/ finance careers.  That was the piece I mentioned I don't know how to run that report in Salesforce as I'm not sure where the info lives for volunteers when they sign up for an event and choose a pathway they are representing.  So ideally I could also run a report (not for my current needs but for future) to see how many volunteers we have talking with students about business/ finance and it would include more than just those that are at the events labeled as Business/ Finance if that makes sense?

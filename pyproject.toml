@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 160
+extend-exclude = "/(migrations|build|dist|.venv|venv)/"
+
+[tool.isort]
+profile = "black"
+line_length = 160
+
+[tool.flake8]
+max-line-length = 160
+extend-ignore = ["E203", "E501"]  # E203 for Black compat; E501 if you want Flake8 to chill on long lines

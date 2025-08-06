@@ -232,7 +232,7 @@
     .filter-row {
         grid-template-columns: 1fr;
     }
-    
+
     .volunteers-table-container {
         overflow-x: auto;
     }
@@ -885,7 +885,7 @@
     .volunteer-profile-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .history-stats {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -896,15 +896,15 @@
         grid-template-columns: 1fr;
         gap: 0.25rem;
     }
-    
+
     .history-stats {
         grid-template-columns: 1fr;
     }
-    
+
     .card-header {
         padding: 0.5rem;
     }
-    
+
     .card-content {
         padding: 0.5rem;
     }
@@ -1238,7 +1238,7 @@
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .event-hours {
         justify-self: center;
     }
@@ -1602,7 +1602,7 @@ main {
     .volunteer-profile-grid {
         grid-template-columns: 1fr 1fr;
     }
-    
+
     .profile-card.history-info {
         grid-column: auto;
         grid-row: auto;
@@ -1633,7 +1633,7 @@ main {
 }
 
 /* Email content fixes */
-.email-header, 
+.email-header,
 .email-body,
 .history-content {
     max-width: 100%;
@@ -3012,7 +3012,7 @@ main {
     .event-item {
         grid-template-columns: auto 1fr auto;
     }
-    
+
     .event-status-badge {
         grid-column: 3;
         grid-row: 1;
@@ -3024,7 +3024,7 @@ main {
         grid-template-columns: 1fr;
         text-align: center;
     }
-    
+
     .event-status-badge {
         grid-column: 1;
         grid-row: 3;
@@ -3192,11 +3192,11 @@ main {
         font-size: 0.8rem;
         padding: 0.2rem 0.6rem;
     }
-    
+
     .department-text {
         font-size: 0.7rem;
     }
-    
+
     .additional-org-text {
         font-size: 0.7rem;
     }
@@ -3382,15 +3382,15 @@ main {
         width: 95%;
         max-height: 90vh;
     }
-    
+
     .organizations-modal-header {
         padding: 1rem;
     }
-    
+
     .organizations-modal-body {
         padding: 1rem;
     }
-    
+
     .org-header {
         flex-direction: column;
         align-items: flex-start;

@@ -8,7 +8,7 @@
         margin: 0 auto;
         padding: 20px;
     }
-    
+
     .sheet-card {
         background: white;
         border: 1px solid #ddd;
@@ -17,20 +17,20 @@
         margin-bottom: 20px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    
+
     .sheet-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 15px;
     }
-    
+
     .sheet-title {
         font-size: 1.2em;
         font-weight: bold;
         color: #333;
     }
-    
+
     .sheet-year {
         background: #007bff;
         color: white;
@@ -38,7 +38,7 @@
         border-radius: 20px;
         font-size: 0.9em;
     }
-    
+
     .sheet-status {
         display: inline-block;
         padding: 4px 8px;
@@ -46,33 +46,33 @@
         font-size: 0.8em;
         font-weight: bold;
     }
-    
+
     .status-active {
         background: #d4edda;
         color: #155724;
     }
-    
+
     .status-inactive {
         background: #f8d7da;
         color: #721c24;
     }
-    
+
     .sheet-description {
         color: #666;
         margin-bottom: 15px;
     }
-    
+
     .sheet-meta {
         font-size: 0.9em;
         color: #888;
         margin-bottom: 15px;
     }
-    
+
     .sheet-actions {
         display: flex;
         gap: 10px;
     }
-    
+
     .btn-edit {
         background: #28a745;
         color: white;
@@ -82,7 +82,7 @@
         cursor: pointer;
         font-size: 0.9em;
     }
-    
+
     .btn-delete {
         background: #dc3545;
         color: white;
@@ -92,7 +92,7 @@
         cursor: pointer;
         font-size: 0.9em;
     }
-    
+
     .btn-add {
         background: #007bff;
         color: white;
@@ -103,7 +103,7 @@
         font-size: 1em;
         margin-bottom: 20px;
     }
-    
+
     .sheet-link {
         display: inline-block;
         margin-top: 10px;
@@ -112,11 +112,11 @@
         text-decoration: underline;
         word-break: break-all;
     }
-    
+
     .sheet-link i {
         margin-right: 4px;
     }
-    
+
     .modal {
         display: none;
         position: fixed;
@@ -127,7 +127,7 @@
         height: 100%;
         background-color: rgba(0,0,0,0.5);
     }
-    
+
     .modal-content {
         background-color: white;
         margin: 5% auto;
@@ -136,7 +136,7 @@
         width: 90%;
         max-width: 500px;
     }
-    
+
     .modal-header {
         display: flex;
         justify-content: space-between;
@@ -145,29 +145,29 @@
         border-bottom: 1px solid #eee;
         padding-bottom: 15px;
     }
-    
+
     .close {
         color: #aaa;
         font-size: 28px;
         font-weight: bold;
         cursor: pointer;
     }
-    
+
     .close:hover {
         color: #000;
     }
-    
+
     .form-group {
         margin-bottom: 20px;
     }
-    
+
     .form-group label {
         display: block;
         margin-bottom: 5px;
         font-weight: bold;
         color: #333;
     }
-    
+
     .form-group input,
     .form-group select {
         width: 100%;
@@ -176,14 +176,14 @@
         border-radius: 4px;
         font-size: 14px;
     }
-    
+
     .form-actions {
         display: flex;
         gap: 10px;
         justify-content: flex-end;
         margin-top: 20px;
     }
-    
+
     .form-actions .btn {
         padding: 10px 20px;
         border: none;
@@ -191,32 +191,32 @@
         cursor: pointer;
         font-size: 14px;
     }
-    
+
     .form-actions .btn-secondary {
         background: #6c757d;
         color: white;
     }
-    
+
     .form-actions .btn-primary {
         background: #007bff;
         color: white;
     }
-    
+
     .form-actions .btn:hover {
         opacity: 0.9;
     }
-    
+
     .form-actions .btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
     }
-    
+
     .empty-state {
         text-align: center;
         padding: 60px 20px;
         color: #666;
     }
-    
+
     .empty-state i {
         font-size: 3em;
         color: #ddd;
@@ -233,11 +233,11 @@
             <i class="fas fa-arrow-left"></i> Back to Admin
         </a>
     </div>
-    
+
     <button class="btn-add" onclick="openAddModal()">
         <i class="fas fa-plus"></i> Add New Google Sheet
     </button>
-    
+
     {% if sheets %}
         {% for sheet in sheets %}
         <div class="sheet-card">
@@ -247,13 +247,13 @@
                     <span class="sheet-year">{{ sheet.academic_year }}</span>
                 </div>
             </div>
-            
+
             {% if current_user.is_admin %}
                 <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}" target="_blank" rel="noopener noreferrer">
                     <i class="fas fa-external-link-alt"></i> View Google Sheet
                 </a>
             {% endif %}
-            
+
             <div class="sheet-actions">
                 <button class="btn-edit" onclick="openEditModal({{ sheet.id }})">
                     <i class="fas fa-edit"></i> Edit
@@ -284,10 +284,10 @@
             <h2 id="modalTitle">Add Google Sheet</h2>
             <span class="close" onclick="closeModal()">&times;</span>
         </div>
-        
+
         <form id="sheetForm">
             <input type="hidden" id="sheetId" name="sheetId">
-            
+
             <div class="form-group">
                 <label for="academicYear">Academic Year *</label>
                 <select id="academicYear" name="academicYear" required>
@@ -302,16 +302,16 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="sheetIdInput">Google Sheet ID *</label>
                 <input type="text" id="sheetIdInput" name="sheetIdInput" placeholder="Enter the Google Sheet ID from the URL" required>
                 <small class="form-text text-muted">
-                    The Sheet ID is the long string in the Google Sheets URL: 
+                    The Sheet ID is the long string in the Google Sheets URL:
                     https://docs.google.com/spreadsheets/d/<strong>YOUR_SHEET_ID</strong>/edit
                 </small>
             </div>
-            
+
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save</button>
@@ -399,30 +399,30 @@ function deleteSheet(sheetId, academicYear) {
 
 document.getElementById('sheetForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     // Validate form
     const academicYear = document.getElementById('academicYear').value;
     const sheetIdInput = document.getElementById('sheetIdInput').value;
-    
+
     if (!academicYear || !sheetIdInput) {
         showToast('Error', 'Please fill in all required fields', 'error');
         return;
     }
-    
+
     const formData = {
         academic_year: academicYear,
         sheet_id: sheetIdInput
     };
-    
+
     const url = isEditMode ? `/google-sheets/${currentSheetId}` : '/google-sheets';
     const method = isEditMode ? 'PUT' : 'POST';
-    
+
     // Show loading state
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Saving...';
     submitBtn.disabled = true;
-    
+
     fetch(url, {
         method: method,
         headers: {
@@ -475,9 +475,9 @@ function showToast(title, message, type = 'success') {
             <div>${message}</div>
         </div>
     `;
-    
+
     toastContainer.appendChild(toast);
-    
+
     // Remove toast after 5 seconds
     setTimeout(() => {
         toast.style.opacity = '0';
@@ -516,4 +516,4 @@ function importVirtualForYear(academicYear, btn) {
     .finally(() => { btn.disabled = false; });
 }
 </script>
-{% endblock %} 
+{% endblock %}

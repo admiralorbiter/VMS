@@ -1,7 +1,10 @@
+from datetime import timezone
+
 import pytest
-from datetime import datetime, timezone
-from models.user import User, SecurityLevel
 from werkzeug.security import generate_password_hash
+
+from models.user import SecurityLevel, User
+
 
 def test_new_user():
     """
@@ -9,35 +12,26 @@ def test_new_user():
     Verifies that all fields are correctly set during initialization.
     """
     user = User(
-        username='newuser',
-        email='new@example.com',
-        password_hash=generate_password_hash('password123'),
-        first_name='New',
-        last_name='User',
-        is_admin=False
+        username="newuser", email="new@example.com", password_hash=generate_password_hash("password123"), first_name="New", last_name="User", is_admin=False
     )
-    
-    assert user.username == 'newuser'
-    assert user.email == 'new@example.com'
-    assert user.first_name == 'New'
-    assert user.last_name == 'User'
+
+    assert user.username == "newuser"
+    assert user.email == "new@example.com"
+    assert user.first_name == "New"
+    assert user.last_name == "User"
     assert user.is_admin is False
     assert user.security_level == SecurityLevel.USER
     # Verify timestamps are in UTC
     assert user.created_at.tzinfo == timezone.utc
     assert user.updated_at.tzinfo == timezone.utc
 
+
 def test_user_admin_flag():
     """
     Test admin flag functionality and its effect on security level.
     Verifies both the getter and setter work correctly.
     """
-    admin = User(
-        username='admin',
-        email='admin@example.com',
-        password_hash=generate_password_hash('admin123'),
-        is_admin=True
-    )
+    admin = User(username="admin", email="admin@example.com", password_hash=generate_password_hash("admin123"), is_admin=True)
     assert admin.is_admin is True
     assert admin.security_level == SecurityLevel.ADMIN
 
@@ -46,12 +40,13 @@ def test_user_admin_flag():
     assert admin.is_admin is False
     assert admin.security_level == SecurityLevel.USER
 
+
 def test_security_levels():
     """Test permission checking between different security levels"""
-    admin = User(username='admin', security_level=SecurityLevel.ADMIN)
-    manager = User(username='manager', security_level=SecurityLevel.MANAGER)
-    supervisor = User(username='super', security_level=SecurityLevel.SUPERVISOR)
-    user = User(username='user', security_level=SecurityLevel.USER)
+    admin = User(username="admin", security_level=SecurityLevel.ADMIN)
+    manager = User(username="manager", security_level=SecurityLevel.MANAGER)
+    supervisor = User(username="super", security_level=SecurityLevel.SUPERVISOR)
+    user = User(username="user", security_level=SecurityLevel.USER)
 
     # Test permission hierarchy
     assert admin.can_manage_user(manager) is True
@@ -60,14 +55,16 @@ def test_security_levels():
     assert supervisor.can_manage_user(user) is True
     assert user.can_manage_user(supervisor) is False
 
+
 def test_has_permission_level():
     """Test permission level checking"""
-    manager = User(username='manager', security_level=SecurityLevel.MANAGER)
-    
+    manager = User(username="manager", security_level=SecurityLevel.MANAGER)
+
     assert manager.has_permission_level(SecurityLevel.USER) is True
     assert manager.has_permission_level(SecurityLevel.SUPERVISOR) is True
     assert manager.has_permission_level(SecurityLevel.MANAGER) is True
     assert manager.has_permission_level(SecurityLevel.ADMIN) is False
+
 
 def test_find_by_username_or_email():
     """
@@ -77,14 +74,10 @@ def test_find_by_username_or_email():
     # This is a placeholder - implement with proper database setup
     pytest.skip("Requires database integration")
 
+
 def test_string_representations():
     """Test string and repr representations of User model"""
-    user = User(
-        id=1,
-        username='testuser',
-        email='test@example.com',
-        security_level=SecurityLevel.USER
-    )
-    
+    user = User(id=1, username="testuser", email="test@example.com", security_level=SecurityLevel.USER)
+
     assert str(user) == "<User testuser>"
-    assert repr(user) == "<User(id=1, username='testuser', email='test@example.com', security_level=0)>" 
+    assert repr(user) == "<User(id=1, username='testuser', email='test@example.com', security_level=0)>"
