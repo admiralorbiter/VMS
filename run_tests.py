@@ -18,7 +18,7 @@ def run_command(cmd, description):
 
     try:
         subprocess.run(cmd, check=True)
-        print(f"\n✓ {description} completed successfully!")
+        print(f"\nPASS: {description} completed successfully!")
         return True
     except subprocess.CalledProcessError as e:
         print(f"\n❌ {description} failed with exit code {e.returncode}")

@@ -92,7 +92,7 @@ Create a new `/docs` folder and add these files:
 
 ## 3. Universal Checklists
 
-### ✓ Pull Request Checklist
+### Pull Request Checklist
 
 - [ ] Linked to issue
 - [ ] Relevant docs updated
@@ -100,7 +100,7 @@ Create a new `/docs` folder and add these files:
 - [ ] Lint passes
 - [ ] Clear explanation
 
-### ✓ Feature Spec Template
+### Feature Spec Template
 
 \`\`\`markdown
 # <Feature Name>
@@ -124,7 +124,7 @@ Create a new `/docs` folder and add these files:
 ...
 \`\`\`
 
-### ✓ Data Import Runbook
+### Data Import Runbook
 
 1. Confirm `.env` is up to date
 2. Run:
@@ -167,8 +167,8 @@ Create a new `/docs` folder and add these files:
 
 By following this plan, you’ll:
 
-✓ Complete unfinished key functionality
-✓ Provide AI-usable, human-readable documentation
-✓ Establish a safe, automated dev pipeline
-✓ Support new contributors and future integrations
-✓ Ship a 1.0 milestone with confidence
+COMPLETE: Complete unfinished key functionality
+COMPLETE: Provide AI-usable, human-readable documentation
+COMPLETE: Establish a safe, automated dev pipeline
+COMPLETE: Support new contributors and future integrations
+COMPLETE: Ship a 1.0 milestone with confidence
