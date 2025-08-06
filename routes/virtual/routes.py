@@ -1192,7 +1192,7 @@ def import_sheet():
         # Invalidate virtual session caches to ensure reports show updated data
         try:
             invalidate_virtual_session_caches()
-            print("✅ Virtual session caches invalidated - reports will show fresh data")
+            print("✓ Virtual session caches invalidated - reports will show fresh data")
         except Exception as e:
             print(f"⚠️ Warning: Could not invalidate caches: {str(e)}")
 
