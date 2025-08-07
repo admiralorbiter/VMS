@@ -19,7 +19,7 @@ from flask_login import login_required
 
 from models import db
 from models.contact import Contact  # Added missing import for Contact
-from models.school import School
+from models.school_model import School
 from models.student import Student
 from utils.salesforce_importer import SalesforceAuthenticationFailed  # Added missing import for SalesforceAuthenticationFailed
 from utils.salesforce_importer import ImportConfig, ImportHelpers, SalesforceImporter
