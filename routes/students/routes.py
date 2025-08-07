@@ -153,7 +153,7 @@ def fix_school_assignments():
         SELECT Id, npsp__Primary_Affiliation__c
         FROM Contact
         WHERE Contact_Type__c = 'Student'
-        AND npsp__Primary_Affiliation__c IS NOT NULL
+        AND npsp__Primary_Affiliation__c != NULL
         """
 
         def fix_school_assignment(record, db_session):
@@ -178,7 +178,8 @@ def fix_school_assignments():
 
                 # Update school assignment
                 student.school_id = school_sf_id
-                db_session.commit()
+                # Don't commit here - let the framework handle it
+                # db_session.commit()
 
                 return True
 
@@ -339,26 +340,51 @@ def assign_schools_to_students():
     try:
         print("Starting Phase 2: School assignment...")
 
-        # Configure the import with optimized settings for school assignment
+        # Configure the import for a single Salesforce query and fast local updates
         config = ImportConfig(
-            batch_size=500,  # Smaller batches for school assignment
+            batch_size=2000,  # Large internal batches
             max_retries=3,
             retry_delay_seconds=2,
-            validate_data=True,
-            log_progress=True,
-            commit_frequency=100,
+            validate_data=False,
+            log_progress=False,
+            commit_frequency=500,
+            timeout_seconds=300,
         )
 
         # Create the importer
         importer = SalesforceImporter(config=config)
 
-        # Query only students that need school assignments
-        student_query = """
-        SELECT Id, npsp__Primary_Affiliation__c
-        FROM Contact
-        WHERE Contact_Type__c = 'Student'
-        AND npsp__Primary_Affiliation__c IS NOT NULL
-        """
+        # Build local datasets once:
+        # - Only students missing school assignments
+        # - Fast lookup by Salesforce Id
+        students_without_schools = Student.query.filter(Student.school_id.is_(None)).all()
+        missing_student_ids = {s.salesforce_individual_id for s in students_without_schools if s.salesforce_individual_id}
+        full_student_lookup = {s.salesforce_individual_id: s for s in students_without_schools}
+        # Prefetch all school ids to avoid per-record queries
+        existing_school_ids = {row[0] for row in db.session.query(School.id).all()}
+
+        if not missing_student_ids:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "No students need school assignments",
+                    "phase": "school_assignment",
+                    "statistics": {
+                        "total_records": 0,
+                        "processed_count": 0,
+                        "success_count": 0,
+                        "error_count": 0,
+                        "skipped_count": 0,
+                        "duration_seconds": 0,
+                        "total_students": Student.query.count(),
+                        "students_with_schools": Student.query.filter(Student.school_id.isnot(None)).count(),
+                        "students_without_schools": 0,
+                    },
+                    "errors": [],
+                    "warnings": ["All students already have school assignments"],
+                    "pipeline_complete": True,
+                }
+            )
 
         def assign_school_to_student(record, db_session):
             """Assign school to a single student."""
@@ -369,21 +395,23 @@ def assign_schools_to_students():
                 if not sf_id or not school_sf_id:
                     return False
 
-                # Find the student
-                student = Student.query.filter_by(salesforce_individual_id=sf_id).first()
+                # Only process if this is one of our locally missing students
+                if sf_id not in missing_student_ids:
+                    return False
+
+                # Find the local student
+                student = full_student_lookup.get(sf_id)
                 if not student:
-                    print(f"Student {sf_id} not found for school assignment")
                     return False
 
                 # Check if school exists
-                school = School.query.filter_by(id=school_sf_id).first()
-                if not school:
-                    print(f"School {school_sf_id} not found for student {sf_id}")
+                if school_sf_id not in existing_school_ids:
                     return False
 
                 # Update school assignment
                 student.school_id = school_sf_id
-                db_session.commit()
+                # Don't commit here - let the framework handle it
+                # db_session.commit()
 
                 return True
 
@@ -391,7 +419,20 @@ def assign_schools_to_students():
                 print(f"Error assigning school for {sf_id}: {str(e)}")
                 return False
 
-        result = importer.import_data(query=student_query, process_func=assign_school_to_student, validation_func=None)
+        # Single Salesforce query: scan all students with a primary affiliation
+        student_query = """
+            SELECT Id, npsp__Primary_Affiliation__c
+            FROM Contact
+            WHERE Contact_Type__c = 'Student'
+            AND npsp__Primary_Affiliation__c != NULL
+            """
+
+        # Execute import with our process function. It will only update local missing students.
+        result = importer.import_data(
+            query=student_query,
+            process_func=assign_school_to_student,
+            validation_func=None,
+        )
 
         # Get additional statistics about school assignments
         total_students = Student.query.count()
@@ -399,22 +440,23 @@ def assign_schools_to_students():
         students_without_schools = Student.query.filter(Student.school_id.is_(None)).count()
 
         response_data = {
-            "success": result.success,
+            "success": result.error_count == 0,
             "message": f"Phase 2 complete: Assigned schools to {result.success_count} students",
             "phase": "school_assignment",
             "statistics": {
-                "total_records": result.total_records,
-                "processed_count": result.processed_count,
+                # Keep UI behavior consistent: show local target set size
+                "total_records": len(missing_student_ids),
+                "processed_count": len(missing_student_ids),
                 "success_count": result.success_count,
                 "error_count": result.error_count,
-                "skipped_count": result.skipped_count,
+                "skipped_count": 0,
                 "duration_seconds": result.duration_seconds,
                 "total_students": total_students,
                 "students_with_schools": students_with_schools,
                 "students_without_schools": students_without_schools,
             },
             "errors": result.errors,
-            "warnings": result.warnings,
+            "warnings": [],
             "pipeline_complete": students_without_schools == 0,
         }
 

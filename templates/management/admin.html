@@ -211,6 +211,18 @@
             <h5 class="card-title mb-0">Import Data from Salesforce</h5>
             <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
 
+            {# Student Import Pipeline Information #}
+            <div class="alert alert-info mb-3">
+                <h6><i class="fas fa-info-circle"></i> New Student Import Pipeline</h6>
+                <p class="mb-2">The student import now uses a two-phase pipeline for better reliability:</p>
+                <ul class="mb-0">
+                    <li><strong>Phase 1:</strong> Import all student data (names, grades, contact info) without school assignments</li>
+                    <li><strong>Phase 2:</strong> Assign schools to students based on Salesforce relationships</li>
+                    <li><strong>Status Check:</strong> Monitor the pipeline and get recommendations</li>
+                </ul>
+                <p class="mb-0 mt-2"><small>This approach ensures all students are imported even if some schools are missing, and allows for better error handling.</small></p>
+            </div>
+
             {# Import All button with progress tracking #}
             <div class="mb-4">
                 <button onclick="importAllSequentially()" class="btn admin-btn-import" id="importAllBtn">
@@ -282,11 +294,44 @@
                     <div class="import-status" id="manageTeachersStatus"></div>
                 </div>
 
-                {# Students import #}
+                {# Students import - Updated for two-phase pipeline #}
+                <div class="import-item">
+                    <button onclick="importStudentsPhase1()" class="btn admin-btn-import" id="importStudentsPhase1Btn">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>5a. Import Students (Phase 1)</span>
+                    </button>
+                    <div class="import-status" id="importStudentsPhase1Status"></div>
+                    <div class="import-progress" id="importStudentsPhase1Progress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Student School Assignment - Phase 2 #}
+                <div class="import-item">
+                    <button onclick="assignSchoolsToStudents()" class="btn admin-btn-import" id="assignSchoolsBtn">
+                        <i class="fas fa-link"></i>
+                        <span>5b. Assign Schools to Students (Phase 2)</span>
+                    </button>
+                    <div class="import-status" id="assignSchoolsStatus"></div>
+                    <div class="import-progress" id="assignSchoolsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Student Pipeline Status #}
+                <div class="import-item">
+                    <button onclick="checkStudentPipelineStatus()" class="btn admin-btn-import" id="checkPipelineStatusBtn">
+                        <i class="fas fa-chart-line"></i>
+                        <span>5c. Check Student Pipeline Status</span>
+                    </button>
+                    <div class="import-status" id="checkPipelineStatusStatus"></div>
+                </div>
+
+                {# Legacy single import button (kept for backward compatibility) #}
                 <div class="import-item">
                     <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
                         <i class="fas fa-user-graduate"></i>
-                        <span>5. Import Students</span>
+                        <span>5. Import Students (Legacy)</span>
                     </button>
                     <div class="import-status" id="importStudentsStatus"></div>
                     <div class="import-progress" id="importStudentsProgress">
@@ -301,6 +346,15 @@
                         <span>Manage Students</span>
                     </a>
                     <div class="import-status" id="manageStudentsStatus"></div>
+                </div>
+
+                {# Student Pipeline Status (Quick Access) #}
+                <div class="import-item">
+                    <button onclick="checkStudentPipelineStatus()" class="btn admin-btn-import" id="quickPipelineStatusBtn">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Quick Student Status</span>
+                    </button>
+                    <div class="import-status" id="quickPipelineStatusStatus"></div>
                 </div>
 
                 {# Volunteers import #}
@@ -775,6 +829,164 @@ function importTeachers() {
     }
 }
 
+// New two-phase student import pipeline functions
+function importStudentsPhase1() {
+    if (!confirm('Are you sure you want to import students from Salesforce (Phase 1)? This will import all student data without school assignments.')) {
+        return;
+    }
+
+    const btn = document.getElementById('importStudentsPhase1Btn');
+    const status = document.getElementById('importStudentsPhase1Status');
+    const progress = document.getElementById('importStudentsPhase1Progress');
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Starting Phase 1: Student import (without school assignments)...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+
+    fetch('/students/import-from-salesforce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+
+        if (data.success) {
+            const processedCount = data.statistics.processed_count || 0;
+            const totalRecords = data.statistics.total_records || 0;
+            const successCount = data.statistics.success_count || 0;
+            const errorCount = data.statistics.error_count || 0;
+
+            status.textContent = `Phase 1 complete: ${successCount.toLocaleString()} students imported, ${errorCount.toLocaleString()} errors`;
+            showToast('Success', `Phase 1 completed: ${successCount.toLocaleString()} students imported`, 'success');
+
+            if (data.errors && data.errors.length > 0) {
+                console.log('Phase 1 errors:', data.errors);
+            }
+
+            // Show recommendation for next step
+            if (data.next_phase === 'school_assignment') {
+                status.innerHTML += '<br><strong>Next step:</strong> Run Phase 2 to assign schools to students.';
+            }
+        } else {
+            throw new Error(data.error || data.message || 'Phase 1 import failed');
+        }
+    })
+    .catch(error => {
+        status.textContent = `Phase 1 Error: ${error.message}`;
+        showToast('Error', `Failed to import students (Phase 1): ${error.message}`, 'error');
+        console.error('Phase 1 import error:', error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+function assignSchoolsToStudents() {
+    if (!confirm('Are you sure you want to assign schools to students (Phase 2)? This will link students to their schools based on Salesforce data.')) {
+        return;
+    }
+
+    const btn = document.getElementById('assignSchoolsBtn');
+    const status = document.getElementById('assignSchoolsStatus');
+    const progress = document.getElementById('assignSchoolsProgress');
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Starting Phase 2: Assigning schools to students...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+
+    fetch('/students/assign-schools', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+
+        if (data.success) {
+            const totalStudents = data.statistics.total_students || 0;
+            const studentsWithSchools = data.statistics.students_with_schools || 0;
+            const studentsWithoutSchools = data.statistics.students_without_schools || 0;
+
+            status.textContent = `Phase 2 complete: ${studentsWithSchools.toLocaleString()} students assigned to schools, ${studentsWithoutSchools.toLocaleString()} without schools`;
+            showToast('Success', `Phase 2 completed: ${studentsWithSchools.toLocaleString()} students assigned to schools`, 'success');
+
+            if (data.errors && data.errors.length > 0) {
+                console.log('Phase 2 errors:', data.errors);
+            }
+        } else {
+            throw new Error(data.error || data.message || 'Phase 2 assignment failed');
+        }
+    })
+    .catch(error => {
+        status.textContent = `Phase 2 Error: ${error.message}`;
+        showToast('Error', `Failed to assign schools (Phase 2): ${error.message}`, 'error');
+        console.error('Phase 2 assignment error:', error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+function checkStudentPipelineStatus() {
+    const btn = document.getElementById('checkPipelineStatusBtn');
+    const status = document.getElementById('checkPipelineStatusStatus');
+
+    btn.disabled = true;
+    status.textContent = 'Checking pipeline status...';
+
+    fetch('/students/import-pipeline-status', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const totalStudents = data.statistics.total_students || 0;
+            const studentsWithSchools = data.statistics.students_with_schools || 0;
+            const studentsWithoutSchools = data.statistics.students_without_schools || 0;
+            const totalSchools = data.statistics.total_schools || 0;
+
+            let statusText = `Pipeline Status:<br>`;
+            statusText += `• Total Students: ${totalStudents.toLocaleString()}<br>`;
+            statusText += `• Students with Schools: ${studentsWithSchools.toLocaleString()}<br>`;
+            statusText += `• Students without Schools: ${studentsWithoutSchools.toLocaleString()}<br>`;
+            statusText += `• Total Schools: ${totalSchools.toLocaleString()}<br>`;
+
+            if (data.recommendations && data.recommendations.length > 0) {
+                statusText += `<br><strong>Recommendations:</strong><br>`;
+                data.recommendations.forEach(rec => {
+                    statusText += `• ${rec}<br>`;
+                });
+            }
+
+            status.innerHTML = statusText;
+            showToast('Success', 'Pipeline status retrieved successfully', 'success');
+        } else {
+            throw new Error(data.error || data.message || 'Failed to get pipeline status');
+        }
+    })
+    .catch(error => {
+        status.textContent = `Status Error: ${error.message}`;
+        showToast('Error', `Failed to get pipeline status: ${error.message}`, 'error');
+        console.error('Pipeline status error:', error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+// Legacy function (kept for backward compatibility)
 function importStudents() {
     if (!confirm('Are you sure you want to import students from Salesforce? This may take several minutes.')) {
         return;
@@ -1005,7 +1217,8 @@ async function importAllSequentially() {
         { route: '/management/import-schools', name: 'Schools', btnId: 'importSchoolsBtn' },
         { route: '/management/import-classes', name: 'Classes', btnId: 'importClassesBtn' },
         { route: '/teachers/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
-        { route: '/students/import-from-salesforce', name: 'Students', btnId: 'importStudentsBtn' },
+        { route: '/students/import-from-salesforce', name: 'Students (Phase 1)', btnId: 'importStudentsPhase1Btn' },
+        { route: '/students/assign-schools', name: 'Student School Assignment (Phase 2)', btnId: 'assignSchoolsBtn' },
         { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
         { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
         { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
