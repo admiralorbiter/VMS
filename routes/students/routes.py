@@ -28,6 +28,20 @@ from utils.salesforce_importer import ImportConfig, ImportHelpers, SalesforceImp
 students_bp = Blueprint("students", __name__)
 
 
+def _ensure_sf_affiliation_column():
+    """Ensure the student table has sf_primary_affiliation_id column and index."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(db.engine)
+    columns = {col["name"] for col in insp.get_columns("student")}
+    if "sf_primary_affiliation_id" not in columns:
+        db.session.execute(text("ALTER TABLE student ADD COLUMN sf_primary_affiliation_id VARCHAR(18)"))
+        db.session.commit()
+    # Create index if missing (SQLite IF NOT EXISTS supported for index creation)
+    db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_student_sf_affiliation ON student (sf_primary_affiliation_id)"))
+    db.session.commit()
+
+
 def validate_student_record(record):
     """
     Validate a student record from Salesforce.
@@ -123,6 +137,87 @@ def process_student_record_without_school(record, db_session):
 
     except Exception:
         return False
+
+
+@students_bp.route("/students/backfill-affiliations", methods=["POST"])
+@login_required
+def backfill_student_affiliations():
+    """
+    One-time backfill to populate Student.sf_primary_affiliation_id from Salesforce
+    for students missing this value. This enables a fully local Phase 2 assignment.
+    """
+    try:
+        print("Starting backfill of student affiliations...")
+        _ensure_sf_affiliation_column()
+
+        # Build set of local students needing backfill
+        rows = db.session.query(Student.id, Student.salesforce_individual_id).filter(Student.sf_primary_affiliation_id.is_(None)).all()
+        missing_ids = {sid for (_, sid) in rows if sid}
+
+        if not missing_ids:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "No backfill needed. All students already have affiliations stored.",
+                    "statistics": {"target_students": 0, "updated": 0, "skipped": 0},
+                }
+            )
+
+        # Fast lookup of local students by SF Contact Id (only those missing)
+        id_to_student = {sid: sid for sid in missing_ids}
+
+        # Configure importer for a single Salesforce scan
+        config = ImportConfig(
+            batch_size=2000, max_retries=3, retry_delay_seconds=2, validate_data=False, log_progress=False, commit_frequency=500, timeout_seconds=300
+        )
+        importer = SalesforceImporter(config=config)
+
+        updated_count = 0
+
+        def process_affiliation(record, session):
+            nonlocal updated_count
+            sf_id = record.get("Id")
+            aff = record.get("npsp__Primary_Affiliation__c")
+            if not sf_id or not aff:
+                return False
+            if sf_id not in id_to_student:
+                return False
+            # Update only if currently null
+            student = Student.query.filter_by(salesforce_individual_id=sf_id).first()
+            if not student or student.sf_primary_affiliation_id:
+                return False
+            student.sf_primary_affiliation_id = aff
+            updated_count += 1
+            return True
+
+        query = """
+        SELECT Id, npsp__Primary_Affiliation__c
+        FROM Contact
+        WHERE Contact_Type__c = 'Student'
+        AND npsp__Primary_Affiliation__c != NULL
+        """
+
+        result = importer.import_data(query=query, process_func=process_affiliation, validation_func=None)
+
+        # Summarize
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Backfill complete. Updated {updated_count} students.",
+                "statistics": {
+                    "target_students": len(missing_ids),
+                    "processed_from_sf": result.total_records,
+                    "updated": updated_count,
+                    "errors": result.error_count,
+                },
+                "errors": result.errors,
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Backfill failed with error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @students_bp.route("/students/fix-school-assignments", methods=["POST"])
@@ -259,6 +354,8 @@ def import_students_from_salesforce():
     """
     try:
         print("Starting Phase 1: Student import (without school assignments)...")
+        # Ensure schema has sf_primary_affiliation_id to persist affiliation locally
+        _ensure_sf_affiliation_column()
 
         # Configure the import with optimized settings for large datasets
         config = ImportConfig(
@@ -339,29 +436,33 @@ def assign_schools_to_students():
     """
     try:
         print("Starting Phase 2: School assignment...")
+        # Ensure schema has the required column for local assignment
+        _ensure_sf_affiliation_column()
 
-        # Configure the import for a single Salesforce query and fast local updates
-        config = ImportConfig(
-            batch_size=2000,  # Large internal batches
-            max_retries=3,
-            retry_delay_seconds=2,
-            validate_data=False,
-            log_progress=False,
-            commit_frequency=500,
-            timeout_seconds=300,
+        # Phase 2 is now fully local: assign school_id from sf_primary_affiliation_id where the school exists
+        # Build local datasets once
+        students_without_schools = (
+            db.session.query(Student.id, Student.salesforce_individual_id, Student.sf_primary_affiliation_id).filter(Student.school_id.is_(None)).all()
         )
-
-        # Create the importer
-        importer = SalesforceImporter(config=config)
-
-        # Build local datasets once:
-        # - Only students missing school assignments
-        # - Fast lookup by Salesforce Id
-        students_without_schools = Student.query.filter(Student.school_id.is_(None)).all()
-        missing_student_ids = {s.salesforce_individual_id for s in students_without_schools if s.salesforce_individual_id}
-        full_student_lookup = {s.salesforce_individual_id: s for s in students_without_schools}
-        # Prefetch all school ids to avoid per-record queries
-        existing_school_ids = {row[0] for row in db.session.query(School.id).all()}
+        missing_student_ids = {sid for (_, sid, aff) in students_without_schools if sid}
+        # If none of the missing students have an affiliation captured, advise backfill
+        missing_with_affiliation = [1 for (_, sid, aff) in students_without_schools if aff]
+        if not missing_with_affiliation:
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "No local affiliations found. Run Backfill Student Affiliations, then re-run Phase 2.",
+                    "phase": "school_assignment",
+                    "errors": ["sf_primary_affiliation_id is empty for students needing assignment"],
+                    "statistics": {
+                        "total_records": len(missing_student_ids),
+                        "processed_count": 0,
+                        "success_count": 0,
+                        "error_count": 0,
+                        "skipped_count": 0,
+                    },
+                }
+            )
 
         if not missing_student_ids:
             return jsonify(
@@ -386,53 +487,22 @@ def assign_schools_to_students():
                 }
             )
 
-        def assign_school_to_student(record, db_session):
-            """Assign school to a single student."""
-            try:
-                sf_id = record.get("Id")
-                school_sf_id = record.get("npsp__Primary_Affiliation__c")
+        # Perform a single local UPDATE using sf_primary_affiliation_id
+        # Update only when the affiliation is present and exists in School
+        from sqlalchemy import text
 
-                if not sf_id or not school_sf_id:
-                    return False
-
-                # Only process if this is one of our locally missing students
-                if sf_id not in missing_student_ids:
-                    return False
-
-                # Find the local student
-                student = full_student_lookup.get(sf_id)
-                if not student:
-                    return False
-
-                # Check if school exists
-                if school_sf_id not in existing_school_ids:
-                    return False
-
-                # Update school assignment
-                student.school_id = school_sf_id
-                # Don't commit here - let the framework handle it
-                # db_session.commit()
-
-                return True
-
-            except Exception as e:
-                print(f"Error assigning school for {sf_id}: {str(e)}")
-                return False
-
-        # Single Salesforce query: scan all students with a primary affiliation
-        student_query = """
-            SELECT Id, npsp__Primary_Affiliation__c
-            FROM Contact
-            WHERE Contact_Type__c = 'Student'
-            AND npsp__Primary_Affiliation__c != NULL
+        update_sql = text(
             """
-
-        # Execute import with our process function. It will only update local missing students.
-        result = importer.import_data(
-            query=student_query,
-            process_func=assign_school_to_student,
-            validation_func=None,
+            UPDATE student
+            SET school_id = sf_primary_affiliation_id
+            WHERE school_id IS NULL
+              AND sf_primary_affiliation_id IS NOT NULL
+              AND sf_primary_affiliation_id IN (SELECT id FROM school)
+            """
         )
+        result_proxy = db.session.execute(update_sql)
+        db.session.commit()
+        updated_rows = result_proxy.rowcount if hasattr(result_proxy, "rowcount") else 0
 
         # Get additional statistics about school assignments
         total_students = Student.query.count()
@@ -440,33 +510,29 @@ def assign_schools_to_students():
         students_without_schools = Student.query.filter(Student.school_id.is_(None)).count()
 
         response_data = {
-            "success": result.error_count == 0,
-            "message": f"Phase 2 complete: Assigned schools to {result.success_count} students",
+            "success": True,
+            "message": f"Phase 2 complete: Assigned schools to {updated_rows} students",
             "phase": "school_assignment",
             "statistics": {
-                # Keep UI behavior consistent: show local target set size
                 "total_records": len(missing_student_ids),
                 "processed_count": len(missing_student_ids),
-                "success_count": result.success_count,
-                "error_count": result.error_count,
+                "success_count": updated_rows,
+                "error_count": 0,
                 "skipped_count": 0,
-                "duration_seconds": result.duration_seconds,
+                "duration_seconds": 0,
                 "total_students": total_students,
                 "students_with_schools": students_with_schools,
                 "students_without_schools": students_without_schools,
             },
-            "errors": result.errors,
+            "errors": [],
             "warnings": [],
             "pipeline_complete": students_without_schools == 0,
         }
 
-        print(f"School assignment complete: {result.success_count} successes, {result.error_count} errors")
+        print(f"School assignment complete: {updated_rows} assignments")
         print(f"Total students: {total_students}, With schools: {students_with_schools}, Without schools: {students_without_schools}")
 
-        if result.errors:
-            print("School assignment errors:")
-            for error in result.errors:
-                print(f"  - {error}")
+        # No errors expected for local update; keep placeholder if needed
 
         return jsonify(response_data)
 

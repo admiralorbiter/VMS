@@ -165,6 +165,10 @@ class Student(Contact):
         String(18), db.ForeignKey("school.id", ondelete="SET NULL"), index=True, comment="References School.id (Salesforce ID)"  # Add index for foreign key
     )
 
+    # Stores Salesforce Primary Affiliation (School) Id captured during Phase 1
+    # This enables a fully local Phase 2 assignment without additional Salesforce calls
+    sf_primary_affiliation_id = db.Column(String(18), index=True, nullable=True)
+
     class_salesforce_id = db.Column(
         String(18), db.ForeignKey("class.salesforce_id", ondelete="SET NULL"), index=True, comment="References Class.salesforce_id"  # Add index for foreign key
     )
@@ -290,7 +294,10 @@ class Student(Contact):
             student.middle_name = sf_data.get("MiddleName", "").strip() or None
             student.birthdate = pd.to_datetime(sf_data["Birthdate"]).date() if sf_data.get("Birthdate") else None
             student.student_id = str(sf_data.get("Local_Student_ID__c", "")).strip() or None
-            student.school_id = str(sf_data.get("npsp__Primary_Affiliation__c", "")).strip() or None
+            # Persist both the current school assignment and raw SF value
+            sf_aff = str(sf_data.get("npsp__Primary_Affiliation__c", "")).strip() or None
+            student.sf_primary_affiliation_id = sf_aff
+            student.school_id = sf_aff
             student.class_salesforce_id = str(sf_data.get("Class__c", "")).strip() or None
             student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "")).strip() or None
             student.current_grade = int(sf_data.get("Current_Grade__c", 0)) if pd.notna(sf_data.get("Current_Grade__c")) else None
@@ -357,6 +364,8 @@ class Student(Contact):
             student.middle_name = sf_data.get("MiddleName", "").strip() or None
             student.birthdate = pd.to_datetime(sf_data["Birthdate"]).date() if sf_data.get("Birthdate") else None
             student.student_id = str(sf_data.get("Local_Student_ID__c", "")).strip() or None
+            # Persist the raw SF school affiliation for a later local-only Phase 2
+            student.sf_primary_affiliation_id = str(sf_data.get("npsp__Primary_Affiliation__c", "")).strip() or None
             # NOTE: school_id is NOT set here - we'll fix it later
             student.class_salesforce_id = str(sf_data.get("Class__c", "")).strip() or None
             student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "")).strip() or None
