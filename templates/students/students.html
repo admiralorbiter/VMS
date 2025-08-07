@@ -174,31 +174,26 @@ function importStudentsFromSalesforce() {
 
     let totalRecords = 0;
     let processedCount = 0;
-    const chunkSize = 5000;
 
-    async function processChunk(lastId = null) {
+    async function performImport() {
         try {
             const response = await fetch('/students/import-from-salesforce', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    chunk_size: chunkSize,
-                    last_id: lastId
-                })
+                }
             });
 
             const data = await response.json();
 
-            if (data.status === 'error') {
-                throw new Error(data.message);
+            if (!data.success) {
+                throw new Error(data.error || data.message || 'Import failed');
             }
 
-            // Update progress
-            totalRecords = data.total_records;
-            processedCount += data.processed_count;
-            const progressPercent = (processedCount / totalRecords) * 100;
+            // Update progress using new response format
+            totalRecords = data.statistics.total_records || 0;
+            processedCount = data.statistics.processed_count || 0;
+            const progressPercent = totalRecords > 0 ? (processedCount / totalRecords) * 100 : 100;
 
             // Update button text with progress
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Importing... ${Math.round(progressPercent)}%`;
@@ -208,15 +203,10 @@ function importStudentsFromSalesforce() {
                 console.log('Import errors:', data.errors);
             }
 
-            // If not complete, process next chunk
-            if (!data.is_complete && data.next_id) {
-                await processChunk(data.next_id);
-            } else {
-                // Import complete
-                btn.innerHTML = '<i class="fas fa-check"></i> Import Complete';
-                alert(`Student import completed successfully! Processed ${processedCount.toLocaleString()} records.`);
-                window.location.reload();
-            }
+            // Import is complete (no more chunks in new format)
+            btn.innerHTML = '<i class="fas fa-check"></i> Import Complete';
+            alert(`Student import completed successfully! Processed ${processedCount.toLocaleString()} records.`);
+            window.location.reload();
 
         } catch (error) {
             btn.innerHTML = originalText;
@@ -226,8 +216,8 @@ function importStudentsFromSalesforce() {
         }
     }
 
-    // Start processing with first chunk
-    processChunk().catch(error => {
+    // Start the import
+    performImport().catch(error => {
         btn.innerHTML = originalText;
         btn.disabled = false;
         alert('Error importing students: ' + error.message);

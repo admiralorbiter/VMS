@@ -114,20 +114,27 @@ class SalesforceImporter:
 
     def _execute_query_with_retry(self, query: str) -> Dict[str, Any]:
         """
-        Execute Salesforce query with retry logic.
+        Execute Salesforce query with retry logic and handle pagination.
 
         Args:
             query: SOQL query to execute
 
         Returns:
-            Query result dictionary
+            Query result dictionary with all records
 
         Raises:
             Exception: If query fails after all retries
         """
         for attempt in range(self.config.max_retries):
             try:
+                # Use query_all() which automatically handles pagination
                 result = self.sf.query_all(query)
+
+                # Log the total number of records retrieved
+                total_size = result.get("totalSize", 0)
+                records = result.get("records", [])
+                self.logger.info(f"Retrieved {len(records)} records from Salesforce (total available: {total_size})")
+
                 return result
             except Exception as e:
                 if attempt == self.config.max_retries - 1:
@@ -420,6 +427,7 @@ class ImportHelpers:
             return False
 
         # Check that it contains only alphanumeric characters
+        # Salesforce IDs contain only A-Z, a-z, 0-9
         if not salesforce_id.isalnum():
             return False
 

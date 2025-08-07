@@ -205,13 +205,15 @@ class TestSchoolValidation:
 class TestSchoolProcessing:
     """Test school record processing functions."""
 
-    @patch("routes.management.management.ImportHelpers")
+    @patch("routes.management.management.School")
     @patch("routes.management.management.District")
-    def test_process_school_record_success(self, mock_district, mock_helpers):
+    def test_process_school_record_success(self, mock_district, mock_school_class):
         """Test successful processing of a school record."""
-        # Mock the helpers
-        mock_school = Mock()
-        mock_helpers.create_or_update_record.return_value = (mock_school, True)
+        # Mock the session.query(School) call to return None (new school)
+        mock_query = Mock()
+        mock_query.filter_by.return_value.first.return_value = None
+        mock_session = Mock()
+        mock_session.query.return_value = mock_query
 
         # Mock the district query
         mock_district_instance = Mock()
@@ -226,21 +228,22 @@ class TestSchoolProcessing:
             "School_Code_External_ID__c": "TS001",
         }
 
-        mock_session = Mock()
-
         success, error = process_school_record(record, mock_session)
 
         assert success
         assert error == ""
-        mock_helpers.create_or_update_record.assert_called_once()
+        # Verify that session.add was called for the new school
+        mock_session.add.assert_called_once()
 
-    @patch("routes.management.management.ImportHelpers")
+    @patch("routes.management.management.School")
     @patch("routes.management.management.District")
-    def test_process_school_record_no_district(self, mock_district, mock_helpers):
+    def test_process_school_record_no_district(self, mock_district, mock_school_class):
         """Test processing of school record with no district found."""
-        # Mock the helpers
-        mock_school = Mock()
-        mock_helpers.create_or_update_record.return_value = (mock_school, True)
+        # Mock the session.query(School) call to return None (new school)
+        mock_query = Mock()
+        mock_query.filter_by.return_value.first.return_value = None
+        mock_session = Mock()
+        mock_session.query.return_value = mock_query
 
         # Mock the district query to return None
         mock_district.query.filter_by.return_value.first.return_value = None
@@ -251,20 +254,22 @@ class TestSchoolProcessing:
             "ParentId": "0011234567890ABCDE",  # 18 characters
         }
 
-        mock_session = Mock()
-
         success, error = process_school_record(record, mock_session)
 
         assert success
         assert error == ""
-        mock_helpers.create_or_update_record.assert_called_once()
+        # Verify that session.add was called for the new school
+        mock_session.add.assert_called_once()
 
-    @patch("routes.management.management.ImportHelpers")
+    @patch("routes.management.management.School")
     @patch("routes.management.management.District")
-    def test_process_school_record_error(self, mock_district, mock_helpers):
+    def test_process_school_record_error(self, mock_district, mock_school_class):
         """Test error handling in school record processing."""
-        # Mock the helpers to raise an exception
-        mock_helpers.create_or_update_record.side_effect = Exception("Test error")
+        # Mock the session.query(School) call to raise an exception
+        mock_query = Mock()
+        mock_query.filter_by.side_effect = Exception("Test error")
+        mock_session = Mock()
+        mock_session.query.return_value = mock_query
 
         # Mock the district query to avoid Flask context issues
         mock_district.query.filter_by.return_value.first.return_value = None
@@ -273,8 +278,6 @@ class TestSchoolProcessing:
             "Id": "0011234567890ABCDE",  # 18 characters
             "Name": "Test School",
         }
-
-        mock_session = Mock()
 
         success, error = process_school_record(record, mock_session)
 

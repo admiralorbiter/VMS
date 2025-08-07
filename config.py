@@ -34,7 +34,7 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    DEBUG = True
+    DEBUG = False
     # Use absolute path for SQLite database with sqlite:/// protocol prefix
     db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "instance", "your_database.db")
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"  # Add sqlite:/// prefix

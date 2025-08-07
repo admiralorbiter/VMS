@@ -786,71 +786,44 @@ function importStudents() {
     const progressBar = progress.querySelector('.import-progress-bar');
 
     btn.disabled = true;
-    status.textContent = 'Starting student import...';
+    status.textContent = 'Starting optimized student import...';
     progress.classList.add('active');
     progressBar.style.width = '0%';
 
-    let totalRecords = 0;
-    let processedCount = 0;
-    const chunkSize = 5000; // Reduced to 5000 to stay within Salesforce limits
+    // Use the new optimized import (no chunking)
+    fetch('/students/import-from-salesforce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
 
-    async function processChunk(lastId = null) {
-        try {
-            const response = await fetch('/students/import-from-salesforce', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    chunk_size: chunkSize,
-                    last_id: lastId
-                })
-            });
+        if (data.success) {
+            const processedCount = data.statistics.processed_count || 0;
+            const totalRecords = data.statistics.total_records || 0;
+            const successCount = data.statistics.success_count || 0;
+            const errorCount = data.statistics.error_count || 0;
 
-            const data = await response.json();
+            status.textContent = `Import complete: ${successCount.toLocaleString()} successes, ${errorCount.toLocaleString()} errors`;
+            showToast('Success', `Student import completed: ${successCount.toLocaleString()} processed`, 'success');
 
-            if (data.status === 'error') {
-                throw new Error(data.message);
-            }
-
-            // Update progress
-            totalRecords = data.total_records;
-            processedCount += data.processed_count;
-            const progressPercent = (processedCount / totalRecords) * 100;
-            progressBar.style.width = `${progressPercent}%`;
-
-            // Update status
-            status.textContent = `Processed ${processedCount.toLocaleString()} of ${totalRecords.toLocaleString()} records`;
-
-            // If there are errors, log them to console
             if (data.errors && data.errors.length > 0) {
                 console.log('Import errors:', data.errors);
             }
-
-            // If not complete, process next chunk
-            if (!data.is_complete && data.next_id) {
-                await processChunk(data.next_id);
-            } else {
-                // Import complete
-                status.textContent = `Import complete: Processed ${processedCount.toLocaleString()} records`;
-                showToast('Success', `Student import completed successfully`, 'success');
-                btn.disabled = false;
-            }
-
-        } catch (error) {
-            status.textContent = `Error: ${error.message}`;
-            showToast('Error', `Failed to import students: ${error.message}`, 'error');
-            btn.disabled = false;
-            console.error('Import error:', error);
+        } else {
+            throw new Error(data.error || data.message || 'Import failed');
         }
-    }
-
-    // Start processing with first chunk
-    processChunk().catch(error => {
-        status.textContent = `Fatal error: ${error.message}`;
+    })
+    .catch(error => {
+        status.textContent = `Error: ${error.message}`;
         showToast('Error', `Failed to import students: ${error.message}`, 'error');
-        btn.disabled = false;
         console.error('Import error:', error);
+    })
+    .finally(() => {
+        btn.disabled = false;
     });
 }
 

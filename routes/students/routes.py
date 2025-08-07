@@ -16,14 +16,77 @@ Key Features:
 
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
-from simple_salesforce.api import Salesforce
 
-from config import Config
 from models import db
 from models.student import Student
+from utils.salesforce_importer import ImportConfig, ImportHelpers, SalesforceImporter
 
 # Create Blueprint for student routes
 students_bp = Blueprint("students", __name__)
+
+
+def validate_student_record(record):
+    """
+    Validate a student record from Salesforce.
+
+    Args:
+        record: Dictionary containing Salesforce student data
+
+    Returns:
+        list: List of error messages (empty if valid)
+    """
+    errors = []
+    required_fields = ["Id", "FirstName", "LastName"]
+
+    for field in required_fields:
+        if not record.get(field):
+            errors.append(f"Missing required field: {field}")
+
+    # Validate Salesforce ID format
+    sf_id = record.get("Id", "")
+    if sf_id and not ImportHelpers.is_valid_salesforce_id(sf_id):
+        errors.append(f"Invalid Salesforce ID format: {sf_id}")
+
+    # Validate name fields
+    first_name = record.get("FirstName", "").strip()
+    last_name = record.get("LastName", "").strip()
+
+    if not first_name or not last_name:
+        errors.append(f"Invalid name data: first_name='{first_name}', last_name='{last_name}'")
+
+    return errors
+
+
+def process_student_record(record, db_session):
+    """
+    Process a student record from Salesforce.
+
+    Args:
+        record: Dictionary containing Salesforce student data
+        db_session: SQLAlchemy database session
+
+    Returns:
+        bool: True if successfully processed, False otherwise
+    """
+    try:
+        # Use the Student model's import method
+        student, is_new, error = Student.import_from_salesforce(record, db_session)
+
+        if error:
+            return False
+
+        # Handle contact info using the student's method
+        try:
+            success, error = student.update_contact_info(record, db_session)
+            if not success:
+                return False
+        except Exception:
+            return False
+
+        return True
+
+    except Exception:
+        return False
 
 
 @students_bp.route("/students")
@@ -54,130 +117,77 @@ def view_students():
 @login_required
 def import_students_from_salesforce():
     """
-    Import student data from Salesforce with chunked processing.
+    Import student data from Salesforce using the optimized framework.
 
-    This function handles large datasets by processing them in chunks
-    to avoid memory issues and stay within Salesforce API limits.
-
-    Args:
-        chunk_size: Number of records to process per chunk (default: 2000)
-        last_id: ID of last processed record for pagination
+    This function:
+    1. Uses SalesforceImporter for batch processing
+    2. Validates student records before processing
+    3. Creates or updates student records in the local database
+    4. Handles associated contact information (emails, phones)
+    5. Provides detailed progress tracking and error reporting
+    6. Uses optimized batch processing for 145,138+ students
 
     Returns:
-        JSON response with chunk processing results
+        JSON response with import results and detailed statistics
     """
     try:
-        chunk_size = request.json.get("chunk_size", 2000)  # Reduced to 2000 to stay within limits
-        last_id = request.json.get("last_id", None)  # Use ID-based pagination instead of offset
+        print("Starting optimized student import from Salesforce...")
 
-        print(f"Starting student import from Salesforce (chunk_size: {chunk_size}, last_id: {last_id})...")
+        # Configure the import with optimized settings for large datasets
+        config = ImportConfig(
+            batch_size=300,  # Optimal batch size for students (memory efficient)
+            max_retries=3,
+            retry_delay_seconds=2,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=50,  # Commit every 50 records (not every single one!)
+        )
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Create the importer
+        importer = SalesforceImporter(config=config)
 
-        # First, get total count for progress tracking
-        count_query = """
-        SELECT COUNT(Id) total
-        FROM Contact
-        WHERE Contact_Type__c = 'Student'
-        """
-        result = sf.query(count_query)
-        if not result or "records" not in result or not result["records"]:
-            return {
-                "status": "error",
-                "message": "Failed to get total record count from Salesforce",
-                "errors": ["No records returned from Salesforce count query"],
-            }
-        total_records = result["records"][0]["total"]
-
-        # Query for students using ID-based pagination
-        base_query = """
+        # Define the query for students
+        student_query = """
         SELECT Id, AccountId, FirstName, LastName, MiddleName, Email, Phone,
                Local_Student_ID__c, Birthdate, Gender__c, Racial_Ethnic_Background__c,
                npsp__Primary_Affiliation__c, Class__c, Legacy_Grade__c, Current_Grade__c
         FROM Contact
         WHERE Contact_Type__c = 'Student'
-        {where_clause}
-        ORDER BY Id
-        LIMIT {limit}
         """
 
-        # Add WHERE clause for ID-based pagination
-        where_clause = f"AND Id > '{last_id}'" if last_id else ""
-        query = base_query.format(where_clause=where_clause, limit=chunk_size)
+        # Execute the import
+        print(f"Executing student import with query: {student_query}")
+        result = importer.import_data(query=student_query, process_func=process_student_record, validation_func=validate_student_record)
+        print(f"Import result: total_records={result.total_records}, processed_count={result.processed_count}, success_count={result.success_count}")
 
-        print(f"Fetching students from Salesforce (chunk_size: {chunk_size}, last_id: {last_id})...")
-        result = sf.query(query)
-        student_rows = result.get("records", [])
-
-        success_count = 0
-        error_count = 0
-        errors = []
-        processed_ids = []
-
-        # Process each student in the chunk
-        for row in student_rows:
-            try:
-                # Use the Student model's import method
-                student, is_new, error = Student.import_from_salesforce(row, db.session)
-
-                if error:
-                    error_count += 1
-                    errors.append(error)
-                    continue
-
-                if not student.id:
-                    db.session.add(student)
-
-                # Commit each student individually to prevent large transaction blocks
-                db.session.commit()
-
-                # Handle contact info using the student's method
-                try:
-                    success, error = student.update_contact_info(row, db.session)
-                    if not success:
-                        errors.append(error)
-                    else:
-                        db.session.commit()
-                        success_count += 1
-                        processed_ids.append(row["Id"])
-
-                except Exception as e:
-                    db.session.rollback()
-                    errors.append(f"Error processing contact info for {student.first_name} {student.last_name}: {str(e)}")
-                    error_count += 1
-
-            except Exception as e:
-                db.session.rollback()
-                errors.append(f"Error processing student {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
-                error_count += 1
-                continue
-
-        # Get the last processed ID for the next chunk
-        next_id = processed_ids[-1] if processed_ids else None
-        is_complete = len(student_rows) < chunk_size  # If we got fewer records than chunk_size, we're done
-
-        print(f"\nChunk complete - Created/Updated: {success_count}, Errors: {error_count}")
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors[:10]:  # Show first 10 errors
-                print(f"- {error}")
-
-        return {
-            "status": "success",
-            "message": f"Processed chunk of {len(student_rows)} students ({success_count} successful, {error_count} errors)",
-            "total_records": total_records,
-            "processed_count": len(processed_ids),
-            "next_id": next_id if not is_complete else None,
-            "is_complete": is_complete,
-            "errors": errors[:100],  # Limit error list size in response
-            "processed_ids": processed_ids,
+        # Prepare response
+        response_data = {
+            "success": result.success,
+            "message": f"Successfully processed {result.processed_count} students",
+            "statistics": {
+                "total_records": result.total_records,
+                "processed_count": result.processed_count,
+                "success_count": result.success_count,
+                "error_count": result.error_count,
+                "skipped_count": result.skipped_count,
+                "duration_seconds": result.duration_seconds,
+            },
+            "errors": result.errors,
+            "warnings": result.warnings,
         }
 
+        print(f"Student import complete: {result.success_count} successes, {result.error_count} errors")
+        if result.errors:
+            print("Student import errors:")
+            for error in result.errors:
+                print(f"  - {error}")
+
+        return jsonify(response_data)
+
     except Exception as e:
-        error_msg = f"Fatal error: {str(e)}"
-        print(f"Error: {error_msg}")
-        return {"status": "error", "message": error_msg, "errors": [str(e)]}
+        db.session.rollback()
+        print(f"Student import failed with error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @students_bp.route("/students/view/<int:id>")
