@@ -180,9 +180,11 @@ def validate_school_record(record: dict) -> tuple[bool, list[str]]:
     if not record.get("Name"):
         errors.append("Missing school name")
 
-    # Validate Salesforce ID format (18 characters)
-    if record.get("Id") and len(record["Id"]) != 18:
-        errors.append("Invalid Salesforce ID format")
+    # Validate Salesforce ID format (accept both 15 and 18 character IDs)
+    if record.get("Id"):
+        id_length = len(record["Id"])
+        if id_length not in [15, 18]:
+            errors.append(f"Invalid Salesforce ID format: {record['Id']} (length: {id_length})")
 
     # Validate name length
     if record.get("Name") and len(record["Name"]) > 255:
@@ -703,11 +705,11 @@ def import_schools():
         # Initialize the Salesforce importer for schools
         school_importer = SalesforceImporter(school_config)
 
-        # Define the school query
+        # Define the school query - include all school types, not just 'School'
         school_query = """
         SELECT Id, Name, ParentId, Connector_Account_Name__c, School_Code_External_ID__c
         FROM Account
-        WHERE Type = 'School'
+        WHERE Type = 'School' OR Type LIKE '%School%' OR Type LIKE '%Academy%' OR Type LIKE '%Elementary%' OR Type LIKE '%High%' OR Type LIKE '%Middle%'
         """
 
         # Execute the school import using the optimized framework
