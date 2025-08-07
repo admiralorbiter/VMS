@@ -80,9 +80,8 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import login_required
 
 # TODO: Fix import statements for simple_salesforce
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.contact import Contact
 from models.district_model import District
@@ -91,9 +90,178 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from models.volunteer import EventParticipation
 from routes.utils import parse_date
+from utils.salesforce_importer import ImportConfig, ImportHelpers, SalesforceImporter
 
 # Create the organizations blueprint
 organizations_bp = Blueprint("organizations", __name__)
+
+
+def validate_organization_record(record: dict) -> tuple[bool, list[str]]:
+    """
+    Validate an organization record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+
+    # Check required fields
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    if not record.get("Name"):
+        errors.append("Missing organization name")
+
+    # Validate Salesforce ID format (18 characters)
+    if record.get("Id") and len(record["Id"]) != 18:
+        errors.append("Invalid Salesforce ID format")
+
+    # Validate name length
+    if record.get("Name") and len(record["Name"]) > 255:
+        errors.append("Organization name too long (max 255 characters)")
+
+    return len(errors) == 0, errors
+
+
+def process_organization_record(record: dict, session) -> tuple[bool, str]:
+    """
+    Process a single organization record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+        session: Database session
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Use ImportHelpers to create or update the organization
+        org, created = ImportHelpers.create_or_update_record(
+            Organization,
+            record["Id"],
+            {
+                "name": ImportHelpers.clean_string(record.get("Name", "")),
+                "type": ImportHelpers.clean_string(record.get("Type")),
+                "description": ImportHelpers.clean_string(record.get("Description")),
+                "billing_street": ImportHelpers.clean_string(record.get("BillingStreet")),
+                "billing_city": ImportHelpers.clean_string(record.get("BillingCity")),
+                "billing_state": ImportHelpers.clean_string(record.get("BillingState")),
+                "billing_postal_code": ImportHelpers.clean_string(record.get("BillingPostalCode")),
+                "billing_country": ImportHelpers.clean_string(record.get("BillingCountry")),
+            },
+            session,
+        )
+
+        # Parse and set last activity date if available
+        if record.get("LastActivityDate"):
+            org.last_activity_date = parse_date(record["LastActivityDate"])
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"Error processing organization {record.get('Name', 'Unknown')}: {str(e)}"
+
+
+def validate_affiliation_record(record: dict) -> tuple[bool, list[str]]:
+    """
+    Validate an affiliation record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+
+    # Check required fields
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    if not record.get("npe5__Organization__c"):
+        errors.append("Missing organization Salesforce ID")
+    if not record.get("npe5__Contact__c"):
+        errors.append("Missing contact Salesforce ID")
+
+    # Validate Salesforce ID format (18 characters)
+    if record.get("Id") and len(record["Id"]) != 18:
+        errors.append("Invalid Salesforce ID format")
+
+    return len(errors) == 0, errors
+
+
+def process_affiliation_record(record: dict, session) -> tuple[bool, str]:
+    """
+    Process a single affiliation record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+        session: Database session
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Get the organization by its Salesforce ID
+        org = Organization.query.filter_by(salesforce_id=record.get("npe5__Organization__c")).first()
+
+        # If organization not found, check if it's a school or district
+        if not org:
+            # First check if it's a school
+            school = School.query.filter_by(id=record.get("npe5__Organization__c")).first()
+            if school:
+                # Create an organization record for the school
+                org = Organization(name=school.name, type="School", salesforce_id=school.id)
+                session.add(org)
+                session.flush()  # Get the new org ID
+            else:
+                # If not a school, check if it's a district
+                district = District.query.filter_by(salesforce_id=record.get("npe5__Organization__c")).first()
+                if district:
+                    # Create an organization record for the district
+                    org = Organization(name=district.name, type="District", salesforce_id=district.salesforce_id)
+                    session.add(org)
+                    session.flush()  # Get the new org ID
+
+        # Look up contact by Salesforce ID across all contact types
+        contact = Contact.query.filter_by(salesforce_individual_id=record.get("npe5__Contact__c")).first()
+
+        # Create or update the volunteer-organization relationship
+        if org and contact:
+            # Check for existing relationship
+            vol_org = VolunteerOrganization.query.filter_by(volunteer_id=contact.id, organization_id=org.id).first()
+
+            if not vol_org:
+                # Create new relationship
+                vol_org = VolunteerOrganization(volunteer_id=contact.id, organization_id=org.id)
+                session.add(vol_org)
+
+            # Update relationship details from Salesforce
+            vol_org.salesforce_volunteer_id = record.get("npe5__Contact__c")
+            vol_org.salesforce_org_id = record.get("npe5__Organization__c")
+            vol_org.role = ImportHelpers.clean_string(record.get("npe5__Role__c"))
+            vol_org.is_primary = record.get("npe5__Primary__c") == "true"
+            vol_org.status = ImportHelpers.clean_string(record.get("npe5__Status__c"))
+
+            # Parse and set date fields if available
+            if record.get("npe5__StartDate__c"):
+                vol_org.start_date = parse_date(record["npe5__StartDate__c"])
+            if record.get("npe5__EndDate__c"):
+                vol_org.end_date = parse_date(record["npe5__EndDate__c"])
+
+            return True, ""
+        else:
+            # Track missing organization or contact
+            error_msgs = []
+            if not org:
+                error_msgs.append(f"Organization/School/District with Salesforce ID {record.get('npe5__Organization__c')} not found")
+            if not contact:
+                error_msgs.append(f"Contact (Volunteer/Teacher) with Salesforce ID {record.get('npe5__Contact__c')} not found")
+            return False, "; ".join(error_msgs)
+
+    except Exception as e:
+        return False, f"Error processing affiliation: {str(e)}"
 
 
 @organizations_bp.route("/organizations")
@@ -461,14 +629,14 @@ def purge_organizations():
 @login_required
 def import_organizations_from_salesforce():
     """
-    Import organizations from Salesforce into the local database.
+    Import organizations from Salesforce into the local database using the optimized framework.
 
     Features:
-    - Connects to Salesforce using configured credentials
-    - Queries Account records (excluding households, districts, schools)
-    - Creates or updates local organization records
-    - Handles address information and timestamps
-    - Provides detailed success/error reporting
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
 
     Salesforce Query:
     - Filters out household, school district, and school accounts
@@ -479,16 +647,20 @@ def import_organizations_from_salesforce():
         JSON response with import statistics and error details
     """
     try:
-        print("Fetching organizations from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
+        # Configure the import with optimized settings
+        config = ImportConfig(
+            batch_size=500,  # Process 500 records at a time
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=100,  # Commit every 100 records
+        )
 
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Initialize the Salesforce importer
+        importer = SalesforceImporter(config)
 
-        # Query organizations from Salesforce
-        # Excludes household, school district, and school accounts
+        # Define the Salesforce query
         org_query = """
         SELECT Id, Name, Type, Description, ParentId,
                BillingStreet, BillingCity, BillingState,
@@ -498,67 +670,39 @@ def import_organizations_from_salesforce():
         ORDER BY Name ASC
         """
 
-        # Execute the query and get results
-        result = sf.query_all(org_query)
-        sf_rows = result.get("records", [])
+        # Execute the import using the optimized framework
+        result = importer.import_data(query=org_query, process_func=process_organization_record, validation_func=validate_organization_record)
 
-        # Process each organization from Salesforce
-        for row in sf_rows:
-            try:
-                # Check if organization already exists in local database
-                org = Organization.query.filter_by(salesforce_id=row["Id"]).first()
-                if not org:
-                    # Create new organization if it doesn't exist
-                    org = Organization()
-                    db.session.add(org)
-
-                # Update organization fields with Salesforce data
-                org.salesforce_id = row["Id"]
-                org.name = row.get("Name", "")
-                org.type = row.get("Type")
-                org.description = row.get("Description")
-                # TODO: Fix volunteer_parent_id field - this field doesn't exist in the model
-                # org.volunteer_parent_id = row.get('ParentId')
-                org.billing_street = row.get("BillingStreet")
-                org.billing_city = row.get("BillingCity")
-                org.billing_state = row.get("BillingState")
-                org.billing_postal_code = row.get("BillingPostalCode")
-                org.billing_country = row.get("BillingCountry")
-
-                # Parse and set last activity date if available
-                if row.get("LastActivityDate"):
-                    org.last_activity_date = parse_date(row["LastActivityDate"])
-
-                success_count += 1
-            except Exception as e:
-                # Track errors for reporting
-                error_count += 1
-                errors.append(f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}")
-                continue
-
-        # Commit all changes to database
-        db.session.commit()
-
-        # Print summary to console for debugging
-        print("\nImport completed:")
-        print("Successfully imported: {success_count} organizations")
-        print(f"Errors encountered: {error_count}")
-        if errors:
-            print("\nFirst 3 errors:")
-            for error in errors[:3]:
-                print(f"- {error}")
-            if len(errors) > 3:
-                print(f"... and {len(errors) - 3} more errors")
-
-        # Return JSON response with import results
-        return jsonify({"success": True, "message": f"Successfully processed {success_count} organizations with {error_count} errors", "errors": errors})
+        # Prepare response based on import result
+        if result.success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Successfully processed {result.success_count} organizations with {result.error_count} errors",
+                    "statistics": {
+                        "total_records": result.total_records,
+                        "processed_count": result.processed_count,
+                        "success_count": result.success_count,
+                        "error_count": result.error_count,
+                        "skipped_count": result.skipped_count,
+                        "duration_seconds": result.duration_seconds,
+                    },
+                    "errors": result.errors[:10] if result.errors else [],  # Limit to first 10 errors
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "message": "Import failed", "error": "Import operation failed", "errors": result.errors[:10] if result.errors else []}
+                ),
+                500,
+            )
 
     except SalesforceAuthenticationFailed:
         # Handle Salesforce authentication errors
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
         # Handle other errors
-        db.session.rollback()
         print(f"Salesforce sync error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -567,14 +711,15 @@ def import_organizations_from_salesforce():
 @login_required
 def import_affiliations_from_salesforce():
     """
-    Import volunteer-organization affiliations from Salesforce.
+    Import volunteer-organization affiliations from Salesforce using the optimized framework.
 
     Features:
-    - Connects to Salesforce and queries Affiliation__c records
-    - Creates volunteer-organization relationships
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
     - Handles schools and districts as organizations
-    - Manages role, status, and date information
-    - Provides detailed success/error reporting
 
     Salesforce Query:
     - Queries npe5__Affiliation__c object
@@ -585,15 +730,20 @@ def import_affiliations_from_salesforce():
         JSON response with import statistics and error details
     """
     try:
-        print("Fetching affiliations from Salesforce...")
-        affiliation_success = 0
-        affiliation_error = 0
-        errors = []
+        # Configure the import with optimized settings
+        config = ImportConfig(
+            batch_size=300,  # Process 300 records at a time (smaller due to complexity)
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=50,  # Commit every 50 records
+        )
 
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Initialize the Salesforce importer
+        importer = SalesforceImporter(config)
 
-        # Query affiliations from Salesforce
+        # Define the Salesforce query
         affiliation_query = """
         SELECT Id, Name, npe5__Organization__c, npe5__Contact__c,
                npe5__Role__c, npe5__Primary__c, npe5__Status__c,
@@ -601,105 +751,38 @@ def import_affiliations_from_salesforce():
         FROM npe5__Affiliation__c
         """
 
-        # Execute the query and get results
-        affiliation_result = sf.query_all(affiliation_query)
-        affiliation_rows = affiliation_result.get("records", [])
+        # Execute the import using the optimized framework
+        result = importer.import_data(query=affiliation_query, process_func=process_affiliation_record, validation_func=validate_affiliation_record)
 
-        # Process each affiliation from Salesforce
-        for row in affiliation_rows:
-            try:
-                # Get the organization by its Salesforce ID
-                org = Organization.query.filter_by(salesforce_id=row.get("npe5__Organization__c")).first()
-
-                # If organization not found, check if it's a school or district
-                if not org:
-                    # First check if it's a school
-                    school = School.query.filter_by(id=row.get("npe5__Organization__c")).first()
-                    if school:
-                        # Create an organization record for the school
-                        org = Organization(name=school.name, type="School", salesforce_id=school.id)
-                        db.session.add(org)
-                        db.session.flush()  # Get the new org ID
-                    else:
-                        # If not a school, check if it's a district
-                        district = District.query.filter_by(salesforce_id=row.get("npe5__Organization__c")).first()
-                        if district:
-                            # Create an organization record for the district
-                            org = Organization(name=district.name, type="District", salesforce_id=district.salesforce_id)
-                            db.session.add(org)
-                            db.session.flush()  # Get the new org ID
-
-                # Look up contact by Salesforce ID across all contact types
-                contact = Contact.query.filter_by(salesforce_individual_id=row.get("npe5__Contact__c")).first()
-
-                # Create or update the volunteer-organization relationship
-                if org and contact:
-                    # Check for existing relationship
-                    vol_org = VolunteerOrganization.query.filter_by(volunteer_id=contact.id, organization_id=org.id).first()
-
-                    if not vol_org:
-                        # Create new relationship
-                        vol_org = VolunteerOrganization(volunteer_id=contact.id, organization_id=org.id)
-                        db.session.add(vol_org)
-
-                    # Update relationship details from Salesforce
-                    vol_org.salesforce_volunteer_id = row.get("npe5__Contact__c")
-                    vol_org.salesforce_org_id = row.get("npe5__Organization__c")
-                    vol_org.role = row.get("npe5__Role__c")
-                    vol_org.is_primary = row.get("npe5__Primary__c") == "true"
-                    vol_org.status = row.get("npe5__Status__c")
-
-                    # Parse and set date fields if available
-                    if row.get("npe5__StartDate__c"):
-                        vol_org.start_date = parse_date(row["npe5__StartDate__c"])
-                    if row.get("npe5__EndDate__c"):
-                        vol_org.end_date = parse_date(row["npe5__EndDate__c"])
-
-                    affiliation_success += 1
-                else:
-                    # Track missing organization or contact
-                    affiliation_error += 1
-                    error_msgs = []
-                    if not org:
-                        error_msgs.append(f"Organization/School/District with Salesforce ID {row.get('npe5__Organization__c')} not found")
-                    if not contact:
-                        error_msgs.append(f"Contact (Volunteer/Teacher) with Salesforce ID {row.get('npe5__Contact__c')} not found")
-                    errors.extend(error_msgs)
-
-            except Exception as e:
-                # Track processing errors
-                affiliation_error += 1
-                errors.append(f"Error processing affiliation: {str(e)}")
-                continue
-
-        # Commit all changes to database
-        db.session.commit()
-
-        # Print summary to console for debugging
-        print("\nAffiliation import completed:")
-        print("Successfully imported: {affiliation_success} affiliations")
-        print(f"Errors encountered: {affiliation_error}")
-        if errors:
-            print("\nFirst 3 errors:")
-            for error in errors[:3]:
-                print(f"- {error}")
-            if len(errors) > 3:
-                print(f"... and {len(errors) - 3} more errors")
-
-        # Return JSON response with import results
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Successfully processed {affiliation_success} affiliations with {affiliation_error} errors",
-                "errors": errors[:3] if errors else [],
-            }
-        )
+        # Prepare response based on import result
+        if result.success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Successfully processed {result.success_count} affiliations with {result.error_count} errors",
+                    "statistics": {
+                        "total_records": result.total_records,
+                        "processed_count": result.processed_count,
+                        "success_count": result.success_count,
+                        "error_count": result.error_count,
+                        "skipped_count": result.skipped_count,
+                        "duration_seconds": result.duration_seconds,
+                    },
+                    "errors": result.errors[:10] if result.errors else [],  # Limit to first 10 errors
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "message": "Import failed", "error": "Import operation failed", "errors": result.errors[:10] if result.errors else []}
+                ),
+                500,
+            )
 
     except SalesforceAuthenticationFailed:
         # Handle Salesforce authentication errors
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
         # Handle other errors
-        db.session.rollback()
         print(f"Salesforce sync error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
