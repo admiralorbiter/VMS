@@ -451,6 +451,45 @@ class TestClassProcessing:
         assert not success
         assert "Test error" in error
 
+    @patch("routes.management.management.ImportHelpers")
+    def test_process_class_record_verifies_salesforce_id_in_update_data(self, mock_helpers):
+        """Test that salesforce_id is properly included in update_data for class records."""
+        # Mock the helpers
+        mock_class = Mock()
+        mock_helpers.create_or_update_record.return_value = (mock_class, True)
+
+        record = {
+            "Id": "a0B1234567890ABCDE",  # 18 characters
+            "Name": "10th Grade Science",
+            "School__c": "0011234567890ABCDE",  # 18 characters
+            "Class_Year_Number__c": "2024",
+        }
+
+        mock_session = Mock()
+
+        success, error = process_class_record(record, mock_session)
+
+        assert success
+        assert error == ""
+
+        # Verify create_or_update_record was called with the correct parameters
+        mock_helpers.create_or_update_record.assert_called_once()
+        call_args = mock_helpers.create_or_update_record.call_args
+
+        # Check that the first argument is the Class model
+        assert call_args[0][0].__name__ == "Class"
+
+        # Check that the second argument is the salesforce_id
+        assert call_args[0][1] == "a0B1234567890ABCDE"
+
+        # Check that the third argument (update_data) contains salesforce_id
+        update_data = call_args[0][2]
+        assert "salesforce_id" in update_data
+        assert update_data["salesforce_id"] == "a0B1234567890ABCDE"
+
+        # Check that the fourth argument is the session
+        assert call_args[0][3] == mock_session
+
 
 class TestImportIntegration:
     """Test integration with the SalesforceImporter framework."""
@@ -493,3 +532,41 @@ class TestImportIntegration:
         assert callable(process_district_record)
         assert callable(process_school_record)
         assert callable(process_class_record)
+
+    @patch("routes.management.management.ImportHelpers")
+    def test_process_district_record_verifies_salesforce_id_in_update_data(self, mock_helpers):
+        """Test that salesforce_id is properly included in update_data for district records."""
+        # Mock the helpers
+        mock_district = Mock()
+        mock_helpers.create_or_update_record.return_value = (mock_district, True)
+
+        record = {
+            "Id": "0011234567890ABCDE",  # 18 characters
+            "Name": "Test District",
+            "School_Code_External_ID__c": "TD001",
+        }
+
+        mock_session = Mock()
+
+        success, error = process_district_record(record, mock_session)
+
+        assert success
+        assert error == ""
+
+        # Verify create_or_update_record was called with the correct parameters
+        mock_helpers.create_or_update_record.assert_called_once()
+        call_args = mock_helpers.create_or_update_record.call_args
+
+        # Check that the first argument is the District model
+        assert call_args[0][0].__name__ == "District"
+
+        # Check that the second argument is the salesforce_id
+        assert call_args[0][1] == "0011234567890ABCDE"
+
+        # Check that the third argument (update_data) contains salesforce_id
+        update_data = call_args[0][2]
+        assert "salesforce_id" in update_data
+        assert update_data["salesforce_id"] == "0011234567890ABCDE"
+
+        # Check that the fourth argument is the session
+        assert call_args[0][3] == mock_session
