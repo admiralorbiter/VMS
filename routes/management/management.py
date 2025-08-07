@@ -1,81 +1,81 @@
 """
 Management Routes Module
-=======================
+========================
 
-This module provides comprehensive administrative functionality for the
-Volunteer Management System (VMS). It handles user management, data import
-operations, Google Sheets integration, and system administration tasks.
+This module contains all the Flask routes for system management and administration
+in the VMS system. It provides administrative functions, data import operations,
+and system configuration management.
 
 Key Features:
-- User administration and management
-- Salesforce data import operations
-- Google Sheets configuration and management
+- Administrative dashboard and user management
+- Salesforce data import and synchronization
+- Google Sheets integration and management
+- Bug report management and resolution
 - School and district data management
-- Bug report administration
 - System configuration and maintenance
 
 Main Endpoints:
-- /admin: Main admin panel
-- /admin/import: Data import functionality
-- /management/import-classes: Import class data from Salesforce
-- /google-sheets: Google Sheets management
-- /management/import-schools: Import school data from Salesforce
-- /management/import-districts: Import district data from Salesforce
-- /schools: School management interface
-- /bug-reports: Bug report administration
-- /management/users/<id>/edit: User editing interface
+- GET /admin - Administrative dashboard
+- POST /admin/import - General data import
+- POST /management/import-classes - Import classes from Salesforce
+- POST /management/import-schools - Import schools from Salesforce
+- POST /management/import-districts - Import districts from Salesforce
+- GET/POST /google-sheets - Google Sheets management
+- GET/POST /bug-reports - Bug report management
 
 Administrative Functions:
-- User creation, editing, and management
-- Security level management
+- User management and permissions
 - System configuration
 - Data import and synchronization
-- Google Sheets integration
-- Bug report resolution
+- Error tracking and resolution
+- Performance monitoring
 
 Salesforce Integration:
-- Class data import from Salesforce
-- School data import from Salesforce
-- District data import from Salesforce
-- Authentication and error handling
-- Batch processing with rollback support
+- Class data import and synchronization
+- School and district data import
+- Batch processing with error handling
+- Data validation and cleanup
+- Import statistics and reporting
 
-Google Sheets Management:
-- Academic year-based sheet configuration
-- Sheet ID management and encryption
-- Year range validation and availability
-- CRUD operations for sheet configurations
+Google Sheets Integration:
+- Sheet creation and management
+- Data export and synchronization
+- Template management
+- Access control and permissions
+
+Bug Report Management:
+- Report creation and tracking
+- Resolution workflow
+- Status updates and notifications
+- Historical tracking and analytics
 
 Security Features:
-- Role-based access control
-- Security level validation
-- Admin-only operations
+- Admin-only access for sensitive operations
 - Input validation and sanitization
 - Error handling with user feedback
+- Data integrity protection
+- Audit trail maintenance
 
 Dependencies:
-- Flask Blueprint for routing
-- Salesforce API integration
-- Google Sheets API integration
-- Database models for all entities
-- Encryption utilities for sensitive data
-- Academic year utilities
+- Flask-Login for authentication
+- SQLAlchemy for database operations
+- simple-salesforce for Salesforce integration
+- Google Sheets API for spreadsheet operations
+- Utility functions for data processing
 
 Models Used:
 - User: User management and authentication
-- Class: Class data and associations
-- School: School information and relationships
-- District: District data and organization
-- BugReport: Bug report management
-- GoogleSheet: Google Sheets configuration
-- Database session for persistence
+- Class: Class data for import operations
+- School: School data for import operations
+- District: District data for import operations
+- GoogleSheet: Google Sheets management
+- BugReport: Bug report tracking
 
 Template Dependencies:
-- management/admin.html: Main admin panel
+- management/admin.html: Administrative dashboard
 - management/google_sheets.html: Google Sheets management
-- management/schools.html: School management interface
-- management/bug_reports.html: Bug report administration
-- management/resolve_form.html: Bug report resolution form
+- management/bug_reports.html: Bug report management
+- management/resolve_form.html: Bug resolution form
 """
 
 import os
@@ -84,10 +84,11 @@ from datetime import datetime, timezone
 import pandas as pd
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+
+# TODO: Fix import statements for simple_salesforce
+from simple_salesforce import SalesforceAuthenticationFailed
 from werkzeug.security import generate_password_hash
 
-from config import Config
 from models import db
 from models.bug_report import BugReport, BugReportType
 from models.class_model import Class
@@ -96,8 +97,208 @@ from models.google_sheet import GoogleSheet
 from models.school_model import School
 from models.user import SecurityLevel, User
 from utils.academic_year import get_academic_year_range
+from utils.salesforce_importer import ImportConfig, ImportHelpers, SalesforceImporter
 
+# Create the management blueprint
 management_bp = Blueprint("management", __name__)
+
+
+def validate_district_record(record: dict) -> tuple[bool, list[str]]:
+    """
+    Validate a district record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+
+    # Check required fields
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    if not record.get("Name"):
+        errors.append("Missing district name")
+
+    # Validate Salesforce ID format (18 characters)
+    if record.get("Id") and len(record["Id"]) != 18:
+        errors.append("Invalid Salesforce ID format")
+
+    # Validate name length
+    if record.get("Name") and len(record["Name"]) > 255:
+        errors.append("District name too long (max 255 characters)")
+
+    return len(errors) == 0, errors
+
+
+def process_district_record(record: dict, session) -> tuple[bool, str]:
+    """
+    Process a single district record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+        session: Database session
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Use ImportHelpers to create or update the district
+        district, created = ImportHelpers.create_or_update_record(
+            District,
+            record["Id"],
+            {
+                "salesforce_id": record["Id"],  # Include salesforce_id in update_data
+                "name": ImportHelpers.clean_string(record.get("Name", "")),
+                "district_code": ImportHelpers.clean_string(record.get("School_Code_External_ID__c")),
+            },
+            session,
+        )
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"Error processing district {record.get('Name', 'Unknown')}: {str(e)}"
+
+
+def validate_school_record(record: dict) -> tuple[bool, list[str]]:
+    """
+    Validate a school record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+
+    # Check required fields
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    if not record.get("Name"):
+        errors.append("Missing school name")
+
+    # Validate Salesforce ID format (18 characters)
+    if record.get("Id") and len(record["Id"]) != 18:
+        errors.append("Invalid Salesforce ID format")
+
+    # Validate name length
+    if record.get("Name") and len(record["Name"]) > 255:
+        errors.append("School name too long (max 255 characters)")
+
+    return len(errors) == 0, errors
+
+
+def process_school_record(record: dict, session) -> tuple[bool, str]:
+    """
+    Process a single school record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+        session: Database session
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Find the district using salesforce_id
+        district = District.query.filter_by(salesforce_id=record.get("ParentId")).first()
+
+        # Use ImportHelpers to create or update the school
+        school, created = ImportHelpers.create_or_update_record(
+            School,
+            record["Id"],
+            {
+                "name": ImportHelpers.clean_string(record.get("Name", "")),
+                "district_id": district.id if district else None,
+                "salesforce_district_id": ImportHelpers.clean_string(record.get("ParentId")),
+                "normalized_name": ImportHelpers.clean_string(record.get("Connector_Account_Name__c")),
+                "school_code": ImportHelpers.clean_string(record.get("School_Code_External_ID__c")),
+            },
+            session,
+        )
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"Error processing school {record.get('Name', 'Unknown')}: {str(e)}"
+
+
+def validate_class_record(record: dict) -> tuple[bool, list[str]]:
+    """
+    Validate a class record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+
+    # Check required fields
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    if not record.get("Name"):
+        errors.append("Missing class name")
+    if not record.get("School__c"):
+        errors.append("Missing school Salesforce ID")
+    if not record.get("Class_Year_Number__c"):
+        errors.append("Missing class year")
+
+    # Validate Salesforce ID format (18 characters)
+    if record.get("Id") and len(record["Id"]) != 18:
+        errors.append("Invalid Salesforce ID format")
+
+    # Validate school ID format (18 characters)
+    if record.get("School__c") and len(record["School__c"]) != 18:
+        errors.append("Invalid school Salesforce ID format")
+
+    # Validate name length
+    if record.get("Name") and len(record["Name"]) > 255:
+        errors.append("Class name too long (max 255 characters)")
+
+    # Validate class year is numeric
+    if record.get("Class_Year_Number__c"):
+        try:
+            int(record["Class_Year_Number__c"])
+        except (ValueError, TypeError):
+            errors.append("Class year must be a valid number")
+
+    return len(errors) == 0, errors
+
+
+def process_class_record(record: dict, session) -> tuple[bool, str]:
+    """
+    Process a single class record from Salesforce.
+
+    Args:
+        record: Salesforce record dictionary
+        session: Database session
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Use ImportHelpers to create or update the class
+        class_obj, created = ImportHelpers.create_or_update_record(
+            Class,
+            record["Id"],
+            {
+                "salesforce_id": record["Id"],  # Include salesforce_id in update_data
+                "name": ImportHelpers.clean_string(record.get("Name", "")),
+                "school_salesforce_id": ImportHelpers.clean_string(record.get("School__c")),
+                "class_year": ImportHelpers.safe_parse_int(record.get("Class_Year_Number__c"), 0),
+            },
+            session,
+        )
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"Error processing class {record.get('Name', 'Unknown')}: {str(e)}"
 
 
 @management_bp.route("/admin")
@@ -175,21 +376,24 @@ def import_data():
 @login_required
 def import_classes():
     """
-    Import class data from Salesforce.
+    Import class data from Salesforce using the optimized framework.
 
-    Fetches class information from Salesforce and synchronizes it
-    with the local database. Handles both creation of new classes
-    and updates to existing ones.
+    Features:
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
 
     Salesforce Objects:
         - Class__c: Class data with school associations
 
     Process Flow:
-        1. Authenticate with Salesforce
-        2. Query Class__c objects
-        3. Create/update class records
+        1. Authenticate with Salesforce using optimized framework
+        2. Query Class__c objects with batch processing
+        3. Validate and create/update class records
         4. Associate with schools
-        5. Commit all changes
+        5. Commit all changes with error handling
 
     Permission Requirements:
         - Admin access required
@@ -206,63 +410,58 @@ def import_classes():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting class import process...")
-        # Define Salesforce query
+        # Configure the import with optimized settings
+        config = ImportConfig(
+            batch_size=400,  # Process 400 records at a time
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=80,  # Commit every 80 records
+        )
+
+        # Initialize the Salesforce importer
+        importer = SalesforceImporter(config)
+
+        # Define the Salesforce query
         salesforce_query = """
         SELECT Id, Name, School__c, Class_Year_Number__c
         FROM Class__c
         """
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Execute the import using the optimized framework
+        result = importer.import_data(query=salesforce_query, process_func=process_class_record, validation_func=validate_class_record)
 
-        # Execute the query
-        result = sf.query_all(salesforce_query)
-        sf_rows = result.get("records", [])
-
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        # Process each row from Salesforce
-        for row in sf_rows:
-            try:
-                # Check if class exists
-                existing_class = Class.query.filter_by(salesforce_id=row["Id"]).first()
-
-                if existing_class:
-                    # Update existing class
-                    existing_class.name = row["Name"]
-                    existing_class.school_salesforce_id = row["School__c"]
-                    existing_class.class_year = int(row["Class_Year_Number__c"])
-                else:
-                    # Create new class
-                    new_class = Class(
-                        salesforce_id=row["Id"], name=row["Name"], school_salesforce_id=row["School__c"], class_year=int(row["Class_Year_Number__c"])
-                    )
-                    db.session.add(new_class)
-
-                success_count += 1
-            except Exception as e:
-                error_count += 1
-                errors.append(f"Error processing class {row.get('Name')}: {str(e)}")
-
-        # Commit changes
-        db.session.commit()
-
-        print(f"Class import complete: {success_count} successes, {error_count} errors")
-        if errors:
-            print("Class import errors:")
-            for error in errors:
-                print(f"  - {error}")
-
-        return jsonify({"success": True, "message": f"Successfully processed {success_count} classes with {error_count} errors", "errors": errors})
+        # Prepare response based on import result
+        if result.success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Successfully processed {result.success_count} classes with {result.error_count} errors",
+                    "statistics": {
+                        "total_records": result.total_records,
+                        "processed_count": result.processed_count,
+                        "success_count": result.success_count,
+                        "error_count": result.error_count,
+                        "skipped_count": result.skipped_count,
+                        "duration_seconds": result.duration_seconds,
+                    },
+                    "errors": result.errors[:10] if result.errors else [],  # Limit to first 10 errors
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "message": "Import failed", "error": "Import operation failed", "errors": result.errors[:10] if result.errors else []}
+                ),
+                500,
+            )
 
     except SalesforceAuthenticationFailed:
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # Google Sheet Management Routes
@@ -416,118 +615,124 @@ def get_google_sheet(sheet_id):
 @management_bp.route("/management/import-schools", methods=["POST"])
 @login_required
 def import_schools():
+    """
+    Import schools and districts from Salesforce using the optimized framework.
+
+    Features:
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
+    - Two-phase import: districts first, then schools
+
+    Salesforce Objects:
+        - Account (Type = 'School District'): District data
+        - Account (Type = 'School'): School data with district relationships
+
+    Process Flow:
+        1. Import districts using optimized framework
+        2. Import schools using optimized framework
+        3. Update school levels automatically
+        4. Provide comprehensive statistics
+
+    Permission Requirements:
+        - Admin access required
+
+    Returns:
+        JSON response with import results and statistics
+
+    Raises:
+        401: Salesforce authentication failure
+        403: Unauthorized access attempt
+        500: Import or database error
+    """
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting school import process...")
-        # First, import districts
+        # Phase 1: Import Districts
+        print("Starting district import process...")
+
+        # Configure the district import with optimized settings
+        district_config = ImportConfig(
+            batch_size=300,  # Process 300 records at a time
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=60,  # Commit every 60 records
+        )
+
+        # Initialize the Salesforce importer for districts
+        district_importer = SalesforceImporter(district_config)
+
+        # Define the district query
         district_query = """
         SELECT Id, Name, School_Code_External_ID__c
         FROM Account
         WHERE Type = 'School District'
         """
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Execute the district import using the optimized framework
+        district_result = district_importer.import_data(query=district_query, process_func=process_district_record, validation_func=validate_district_record)
 
-        # Execute district query first
-        district_result = sf.query_all(district_query)
-        district_rows = district_result.get("records", [])
+        print(f"District import complete: {district_result.success_count} successes, {district_result.error_count} errors")
 
-        district_success = 0
-        district_errors = []
+        # Phase 2: Import Schools
+        print("Starting school import process...")
 
-        # Process districts
-        for row in district_rows:
-            try:
-                existing_district = District.query.filter_by(salesforce_id=row["Id"]).first()
+        # Configure the school import with optimized settings
+        school_config = ImportConfig(
+            batch_size=400,  # Process 400 records at a time
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=80,  # Commit every 80 records
+        )
 
-                if existing_district:
-                    # Update existing district
-                    existing_district.name = row["Name"]
-                    existing_district.district_code = row["School_Code_External_ID__c"]
-                else:
-                    # Create new district
-                    new_district = District(salesforce_id=row["Id"], name=row["Name"], district_code=row["School_Code_External_ID__c"])
-                    db.session.add(new_district)
+        # Initialize the Salesforce importer for schools
+        school_importer = SalesforceImporter(school_config)
 
-                district_success += 1
-            except Exception as e:
-                district_errors.append(f"Error processing district {row.get('Name')}: {str(e)}")
-
-        # Commit district changes
-        db.session.commit()
-
-        print(f"District import complete: {district_success} successes, {len(district_errors)} errors")
-        if district_errors:
-            print("District errors:")
-            for error in district_errors:
-                print(f"  - {error}")
-
-        # Now proceed with school import
+        # Define the school query
         school_query = """
         SELECT Id, Name, ParentId, Connector_Account_Name__c, School_Code_External_ID__c
         FROM Account
         WHERE Type = 'School'
         """
 
-        # Execute school query
-        school_result = sf.query_all(school_query)
-        school_rows = school_result.get("records", [])
+        # Execute the school import using the optimized framework
+        school_result = school_importer.import_data(query=school_query, process_func=process_school_record, validation_func=validate_school_record)
 
-        school_success = 0
-        school_errors = []
-
-        # Process schools
-        for row in school_rows:
-            try:
-                existing_school = School.query.filter_by(id=row["Id"]).first()
-
-                # Find the district using salesforce_id
-                district = District.query.filter_by(salesforce_id=row["ParentId"]).first()
-
-                if existing_school:
-                    # Update existing school
-                    existing_school.name = row["Name"]
-                    existing_school.district_id = district.id if district else None
-                    existing_school.salesforce_district_id = row["ParentId"]
-                    existing_school.normalized_name = row["Connector_Account_Name__c"]
-                    existing_school.school_code = row["School_Code_External_ID__c"]
-                else:
-                    # Create new school
-                    new_school = School(
-                        id=row["Id"],
-                        name=row["Name"],
-                        district_id=district.id if district else None,
-                        salesforce_district_id=row["ParentId"],
-                        normalized_name=row["Connector_Account_Name__c"],
-                        school_code=row["School_Code_External_ID__c"],
-                    )
-                    db.session.add(new_school)
-
-                school_success += 1
-            except Exception as e:
-                school_errors.append(f"Error processing school {row.get('Name')}: {str(e)}")
-
-        # Commit school changes
-        db.session.commit()
-
-        print(f"School import complete: {school_success} successes, {len(school_errors)} errors")
-        if school_errors:
-            print("School errors:")
-            for error in school_errors:
-                print(f"  - {error}")
+        print(f"School import complete: {school_result.success_count} successes, {school_result.error_count} errors")
 
         # After successful school import, update school levels
         level_update_response = update_school_levels()
 
+        # Prepare comprehensive response
         return jsonify(
             {
                 "success": True,
-                "message": f"Successfully processed {district_success} districts and {school_success} schools",
-                "district_errors": district_errors,
-                "school_errors": school_errors,
+                "message": f"Successfully processed {district_result.success_count} districts and {school_result.success_count} schools",
+                "district_statistics": {
+                    "total_records": district_result.total_records,
+                    "processed_count": district_result.processed_count,
+                    "success_count": district_result.success_count,
+                    "error_count": district_result.error_count,
+                    "skipped_count": district_result.skipped_count,
+                    "duration_seconds": district_result.duration_seconds,
+                },
+                "school_statistics": {
+                    "total_records": school_result.total_records,
+                    "processed_count": school_result.processed_count,
+                    "success_count": school_result.success_count,
+                    "error_count": school_result.error_count,
+                    "skipped_count": school_result.skipped_count,
+                    "duration_seconds": school_result.duration_seconds,
+                },
+                "district_errors": district_result.errors[:10] if district_result.errors else [],
+                "school_errors": school_result.errors[:10] if school_result.errors else [],
                 "level_update": level_update_response.json if hasattr(level_update_response, "json") else None,
             }
         )
@@ -535,65 +740,100 @@ def import_schools():
     except SalesforceAuthenticationFailed:
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @management_bp.route("/management/import-districts", methods=["POST"])
 @login_required
 def import_districts():
+    """
+    Import districts from Salesforce using the optimized framework.
+
+    Features:
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
+
+    Salesforce Objects:
+        - Account (Type = 'School District'): District data
+
+    Process Flow:
+        1. Authenticate with Salesforce using optimized framework
+        2. Query Account objects with batch processing
+        3. Validate and create/update district records
+        4. Commit all changes with error handling
+
+    Permission Requirements:
+        - Admin access required
+
+    Returns:
+        JSON response with import results and statistics
+
+    Raises:
+        401: Salesforce authentication failure
+        403: Unauthorized access attempt
+        500: Import or database error
+    """
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        # Define Salesforce query
+        # Configure the import with optimized settings
+        config = ImportConfig(
+            batch_size=300,  # Process 300 records at a time
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=60,  # Commit every 60 records
+        )
+
+        # Initialize the Salesforce importer
+        importer = SalesforceImporter(config)
+
+        # Define the Salesforce query
         salesforce_query = """
         SELECT Id, Name, School_Code_External_ID__c
         FROM Account
         WHERE Type = 'School District'
         """
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Execute the import using the optimized framework
+        result = importer.import_data(query=salesforce_query, process_func=process_district_record, validation_func=validate_district_record)
 
-        # Execute the query
-        result = sf.query_all(salesforce_query)
-        sf_rows = result.get("records", [])
-
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        # Process each row from Salesforce
-        for row in sf_rows:
-            try:
-                # Check if district exists
-                existing_district = District.query.filter_by(salesforce_id=row["Id"]).first()
-
-                if existing_district:
-                    # Update existing district
-                    existing_district.name = row["Name"]
-                    existing_district.district_code = row["School_Code_External_ID__c"]
-                else:
-                    # Create new district
-                    new_district = District(salesforce_id=row["Id"], name=row["Name"], district_code=row["School_Code_External_ID__c"])
-                    db.session.add(new_district)
-
-                success_count += 1
-            except Exception as e:
-                error_count += 1
-                errors.append(f"Error processing district {row.get('Name')}: {str(e)}")
-
-        # Commit changes
-        db.session.commit()
-
-        return jsonify({"success": True, "message": f"Successfully processed {success_count} districts with {error_count} errors", "errors": errors})
+        # Prepare response based on import result
+        if result.success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Successfully processed {result.success_count} districts with {result.error_count} errors",
+                    "statistics": {
+                        "total_records": result.total_records,
+                        "processed_count": result.processed_count,
+                        "success_count": result.success_count,
+                        "error_count": result.error_count,
+                        "skipped_count": result.skipped_count,
+                        "duration_seconds": result.duration_seconds,
+                    },
+                    "errors": result.errors[:10] if result.errors else [],  # Limit to first 10 errors
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "message": "Import failed", "error": "Import operation failed", "errors": result.errors[:10] if result.errors else []}
+                ),
+                500,
+            )
 
     except SalesforceAuthenticationFailed:
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        print(f"Salesforce sync error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @management_bp.route("/schools")

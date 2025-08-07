@@ -142,6 +142,7 @@ def process_organization_record(record: dict, session) -> tuple[bool, str]:
             Organization,
             record["Id"],
             {
+                "salesforce_id": record["Id"],  # Include salesforce_id in update_data
                 "name": ImportHelpers.clean_string(record.get("Name", "")),
                 "type": ImportHelpers.clean_string(record.get("Type")),
                 "description": ImportHelpers.clean_string(record.get("Description")),
