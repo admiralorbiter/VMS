@@ -318,6 +318,73 @@ class Student(Contact):
         except Exception as e:
             return None, False, f"Error processing student {sf_data.get('FirstName', '')} {sf_data.get('LastName', '')}: {str(e)}"
 
+    @classmethod
+    def import_from_salesforce_without_school(cls, sf_data, db_session):
+        """
+        Import student data from Salesforce WITHOUT school assignment.
+        This allows for a two-phase import: students first, then school assignments.
+
+        Args:
+            sf_data: Dictionary containing Salesforce student data
+            db_session: SQLAlchemy database session
+
+        Returns:
+            tuple: (student_object, is_new_student, error_message)
+        """
+        try:
+            # Extract required fields
+            sf_id = sf_data.get("Id")
+            first_name = sf_data.get("FirstName", "").strip()
+            last_name = sf_data.get("LastName", "").strip()
+
+            if not sf_id or not first_name or not last_name:
+                return None, False, f"Missing required fields for student: {first_name} {last_name}"
+
+            # Check if student already exists
+            student = cls.query.filter_by(salesforce_individual_id=sf_id).first()
+            is_new = False
+
+            if not student:
+                student = cls()
+                student.salesforce_individual_id = sf_id
+                student.salesforce_account_id = sf_data.get("AccountId")
+                db_session.add(student)
+                is_new = True
+
+            # Update student fields (EXCEPT school_id - we'll handle that later)
+            student.first_name = first_name
+            student.last_name = last_name
+            student.middle_name = sf_data.get("MiddleName", "").strip() or None
+            student.birthdate = pd.to_datetime(sf_data["Birthdate"]).date() if sf_data.get("Birthdate") else None
+            student.student_id = str(sf_data.get("Local_Student_ID__c", "")).strip() or None
+            # NOTE: school_id is NOT set here - we'll fix it later
+            student.class_salesforce_id = str(sf_data.get("Class__c", "")).strip() or None
+            student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "")).strip() or None
+            student.current_grade = int(sf_data.get("Current_Grade__c", 0)) if pd.notna(sf_data.get("Current_Grade__c")) else None
+
+            # Handle gender
+            gender_value = sf_data.get("Gender__c")
+            if gender_value:
+                gender_key = gender_value.lower().replace(" ", "_")
+                try:
+                    student.gender = GenderEnum[gender_key]
+                except KeyError:
+                    # Log invalid gender but don't fail the import
+                    print(f"Invalid gender value for {first_name} {last_name}: {gender_value}")
+
+            # Handle racial/ethnic background
+            racial_ethnic = sf_data.get("Racial_Ethnic_Background__c")
+            if racial_ethnic:
+                try:
+                    student.racial_ethnic = cls.map_racial_ethnic_value(racial_ethnic)
+                except Exception:
+                    print(f"Error processing racial/ethnic value for {first_name} {last_name}: {racial_ethnic}")
+
+            return student, is_new, None
+
+        except Exception as e:
+            return None, False, f"Error processing student {sf_data.get('FirstName', '')} {sf_data.get('LastName', '')}: {str(e)}"
+
     @staticmethod
     def map_racial_ethnic_value(value):
         """
