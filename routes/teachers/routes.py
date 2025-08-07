@@ -18,17 +18,80 @@ Key Features:
 
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
-from simple_salesforce.api import Salesforce
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.event import EventTeacher
 from models.school_model import School
 from models.teacher import Teacher, TeacherStatus
+from utils.salesforce_importer import ImportConfig, ImportHelpers, SalesforceImporter
 
 # Create Blueprint for teacher routes
 teachers_bp = Blueprint("teachers", __name__)
+
+
+def validate_teacher_record(record):
+    """
+    Validate a teacher record from Salesforce.
+
+    Args:
+        record: Dictionary containing Salesforce teacher data
+
+    Returns:
+        list: List of error messages (empty if valid)
+    """
+    errors = []
+    required_fields = ["Id", "FirstName", "LastName"]
+
+    for field in required_fields:
+        if not record.get(field):
+            errors.append(f"Missing required field: {field}")
+
+    # Validate Salesforce ID format
+    sf_id = record.get("Id", "")
+    if sf_id and not ImportHelpers.is_valid_salesforce_id(sf_id):
+        errors.append(f"Invalid Salesforce ID format: {sf_id}")
+
+    # Validate name fields
+    first_name = record.get("FirstName", "").strip()
+    last_name = record.get("LastName", "").strip()
+
+    if not first_name or not last_name:
+        errors.append(f"Invalid name data: first_name='{first_name}', last_name='{last_name}'")
+
+    return errors
+
+
+def process_teacher_record(record, db_session):
+    """
+    Process a teacher record from Salesforce.
+
+    Args:
+        record: Dictionary containing Salesforce teacher data
+        db_session: SQLAlchemy database session
+
+    Returns:
+        bool: True if successfully processed, False otherwise
+    """
+    try:
+        # Use the Teacher model's import method
+        teacher, is_new, error = Teacher.import_from_salesforce(record, db_session)
+
+        if error:
+            return False
+
+        # Handle contact info using the teacher's method
+        try:
+            success, error = teacher.update_contact_info(record, db_session)
+            if not success:
+                return False
+        except Exception:
+            return False
+
+        return True
+
+    except Exception:
+        return False
 
 
 @teachers_bp.route("/teachers")
@@ -103,27 +166,28 @@ def list_teachers():
 @login_required
 def import_teachers_from_salesforce():
     """
-    Import teacher data from Salesforce.
+    Import teacher data from Salesforce using the optimized framework.
 
     This function:
-    1. Connects to Salesforce using configured credentials
-    2. Queries for teachers with specific criteria
+    1. Uses SalesforceImporter for batch processing
+    2. Validates teacher records before processing
     3. Creates or updates teacher records in the local database
     4. Handles associated contact information (emails, phones)
+    5. Provides detailed progress tracking and error reporting
 
     Returns:
-        JSON response with import results and any errors
+        JSON response with import results and detailed statistics
     """
     try:
-        print("Starting teacher import from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
+        print("Starting optimized teacher import from Salesforce...")
 
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Configure the import
+        config = ImportConfig(batch_size=350, max_retries=3, retry_delay_seconds=1, validate_data=True, log_progress=True)  # Optimal batch size for teachers
 
-        # Query for teachers with specific fields
+        # Create the importer
+        importer = SalesforceImporter(config=config)
+
+        # Define the query for teachers
         teacher_query = """
         SELECT Id, AccountId, FirstName, LastName, Email,
                npsp__Primary_Affiliation__c, Department, Gender__c,
@@ -132,55 +196,32 @@ def import_teachers_from_salesforce():
         WHERE Contact_Type__c = 'Teacher'
         """
 
-        # Execute query and get results
-        result = sf.query_all(teacher_query)
-        teacher_rows = result.get("records", [])
+        # Execute the import
+        result = importer.import_data(query=teacher_query, process_func=process_teacher_record, validation_func=validate_teacher_record)
 
-        # Process each teacher record
-        for row in teacher_rows:
-            try:
-                # Use the Teacher model's import method
-                teacher, is_new, error = Teacher.import_from_salesforce(row, db.session)
+        # Prepare response
+        response_data = {
+            "success": result.success,
+            "message": f"Successfully processed {result.processed_count} teachers",
+            "statistics": {
+                "total_records": result.total_records,
+                "processed_count": result.processed_count,
+                "success_count": result.success_count,
+                "error_count": result.error_count,
+                "skipped_count": result.skipped_count,
+                "duration_seconds": result.duration_seconds,
+            },
+            "errors": result.errors,
+            "warnings": result.warnings,
+        }
 
-                if error:
-                    error_count += 1
-                    errors.append(error)
-                    continue
-
-                success_count += 1
-
-                # Save the teacher first to get the ID
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    error_count += 1
-                    errors.append(f"Error saving teacher {teacher.first_name} {teacher.last_name}: {str(e)}")
-                    continue
-
-                # Handle contact info using the teacher's method
-                try:
-                    success, error = teacher.update_contact_info(row, db.session)
-                    if not success:
-                        errors.append(error)
-                    else:
-                        db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    errors.append(f"Error saving contact info for teacher {teacher.first_name} {teacher.last_name}: {str(e)}")
-
-            except Exception as e:
-                error_count += 1
-                errors.append(f"Error processing teacher {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}")
-                continue
-
-        print(f"Teacher import complete: {success_count} successes, {error_count} errors")
-        if errors:
+        print(f"Teacher import complete: {result.success_count} successes, {result.error_count} errors")
+        if result.errors:
             print("Teacher import errors:")
-            for error in errors:
+            for error in result.errors:
                 print(f"  - {error}")
 
-        return jsonify({"success": True, "message": f"Successfully processed {success_count} teachers with {error_count} errors", "errors": errors})
+        return jsonify(response_data)
 
     except SalesforceAuthenticationFailed:
         print("Salesforce authentication failed")

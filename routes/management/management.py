@@ -206,19 +206,27 @@ def process_school_record(record: dict, session) -> tuple[bool, str]:
         # Find the district using salesforce_id
         district = District.query.filter_by(salesforce_id=record.get("ParentId")).first()
 
-        # Use ImportHelpers to create or update the school
-        school, created = ImportHelpers.create_or_update_record(
-            School,
-            record["Id"],
-            {
-                "name": ImportHelpers.clean_string(record.get("Name", "")),
-                "district_id": district.id if district else None,
-                "salesforce_district_id": ImportHelpers.clean_string(record.get("ParentId")),
-                "normalized_name": ImportHelpers.clean_string(record.get("Connector_Account_Name__c")),
-                "school_code": ImportHelpers.clean_string(record.get("School_Code_External_ID__c")),
-            },
-            session,
-        )
+        # Try to find existing school by ID (Salesforce ID)
+        school = session.query(School).filter_by(id=record["Id"]).first()
+
+        if school:
+            # Update existing school
+            school.name = ImportHelpers.clean_string(record.get("Name", ""))
+            school.district_id = district.id if district else None
+            school.salesforce_district_id = ImportHelpers.clean_string(record.get("ParentId"))
+            school.normalized_name = ImportHelpers.clean_string(record.get("Connector_Account_Name__c"))
+            school.school_code = ImportHelpers.clean_string(record.get("School_Code_External_ID__c"))
+        else:
+            # Create new school
+            school = School(
+                id=record["Id"],
+                name=ImportHelpers.clean_string(record.get("Name", "")),
+                district_id=district.id if district else None,
+                salesforce_district_id=ImportHelpers.clean_string(record.get("ParentId")),
+                normalized_name=ImportHelpers.clean_string(record.get("Connector_Account_Name__c")),
+                school_code=ImportHelpers.clean_string(record.get("School_Code_External_ID__c")),
+            )
+            session.add(school)
 
         return True, ""
 
@@ -948,51 +956,70 @@ def update_school_levels():
 
     try:
         sheet_id = os.getenv("SCHOOL_MAPPING_GOOGLE_SHEET")
+        print(f"DEBUG: SCHOOL_MAPPING_GOOGLE_SHEET = {sheet_id}")
+
         if not sheet_id:
             raise ValueError("School mapping Google Sheet ID not configured")
 
         # Try primary URL format
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+        print(f"DEBUG: Trying CSV URL: {csv_url}")
 
         try:
             df = pd.read_csv(csv_url)
+            print(f"DEBUG: Successfully read CSV with {len(df)} rows")
+            print(f"DEBUG: CSV columns: {list(df.columns)}")
         except Exception as e:
             current_app.logger.error(f"Failed to read CSV: {str(e)}")
+            print(f"DEBUG: Failed to read CSV with primary URL: {str(e)}")
+
             # Try alternative URL format
             csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+            print(f"DEBUG: Trying alternative CSV URL: {csv_url}")
             df = pd.read_csv(csv_url)
+            print(f"DEBUG: Successfully read CSV with alternative URL, {len(df)} rows")
 
         success_count = 0
         error_count = 0
         errors = []
 
         # Process each row
-        for _, row in df.iterrows():
+        for index, row in df.iterrows():
             try:
                 # Skip rows without an ID or Level
                 if pd.isna(row["Id"]) or pd.isna(row["Level"]):
+                    print(f"DEBUG: Skipping row {index} - missing Id or Level")
                     continue
+
+                print(f"DEBUG: Processing row {index} - Id: {row['Id']}, Level: {row['Level']}")
 
                 # Find the school by Salesforce ID
                 school = School.query.get(row["Id"])
                 if school:
                     school.level = row["Level"].strip()
                     success_count += 1
+                    print(f"DEBUG: Updated school {school.name} to level {school.level}")
                 else:
                     error_count += 1
-                    errors.append(f"School not found with ID: {row['Id']}")
+                    error_msg = f"School not found with ID: {row['Id']}"
+                    errors.append(error_msg)
+                    print(f"DEBUG: {error_msg}")
 
             except Exception as e:
                 error_count += 1
-                errors.append(f"Error processing school {row.get('Id')}: {str(e)}")
+                error_msg = f"Error processing school {row.get('Id')}: {str(e)}"
+                errors.append(error_msg)
+                print(f"DEBUG: {error_msg}")
 
         db.session.commit()
+        print(f"DEBUG: Final result - {success_count} successes, {error_count} errors")
 
         return jsonify({"success": True, "message": f"Successfully updated {success_count} schools with {error_count} errors", "errors": errors})
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error("School level update failed", exc_info=True)
+        print(f"DEBUG: School level update failed: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 400
 
 

@@ -395,3 +395,32 @@ class ImportHelpers:
             if not record.get(field):
                 errors.append(f"Missing required field: {field}")
         return errors
+
+    @staticmethod
+    def is_valid_salesforce_id(salesforce_id: str) -> bool:
+        """
+        Validate Salesforce ID format.
+
+        Salesforce IDs are 15 or 18 characters long and contain only alphanumeric characters.
+
+        Args:
+            salesforce_id: The Salesforce ID to validate
+
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        if not salesforce_id or not isinstance(salesforce_id, str):
+            return False
+
+        # Remove any whitespace
+        salesforce_id = salesforce_id.strip()
+
+        # Check length (15 or 18 characters)
+        if len(salesforce_id) not in [15, 18]:
+            return False
+
+        # Check that it contains only alphanumeric characters
+        if not salesforce_id.isalnum():
+            return False
+
+        return True
