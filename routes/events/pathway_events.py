@@ -37,10 +37,16 @@ from models.student import Student
 from models.volunteer import Skill
 
 # Import the process_participation_row function from the events routes
-from routes.events.routes import process_participation_row, process_student_participation_row
+from routes.events.routes import (
+    process_student_participation_record_optimized,
+    process_volunteer_participation_record_optimized,
+    validate_student_participation_record,
+    validate_volunteer_participation_record,
+)
 
 # Import helpers from routes.utils
 from routes.utils import map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
+from utils.salesforce_importer import ImportConfig, SalesforceImporter
 
 # Adjust imports based on your actual model locations if needed
 
@@ -191,32 +197,7 @@ def sync_unaffiliated_events():
         )
         print("Connected to Salesforce.")
 
-        # Step 1: Query for ALL student participants first
-        # Consider adding a date filter if this table is extremely large
-        # e.g., WHERE CreatedDate >= LAST_N_MONTHS:24
-        all_participants_query = """
-        SELECT Session__c, Contact__c
-        FROM Session_Participant__c
-        WHERE Participant_Type__c = 'Student' AND Contact__c != NULL
-        """
-        print("Querying ALL student participants from Salesforce...")
-        all_participants_result = sf.query_all(all_participants_query)
-        all_participant_rows = all_participants_result.get("records", [])
-        print(f"Found {len(all_participant_rows)} total student participation records.")
-
-        # Build a map of Event SF ID -> Set of Student Contact SF IDs
-        event_to_student_sf_ids = {}
-        for row in all_participant_rows:
-            event_id = row["Session__c"]
-            student_contact_id = row["Contact__c"]
-            # We already filter Contact__c != NULL in the query, but double-check
-            if event_id and student_contact_id:
-                if event_id not in event_to_student_sf_ids:
-                    event_to_student_sf_ids[event_id] = set()
-                event_to_student_sf_ids[event_id].add(student_contact_id)
-        print(f"Built participation map for {len(event_to_student_sf_ids)} events.")
-
-        # Step 2: Query for unaffiliated events in Salesforce (FETCH FULL DETAILS)
+        # Step 1: Query for unaffiliated events in Salesforce (FETCH FULL DETAILS)
         # Copy fields from routes/events/routes.py import query
         unaffiliated_events_query = """
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
@@ -246,6 +227,44 @@ def sync_unaffiliated_events():
                     "errors": [],
                 }
             )
+
+        # Step 2: Build event->students map ONLY for these unaffiliated events (batched)
+        processed_event_sf_ids = [event["Id"] for event in unaffiliated_events_data]
+        event_to_student_sf_ids: dict[str, set[str]] = {}
+        all_student_ids: set[str] = set()
+        if processed_event_sf_ids:
+            batch_size = 200
+            for i in range(0, len(processed_event_sf_ids), batch_size):
+                batch_ids = processed_event_sf_ids[i : i + batch_size]
+                print(f"Fetching student participants for batch {i//batch_size + 1}/{(len(processed_event_sf_ids)+batch_size-1)//batch_size}")
+                student_participant_query = f"""
+                SELECT Session__c, Contact__c
+                FROM Session_Participant__c
+                WHERE Participant_Type__c = 'Student' AND Contact__c != NULL
+                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_ids])})
+                """
+                res = sf.query_all(student_participant_query)
+                rows = res.get("records", [])
+                for row in rows:
+                    event_id = row.get("Session__c")
+                    contact_id = row.get("Contact__c")
+                    if event_id and contact_id:
+                        event_to_student_sf_ids.setdefault(event_id, set()).add(contact_id)
+                        all_student_ids.add(contact_id)
+        print(f"Built participation map for {len(event_to_student_sf_ids)} unaffiliated events.")
+
+        # Prefetch all students referenced to avoid per-event queries
+        student_map: dict[str, Student] = {}
+        if all_student_ids:
+            local_students = (
+                db.session.query(Student)
+                .options(selectinload(Student.school).selectinload(School.district))
+                .filter(Student.salesforce_individual_id.in_(list(all_student_ids)))
+                .all()
+            )
+            for s in local_students:
+                if s.salesforce_individual_id:
+                    student_map[s.salesforce_individual_id] = s
 
         # Step 3: Process each unaffiliated event found in Salesforce
         created_count = 0  # Add counter for new events
@@ -295,29 +314,20 @@ def sync_unaffiliated_events():
 
                     # Check if it needs districts assigned
                     if not local_event.districts:
-                        # Look up student participants in the map we built
-                        student_sf_ids = event_to_student_sf_ids.get(event_sf_id)
-                        if student_sf_ids:
-                            # Find local students and districts (reuse logic from previous version)
-                            local_students = (
-                                db.session.query(Student)
-                                .options(selectinload(Student.school).selectinload(School.district))
-                                .filter(Student.salesforce_individual_id.in_(student_sf_ids))
-                                .all()
-                            )
+                        # Determine districts from prefetched students
+                        student_sf_ids = event_to_student_sf_ids.get(event_sf_id, set())
+                        event_districts = set()
+                        for sid in student_sf_ids:
+                            stu = student_map.get(sid)
+                            if stu and stu.school and stu.school.district:
+                                event_districts.add(stu.school.district)
 
-                            event_districts = set()
-                            if local_students:
-                                for student in local_students:
-                                    if student.school and student.school.district:
-                                        event_districts.add(student.school.district)
-
-                            if event_districts:
-                                # Update existing event's districts
-                                local_event.districts = list(event_districts)  # Assign the list directly
-                                updated_fields.append("districts")
-                                district_map_details[event_sf_id] = [d.name for d in event_districts]
-                                print(f"UPDATED existing Event {event_sf_id} ({local_event.title}) with districts: {[d.name for d in event_districts]}")
+                        if event_districts:
+                            # Update existing event's districts
+                            local_event.districts = list(event_districts)  # Assign the list directly
+                            updated_fields.append("districts")
+                            district_map_details[event_sf_id] = [d.name for d in event_districts]
+                            print(f"UPDATED existing Event {event_sf_id} ({local_event.title}) with districts: {[d.name for d in event_districts]}")
 
                     # If any fields were updated, save the event
                     if updated_fields:
@@ -331,24 +341,13 @@ def sync_unaffiliated_events():
 
                 # --- Logic if Event DOES NOT Exist Locally (Expected case) ---
                 if not local_event:
-                    # Look up student participants in the map we built
-                    student_sf_ids = event_to_student_sf_ids.get(event_sf_id)
-
-                    # Determine districts from students (if any students exist)
+                    # Determine districts from prefetched students
+                    student_sf_ids = event_to_student_sf_ids.get(event_sf_id, set())
                     event_districts = set()
-                    if student_sf_ids:
-                        # Find local students and determine districts
-                        local_students = (
-                            db.session.query(Student)
-                            .options(selectinload(Student.school).selectinload(School.district))
-                            .filter(Student.salesforce_individual_id.in_(student_sf_ids))
-                            .all()
-                        )
-
-                        if local_students:
-                            for student in local_students:
-                                if student.school and student.school.district:
-                                    event_districts.add(student.school.district)
+                    for sid in student_sf_ids:
+                        stu = student_map.get(sid)
+                        if stu and stu.school and stu.school.district:
+                            event_districts.add(stu.school.district)
 
                     # *** Modified Logic: Create event regardless of district availability ***
                     try:
@@ -385,101 +384,54 @@ def sync_unaffiliated_events():
             #    errors.append(f"Event {event_sf_id} finished loop without being processed or explicitly skipped.")
 
         # NEW: After processing events, sync volunteer participants for the created/updated events
-        print("Syncing volunteer participants for processed events...")
-
-        # Get the Salesforce IDs of ALL unaffiliated events we fetched from Salesforce
-        processed_event_sf_ids = [event["Id"] for event in unaffiliated_events_data]
+        print("Syncing volunteer participants for processed events (optimized importer)...")
 
         participant_success = 0
         participant_error = 0
-
         if processed_event_sf_ids:
-            # Process in batches to avoid "Request Header Fields Too Large" error
-            batch_size = 50  # Adjust this number if needed
-
+            batch_size = 200
+            config = ImportConfig(batch_size=500, max_retries=3, retry_delay_seconds=5, validate_data=True, log_progress=False, commit_frequency=10)
+            importer = SalesforceImporter(config)
             for i in range(0, len(processed_event_sf_ids), batch_size):
                 batch_sf_ids = processed_event_sf_ids[i : i + batch_size]
-
-                print(
-                    f"Processing volunteer participants batch {i//batch_size + 1} of {(len(processed_event_sf_ids) + batch_size - 1)//batch_size} ({len(batch_sf_ids)} events)"
-                )
-
-                # Query for volunteer participants for this batch of events
-                participants_query = f"""
-                SELECT
-                    Id,
-                    Name,
-                    Contact__c,
-                    Session__c,
-                    Status__c,
-                    Delivery_Hours__c,
-                    Age_Group__c,
-                    Email__c,
-                    Title__c
+                query = f"""
+                SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c
                 FROM Session_Participant__c
-                WHERE Participant_Type__c = 'Volunteer'
-                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
+                WHERE Participant_Type__c = 'Volunteer' AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
                 """
-
-                try:
-                    # Execute participants query for this batch
-                    participants_result = sf.query_all(participants_query)
-                    participant_rows = participants_result.get("records", [])
-
-                    print(f"Found {len(participant_rows)} volunteer participation records for batch {i//batch_size + 1}")
-
-                    # Process volunteer participants using the existing function
-                    for row in participant_rows:
-                        participant_success, participant_error = process_participation_row(row, participant_success, participant_error, errors)
-
-                except Exception as batch_error:
-                    error_msg = f"Error processing volunteer participants batch {i//batch_size + 1}: {str(batch_error)}"
-                    print(error_msg)
-                    errors.append(error_msg)
-                    participant_error += len(batch_sf_ids)  # Count all events in failed batch as errors
-
+                res = importer.import_data(
+                    query=query,
+                    process_func=process_volunteer_participation_record_optimized,
+                    validation_func=validate_volunteer_participation_record,
+                    progress_callback=None,
+                )
+                participant_success += res.success_count
+                participant_error += res.error_count
             print(f"Successfully processed {participant_success} volunteer participations with {participant_error} errors")
 
         # NEW: Sync student participants for the created/updated events
-        print("Syncing student participants for processed events...")
+        print("Syncing student participants for processed events (optimized importer)...")
         student_participant_success = 0
         student_participant_error = 0
-
         if processed_event_sf_ids:
-            batch_size = 50
+            batch_size = 200
+            config = ImportConfig(batch_size=500, max_retries=3, retry_delay_seconds=5, validate_data=True, log_progress=False, commit_frequency=10)
+            importer = SalesforceImporter(config)
             for i in range(0, len(processed_event_sf_ids), batch_size):
                 batch_sf_ids = processed_event_sf_ids[i : i + batch_size]
-                print(
-                    f"Processing student participants batch {i//batch_size + 1} of {(len(processed_event_sf_ids) + batch_size - 1)//batch_size} ({len(batch_sf_ids)} events)"
-                )
-                student_participant_query = f"""
-                SELECT
-                    Id,
-                    Name,
-                    Contact__c,
-                    Session__c,
-                    Status__c,
-                    Delivery_Hours__c,
-                    Age_Group__c,
-                    Email__c,
-                    Title__c
+                query = f"""
+                SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c, Age_Group__c
                 FROM Session_Participant__c
-                WHERE Participant_Type__c = 'Student'
-                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
+                WHERE Participant_Type__c = 'Student' AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
                 """
-                try:
-                    student_participant_result = sf.query_all(student_participant_query)
-                    student_participant_rows = student_participant_result.get("records", [])
-                    print(f"Found {len(student_participant_rows)} student participation records for batch {i//batch_size + 1}")
-                    for row in student_participant_rows:
-                        student_participant_success, student_participant_error = process_student_participation_row(
-                            row, student_participant_success, student_participant_error, errors
-                        )
-                except Exception as batch_error:
-                    error_msg = f"Error processing student participants batch {i//batch_size + 1}: {str(batch_error)}"
-                    print(error_msg)
-                    errors.append(error_msg)
-                    student_participant_error += len(batch_sf_ids)
+                res = importer.import_data(
+                    query=query,
+                    process_func=process_student_participation_record_optimized,
+                    validation_func=validate_student_participation_record,
+                    progress_callback=None,
+                )
+                student_participant_success += res.success_count
+                student_participant_error += res.error_count
             print(f"Successfully processed {student_participant_success} student participations with {student_participant_error} errors")
 
         # Commit all changes
