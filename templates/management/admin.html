@@ -1607,14 +1607,31 @@ function importStudentParticipants() {
     .then(data => {
         progressBar.style.width = '100%'; // Indicate completion
         if (data.success) {
-            status.textContent = `Import complete: ${data.successCount} processed, ${data.errorCount} errors.`;
+            // Prefer detailed message from API if available
+            if (data.message) {
+                status.textContent = data.message;
+            } else {
+                status.textContent = `Import complete: ${data.successCount || 0} processed, ${data.errorCount || 0} errors.`;
+            }
+
+            // Show additional statistics if available
+            if (data.statistics) {
+                const s = data.statistics;
+                const created = s.created_count ?? 'n/a';
+                const dupes = s.duplicate_count ?? 'n/a';
+                const missStu = s.missing_student_count ?? 'n/a';
+                const missEvt = s.missing_event_count ?? 'n/a';
+                status.innerHTML += `<br/><small>Created: ${created}, Duplicates: ${dupes}, Missing Students: ${missStu}, Missing Events: ${missEvt}</small>`;
+                console.log('Student participation import stats:', s);
+            }
+
             showToast('Success', data.message || 'Student participation import completed.', 'success');
+
             if (data.errors && data.errors.length > 0) {
                 console.log("Student Participation Import Errors:", data.errors);
-                // Optionally display first few errors below status
                 let errorSample = data.errors.slice(0, 5).join('\n - ');
                 status.innerHTML += `<br/><small class="text-danger">Errors:\n - ${errorSample}${data.errors.length > 5 ? '\n...' : ''}</small>`;
-             }
+            }
         } else {
             throw new Error(data.message || data.error || 'Unknown error during student participation import.');
         }

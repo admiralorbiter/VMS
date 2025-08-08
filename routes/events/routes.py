@@ -1106,17 +1106,17 @@ def import_events_from_salesforce():
 
         # Events query
         events_query = """
-            SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
-                   End_Date_and_Time__c, Session_Status__c, Location_Information__c,
-                   Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
-                   District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
-                   Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-                   Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
-                   Session_Host__c
-            FROM Session__c
-            WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
-            ORDER BY Start_Date_and_Time__c DESC
-            """
+        SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
+            End_Date_and_Time__c, Session_Status__c, Location_Information__c,
+            Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
+            District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
+            Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
+            Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
+            Session_Host__c
+        FROM Session__c
+        WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
+        ORDER BY Start_Date_and_Time__c DESC
+        """
 
         # Progress callback
         def progress_callback(processed, total, message):
@@ -1124,10 +1124,137 @@ def import_events_from_salesforce():
                 pct = (processed / max(total, 1)) * 100
                 print(f"Progress: {processed:,}/{total:,} events ({pct:.1f}%) - {message}")
 
-        # Import events
+        # ---------------------------------------------
+        # Batch caches to reduce DB roundtrips
+        # ---------------------------------------------
+        event_cache: dict[str, Event] = {}
+        school_cache: dict[str, School | None] = {}
+        district_cache: dict[str, District | None] = {}
+        skill_cache: dict[str, Skill] = {}
+
+        def get_school_cached(sf_id: str, session):
+            if sf_id in school_cache:
+                return school_cache[sf_id]
+            with session.no_autoflush:
+                school = session.query(School).get(sf_id)
+            school_cache[sf_id] = school
+            return school
+
+        def get_district_cached(raw_name: str, session):
+            if not raw_name:
+                return None
+            mapped_name = DISTRICT_MAPPINGS.get(raw_name)
+            if not mapped_name:
+                return None
+            if mapped_name in district_cache:
+                return district_cache[mapped_name]
+            with session.no_autoflush:
+                district = session.query(District).filter_by(name=mapped_name).first()
+            district_cache[mapped_name] = district
+            return district
+
+        def get_skill_cached(name: str, session):
+            if not name:
+                return None
+            if name in skill_cache:
+                return skill_cache[name]
+            with session.no_autoflush:
+                skill = session.query(Skill).filter_by(name=name).first()
+                if not skill:
+                    skill = Skill(name=name)
+                    session.add(skill)
+            skill_cache[name] = skill
+            return skill
+
+        def process_event_with_cache(record: dict, session) -> bool:
+            try:
+                sf_id = record.get("Id")
+                title = (record.get("Name") or "").strip()
+                if not sf_id or not title:
+                    return False
+
+                # Event lookup/create with cache
+                event = event_cache.get(sf_id)
+                if not event:
+                    with session.no_autoflush:
+                        event = session.query(Event).filter_by(salesforce_id=sf_id).first()
+                    if not event:
+                        event = Event(title=title, salesforce_id=sf_id)
+                        session.add(event)
+                    elif event.title != title:
+                        event.title = title
+                    event_cache[sf_id] = event
+                elif event.title != title:
+                    event.title = title
+
+                # Core fields
+                event.type = map_session_type(record.get("Session_Type__c", ""))
+                event.format = map_event_format(record.get("Format__c", ""))
+                event.start_date = parse_date(record.get("Start_Date_and_Time__c")) or datetime(2000, 1, 1)
+                event.end_date = parse_date(record.get("End_Date_and_Time__c")) or datetime(2000, 1, 1)
+                event.status = EventStatus.map_status(record.get("Session_Status__c"))
+                event.location = record.get("Location_Information__c", "")
+                event.description = record.get("Description__c", "")
+                event.cancellation_reason = map_cancellation_reason(record.get("Cancellation_Reason__c"))
+                event.participant_count = int(
+                    float(record.get("Non_Scheduled_Students_Count__c", 0)) if record.get("Non_Scheduled_Students_Count__c") is not None else 0
+                )
+                event.additional_information = record.get("Additional_Information__c", "")
+                event.session_host = record.get("Session_Host__c", "")
+
+                # Numerics
+                def _i(v, default=0):
+                    try:
+                        return int(float(v)) if v is not None else default
+                    except (ValueError, TypeError):
+                        return default
+
+                event.total_requested_volunteer_jobs = _i(record.get("Total_Requested_Volunteer_Jobs__c"))
+                event.available_slots = _i(record.get("Available_Slots__c"))
+
+                # Relationships
+                parent_account = record.get("Parent_Account__c")
+                district_name = record.get("District__c") or parent_account
+                school_id = record.get("School__c")
+
+                school = None
+                if school_id:
+                    school = get_school_cached(school_id, session)
+                    if school:
+                        event.school = school_id
+
+                mapped_district = get_district_cached(district_name, session)
+
+                if mapped_district or (school and school.district):
+                    event.districts = []
+                    if school and school.district:
+                        event.districts.append(school.district)
+                    if mapped_district and mapped_district not in event.districts:
+                        event.districts.append(mapped_district)
+
+                event.district_partner = district_name if district_name else None
+
+                # Skills
+                skills_covered = parse_event_skills(record.get("Legacy_Skill_Covered_for_the_Session__c", ""))
+                skills_needed = parse_event_skills(record.get("Legacy_Skills_Needed__c", ""))
+                requested_skills = parse_event_skills(record.get("Requested_Skills__c", ""))
+                all_skills = set(skills_covered + skills_needed + requested_skills)
+                existing = {s.name for s in event.skills}
+                for name in all_skills - existing:
+                    skill = get_skill_cached(name, session)
+                    if skill and skill not in event.skills:
+                        event.skills.append(skill)
+
+                session.flush()
+                return True
+            except Exception as e:
+                print(f"Error processing event {record.get('Id', 'unknown')}: {str(e)}")
+                return False
+
+        # Import events with cached processing
         events_result = importer.import_data(
             query=events_query,
-            process_func=process_event_record_optimized,
+            process_func=process_event_with_cache,
             validation_func=validate_event_record,
             progress_callback=progress_callback,
         )
@@ -1135,13 +1262,58 @@ def import_events_from_salesforce():
         # Volunteer participations query
         participants_query = """
             SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c
-            FROM Session_Participant__c
-            WHERE Participant_Type__c = 'Volunteer'
-            """
+        FROM Session_Participant__c
+        WHERE Participant_Type__c = 'Volunteer'
+        """
+
+        # Participation caches
+        volunteer_cache: dict[str, Volunteer | None] = {}
+
+        def get_event_cached(sf_id: str, session):
+            if sf_id in event_cache:
+                return event_cache[sf_id]
+            with session.no_autoflush:
+                ev = session.query(Event).filter_by(salesforce_id=sf_id).first()
+            event_cache[sf_id] = ev
+            return ev
+
+        def get_volunteer_cached(contact_id: str, session):
+            if contact_id in volunteer_cache:
+                return volunteer_cache[contact_id]
+            with session.no_autoflush:
+                vol = session.query(Volunteer).filter_by(salesforce_individual_id=contact_id).first()
+            volunteer_cache[contact_id] = vol
+            return vol
+
+        def process_vol_participation_with_cache(record: dict, session) -> bool:
+            try:
+                sf_part_id = record.get("Id")
+                if not sf_part_id:
+                    return False
+                with session.no_autoflush:
+                    existing = session.query(EventParticipation).filter_by(salesforce_id=sf_part_id).first()
+                if existing:
+                    return True
+                event = get_event_cached(record.get("Session__c"), session)
+                volunteer = get_volunteer_cached(record.get("Contact__c"), session)
+                if not event or not volunteer:
+                    return False
+                participation = EventParticipation(
+                    volunteer_id=volunteer.id,
+                    event_id=event.id,
+                    status=record.get("Status__c"),
+                    delivery_hours=safe_parse_delivery_hours(record.get("Delivery_Hours__c")),
+                    salesforce_id=sf_part_id,
+                )
+                session.add(participation)
+                return True
+            except Exception as e:
+                print(f"Error processing volunteer participation {record.get('Id', 'unknown')}: {str(e)}")
+                return False
 
         participants_result = importer.import_data(
             query=participants_query,
-            process_func=process_volunteer_participation_record_optimized,
+            process_func=process_vol_participation_with_cache,
             validation_func=validate_volunteer_participation_record,
             progress_callback=None,
         )
@@ -1211,19 +1383,84 @@ def sync_student_participants():
         participants_query = """
             SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c,
                    Age_Group__c, Email__c, Title__c
-            FROM Session_Participant__c
-            WHERE Participant_Type__c = 'Student'
-            ORDER BY Session__c, Name
-            """
+        FROM Session_Participant__c
+        WHERE Participant_Type__c = 'Student'
+        ORDER BY Session__c, Name
+        """
 
         def progress_callback(processed, total, message):
             if processed % 1000 == 0 and processed > 0:
                 pct = (processed / max(total, 1)) * 100
                 print(f"Progress: {processed:,}/{total:,} student participations ({pct:.1f}%) - {message}")
 
+        # Caches for student sync
+        student_cache: dict[str, Student | None] = {}
+        event_cache: dict[str, Event | None] = {}
+
+        def get_student_cached(contact_id: str, session):
+            if contact_id in student_cache:
+                return student_cache[contact_id]
+            with session.no_autoflush:
+                stu = session.query(Student).filter(Student.salesforce_individual_id == contact_id).first()
+            student_cache[contact_id] = stu
+            return stu
+
+        def get_event_cached(sf_id: str, session):
+            if sf_id in event_cache:
+                return event_cache[sf_id]
+            with session.no_autoflush:
+                ev = session.query(Event).filter_by(salesforce_id=sf_id).first()
+            event_cache[sf_id] = ev
+            return ev
+
+        # Aggregated diagnostics
+        created_count = 0
+        duplicate_count = 0
+        missing_student_count = 0
+        missing_event_count = 0
+
+        def process_student_participation_with_cache(record: dict, session) -> bool:
+            try:
+                sf_part_id = record.get("Id")
+                if not sf_part_id:
+                    return False
+                with session.no_autoflush:
+                    existing = session.query(EventStudentParticipation).filter_by(salesforce_id=sf_part_id).first()
+                if existing:
+                    nonlocal duplicate_count
+                    duplicate_count += 1
+                    return True
+
+                event = get_event_cached(record.get("Session__c"), session)
+                student = get_student_cached(record.get("Contact__c"), session)
+                if not event:
+                    nonlocal missing_event_count
+                    missing_event_count += 1
+                    return False
+                if not student:
+                    nonlocal missing_student_count
+                    missing_student_count += 1
+                    return False
+
+                new_participation = EventStudentParticipation(
+                    event_id=event.id,
+                    student_id=student.id,
+                    status=record.get("Status__c"),
+                    delivery_hours=safe_parse_delivery_hours(record.get("Delivery_Hours__c")),
+                    age_group=record.get("Age_Group__c"),
+                    salesforce_id=sf_part_id,
+                )
+                session.add(new_participation)
+                nonlocal created_count
+                created_count += 1
+                return True
+            except Exception as e:
+                print(f"Error processing student participation {record.get('Id', 'unknown')}: {str(e)}")
+                return False
+
         result = importer.import_data(
             query=participants_query,
-            process_func=process_student_participation_record_optimized,
+            process_func=process_student_participation_with_cache,
             validation_func=validate_student_participation_record,
             progress_callback=progress_callback,
         )
@@ -1231,7 +1468,11 @@ def sync_student_participants():
         return jsonify(
             {
                 "success": result.success,
-                "message": f"Processed {result.success_count:,} student participations with {result.error_count:,} errors.",
+                "message": (
+                    f"Created {created_count:,}, Duplicates {duplicate_count:,}, "
+                    f"Skipped {result.skipped_count:,} (Missing student: {missing_student_count:,}, Missing event: {missing_event_count:,}), "
+                    f"Errors {result.error_count:,}"
+                ),
                 "successCount": result.success_count,
                 "errorCount": result.error_count,
                 "statistics": {
@@ -1241,6 +1482,10 @@ def sync_student_participants():
                     "error_count": result.error_count,
                     "skipped_count": result.skipped_count,
                     "duration_seconds": result.duration_seconds,
+                    "created_count": created_count,
+                    "duplicate_count": duplicate_count,
+                    "missing_student_count": missing_student_count,
+                    "missing_event_count": missing_event_count,
                 },
                 "errors": result.errors[:10],
                 "warnings": result.warnings[:10],
