@@ -70,15 +70,15 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, flash, jsonify, render_template, request
 from flask_login import login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 from sqlalchemy import or_
 
-from config import Config
 from models import db
 from models.event import Event
 from models.history import History
 from models.volunteer import Volunteer
 from routes.utils import parse_date
+from utils.salesforce_importer import ImportConfig, SalesforceImporter
 
 history_bp = Blueprint("history", __name__)
 
@@ -312,147 +312,174 @@ def delete_history(id):
 @login_required
 def import_history_from_salesforce():
     """
-    Import history data from Salesforce.
+    Import history data from Salesforce (Optimized).
 
-    Fetches historical activity data from Salesforce and synchronizes
-    it with the local database. Handles batch processing with error
-    reporting and import statistics.
-
-    Salesforce Integration:
-        - Connects to Salesforce using configured credentials
-        - Executes SOQL queries for historical data
-        - Processes records in batches
-        - Provides detailed import statistics
-
-    Error Handling:
-        - Salesforce authentication failures
-        - Data validation errors
-        - Database transaction rollback
-        - Detailed error reporting
-
-    Returns:
-        JSON response with import results and statistics
-
-    Raises:
-        401: Salesforce authentication failure
-        500: Import or database error
+    Uses the standardized SalesforceImporter with batching, retries,
+    validation, and progress reporting.
     """
     try:
-        print("Starting history import from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
-        skipped_count = 0
+        print("Starting optimized history import from Salesforce...")
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Configure importer
+        config = ImportConfig(
+            batch_size=500,
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=10,
+        )
+        importer = SalesforceImporter(config)
 
-        # Query Task records (activities, calls, meetings, emails)
+        # Minimal fields needed from Task
         task_query = """
             SELECT Id, Subject, Description, Type, Status,
                    ActivityDate, WhoId, WhatId
             FROM Task
             WHERE WhoId != null
+            ORDER BY ActivityDate DESC
         """
 
-        result = sf.query_all(task_query)
-        task_rows = result.get("records", [])
-        print(f"Found {len(task_rows)} Task records in Salesforce")
+        # Caches
+        volunteer_cache: dict[str, Volunteer | None] = {}
+        event_cache: dict[str, Event | None] = {}
 
-        # Use no_autoflush to prevent premature flushing
-        with db.session.no_autoflush:
-            for row in task_rows:
-                try:
-                    # First check if we have a valid volunteer
-                    if not row.get("WhoId"):
-                        skipped_count += 1
-                        continue
+        created_count = 0
+        updated_count = 0
+        skipped_no_volunteer = 0
+        linked_events = 0
 
-                    volunteer = Volunteer.query.filter_by(salesforce_individual_id=row["WhoId"]).first()
+        def get_volunteer_cached(who_id: str, session):
+            if who_id in volunteer_cache:
+                return volunteer_cache[who_id]
+            with session.no_autoflush:
+                vol = session.query(Volunteer).filter_by(salesforce_individual_id=who_id).first()
+            volunteer_cache[who_id] = vol
+            return vol
 
-                    if not volunteer:
-                        skipped_count += 1
-                        errors.append(f"Skipped Task record {row.get('Subject', 'Unknown')}: No matching volunteer found")
-                        continue
+        def get_event_cached(what_id: str, session):
+            if not what_id:
+                return None
+            if what_id in event_cache:
+                return event_cache[what_id]
+            with session.no_autoflush:
+                ev = session.query(Event).filter_by(salesforce_id=what_id).first()
+            event_cache[what_id] = ev
+            return ev
 
-                    # Check if history exists
-                    history = History.query.filter_by(salesforce_id=row["Id"]).first()
+        def validate_history_record(record: dict) -> list:
+            errors = []
+            if not record.get("Id"):
+                errors.append("Missing Task Id")
+            return errors
 
-                    # Handle activity date before creating new record
-                    activity_date = parse_date(row.get("ActivityDate")) or datetime.now(timezone.utc)
-
-                    if not history:
-                        history = History(volunteer_id=volunteer.id, activity_date=activity_date, history_type="note")  # Default type
-                        db.session.add(history)
-
-                    # Update history fields with proper type conversion
-                    history.salesforce_id = row["Id"]
-                    history.summary = row.get("Subject", "")
-                    history.activity_type = row.get("Type", "")
-                    history.activity_status = row.get("Status", "")
-                    history.activity_date = activity_date
-
-                    # Process description field - this contains email content for email tasks
-                    description = row.get("Description", "")
-                    if description:
-                        # Clean up the description content
-                        import re
-
-                        # Remove HTML tags if present
-                        description = re.sub(r"<[^>]+>", "", description)
-                        # Clean up extra whitespace
-                        description = re.sub(r"\s+", " ", description).strip()
-                        history.description = description
-
-                    # Map Salesforce type to history_type and handle email content
-                    sf_type = (row.get("Type", "") or "").lower()
-                    if sf_type == "email":
-                        history.history_type = "activity"
-                        history.activity_type = "Email"
-                        # Store email message ID for reference
-                        history.email_message_id = row["Id"]
-                    elif sf_type in ["call"]:
-                        history.history_type = "activity"
-                    elif sf_type in ["status_update"]:
-                        history.history_type = "status_change"
-                    else:
-                        history.history_type = "note"
-
-                    # Handle event relationship
-                    if row.get("WhatId"):
-                        event = Event.query.filter_by(salesforce_id=row["WhatId"]).first()
-                        if event:
-                            history.event_id = event.id
-
-                    success_count += 1
-
-                    # Commit every 100 records
-                    if success_count % 100 == 0:
-                        db.session.commit()
-                        print(f"Processed {success_count} records...")
-
-                except Exception as e:
-                    error_count += 1
-                    errors.append(f"Error processing Task record {row.get('Subject', 'Unknown')}: {str(e)}")
-                    continue
-
-            # Final commit
+        def process_history_record_optimized(record: dict, session) -> bool:
+            nonlocal created_count, updated_count, skipped_no_volunteer, linked_events
             try:
-                db.session.commit()
+                who_id = record.get("WhoId")
+                if not who_id:
+                    skipped_no_volunteer += 1
+                    return False
+
+                volunteer = get_volunteer_cached(who_id, session)
+                if not volunteer:
+                    skipped_no_volunteer += 1
+                    return False
+
+                sf_id = record.get("Id")
+                with session.no_autoflush:
+                    history = session.query(History).filter_by(salesforce_id=sf_id).first()
+
+                activity_date = parse_date(record.get("ActivityDate")) or datetime.now(timezone.utc)
+
+                if not history:
+                    history = History(volunteer_id=volunteer.id, activity_date=activity_date, history_type="note")
+                    session.add(history)
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+                # Update fields
+                history.salesforce_id = sf_id
+                history.summary = record.get("Subject", "")
+                history.activity_status = record.get("Status", "")
+                history.activity_date = activity_date
+
+                # Clean description
+                description = record.get("Description", "")
+                if description:
+                    import re
+
+                    description = re.sub(r"<[^>]+>", "", description)
+                    description = re.sub(r"\s+", " ", description).strip()
+                    history.description = description
+
+                # Map type
+                sf_type = (record.get("Type", "") or "").lower()
+                if sf_type == "email":
+                    history.history_type = "activity"
+                    history.activity_type = "Email"
+                    history.email_message_id = sf_id
+                elif sf_type in ["call"]:
+                    history.history_type = "activity"
+                    history.activity_type = "Call"
+                elif sf_type in ["status_update"]:
+                    history.history_type = "status_change"
+                    history.activity_type = "Status Update"
+                else:
+                    history.history_type = "note"
+                    history.activity_type = record.get("Type", "") or "Note"
+
+                # Link event if present
+                event = get_event_cached(record.get("WhatId"), session)
+                if event:
+                    history.event_id = event.id
+                    linked_events += 1
+
+                return True
             except Exception as e:
-                db.session.rollback()
-                return jsonify({"success": False, "message": f"Error during final commit: {str(e)}", "processed": success_count, "errors": errors}), 500
+                print(f"Error processing Task {record.get('Id', 'unknown')}: {str(e)}")
+                return False
+
+        def progress_callback(processed, total, message):
+            if processed % 1000 == 0 and processed > 0:
+                pct = (processed / max(total, 1)) * 100
+                print(f"Progress: {processed:,}/{total:,} history ({pct:.1f}%) - {message}")
+
+        result = importer.import_data(
+            query=task_query,
+            process_func=process_history_record_optimized,
+            validation_func=validate_history_record,
+            progress_callback=progress_callback,
+        )
 
         return jsonify(
             {
-                "success": True,
-                "message": f"Successfully processed {success_count} history records",
-                "stats": {"success": success_count, "errors": error_count, "skipped": skipped_count},
-                "errors": errors[:100],
+                "success": result.success,
+                "message": (
+                    f"Created {created_count:,}, Updated {updated_count:,}, "
+                    f"Linked Events {linked_events:,}, Skipped (no volunteer) {skipped_no_volunteer:,}, "
+                    f"Errors {result.error_count:,}"
+                ),
+                "statistics": {
+                    "total_records": result.total_records,
+                    "processed_count": result.processed_count,
+                    "success_count": result.success_count,
+                    "error_count": result.error_count,
+                    "skipped_count": result.skipped_count,
+                    "duration_seconds": result.duration_seconds,
+                    "created_count": created_count,
+                    "updated_count": updated_count,
+                    "skipped_no_volunteer": skipped_no_volunteer,
+                    "linked_events": linked_events,
+                },
+                "errors": result.errors[:10],
+                "warnings": result.warnings[:10],
             }
         )
 
     except SalesforceAuthenticationFailed:
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
