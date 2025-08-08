@@ -282,17 +282,7 @@
                     <div class="import-status" id="manageTeachersStatus"></div>
                 </div>
 
-                {# Volunteers import - Legacy #}
-                <div class="import-item">
-                    <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
-                        <i class="fas fa-users"></i>
-                        <span>5. Import Volunteers (Legacy)</span>
-                    </button>
-                    <div class="import-status" id="importVolunteersStatus"></div>
-                    <div class="import-progress" id="importVolunteersProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
+
 
                 {# Volunteer-Organization Affiliations import - Legacy #}
                 <div class="import-item">
@@ -306,14 +296,7 @@
                     </div>
                 </div>
 
-                {# Optimized Volunteer Import Pipeline #}
-                <div class="import-item">
-                    <button onclick="checkVolunteerPipelineStatus()" class="btn btn-info" id="checkVolunteerPipelineStatusBtn">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Check Volunteer Pipeline Status</span>
-                    </button>
-                    <div class="import-status" id="checkVolunteerPipelineStatusStatus"></div>
-                </div>
+
 
                 {# Optimized Volunteers import - Phase 1 #}
                 <div class="import-item">
@@ -756,32 +739,7 @@ function importSchools() {
     }
 }
 
-function importVolunteers() {
-    if (confirm('Are you sure you want to import volunteers from Salesforce?')) {
-        fetch('/volunteers/import-from-salesforce', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                // Show detailed error message
-                const errorMessage = data.message || data.error || 'Unknown error occurred';
-                console.error('Import error:', data);
-                alert(`Error importing volunteers: ${errorMessage}`);
-            }
-        })
-        .catch(error => {
-            console.error('Import error:', error);
-            alert(`Error importing volunteers: ${error.message}`);
-        });
-    }
-}
+// Legacy volunteer import removed
 
 function importEvents() {
     if (confirm('Are you sure you want to import events from Salesforce?')) {
@@ -1130,56 +1088,7 @@ function importAffiliations() {
     }
 }
 
-function checkVolunteerPipelineStatus() {
-    const button = document.getElementById('checkVolunteerPipelineStatusBtn');
-    const status = document.getElementById('checkVolunteerPipelineStatusStatus');
-
-    button.disabled = true;
-    status.textContent = 'Checking volunteer pipeline status...';
-
-    fetch('/volunteers/import-pipeline-status', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const pipeline = data.status.pipeline_status;
-            const recommendations = data.status.recommendations;
-
-            let statusText = `Pipeline Status:\n`;
-            statusText += `• Total Volunteers: ${pipeline.total_volunteers.toLocaleString()}\n`;
-            statusText += `• With Affiliations: ${pipeline.volunteers_with_affiliations.toLocaleString()}\n`;
-            statusText += `• Without Affiliations: ${pipeline.volunteers_without_affiliations.toLocaleString()}\n`;
-            statusText += `• Completion: ${pipeline.affiliation_completion_percentage}%\n`;
-            statusText += `• Total Affiliations: ${pipeline.total_affiliations.toLocaleString()}\n`;
-            statusText += `• Total Organizations: ${pipeline.total_organizations.toLocaleString()}`;
-
-            if (recommendations.length > 0) {
-                statusText += `\n\nRecommendations:\n`;
-                recommendations.forEach(rec => {
-                    statusText += `• ${rec}\n`;
-                });
-            }
-
-            status.textContent = statusText;
-            status.style.color = 'green';
-        } else {
-            status.textContent = data.message || 'Status check failed';
-            status.style.color = 'red';
-        }
-    })
-    .catch(error => {
-        status.textContent = 'Status check failed: ' + error.message;
-        status.style.color = 'red';
-        console.error('Status check error:', error);
-    })
-    .finally(() => {
-        button.disabled = false;
-    });
-}
+// Volunteer pipeline status check removed
 
 function importVolunteersOptimized() {
     if (!confirm('Are you sure you want to import volunteers from Salesforce using the optimized framework? This is Phase 1 of the two-phase import pipeline.')) {
@@ -1413,7 +1322,6 @@ async function importAllSequentially() {
         { route: '/management/import-schools', name: 'Schools', btnId: 'importSchoolsBtn' },
         { route: '/management/import-classes', name: 'Classes', btnId: 'importClassesBtn' },
         { route: '/teachers/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
-        { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
         { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
         { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
         { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' },
