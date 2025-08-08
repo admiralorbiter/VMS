@@ -322,11 +322,11 @@
                     </div>
                 </div>
 
-                {# Events import #}
+                {# Events import (Optimized) #}
                 <div class="import-item">
                     <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
                         <i class="fas fa-calendar"></i>
-                        <span>7. Import Events</span>
+                        <span>7. Import Events (Optimized)</span>
                     </button>
                     <div class="import-status" id="importEventsStatus"></div>
                     <div class="import-progress" id="importEventsProgress">
@@ -742,30 +742,56 @@ function importSchools() {
 // Legacy volunteer import removed
 
 function importEvents() {
-    if (confirm('Are you sure you want to import events from Salesforce?')) {
-        fetch('/events/import-from-salesforce', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                // Show detailed error message
-                const errorMessage = data.message || data.error || 'Unknown error occurred';
-                console.error('Import error:', data);
-                alert(`Error importing events: ${errorMessage}`);
-            }
-        })
-        .catch(error => {
-            console.error('Import error:', error);
-            alert(`Error importing events: ${error.message}`);
-        });
+    if (!confirm('Are you sure you want to import events from Salesforce using the optimized importer?')) {
+        return;
     }
+
+    const btn = document.getElementById('importEventsBtn');
+    const status = document.getElementById('importEventsStatus');
+    const progress = document.getElementById('importEventsProgress');
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Importing events (optimized)...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+
+    fetch('/events/import-from-salesforce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+        if (data.success) {
+            status.textContent = data.message || 'Import complete';
+            status.style.color = 'green';
+            const stats = data.statistics || {};
+            if (stats.events || stats.participations) {
+                console.log('Event import stats:', stats);
+            }
+            showToast('Success', 'Events import completed successfully', 'success');
+        } else {
+            const errorMessage = data.message || data.error || 'Import failed';
+            status.textContent = errorMessage;
+            status.style.color = 'red';
+            showToast('Error', errorMessage, 'error');
+        }
+        if (data.errors && data.errors.length > 0) {
+            console.log('Event import errors:', data.errors);
+        }
+    })
+    .catch(error => {
+        progressBar.style.width = '100%';
+        status.textContent = `Error: ${error.message}`;
+        status.style.color = 'red';
+        showToast('Error', `Failed to import events: ${error.message}`, 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
 }
 
 function importOrganizations() {

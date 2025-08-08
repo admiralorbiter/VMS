@@ -49,6 +49,7 @@ from models.student import Student
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.utils import DISTRICT_MAPPINGS, map_cancellation_reason, map_event_format, map_session_type, parse_date, parse_event_skills
+from utils.salesforce_importer import ImportConfig, SalesforceImporter
 
 
 def safe_parse_delivery_hours(value):
@@ -80,6 +81,150 @@ def safe_parse_delivery_hours(value):
 
 # Create blueprint for events functionality
 events_bp = Blueprint("events", __name__)
+
+
+"""
+Optimized Events Import (SalesforceImporter framework)
+"""
+
+
+def validate_event_record(record: dict) -> list:
+    """Validate a Salesforce Session__c record before processing."""
+    errors = []
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    if not record.get("Name"):
+        errors.append("Missing event Name")
+    # Basic date validation
+    try:
+        _ = parse_date(record.get("Start_Date_and_Time__c"))
+    except Exception:
+        errors.append("Invalid start date format")
+    return errors
+
+
+def process_event_record_optimized(record: dict, session) -> bool:
+    """
+    Process a single Salesforce Session__c record into the Event model.
+    Returns True on success, False on skip/failure.
+    """
+    try:
+        event = session.query(Event).filter_by(salesforce_id=record.get("Id")).first()
+        title = (record.get("Name") or "").strip()
+        if not title:
+            return False
+        if not event:
+            event = Event(title=title, salesforce_id=record.get("Id"))
+            session.add(event)
+        elif event.title != title:
+            event.title = title
+
+        # Update basics
+        event.type = map_session_type(record.get("Session_Type__c", ""))
+        event.format = map_event_format(record.get("Format__c", ""))
+        event.start_date = parse_date(record.get("Start_Date_and_Time__c")) or datetime(2000, 1, 1)
+        event.end_date = parse_date(record.get("End_Date_and_Time__c")) or datetime(2000, 1, 1)
+        event.status = EventStatus.map_status(record.get("Session_Status__c"))
+        event.location = record.get("Location_Information__c", "")
+        event.description = record.get("Description__c", "")
+        event.cancellation_reason = map_cancellation_reason(record.get("Cancellation_Reason__c"))
+        event.participant_count = int(
+            float(record.get("Non_Scheduled_Students_Count__c", 0)) if record.get("Non_Scheduled_Students_Count__c") is not None else 0
+        )
+        event.additional_information = record.get("Additional_Information__c", "")
+        event.session_host = record.get("Session_Host__c", "")
+
+        # Numerics
+        def _i(v, default=0):
+            try:
+                return int(float(v)) if v is not None else default
+            except (ValueError, TypeError):
+                return default
+
+        event.total_requested_volunteer_jobs = _i(record.get("Total_Requested_Volunteer_Jobs__c"))
+        event.available_slots = _i(record.get("Available_Slots__c"))
+
+        # Relationships
+        parent_account = record.get("Parent_Account__c")
+        district_name = record.get("District__c")
+        school_id = record.get("School__c")
+
+        school = None
+        if school_id:
+            school = session.query(School).get(school_id)
+            if school:
+                event.school = school_id
+
+        if not district_name and parent_account:
+            district_name = parent_account
+
+        mapped_district = None
+        if district_name and district_name in DISTRICT_MAPPINGS:
+            mapped_name = DISTRICT_MAPPINGS[district_name]
+            mapped_district = session.query(District).filter_by(name=mapped_name).first()
+
+        if mapped_district or (school and school.district):
+            event.districts = []
+            if school and school.district:
+                event.districts.append(school.district)
+            if mapped_district and mapped_district not in event.districts:
+                event.districts.append(mapped_district)
+
+        event.district_partner = district_name if district_name else None
+
+        # Skills
+        skills_covered = parse_event_skills(record.get("Legacy_Skill_Covered_for_the_Session__c", ""))
+        skills_needed = parse_event_skills(record.get("Legacy_Skills_Needed__c", ""))
+        requested_skills = parse_event_skills(record.get("Requested_Skills__c", ""))
+        all_skills = set(skills_covered + skills_needed + requested_skills)
+        existing = {s.name for s in event.skills}
+        for name in all_skills - existing:
+            skill = session.query(Skill).filter_by(name=name).first()
+            if not skill:
+                skill = Skill(name=name)
+                session.add(skill)
+            if skill not in event.skills:
+                event.skills.append(skill)
+
+        session.flush()
+        return True
+    except Exception as e:
+        print(f"Error processing event {record.get('Id', 'unknown')}: {str(e)}")
+        return False
+
+
+def validate_volunteer_participation_record(record: dict) -> list:
+    errors = []
+    if not record.get("Id"):
+        errors.append("Missing participation Id")
+    if not record.get("Contact__c"):
+        errors.append("Missing Contact__c")
+    if not record.get("Session__c"):
+        errors.append("Missing Session__c")
+    return errors
+
+
+def process_volunteer_participation_record_optimized(record: dict, session) -> bool:
+    try:
+        existing = session.query(EventParticipation).filter_by(salesforce_id=record.get("Id")).first()
+        if existing:
+            return True
+        volunteer = session.query(Volunteer).filter_by(salesforce_individual_id=record.get("Contact__c")).first()
+        event = session.query(Event).filter_by(salesforce_id=record.get("Session__c")).first()
+        if not volunteer or not event:
+            return False
+        participation = EventParticipation(
+            volunteer_id=volunteer.id,
+            event_id=event.id,
+            status=record.get("Status__c"),
+            delivery_hours=safe_parse_delivery_hours(record.get("Delivery_Hours__c")),
+            salesforce_id=record.get("Id"),
+        )
+        session.add(participation)
+        return True
+    except Exception as e:
+        print(f"Error processing volunteer participation {record.get('Id', 'unknown')}: {str(e)}")
+        return False
 
 
 def process_event_row(row, success_count, error_count, errors):
@@ -903,103 +1048,98 @@ def import_events_from_salesforce():
         JSON response with import results and statistics
     """
     try:
-        print("Fetching data from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
+        print("Starting optimized events import from Salesforce...")
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Configure importer
+        config = ImportConfig(
+            batch_size=500,
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=10,
+        )
+        importer = SalesforceImporter(config)
 
-        # First query: Get events
+        # Events query
         events_query = """
-        SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
-            End_Date_and_Time__c, Session_Status__c, Location_Information__c,
-            Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
-            District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
-            Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-            Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
-            Session_Host__c
-        FROM Session__c
-        WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
-        ORDER BY Start_Date_and_Time__c DESC
-        """
+            SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
+                   End_Date_and_Time__c, Session_Status__c, Location_Information__c,
+                   Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
+                   District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
+                   Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
+                   Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
+                   Session_Host__c
+            FROM Session__c
+            WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
+            ORDER BY Start_Date_and_Time__c DESC
+            """
 
-        # Execute events query
-        events_result = sf.query_all(events_query)
-        events_rows = events_result.get("records", [])
+        # Progress callback
+        def progress_callback(processed, total, message):
+            if processed % 1000 == 0 and processed > 0:
+                pct = (processed / max(total, 1)) * 100
+                print(f"Progress: {processed:,}/{total:,} events ({pct:.1f}%) - {message}")
 
-        status_counts = {}
+        # Import events
+        events_result = importer.import_data(
+            query=events_query,
+            process_func=process_event_record_optimized,
+            validation_func=validate_event_record,
+            progress_callback=progress_callback,
+        )
 
-        # Process events
-        for row in events_rows:
-            status = row.get("Session_Status__c", "Unknown")
-            status_counts[status] = status_counts.get(status, 0) + 1
-            success_count, error_count = process_event_row(row, success_count, error_count, errors)
-
-        print("\nEvents by status:")
-        for status, count in status_counts.items():
-            print(f"{status}: {count}")
-
-        # Second query: Get participants
+        # Volunteer participations query
         participants_query = """
-        SELECT
-            Id,
-            Name,
-            Contact__c,
-            Session__c,
-            Status__c,
-            Delivery_Hours__c,
-            Age_Group__c,
-            Email__c,
-            Title__c
-        FROM Session_Participant__c
-        WHERE Participant_Type__c = 'Volunteer'
-        """
+            SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c
+            FROM Session_Participant__c
+            WHERE Participant_Type__c = 'Volunteer'
+            """
 
-        # Execute participants query
-        participants_result = sf.query_all(participants_query)
-        participant_rows = participants_result.get("records", [])
+        participants_result = importer.import_data(
+            query=participants_query,
+            process_func=process_volunteer_participation_record_optimized,
+            validation_func=validate_volunteer_participation_record,
+            progress_callback=None,
+        )
 
-        # Process participants
-        participant_success = 0
-        participant_error = 0
-        for row in participant_rows:
-            participant_success, participant_error = process_participation_row(row, participant_success, participant_error, errors)
-
-        # Commit all changes
-        db.session.commit()
-
-        # Print summary and errors
-        print(f"\nSuccessfully processed {success_count} events and {participant_success} participants with {error_count + participant_error} total errors")
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors[:50]:  # Only print first 50 errors
-                print(f"- {error}")
-
-        # Truncate errors list to 50 items
-        truncated_errors = errors[:50]
-        if len(errors) > 50:
-            truncated_errors.append(f"... and {len(errors) - 50} more errors")
+        success = events_result.success and participants_result.success
+        message = (
+            f"Events: {events_result.success_count:,} ok, {events_result.error_count:,} errors. "
+            f"Participations: {participants_result.success_count:,} ok, {participants_result.error_count:,} errors."
+        )
 
         return jsonify(
             {
-                "success": True,
-                "message": (
-                    f"Successfully processed {success_count} events and "
-                    f"{participant_success} participants with "
-                    f"{error_count + participant_error} total errors"
-                ),
-                "errors": truncated_errors,
+                "success": success,
+                "message": message,
+                "statistics": {
+                    "events": {
+                        "total_records": events_result.total_records,
+                        "processed_count": events_result.processed_count,
+                        "success_count": events_result.success_count,
+                        "error_count": events_result.error_count,
+                        "skipped_count": events_result.skipped_count,
+                        "duration_seconds": events_result.duration_seconds,
+                    },
+                    "participations": {
+                        "total_records": participants_result.total_records,
+                        "processed_count": participants_result.processed_count,
+                        "success_count": participants_result.success_count,
+                        "error_count": participants_result.error_count,
+                        "skipped_count": participants_result.skipped_count,
+                        "duration_seconds": participants_result.duration_seconds,
+                    },
+                },
+                "errors": (events_result.errors + participants_result.errors)[:10],
+                "warnings": (events_result.warnings + participants_result.warnings)[:10],
             }
         )
 
     except SalesforceAuthenticationFailed:
-        print("Error: Failed to authenticate with Salesforce")
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
         db.session.rollback()
-        print(f"Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

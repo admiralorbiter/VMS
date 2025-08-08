@@ -28,7 +28,7 @@ This document outlines the optimization and standardization strategy for Salesfo
 | `/teachers/import-from-salesforce` | `routes/teachers/routes.py` | ✅ Working | Code duplication |
 | `/students/import-from-salesforce` | `routes/students/routes.py` | ✅ Working | Has chunking, but inconsistent |
 | `/volunteers/import-from-salesforce` | `routes/volunteers/routes.py` | ✅ Working | Complex logic, no validation |
-| `/events/import-from-salesforce` | `routes/events/routes.py` | ✅ Working | Complex logic, no validation |
+| `/events/import-from-salesforce` | `routes/events/routes.py` | ✅ Optimized | Migrated to standardized importer; validation added |
 | `/history/import-from-salesforce` | `routes/history/routes.py` | ✅ Working | Basic implementation |
 | `/pathways/import-from-salesforce` | `routes/pathways/routes_pathways.py` | ✅ Working | Basic implementation |
 
@@ -109,10 +109,11 @@ class ImportResult:
    - Add comprehensive validation
    - Optimize contact processing
 
-4. **Events** (Priority: Medium)
-   - Migrate complex event processing
-   - Add participant validation
-   - Optimize relationship handling
+4. **Events** (Priority: Medium) — Completed
+   - ✅ Migrated complex event processing to standardized importer
+   - ✅ Added volunteer participant validation and optimized processing
+   - ✅ Optimized relationship handling (schools, districts, skills)
+   - ⏳ Student participant import remains via legacy endpoint (to optimize later)
 
 5. **Students** (Priority: Low)
    - Already has chunking, migrate to framework
