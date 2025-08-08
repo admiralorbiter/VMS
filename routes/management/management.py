@@ -332,7 +332,7 @@ def admin():
     """
     if not current_user.security_level >= SecurityLevel.SUPERVISOR:
         flash("Access denied. Supervisor or higher privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
 
     users = User.query.all()
     # Provide academic years with Google Sheets for the dropdown (virtual sessions only)
