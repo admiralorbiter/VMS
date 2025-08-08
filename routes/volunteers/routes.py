@@ -29,7 +29,7 @@ from datetime import datetime
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 
 from config import Config
 from forms import VolunteerForm
@@ -40,9 +40,462 @@ from models.history import History
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import ConnectorData, ConnectorSubscriptionEnum, Engagement, EventParticipation, Skill, Volunteer, VolunteerSkill
 from routes.utils import get_email_addresses, get_phone_numbers, parse_date, parse_skills
+from utils.salesforce_importer import ImportConfig, SalesforceImporter
 
 # Create Flask Blueprint for volunteer routes
 volunteers_bp = Blueprint("volunteers", __name__)
+
+
+# ============================================================================
+# OPTIMIZED VOLUNTEER IMPORT FRAMEWORK
+# ============================================================================
+
+
+def validate_volunteer_record(record: dict) -> list:
+    """
+    Validate a volunteer record from Salesforce.
+
+    Args:
+        record: Dictionary containing volunteer data from Salesforce
+
+    Returns:
+        List of validation error messages (empty if valid)
+    """
+    errors = []
+
+    # Required fields
+    if not record.get("Id"):
+        errors.append("Missing Salesforce ID")
+    elif len(record["Id"]) != 18:
+        errors.append(f"Invalid Salesforce ID format: {record['Id']}")
+
+    # Name validation
+    if not record.get("FirstName") and not record.get("LastName"):
+        errors.append("Missing both first and last name")
+
+    # Email validation
+    email = record.get("Email")
+    if email and "@" not in email:
+        errors.append(f"Invalid email format: {email}")
+
+    # Phone validation (basic)
+    phone = record.get("Phone")
+    if phone and len(phone.replace("-", "").replace("(", "").replace(")", "").replace(" ", "")) < 10:
+        errors.append(f"Invalid phone format: {phone}")
+
+    # Date validation
+    birthdate = record.get("Birthdate")
+    if birthdate:
+        try:
+            parsed_date = parse_date(birthdate)
+            if parsed_date and parsed_date > datetime.now():
+                errors.append("Birthdate cannot be in the future")
+        except (ValueError, TypeError, AttributeError):
+            errors.append("Invalid birthdate format")
+
+    # Gender validation
+    gender = record.get("Gender__c")
+    if gender:
+        gender_str = (gender or "").lower().replace(" ", "_").strip()
+        if gender_str not in [e.name for e in GenderEnum]:
+            errors.append(f"Invalid gender value: {gender}")
+
+    # Education validation
+    education = record.get("Highest_Level_of_Educational__c")
+    if education:
+        # Check if it's a valid education level (basic check)
+        if len(education) > 100:  # Reasonable max length
+            errors.append("Education field too long")
+
+    return errors
+
+
+def process_volunteer_record_optimized(record: dict, session) -> bool:
+    """
+    Process a single volunteer record using the optimized framework.
+
+    Args:
+        record: Dictionary containing volunteer data from Salesforce
+        session: Database session
+
+    Returns:
+        True if processing was successful, False otherwise
+    """
+    try:
+        # Debug: Log the record ID for tracking
+        record_id = record.get("Id", "UNKNOWN")
+        print(f"Processing volunteer record: {record_id}")
+
+        # Create a completely fresh dictionary for each record to avoid reference issues
+        # Extract all data from the record to ensure no shared references
+        salesforce_id = (record.get("Id") or "").strip()
+        salesforce_account_id = (record.get("AccountId") or "").strip()
+        first_name = (record.get("FirstName") or "").strip()
+        last_name = (record.get("LastName") or "").strip()
+        middle_name = (record.get("MiddleName") or "").strip()
+        organization_name = (record.get("npsp__Primary_Affiliation__c") or "").strip()
+        title = (record.get("Title") or "").strip()
+        department = (record.get("Department") or "").strip()
+        industry = (record.get("Industry") or "").strip()
+        birthdate = parse_date(record.get("Birthdate", ""))
+        first_volunteer_date = parse_date(record.get("First_Volunteer_Date__c", ""))
+        last_mailchimp_activity_date = parse_date(record.get("Last_Mailchimp_Email_Date__c", ""))
+        last_volunteer_date = parse_date(record.get("Last_Volunteer_Date__c", ""))
+        last_email_date = parse_date(record.get("Last_Email_Message__c", ""))
+        last_non_internal_email_date = parse_date(record.get("Last_Non_Internal_Email_Activity__c", ""))
+        notes = (record.get("Volunteer_Recruitment_Notes__c") or "").strip()
+
+        # Create a fresh dictionary with the extracted data
+        volunteer_data = {
+            "salesforce_individual_id": salesforce_id,
+            "salesforce_account_id": salesforce_account_id,
+            "first_name": first_name,
+            "last_name": last_name,
+            "middle_name": middle_name,
+            "organization_name": organization_name,
+            "title": title,
+            "department": department,
+            "industry": industry,
+            "birthdate": birthdate,
+            "first_volunteer_date": first_volunteer_date,
+            "last_mailchimp_activity_date": last_mailchimp_activity_date,
+            "last_volunteer_date": last_volunteer_date,
+            "last_email_date": last_email_date,
+            "last_non_internal_email_date": last_non_internal_email_date,
+            "notes": notes,
+        }
+
+        # Debug: Log the actual salesforce_individual_id being used
+        print(f"Record {record_id} using salesforce_individual_id: {volunteer_data['salesforce_individual_id']}")
+        print(f"Record {record_id} first_name: {volunteer_data['first_name']}, last_name: {volunteer_data['last_name']}")
+
+        # Handle gender enum with null safety
+        gender_value = record.get("Gender__c") or ""
+        gender_str = gender_value.lower().replace(" ", "_").strip()
+        if gender_str in [e.name for e in GenderEnum]:
+            volunteer_data["gender"] = GenderEnum[gender_str]
+
+        # Handle times_volunteered
+        if record.get("Number_of_Attended_Volunteer_Sessions__c"):
+            try:
+                volunteer_data["times_volunteered"] = int(float(record["Number_of_Attended_Volunteer_Sessions__c"]))
+            except (ValueError, TypeError):
+                volunteer_data["times_volunteered"] = 0
+
+        # Use custom create_or_update_record for volunteers (handles salesforce_individual_id field)
+        if not salesforce_id:
+            print(f"Error: Missing Salesforce ID for volunteer record: {record_id}")
+            return False
+
+        # Try to find existing contact/volunteer safely without triggering autoflush
+        try:
+            with session.no_autoflush:
+                existing_contact = session.query(Contact).filter_by(salesforce_individual_id=salesforce_id).first()
+
+            if existing_contact:
+                # Reuse existing contact; get/create the volunteer row bound to this contact id
+                print(f"Found existing Contact for {record_id} (id={existing_contact.id}); ensuring Volunteer row exists")
+                with session.no_autoflush:
+                    existing_volunteer = session.query(Volunteer).filter_by(id=existing_contact.id).first()
+                if existing_volunteer:
+                    volunteer = existing_volunteer
+                    # Update volunteer-specific fields
+                    for key, value in volunteer_data.items():
+                        if hasattr(Volunteer, key):
+                            setattr(volunteer, key, value)
+                    # Update base Contact fields on the existing contact
+                    base_contact_keys = [
+                        "salesforce_individual_id",
+                        "salesforce_account_id",
+                        "first_name",
+                        "last_name",
+                        "middle_name",
+                        "notes",
+                        "last_email_date",
+                        "birthdate",
+                        "gender",
+                    ]
+                    for key in base_contact_keys:
+                        if key in volunteer_data and hasattr(existing_contact, key):
+                            setattr(existing_contact, key, volunteer_data[key])
+                else:
+                    # Create a Volunteer row linked to existing Contact using raw insert to avoid parent insert
+                    session.execute(text("INSERT INTO volunteer (id) VALUES (:id)"), {"id": existing_contact.id})
+                    session.flush()
+                    volunteer = session.query(Volunteer).filter_by(id=existing_contact.id).first()
+                    # Populate volunteer-specific fields
+                    for key, value in volunteer_data.items():
+                        if hasattr(Volunteer, key):
+                            setattr(volunteer, key, value)
+                    # Update base Contact fields
+                    base_contact_keys = [
+                        "salesforce_individual_id",
+                        "salesforce_account_id",
+                        "first_name",
+                        "last_name",
+                        "middle_name",
+                        "notes",
+                        "last_email_date",
+                        "birthdate",
+                        "gender",
+                    ]
+                    for key in base_contact_keys:
+                        if key in volunteer_data and hasattr(existing_contact, key):
+                            setattr(existing_contact, key, volunteer_data[key])
+                    # Set polymorphic type to volunteer
+                    existing_contact.type = "volunteer"
+            else:
+                # No existing contact; create new volunteer (which will insert Contact + Volunteer rows)
+                print(f"Creating new volunteer (no existing Contact): {record_id}")
+                volunteer = Volunteer(**volunteer_data)
+                session.add(volunteer)
+                session.flush()  # Ensure volunteer.id is available for related rows
+
+        except Exception as e:
+            print(f"Error in create/update logic for volunteer {record_id}: {str(e)}")
+            # If it's a unique constraint error, try to find and update the existing record
+            if "UNIQUE constraint failed" in str(e) and "salesforce_individual_id" in str(e):
+                try:
+                    print(f"Attempting to recover from unique constraint error for volunteer {record_id}")
+                    with session.no_autoflush:
+                        existing_contact = session.query(Contact).filter_by(salesforce_individual_id=salesforce_id).first()
+                    if existing_contact:
+                        with session.no_autoflush:
+                            existing_volunteer = session.query(Volunteer).filter_by(id=existing_contact.id).first()
+                        if not existing_volunteer:
+                            session.execute(text("INSERT INTO volunteer (id) VALUES (:id)"), {"id": existing_contact.id})
+                            session.flush()
+                            volunteer = session.query(Volunteer).filter_by(id=existing_contact.id).first()
+                        else:
+                            volunteer = existing_volunteer
+                        # Update fields
+                        for key, value in volunteer_data.items():
+                            if hasattr(Volunteer, key):
+                                setattr(volunteer, key, value)
+                        base_contact_keys = [
+                            "salesforce_individual_id",
+                            "salesforce_account_id",
+                            "first_name",
+                            "last_name",
+                            "middle_name",
+                            "notes",
+                            "last_email_date",
+                            "birthdate",
+                            "gender",
+                        ]
+                        for key in base_contact_keys:
+                            if key in volunteer_data and hasattr(existing_contact, key):
+                                setattr(existing_contact, key, volunteer_data[key])
+                        existing_contact.type = "volunteer"
+                        print(f"Recovered by linking existing Contact to Volunteer for {record_id}")
+                        return True
+                    else:
+                        print(f"Could not find existing contact {record_id} after unique constraint error")
+                        return False
+                except Exception as recovery_error:
+                    print(f"Error during recovery for volunteer {record_id}: {str(recovery_error)}")
+                    return False
+            return False
+
+        # Handle emails
+        try:
+            new_emails = get_email_addresses(record)
+            if new_emails:
+                # Clear existing emails and add new ones
+                volunteer.emails = new_emails
+        except Exception as e:
+            print(f"Error handling emails for volunteer {record_id}: {str(e)}")
+            # Continue processing - don't fail the entire record
+
+        # Handle phones
+        try:
+            new_phones = get_phone_numbers(record)
+            if new_phones:
+                # Clear existing phones and add new ones
+                volunteer.phones = new_phones
+        except Exception as e:
+            print(f"Error handling phones for volunteer {record_id}: {str(e)}")
+            # Continue processing - don't fail the entire record
+
+        # Handle skills
+        try:
+            if record.get("Volunteer_Skills_Text__c") or record.get("Volunteer_Skills__c"):
+                skills = parse_skills(record.get("Volunteer_Skills_Text__c", ""), record.get("Volunteer_Skills__c", ""))
+
+                # Update skills
+                for skill_name in skills:
+                    skill = session.query(Skill).filter_by(name=skill_name).first()
+                    if not skill:
+                        skill = Skill(name=skill_name)
+                        session.add(skill)
+                    if skill not in volunteer.skills:
+                        volunteer.skills.append(skill)
+        except Exception as e:
+            print(f"Error handling skills for volunteer {record_id}: {str(e)}")
+            # Continue processing - don't fail the entire record
+
+        # Handle Connector data with null safety
+        try:
+            connector_data = {
+                "active_subscription": ((record.get("Connector_Active_Subscription__c") or "").strip().upper() or "NONE"),
+                "active_subscription_name": (record.get("Connector_Active_Subscription_Name__c") or "").strip(),
+                "affiliations": (record.get("Connector_Affiliations__c") or "").strip(),
+                "industry": (record.get("Connector_Industry__c") or "").strip(),
+                "joining_date": (record.get("Connector_Joining_Date__c") or "").strip(),
+                "last_login_datetime": (record.get("Connector_Last_Login_Date_Time__c") or "").strip(),
+                "last_update_date": parse_date(record.get("Connector_Last_Update_Date__c")),
+                "profile_link": (record.get("Connector_Profile_Link__c") or "").strip(),
+                "role": (record.get("Connector_Role__c") or "").strip(),
+                "signup_role": (record.get("Connector_SignUp_Role__c") or "").strip(),
+                "user_auth_id": (record.get("Connector_User_ID__c") or "").strip(),
+            }
+
+            # Ensure volunteer has an id before touching connector data
+            session.flush()
+
+            connector = None
+            # Check if user_auth_id is provided and not empty
+            if connector_data["user_auth_id"]:
+                # Check if a ConnectorData record already exists with this user_auth_id
+                existing_connector = session.query(ConnectorData).filter_by(user_auth_id=connector_data["user_auth_id"]).first()
+
+                if existing_connector:
+                    # If the existing connector belongs to a different volunteer, skip this one
+                    if existing_connector.volunteer_id != volunteer.id:
+                        print(
+                            f"Skipping connector data for volunteer {record_id}: user_auth_id {connector_data['user_auth_id']} already exists for volunteer {existing_connector.volunteer_id}"
+                        )
+                        # Continue processing the volunteer without connector data
+                    else:
+                        # Update the existing connector data for this volunteer
+                        connector = existing_connector
+                else:
+                    # Create new connector data for this volunteer (use relationship, assign object)
+                    connector = ConnectorData()
+                    volunteer.connector = connector
+                    session.add(connector)
+            else:
+                # No user_auth_id provided, create new connector data if volunteer doesn't have one
+                connector = volunteer.connector
+                if not connector:
+                    connector = ConnectorData()
+                    volunteer.connector = connector
+                    session.add(connector)
+
+            # Update connector fields if they exist in Salesforce data
+            if connector and connector_data["active_subscription"] in [e.name for e in ConnectorSubscriptionEnum]:
+                if connector.active_subscription != ConnectorSubscriptionEnum[connector_data["active_subscription"]]:
+                    connector.active_subscription = ConnectorSubscriptionEnum[connector_data["active_subscription"]]
+
+            if connector:
+                for field, value in connector_data.items():
+                    if field != "active_subscription" and value:  # Skip active_subscription as it's handled above
+                        current_value = getattr(connector, field)
+                        if current_value != value:
+                            setattr(connector, field, value)
+        except Exception as e:
+            print(f"Error handling connector data for volunteer {record_id}: {str(e)}")
+            # Continue processing - don't fail the entire record
+
+        return True
+
+    except Exception as e:
+        # Log the error but don't fail the entire batch
+        print(f"Error processing volunteer record {record_id}: {str(e)}")
+        import traceback
+
+        print(f"Traceback: {traceback.format_exc()}")
+        return False
+
+
+def validate_affiliation_record(record: dict) -> list:
+    """
+    Validate a volunteer-organization affiliation record from Salesforce.
+
+    Args:
+        record: Dictionary containing affiliation data from Salesforce
+
+    Returns:
+        List of validation error messages (empty if valid)
+    """
+    errors = []
+
+    # Required fields
+    if not record.get("Id"):
+        errors.append("Missing affiliation Salesforce ID")
+    elif len(record["Id"]) != 18:
+        errors.append(f"Invalid affiliation Salesforce ID format: {record['Id']}")
+
+    if not record.get("npe5__Contact__c"):
+        errors.append("Missing contact ID in affiliation")
+    elif len(record["npe5__Contact__c"]) != 18:
+        errors.append(f"Invalid contact ID format: {record['npe5__Contact__c']}")
+
+    if not record.get("npe5__Organization__c"):
+        errors.append("Missing organization ID in affiliation")
+    elif len(record["npe5__Organization__c"]) != 18:
+        errors.append(f"Invalid organization ID format: {record['npe5__Organization__c']}")
+
+    return errors
+
+
+def process_affiliation_record_optimized(record: dict, session) -> bool:
+    """
+    Process a single volunteer-organization affiliation record using the optimized framework.
+
+    Args:
+        record: Dictionary containing affiliation data from Salesforce
+        session: Database session
+
+    Returns:
+        True if processing was successful, False otherwise
+    """
+    try:
+        # Get the volunteer and organization
+        volunteer = session.query(Volunteer).filter_by(salesforce_individual_id=record["npe5__Contact__c"]).first()
+        organization = session.query(Organization).filter_by(salesforce_id=record["npe5__Organization__c"]).first()
+
+        if not volunteer:
+            print(f"Volunteer not found for affiliation: {record['npe5__Contact__c']}")
+            return False
+
+        if not organization:
+            print(f"Organization not found for affiliation: {record['npe5__Organization__c']}")
+            return False
+
+        # Check if affiliation already exists
+        existing_affiliation = session.query(VolunteerOrganization).filter_by(volunteer_id=volunteer.id, organization_id=organization.id).first()
+
+        if existing_affiliation:
+            # Update existing affiliation
+            existing_affiliation.role = record.get("npe5__Role__c", "").strip()
+            existing_affiliation.status = record.get("npe5__Status__c", "").strip()
+            existing_affiliation.is_primary = bool(record.get("npe5__Primary__c", False))
+            existing_affiliation.start_date = parse_date(record.get("npe5__StartDate__c"))
+            existing_affiliation.end_date = parse_date(record.get("npe5__EndDate__c"))
+        else:
+            # Create new affiliation
+            new_affiliation = VolunteerOrganization(
+                volunteer_id=volunteer.id,
+                organization_id=organization.id,
+                role=record.get("npe5__Role__c", "").strip(),
+                status=record.get("npe5__Status__c", "").strip(),
+                is_primary=bool(record.get("npe5__Primary__c", False)),
+                start_date=parse_date(record.get("npe5__StartDate__c")),
+                end_date=parse_date(record.get("npe5__EndDate__c")),
+            )
+            session.add(new_affiliation)
+
+        return True
+
+    except Exception as e:
+        print(f"Error processing affiliation record: {str(e)}")
+        return False
+
+
+# ============================================================================
+# LEGACY FUNCTIONS (for backward compatibility)
+# ============================================================================
 
 
 def process_volunteer_row(row, success_count, error_count, errors):
@@ -693,39 +1146,55 @@ def purge_volunteers():
         volunteer_ids = db.session.query(Volunteer.id).all()
         volunteer_ids = [v[0] for v in volunteer_ids]
 
-        # Delete all related data for volunteers
-        Email.query.filter(Email.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
-        Phone.query.filter(Phone.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
-        Address.query.filter(Address.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        if not volunteer_ids:
+            return jsonify({"success": True, "message": "No volunteers found to purge"})
+
+        print(f"Purging {len(volunteer_ids)} volunteers and all related data...")
+
+        # Delete all related data for volunteers in the correct order
+        # 1. Delete connector data (one-to-one relationship)
+        ConnectorData.query.filter(ConnectorData.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        print("✓ Deleted connector data")
+
+        # 2. Delete many-to-many relationships
         VolunteerSkill.query.filter(VolunteerSkill.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        VolunteerOrganization.query.filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        print("✓ Deleted volunteer skills and organization affiliations")
+
+        # 3. Delete one-to-many relationships
         Engagement.query.filter(Engagement.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
         EventParticipation.query.filter(EventParticipation.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
         History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
-        VolunteerOrganization.query.filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
-        # Before deleting volunteers:
-        Volunteer.query.delete()  # This should trigger cascades
-        # Also clean up:
-        Email.query.filter(Email.contact_id.notin_(Contact.query.with_entities(Contact.id))).delete()
-        Phone.query.filter(Phone.contact_id.notin_(Contact.query.with_entities(Contact.id))).delete()
-        db.session.commit()
-        # Clean up related records first
-        EventParticipation.query.filter(EventParticipation.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
-        History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
-        VolunteerOrganization.query.filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        print("✓ Deleted engagements, event participations, and history records")
 
-        # Clean up orphaned email and phone records
+        # 4. Delete contact-related data (emails, phones, addresses)
         Email.query.filter(Email.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
         Phone.query.filter(Phone.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        Address.query.filter(Address.contact_id.in_(volunteer_ids)).delete(synchronize_session=False)
+        print("✓ Deleted contact information (emails, phones, addresses)")
 
-        # Delete volunteers and their contact records
+        # 5. Delete volunteers (this will cascade to contact records due to inheritance)
         Volunteer.query.filter(Volunteer.id.in_(volunteer_ids)).delete(synchronize_session=False)
+        print("✓ Deleted volunteer records")
+
+        # 6. Clean up any orphaned contact records
         Contact.query.filter(Contact.id.in_(volunteer_ids)).delete(synchronize_session=False)
+        print("✓ Cleaned up orphaned contact records")
+
+        # 7. Clean up any orphaned email/phone records
+        Email.query.filter(Email.contact_id.notin_(Contact.query.with_entities(Contact.id))).delete(synchronize_session=False)
+        Phone.query.filter(Phone.contact_id.notin_(Contact.query.with_entities(Contact.id))).delete(synchronize_session=False)
+        print("✓ Cleaned up orphaned email and phone records")
 
         db.session.commit()
-        return jsonify({"success": True, "message": f"Successfully deleted {len(volunteer_ids)} volunteers and associated records"})
+        print("✓ Database transaction committed successfully")
+
+        return jsonify({"success": True, "message": f"Successfully purged {len(volunteer_ids)} volunteers and all associated records"})
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "message": f"Error deleting volunteers: {str(e)}"}), 500
+        print(f"❌ Error during volunteer purge: {str(e)}")
+        return jsonify({"success": False, "message": f"Error purging volunteers: {str(e)}"}), 500
 
 
 @volunteers_bp.route("/volunteers/delete/<int:id>", methods=["DELETE"])
@@ -1342,6 +1811,306 @@ def import_from_salesforce():
 
     except SalesforceAuthenticationFailed:
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@volunteers_bp.route("/volunteers/import-from-salesforce-optimized", methods=["POST"])
+@login_required
+def import_volunteers_from_salesforce_optimized():
+    """
+    Optimized volunteer import from Salesforce using the new framework.
+
+    Features:
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
+
+    This is Phase 1 of the two-phase volunteer import pipeline:
+    - Phase 1: Import volunteer data without organization affiliations
+    - Phase 2: Import volunteer-organization affiliations separately
+
+    Returns:
+        JSON response with import statistics and error details
+    """
+    if not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        print("Starting optimized volunteer import from Salesforce...")
+        print("Expected: ~10,000+ volunteers to process")
+        print("Progress updates: Every 1,000 volunteers")
+        print("Batch size: 500 volunteers per batch")
+        print("Commit frequency: Every 10 batches (~5,000 volunteers)")
+
+        # Configure the import with optimized settings
+        config = ImportConfig(
+            batch_size=500,  # Process 500 records at a time
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=10,  # Commit every 10 batches
+        )
+
+        # Initialize the Salesforce importer
+        importer = SalesforceImporter(config)
+
+        # Define the Salesforce query for volunteers
+        volunteer_query = """
+        SELECT Id, AccountId, FirstName, LastName, MiddleName, Email,
+               npe01__AlternateEmail__c, npe01__HomeEmail__c,
+               npe01__WorkEmail__c, npe01__Preferred_Email__c,
+               HomePhone, MobilePhone, npe01__WorkPhone__c, Phone,
+               npe01__PreferredPhone__c,
+               npsp__Primary_Affiliation__c, Title, Department, Gender__c,
+               Birthdate, Last_Mailchimp_Email_Date__c, Last_Volunteer_Date__c,
+               Last_Email_Message__c, Volunteer_Recruitment_Notes__c,
+               Volunteer_Skills__c, Volunteer_Skills_Text__c,
+               Volunteer_Interests__c,
+               Number_of_Attended_Volunteer_Sessions__c,
+               Racial_Ethnic_Background__c,
+               Last_Activity_Date__c,
+               First_Volunteer_Date__c,
+               Last_Non_Internal_Email_Activity__c,
+               Description, Highest_Level_of_Educational__c, Age_Group__c,
+               DoNotCall, npsp__Do_Not_Contact__c, HasOptedOutOfEmail,
+               EmailBouncedDate,
+               MailingAddress, npe01__Home_Address__c, npe01__Work_Address__c,
+               npe01__Other_Address__c, npe01__Primary_Address_Type__c,
+               npe01__Secondary_Address_Type__c,
+               Connector_Active_Subscription__c,
+               Connector_Active_Subscription_Name__c,
+               Connector_Affiliations__c,
+               Connector_Industry__c,
+               Connector_Joining_Date__c,
+               Connector_Last_Login_Date_Time__c,
+               Connector_Last_Update_Date__c,
+               Connector_Profile_Link__c,
+               Connector_Role__c,
+               Connector_SignUp_Role__c,
+               Connector_User_ID__c
+        FROM Contact
+        WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''
+        ORDER BY LastName ASC, FirstName ASC
+        """
+
+        # Custom progress callback for detailed updates every 1k volunteers
+        def progress_callback(processed_count, total_count, message):
+            if processed_count % 1000 == 0 and processed_count > 0:
+                percentage = (processed_count / total_count) * 100
+                print(f"Progress: {processed_count:,}/{total_count:,} volunteers ({percentage:.1f}%) - {message}")
+
+        # Execute the import using the optimized framework
+        result = importer.import_data(
+            query=volunteer_query,
+            process_func=process_volunteer_record_optimized,
+            validation_func=validate_volunteer_record,
+            progress_callback=progress_callback,
+        )
+
+        # Prepare response message
+        if result.success:
+            message = f"Successfully processed {result.success_count:,} volunteers with {result.error_count:,} errors"
+            if result.warnings:
+                message += f" ({len(result.warnings)} warnings)"
+        else:
+            message = f"Import completed with {result.error_count:,} errors out of {result.total_records:,} records"
+
+        return jsonify(
+            {
+                "success": result.success,
+                "message": message,
+                "statistics": {
+                    "total_records": result.total_records,
+                    "processed_count": result.processed_count,
+                    "success_count": result.success_count,
+                    "error_count": result.error_count,
+                    "skipped_count": result.skipped_count,
+                    "duration_seconds": result.duration_seconds,
+                },
+                "errors": result.errors[:10],  # Limit to first 10 errors
+                "warnings": result.warnings[:10],  # Limit to first 10 warnings
+            }
+        )
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@volunteers_bp.route("/volunteers/import-affiliations-optimized", methods=["POST"])
+@login_required
+def import_volunteer_affiliations_optimized():
+    """
+    Optimized volunteer-organization affiliations import from Salesforce.
+
+    This is Phase 2 of the two-phase volunteer import pipeline:
+    - Phase 1: Import volunteer data (run first)
+    - Phase 2: Import volunteer-organization affiliations (run second)
+
+    Features:
+    - Uses the standardized SalesforceImporter framework
+    - Batch processing for memory efficiency
+    - Comprehensive error handling and validation
+    - Progress tracking and detailed reporting
+    - Retry logic for transient failures
+
+    Returns:
+        JSON response with import statistics and error details
+    """
+    if not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        print("Starting optimized volunteer affiliations import from Salesforce...")
+        print("Expected: ~5,000+ affiliations to process")
+        print("Progress updates: Every 500 affiliations")
+        print("Batch size: 200 affiliations per batch")
+        print("Commit frequency: Every 5 batches (~1,000 affiliations)")
+
+        # Configure the import with optimized settings
+        config = ImportConfig(
+            batch_size=200,  # Process 200 records at a time (smaller due to complexity)
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=5,  # Commit every 5 batches
+        )
+
+        # Initialize the Salesforce importer
+        importer = SalesforceImporter(config)
+
+        # Define the Salesforce query for affiliations
+        affiliation_query = """
+        SELECT Id, Name, npe5__Organization__c, npe5__Contact__c,
+               npe5__Role__c, npe5__Primary__c, npe5__Status__c,
+               npe5__StartDate__c, npe5__EndDate__c
+        FROM npe5__Affiliation__c
+        WHERE npe5__Contact__c IN (
+            SELECT Id FROM Contact
+            WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''
+        )
+        ORDER BY npe5__Contact__c ASC
+        """
+
+        # Custom progress callback for detailed updates every 500 affiliations
+        def progress_callback(processed_count, total_count, message):
+            if processed_count % 500 == 0 and processed_count > 0:
+                percentage = (processed_count / total_count) * 100
+                print(f"Progress: {processed_count:,}/{total_count:,} affiliations ({percentage:.1f}%) - {message}")
+
+        # Execute the import using the optimized framework
+        result = importer.import_data(
+            query=affiliation_query,
+            process_func=process_affiliation_record_optimized,
+            validation_func=validate_affiliation_record,
+            progress_callback=progress_callback,
+        )
+
+        # Prepare response message
+        if result.success:
+            message = f"Successfully processed {result.success_count:,} affiliations with {result.error_count:,} errors"
+            if result.warnings:
+                message += f" ({len(result.warnings)} warnings)"
+        else:
+            message = f"Import completed with {result.error_count:,} errors out of {result.total_records:,} records"
+
+        return jsonify(
+            {
+                "success": result.success,
+                "message": message,
+                "statistics": {
+                    "total_records": result.total_records,
+                    "processed_count": result.processed_count,
+                    "success_count": result.success_count,
+                    "error_count": result.error_count,
+                    "skipped_count": result.skipped_count,
+                    "duration_seconds": result.duration_seconds,
+                },
+                "errors": result.errors[:10],  # Limit to first 10 errors
+                "warnings": result.warnings[:10],  # Limit to first 10 warnings
+            }
+        )
+
+    except SalesforceAuthenticationFailed:
+        return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@volunteers_bp.route("/volunteers/import-pipeline-status", methods=["GET"])
+@login_required
+def get_volunteer_import_pipeline_status():
+    """
+    Get the status of the volunteer import pipeline.
+
+    Provides comprehensive analysis of volunteer import status including:
+    - Total volunteers in database
+    - Volunteers with organization affiliations
+    - Volunteers without organization affiliations
+    - Missing organizations analysis
+    - Recommendations for next steps
+
+    Returns:
+        JSON response with pipeline status and recommendations
+    """
+    if not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        # Get basic statistics
+        total_volunteers = Volunteer.query.count()
+        volunteers_with_affiliations = db.session.query(Volunteer).join(VolunteerOrganization).distinct().count()
+        volunteers_without_affiliations = total_volunteers - volunteers_with_affiliations
+
+        # Get affiliation statistics
+        total_affiliations = VolunteerOrganization.query.count()
+        active_affiliations = VolunteerOrganization.query.filter_by(status="Active").count()
+
+        # Get organization statistics
+        total_organizations = Organization.query.count()
+
+        # Calculate completion percentages
+        affiliation_completion = (volunteers_with_affiliations / total_volunteers * 100) if total_volunteers > 0 else 0
+
+        # Generate recommendations
+        recommendations = []
+
+        if volunteers_without_affiliations > 0:
+            recommendations.append(f"Run Phase 2 (affiliations import) to assign {volunteers_without_affiliations:,} volunteers to organizations")
+
+        if total_volunteers == 0:
+            recommendations.append("Run Phase 1 (volunteer import) to import volunteer data from Salesforce")
+
+        if total_organizations == 0:
+            recommendations.append("Import organizations before running Phase 2 (affiliations import)")
+
+        # Prepare response
+        status_data = {
+            "pipeline_status": {
+                "total_volunteers": total_volunteers,
+                "volunteers_with_affiliations": volunteers_with_affiliations,
+                "volunteers_without_affiliations": volunteers_without_affiliations,
+                "affiliation_completion_percentage": round(affiliation_completion, 1),
+                "total_affiliations": total_affiliations,
+                "active_affiliations": active_affiliations,
+                "total_organizations": total_organizations,
+            },
+            "recommendations": recommendations,
+            "next_steps": [
+                "1. Run Phase 1: Import volunteer data from Salesforce",
+                "2. Run Phase 2: Import volunteer-organization affiliations",
+                "3. Monitor the pipeline status for completion",
+            ],
+        }
+
+        return jsonify({"success": True, "status": status_data})
+
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 

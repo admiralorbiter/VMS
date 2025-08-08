@@ -54,7 +54,7 @@ Usage:
 
 from datetime import datetime
 
-from models.contact import ContactTypeEnum, Email
+from models.contact import ContactTypeEnum, Email, Phone
 from models.event import CancellationReason, EventFormat, EventType
 
 # District name mapping for Salesforce integration
@@ -154,6 +154,8 @@ def clean_skill_name(skill_name):
         >>> clean_skill_name('JAVA')
         'Java'
     """
+    if not skill_name:
+        return ""
     return skill_name.strip().lower().capitalize()
 
 
@@ -213,7 +215,7 @@ def get_email_addresses(row):
     """
     emails = []
     seen_emails = set()  # Track unique emails
-    preferred_type = row.get("npe01__Preferred_Email__c", "").lower()
+    preferred_type = (row.get("npe01__Preferred_Email__c") or "").lower()
 
     # Map of CSV columns to email types
     email_mappings = {
@@ -224,7 +226,8 @@ def get_email_addresses(row):
     }
 
     for column, (email_type, contact_type) in email_mappings.items():
-        email = row.get(column, "").strip().lower()
+        raw = row.get(column)
+        email = (raw or "").strip().lower()
         if email and email not in seen_emails:
             # Set primary based on the preferred email type from the CSV
             is_primary = False
@@ -264,8 +267,7 @@ def get_phone_numbers(row):
         - Standardizes format for consistency
     """
     phones = []
-    # seen_numbers = set()  # Track unique numbers
-    row.get("npe01__PreferredPhone__c", "").lower()
+    preferred_phone = (row.get("npe01__PreferredPhone__c") or "").lower()
 
     # Map of CSV columns to phone types
     phone_mappings = {
@@ -275,10 +277,27 @@ def get_phone_numbers(row):
         "npe01__WorkPhone__c": ("work", ContactTypeEnum.professional),
     }
 
+    # Determine primary based on preference
+    def is_primary_for(column_name: str) -> bool:
+        if preferred_phone == "work" and column_name in ["npe01__WorkPhone__c", "Phone"]:
+            return True
+        if preferred_phone == "home" and column_name == "HomePhone":
+            return True
+        if preferred_phone == "mobile" and column_name == "MobilePhone":
+            return True
+        # Default primary: business Phone if no preference
+        if not preferred_phone and column_name == "Phone":
+            return True
+        return False
+
     for column, (phone_type, contact_type) in phone_mappings.items():
-        number = row.get(column, "").strip()
+        raw = row.get(column)
+        number = (raw or "").strip()
         # Standardize the number format (remove any non-digit characters)
-        "".join(filter(str.isdigit, number))
+        digits = "".join(filter(str.isdigit, number))
+        if not digits:
+            continue
+        phones.append(Phone(number=digits, type=contact_type, primary=is_primary_for(column)))
 
     return phones
 

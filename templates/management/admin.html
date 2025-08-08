@@ -282,11 +282,11 @@
                     <div class="import-status" id="manageTeachersStatus"></div>
                 </div>
 
-                {# Volunteers import #}
+                {# Volunteers import - Legacy #}
                 <div class="import-item">
                     <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
                         <i class="fas fa-users"></i>
-                        <span>5. Import Volunteers</span>
+                        <span>5. Import Volunteers (Legacy)</span>
                     </button>
                     <div class="import-status" id="importVolunteersStatus"></div>
                     <div class="import-progress" id="importVolunteersProgress">
@@ -294,14 +294,47 @@
                     </div>
                 </div>
 
-                {# Volunteer-Organization Affiliations import #}
+                {# Volunteer-Organization Affiliations import - Legacy #}
                 <div class="import-item">
                     <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
                         <i class="fas fa-link"></i>
-                        <span>6. Import Affiliations</span>
+                        <span>6. Import Affiliations (Legacy)</span>
                     </button>
                     <div class="import-status" id="importAffiliationsStatus"></div>
                     <div class="import-progress" id="importAffiliationsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Optimized Volunteer Import Pipeline #}
+                <div class="import-item">
+                    <button onclick="checkVolunteerPipelineStatus()" class="btn btn-info" id="checkVolunteerPipelineStatusBtn">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Check Volunteer Pipeline Status</span>
+                    </button>
+                    <div class="import-status" id="checkVolunteerPipelineStatusStatus"></div>
+                </div>
+
+                {# Optimized Volunteers import - Phase 1 #}
+                <div class="import-item">
+                    <button onclick="importVolunteersOptimized()" class="btn admin-btn-import" id="importVolunteersOptimizedBtn">
+                        <i class="fas fa-users"></i>
+                        <span>Import Volunteers (Optimized - Phase 1)</span>
+                    </button>
+                    <div class="import-status" id="importVolunteersOptimizedStatus"></div>
+                    <div class="import-progress" id="importVolunteersOptimizedProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Optimized Volunteer Affiliations import - Phase 2 #}
+                <div class="import-item">
+                    <button onclick="importVolunteerAffiliationsOptimized()" class="btn admin-btn-import" id="importVolunteerAffiliationsOptimizedBtn">
+                        <i class="fas fa-link"></i>
+                        <span>Import Volunteer Affiliations (Optimized - Phase 2)</span>
+                    </button>
+                    <div class="import-status" id="importVolunteerAffiliationsOptimizedStatus"></div>
+                    <div class="import-progress" id="importVolunteerAffiliationsOptimizedProgress">
                         <div class="import-progress-bar"></div>
                     </div>
                 </div>
@@ -1095,6 +1128,165 @@ function importAffiliations() {
             alert(`Error importing affiliations: ${error.message}`);
         });
     }
+}
+
+function checkVolunteerPipelineStatus() {
+    const button = document.getElementById('checkVolunteerPipelineStatusBtn');
+    const status = document.getElementById('checkVolunteerPipelineStatusStatus');
+
+    button.disabled = true;
+    status.textContent = 'Checking volunteer pipeline status...';
+
+    fetch('/volunteers/import-pipeline-status', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const pipeline = data.status.pipeline_status;
+            const recommendations = data.status.recommendations;
+
+            let statusText = `Pipeline Status:\n`;
+            statusText += `• Total Volunteers: ${pipeline.total_volunteers.toLocaleString()}\n`;
+            statusText += `• With Affiliations: ${pipeline.volunteers_with_affiliations.toLocaleString()}\n`;
+            statusText += `• Without Affiliations: ${pipeline.volunteers_without_affiliations.toLocaleString()}\n`;
+            statusText += `• Completion: ${pipeline.affiliation_completion_percentage}%\n`;
+            statusText += `• Total Affiliations: ${pipeline.total_affiliations.toLocaleString()}\n`;
+            statusText += `• Total Organizations: ${pipeline.total_organizations.toLocaleString()}`;
+
+            if (recommendations.length > 0) {
+                statusText += `\n\nRecommendations:\n`;
+                recommendations.forEach(rec => {
+                    statusText += `• ${rec}\n`;
+                });
+            }
+
+            status.textContent = statusText;
+            status.style.color = 'green';
+        } else {
+            status.textContent = data.message || 'Status check failed';
+            status.style.color = 'red';
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Status check failed: ' + error.message;
+        status.style.color = 'red';
+        console.error('Status check error:', error);
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+function importVolunteersOptimized() {
+    if (!confirm('Are you sure you want to import volunteers from Salesforce using the optimized framework? This is Phase 1 of the two-phase import pipeline.')) {
+        return;
+    }
+
+    const button = document.getElementById('importVolunteersOptimizedBtn');
+    const status = document.getElementById('importVolunteersOptimizedStatus');
+    const progress = document.getElementById('importVolunteersOptimizedProgress');
+
+    button.disabled = true;
+    status.textContent = 'Importing volunteers (optimized)...';
+    progress.style.display = 'block';
+
+    fetch('/volunteers/import-from-salesforce-optimized', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const stats = data.statistics;
+            let statusText = `${data.message}\n`;
+            statusText += `Statistics:\n`;
+            statusText += `• Total Records: ${stats.total_records.toLocaleString()}\n`;
+            statusText += `• Processed: ${stats.processed_count.toLocaleString()}\n`;
+            statusText += `• Success: ${stats.success_count.toLocaleString()}\n`;
+            statusText += `• Errors: ${stats.error_count.toLocaleString()}\n`;
+            statusText += `• Duration: ${stats.duration_seconds.toFixed(1)}s`;
+
+            status.textContent = statusText;
+            status.style.color = 'green';
+        } else {
+            status.textContent = data.message || 'Import failed';
+            status.style.color = 'red';
+        }
+
+        // Show errors if any
+        if (data.errors && data.errors.length > 0) {
+            console.log('Import errors:', data.errors);
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Import failed: ' + error.message;
+        status.style.color = 'red';
+        console.error('Import error:', error);
+    })
+    .finally(() => {
+        button.disabled = false;
+        progress.style.display = 'none';
+    });
+}
+
+function importVolunteerAffiliationsOptimized() {
+    if (!confirm('Are you sure you want to import volunteer-organization affiliations from Salesforce using the optimized framework? This is Phase 2 of the two-phase import pipeline.')) {
+        return;
+    }
+
+    const button = document.getElementById('importVolunteerAffiliationsOptimizedBtn');
+    const status = document.getElementById('importVolunteerAffiliationsOptimizedStatus');
+    const progress = document.getElementById('importVolunteerAffiliationsOptimizedProgress');
+
+    button.disabled = true;
+    status.textContent = 'Importing volunteer affiliations (optimized)...';
+    progress.style.display = 'block';
+
+    fetch('/volunteers/import-affiliations-optimized', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const stats = data.statistics;
+            let statusText = `${data.message}\n`;
+            statusText += `Statistics:\n`;
+            statusText += `• Total Records: ${stats.total_records.toLocaleString()}\n`;
+            statusText += `• Processed: ${stats.processed_count.toLocaleString()}\n`;
+            statusText += `• Success: ${stats.success_count.toLocaleString()}\n`;
+            statusText += `• Errors: ${stats.error_count.toLocaleString()}\n`;
+            statusText += `• Duration: ${stats.duration_seconds.toFixed(1)}s`;
+
+            status.textContent = statusText;
+            status.style.color = 'green';
+        } else {
+            status.textContent = data.message || 'Import failed';
+            status.style.color = 'red';
+        }
+
+        // Show errors if any
+        if (data.errors && data.errors.length > 0) {
+            console.log('Import errors:', data.errors);
+        }
+    })
+    .catch(error => {
+        status.textContent = 'Import failed: ' + error.message;
+        status.style.color = 'red';
+        console.error('Import error:', error);
+    })
+    .finally(() => {
+        button.disabled = false;
+        progress.style.display = 'none';
+    });
 }
 
 function purgeVolunteers() {

@@ -184,9 +184,19 @@ class SalesforceImporter:
             List of error messages
         """
         batch_errors = []
+        processed_ids = set()  # Track processed record IDs to prevent duplicates
 
         for record in records:
             try:
+                # Check for duplicate records within the batch
+                record_id = record.get("Id", "")
+                if record_id in processed_ids:
+                    print(f"Skipping duplicate record: {record_id}")
+                    stats["skipped_count"] += 1
+                    continue
+
+                processed_ids.add(record_id)
+
                 # Validate record
                 is_valid, validation_errors = self._validate_record(record)
                 if not is_valid:
@@ -267,17 +277,22 @@ class SalesforceImporter:
                 if progress_callback:
                     progress_callback(i, len(records), f"Processing batch {batch_num}/{total_batches}")
 
-                # Process batch within transaction
+                # Process batch with simpler session management
                 try:
-                    with db.session.begin_nested():  # Create savepoint
-                        batch_errors = self._process_batch(batch, process_func, db.session, stats)
-                        all_errors.extend(batch_errors)
+                    # Process the batch without nested transactions
+                    batch_errors = self._process_batch(batch, process_func, db.session, stats)
+                    all_errors.extend(batch_errors)
 
-                        # Commit batch if successful
-                        db.session.commit()
+                    # Commit the batch
+                    db.session.commit()
 
                 except SQLAlchemyError as e:
+                    # Rollback and reset session state
                     db.session.rollback()
+                    # Reset the session to a clean state
+                    db.session.close()
+                    db.session = db.create_scoped_session()
+
                     error_msg = f"Database error in batch {batch_num}: {str(e)}"
                     all_errors.append(error_msg)
                     stats["error_count"] += len(batch)

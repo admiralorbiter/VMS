@@ -311,7 +311,8 @@ class Volunteer(Contact):
         ).count()
 
         # Add only the manual adjustment (don't add times_volunteered to avoid double counting)
-        return participation_count + self.additional_volunteer_count
+        additional_adjustment = self.additional_volunteer_count or 0
+        return participation_count + additional_adjustment
 
     @property
     def active_histories(self):
