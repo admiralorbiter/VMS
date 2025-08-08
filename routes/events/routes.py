@@ -33,12 +33,10 @@ from datetime import date, datetime, timedelta
 import openpyxl
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
-from simple_salesforce.api import Salesforce
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 
-from config import Config
 from forms import EventForm
 from models import db
 from models.district_model import District
@@ -224,6 +222,51 @@ def process_volunteer_participation_record_optimized(record: dict, session) -> b
         return True
     except Exception as e:
         print(f"Error processing volunteer participation {record.get('Id', 'unknown')}: {str(e)}")
+        return False
+
+
+def validate_student_participation_record(record: dict) -> list:
+    """Validate a student Session_Participant__c record."""
+    errors = []
+    if not record.get("Id"):
+        errors.append("Missing participation Id")
+    if not record.get("Contact__c"):
+        errors.append("Missing Contact__c")
+    if not record.get("Session__c"):
+        errors.append("Missing Session__c")
+    return errors
+
+
+def process_student_participation_record_optimized(record: dict, session) -> bool:
+    """Process student participation linking Student to Event."""
+    try:
+        participation_sf_id = record.get("Id")
+        if not participation_sf_id:
+            return False
+
+        # Skip if already exists
+        existing = session.query(EventStudentParticipation).filter_by(salesforce_id=participation_sf_id).first()
+        if existing:
+            return True
+
+        # Find entities
+        event = session.query(Event).filter_by(salesforce_id=record.get("Session__c")).first()
+        student = session.query(Student).filter(Student.salesforce_individual_id == record.get("Contact__c")).first()
+        if not event or not student:
+            return False
+
+        new_participation = EventStudentParticipation(
+            event_id=event.id,
+            student_id=student.id,
+            status=record.get("Status__c"),
+            delivery_hours=safe_parse_delivery_hours(record.get("Delivery_Hours__c")),
+            age_group=record.get("Age_Group__c"),
+            salesforce_id=participation_sf_id,
+        )
+        session.add(new_participation)
+        return True
+    except Exception as e:
+        print(f"Error processing student participation {record.get('Id', 'unknown')}: {str(e)}")
         return False
 
 
@@ -1147,76 +1190,67 @@ def import_events_from_salesforce():
 @login_required
 def sync_student_participants():
     """
-    Sync student participation data from Salesforce
+    Sync student participation data from Salesforce (Optimized)
 
-    This endpoint fetches student participation data from Salesforce and
-    creates EventStudentParticipation records in the local database.
-
-    Returns:
-        JSON response with sync results and statistics
+    Uses the standardized SalesforceImporter for batch processing,
+    retries, validation, and structured reporting.
     """
     try:
-        print("Fetching student participation data from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
+        print("Starting optimized student participation sync from Salesforce...")
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        config = ImportConfig(
+            batch_size=500,
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=10,
+        )
+        importer = SalesforceImporter(config)
 
-        # Query for Student participants
         participants_query = """
-        SELECT
-            Id,
-            Name,
-            Contact__c,
-            Session__c,
-            Status__c,
-            Delivery_Hours__c,
-            Age_Group__c,
-            Email__c,
-            Title__c
-        FROM Session_Participant__c
-        WHERE Participant_Type__c = 'Student'
-        ORDER BY Session__c, Name
-        """
+            SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c,
+                   Age_Group__c, Email__c, Title__c
+            FROM Session_Participant__c
+            WHERE Participant_Type__c = 'Student'
+            ORDER BY Session__c, Name
+            """
 
-        # Execute participants query
-        participants_result = sf.query_all(participants_query)
-        participant_rows = participants_result.get("records", [])
+        def progress_callback(processed, total, message):
+            if processed % 1000 == 0 and processed > 0:
+                pct = (processed / max(total, 1)) * 100
+                print(f"Progress: {processed:,}/{total:,} student participations ({pct:.1f}%) - {message}")
 
-        print(f"Found {len(participant_rows)} student participation records in Salesforce.")
-
-        # Process participants
-        for row in participant_rows:
-            success_count, error_count = process_student_participation_row(row, success_count, error_count, errors)
-
-        # Commit changes (will only commit if association logic is added and adds to session)
-        db.session.commit()
-
-        # Print summary and errors
-        print(f"\nSuccessfully processed {success_count} student participations with {error_count} total errors")
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors[:50]:  # Only print first 50 errors
-                print(f"- {error}")
+        result = importer.import_data(
+            query=participants_query,
+            process_func=process_student_participation_record_optimized,
+            validation_func=validate_student_participation_record,
+            progress_callback=progress_callback,
+        )
 
         return jsonify(
             {
-                "success": True,
-                "message": f"Processed {success_count} student participations with {error_count} errors.",
-                "successCount": success_count,
-                "errorCount": error_count,
-                "errors": errors,
+                "success": result.success,
+                "message": f"Processed {result.success_count:,} student participations with {result.error_count:,} errors.",
+                "successCount": result.success_count,
+                "errorCount": result.error_count,
+                "statistics": {
+                    "total_records": result.total_records,
+                    "processed_count": result.processed_count,
+                    "success_count": result.success_count,
+                    "error_count": result.error_count,
+                    "skipped_count": result.skipped_count,
+                    "duration_seconds": result.duration_seconds,
+                },
+                "errors": result.errors[:10],
+                "warnings": result.warnings[:10],
             }
         )
 
     except SalesforceAuthenticationFailed:
-        print("Error: Failed to authenticate with Salesforce")
         return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
     except Exception as e:
         db.session.rollback()
-        print(f"Error in sync_student_participants: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
