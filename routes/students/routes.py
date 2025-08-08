@@ -610,12 +610,8 @@ def get_import_pipeline_status():
         total_schools = School.query.count()
 
         # Get students that should have schools but don't
-        students_needing_schools = (
-            db.session.query(Student)
-            .join(Contact, Student.id == Contact.id)
-            .filter(Student.school_id.is_(None), Contact.salesforce_individual_id.isnot(None))
-            .count()
-        )
+        # Since Student inherits from Contact, we can access salesforce_individual_id directly
+        students_needing_schools = db.session.query(Student).filter(Student.school_id.is_(None), Student.salesforce_individual_id.isnot(None)).count()
 
         # Calculate completion percentages
         phase1_complete = total_students > 0
@@ -626,13 +622,7 @@ def get_import_pipeline_status():
         missing_school_analysis = {}
         if students_needing_schools > 0:
             # Get sample of students without schools to analyze
-            sample_students = (
-                db.session.query(Student)
-                .join(Contact, Student.id == Contact.id)
-                .filter(Student.school_id.is_(None), Contact.salesforce_individual_id.isnot(None))
-                .limit(10)
-                .all()
-            )
+            sample_students = db.session.query(Student).filter(Student.school_id.is_(None), Student.salesforce_individual_id.isnot(None)).limit(10).all()
 
             missing_school_analysis = {
                 "students_needing_schools": students_needing_schools,
@@ -640,6 +630,7 @@ def get_import_pipeline_status():
             }
 
         status_data = {
+            "success": True,
             "pipeline_status": {"phase1_complete": phase1_complete, "phase2_complete": phase2_complete, "pipeline_complete": pipeline_complete},
             "statistics": {
                 "total_students": total_students,

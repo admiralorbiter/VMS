@@ -205,29 +205,17 @@
         </div>
     </div>
     {% if current_user.is_admin %}
-    {# Import Section - Admin only #}
+    {# Regular Import Section - Admin only #}
     <div class="card admin-card mt-4">
         <div class="card-body">
-            <h5 class="card-title mb-0">Import Data from Salesforce</h5>
-            <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
-
-            {# Student Import Pipeline Information #}
-            <div class="alert alert-info mb-3">
-                <h6><i class="fas fa-info-circle"></i> New Student Import Pipeline</h6>
-                <p class="mb-2">The student import now uses a two-phase pipeline for better reliability:</p>
-                <ul class="mb-0">
-                    <li><strong>Phase 1:</strong> Import all student data (names, grades, contact info) without school assignments</li>
-                    <li><strong>Phase 2:</strong> Assign schools to students based on Salesforce relationships</li>
-                    <li><strong>Status Check:</strong> Monitor the pipeline and get recommendations</li>
-                </ul>
-                <p class="mb-0 mt-2"><small>This approach ensures all students are imported even if some schools are missing, and allows for better error handling.</small></p>
-            </div>
+            <h5 class="card-title mb-0">Regular Data Imports</h5>
+            <p class="text-muted mb-3">Import data from Salesforce for regular operations. These imports can be run frequently as needed.</p>
 
             {# Import All button with progress tracking #}
             <div class="mb-4">
                 <button onclick="importAllSequentially()" class="btn admin-btn-import" id="importAllBtn">
                     <i class="fas fa-download"></i>
-                    <span>Import All Data Sequentially</span>
+                    <span>Import All Regular Data Sequentially</span>
                 </button>
                 <div class="import-status" id="importAllStatus"></div>
                 <div class="import-progress" id="importAllProgress">
@@ -294,86 +282,11 @@
                     <div class="import-status" id="manageTeachersStatus"></div>
                 </div>
 
-                {# Students import - Updated for two-phase pipeline #}
-                <div class="import-item">
-                    <button onclick="importStudentsPhase1()" class="btn admin-btn-import" id="importStudentsPhase1Btn">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>5a. Import Students (Phase 1)</span>
-                    </button>
-                    <div class="import-status" id="importStudentsPhase1Status"></div>
-                    <div class="import-progress" id="importStudentsPhase1Progress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Test limited student import #}
-                <div class="import-item">
-                    <button onclick="testStudentImportLimited()" class="btn admin-btn-import" id="testStudentImportLimitedBtn">
-                        <i class="fas fa-flask"></i>
-                        <span>5a. Test Import Students (1000 limit)</span>
-                    </button>
-                    <div class="import-status" id="testStudentImportLimitedStatus"></div>
-                    <div class="import-progress" id="testStudentImportLimitedProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Student School Assignment - Phase 2 #}
-                <div class="import-item">
-                    <button onclick="assignSchoolsToStudents()" class="btn admin-btn-import" id="assignSchoolsBtn">
-                        <i class="fas fa-link"></i>
-                        <span>5b. Assign Schools to Students (Phase 2)</span>
-                    </button>
-                    <div class="import-status" id="assignSchoolsStatus"></div>
-                    <div class="import-progress" id="assignSchoolsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Student Pipeline Status #}
-                <div class="import-item">
-                    <button onclick="checkStudentPipelineStatus()" class="btn admin-btn-import" id="checkPipelineStatusBtn">
-                        <i class="fas fa-chart-line"></i>
-                        <span>5c. Check Student Pipeline Status</span>
-                    </button>
-                    <div class="import-status" id="checkPipelineStatusStatus"></div>
-                </div>
-
-                {# Legacy single import button (kept for backward compatibility) #}
-                <div class="import-item">
-                    <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>5. Import Students (Legacy)</span>
-                    </button>
-                    <div class="import-status" id="importStudentsStatus"></div>
-                    <div class="import-progress" id="importStudentsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Students Management #}
-                <div class="import-item">
-                    <a href="{{ url_for('students.view_students') }}" class="btn admin-btn-import" id="manageStudentsBtn" style="display: flex; align-items: center;">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>Manage Students</span>
-                    </a>
-                    <div class="import-status" id="manageStudentsStatus"></div>
-                </div>
-
-                {# Student Pipeline Status (Quick Access) #}
-                <div class="import-item">
-                    <button onclick="checkStudentPipelineStatus()" class="btn admin-btn-import" id="quickPipelineStatusBtn">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Quick Student Status</span>
-                    </button>
-                    <div class="import-status" id="quickPipelineStatusStatus"></div>
-                </div>
-
                 {# Volunteers import #}
                 <div class="import-item">
                     <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
                         <i class="fas fa-users"></i>
-                        <span>6. Import Volunteers</span>
+                        <span>5. Import Volunteers</span>
                     </button>
                     <div class="import-status" id="importVolunteersStatus"></div>
                     <div class="import-progress" id="importVolunteersProgress">
@@ -385,7 +298,7 @@
                 <div class="import-item">
                     <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
                         <i class="fas fa-link"></i>
-                        <span>6a. Import Affiliations</span>
+                        <span>6. Import Affiliations</span>
                     </button>
                     <div class="import-status" id="importAffiliationsStatus"></div>
                     <div class="import-progress" id="importAffiliationsProgress">
@@ -405,11 +318,11 @@
                     </div>
                 </div>
 
-                {# Student Participations (NEW) import #}
+                {# Student Participations import #}
                 <div class="import-item">
                     <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
-                        <i class="fas fa-user-check"></i> <!-- Icon for student check/participation -->
-                        <span>7a. Import Student Participations</span>
+                        <i class="fas fa-user-check"></i>
+                        <span>8. Import Student Participations</span>
                     </button>
                     <div class="import-status" id="importStudentParticipantsStatus"></div>
                     <div class="import-progress" id="importStudentParticipantsProgress">
@@ -421,7 +334,7 @@
                 <div class="import-item">
                     <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
                         <i class="fas fa-history"></i>
-                        <span>8. Import History</span>
+                        <span>9. Import History</span>
                     </button>
                     <div class="import-status" id="importHistoryStatus"></div>
                     <div class="import-progress" id="importHistoryProgress">
@@ -433,7 +346,7 @@
                 <div class="import-item">
                     <button onclick="importPathways()" class="btn admin-btn-import" id="importPathwaysBtn">
                         <i class="fas fa-road"></i>
-                        <span>9. Import Pathways</span>
+                        <span>10. Import Pathways</span>
                     </button>
                     <div class="import-status" id="importPathwaysStatus"></div>
                     <div class="import-progress" id="importPathwaysProgress">
@@ -445,7 +358,7 @@
                 <div class="import-item">
                     <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
                         <i class="fas fa-users"></i>
-                        <span>9a. Import Pathway Participants</span>
+                        <span>11. Import Pathway Participants</span>
                     </button>
                     <div class="import-status" id="importPathwayParticipantsStatus"></div>
                     <div class="import-progress" id="importPathwayParticipantsProgress">
@@ -468,13 +381,90 @@
                 {# Sync Unaffiliated Events #}
                 <div class="import-item">
                     <button onclick="syncUnaffiliatedEvents()" class="btn admin-btn-import" id="syncUnaffiliatedEventsBtn">
-                        <i class="fas fa-sitemap"></i> <!-- Icon suggesting relationship/mapping -->
+                        <i class="fas fa-sitemap"></i>
                         <span>Sync Unaffiliated Events (by Students)</span>
                     </button>
                     <div class="import-status" id="syncUnaffiliatedEventsStatus"></div>
                     <div class="import-progress" id="syncUnaffiliatedEventsProgress">
                         <div class="import-progress-bar"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Quarterly Student Updates Section #}
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title mb-0">Quarterly Student Updates</h5>
+            <p class="text-muted mb-3">Student data is updated quarterly. This section contains the two-phase import pipeline for comprehensive student data management.</p>
+
+            {# Student Import Pipeline Information #}
+            <div class="alert alert-info mb-3">
+                <h6><i class="fas fa-info-circle"></i> Student Import Pipeline</h6>
+                <p class="mb-2">The student import uses a two-phase pipeline for better reliability:</p>
+                <ul class="mb-0">
+                    <li><strong>Phase 1:</strong> Import all student data (names, grades, contact info) without school assignments</li>
+                    <li><strong>Phase 2:</strong> Assign schools to students based on Salesforce relationships</li>
+                    <li><strong>Status Check:</strong> Monitor the pipeline and get recommendations</li>
+                </ul>
+                <p class="mb-0 mt-2"><small>This approach ensures all students are imported even if some schools are missing, and allows for better error handling.</small></p>
+            </div>
+
+            {# Student Pipeline Status - Prominent Display #}
+            <div class="mb-4">
+                <button onclick="checkStudentPipelineStatus()" class="btn btn-info" id="checkPipelineStatusBtn" style="width: 100%; margin-bottom: 10px;">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Check Current Student Pipeline Status</span>
+                </button>
+                <div class="import-status" id="checkPipelineStatusStatus"></div>
+            </div>
+
+            {# Student import options grid #}
+            <div class="import-grid">
+                {# Test limited student import #}
+                <div class="import-item">
+                    <button onclick="testStudentImportLimited()" class="btn admin-btn-import" id="testStudentImportLimitedBtn">
+                        <i class="fas fa-flask"></i>
+                        <span>Test Import Students (1000 limit)</span>
+                    </button>
+                    <div class="import-status" id="testStudentImportLimitedStatus"></div>
+                    <div class="import-progress" id="testStudentImportLimitedProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Students import - Phase 1 #}
+                <div class="import-item">
+                    <button onclick="importStudentsPhase1()" class="btn admin-btn-import" id="importStudentsPhase1Btn">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>Import Students (Phase 1)</span>
+                    </button>
+                    <div class="import-status" id="importStudentsPhase1Status"></div>
+                    <div class="import-progress" id="importStudentsPhase1Progress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Student School Assignment - Phase 2 #}
+                <div class="import-item">
+                    <button onclick="assignSchoolsToStudents()" class="btn admin-btn-import" id="assignSchoolsBtn">
+                        <i class="fas fa-link"></i>
+                        <span>Assign Schools to Students (Phase 2)</span>
+                    </button>
+                    <div class="import-status" id="assignSchoolsStatus"></div>
+                    <div class="import-progress" id="assignSchoolsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Students Management #}
+                <div class="import-item">
+                    <a href="{{ url_for('students.view_students') }}" class="btn admin-btn-import" id="manageStudentsBtn" style="display: flex; align-items: center;">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>Manage Students</span>
+                    </a>
+                    <div class="import-status" id="manageStudentsStatus"></div>
                 </div>
             </div>
         </div>
@@ -1053,59 +1043,6 @@ function checkStudentPipelineStatus() {
     });
 }
 
-// Legacy function (kept for backward compatibility)
-function importStudents() {
-    if (!confirm('Are you sure you want to import students from Salesforce? This may take several minutes.')) {
-        return;
-    }
-
-    const btn = document.getElementById('importStudentsBtn');
-    const status = document.getElementById('importStudentsStatus');
-    const progress = document.getElementById('importStudentsProgress');
-    const progressBar = progress.querySelector('.import-progress-bar');
-
-    btn.disabled = true;
-    status.textContent = 'Starting optimized student import...';
-    progress.classList.add('active');
-    progressBar.style.width = '0%';
-
-    // Use the new optimized import (no chunking)
-    fetch('/students/import-from-salesforce', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        progressBar.style.width = '100%';
-
-        if (data.success) {
-            const processedCount = data.statistics.processed_count || 0;
-            const totalRecords = data.statistics.total_records || 0;
-            const successCount = data.statistics.success_count || 0;
-            const errorCount = data.statistics.error_count || 0;
-
-            status.textContent = `Import complete: ${successCount.toLocaleString()} successes, ${errorCount.toLocaleString()} errors`;
-            showToast('Success', `Student import completed: ${successCount.toLocaleString()} processed`, 'success');
-
-            if (data.errors && data.errors.length > 0) {
-                console.log('Import errors:', data.errors);
-            }
-        } else {
-            throw new Error(data.error || data.message || 'Import failed');
-        }
-    })
-    .catch(error => {
-        status.textContent = `Error: ${error.message}`;
-        showToast('Error', `Failed to import students: ${error.message}`, 'error');
-        console.error('Import error:', error);
-    })
-    .finally(() => {
-        btn.disabled = false;
-    });
-}
-
 function importHistory() {
     if (confirm('Are you sure you want to import history from Salesforce?')) {
         fetch('/history/import-from-salesforce', {
@@ -1284,13 +1221,13 @@ async function importAllSequentially() {
         { route: '/management/import-schools', name: 'Schools', btnId: 'importSchoolsBtn' },
         { route: '/management/import-classes', name: 'Classes', btnId: 'importClassesBtn' },
         { route: '/teachers/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
-        { route: '/students/import-from-salesforce', name: 'Students (Phase 1)', btnId: 'importStudentsPhase1Btn' },
-        { route: '/students/assign-schools', name: 'Student School Assignment (Phase 2)', btnId: 'assignSchoolsBtn' },
         { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
         { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
         { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
         { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' },
-        { route: '/pathways/import-from-salesforce', name: 'Pathways', btnId: 'importPathwaysBtn' }
+        { route: '/pathways/import-from-salesforce', name: 'Pathways', btnId: 'importPathwaysBtn' },
+        { route: '/pathways/import-participants-from-salesforce', name: 'Pathway Participants', btnId: 'importPathwayParticipantsBtn' },
+        { route: '/events/sync-student-participants', name: 'Student Participations', btnId: 'importStudentParticipantsBtn' }
     ];
 
     // Disable all import buttons
