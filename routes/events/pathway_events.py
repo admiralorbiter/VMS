@@ -22,6 +22,7 @@ Dependencies:
 - Various utility functions from routes.utils
 """
 
+import re
 from datetime import datetime  # Add datetime
 
 from flask import Blueprint, jsonify
@@ -52,6 +53,36 @@ from utils.salesforce_importer import ImportConfig, SalesforceImporter
 
 # Create blueprint for pathway events functionality
 pathway_events_bp = Blueprint("pathway_events", __name__, url_prefix="/pathway-events")
+
+
+SALESFORCE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$")
+
+
+def _sanitize_salesforce_ids(possible_ids):
+    """Return a list of safe Salesforce record IDs (15 or 18 chars, alphanumeric only).
+
+    Any value not matching the strict pattern is dropped, ensuring no quotes or punctuation
+    can reach the SOQL query. This mitigates injection vectors when building IN (...) lists.
+    """
+    safe_ids = []
+    for possible_id in possible_ids or []:
+        if isinstance(possible_id, str):
+            candidate = possible_id.strip()
+            if SALESFORCE_ID_PATTERN.fullmatch(candidate):
+                safe_ids.append(candidate)
+    return safe_ids
+
+
+def _build_in_clause(ids):
+    """Format a list of validated Salesforce IDs for use in an IN (...) clause.
+
+    Returns a comma-separated string of single-quoted IDs. If no valid IDs, returns ''
+    which will not match any records.
+    """
+    safe_ids = _sanitize_salesforce_ids(ids)
+    if not safe_ids:
+        return "''"
+    return ",".join(f"'{sf_id}'" for sf_id in safe_ids)
 
 
 def _create_event_from_salesforce(sf_event_data, event_districts):
@@ -237,12 +268,14 @@ def sync_unaffiliated_events():
             for i in range(0, len(processed_event_sf_ids), batch_size):
                 batch_ids = processed_event_sf_ids[i : i + batch_size]
                 print(f"Fetching student participants for batch {i//batch_size + 1}/{(len(processed_event_sf_ids)+batch_size-1)//batch_size}")
+                # nosec B608: IDs are strictly validated via _sanitize_salesforce_ids before formatting
+                in_clause = _build_in_clause(batch_ids)
                 student_participant_query = f"""
                 SELECT Session__c, Contact__c
                 FROM Session_Participant__c
                 WHERE Participant_Type__c = 'Student' AND Contact__c != NULL
-                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_ids])})
-                """
+                AND Session__c IN ({in_clause})
+                """  # nosec B608
                 res = sf.query_all(student_participant_query)
                 rows = res.get("records", [])
                 for row in rows:
@@ -394,11 +427,13 @@ def sync_unaffiliated_events():
             importer = SalesforceImporter(config)
             for i in range(0, len(processed_event_sf_ids), batch_size):
                 batch_sf_ids = processed_event_sf_ids[i : i + batch_size]
+                # nosec B608: IDs are strictly validated via _sanitize_salesforce_ids before formatting
+                in_clause = _build_in_clause(batch_sf_ids)
                 query = f"""
                 SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c
                 FROM Session_Participant__c
-                WHERE Participant_Type__c = 'Volunteer' AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
-                """
+                WHERE Participant_Type__c = 'Volunteer' AND Session__c IN ({in_clause})
+                """  # nosec B608
                 res = importer.import_data(
                     query=query,
                     process_func=process_volunteer_participation_record_optimized,
@@ -419,11 +454,13 @@ def sync_unaffiliated_events():
             importer = SalesforceImporter(config)
             for i in range(0, len(processed_event_sf_ids), batch_size):
                 batch_sf_ids = processed_event_sf_ids[i : i + batch_size]
+                # nosec B608: IDs are strictly validated via _sanitize_salesforce_ids before formatting
+                in_clause = _build_in_clause(batch_sf_ids)
                 query = f"""
                 SELECT Id, Name, Contact__c, Session__c, Status__c, Delivery_Hours__c, Age_Group__c
                 FROM Session_Participant__c
-                WHERE Participant_Type__c = 'Student' AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
-                """
+                WHERE Participant_Type__c = 'Student' AND Session__c IN ({in_clause})
+                """  # nosec B608
                 res = importer.import_data(
                     query=query,
                     process_func=process_student_participation_record_optimized,
