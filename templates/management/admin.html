@@ -284,25 +284,15 @@
 
 
 
-                {# Volunteer-Organization Affiliations import - Legacy #}
-                <div class="import-item">
-                    <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
-                        <i class="fas fa-link"></i>
-                        <span>6. Import Affiliations (Legacy)</span>
-                    </button>
-                    <div class="import-status" id="importAffiliationsStatus"></div>
-                    <div class="import-progress" id="importAffiliationsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
 
 
 
-                {# Optimized Volunteers import - Phase 1 #}
+
+                {# Volunteers import #}
                 <div class="import-item">
                     <button onclick="importVolunteersOptimized()" class="btn admin-btn-import" id="importVolunteersOptimizedBtn">
                         <i class="fas fa-users"></i>
-                        <span>Import Volunteers (Optimized - Phase 1)</span>
+                        <span>Import Volunteers</span>
                     </button>
                     <div class="import-status" id="importVolunteersOptimizedStatus"></div>
                     <div class="import-progress" id="importVolunteersOptimizedProgress">
@@ -310,11 +300,11 @@
                     </div>
                 </div>
 
-                {# Optimized Volunteer Affiliations import - Phase 2 #}
+                {# Volunteer Affiliations import #}
                 <div class="import-item">
                     <button onclick="importVolunteerAffiliationsOptimized()" class="btn admin-btn-import" id="importVolunteerAffiliationsOptimizedBtn">
                         <i class="fas fa-link"></i>
-                        <span>Import Volunteer Affiliations (Optimized - Phase 2)</span>
+                        <span>Import Volunteer Affiliations</span>
                     </button>
                     <div class="import-status" id="importVolunteerAffiliationsOptimizedStatus"></div>
                     <div class="import-progress" id="importVolunteerAffiliationsOptimizedProgress">
@@ -322,11 +312,11 @@
                     </div>
                 </div>
 
-                {# Events import (Optimized) #}
+                {# Events import #}
                 <div class="import-item">
                     <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
                         <i class="fas fa-calendar"></i>
-                        <span>7. Import Events (Optimized)</span>
+                        <span>7. Import Events</span>
                     </button>
                     <div class="import-status" id="importEventsStatus"></div>
                     <div class="import-progress" id="importEventsProgress">
@@ -334,11 +324,11 @@
                     </div>
                 </div>
 
-                {# Student Participations import (Optimized) #}
+                {# Student Participations import #}
                 <div class="import-item">
                     <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
                         <i class="fas fa-user-check"></i>
-                        <span>8. Import Student Participations (Optimized)</span>
+                        <span>8. Import Student Participations</span>
                     </button>
                     <div class="import-status" id="importStudentParticipantsStatus"></div>
                     <div class="import-progress" id="importStudentParticipantsProgress">
@@ -358,29 +348,7 @@
                     </div>
                 </div>
 
-                {# Pathways import #}
-                <div class="import-item">
-                    <button onclick="importPathways()" class="btn admin-btn-import" id="importPathwaysBtn">
-                        <i class="fas fa-road"></i>
-                        <span>10. Import Pathways</span>
-                    </button>
-                    <div class="import-status" id="importPathwaysStatus"></div>
-                    <div class="import-progress" id="importPathwaysProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
 
-                {# Pathway Participants import #}
-                <div class="import-item">
-                    <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
-                        <i class="fas fa-users"></i>
-                        <span>11. Import Pathway Participants</span>
-                    </button>
-                    <div class="import-status" id="importPathwayParticipantsStatus"></div>
-                    <div class="import-progress" id="importPathwayParticipantsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
 
                 {# Virtual Events import #}
                 <div class="import-item">
@@ -394,11 +362,11 @@
                     </div>
                 </div>
 
-                {# Sync Unaffiliated Events #}
+                {# Sync Other Events #}
                 <div class="import-item">
                     <button onclick="syncUnaffiliatedEvents()" class="btn admin-btn-import" id="syncUnaffiliatedEventsBtn">
                         <i class="fas fa-sitemap"></i>
-                        <span>Sync Unaffiliated Events (by Students)</span>
+                        <span>10. Sync Other Events</span>
                     </button>
                     <div class="import-status" id="syncUnaffiliatedEventsStatus"></div>
                     <div class="import-progress" id="syncUnaffiliatedEventsProgress">
@@ -481,6 +449,40 @@
                         <span>Manage Students</span>
                     </a>
                     <div class="import-status" id="manageStudentsStatus"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Testing / Advanced (Pathways) Section #}
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title mb-0">Testing / Advanced</h5>
+            <p class="text-muted mb-3">These actions are intended for testing and specialized workflows.</p>
+
+            <div class="import-grid">
+                {# Pathways import #}
+                <div class="import-item">
+                    <button onclick="importPathways()" class="btn admin-btn-import" id="importPathwaysBtn">
+                        <i class="fas fa-road"></i>
+                        <span>Import Pathways</span>
+                    </button>
+                    <div class="import-status" id="importPathwaysStatus"></div>
+                    <div class="import-progress" id="importPathwaysProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                {# Pathway Participants import #}
+                <div class="import-item">
+                    <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
+                        <i class="fas fa-users"></i>
+                        <span>Import Pathway Participants</span>
+                    </button>
+                    <div class="import-status" id="importPathwayParticipantsStatus"></div>
+                    <div class="import-progress" id="importPathwayParticipantsProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
                 </div>
             </div>
         </div>

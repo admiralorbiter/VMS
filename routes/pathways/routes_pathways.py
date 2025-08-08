@@ -60,13 +60,13 @@ Security Features:
 
 from flask import Blueprint, jsonify
 from flask_login import login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.contact import Contact
 from models.event import Event
 from models.pathways import Pathway
+from utils.salesforce_importer import ImportConfig, SalesforceImporter
 
 pathways_bp = Blueprint("pathways", __name__, url_prefix="/pathways")
 
@@ -75,125 +75,171 @@ pathways_bp = Blueprint("pathways", __name__, url_prefix="/pathways")
 @login_required
 def import_pathways_from_salesforce():
     """
-    Import pathway data and relationships from Salesforce.
+    Import pathway data and relationships from Salesforce (Optimized).
 
-    Fetches pathway information and pathway-session relationships from
-    Salesforce and synchronizes them with the local database. Handles
-    both creation of new pathways and updates to existing ones.
-
-    Salesforce Objects:
-        - Pathway__c: Main pathway data
-        - Pathway_Session__c: Pathway-event relationships
-
-    Process Flow:
-        1. Authenticate with Salesforce
-        2. Query Pathway__c objects
-        3. Create/update pathway records
-        4. Query Pathway_Session__c relationships
-        5. Link pathways to events
-        6. Commit all changes
-
-    Error Handling:
-        - Salesforce authentication failures
-        - Missing pathway or event data
-        - Database transaction rollback
-        - Detailed error reporting
-
-    Returns:
-        JSON response with import results and statistics
-
-    Raises:
-        401: Salesforce authentication failure
-        500: Database or server error
+    Uses the standardized SalesforceImporter with batching, retries,
+    validation, and progress reporting.
     """
     try:
-        print("Fetching pathway data from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
+        print("Starting optimized pathways import from Salesforce...")
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        # Configure importer
+        config = ImportConfig(
+            batch_size=500,
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=10,
+        )
+        importer = SalesforceImporter(config)
 
-        # Query pathways from Salesforce
+        # Queries
         pathways_query = """
-        SELECT Id, Name
-        FROM Pathway__c
+            SELECT Id, Name
+            FROM Pathway__c
         """
-
-        # Execute pathway query
-        pathways_result = sf.query_all(pathways_query)
-        pathway_rows = pathways_result.get("records", [])
-
-        # Process pathways
-        for row in pathway_rows:
-            try:
-                # Check if pathway already exists
-                pathway = Pathway.query.filter_by(salesforce_id=row["Id"]).first()
-
-                if pathway:
-                    # Update existing pathway
-                    pathway.name = row["Name"]
-                else:
-                    # Create new pathway
-                    pathway = Pathway(salesforce_id=row["Id"], name=row["Name"])
-                    db.session.add(pathway)
-
-                success_count += 1
-
-            except Exception as e:
-                error_count += 1
-                error_msg = f"Error processing pathway {row.get('Name', 'Unknown')}: {str(e)}"
-                errors.append(error_msg)
-                print(error_msg)
-
-        # Commit pathways
-        db.session.commit()
-
-        # Now query the Pathway_Session__c relationships
         pathway_sessions_query = """
-        SELECT Session__c, Pathway__c
-        FROM Pathway_Session__c
+            SELECT Session__c, Pathway__c
+            FROM Pathway_Session__c
         """
 
-        pathway_sessions_result = sf.query_all(pathway_sessions_query)
-        pathway_session_rows = pathway_sessions_result.get("records", [])
+        # Caches
+        pathway_cache: dict[str, Pathway | None] = {}
+        event_cache: dict[str, Event | None] = {}
 
-        # Process pathway-session relationships
-        for row in pathway_session_rows:
+        created_count = 0
+        updated_count = 0
+        linked_count = 0
+        missing_pathway = 0
+        missing_event = 0
+
+        def get_pathway_cached(sf_id: str, session):
+            if sf_id in pathway_cache:
+                return pathway_cache[sf_id]
+            with session.no_autoflush:
+                p = session.query(Pathway).filter_by(salesforce_id=sf_id).first()
+            pathway_cache[sf_id] = p
+            return p
+
+        def get_event_cached(sf_id: str, session):
+            if sf_id in event_cache:
+                return event_cache[sf_id]
+            with session.no_autoflush:
+                ev = session.query(Event).filter_by(salesforce_id=sf_id).first()
+            event_cache[sf_id] = ev
+            return ev
+
+        def validate_pathway_record(record: dict) -> list:
+            return [] if record.get("Id") else ["Missing Pathway Id"]
+
+        def process_pathway_record_optimized(record: dict, session) -> bool:
+            nonlocal created_count, updated_count
             try:
-                pathway = Pathway.query.filter_by(salesforce_id=row["Pathway__c"]).first()
-                event = Event.query.filter_by(salesforce_id=row["Session__c"]).first()
-
-                if pathway and event:
-                    # Add event to pathway's events if not already present
-                    if event not in pathway.events:
-                        pathway.events.append(event)
+                sf_id = record.get("Id")
+                name = (record.get("Name") or "").strip()
+                with session.no_autoflush:
+                    pathway = session.query(Pathway).filter_by(salesforce_id=sf_id).first()
+                if not pathway:
+                    pathway = Pathway(salesforce_id=sf_id, name=name)
+                    session.add(pathway)
+                    created_count += 1
                 else:
-                    error_msg = (
-                        f"Could not find {'pathway' if not pathway else 'event'} for relationship: Pathway={row['Pathway__c']}, Session={row['Session__c']}"
-                    )
-                    errors.append(error_msg)
-                    print(error_msg)
-                    error_count += 1
-
+                    if pathway.name != name:
+                        pathway.name = name
+                    updated_count += 1
+                pathway_cache[sf_id] = pathway
+                return True
             except Exception as e:
-                error_count += 1
-                error_msg = f"Error processing pathway-session relationship: {str(e)}"
-                errors.append(error_msg)
-                print(error_msg)
+                print(f"Error processing pathway {record.get('Id', 'unknown')}: {str(e)}")
+                return False
 
-        # Commit relationships
-        db.session.commit()
+        def validate_pathway_session_record(record: dict) -> list:
+            errors = []
+            if not record.get("Pathway__c"):
+                errors.append("Missing Pathway__c")
+            if not record.get("Session__c"):
+                errors.append("Missing Session__c")
+            return errors
 
-        # Print summary
-        print(f"\nSuccessfully processed {success_count} pathways with {error_count} errors")
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors:
-                print(f"- {error}")
+        def process_pathway_session_record_optimized(record: dict, session) -> bool:
+            nonlocal linked_count, missing_pathway, missing_event
+            try:
+                p = get_pathway_cached(record.get("Pathway__c"), session)
+                if not p:
+                    missing_pathway += 1
+                    return False
+                ev = get_event_cached(record.get("Session__c"), session)
+                if not ev:
+                    missing_event += 1
+                    return False
+                # link if not linked
+                if ev not in p.events:
+                    p.events.append(ev)
+                    linked_count += 1
+                return True
+            except Exception as e:
+                print(f"Error linking pathway-session: {str(e)}")
+                return False
 
-        return jsonify({"success": True, "message": f"Successfully processed {success_count} pathways with {error_count} errors", "errors": errors})
+        def progress_callback(processed, total, message):
+            if processed % 1000 == 0 and processed > 0:
+                pct = (processed / max(total, 1)) * 100
+                print(f"Progress: {processed:,}/{total:,} ({pct:.1f}%) - {message}")
+
+        # Import pathways
+        path_res = importer.import_data(
+            query=pathways_query,
+            process_func=process_pathway_record_optimized,
+            validation_func=validate_pathway_record,
+            progress_callback=progress_callback,
+        )
+
+        # Import relationships
+        link_res = importer.import_data(
+            query=pathway_sessions_query,
+            process_func=process_pathway_session_record_optimized,
+            validation_func=validate_pathway_session_record,
+            progress_callback=None,
+        )
+
+        success = path_res.success and link_res.success
+        message = (
+            f"Pathways created {created_count:,}, updated {updated_count:,}; "
+            f"Links created {linked_count:,}, missing pathways {missing_pathway:,}, missing events {missing_event:,}."
+        )
+
+        return jsonify(
+            {
+                "success": success,
+                "message": message,
+                "statistics": {
+                    "pathways": {
+                        "total_records": path_res.total_records,
+                        "processed_count": path_res.processed_count,
+                        "success_count": path_res.success_count,
+                        "error_count": path_res.error_count,
+                        "skipped_count": path_res.skipped_count,
+                        "duration_seconds": path_res.duration_seconds,
+                    },
+                    "links": {
+                        "total_records": link_res.total_records,
+                        "processed_count": link_res.processed_count,
+                        "success_count": link_res.success_count,
+                        "error_count": link_res.error_count,
+                        "skipped_count": link_res.skipped_count,
+                        "duration_seconds": link_res.duration_seconds,
+                        "created_count": linked_count,
+                        "missing_pathway": missing_pathway,
+                        "missing_event": missing_event,
+                    },
+                    "created_count": created_count,
+                    "updated_count": updated_count,
+                },
+                "errors": (path_res.errors + link_res.errors)[:10],
+                "warnings": (path_res.warnings + link_res.warnings)[:10],
+            }
+        )
 
     except SalesforceAuthenticationFailed:
         print("Error: Failed to authenticate with Salesforce")
@@ -208,89 +254,109 @@ def import_pathways_from_salesforce():
 @login_required
 def import_pathway_participants_from_salesforce():
     """
-    Import pathway participant relationships from Salesforce.
-
-    Fetches pathway-participant relationships from Salesforce and
-    synchronizes them with the local database. Links contacts to
-    pathways for participant tracking.
-
-    Salesforce Objects:
-        - Pathway_Participant__c: Pathway-participant relationships
-
-    Process Flow:
-        1. Authenticate with Salesforce
-        2. Query Pathway_Participant__c objects
-        3. Link contacts to pathways
-        4. Commit all changes
-        5. Report import statistics
-
-    Error Handling:
-        - Salesforce authentication failures
-        - Missing pathway or contact data
-        - Database transaction rollback
-        - Detailed error reporting
-
-    Returns:
-        JSON response with import results and statistics
-
-    Raises:
-        401: Salesforce authentication failure
-        500: Database or server error
+    Import pathway participant relationships from Salesforce (Optimized).
     """
     try:
-        print("Fetching pathway participant data from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
+        print("Starting optimized pathway participants import from Salesforce...")
 
-        # Connect to Salesforce
-        sf = Salesforce(username=Config.SF_USERNAME, password=Config.SF_PASSWORD, security_token=Config.SF_SECURITY_TOKEN, domain="login")
+        config = ImportConfig(
+            batch_size=500,
+            max_retries=3,
+            retry_delay_seconds=5,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=10,
+        )
+        importer = SalesforceImporter(config)
 
-        # Query pathway participants from Salesforce
-        pathway_participants_query = """
-        SELECT Contact__c, Pathway__c
-        FROM Pathway_Participant__c
+        participants_query = """
+            SELECT Contact__c, Pathway__c
+            FROM Pathway_Participant__c
         """
 
-        participants_result = sf.query_all(pathway_participants_query)
-        participant_rows = participants_result.get("records", [])
+        # Caches
+        pathway_cache: dict[str, Pathway | None] = {}
+        contact_cache: dict[str, Contact | None] = {}
+        created_links = 0
+        missing_pathway = 0
+        missing_contact = 0
 
-        # Process pathway-participant relationships
-        for row in participant_rows:
+        def get_pathway_cached(sf_id: str, session):
+            if sf_id in pathway_cache:
+                return pathway_cache[sf_id]
+            with session.no_autoflush:
+                p = session.query(Pathway).filter_by(salesforce_id=sf_id).first()
+            pathway_cache[sf_id] = p
+            return p
+
+        def get_contact_cached(sf_id: str, session):
+            if sf_id in contact_cache:
+                return contact_cache[sf_id]
+            with session.no_autoflush:
+                c = session.query(Contact).filter_by(salesforce_individual_id=sf_id).first()
+            contact_cache[sf_id] = c
+            return c
+
+        def validate_participant_record(record: dict) -> list:
+            errors = []
+            if not record.get("Pathway__c"):
+                errors.append("Missing Pathway__c")
+            if not record.get("Contact__c"):
+                errors.append("Missing Contact__c")
+            return errors
+
+        def process_participant_record_optimized(record: dict, session) -> bool:
+            nonlocal created_links, missing_pathway, missing_contact
             try:
-                pathway = Pathway.query.filter_by(salesforce_id=row["Pathway__c"]).first()
-                contact = Contact.query.filter_by(salesforce_individual_id=row["Contact__c"]).first()
-
-                if pathway and contact:
-                    # Add contact to pathway's contacts if not already present
-                    if contact not in pathway.contacts:
-                        pathway.contacts.append(contact)
-                        success_count += 1
-                else:
-                    error_msg = (
-                        f"Could not find {'pathway' if not pathway else 'contact'} for relationship: Pathway={row['Pathway__c']}, Contact={row['Contact__c']}"
-                    )
-                    errors.append(error_msg)
-                    print(error_msg)
-                    error_count += 1
-
+                p = get_pathway_cached(record.get("Pathway__c"), session)
+                if not p:
+                    missing_pathway += 1
+                    return False
+                c = get_contact_cached(record.get("Contact__c"), session)
+                if not c:
+                    missing_contact += 1
+                    return False
+                if c not in p.contacts:
+                    p.contacts.append(c)
+                    created_links += 1
+                return True
             except Exception as e:
-                error_count += 1
-                error_msg = f"Error processing pathway-participant relationship: {str(e)}"
-                errors.append(error_msg)
-                print(error_msg)
+                print(f"Error linking pathway participant: {str(e)}")
+                return False
 
-        # Commit all changes
-        db.session.commit()
+        def progress_callback(processed, total, message):
+            if processed % 1000 == 0 and processed > 0:
+                pct = (processed / max(total, 1)) * 100
+                print(f"Progress: {processed:,}/{total:,} ({pct:.1f}%) - {message}")
 
-        # Print summary
-        print(f"\nSuccessfully processed {success_count} pathway participants with {error_count} errors")
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors:
-                print(f"- {error}")
+        res = importer.import_data(
+            query=participants_query,
+            process_func=process_participant_record_optimized,
+            validation_func=validate_participant_record,
+            progress_callback=progress_callback,
+        )
 
-        return jsonify({"success": True, "message": f"Successfully processed {success_count} pathway participants with {error_count} errors", "errors": errors})
+        return jsonify(
+            {
+                "success": res.success,
+                "message": (
+                    f"Links created {created_links:,}, Missing pathways {missing_pathway:,}, Missing contacts {missing_contact:,}, Errors {res.error_count:,}"
+                ),
+                "statistics": {
+                    "total_records": res.total_records,
+                    "processed_count": res.processed_count,
+                    "success_count": res.success_count,
+                    "error_count": res.error_count,
+                    "skipped_count": res.skipped_count,
+                    "duration_seconds": res.duration_seconds,
+                    "created_links": created_links,
+                    "missing_pathway": missing_pathway,
+                    "missing_contact": missing_contact,
+                },
+                "errors": res.errors[:10],
+                "warnings": res.warnings[:10],
+            }
+        )
 
     except SalesforceAuthenticationFailed:
         print("Error: Failed to authenticate with Salesforce")
