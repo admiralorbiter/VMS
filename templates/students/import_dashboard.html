@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Import Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Import Status Dashboard</h1>
+
+            <!-- Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Students</h5>
+                            <h2 id="total-students">-</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">With Schools</h5>
+                            <h2 id="students-with-schools">-</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Without Schools</h5>
+                            <h2 id="students-without-schools">-</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Completion</h5>
+                            <h2 id="completion-percentage">-%</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Import Progress</h5>
+                            <div class="progress">
+                                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Analysis -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Top Schools by Student Count</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="top-schools-list">
+                                <p class="text-muted">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Missing Schools Analysis</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="missing-schools-list">
+                                <p class="text-muted">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-primary me-2" onclick="refreshDashboard()">
+                                <i class="fas fa-sync-alt"></i> Refresh Dashboard
+                            </button>
+                            <button class="btn btn-success me-2" onclick="exportUnassignedStudents()">
+                                <i class="fas fa-download"></i> Export Unassigned Students
+                            </button>
+                            <button class="btn btn-info me-2" onclick="getDetailedReport()">
+                                <i class="fas fa-chart-bar"></i> Detailed Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Report Modal -->
+            <div class="modal fade" id="reportModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Detailed Import Report</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="detailed-report-content">
+                                <p class="text-muted">Loading...</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load dashboard data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+});
+
+function loadDashboardData() {
+    fetch('/students/import-dashboard-data')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateDashboard(data.data);
+            } else {
+                console.error('Error loading dashboard:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading dashboard:', error);
+        });
+}
+
+function updateDashboard(data) {
+    // Update summary cards
+    document.getElementById('total-students').textContent = data.summary.total_students.toLocaleString();
+    document.getElementById('students-with-schools').textContent = data.summary.students_with_schools.toLocaleString();
+    document.getElementById('students-without-schools').textContent = data.summary.students_without_schools.toLocaleString();
+    document.getElementById('completion-percentage').textContent = data.summary.completion_percentage + '%';
+
+    // Update progress bar
+    const progressBar = document.getElementById('progress-bar');
+    progressBar.style.width = data.summary.completion_percentage + '%';
+    progressBar.textContent = data.summary.completion_percentage + '%';
+
+    // Update top schools list
+    const topSchoolsList = document.getElementById('top-schools-list');
+    if (data.top_schools.length > 0) {
+        topSchoolsList.innerHTML = data.top_schools.map(school =>
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span>${school.name}</span>
+                <span class="badge bg-primary">${school.student_count.toLocaleString()}</span>
+            </div>`
+        ).join('');
+    } else {
+        topSchoolsList.innerHTML = '<p class="text-muted">No schools found</p>';
+    }
+
+    // Update missing schools list
+    const missingSchoolsList = document.getElementById('missing-schools-list');
+    if (data.missing_schools.length > 0) {
+        missingSchoolsList.innerHTML = data.missing_schools.map(school =>
+            `<div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted">${school.affiliation_id}</span>
+                <span class="badge bg-warning">${school.student_count.toLocaleString()}</span>
+            </div>`
+        ).join('');
+    } else {
+        missingSchoolsList.innerHTML = '<p class="text-success">No missing schools found</p>';
+    }
+}
+
+function refreshDashboard() {
+    loadDashboardData();
+}
+
+function exportUnassignedStudents() {
+    window.location.href = '/students/export-unassigned-students';
+}
+
+function getDetailedReport() {
+    fetch('/students/import-status-report')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayDetailedReport(data.data);
+            } else {
+                console.error('Error loading detailed report:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading detailed report:', error);
+        });
+}
+
+function displayDetailedReport(reportData) {
+    const content = document.getElementById('detailed-report-content');
+
+    let html = `
+        <div class="row">
+            <div class="col-12">
+                <h6>Summary</h6>
+                <ul>
+                    <li>Total Students: ${reportData.summary.total_students.toLocaleString()}</li>
+                    <li>Students with Schools: ${reportData.summary.students_with_schools.toLocaleString()}</li>
+                    <li>Students without Schools: ${reportData.summary.students_without_schools.toLocaleString()}</li>
+                    <li>Completion: ${reportData.summary.completion_percentage}%</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <h6>Detailed Breakdown</h6>
+                <ul>
+                    <li>Students with affiliations but no school: ${reportData.detailed_breakdown.students_with_affiliations_no_school.toLocaleString()}</li>
+                    <li>Students with no affiliation data: ${reportData.detailed_breakdown.students_no_affiliation.toLocaleString()}</li>
+                </ul>
+            </div>
+        </div>
+    `;
+
+    if (reportData.recommendations.length > 0) {
+        html += `
+            <div class="row">
+                <div class="col-12">
+                    <h6>Recommendations</h6>
+                    <ul>
+                        ${reportData.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    content.innerHTML = html;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

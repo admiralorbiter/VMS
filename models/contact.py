@@ -185,6 +185,7 @@ class GenderEnum(FormEnum):
     transgender = "Transgender"
     prefer_not_to_say = "Prefer not to say"
     other = "Other"
+    na = "NA"  # Not Applicable - for Salesforce data
 
 
 class ContactTypeEnum(FormEnum):

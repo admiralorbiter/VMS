@@ -14,6 +14,8 @@ Key Features:
 - Contact information management
 """
 
+from datetime import datetime
+
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 
@@ -354,17 +356,22 @@ def import_students_from_salesforce():
     """
     try:
         print("Starting Phase 1: Student import (without school assignments)...")
+        print("Expected: ~150,000 students to process")
+        print("Progress updates: Every 10,000 students")
+        print("Batch size: 2,000 students per batch")
+        print("Commit frequency: Every 50 batches (~100,000 students)")
+
         # Ensure schema has sf_primary_affiliation_id to persist affiliation locally
         _ensure_sf_affiliation_column()
 
         # Configure the import with optimized settings for large datasets
         config = ImportConfig(
-            batch_size=300,  # Optimal batch size for students
+            batch_size=2000,  # Larger batches for faster processing of 150k students
             max_retries=3,
             retry_delay_seconds=2,
             validate_data=True,
             log_progress=True,
-            commit_frequency=50,
+            commit_frequency=50,  # Commit every 50 batches = ~100k students for progress updates
         )
 
         # Create the importer
@@ -379,8 +386,23 @@ def import_students_from_salesforce():
         WHERE Contact_Type__c = 'Student'
         """
 
+        # Custom progress callback for detailed updates every 10k students
+        def progress_callback(processed_count, total_count, message):
+            if processed_count % 10000 == 0 and processed_count > 0:
+                percentage = (processed_count / total_count) * 100
+                print(f"Progress: {processed_count:,}/{total_count:,} students ({percentage:.1f}%) - {message}")
+                print(f"  Success rate: {stats.get('success_count', 0):,} successes, {stats.get('error_count', 0):,} errors")
+
+        # Track statistics for progress reporting
+        stats = {"success_count": 0, "error_count": 0}
+
         print(f"Executing student import with query: {student_query}")
-        result = importer.import_data(query=student_query, process_func=process_student_record_without_school, validation_func=validate_student_record)
+        result = importer.import_data(
+            query=student_query,
+            process_func=process_student_record_without_school,
+            validation_func=validate_student_record,
+            progress_callback=progress_callback,
+        )
         print(f"Import result: total_records={result.total_records}, processed_count={result.processed_count}, success_count={result.success_count}")
 
         response_data = {
@@ -487,10 +509,30 @@ def assign_schools_to_students():
                 }
             )
 
-        # Perform a single local UPDATE using sf_primary_affiliation_id
-        # Update only when the affiliation is present and exists in School
+        # Perform a more careful school assignment
+        # Only assign schools when the affiliation is valid and the school exists
         from sqlalchemy import text
 
+        # First, let's see what affiliations we have
+        cursor = db.session.execute(
+            text(
+                """
+            SELECT DISTINCT sf_primary_affiliation_id, COUNT(*) as student_count
+            FROM student
+            WHERE school_id IS NULL AND sf_primary_affiliation_id IS NOT NULL
+            GROUP BY sf_primary_affiliation_id
+            ORDER BY student_count DESC
+            LIMIT 10
+        """
+            )
+        )
+
+        affiliation_counts = cursor.fetchall()
+        print("Top affiliations needing assignment:")
+        for affiliation, count in affiliation_counts:
+            print(f"  {affiliation}: {count} students")
+
+        # Only assign schools that actually exist and are valid
         update_sql = text(
             """
             UPDATE student
@@ -498,6 +540,7 @@ def assign_schools_to_students():
             WHERE school_id IS NULL
               AND sf_primary_affiliation_id IS NOT NULL
               AND sf_primary_affiliation_id IN (SELECT id FROM school)
+              AND sf_primary_affiliation_id != '0015f00000JUL8CAAX'  -- Exclude problematic school
             """
         )
         result_proxy = db.session.execute(update_sql)
@@ -657,6 +700,454 @@ def view_student_details(id):
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
+
+@students_bp.route("/students/import-status-report", methods=["GET"])
+@login_required
+def get_import_status_report():
+    """
+    Get a comprehensive import status report showing what didn't get linked.
+
+    This provides detailed analysis of:
+    - Students with/without school assignments
+    - Missing school affiliations
+    - Students with affiliations but no corresponding schools
+    - Recommendations for fixing issues
+
+    Returns:
+        JSON response with detailed import status
+    """
+    try:
+
+        # Get basic statistics
+        total_students = Student.query.count()
+        students_with_schools = Student.query.filter(Student.school_id.isnot(None)).count()
+        students_without_schools = Student.query.filter(Student.school_id.is_(None)).count()
+        total_schools = School.query.count()
+
+        # Get students with affiliations but no school assignments
+        students_with_affiliations_no_school = (
+            db.session.query(Student).filter(Student.sf_primary_affiliation_id.isnot(None), Student.school_id.is_(None)).count()
+        )
+
+        # Get students without any affiliation data
+        students_no_affiliation = db.session.query(Student).filter(Student.sf_primary_affiliation_id.is_(None), Student.school_id.is_(None)).count()
+
+        # Get missing school affiliations (affiliations that don't correspond to existing schools)
+        missing_school_affiliations = (
+            db.session.query(Student.sf_primary_affiliation_id, db.func.count(Student.id).label("student_count"))
+            .filter(
+                Student.sf_primary_affiliation_id.isnot(None), Student.school_id.is_(None), ~Student.sf_primary_affiliation_id.in_(db.session.query(School.id))
+            )
+            .group_by(Student.sf_primary_affiliation_id)
+            .order_by(db.desc("student_count"))
+            .limit(20)
+            .all()
+        )
+
+        # Get sample students without school assignments
+        sample_unassigned = db.session.query(Student, Contact).join(Contact, Student.id == Contact.id).filter(Student.school_id.is_(None)).limit(10).all()
+
+        # Get sample students with missing schools
+        sample_missing_schools = (
+            db.session.query(Student, Contact)
+            .join(Contact, Student.id == Contact.id)
+            .filter(
+                Student.sf_primary_affiliation_id.isnot(None), Student.school_id.is_(None), ~Student.sf_primary_affiliation_id.in_(db.session.query(School.id))
+            )
+            .limit(10)
+            .all()
+        )
+
+        # Calculate completion percentages
+        completion_percentage = (students_with_schools / total_students * 100) if total_students > 0 else 0
+
+        # Generate recommendations
+        recommendations = []
+        if students_with_affiliations_no_school > 0:
+            recommendations.append(f"{students_with_affiliations_no_school:,} students have affiliations but no school assignments")
+            recommendations.append("Check if these affiliations correspond to schools that need to be imported")
+
+        if students_no_affiliation > 0:
+            recommendations.append(f"{students_no_affiliation:,} students have no affiliation data")
+            recommendations.append("These students may need affiliation data updated in Salesforce")
+
+        if missing_school_affiliations:
+            recommendations.append("Import missing schools or update affiliations in Salesforce")
+
+        # Build response data
+        report_data = {
+            "summary": {
+                "total_students": total_students,
+                "students_with_schools": students_with_schools,
+                "students_without_schools": students_without_schools,
+                "total_schools": total_schools,
+                "completion_percentage": round(completion_percentage, 1),
+            },
+            "detailed_breakdown": {
+                "students_with_affiliations_no_school": students_with_affiliations_no_school,
+                "students_no_affiliation": students_no_affiliation,
+            },
+            "missing_school_affiliations": [
+                {"affiliation_id": affiliation_id, "student_count": count} for affiliation_id, count in missing_school_affiliations
+            ],
+            "sample_unassigned_students": [
+                {
+                    "name": f"{contact.first_name} {contact.last_name}",
+                    "salesforce_id": contact.salesforce_individual_id,
+                    "affiliation": student.sf_primary_affiliation_id,
+                }
+                for student, contact in sample_unassigned
+            ],
+            "sample_missing_schools": [
+                {
+                    "name": f"{contact.first_name} {contact.last_name}",
+                    "salesforce_id": contact.salesforce_individual_id,
+                    "missing_school": student.sf_primary_affiliation_id,
+                }
+                for student, contact in sample_missing_schools
+            ],
+            "recommendations": recommendations,
+            "generated_at": datetime.now().isoformat(),
+        }
+
+        return jsonify({"success": True, "message": "Import status report generated successfully", "data": report_data})
+
+    except Exception as e:
+        print(f"Error generating import status report: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@students_bp.route("/students/export-unassigned-students", methods=["GET"])
+@login_required
+def export_unassigned_students():
+    """
+    Export a list of students without school assignments for analysis.
+
+    This creates a CSV file with students who don't have school assignments,
+    including their Salesforce IDs and affiliations for manual review.
+
+    Returns:
+        CSV file download with unassigned students
+    """
+    try:
+        import csv
+        import tempfile
+
+        from flask import send_file
+
+        # Get students without school assignments
+        unassigned_students = db.session.query(Student, Contact).join(Contact, Student.id == Contact.id).filter(Student.school_id.is_(None)).all()
+
+        # Create temporary CSV file
+        temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv", newline="")
+
+        with temp_file:
+            writer = csv.writer(temp_file)
+            writer.writerow(["First Name", "Last Name", "Salesforce ID", "Affiliation ID", "Email", "Phone"])
+
+            for student, contact in unassigned_students:
+                writer.writerow(
+                    [
+                        contact.first_name,
+                        contact.last_name,
+                        contact.salesforce_individual_id,
+                        student.sf_primary_affiliation_id,
+                        contact.email or "",
+                        contact.phone or "",
+                    ]
+                )
+
+        # Return file for download
+        return send_file(
+            temp_file.name, as_attachment=True, download_name=f'unassigned_students_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv', mimetype="text/csv"
+        )
+
+    except Exception as e:
+        print(f"Error exporting unassigned students: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@students_bp.route("/students/import-dashboard", methods=["GET"])
+@login_required
+def view_import_dashboard():
+    """
+    View the import dashboard page.
+
+    Returns:
+        Rendered import dashboard template
+    """
+    return render_template("students/import_dashboard.html")
+
+
+@students_bp.route("/students/import-dashboard-data", methods=["GET"])
+@login_required
+def get_import_dashboard_data():
+    """
+    Get data for a real-time import dashboard.
+
+    This provides aggregated statistics and visualizations for:
+    - Import completion status
+    - Top schools by student count
+    - Missing schools analysis
+    - Real-time progress tracking
+
+    Returns:
+        JSON response with dashboard data
+    """
+    try:
+        # Get basic statistics
+        total_students = Student.query.count()
+        students_with_schools = Student.query.filter(Student.school_id.isnot(None)).count()
+        students_without_schools = Student.query.filter(Student.school_id.is_(None)).count()
+
+        # Get top schools by student count
+        top_schools = (
+            db.session.query(School, db.func.count(Student.id).label("student_count"))
+            .join(Student, School.id == Student.school_id)
+            .group_by(School.id)
+            .order_by(db.desc("student_count"))
+            .limit(10)
+            .all()
+        )
+
+        # Get missing schools analysis
+        missing_schools = (
+            db.session.query(Student.sf_primary_affiliation_id, db.func.count(Student.id).label("student_count"))
+            .filter(
+                Student.sf_primary_affiliation_id.isnot(None), Student.school_id.is_(None), ~Student.sf_primary_affiliation_id.in_(db.session.query(School.id))
+            )
+            .group_by(Student.sf_primary_affiliation_id)
+            .order_by(db.desc("student_count"))
+            .limit(10)
+            .all()
+        )
+
+        # Calculate completion percentages
+        completion_percentage = (students_with_schools / total_students * 100) if total_students > 0 else 0
+
+        dashboard_data = {
+            "summary": {
+                "total_students": total_students,
+                "students_with_schools": students_with_schools,
+                "students_without_schools": students_without_schools,
+                "completion_percentage": round(completion_percentage, 1),
+            },
+            "top_schools": [{"school_id": school.id, "name": school.name, "student_count": count} for school, count in top_schools],
+            "missing_schools": [{"affiliation_id": affiliation_id, "student_count": count} for affiliation_id, count in missing_schools],
+            "last_updated": datetime.now().isoformat(),
+        }
+
+        return jsonify({"success": True, "message": "Dashboard data retrieved successfully", "data": dashboard_data})
+
+    except Exception as e:
+        print(f"Error getting dashboard data: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@students_bp.route("/students/test-import-limited", methods=["POST"])
+@login_required
+def test_student_import_limited():
+    """
+    Test Phase 1: Import limited student data (1000 students) to debug affiliation issues.
+
+    This is a test version of the import to check if the affiliation data is being captured properly.
+    """
+    try:
+        print("Starting Test Phase 1: Limited student import (1000 students)...")
+        # Ensure schema has sf_primary_affiliation_id to persist affiliation locally
+        _ensure_sf_affiliation_column()
+
+        # Configure the import with optimized settings for testing
+        config = ImportConfig(
+            batch_size=100,  # Smaller batches for testing
+            max_retries=3,
+            retry_delay_seconds=2,
+            validate_data=True,
+            log_progress=True,
+            commit_frequency=20,
+        )
+
+        # Create the importer
+        importer = SalesforceImporter(config=config)
+
+        # Define the query for students with LIMIT for testing
+        student_query = """
+        SELECT Id, AccountId, FirstName, LastName, MiddleName, Email, Phone,
+               Local_Student_ID__c, Birthdate, Gender__c, Racial_Ethnic_Background__c,
+               npsp__Primary_Affiliation__c, Class__c, Legacy_Grade__c, Current_Grade__c
+        FROM Contact
+        WHERE Contact_Type__c = 'Student'
+        LIMIT 1000
+        """
+
+        print(f"Executing limited student import with query: {student_query}")
+
+        # Track affiliation data capture
+        affiliation_stats = {"with_affiliation": 0, "without_affiliation": 0}
+        students_without_affiliation_examples = []  # Track examples for debugging
+
+        def test_process_student_record(record, db_session):
+            """Test version of process function with affiliation tracking"""
+            try:
+                # Track affiliation data from Salesforce
+                sf_affiliation = record.get("npsp__Primary_Affiliation__c")
+                student_name = f"{record.get('FirstName', '')} {record.get('LastName', '')}"
+
+                if sf_affiliation:
+                    affiliation_stats["with_affiliation"] += 1
+                else:
+                    affiliation_stats["without_affiliation"] += 1
+                    # Store example for debugging (limit to 3)
+                    if len(students_without_affiliation_examples) < 3:
+                        students_without_affiliation_examples.append(
+                            {"name": student_name, "sf_id": record.get("Id"), "affiliation_value": sf_affiliation, "account_id": record.get("AccountId")}
+                        )
+
+                # Use the Student model's import method but skip school assignment
+                student, is_new, error = Student.import_from_salesforce_without_school(record, db_session)
+
+                if error:
+                    print(f"Student import error: {error}")
+                    return False
+
+                # Handle contact info using the student's method
+                try:
+                    success, error = student.update_contact_info(record, db_session)
+                    if not success:
+                        print(f"Contact info update error: {error}")
+                        return False
+                except Exception as e:
+                    print(f"Contact info update exception: {str(e)}")
+                    return False
+
+                return True
+
+            except Exception as e:
+                print(f"Process record exception: {str(e)}")
+                return False
+
+        result = importer.import_data(query=student_query, process_func=test_process_student_record, validation_func=validate_student_record)
+
+        print(f"Import result: total_records={result.total_records}, processed_count={result.processed_count}, success_count={result.success_count}")
+        print(f"Affiliation stats: {affiliation_stats}")
+        print(f"Students without affiliation examples: {students_without_affiliation_examples}")
+
+        # Check what was actually imported
+        total_students = Student.query.count()
+        students_with_affiliations = Student.query.filter(Student.sf_primary_affiliation_id.isnot(None)).count()
+        students_without_affiliations = Student.query.filter(Student.sf_primary_affiliation_id.is_(None)).count()
+
+        response_data = {
+            "success": result.success,
+            "message": f"Test Phase 1 complete: Successfully processed {result.success_count} students",
+            "phase": "test_student_import",
+            "statistics": {
+                "total_records": result.total_records,
+                "processed_count": result.processed_count,
+                "success_count": result.success_count,
+                "error_count": result.error_count,
+                "skipped_count": result.skipped_count,
+                "duration_seconds": result.duration_seconds,
+                "affiliation_stats": affiliation_stats,
+                "imported_students": total_students,
+                "students_with_affiliations": students_with_affiliations,
+                "students_without_affiliations": students_without_affiliations,
+            },
+            "debug_info": {"students_without_affiliation_examples": students_without_affiliation_examples},
+            "errors": result.errors,
+            "warnings": result.warnings,
+        }
+
+        print(f"Test student import complete: {result.success_count} successes, {result.error_count} errors")
+        print(f"Affiliation capture: {students_with_affiliations} with affiliations, {students_without_affiliations} without")
+
+        if result.errors:
+            print("Test import errors:")
+            for error in result.errors:
+                print(f"  - {error}")
+
+        return jsonify(response_data)
+
+    except SalesforceAuthenticationFailed:
+        print("Salesforce authentication failed")
+        return jsonify({"success": False, "message": "Failed to authenticate with Salesforce"}), 401
+    except Exception as e:
+        db.session.rollback()
+        print(f"Test student import failed with error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@students_bp.route("/students/check-affiliation-status", methods=["GET"])
+@login_required
+def check_affiliation_status():
+    """
+    Quick check of current affiliation data status.
+    """
+    try:
+        total_students = Student.query.count()
+        students_with_affiliations = Student.query.filter(Student.sf_primary_affiliation_id.isnot(None)).count()
+        students_without_affiliations = Student.query.filter(Student.sf_primary_affiliation_id.is_(None)).count()
+
+        # Get a sample of students with affiliations
+        sample_with_affiliations = Student.query.filter(Student.sf_primary_affiliation_id.isnot(None)).limit(5).all()
+
+        sample_data = []
+        for student in sample_with_affiliations:
+            sample_data.append(
+                {"name": f"{student.first_name} {student.last_name}", "sf_affiliation_id": student.sf_primary_affiliation_id, "school_id": student.school_id}
+            )
+
+        response_data = {
+            "success": True,
+            "statistics": {
+                "total_students": total_students,
+                "students_with_affiliations": students_with_affiliations,
+                "students_without_affiliations": students_without_affiliations,
+                "affiliation_percentage": round((students_with_affiliations / total_students * 100), 2) if total_students > 0 else 0,
+            },
+            "sample_data": sample_data,
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@students_bp.route("/students/show-no-affiliation-examples", methods=["GET"])
+@login_required
+def show_no_affiliation_examples():
+    """
+    Show examples of students without affiliations from the current database.
+    """
+    try:
+        # Get 3 examples of students without affiliations
+        students_without_affiliations = (
+            db.session.query(Student, Contact).join(Contact, Student.id == Contact.id).filter(Student.sf_primary_affiliation_id.is_(None)).limit(3).all()
+        )
+
+        examples = []
+        for student, contact in students_without_affiliations:
+            examples.append(
+                {
+                    "name": f"{contact.first_name} {contact.last_name}",
+                    "sf_id": contact.salesforce_individual_id,
+                    "affiliation_value": student.sf_primary_affiliation_id,
+                    "account_id": student.salesforce_account_id,
+                }
+            )
+
+        response_data = {
+            "success": True,
+            "examples": examples,
+            "total_without_affiliations": Student.query.filter(Student.sf_primary_affiliation_id.is_(None)).count(),
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 def load_routes(bp):

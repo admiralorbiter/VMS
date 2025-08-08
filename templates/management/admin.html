@@ -306,6 +306,18 @@
                     </div>
                 </div>
 
+                {# Test limited student import #}
+                <div class="import-item">
+                    <button onclick="testStudentImportLimited()" class="btn admin-btn-import" id="testStudentImportLimitedBtn">
+                        <i class="fas fa-flask"></i>
+                        <span>5a. Test Import Students (1000 limit)</span>
+                    </button>
+                    <div class="import-status" id="testStudentImportLimitedStatus"></div>
+                    <div class="import-progress" id="testStudentImportLimitedProgress">
+                        <div class="import-progress-bar"></div>
+                    </div>
+                </div>
+
                 {# Student School Assignment - Phase 2 #}
                 <div class="import-item">
                     <button onclick="assignSchoolsToStudents()" class="btn admin-btn-import" id="assignSchoolsBtn">
@@ -880,6 +892,61 @@ function importStudentsPhase1() {
         status.textContent = `Phase 1 Error: ${error.message}`;
         showToast('Error', `Failed to import students (Phase 1): ${error.message}`, 'error');
         console.error('Phase 1 import error:', error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+function testStudentImportLimited() {
+    if (!confirm('Are you sure you want to test import students from Salesforce (1000 limit)? This will help debug affiliation issues.')) {
+        return;
+    }
+
+    const btn = document.getElementById('testStudentImportLimitedBtn');
+    const status = document.getElementById('testStudentImportLimitedStatus');
+    const progress = document.getElementById('testStudentImportLimitedProgress');
+    const progressBar = progress.querySelector('.import-progress-bar');
+
+    btn.disabled = true;
+    status.textContent = 'Starting Test Import: Limited student import (1000 students)...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+
+    fetch('/students/test-import-limited', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+
+        if (data.success) {
+            const successCount = data.statistics.success_count || 0;
+            const errorCount = data.statistics.error_count || 0;
+            const affiliationStats = data.statistics.affiliation_stats || {};
+            const studentsWithAffiliations = data.statistics.students_with_affiliations || 0;
+            const studentsWithoutAffiliations = data.statistics.students_without_affiliations || 0;
+
+            status.textContent = `Test complete: ${successCount} students imported, ${errorCount} errors`;
+            status.innerHTML += `<br><strong>Affiliation Stats:</strong> ${affiliationStats.with_affiliation || 0} with affiliations, ${affiliationStats.without_affiliation || 0} without`;
+            status.innerHTML += `<br><strong>Imported:</strong> ${studentsWithAffiliations} with affiliations, ${studentsWithoutAffiliations} without`;
+
+            showToast('Success', `Test import completed: ${successCount} students processed`, 'success');
+
+            if (data.errors && data.errors.length > 0) {
+                console.log('Test import errors:', data.errors);
+            }
+        } else {
+            throw new Error(data.error || data.message || 'Test import failed');
+        }
+    })
+    .catch(error => {
+        status.textContent = `Test Error: ${error.message}`;
+        showToast('Error', `Failed to test import students: ${error.message}`, 'error');
+        console.error('Test import error:', error);
     })
     .finally(() => {
         btn.disabled = false;

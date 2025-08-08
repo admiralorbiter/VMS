@@ -271,8 +271,8 @@ class Student(Contact):
         try:
             # Extract required fields
             sf_id = sf_data.get("Id")
-            first_name = sf_data.get("FirstName", "").strip()
-            last_name = sf_data.get("LastName", "").strip()
+            first_name = str(sf_data.get("FirstName", "") or "").strip()
+            last_name = str(sf_data.get("LastName", "") or "").strip()
 
             if not sf_id or not first_name or not last_name:
                 return None, False, f"Missing required fields for student: {first_name} {last_name}"
@@ -291,15 +291,15 @@ class Student(Contact):
             # Update student fields
             student.first_name = first_name
             student.last_name = last_name
-            student.middle_name = sf_data.get("MiddleName", "").strip() or None
+            student.middle_name = str(sf_data.get("MiddleName", "") or "").strip() or None
             student.birthdate = pd.to_datetime(sf_data["Birthdate"]).date() if sf_data.get("Birthdate") else None
-            student.student_id = str(sf_data.get("Local_Student_ID__c", "")).strip() or None
+            student.student_id = str(sf_data.get("Local_Student_ID__c", "") or "").strip() or None
             # Persist both the current school assignment and raw SF value
-            sf_aff = str(sf_data.get("npsp__Primary_Affiliation__c", "")).strip() or None
+            sf_aff = str(sf_data.get("npsp__Primary_Affiliation__c", "") or "").strip() or None
             student.sf_primary_affiliation_id = sf_aff
             student.school_id = sf_aff
-            student.class_salesforce_id = str(sf_data.get("Class__c", "")).strip() or None
-            student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "")).strip() or None
+            student.class_salesforce_id = str(sf_data.get("Class__c", "") or "").strip() or None
+            student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "") or "").strip() or None
             student.current_grade = int(sf_data.get("Current_Grade__c", 0)) if pd.notna(sf_data.get("Current_Grade__c")) else None
 
             # Handle gender
@@ -341,8 +341,8 @@ class Student(Contact):
         try:
             # Extract required fields
             sf_id = sf_data.get("Id")
-            first_name = sf_data.get("FirstName", "").strip()
-            last_name = sf_data.get("LastName", "").strip()
+            first_name = str(sf_data.get("FirstName", "") or "").strip()
+            last_name = str(sf_data.get("LastName", "") or "").strip()
 
             if not sf_id or not first_name or not last_name:
                 return None, False, f"Missing required fields for student: {first_name} {last_name}"
@@ -361,15 +361,25 @@ class Student(Contact):
             # Update student fields (EXCEPT school_id - we'll handle that later)
             student.first_name = first_name
             student.last_name = last_name
-            student.middle_name = sf_data.get("MiddleName", "").strip() or None
+            student.middle_name = str(sf_data.get("MiddleName", "") or "").strip() or None
             student.birthdate = pd.to_datetime(sf_data["Birthdate"]).date() if sf_data.get("Birthdate") else None
-            student.student_id = str(sf_data.get("Local_Student_ID__c", "")).strip() or None
+            student.student_id = str(sf_data.get("Local_Student_ID__c", "") or "").strip() or None
             # Persist the raw SF school affiliation for a later local-only Phase 2
-            student.sf_primary_affiliation_id = str(sf_data.get("npsp__Primary_Affiliation__c", "")).strip() or None
+            student.sf_primary_affiliation_id = str(sf_data.get("npsp__Primary_Affiliation__c", "") or "").strip() or None
             # NOTE: school_id is NOT set here - we'll fix it later
-            student.class_salesforce_id = str(sf_data.get("Class__c", "")).strip() or None
-            student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "")).strip() or None
-            student.current_grade = int(sf_data.get("Current_Grade__c", 0)) if pd.notna(sf_data.get("Current_Grade__c")) else None
+            student.class_salesforce_id = str(sf_data.get("Class__c", "") or "").strip() or None
+            student.legacy_grade = str(sf_data.get("Legacy_Grade__c", "") or "").strip() or None
+            # Handle current_grade more robustly
+            current_grade_raw = sf_data.get("Current_Grade__c")
+            if current_grade_raw and pd.notna(current_grade_raw):
+                try:
+                    student.current_grade = int(current_grade_raw)
+                except (ValueError, TypeError):
+                    # Log invalid grade but don't fail the import
+                    print(f"Invalid current grade value for {first_name} {last_name}: {current_grade_raw}")
+                    student.current_grade = None
+            else:
+                student.current_grade = None
 
             # Handle gender
             gender_value = sf_data.get("Gender__c")
@@ -427,7 +437,7 @@ class Student(Contact):
         """
         try:
             # Handle email
-            email_address = str(sf_data.get("Email", "")).strip()
+            email_address = str(sf_data.get("Email", "") or "").strip()
             if email_address:
                 existing_email = Email.query.filter_by(contact_id=self.id, type=ContactTypeEnum.personal).first()
 
@@ -438,7 +448,7 @@ class Student(Contact):
                     db_session.add(email_record)
 
             # Handle phone
-            phone_number = str(sf_data.get("Phone", "")).strip()
+            phone_number = str(sf_data.get("Phone", "") or "").strip()
             if phone_number:
                 existing_phone = Phone.query.filter_by(contact_id=self.id, type=ContactTypeEnum.personal).first()
 
