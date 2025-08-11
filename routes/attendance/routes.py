@@ -24,7 +24,7 @@ from models.event import Event, EventTeacher, EventType
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher, TeacherStatus
-from routes.utils import log_audit_action, parse_date
+from routes.utils import admin_required, log_audit_action, parse_date
 
 # Create Blueprint for attendance routes
 attendance = Blueprint("attendance", __name__)
@@ -133,6 +133,7 @@ def map_racial_ethnic_value(value):
 
 @attendance.route("/attendance/purge", methods=["POST"])
 @login_required
+@admin_required
 def purge_attendance():
     """
     Purge attendance data (students, teachers, or all).

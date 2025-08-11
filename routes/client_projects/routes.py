@@ -111,7 +111,7 @@ def index():
     """
     if not current_user.is_admin:
         flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
 
     projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
     return render_template(

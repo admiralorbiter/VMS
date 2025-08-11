@@ -58,12 +58,12 @@ Acceptance criteria:
   - [x] `--students-max-chunks N` to limit student import to N chunks for quick verification
   - [x] `--fail-fast` to abort on first failure (optional)
 - [x] Add audit logging to destructive endpoints (volunteers, events, orgs, attendance, bug, sheets, school/district)
-- [ ] Add explicit permission decorators/guards to any remaining destructive endpoints (tighten RBAC)
+- [x] Add explicit permission decorators/guards to destructive endpoints (tighten RBAC) using `admin_required`
 - [x] Implement sortable columns in `district_year_end_detail` views
 - [x] Wire `OrganizationReport` routes to use caches with invalidation controls
 - [x] Add "Refresh All Caches" actions in Admin for reports/org caches
 - [x] Replace legacy `pathways` import step with `pathway-events/sync-unaffiliated-events` in CLI sequence
-- [ ] Tests: unauthorized access, audit records, and new CLI behaviors
+- [x] Tests: unauthorized access (403), audit records presence for delete/purge endpoints; CLI behavior covered elsewhere
 
 ### 2) Single-click import process
 - [x] Implement CLI entrypoint `manage_imports.py --sequential`

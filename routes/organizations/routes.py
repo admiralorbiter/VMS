@@ -94,7 +94,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School  # Add this import at the top
 from models.teacher import Teacher  # Add this import at the top
 from models.volunteer import EventParticipation
-from routes.utils import log_audit_action, parse_date
+from routes.utils import admin_required, log_audit_action, parse_date
 
 # Create the organizations blueprint
 organizations_bp = Blueprint("organizations", __name__)
@@ -368,6 +368,7 @@ def add_organization():
 
 @organizations_bp.route("/organizations/delete/<int:id>", methods=["DELETE"])
 @login_required
+@admin_required
 def delete_organization(id):
     """
     Delete an organization and its associated volunteer relationships.
@@ -468,6 +469,7 @@ def edit_organization(id):
 
 @organizations_bp.route("/organizations/purge", methods=["POST"])
 @login_required
+@admin_required
 def purge_organizations():
     """
     Purge all organizations and their volunteer affiliations from the database.

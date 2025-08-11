@@ -72,6 +72,7 @@ from models.volunteer import (
     VolunteerSkill,
 )
 from routes.utils import (
+    admin_required,
     get_email_addresses,
     get_phone_numbers,
     log_audit_action,
@@ -886,9 +887,8 @@ def edit_volunteer(id):
 
 @volunteers_bp.route("/volunteers/purge", methods=["POST"])
 @login_required
+@admin_required
 def purge_volunteers():
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
 
     try:
         # Get all volunteer IDs first
@@ -982,9 +982,8 @@ def purge_volunteers():
 
 @volunteers_bp.route("/volunteers/delete/<int:id>", methods=["DELETE"])
 @login_required
+@admin_required
 def delete_volunteer(id):
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
 
     try:
         volunteer = db.session.get(Volunteer, id)

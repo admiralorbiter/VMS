@@ -65,10 +65,10 @@ Before setting up the VMS development environment, ensure you have:
    ```
 
 5. **Initialize the database**
-   ```bash
-   python app.py
-   ```
-   This will create the SQLite database with all tables.
+```bash
+python app.py
+```
+This will create the SQLite database with all tables. The app also auto-creates any missing tables at startup, so new models like `AuditLog` are created without manual migrations in development.
 
 6. **Create admin user**
    ```bash
@@ -92,6 +92,12 @@ Before setting up the VMS development environment, ensure you have:
    ```bash
    python run_tests.py
    ```
+
+## RBAC and Audit Logging
+
+- Destructive routes (delete/purge) are protected by an `admin_required` decorator. Non-admin users receive HTTP 403 responses.
+- Audit entries (`AuditLog`) are written for destructive actions with fields: `user_id`, `action`, `resource_type`, `resource_id`, `method`, `path`, `ip`, and `meta`.
+- Admins can view audit entries at `/admin/audit-logs` with filters (`action`, `resource_type`, `user_id`, `start_date`, `end_date`) and pagination (`page`, `per_page`).
 
 ## 📁 Project Structure
 

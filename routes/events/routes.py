@@ -67,6 +67,7 @@ from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.utils import (
     DISTRICT_MAPPINGS,
+    admin_required,
     log_audit_action,
     map_cancellation_reason,
     map_event_format,
@@ -903,6 +904,7 @@ def edit_event(id):
 
 @events_bp.route("/events/purge", methods=["POST"])
 @login_required
+@admin_required
 def purge_events():
     """
     Purge all events and related data (Admin only)
@@ -948,6 +950,7 @@ def purge_events():
 
 @events_bp.route("/events/delete/<int:id>", methods=["DELETE"])
 @login_required
+@admin_required
 def delete_event(id):
     """
     Delete an event (Admin only)

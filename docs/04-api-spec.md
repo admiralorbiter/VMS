@@ -261,12 +261,15 @@ The VMS system primarily operates through web-based routes rather than a compreh
 ### Management/Admin Routes
 
 - **GET** `/admin` - Admin dashboard
-- **GET** `/admin/audit-logs` - View audit logs (admin-only; filters: `action`, `resource_type`, `user_id`)
+- **GET** `/admin/audit-logs` - View audit logs (admin-only)
+  - Filters: `action`, `resource_type`, `user_id`, `start_date`, `end_date`
+  - Pagination: `page` (default: 1), `per_page` (default: 50; supports 25/50/100/200)
+  - Responses: 200 OK with list and pagination, 302/403 when not authorized
 - **POST** `/management/refresh-all-caches` - Refresh caches (query: `scope=all|virtual|org|district|first_time_volunteer`, optional `school_year`, optional `host_filter`)
 
 ### Audit Logging
 
-Audit entries are recorded for destructive actions (delete/purge) across volunteers, events, organizations, attendance, bug reports, Google Sheets, schools, and districts.
+Audit entries are recorded for destructive actions (delete/purge) across volunteers, events, organizations, attendance, bug reports, Google Sheets, schools, and districts. Destructive endpoints are protected by RBAC; non-admins receive 403.
 
 Schema (AuditLog):
 - id, created_at (UTC), user_id, action, resource_type, resource_id, method, path, ip, meta (JSON)

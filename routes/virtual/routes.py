@@ -125,6 +125,7 @@ from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
 from routes.reports.common import DISTRICT_MAPPING
 from routes.reports.virtual_session import invalidate_virtual_session_caches
+from routes.utils import admin_required
 
 virtual_bp = Blueprint("virtual", __name__, url_prefix="/virtual")
 
@@ -506,6 +507,7 @@ def add_district_to_event(event, district_name):
 
 @virtual_bp.route("/purge", methods=["POST"])
 @login_required
+@admin_required
 def purge_virtual():
     """Remove all virtual session records and related data"""
     try:

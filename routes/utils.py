@@ -54,7 +54,7 @@ Usage:
 
 from datetime import datetime
 
-from flask import request
+from flask import jsonify, request
 from flask_login import current_user
 
 from models import db
@@ -86,6 +86,20 @@ DISTRICT_MAPPINGS = {
     "INDEPENDENT": "INDEPENDENT",
     "CENTER 58 SCHOOL DISTRICT": "CENTER 58 SCHOOL DISTRICT",
 }
+
+
+def admin_required(func):
+    from functools import wraps
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not getattr(current_user, "is_authenticated", False) or not getattr(
+            current_user, "is_admin", False
+        ):
+            return jsonify({"error": "Unauthorized"}), 403
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def parse_date(date_str):

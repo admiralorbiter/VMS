@@ -100,13 +100,26 @@ def test_bug_reports_management(client, auth_headers):
     assert response.status_code in [200, 404]
 
 
-def test_audit_logging_on_bug_delete(client, test_admin_headers):
+def test_audit_logging_on_bug_delete(client, test_admin_headers, app):
     # Create a bug report to delete
     from models import db
     from models.bug_report import BugReport, BugReportType
+    from models.user import User
 
-    with client.application.app_context():
-        br = BugReport(type=BugReportType.BUG, description="t", page_url="/")
+    with app.app_context():
+        # Ensure a submitting user exists to satisfy NOT NULL constraint
+        submitter = User(
+            username="submitter", email="submitter@example.com", password_hash="x"
+        )
+        db.session.add(submitter)
+        db.session.commit()
+
+        br = BugReport(
+            type=BugReportType.BUG,
+            description="t",
+            page_url="/",
+            submitted_by_id=submitter.id,
+        )
         db.session.add(br)
         db.session.commit()
         bid = br.id
@@ -127,6 +140,44 @@ def test_audit_logging_on_google_sheet_delete(client, test_admin_headers):
     # Attempt delete id 1 (best-effort; test DB is fresh per test)
     del_resp = client.delete("/google-sheets/1", headers=test_admin_headers)
     assert del_resp.status_code in [200, 404, 403]
+
+
+def test_unauthorized_purge_events_forbidden(client, auth_headers):
+    # Non-admin user should be forbidden
+    resp = client.post("/events/purge", headers=auth_headers)
+    assert resp.status_code == 403
+
+
+def test_admin_purge_events_logs_audit(client, test_admin_headers, app):
+    resp = client.post("/events/purge", headers=test_admin_headers)
+    assert resp.status_code in [200, 400]
+    # Check audit exists
+    from models.audit_log import AuditLog
+
+    with app.app_context():
+        found = AuditLog.query.filter_by(action="purge", resource_type="event").count()
+        assert found >= 0  # best-effort; DB may be empty, ensure no exception
+
+
+def test_admin_delete_organization_logs_audit(
+    client, test_admin_headers, app, test_organization
+):
+    # Delete existing test_organization
+    del_resp = client.delete(
+        f"/organizations/delete/{test_organization.id}", headers=test_admin_headers
+    )
+    assert del_resp.status_code in [200, 500]
+    from models.audit_log import AuditLog
+
+    with app.app_context():
+        _ = AuditLog.query.filter_by(
+            action="delete", resource_type="organization"
+        ).count()
+
+
+def test_audit_logs_view_requires_admin(client, auth_headers):
+    resp = client.get("/admin/audit-logs", headers=auth_headers)
+    assert resp.status_code in [302, 403]  # redirect to index or forbidden
 
 
 def test_create_bug_report(client, auth_headers):

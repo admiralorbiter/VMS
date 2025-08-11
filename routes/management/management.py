@@ -142,7 +142,7 @@ def admin():
     """
     if not current_user.security_level >= SecurityLevel.SUPERVISOR:
         flash("Access denied. Supervisor or higher privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
 
     users = User.query.all()
     # Provide academic years with Google Sheets for the dropdown (virtual sessions only)
@@ -169,7 +169,7 @@ def audit_logs():
     """
     if not current_user.is_admin:
         flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
 
     from models.audit_log import AuditLog
 
@@ -177,6 +177,10 @@ def audit_logs():
     action = request.args.get("action", "").strip()
     resource_type = request.args.get("resource_type", "").strip()
     user_id = request.args.get("user_id", type=int)
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    page = request.args.get("page", default=1, type=int)
+    per_page = request.args.get("per_page", default=50, type=int)
 
     if action:
         q = q.filter(AuditLog.action == action)
@@ -184,18 +188,38 @@ def audit_logs():
         q = q.filter(AuditLog.resource_type == resource_type)
     if user_id:
         q = q.filter(AuditLog.user_id == user_id)
+    if start_date:
+        try:
+            from datetime import datetime
 
-    logs = q.limit(500).all()
+            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(start_date))
+        except Exception:
+            pass
+    if end_date:
+        try:
+            from datetime import datetime
+
+            q = q.filter(AuditLog.created_at <= datetime.fromisoformat(end_date))
+        except Exception:
+            pass
+
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
 
     # Render a minimal list directly if template is missing
     try:
         return render_template(
             "management/audit_logs.html",
             logs=logs,
+            pagination=pagination,
             filters={
                 "action": action,
                 "resource_type": resource_type,
                 "user_id": user_id,
+                "start_date": start_date or "",
+                "end_date": end_date or "",
+                "page": page,
+                "per_page": per_page,
             },
         )
     except Exception:
@@ -393,7 +417,7 @@ def google_sheets():
     """
     if not current_user.is_admin:
         flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
     sheets = (
         GoogleSheet.query.filter_by(purpose="virtual_sessions")
         .order_by(GoogleSheet.academic_year.desc())
@@ -860,7 +884,7 @@ def import_districts():
 def schools():
     if not current_user.is_admin:
         flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
 
     districts = District.query.order_by(District.name).all()
     schools = School.query.order_by(School.name).all()
@@ -923,7 +947,7 @@ def delete_district(district_id):
 def bug_reports():
     if not current_user.is_admin:
         flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("index"))
 
     # Get all bug reports, newest first
     reports = BugReport.query.order_by(BugReport.created_at.desc()).all()
