@@ -397,6 +397,71 @@ def process_volunteer_record_optimized(record: dict, session) -> bool:
             print(f"Error handling connector data for volunteer {record_id}: {str(e)}")
             # Continue processing - don't fail the entire record
 
+        # Handle addresses
+        try:
+            # Handle mailing address
+            mailing_address = record.get("MailingAddress", {})
+            if isinstance(mailing_address, dict):
+                # Find or create mailing address
+                mailing = next((addr for addr in volunteer.addresses if addr.type == ContactTypeEnum.personal and addr.primary), None)
+                if not mailing:
+                    mailing = Address(contact_id=volunteer.id, type=ContactTypeEnum.personal, primary=True)
+                    volunteer.addresses.append(mailing)
+
+                # Update mailing address fields
+                if mailing.address_line1 != mailing_address.get("street", ""):
+                    mailing.address_line1 = mailing_address.get("street", "")
+                if mailing.city != mailing_address.get("city", ""):
+                    mailing.city = mailing_address.get("city", "")
+                if mailing.state != mailing_address.get("state", ""):
+                    mailing.state = mailing_address.get("state", "")
+                if mailing.zip_code != mailing_address.get("postalCode", ""):
+                    mailing.zip_code = mailing_address.get("postalCode", "")
+                if mailing.country != mailing_address.get("country", ""):
+                    mailing.country = mailing_address.get("country", "")
+
+            # Handle work address if present
+            work_address = record.get("npe01__Work_Address__c", "")
+            if work_address:
+                work = next((addr for addr in volunteer.addresses if addr.type == ContactTypeEnum.professional), None)
+                if not work:
+                    work = Address(contact_id=volunteer.id, type=ContactTypeEnum.professional)
+                    volunteer.addresses.append(work)
+
+                # Parse work address string
+                try:
+                    parts = work_address.split(",")
+                    if len(parts) >= 1:
+                        work.address_line1 = parts[0].strip()
+                    if len(parts) >= 2:
+                        work.city = parts[1].strip()
+                    if len(parts) >= 3:
+                        state_zip = parts[2].strip().split()
+                        if len(state_zip) >= 1:
+                            work.state = state_zip[0]
+                        if len(state_zip) >= 2:
+                            work.zip_code = state_zip[1]
+                except Exception as e:
+                    print(f"Error parsing work address for {volunteer.first_name} {volunteer.last_name}: {str(e)}")
+
+            # Set address types based on primary/secondary preferences
+            primary_type = (record.get("npe01__Primary_Address_Type__c") or "").lower()
+            secondary_type = (record.get("npe01__Secondary_Address_Type__c") or "").lower()
+
+            for addr in volunteer.addresses:
+                is_home = addr.type == ContactTypeEnum.personal
+                is_work = addr.type == ContactTypeEnum.professional
+
+                # Set primary based on preference
+                if (primary_type == "home" and is_home) or (primary_type == "work" and is_work):
+                    addr.primary = True
+                elif (secondary_type == "home" and is_home) or (secondary_type == "work" and is_work):
+                    addr.primary = False
+
+        except Exception as e:
+            print(f"Error handling addresses for volunteer {record_id}: {str(e)}")
+            # Continue processing - don't fail the entire record
+
         return True
 
     except Exception as e:
