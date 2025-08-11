@@ -162,7 +162,24 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--students-chunk-size", type=int, default=2000)
     parser.add_argument("--students-sleep-ms", type=int, default=200)
-    parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Timeout in seconds for each request. Use 0 or negative for no timeout (wait indefinitely).",
+    )
+    parser.add_argument(
+        "--connect-timeout",
+        type=float,
+        default=None,
+        help="Optional connect timeout override (seconds). If provided with --read-timeout, overrides --timeout.",
+    )
+    parser.add_argument(
+        "--read-timeout",
+        type=float,
+        default=None,
+        help="Optional read timeout override (seconds). If provided with --connect-timeout, overrides --timeout.",
+    )
     parser.add_argument(
         "--students-max-chunks",
         type=int,
@@ -232,9 +249,16 @@ def run_step(
     students_chunk_size: int,
     students_sleep_ms: int,
     timeout: int,
+    connect_timeout: Optional[float] = None,
+    read_timeout: Optional[float] = None,
     students_max_chunks: Optional[int] = None,
 ) -> bool:
     url = f"{base_url}{step.route}"
+    # Determine timeout value for requests
+    if connect_timeout is not None and read_timeout is not None:
+        timeout_value = (connect_timeout, read_timeout)
+    else:
+        timeout_value = None if timeout is not None and timeout <= 0 else timeout
     if step.chunked:
         # Students import runs in chunks until completion
         last_id: Optional[str] = None
@@ -247,7 +271,7 @@ def run_step(
             logger.info(
                 json.dumps({"step": step.name, "action": "chunk", "payload": body})
             )
-            resp = session.post(url, json=body, timeout=timeout)
+            resp = session.post(url, json=body, timeout=timeout_value)
             if resp.status_code != 200:
                 logger.error(
                     f"{step.name}: HTTP {resp.status_code} - {resp.text[:200]}..."
@@ -319,7 +343,7 @@ def run_step(
 
     # Non-chunked endpoints: simple POST
     logger.info(json.dumps({"step": step.name, "action": "post", "url": url}))
-    resp = session.post(url, timeout=timeout)
+    resp = session.post(url, timeout=timeout_value)
     if resp.status_code != 200:
         logger.error(f"{step.name}: HTTP {resp.status_code} - {resp.text[:200]}...")
         return False
@@ -413,6 +437,8 @@ def main() -> int:
             students_chunk_size=args.students_chunk_size,
             students_sleep_ms=args.students_sleep_ms,
             timeout=args.timeout,
+            connect_timeout=args.connect_timeout,
+            read_timeout=args.read_timeout,
             students_max_chunks=(
                 args.students_max_chunks if step.name == "students" else None
             ),

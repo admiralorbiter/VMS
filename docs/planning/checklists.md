@@ -44,8 +44,11 @@ tags: [checklists, templates]
 4. Dry run (no changes): `python manage_imports.py --sequential --plan-only`
 5. Skip heavy steps: `python manage_imports.py --sequential --exclude schools,classes,students`
 6. Fast student smoke test (one chunk): `python manage_imports.py --only students --students-max-chunks 1`
-7. Watch logs: `tail -f logs/import.log`
-8. On failure:
+7. Long-running endpoints: increase read timeout, or disable timeout entirely
+   - Example (20 min read timeout): `python manage_imports.py --sequential --read-timeout 1200`
+   - Example (no timeout): `python manage_imports.py --sequential --timeout 0`
+8. Watch logs: `tail -f logs/import.log`
+9. On failure:
    - Check last error in log
    - Rerun with `--only students` (or another step) to continue
    - File bug report
