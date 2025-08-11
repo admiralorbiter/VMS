@@ -52,6 +52,11 @@ Acceptance criteria:
 
 Follow-ups to close for Phase B:
 - [ ] Implement CLI `manage_imports.py --sequential --only=<step>` with structured logging (timestamps, IDs)
+- [ ] Add CLI ergonomics for fast testing and selective runs:
+  - [ ] `--exclude <steps>` to skip specific steps during a sequential run (e.g., skip `schools,classes,students`)
+  - [ ] `--plan-only` to print planned steps and exit without executing (dry-run)
+  - [ ] `--students-max-chunks N` to limit student import to N chunks for quick verification
+  - [ ] `--fail-fast` to abort on first failure (optional)
 - [ ] Add audit logging + explicit permission decorators to destructive endpoints
 - [ ] Implement sortable columns in `district_year_end_detail` views
 - [ ] Wire `OrganizationReport` routes to use caches with invalidation controls
@@ -62,12 +67,16 @@ Follow-ups to close for Phase B:
 - [ ] Implement CLI entrypoint `manage_imports.py --sequential`
 - [ ] Add structured logging to imports with timestamps and IDs
 - [ ] Add failure handling and `--only` rerun capability
+- [ ] Support selective/fast testing: `--exclude`, `--plan-only`, `--students-max-chunks`, and `--fail-fast`
 - [ ] Write runbook section in `docs/planning/checklists.md`
 - [ ] Optional: cron/Task Scheduler entry for nightly runs
 
 Acceptance criteria:
 - [ ] One command performs a full import reliably
 - [ ] On failure, rerun target steps is trivial; logs are sufficient
+- [ ] Dry-run prints an accurate plan with resolved steps
+- [ ] Selective runs skip specified heavy steps without side-effects
+- [ ] Student import can be chunk-limited for rapid smoke testing
 
 ### 3) RBAC on destructive actions
 - [ ] Audit existing routes for delete/update risks
