@@ -27,6 +27,37 @@ tags: [phase-b, features, imports, rbac]
 Acceptance criteria:
 - [ ] All P1 features marked complete with tests and docs
 
+### Feature audit results (initial pass)
+
+- Reports → Virtual Session Usage
+  - Link to core spreadsheet: Complete (`google_sheet_url` wired into `templates/reports/virtual_usage.html`)
+  - Export to Excel: Complete (`virtual_usage_export` endpoint present)
+  - Caching: Present via `VirtualSessionReportCache`
+- Reports → First Time Volunteer
+  - Export to Excel: Complete (`/reports/first-time-volunteer/export`)
+- Reports → District Year-End Detail
+  - Sortable table: Still in progress (no active client-side sorting in detail view)
+- Reports → Organization Report
+  - Cached results: In progress (cache models exist; routes not fully wired to caches)
+- Admin
+  - Import process automation & sequential import: Complete in Admin UI (one-click sequential import). CLI tool not yet present
+  - Update local statuses: Complete (`/volunteers/update-local-statuses` + Admin button)
+  - Refresh all caches: Planned (only District Year-End cache refresh exists)
+- History
+  - Activity type filter: Complete (filtering supported in routes and template)
+- Schools System
+  - Column sort: Planned
+- Event Attendance Impact
+  - Connect with End of Year reporting: Planned
+
+Follow-ups to close for Phase B:
+- [ ] Implement CLI `manage_imports.py --sequential --only=<step>` with structured logging (timestamps, IDs)
+- [ ] Add audit logging + explicit permission decorators to destructive endpoints
+- [ ] Implement sortable columns in `district_year_end_detail` views
+- [ ] Wire `OrganizationReport` routes to use caches with invalidation controls
+- [ ] Add "Refresh All Caches" actions in Admin for reports/org caches
+- [ ] Tests: unauthorized access, audit records, and new CLI behaviors
+
 ### 2) Single-click import process
 - [ ] Implement CLI entrypoint `manage_imports.py --sequential`
 - [ ] Add structured logging to imports with timestamps and IDs

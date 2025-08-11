@@ -286,6 +286,30 @@
         background-color: rgba(70, 117, 153, 0.12);
     }
 
+    /* Sortable table headers */
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .sort-indicator {
+        display: inline-block;
+        margin-left: 6px;
+        width: 0; height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid #adb5bd; /* default triangle */
+        transform: translateY(-2px);
+    }
+    .sortable-header.sorted-asc .sort-indicator {
+        border-top: 0;
+        border-bottom: 6px solid var(--ucla-blue);
+    }
+    .sortable-header.sorted-desc .sort-indicator {
+        border-top: 6px solid var(--ucla-blue);
+        border-bottom: 0;
+    }
+
     /* No events message styling */
     .no-events-message {
         padding: 2rem;
@@ -864,14 +888,14 @@
                     <table class="events-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Event</th>
-                                <th>Type</th>
-                                <th>Location</th>
-                                <th>Students</th>
-                                <th>Volunteers</th>
-                                <th>Hours</th>
+                                <th class="sortable-header" data-type="date">Date<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="time">Time<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="text">Event<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="text">Type<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="text">Location<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="number">Students<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="number">Volunteers<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="number">Hours<span class="sort-indicator"></span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1487,7 +1511,70 @@ document.addEventListener('DOMContentLoaded', function() {
     switchView('monthly');
 });
 
-// Make functions available globally
+    // Table sorting for monthly and schools views
+    function compareValues(a, b, type) {
+        if (type === 'number') {
+            const na = parseFloat(a) || 0;
+            const nb = parseFloat(b) || 0;
+            return na - nb;
+        }
+        if (type === 'date') {
+            // Expecting YYYY-MM-DD; fallback to Date parsing
+            const da = new Date(a);
+            const db = new Date(b);
+            return da - db;
+        }
+        if (type === 'time') {
+            // Expecting HH:MM AM/PM or 24h; normalize
+            return new Date(`1970-01-01T${a.replace(' ', '')}`) - new Date(`1970-01-01T${b.replace(' ', '')}`);
+        }
+        // text
+        return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+    }
+
+    function attachTableSorting(container) {
+        const tables = container.querySelectorAll('table.events-table');
+        tables.forEach(table => {
+            const headers = table.querySelectorAll('thead th.sortable-header');
+            headers.forEach((header, colIndex) => {
+                header.addEventListener('click', () => {
+                    const type = header.dataset.type || 'text';
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                    // Determine new sort direction
+                    const isDesc = header.classList.contains('sorted-desc');
+                    headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                    header.classList.add(isDesc ? 'sorted-asc' : 'sorted-desc');
+
+                    rows.sort((r1, r2) => {
+                        const c1 = r1.children[colIndex]?.innerText.trim() || '';
+                        const c2 = r2.children[colIndex]?.innerText.trim() || '';
+                        const cmp = compareValues(c1, c2, type);
+                        return isDesc ? -cmp : cmp;
+                    });
+
+                    // Re-append in sorted order
+                    rows.forEach(r => tbody.appendChild(r));
+
+                    // Update summary row stats for visible rows in this table's card
+                    const monthCard = table.closest('.month-card');
+                    if (monthCard) {
+                        const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(tr => tr.style.display !== 'none');
+                        updateMonthlyStats(monthCard, visibleRows);
+                    }
+                });
+            });
+        });
+    }
+
+    // Attach sorting to both monthly and schools views
+    const monthlyViewEl = document.getElementById('monthly-view');
+    const schoolsViewEl = document.getElementById('schools-view');
+    if (monthlyViewEl) attachTableSorting(monthlyViewEl);
+    if (schoolsViewEl) attachTableSorting(schoolsViewEl);
+
+    // Make functions available globally
 window.toggleEventTypeFilter = function() {
     console.log('Global toggle function called'); // Debug log
     const content = document.getElementById('event-types-filter-content');
