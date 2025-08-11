@@ -27,33 +27,33 @@ graph TB
         REP[Reports Dashboard]
         ADMIN[Admin Panel]
     end
-    
+
     subgraph "Application Layer"
         FLASK[Flask Application<br/>Python/SQLAlchemy]
         AUTH[Authentication<br/>Flask-Login]
         FORMS[Form Handling<br/>Flask-WTF]
     end
-    
+
     subgraph "Data Layer"
         SQLITE[(SQLite Database)]
         SF[Salesforce API]
         SHEETS[Google Sheets]
     end
-    
+
     subgraph "External Systems"
         SALESFORCE[Salesforce CRM]
         GOOGLE[Google Workspace]
     end
-    
+
     UI --> FLASK
     CAL --> FLASK
     REP --> FLASK
     ADMIN --> FLASK
-    
+
     FLASK --> SQLITE
     FLASK --> SF
     FLASK --> SHEETS
-    
+
     SF --> SALESFORCE
     SHEETS --> GOOGLE
 ```
@@ -83,7 +83,7 @@ graph TB
 
 ### 1. Event Management
 - **Purpose**: Track and manage volunteer events
-- **Features**: 
+- **Features**:
   - Interactive calendar with color-coded status
   - Event lifecycle management (Draft → Published → Confirmed → Completed → Cancelled)
   - Attendance tracking and reporting
@@ -138,32 +138,32 @@ flowchart LR
         INT[Internal Datasets]
         ATT[Attendance Logs]
     end
-    
+
     subgraph "Processing"
         IMP[Import Process]
         VAL[Validation]
         TRANS[Transformation]
     end
-    
+
     subgraph "Storage"
         DB[(SQLite Database)]
         CACHE[Cache Layer]
     end
-    
+
     subgraph "Application"
         API[API Layer]
         UI[User Interface]
         REP[Reports]
     end
-    
+
     SF --> IMP
     INT --> IMP
     ATT --> IMP
-    
+
     IMP --> VAL
     VAL --> TRANS
     TRANS --> DB
-    
+
     DB --> API
     API --> UI
     API --> REP
@@ -229,4 +229,4 @@ flowchart LR
 
 ---
 
-*Last updated: August 2025* 
+*Last updated: August 2025*

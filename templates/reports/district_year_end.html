@@ -107,12 +107,12 @@
         flex-direction: column;
         gap: 1rem;
     }
-    
+
     .sidebar-column {
         flex: none;
         order: 2; /* Move sidebar below content on mobile */
     }
-    
+
     .content-column {
         order: 1;
     }
@@ -168,7 +168,7 @@
         <aside class="sidebar-column">
             {% include 'reports/google_sheets_sidebar.html' %}
         </aside>
-        
+
         <!-- Districts Grid -->
         <main class="content-column">
             <div class="districts-grid" id="districtsContainer">
@@ -218,10 +218,10 @@
 function updateReport(select) {
     const loadingIndicator = document.getElementById('loadingIndicator');
     const districtsContainer = document.getElementById('districtsContainer');
-    
+
     loadingIndicator.style.display = 'block';
     districtsContainer.style.opacity = '0.5';
-    
+
     // Also update the host filter form to include the new school year
     const hostFilterForm = document.getElementById('hostFilterForm');
     if (hostFilterForm) {
@@ -230,7 +230,7 @@ function updateReport(select) {
             hiddenYearInput.value = select.value;
         }
     }
-    
+
     // Submit the form
     select.form.submit();
 }
@@ -253,7 +253,7 @@ function refreshData() {
     const loadingIndicator = document.getElementById('loadingIndicator');
     const districtsContainer = document.getElementById('districtsContainer');
     const refreshButton = document.querySelector('.refresh-button');
-    
+
     // Disable the refresh button and show loading state
     refreshButton.disabled = true;
     refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
@@ -298,4 +298,4 @@ function refreshData() {
 
 
 </script>
-{% endblock %} 
+{% endblock %}

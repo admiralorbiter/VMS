@@ -1,11 +1,11 @@
 /**
  * Edit Volunteer Form JavaScript Module
  * ====================================
- * 
+ *
  * This module provides functionality for the volunteer editing form,
  * including dynamic phone and address management, form data collection,
  * and AJAX form submission with error handling.
- * 
+ *
  * Key Features:
  * - Dynamic phone number management
  * - Dynamic address management
@@ -13,53 +13,53 @@
  * - AJAX form submission
  * - Error handling and user feedback
  * - Redirect on successful update
- * 
+ *
  * Dynamic Form Management:
  * - Add/remove phone number groups
  * - Add/remove address groups
  * - Primary contact selection
  * - Form validation
  * - Real-time form updates
- * 
+ *
  * Phone Management:
  * - Phone number input with validation
  * - Type selection (personal/professional)
  * - Primary phone designation
  * - Remove functionality
  * - Required field validation
- * 
+ *
  * Address Management:
  * - Multi-line address input
  * - Type selection (personal/professional)
  * - Primary address designation
  * - Remove functionality
  * - Required field validation
- * 
+ *
  * Form Submission:
  * - AJAX submission with FormData
  * - JSON serialization of complex data
  * - Server response handling
  * - Error display and user feedback
  * - Automatic redirect on success
- * 
+ *
  * Data Structure:
  * - Phone objects with number, type, and primary flag
  * - Address objects with all address fields and metadata
  * - FormData for multipart form submission
  * - JSON serialization for complex data
- * 
+ *
  * Dependencies:
  * - Bootstrap 5.3.3 CSS/JS for form styling
  * - FontAwesome icons for remove buttons
  * - Custom CSS for form group styling
- * 
+ *
  * CSS Classes:
  * - .phone-group/.address-group: Dynamic form groups
  * - .remove-btn: Remove button styling
  * - .form-control: Input field styling
  * - .form-select: Select dropdown styling
  * - .form-check: Checkbox/radio styling
- * 
+ *
  * Form Structure:
  * - #phones-container: Container for phone groups
  * - #addresses-container: Container for address groups
@@ -97,13 +97,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <i class="fas fa-trash"></i>
                 </button>
             `;
-            
+
             // Add click handler for the remove button
             const removeBtn = phoneGroup.querySelector('.remove-btn');
             removeBtn.addEventListener('click', function() {
                 phoneGroup.remove();
             });
-            
+
             container.appendChild(phoneGroup);
         });
     }
@@ -138,13 +138,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                 </div>
             `;
-            
+
             // Add click handler for the remove button
             const removeBtn = addressGroup.querySelector('.remove-btn');
             removeBtn.addEventListener('click', function() {
                 addressGroup.remove();
             });
-            
+
             container.appendChild(addressGroup);
         });
     }
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             // Collect phone data
             const phones = [];
             document.querySelectorAll('.phone-group').forEach(group => {
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     primary: group.querySelector('input[type="radio"]').checked
                 });
             });
-            
+
             // Collect address data
             const addresses = [];
             document.querySelectorAll('.address-group').forEach(group => {
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Create FormData object
             const formData = new FormData(form);
-            
+
             // Add the collected data
             formData.append('phones', JSON.stringify(phones));
             formData.append('addresses', JSON.stringify(addresses));

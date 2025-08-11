@@ -1,8 +1,8 @@
-{# 
+{#
   Edit Organization Template
-  
+
   This template provides a form for editing existing organizations in the system.
-  
+
   Features:
   - Pre-populated form fields with current organization data
   - Basic organization information editing (name, type, description)
@@ -10,16 +10,16 @@
   - Form validation with required fields
   - Responsive form layout
   - Cancel and save actions
-  
+
   Template Variables:
   - organization: Organization object to be edited
   - organization_types: List of available organization types for dropdown
   - current_user: Current authenticated user (for permissions)
-  
+
   Routes:
   - GET: Display the form with pre-populated data
   - POST: Process form submission and update organization
-  
+
   Form Fields:
   - name (required): Organization name
   - type: Organization type (dropdown)
@@ -29,7 +29,7 @@
   - billing_state: State/Province
   - billing_postal_code: Postal/ZIP code
   - billing_country: Country
-  
+
   Security Notes:
   - TODO: Add CSRF token protection
   - TODO: Add permission checks for editing organizations
@@ -54,7 +54,7 @@
     <form method="POST">
         {# TODO: Add CSRF token for security #}
         {# {{ csrf_token() }} #}
-        
+
         {# Basic Information Section #}
         <div class="form-section">
             <h2 class="section-title">
@@ -65,10 +65,10 @@
                 {# Organization Name - Required Field with Current Value #}
                 <div class="form-group">
                     <label for="name">Organization Name *</label>
-                    <input type="text" id="name" name="name" class="form-control" 
+                    <input type="text" id="name" name="name" class="form-control"
                            value="{{ organization.name }}" required>
                 </div>
-                
+
                 {# Organization Type - Dropdown with Current Selection #}
                 <div class="form-group">
                     <label for="type">Organization Type</label>
@@ -81,7 +81,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                
+
                 {# Organization Description - Textarea with Current Value #}
                 <div class="form-group">
                     <label for="description">Description</label>
@@ -100,35 +100,35 @@
                 {# Street Address with Current Value #}
                 <div class="form-group">
                     <label for="billing_street">Street</label>
-                    <input type="text" id="billing_street" name="billing_street" 
+                    <input type="text" id="billing_street" name="billing_street"
                            class="form-control" value="{{ organization.billing_street }}">
                 </div>
-                
+
                 {# City with Current Value #}
                 <div class="form-group">
                     <label for="billing_city">City</label>
-                    <input type="text" id="billing_city" name="billing_city" 
+                    <input type="text" id="billing_city" name="billing_city"
                            class="form-control" value="{{ organization.billing_city }}">
                 </div>
-                
+
                 {# State/Province with Current Value #}
                 <div class="form-group">
                     <label for="billing_state">State</label>
-                    <input type="text" id="billing_state" name="billing_state" 
+                    <input type="text" id="billing_state" name="billing_state"
                            class="form-control" value="{{ organization.billing_state }}">
                 </div>
-                
+
                 {# Postal/ZIP Code with Current Value #}
                 <div class="form-group">
                     <label for="billing_postal_code">Postal Code</label>
-                    <input type="text" id="billing_postal_code" name="billing_postal_code" 
+                    <input type="text" id="billing_postal_code" name="billing_postal_code"
                            class="form-control" value="{{ organization.billing_postal_code }}">
                 </div>
-                
+
                 {# Country with Current Value #}
                 <div class="form-group">
                     <label for="billing_country">Country</label>
-                    <input type="text" id="billing_country" name="billing_country" 
+                    <input type="text" id="billing_country" name="billing_country"
                            class="form-control" value="{{ organization.billing_country }}">
                 </div>
             </div>

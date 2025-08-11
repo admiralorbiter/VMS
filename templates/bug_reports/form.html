@@ -1,11 +1,11 @@
-{# 
+{#
   Bug Report Form Template
   =======================
-  
+
   This template provides a modal-based form for users to report issues and bugs
   in the Volunteer Management System. It uses HTMX for dynamic form submission
   and Bootstrap for styling and modal functionality.
-  
+
   Key Features:
   - Modal-based form interface
   - HTMX integration for dynamic submission
@@ -13,38 +13,38 @@
   - Form validation and error handling
   - Success feedback and modal auto-close
   - Bootstrap styling and responsive design
-  
+
   Form Fields:
   - Issue type selection (dropdown)
   - Description textarea with placeholder
   - Hidden fields for page context
   - Submit and cancel buttons
-  
+
   HTMX Integration:
   - Form submission via HTMX POST
   - Dynamic response handling
   - Modal state management
   - Error display in form
-  
+
   JavaScript Functionality:
   - Modal initialization after content load
   - Page context auto-capture
   - Form submission response handling
   - Success state management
-  
+
   Form Validation:
   - Required field validation
   - Client-side form checks
   - Server-side validation support
-  
+
   Template Variables:
   - None (self-contained modal form)
-  
+
   Dependencies:
   - Bootstrap 5.3.3 CSS/JS
   - HTMX library
   - Custom styling via Bootstrap classes
-  
+
   Security Features:
   - CSRF protection (handled by Flask-WTF)
   - Input sanitization
@@ -66,7 +66,7 @@
         {# Hidden fields for page context #}
         <input type="hidden" name="page_url" id="pageUrl">
         <input type="hidden" name="page_title" id="pageTitle">
-        
+
         {# Issue type selection dropdown #}
         <div class="mb-3">
           <label class="form-label">What type of issue are you reporting?</label>
@@ -76,17 +76,17 @@
             <option value="2">Other issue</option>
           </select>
         </div>
-        
+
         {# Issue description textarea #}
         <div class="mb-3">
           <label class="form-label">Please describe the issue:</label>
-          <textarea class="form-control" name="description" rows="4" required 
+          <textarea class="form-control" name="description" rows="4" required
                     placeholder="Please provide any details that would help us understand and fix the issue..."></textarea>
         </div>
-        
+
         {# HTMX response target for dynamic content #}
         <div id="bugReportResponse" class="mb-3"></div>
-        
+
         {# Modal footer with action buttons #}
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -103,7 +103,7 @@ document.addEventListener('htmx:afterSwap', function(evt) {
     if (evt.detail.target.id === 'bugReportModal') {
         var modal = new bootstrap.Modal(document.getElementById('bugReportModal'));
         modal.show();
-        
+
         // Set the current page info
         document.getElementById('pageUrl').value = window.location.href;
         document.getElementById('pageTitle').value = document.title;
@@ -114,7 +114,7 @@ document.addEventListener('htmx:afterSwap', function(evt) {
 document.addEventListener('htmx:afterRequest', function(evt) {
     if (evt.detail.target.id === 'bugReportResponse') {
         const response = JSON.parse(evt.detail.xhr.response);
-        
+
         if (response.success) {
             // Close modal after success
             setTimeout(function() {
@@ -127,4 +127,4 @@ document.addEventListener('htmx:afterRequest', function(evt) {
         }
     }
 });
-</script> 
+</script>

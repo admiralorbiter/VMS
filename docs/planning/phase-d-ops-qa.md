@@ -53,4 +53,3 @@ Acceptance criteria:
 ## Deliverables
 
 - Logging, security results, backup/runbook, load test report
-

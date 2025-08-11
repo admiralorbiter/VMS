@@ -45,4 +45,3 @@ tags: [checklists, templates]
    - Check traceback
    - Rerun with `--only` option
    - File bug report
-

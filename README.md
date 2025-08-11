@@ -4,11 +4,11 @@ A web-based application for managing volunteers, events, and organizations. The 
 
 ## 1. Project Overview
 
-- **Purpose:** Provide a centralized tool to track volunteer activities, events, attendance, and reports.  
-- **Key Users:** Internal teams managing volunteer data, district coordinators, and eventually volunteers themselves.  
+- **Purpose:** Provide a centralized tool to track volunteer activities, events, attendance, and reports.
+- **Key Users:** Internal teams managing volunteer data, district coordinators, and eventually volunteers themselves.
 - **Primary Datasets:**
-  - Pulled from Salesforce  
-  - Internal datasets  
+  - Pulled from Salesforce
+  - Internal datasets
   - Additional connector data (e.g., spreadsheets, attendance logs)
 
 ## 2. Tech Stack
@@ -23,12 +23,12 @@ A web-based application for managing volunteers, events, and organizations. The 
 
 Currently implemented:
 
-1. **Event Management**  
+1. **Event Management**
    - Create and track events
    - Interactive calendar with color-coded status
    - Event status tracking (Draft, Published, Confirmed, Completed, Cancelled)
 
-2. **Organization Management**  
+2. **Organization Management**
    - Complete organization profiles
    - Directory system
    - Interaction tracking

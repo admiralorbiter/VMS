@@ -1,4 +1,4 @@
-/* 
+/*
 Event Type Color Mapping System
 ===============================
 
@@ -22,7 +22,7 @@ Example:
     --non-photo-blue: #9ed8dbff;
     --mint-green: #e9fff9ff;
     --poppy: #d63638ff;
-    
+
     /* Event type color palette */
     --career-primary: #2E8B57;      /* Sea Green */
     --career-light: #98FB98;        /* Pale Green */
@@ -365,4 +365,4 @@ Example:
 .event-type-badge:focus {
     outline: 2px solid var(--ucla-blue);
     outline-offset: 2px;
-} 
+}

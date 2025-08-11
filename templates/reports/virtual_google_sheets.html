@@ -244,16 +244,16 @@
     .form-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .year-form {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .actions {
         flex-direction: column;
     }
-    
+
     .form-row {
         flex-direction: column;
     }
@@ -312,12 +312,12 @@
                 </div>
                 <div class="form-group">
                     <label for="sheet_name">Sheet Name:</label>
-                    <input type="text" name="sheet_name" id="sheet_name" 
+                    <input type="text" name="sheet_name" id="sheet_name"
                            placeholder="e.g., Grandview Virtual Sessions 2024-2025" required>
                 </div>
                 <div class="form-group">
                     <label for="sheet_id">Google Sheet ID or URL:</label>
-                    <input type="text" name="sheet_id" id="sheet_id" 
+                    <input type="text" name="sheet_id" id="sheet_id"
                            placeholder="Sheet ID or full Google Sheets URL" required>
                 </div>
             </div>
@@ -333,7 +333,7 @@
         <h2 class="section-title" style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">
             Google Sheets for {{ virtual_year }}
         </h2>
-        
+
         {% if sheets %}
             <table class="sheets-table">
                 <thead>
@@ -357,21 +357,21 @@
                         <td>{{ sheet.created_at.strftime('%m/%d/%Y') if sheet.created_at else '' }}</td>
                         <td>
                             <div class="actions">
-                                <a href="{{ url_for('report.view_virtual_google_sheet', sheet_id=sheet.id) }}" 
+                                <a href="{{ url_for('report.view_virtual_google_sheet', sheet_id=sheet.id) }}"
                                    class="btn btn-secondary btn-sm" target="_blank">
                                     <i class="fas fa-external-link-alt"></i> View
                                 </a>
                                 <button onclick="toggleEditForm({{ sheet.id }})" class="btn btn-primary btn-sm">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <form method="POST" action="{{ url_for('report.delete_virtual_google_sheet', sheet_id=sheet.id) }}" 
+                                <form method="POST" action="{{ url_for('report.delete_virtual_google_sheet', sheet_id=sheet.id) }}"
                                       style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this sheet?')">
                                     <button type="submit" class="btn btn-danger btn-sm">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
                                 </form>
                             </div>
-                            
+
                             <!-- Edit Form -->
                             <div class="edit-form" id="edit-form-{{ sheet.id }}">
                                 <form method="POST" action="{{ url_for('report.update_virtual_google_sheet', sheet_id=sheet.id) }}">
@@ -386,7 +386,7 @@
                                         </div>
                                         <div class="form-group">
                                             <button type="submit" class="btn btn-primary btn-sm">Save</button>
-                                            <button type="button" onclick="toggleEditForm({{ sheet.id }})" 
+                                            <button type="button" onclick="toggleEditForm({{ sheet.id }})"
                                                     class="btn btn-secondary btn-sm">Cancel</button>
                                         </div>
                                     </div>
@@ -418,7 +418,7 @@ document.getElementById('district_name').addEventListener('change', function() {
     const districtName = this.value;
     const virtualYear = '{{ virtual_year }}';
     const sheetNameInput = document.getElementById('sheet_name');
-    
+
     if (districtName && !sheetNameInput.value) {
         sheetNameInput.value = `${districtName} Virtual Sessions ${virtualYear}`;
     }
@@ -427,14 +427,14 @@ document.getElementById('district_name').addEventListener('change', function() {
 // Extract sheet ID from full Google Sheets URL
 document.getElementById('sheet_id').addEventListener('blur', function() {
     const input = this.value.trim();
-    
+
     // Check if it's a full Google Sheets URL
     const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
     const match = input.match(regex);
-    
+
     if (match) {
         this.value = match[1]; // Extract just the sheet ID
     }
 });
 </script>
-{% endblock %} 
+{% endblock %}

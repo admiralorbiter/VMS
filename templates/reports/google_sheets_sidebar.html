@@ -7,7 +7,7 @@
         </h3>
         <span class="academic-year-badge">{{ academic_year }}</span>
     </div>
-    
+
     <div class="sidebar-content">
         {% if google_sheets %}
             <div class="sheets-list">
@@ -19,8 +19,8 @@
                             <span>{{ sheet.sheet_name if sheet.sheet_name else 'Sheet ' + loop.index|string }}</span>
                         </div>
                         <div class="sheet-actions">
-                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" 
-                               target="_blank" 
+                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit"
+                               target="_blank"
                                class="btn-sheet-action"
                                title="Open in Google Sheets">
                                 <i class="fas fa-external-link-alt"></i>
@@ -46,9 +46,9 @@
                 <p class="text-muted">No Google Sheets configured</p>
             </div>
         {% endif %}
-        
+
         <div class="sidebar-actions">
-            <a href="{{ url_for('report.manage_google_sheets', school_year=school_year) }}" 
+            <a href="{{ url_for('report.manage_google_sheets', school_year=school_year) }}"
                class="btn-manage-sheets">
                 <i class="fas fa-cog"></i>
                 Manage Sheets
@@ -260,11 +260,11 @@
         align-items: flex-start;
         gap: 0.5rem;
     }
-    
+
     .sheet-actions {
         align-self: flex-end;
     }
-    
+
     .sheet-meta {
         flex-direction: column;
         gap: 0.25rem;
@@ -293,5 +293,3 @@
     font-size: 0.65rem;
 }
 </style>
-
- 

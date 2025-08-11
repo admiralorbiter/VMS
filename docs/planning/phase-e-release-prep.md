@@ -50,4 +50,3 @@ Acceptance criteria:
 ## Deliverables
 
 - `v1.0.0` release notes, demo link, retro notes
-

@@ -28,7 +28,7 @@
                         <!-- Search Filter -->
                         <div class="col-md-6">
                             <label for="search" class="form-label">Search Pathways</label>
-                            <input type="text" class="form-control" id="search" name="search" 
+                            <input type="text" class="form-control" id="search" name="search"
                                    value="{{ search }}" placeholder="Search by pathway name...">
                         </div>
 
@@ -64,7 +64,7 @@
                                     <td>{{ pathway.contacts.count() }}</td>
                                     <td>{{ pathway.active_events|length }}</td>
                                     <td>
-                                        <a href="{{ url_for('report.pathway_detail', pathway_id=pathway.id) }}" 
+                                        <a href="{{ url_for('report.pathway_detail', pathway_id=pathway.id) }}"
                                            class="btn btn-sm btn-info">
                                             <i class="fas fa-info-circle"></i> Details
                                         </a>
@@ -79,4 +79,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

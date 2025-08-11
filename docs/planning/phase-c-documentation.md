@@ -55,4 +55,3 @@ Acceptance criteria:
 ## Deliverables
 
 - ADR set, OpenAPI spec, updated data model and index
-

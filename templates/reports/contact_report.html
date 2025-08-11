@@ -22,7 +22,7 @@
                     <span class="input-group-text">
                         <i class="fa-solid fa-search"></i>
                     </span>
-                    <input type="text" name="search" class="form-control" 
+                    <input type="text" name="search" class="form-control"
                            placeholder="Search events..." value="{{ search or '' }}">
                     <button type="submit" class="btn btn-primary">Search</button>
                     {% if search %}
@@ -38,8 +38,8 @@
             <thead>
                 <tr>
                     <th style="width: 30%">
-                        <a href="{{ url_for('report.contact_report', search=search, sort='title', 
-                                          order='desc' if sort == 'title' and order == 'asc' else 'asc') }}" 
+                        <a href="{{ url_for('report.contact_report', search=search, sort='title',
+                                          order='desc' if sort == 'title' and order == 'asc' else 'asc') }}"
                            class="text-decoration-none text-dark d-flex align-items-center">
                             Event
                             {% if sort == 'title' %}
@@ -85,7 +85,7 @@
                     <td>{{ event.location or 'Not set' }}</td>
                     <td>{{ event_stats[event.id]['volunteer_count'] }}</td>
                     <td class="text-center">
-                        <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" 
+                        <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}"
                            class="btn-view">
                             <i class="fa-solid fa-address-book"></i>View
                         </a>

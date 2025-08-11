@@ -20,4 +20,3 @@ Positive, negative, risks, follow-ups
 
 ## References
 Links to issues, PRs, documents
-

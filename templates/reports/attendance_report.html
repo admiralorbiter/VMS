@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container mt-4">
     <h1>District Attendance Report</h1>
-    
+
     <!-- Filters Section -->
     <div class="card mb-4">
         <div class="card-body">
@@ -140,37 +140,37 @@
 <script>
 document.getElementById('attendanceFilters').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     // Show loading indicator
     document.getElementById('loadingIndicator').style.display = 'block';
-    
+
     const districtId = document.getElementById('district').value;
     const schoolYear = document.getElementById('schoolYear').value;
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
-    
+
     if (!districtId) {
         alert('Please select a district');
         document.getElementById('loadingIndicator').style.display = 'none';
         return;
     }
-    
+
     // Build query parameters
     const params = new URLSearchParams({
         district_id: districtId,
         school_year: schoolYear
     });
-    
+
     // Only add date parameters if they're provided
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
-    
+
     // Fetch data from the API
     fetch(`/reports/attendance/data?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             document.getElementById('loadingIndicator').style.display = 'none';
-            
+
             // Update summary statistics
             document.getElementById('totalEvents').textContent = data.summary.total_events;
             document.getElementById('totalVolunteers').textContent = data.summary.total_volunteers;
@@ -178,11 +178,11 @@ document.getElementById('attendanceFilters').addEventListener('submit', function
             document.getElementById('uniqueVolunteers').textContent = data.summary.unique_volunteers;
             document.getElementById('uniqueStudents').textContent = data.summary.unique_students;
             document.getElementById('avgStudentsPerVolunteer').textContent = data.summary.avg_students_per_volunteer || 'N/A';
-            
+
             // Update table
             const grid = document.getElementById('eventCardGrid');
             grid.innerHTML = '';
-            
+
             data.events.forEach(event => {
                 const card = document.createElement('div');
                 card.className = 'col-md-6 col-lg-4 mb-4';

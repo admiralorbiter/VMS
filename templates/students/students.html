@@ -105,7 +105,7 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ url_for('students.view_student_details', id=student.id) }}" 
+                                    <a href="{{ url_for('students.view_student_details', id=student.id) }}"
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i>
                                     </a>
@@ -129,7 +129,7 @@
                         <a class="page-link" href="{{ url_for('students.view_students', page=students.prev_num, **request.args) }}">Previous</a>
                     </li>
                     {% endif %}
-                    
+
                     {% for page_num in students.iter_pages() %}
                         {% if page_num %}
                             {% if page_num != students.page %}
@@ -147,7 +147,7 @@
                             </li>
                         {% endif %}
                     {% endfor %}
-                    
+
                     {% if students.has_next %}
                     <li class="page-item">
                         <a class="page-link" href="{{ url_for('students.view_students', page=students.next_num, **request.args) }}">Next</a>
@@ -168,7 +168,7 @@ function importStudentsFromSalesforce() {
 
     const btn = event.target;
     const originalText = btn.innerHTML;
-    
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
 
@@ -190,7 +190,7 @@ function importStudentsFromSalesforce() {
             });
 
             const data = await response.json();
-            
+
             if (data.status === 'error') {
                 throw new Error(data.message);
             }
@@ -199,7 +199,7 @@ function importStudentsFromSalesforce() {
             totalRecords = data.total_records;
             processedCount += data.processed_count;
             const progressPercent = (processedCount / totalRecords) * 100;
-            
+
             // Update button text with progress
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Importing... ${Math.round(progressPercent)}%`;
 
@@ -235,4 +235,4 @@ function importStudentsFromSalesforce() {
     });
 }
 </script>
-{% endblock %} 
+{% endblock %}

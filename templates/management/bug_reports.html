@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Active Bug Reports</h2>
-    
+
     <div class="card mb-5">
         <div class="card-body">
             <div class="table-responsive">
@@ -40,13 +40,13 @@
                             <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-sm btn-success" 
+                                    <button class="btn btn-sm btn-success"
                                             hx-get="/bug-reports/{{ report.id }}/resolve-form"
                                             hx-target="#modalContent"
                                             hx-trigger="click">
                                         <i class="fas fa-check"></i> Resolve
                                     </button>
-                                    <button class="btn btn-sm btn-danger" 
+                                    <button class="btn btn-sm btn-danger"
                                             onclick="deleteReport({{ report.id }})">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -100,7 +100,7 @@
                             <td>{{ report.resolved_by.username }}</td>
                             <td>{{ report.resolved_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
-                                <button class="btn btn-sm btn-danger" 
+                                <button class="btn btn-sm btn-danger"
                                         onclick="deleteReport({{ report.id }})">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -146,4 +146,4 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
     }
 });
 </script>
-{% endblock %} 
+{% endblock %}

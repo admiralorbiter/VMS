@@ -208,4 +208,4 @@ We welcome feedback on our documentation:
 
 *This documentation is maintained as part of the VMS project. For questions or contributions, please see the [Support](#support) section above.*
 
-*Last updated: August 2025* 
+*Last updated: August 2025*

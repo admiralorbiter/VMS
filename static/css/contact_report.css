@@ -296,16 +296,16 @@ td:nth-child(4) {
     .table-responsive {
         padding: 0.5rem;
     }
-    
+
     .table thead th,
     .table tbody td {
         padding: 0.75rem;
     }
-    
+
     td:nth-child(3) {
         max-width: 150px;
     }
-    
+
     .input-group {
         flex-wrap: nowrap;
     }

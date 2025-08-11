@@ -1,10 +1,10 @@
 /**
  * Attendance Management JavaScript Module
  * ======================================
- * 
+ *
  * This module provides functionality for the attendance management interface,
  * including tab switching, pagination, purge operations, and navigation.
- * 
+ *
  * Key Features:
  * - Tab switching between students and teachers
  * - Pagination controls with page size selection
@@ -12,33 +12,33 @@
  * - Dropdown menu management
  * - Navigation to detailed views
  * - URL parameter management
- * 
+ *
  * Tab Management:
  * - Switch between students and teachers tables
  * - Maintain active tab state
  * - Hide/show table wrappers
- * 
+ *
  * Pagination System:
  * - Page navigation with URL parameters
  * - Per-page selection (10, 25, 50, 100)
  * - URL state preservation
  * - Reset to first page on per-page change
- * 
+ *
  * Purge Operations:
  * - Confirmation dialogs for safety
  * - AJAX requests to server
  * - Success/error notifications
  * - Page reload after successful purge
- * 
+ *
  * Dependencies:
  * - Bootstrap 5.3.3 CSS/JS
  * - Custom attendance.css for styling
  * - showNotification function (global)
- * 
+ *
  * API Endpoints:
  * - POST /attendance/purge: Purge attendance data
  * - GET /attendance/view/{type}/{id}: View attendance details
- * 
+ *
  * CSS Classes:
  * - .hidden: Hide table wrappers
  * - .active: Active tab styling
@@ -117,11 +117,11 @@ function confirmPurge(type) {
 function switchTab(tabName) {
     const tables = document.querySelectorAll('.attendance-table-wrapper');
     const tabs = document.querySelectorAll('.tab-btn');
-    
+
     // Hide all tables and remove active class from tabs
     tables.forEach(table => table.classList.add('hidden'));
     tabs.forEach(tab => tab.classList.remove('active'));
-    
+
     // Show selected table and activate corresponding tab
     document.getElementById(`${tabName}TableWrapper`).classList.remove('hidden');
     document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
@@ -144,10 +144,10 @@ function viewDetails(type, id) {
 function changePage(page, type) {
     const perPage = document.getElementById('perPageSelect').value;
     const currentUrl = new URL(window.location.href);
-    
+
     currentUrl.searchParams.set('page', page);
     currentUrl.searchParams.set('per_page', perPage);
-    
+
     window.location.href = currentUrl.toString();
 }
 
@@ -158,10 +158,10 @@ function changePage(page, type) {
 function changePerPage() {
     const perPage = document.getElementById('perPageSelect').value;
     const currentUrl = new URL(window.location.href);
-    
+
     currentUrl.searchParams.set('page', 1); // Reset to first page
     currentUrl.searchParams.set('per_page', perPage);
-    
+
     window.location.href = currentUrl.toString();
 }
 
@@ -174,7 +174,7 @@ function searchTeachers() {
     const searchTerm = searchInput.value.toLowerCase();
     const table = document.getElementById('teachersTable');
     const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    
+
     for (let i = 0; i < rows.length; i++) {
         const nameCell = rows[i].getElementsByTagName('td')[0]; // Name is first column
         if (nameCell) {

@@ -43,34 +43,36 @@ Usage:
 """
 
 from flask import render_template
-from routes.auth.routes import auth_bp
-from routes.history.routes import history_bp
-from routes.volunteers.routes import volunteers_bp
-from routes.organizations.routes import organizations_bp
-from routes.events.routes import events_bp
-from routes.virtual.routes import virtual_bp
-from routes.reports import report_bp
+
 from routes.attendance.routes import attendance
-from routes.management.management import management_bp
-from routes.calendar.routes import calendar_bp
-from routes.bug_reports.routes import bug_reports_bp
-from routes.client_projects.routes import client_projects_bp
-from routes.pathways.routes_pathways import pathways_bp
 from routes.auth.api import api_bp
+from routes.auth.routes import auth_bp
+from routes.bug_reports.routes import bug_reports_bp
+from routes.calendar.routes import calendar_bp
+from routes.client_projects.routes import client_projects_bp
 from routes.events.pathway_events import pathway_events_bp
-from routes.teachers.routes import teachers_bp
+from routes.events.routes import events_bp
+from routes.history.routes import history_bp
+from routes.management.management import management_bp
+from routes.organizations.routes import organizations_bp
+from routes.pathways.routes_pathways import pathways_bp
+from routes.reports import report_bp
 from routes.students.routes import students_bp
+from routes.teachers.routes import teachers_bp
+from routes.virtual.routes import virtual_bp
+from routes.volunteers.routes import volunteers_bp
+
 
 def init_routes(app):
     """
     Initialize and register all application blueprints.
-    
+
     This function registers all Flask blueprints with the main application,
     setting up the complete routing structure for the VMS system.
-    
+
     Args:
         app: Flask application instance to register blueprints with
-        
+
     Blueprints Registered:
         - auth_bp: Authentication routes (/login, /logout, /admin)
         - history_bp: History tracking routes (/history)
@@ -105,32 +107,32 @@ def init_routes(app):
     app.register_blueprint(pathway_events_bp)
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
-    
-    @app.route('/')
+    app.register_blueprint(api_bp, url_prefix="/api/v1")
+
+    @app.route("/")
     def index():
         """
         Main application index route.
-        
+
         Returns:
             Rendered index template for the application homepage
         """
-        return render_template('index.html')
-    
-    @app.template_filter('format_date')
+        return render_template("index.html")
+
+    @app.template_filter("format_date")
     def format_date(date):
         """
         Template filter for formatting dates.
-        
+
         Converts date objects to a human-readable format for display
         in templates. Returns empty string for None values.
-        
+
         Args:
             date: Date object to format
-            
+
         Returns:
             Formatted date string (e.g., "January 15, 2024") or empty string
         """
         if date:
-            return date.strftime('%B %d, %Y')
-        return ''
+            return date.strftime("%B %d, %Y")
+        return ""

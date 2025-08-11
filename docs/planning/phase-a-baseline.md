@@ -18,19 +18,19 @@ tags: [phase-a, baseline, pre-commit, ci]
 ## Detailed Tasks
 
 ### 1) Pre-commit
-- [ ] Add `requirements-dev.txt` with dev tools
-- [ ] Install: `pip install pre-commit`
-- [ ] Create `.pre-commit-config.yaml` with:
-  - [ ] black (line length 88)
-  - [ ] isort (profile black)
-  - [ ] flake8 (ignore E203, W503; max-line-length 88)
-  - [ ] bandit (exclude tests/)
-  - [ ] pre-commit-hooks (trailing-whitespace, end-of-file-fixer)
-- [ ] Install git hooks: `pre-commit install`
-- [ ] First run: `pre-commit run --all-files` and fix findings
+- [x] Add `requirements-dev.txt` with dev tools
+- [x] Install: `pip install pre-commit`
+- [x] Create `.pre-commit-config.yaml` with:
+  - [x] black (line length 88)
+  - [x] isort (profile black)
+  - [x] flake8 (ignore E203, W503; max-line-length 88)
+  - [x] bandit (exclude tests/)
+  - [x] pre-commit-hooks (trailing-whitespace, end-of-file-fixer)
+- [x] Install git hooks: `pre-commit install`
+- [x] First run: `pre-commit run --all-files` and fix findings
 
 Acceptance criteria:
-- [ ] All hooks pass locally on a clean checkout
+- [x] All hooks pass locally on a clean checkout
 
 ### 2) CI pipeline
 - [ ] Create `.github/workflows/ci.yml` with matrix (3.8–3.11)
@@ -61,4 +61,3 @@ Acceptance criteria:
 ## Deliverables
 
 - `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, updated docs
-

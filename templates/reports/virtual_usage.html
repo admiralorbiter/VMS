@@ -178,7 +178,7 @@
     .filter-actions {
         flex-wrap: wrap;
     }
-    
+
     .filter-btn, .reset-btn, .export-btn {
         font-size: 13px;
         padding: 8px 12px;
@@ -203,26 +203,26 @@
     .district-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .district-header {
         flex-direction: column;
         gap: 10px;
         text-align: center;
     }
-    
+
     .stat-row {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .filter-actions {
         justify-content: center;
     }
-    
+
     .filter-btn, .reset-btn, .export-btn {
         font-size: 12px;
         padding: 8px 10px;
     }
-    
+
     /* Mobile adjustments for session links */
     .session-external-btn {
         font-size: 0.7em !important;
@@ -235,7 +235,7 @@
 {% block content %}
 <div class="virtual-sessions-container">
     <h1 class="page-title">Virtual Session Usage Report</h1>
-    
+
     <!-- Filter Section -->
     <div class="filters-section">
         <form class="filters-form" method="GET">
@@ -249,32 +249,32 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="date_from">Date From:</label>
-                <input type="date" id="date_from" name="date_from" 
+                <input type="date" id="date_from" name="date_from"
                        value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
             </div>
-            
+
             <div class="filter-group">
                 <label for="date_to">Date To:</label>
-                <input type="date" id="date_to" name="date_to" 
+                <input type="date" id="date_to" name="date_to"
                        value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
             </div>
-            
+
             <div class="filter-group">
                 <label for="career_cluster">Career Cluster:</label>
                 <select id="career_cluster" name="career_cluster">
                     <option value="">All Clusters</option>
                     {% for cluster in filter_options.career_clusters %}
-                    <option value="{{ cluster }}" 
+                    <option value="{{ cluster }}"
                             {% if cluster == current_filters.career_cluster %}selected{% endif %}>
                         {{ cluster }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="district">District:</label>
                 <select id="district" name="district">
@@ -287,7 +287,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="school">School:</label>
                 <select id="school" name="school">
@@ -300,7 +300,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="status">Status:</label>
                 <select id="status" name="status">
@@ -318,30 +318,30 @@
             <button type="submit" class="filter-btn">Apply Filters</button>
             <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
             {% if session_data %}
-            <a href="{{ url_for('report.virtual_usage', refresh=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+            <a href="{{ url_for('report.virtual_usage', refresh=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                class="export-btn" title="Refresh Data" style="background: #28a745;">
                 🔄 Refresh
             </a>
-            <a href="{{ url_for('report.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+            <a href="{{ url_for('report.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                class="export-btn" title="Export to Excel">
                 📊 Export
             </a>
-            <a href="{{ url_for('report.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+            <a href="{{ url_for('report.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                class="export-btn" title="View Detailed Breakdown">
                 📈 Breakdown
             </a>
-            <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}" 
+            <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}"
                class="export-btn" title="Manage District Google Sheets">
                 📋 Manage Sheets
             </a>
             {% if current_user.is_admin %}
                 {% if request.args.get('show_all_districts') == '1' %}
-                <a href="{{ url_for('report.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+                <a href="{{ url_for('report.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                    class="export-btn" title="Show Main Districts Only" style="background: #17a2b8;">
                     🏠 Main Districts
                 </a>
                 {% else %}
-                <a href="{{ url_for('report.virtual_usage', show_all_districts=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}" 
+                <a href="{{ url_for('report.virtual_usage', show_all_districts=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                    class="export-btn" title="Show All Districts" style="background: #6c757d;">
                     🌐 All Districts
                 </a>
@@ -420,9 +420,9 @@
                     <div class="district-header">
                         <h3>{{ district_name }}</h3>
                         <div style="display: flex; gap: 8px;">
-                            <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" 
+                            <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                                class="district-link">View Details</a>
-                            <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}" 
+                            <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}"
                                class="district-link" style="background: rgba(255, 255, 255, 0.1);" title="View Google Sheet">
                                📊 Sheet</a>
                         </div>
@@ -553,8 +553,8 @@
                                     {{ session.session_title }}
                                 </a>
                                 {% if session.session_link %}
-                                    <a href="{{ session.session_link }}" target="_blank" class="session-external-btn" 
-                                       style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;" 
+                                    <a href="{{ session.session_link }}" target="_blank" class="session-external-btn"
+                                       style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;"
                                        title="Go to session website">
                                         🔗 Link
                                     </a>

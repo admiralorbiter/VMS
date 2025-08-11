@@ -35,4 +35,3 @@ semgrep, tox, coverage gates
 1. Start simple: black + isort + flake8 + bandit
 2. Add tools gradually; keep CI fast
 3. Align on team conventions
-

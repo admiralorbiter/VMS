@@ -198,11 +198,11 @@ function deleteDistrict(districtId) {
 function updateSchoolLevels() {
     const button = event.target.closest('button');
     const icon = button.querySelector('i');
-    
+
     // Add spinning animation
     icon.classList.add('fa-spin');
     button.disabled = true;
-    
+
     fetch('/management/update-school-levels', {
         method: 'POST',
         headers: {

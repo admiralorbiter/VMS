@@ -267,27 +267,27 @@
     .filters-form {
         grid-template-columns: 1fr;
     }
-    
+
     .breakdown-table {
         font-size: 0.7em;
     }
-    
+
     .breakdown-table th,
     .breakdown-table td {
         padding: 6px 3px;
     }
-    
+
     .category-header {
         min-width: 80px;
         max-width: 100px;
         font-size: 0.65em;
     }
-    
+
     .breakdown-table .month-column {
         min-width: 80px;
         padding: 6px 8px;
     }
-    
+
     .legend-grid {
         grid-template-columns: 1fr;
     }
@@ -414,25 +414,25 @@
         grid-template-columns: 1fr;
         gap: 20px;
     }
-    
+
     .analytics-card {
         padding: 16px;
     }
-    
+
     .comparison-grid {
         grid-template-columns: 1fr;
         gap: 5px;
     }
-    
+
     .comparison-header > span,
     .comparison-row > span {
         padding: 8px;
     }
-    
+
     .comparison-header {
         display: none;
     }
-    
+
     .comparison-row {
         display: grid;
         grid-template-columns: 2fr 1fr 1fr;
@@ -456,7 +456,7 @@
         <p class="breakdown-subtitle">Virtual Year: {{ current_filters.year }}</p>
         <p class="breakdown-subtitle">Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
     </div>
-    
+
     <!-- Filter Section -->
     <div class="filters-section">
         <form class="filters-form" method="GET">
@@ -470,19 +470,19 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="date_from">From:</label>
-                <input type="date" id="date_from" name="date_from" 
+                <input type="date" id="date_from" name="date_from"
                        value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
             </div>
-            
+
             <div class="filter-group">
                 <label for="date_to">To:</label>
-                <input type="date" id="date_to" name="date_to" 
+                <input type="date" id="date_to" name="date_to"
                        value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
             </div>
-            
+
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('report.virtual_breakdown') }}" class="reset-btn">Reset</a>
@@ -570,7 +570,7 @@
                             </td>
                         </tr>
                     {% endfor %}
-                    
+
                     <!-- Year to Date Row -->
                     <tr class="ytd-row">
                         <td class="month-column">Year to Date</td>
@@ -789,4 +789,4 @@
     </div>
 </div>
 
-{% endblock %} 
+{% endblock %}

@@ -1,10 +1,10 @@
 /**
  * History Management JavaScript Module
  * ====================================
- * 
+ *
  * This module provides advanced functionality for managing and displaying
  * activity history with grouping, filtering, and collapsible sections.
- * 
+ *
  * Key Features:
  * - Automatic grouping of history items by month/year
  * - Collapsible group sections with icons
@@ -12,37 +12,37 @@
  * - Timeline-based layout
  * - Dynamic content management
  * - Responsive design support
- * 
+ *
  * History Grouping:
  * - Groups items by month and year
  * - Sorts groups in reverse chronological order
  * - Creates collapsible headers with icons
  * - Maintains original item structure
- * 
+ *
  * Filter System:
  * - Filter by activity type (Email, Call, Meeting, Other)
  * - Toggle filters on/off
  * - Show/hide groups based on visible items
  * - Maintain filter state
- * 
+ *
  * Collapse Functionality:
  * - Click to expand/collapse groups
  * - Icon rotation for visual feedback
  * - Smooth transitions
  * - State preservation
- * 
+ *
  * Activity Type Detection:
  * - Automatic detection based on summary content
  * - Email detection via keywords or email-header class
  * - Call detection via phone-related keywords
  * - Meeting detection via meeting-related keywords
  * - Default to "Other" for unrecognized types
- * 
+ *
  * Dependencies:
  * - FontAwesome icons for chevron indicators
  * - Custom history.css for styling
  * - Bootstrap 5.3.3 for layout support
- * 
+ *
  * CSS Classes:
  * - .history-timeline: Main timeline container
  * - .history-group: Group container
@@ -51,7 +51,7 @@
  * - .history-item: Individual history item
  * - .history-filter: Filter button
  * - .active: Active filter state
- * 
+ *
  * Data Attributes:
  * - data-date: Date string for grouping
  * - data-type: Filter type for buttons
@@ -113,10 +113,10 @@ class HistoryManager {
         if (!content || !icon) return;
 
         const isCollapsed = content.style.display === 'none';
-        
+
         // Toggle content visibility
         content.style.display = isCollapsed ? 'block' : 'none';
-        
+
         // Toggle icon
         icon.classList.toggle('fa-chevron-down', isCollapsed);
         icon.classList.toggle('fa-chevron-right', !isCollapsed);
@@ -129,20 +129,20 @@ class HistoryManager {
     groupHistories() {
         const timeline = document.querySelector('.history-timeline');
         const items = Array.from(document.querySelectorAll('.history-item'));
-        
+
         // Clear timeline
         timeline.innerHTML = '';
-        
+
         // Group items by month/year
         const groups = items.reduce((acc, item) => {
             const dateStr = item.dataset.date;
             const date = dateStr ? new Date(dateStr) : new Date();
-            
+
             if (isNaN(date.getTime())) {
                 console.warn('Invalid date found:', dateStr);
                 return acc;
             }
-            
+
             const key = `${date.getFullYear()}-${date.getMonth()}`;
             if (!acc[key]) {
                 acc[key] = {
@@ -160,18 +160,18 @@ class HistoryManager {
             .forEach(group => {
                 const groupEl = document.createElement('div');
                 groupEl.className = 'history-group';
-                
+
                 const header = document.createElement('div');
                 header.className = 'history-group-header';
                 header.innerHTML = `
                     <span>${group.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                     <i class="fa-solid fa-chevron-down"></i>
                 `;
-                
+
                 const content = document.createElement('div');
                 content.className = 'history-group-content';
                 group.items.forEach(item => content.appendChild(item.cloneNode(true)));
-                
+
                 groupEl.appendChild(header);
                 groupEl.appendChild(content);
                 timeline.appendChild(groupEl);
@@ -185,7 +185,7 @@ class HistoryManager {
     toggleFilter(filter) {
         const filterType = filter.dataset.type;
         filter.classList.toggle('active');
-        
+
         if (this.activeFilters.has(filterType)) {
             this.activeFilters.delete(filterType);
         } else {
@@ -199,9 +199,9 @@ class HistoryManager {
 
             items.forEach(item => {
                 // Get the summary text
-                const summary = item.querySelector('.history-summary')?.textContent || 
+                const summary = item.querySelector('.history-summary')?.textContent ||
                               item.querySelector('.email-header')?.textContent || '';
-                
+
                 // Determine type based on summary content
                 let type = 'Other';
                 if (summary.toLowerCase().includes('email') || item.querySelector('.email-header')) {
@@ -214,7 +214,7 @@ class HistoryManager {
 
                 const shouldShow = this.activeFilters.size === 0 || this.activeFilters.has(type);
                 item.style.display = shouldShow ? 'block' : 'none';
-                
+
                 if (shouldShow) {
                     hasVisibleItems = true;
                 }
@@ -222,7 +222,7 @@ class HistoryManager {
 
             // Show/hide the group based on whether it has visible items
             group.style.display = hasVisibleItems ? 'block' : 'none';
-            
+
             // Handle the content visibility
             const content = group.querySelector('.history-group-content');
             if (content) {
@@ -235,4 +235,4 @@ class HistoryManager {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new HistoryManager();
-}); 
+});

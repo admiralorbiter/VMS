@@ -9,7 +9,7 @@
 {% block content %}
 <div class="recruitment-search-container">
     <h1>Volunteer Recruitment Search</h1>
-    
+
     <!-- Search Form -->
     <div class="search-container">
         <form method="get" action="{{ url_for('report.recruitment_search') }}" class="search-form">
@@ -17,9 +17,9 @@
                 <div class="col-md-8">
                     <div class="form-group">
                         <label for="search">Search Volunteers</label>
-                        <input type="text" 
-                               id="search" 
-                               name="search" 
+                        <input type="text"
+                               id="search"
+                               name="search"
                                class="form-control"
                                value="{{ search_query }}"
                                placeholder="Try searching: tech edu (finds volunteers in technology and education)">
@@ -37,17 +37,17 @@
                         <label class="d-block">Search Mode</label>
                         <div class="btn-group btn-group-toggle" data-toggle="buttons">
                             <label class="btn btn-outline-primary {% if search_mode == 'wide' %}active{% endif %}">
-                                <input type="radio" 
-                                       name="search_mode" 
-                                       value="wide" 
-                                       {% if search_mode == 'wide' %}checked{% endif %}> 
+                                <input type="radio"
+                                       name="search_mode"
+                                       value="wide"
+                                       {% if search_mode == 'wide' %}checked{% endif %}>
                                 Wide Search
                             </label>
                             <label class="btn btn-outline-primary {% if search_mode == 'narrow' %}active{% endif %}">
-                                <input type="radio" 
-                                       name="search_mode" 
-                                       value="narrow" 
-                                       {% if search_mode == 'narrow' %}checked{% endif %}> 
+                                <input type="radio"
+                                       name="search_mode"
+                                       value="narrow"
+                                       {% if search_mode == 'narrow' %}checked{% endif %}>
                                 Narrow Search
                             </label>
                         </div>
@@ -69,10 +69,10 @@
             <thead>
                 <tr>
                     <th>
-                        <a href="{{ url_for('report.recruitment_search', 
-                                           search=search_query, 
-                                           sort='name', 
-                                           order='desc' if sort_by == 'name' and order == 'asc' else 'asc') }}" 
+                        <a href="{{ url_for('report.recruitment_search',
+                                           search=search_query,
+                                           sort='name',
+                                           order='desc' if sort_by == 'name' and order == 'asc' else 'asc') }}"
                                                class="text-dark">
                             Name
                             {% if sort_by == 'name' %}
@@ -81,9 +81,9 @@
                         </a>
                     </th>
                     <th>
-                        <a href="{{ url_for('report.recruitment_search', 
-                                           search=search_query, 
-                                           sort='organization', 
+                        <a href="{{ url_for('report.recruitment_search',
+                                           search=search_query,
+                                           sort='organization',
                                            order='desc' if sort_by == 'organization' and order == 'asc' else 'asc') }}"
                                                class="text-dark">
                             Organization/Affiliation
@@ -94,9 +94,9 @@
                     </th>
                     <th>Skills</th>
                     <th>
-                        <a href="{{ url_for('report.recruitment_search', 
-                                           search=search_query, 
-                                           sort='last_email', 
+                        <a href="{{ url_for('report.recruitment_search',
+                                           search=search_query,
+                                           sort='last_email',
                                            order='desc' if sort_by == 'last_email' and order == 'asc' else 'asc') }}"
                                                class="text-dark">
                             Last Non-Internal Email
@@ -106,9 +106,9 @@
                         </a>
                     </th>
                     <th>
-                        <a href="{{ url_for('report.recruitment_search', 
-                                           search=search_query, 
-                                           sort='last_volunteer', 
+                        <a href="{{ url_for('report.recruitment_search',
+                                           search=search_query,
+                                           sort='last_volunteer',
                                            order='desc' if sort_by == 'last_volunteer' and order == 'asc' else 'asc') }}"
                                                class="text-dark">
                             Last Volunteer Date
@@ -118,9 +118,9 @@
                         </a>
                     </th>
                     <th>
-                        <a href="{{ url_for('report.recruitment_search', 
-                                           search=search_query, 
-                                           sort='times_volunteered', 
+                        <a href="{{ url_for('report.recruitment_search',
+                                           search=search_query,
+                                           sort='times_volunteered',
                                            order='desc' if sort_by == 'times_volunteered' and order == 'asc' else 'asc') }}"
                                                class="text-dark">
                             # of Times Volunteered
@@ -139,9 +139,9 @@
                             {{ volunteer.full_name }}
                         </a>
                         {% if volunteer.salesforce_contact_url %}
-                        <a href="{{ volunteer.salesforce_contact_url }}" 
-                           class="btn btn-sm action-btn salesforce-btn" 
-                           target="_blank" 
+                        <a href="{{ volunteer.salesforce_contact_url }}"
+                           class="btn btn-sm action-btn salesforce-btn"
+                           target="_blank"
                            title="Salesforce Contact">
                             <i class="fa-solid fa-cloud"></i>
                         </a>
@@ -177,9 +177,9 @@
             <ul class="pagination justify-content-center">
                 {% if pagination.has_prev %}
                 <li class="page-item">
-                    <a class="page-link" 
-                       href="{{ url_for('report.recruitment_search', 
-                                        page=pagination.prev_num, 
+                    <a class="page-link"
+                       href="{{ url_for('report.recruitment_search',
+                                        page=pagination.prev_num,
                                         search=search_query,
                                         sort=sort_by,
                                         order=order,
@@ -188,13 +188,13 @@
                     </a>
                 </li>
                 {% endif %}
-                
+
                 {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
                     {% if page_num %}
                         <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                            <a class="page-link" 
-                               href="{{ url_for('report.recruitment_search', 
-                                                page=page_num, 
+                            <a class="page-link"
+                               href="{{ url_for('report.recruitment_search',
+                                                page=page_num,
                                                 search=search_query,
                                                 sort=sort_by,
                                                 order=order,
@@ -211,9 +211,9 @@
 
                 {% if pagination.has_next %}
                 <li class="page-item">
-                    <a class="page-link" 
-                       href="{{ url_for('report.recruitment_search', 
-                                        page=pagination.next_num, 
+                    <a class="page-link"
+                       href="{{ url_for('report.recruitment_search',
+                                        page=pagination.next_num,
                                         search=search_query,
                                         sort=sort_by,
                                         order=order,
@@ -224,11 +224,11 @@
                 {% endif %}
             </ul>
         </nav>
-        
+
         <div class="text-center text-muted mt-2">
             Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers
         </div>
         {% endif %}
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

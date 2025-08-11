@@ -29,4 +29,3 @@ tags: [backlog, enhancements]
 ## Intake Rules
 
 - Align with release scope; timebox spikes; add acceptance criteria to each item
-

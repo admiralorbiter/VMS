@@ -281,4 +281,4 @@ The focus should now shift to documenting the remaining areas, particularly the 
 
 ---
 
-*Last updated: January 2025* 
+*Last updated: January 2025*

@@ -1,11 +1,11 @@
 /**
  * Volunteers Management JavaScript Module
  * ======================================
- * 
+ *
  * This module provides comprehensive functionality for managing volunteers
  * in the VMS, including search, sorting, pagination, deletion, and
  * dynamic form management for contact information.
- * 
+ *
  * Key Features:
  * - Advanced search with debouncing
  * - Sortable table columns with visual indicators
@@ -16,66 +16,66 @@
  * - Participation tab system
  * - Event expansion/collapse functionality
  * - History section toggle
- * 
+ *
  * Search Functionality:
  * - Debounced input handling (600ms delay)
  * - Real-time form submission
  * - Multiple search field support
  * - URL parameter preservation
- * 
+ *
  * Sorting System:
  * - Clickable column headers
  * - Visual sort direction indicators
  * - Toggle between ascending/descending
  * - URL state management
  * - Reset to first page on sort
- * 
+ *
  * Pagination:
  * - Per-page selection (10, 25, 50, 100)
  * - URL parameter management
  * - Reset to first page on change
- * 
+ *
  * Delete Operations:
  * - Confirmation modal for safety
  * - AJAX delete requests
  * - Error handling and user feedback
  * - Page reload after successful deletion
- * 
+ *
  * Purge Operations:
  * - Confirmation dialog for bulk deletion
  * - AJAX purge requests
  * - Success/error notifications
  * - Automatic page reload
- * 
+ *
  * Dynamic Form Management:
  * - Add/remove phone number groups
  * - Add/remove address groups
  * - Primary contact selection
  * - Form data collection and submission
- * 
+ *
  * Participation System:
  * - Tab-based event participation display
  * - Event expansion/collapse
  * - Status-based filtering
  * - Dynamic content loading
- * 
+ *
  * Dependencies:
  * - Bootstrap 5.3.3 CSS/JS for modal functionality
  * - FontAwesome icons for visual indicators
  * - Custom CSS for form styling
- * 
+ *
  * API Endpoints:
  * - DELETE /volunteers/delete/{id}: Delete specific volunteer
  * - POST /volunteers/purge: Purge all volunteers
  * - POST /volunteers/sync: Sync volunteer data
- * 
+ *
  * CSS Classes:
  * - .sortable: Sortable column headers
  * - .phone-group/.address-group: Dynamic form groups
  * - .participation-tab: Participation tab styling
  * - .event-list: Event list containers
  * - .active: Active tab/selection styling
- * 
+ *
  * Data Attributes:
  * - data-volunteer-id: Volunteer ID for deletion
  * - data-volunteer-name: Volunteer name for confirmation
@@ -86,12 +86,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize sorting
     document.querySelectorAll('th.sortable').forEach(header => {
         header.addEventListener('click', () => handleSort(header));
-        
+
         // Set initial sort indicators
         const url = new URL(window.location);
         const currentSortField = url.searchParams.get('sort_by');
         const currentSortDirection = url.searchParams.get('sort_direction');
-        
+
         if (currentSortField === header.dataset.sort) {
             header.classList.add(`sort-${currentSortDirection}`);
             updateSortIcon(header, currentSortDirection);
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update the form submission to include phones and addresses
     document.querySelector('form')?.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         // ... existing email collection code ...
 
         // Collect phone data
@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 primary: group.querySelector('.primary-check').checked
             });
         });
-        
+
         // Collect address data
         const addresses = [];
         document.querySelectorAll('.address-group').forEach(group => {
@@ -266,20 +266,20 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.participation-tab').forEach(t => {
                 t.classList.remove('active');
             });
-            
+
             // Add active class to clicked tab
             tab.classList.add('active');
-            
+
             // Hide all event lists
             document.querySelectorAll('.event-list').forEach(list => {
                 list.style.display = 'none';
             });
-            
+
             // Show the selected event list
             // Get the text content of the span that contains just the status (not the count)
             const statusSpan = tab.querySelector('span:not(.participation-tab-count)');
             const status = statusSpan.textContent.trim();
-            
+
             // Find the matching event list
             const targetList = document.querySelector(`.event-list[data-status="${status}"]`);
             if (targetList) {
@@ -310,18 +310,18 @@ function debounce(func, wait) {
 function handleSort(header) {
     const sortField = header.dataset.sort;
     const currentSort = header.classList.contains('sort-asc') ? 'desc' : 'asc';
-    
+
     // Remove sort classes from all headers
     document.querySelectorAll('th.sortable').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     // Add sort class to clicked header
     header.classList.add(`sort-${currentSort}`);
-    
+
     // Update sort icon
     updateSortIcon(header, currentSort);
-    
+
     // Update URL with sort parameters
     const url = new URL(window.location);
     url.searchParams.set('sort_by', sortField);
@@ -344,7 +344,7 @@ function handleSearch(event) {
 
 function confirmPurge() {
     if (confirm('Are you sure you want to purge all volunteer data? This action cannot be undone.')) {
-        fetch('/volunteers/purge', { 
+        fetch('/volunteers/purge', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -368,7 +368,7 @@ function confirmPurge() {
 
 function confirmSync() {
     if (confirm('Are you sure you want to sync volunteer data? This may take a few minutes.')) {
-        fetch('/volunteers/sync', { 
+        fetch('/volunteers/sync', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -414,7 +414,7 @@ function cancelDelete() {
 
 function executeDelete() {
     if (!deleteVolunteerId) return;
-    
+
     fetch(`/volunteers/delete/${deleteVolunteerId}`, {
         method: 'DELETE',
         headers: {
@@ -442,7 +442,7 @@ function executeDelete() {
 function toggleHistorySection() {
     const content = document.getElementById('history-content');
     const icon = document.getElementById('history-toggle-icon');
-    
+
     if (content && icon) {
         if (content.style.display === 'none') {
             content.style.display = 'block';
@@ -458,10 +458,10 @@ function toggleHistorySection() {
 function toggleEventExpansion(status, button) {
     const eventList = document.querySelector(`[data-status="${status}"]`);
     if (!eventList || !button) return;
-    
+
     const hiddenEvents = eventList.querySelector('.event-items-hidden');
     const icon = button.querySelector('i');
-    
+
     if (hiddenEvents && icon) {
         if (hiddenEvents.style.display === 'none') {
             // Show more events
@@ -483,12 +483,12 @@ function initializeVolunteerView() {
     // Participation tabs functionality
     const participationTabs = document.querySelectorAll('.participation-tab');
     const eventLists = document.querySelectorAll('.event-list');
-    
+
     participationTabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const tabText = this.textContent.trim();
             let status;
-            
+
             if (tabText.includes('Attended')) {
                 status = 'Attended';
             } else if (tabText.includes('No-Shows')) {
@@ -496,11 +496,11 @@ function initializeVolunteerView() {
             } else if (tabText.includes('Cancelled')) {
                 status = 'Cancelled';
             }
-            
+
             // Update active tab
             participationTabs.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
-            
+
             // Show/hide event lists
             eventLists.forEach(list => {
                 if (list.dataset.status === status) {
@@ -511,19 +511,19 @@ function initializeVolunteerView() {
             });
         });
     });
-    
+
     // History filter functionality
     const filters = document.querySelectorAll('.history-filter');
     const historyItems = document.querySelectorAll('.history-item');
-    
+
     filters.forEach(filter => {
         filter.addEventListener('click', function() {
             const filterType = this.dataset.type;
-            
+
             // Update active filter
             filters.forEach(f => f.classList.remove('active'));
             this.classList.add('active');
-            
+
             // Filter history items
             historyItems.forEach(item => {
                 if (filterType === 'all' || item.dataset.type === filterType) {
@@ -543,4 +543,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize volunteer view page functionality
     initializeVolunteerView();
-}); 
+});
