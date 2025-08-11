@@ -40,7 +40,7 @@ Acceptance criteria:
 - Reports → Organization Report
   - Cached results: In progress (cache models exist; routes not fully wired to caches)
 - Admin
-  - Import process automation & sequential import: Complete in Admin UI (one-click sequential import). CLI tool not yet present
+  - Import process automation & sequential import: Complete in Admin UI (one-click sequential import). CLI tool present
   - Update local statuses: Complete (`/volunteers/update-local-statuses` + Admin button)
   - Refresh all caches: Planned (only District Year-End cache refresh exists)
 - History
@@ -51,24 +51,25 @@ Acceptance criteria:
   - Connect with End of Year reporting: Planned
 
 Follow-ups to close for Phase B:
-- [ ] Implement CLI `manage_imports.py --sequential --only=<step>` with structured logging (timestamps, IDs)
-- [ ] Add CLI ergonomics for fast testing and selective runs:
-  - [ ] `--exclude <steps>` to skip specific steps during a sequential run (e.g., skip `schools,classes,students`)
-  - [ ] `--plan-only` to print planned steps and exit without executing (dry-run)
-  - [ ] `--students-max-chunks N` to limit student import to N chunks for quick verification
-  - [ ] `--fail-fast` to abort on first failure (optional)
+- [x] Implement CLI `manage_imports.py --sequential --only=<step>` with structured logging (timestamps, IDs)
+- [x] Add CLI ergonomics for fast testing and selective runs:
+  - [x] `--exclude <steps>` to skip specific steps during a sequential run (e.g., skip `schools,classes,students`)
+  - [x] `--plan-only` to print planned steps and exit without executing (dry-run)
+  - [x] `--students-max-chunks N` to limit student import to N chunks for quick verification
+  - [x] `--fail-fast` to abort on first failure (optional)
 - [ ] Add audit logging + explicit permission decorators to destructive endpoints
 - [ ] Implement sortable columns in `district_year_end_detail` views
 - [ ] Wire `OrganizationReport` routes to use caches with invalidation controls
 - [ ] Add "Refresh All Caches" actions in Admin for reports/org caches
+- [x] Replace legacy `pathways` import step with `pathway-events/sync-unaffiliated-events` in CLI sequence
 - [ ] Tests: unauthorized access, audit records, and new CLI behaviors
 
 ### 2) Single-click import process
-- [ ] Implement CLI entrypoint `manage_imports.py --sequential`
-- [ ] Add structured logging to imports with timestamps and IDs
-- [ ] Add failure handling and `--only` rerun capability
-- [ ] Support selective/fast testing: `--exclude`, `--plan-only`, `--students-max-chunks`, and `--fail-fast`
-- [ ] Write runbook section in `docs/planning/checklists.md`
+- [x] Implement CLI entrypoint `manage_imports.py --sequential`
+- [x] Add structured logging to imports with timestamps and IDs
+- [x] Add failure handling and `--only` rerun capability
+- [x] Support selective/fast testing: `--exclude`, `--plan-only`, `--students-max-chunks`, and `--fail-fast`
+- [x] Write runbook section in `docs/planning/checklists.md`
 - [ ] Optional: cron/Task Scheduler entry for nightly runs
 
 Acceptance criteria:
