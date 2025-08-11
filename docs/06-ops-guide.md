@@ -243,6 +243,60 @@ volumes:
   postgres_data:
 ```
 
+## 📅 Scheduling Imports
+
+You can schedule nightly imports using your OS scheduler.
+
+### Windows Task Scheduler
+
+1. Open Task Scheduler → Create Task…
+2. Triggers: Daily at 2:00 AM (or preferred time)
+3. Actions: Start a program
+   - Program/script: `python`
+   - Add arguments: `manage_imports.py --sequential --timeout 0 --base-url http://localhost:5050 --username %ADMIN_USERNAME% --password %ADMIN_PASSWORD%`
+   - Start in: path to your VMS repo
+4. Conditions: Uncheck “Start only if the computer is on AC power” if needed
+5. Settings: Stop the task if it runs longer than X hours (optional)
+
+Notes:
+- Ensure a Python venv is activated via a wrapper `.cmd` if needed. Example action target:
+  - Program/script: `C:\\Windows\\System32\\cmd.exe`
+  - Add arguments: `/c "C:\\path\\to\\venv\\Scripts\\activate && python manage_imports.py --sequential --timeout 0 --base-url http://localhost:5050 --username %ADMIN_USERNAME% --password %ADMIN_PASSWORD%"`
+
+### Linux/macOS (cron)
+
+Edit crontab with `crontab -e`:
+
+```
+0 2 * * * cd /path/to/VMS && /path/to/venv/bin/python manage_imports.py --sequential --timeout 0 --base-url http://localhost:5050 --username "$ADMIN_USERNAME" --password "$ADMIN_PASSWORD" >> logs/import_cron.log 2>&1
+```
+
+Tips:
+- Use `--exclude` to skip heavy steps on weekdays, and run full imports weekly
+- Use `--plan-only` with logging on a different schedule to validate connectivity
+
+### PythonAnywhere (Web)
+
+Use a Scheduled Task with a bash command that activates your venv, changes to the repo, and runs the CLI excluding students:
+
+```bash
+cd /home/yourusername/VMS && \
+source /home/yourusername/.virtualenvs/your_venv/bin/activate && \
+ADMIN_USERNAME=youradmin ADMIN_PASSWORD=yourpass \
+VMS_BASE_URL=https://yourusername.pythonanywhere.com \
+python manage_imports.py --sequential --exclude students --timeout 0 --base-url "$VMS_BASE_URL"
+```
+
+Alternatively, place your command logic into `scripts/nightly_import_no_students.sh` and schedule:
+
+```bash
+cd /home/yourusername/VMS && \
+VENV_PATH=/home/yourusername/.virtualenvs/your_venv \
+ADMIN_USERNAME=youradmin ADMIN_PASSWORD=yourpass \
+VMS_BASE_URL=https://yourusername.pythonanywhere.com \
+bash scripts/nightly_import_no_students.sh
+```
+
 ## 📊 Monitoring
 
 ### Application Monitoring

@@ -71,7 +71,7 @@ Acceptance criteria:
 - [x] Add failure handling and `--only` rerun capability
 - [x] Support selective/fast testing: `--exclude`, `--plan-only`, `--students-max-chunks`, and `--fail-fast`
 - [x] Write runbook section in `docs/planning/checklists.md`
-- [ ] Optional: cron/Task Scheduler entry for nightly runs
+- [x] Optional: cron/Task Scheduler entry for nightly runs
 
 Acceptance criteria:
 - [ ] One command performs a full import reliably
