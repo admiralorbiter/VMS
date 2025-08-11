@@ -29,6 +29,8 @@ Welcome to the comprehensive documentation for the Volunteer Management System (
 |----------|---------|----------|
 | [FEATURE_MATRIX.md](FEATURE_MATRIX.md) | Feature tracking and status | Project managers |
 | [08-release-notes/](08-release-notes/) | Release history and changes | All users |
+| [PLANNING.md](PLANNING.md) | Roadmap index and phase links | Maintainers |
+| [planning/](planning/) | Detailed phased plans, checklists, tooling | Maintainers |
 
 ## 🎯 Quick Start Guide
 
