@@ -46,7 +46,7 @@ Acceptance criteria:
 - History
   - Activity type filter: Complete (filtering supported in routes and template)
 - Schools System
-  - Column sort: Planned
+  - Column sort: Complete (client-side sorting on districts and schools tables)
 - Event Attendance Impact
   - Connect with End of Year reporting: Planned
 

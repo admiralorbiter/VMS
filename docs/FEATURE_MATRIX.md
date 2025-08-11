@@ -293,7 +293,7 @@ tags: [features, tracking, status, implementation]
 
 | Feature | Status | Priority | Assigned | Notes |
 |---------|--------|----------|----------|-------|
-| Column Sort | 📋 Planned | Low | - | Sortable columns |
+| Column Sort | ✅ Complete | Low | - | Client-side sorting on districts and schools tables |
 | Usage Investigation | 📋 Planned | Low | - | Feature analysis |
 
 ### Client Projects System

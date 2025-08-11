@@ -27,12 +27,12 @@
             <div class="admin-card p-4">
                 <h3 class="card-title">Districts</h3>
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table" id="districts-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>District Code</th>
-                                <th>Number of Schools</th>
+                                <th data-sort-key="text">Name</th>
+                                <th data-sort-key="text">District Code</th>
+                                <th data-sort-key="number">Number of Schools</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -74,13 +74,13 @@
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table" id="schools-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Level</th>
-                                <th>District</th>
-                                <th>School Code</th>
+                                <th data-sort-key="text">Name</th>
+                                <th data-sort-key="text">Level</th>
+                                <th data-sort-key="text">District</th>
+                                <th data-sort-key="text">School Code</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -111,6 +111,53 @@
 
 {% block extra_js %}
 <script>
+function sortTable(tableId, colIndex, type, toggle=true) {
+  const table = document.getElementById(tableId);
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const currentDir = table.getAttribute('data-sort-dir') || 'asc';
+  let dir = currentDir;
+  if (toggle) {
+    dir = currentDir === 'asc' ? 'desc' : 'asc';
+  }
+
+  const comparator = (a, b) => {
+    const aText = a.children[colIndex].innerText.trim();
+    const bText = b.children[colIndex].innerText.trim();
+    if (type === 'number') {
+      const aNum = parseFloat(aText) || 0;
+      const bNum = parseFloat(bText) || 0;
+      return dir === 'asc' ? aNum - bNum : bNum - aNum;
+    }
+    // default text compare
+    const res = aText.localeCompare(bText, undefined, { sensitivity: 'base' });
+    return dir === 'asc' ? res : -res;
+  };
+
+  rows.sort(comparator);
+  rows.forEach(r => tbody.appendChild(r));
+
+  table.setAttribute('data-sort-dir', dir);
+}
+
+function attachSortHandlers(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const headers = table.querySelectorAll('thead th');
+  headers.forEach((th, idx) => {
+    const key = th.getAttribute('data-sort-key');
+    if (!key) return;
+    th.style.cursor = 'pointer';
+    th.title = 'Click to sort';
+    th.addEventListener('click', () => sortTable(tableId, idx, key, true));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  attachSortHandlers('districts-table');
+  attachSortHandlers('schools-table');
+});
+
 function importDistricts() {
     fetch('/management/import-districts', {
         method: 'POST',
