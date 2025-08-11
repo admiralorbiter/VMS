@@ -115,6 +115,7 @@ from models.reports import (
 from models.school_model import School
 from models.user import SecurityLevel, User
 from routes.reports.virtual_session import invalidate_virtual_session_caches
+from routes.utils import log_audit_action
 from utils.academic_year import get_academic_year_range
 
 management_bp = Blueprint("management", __name__)
@@ -156,6 +157,64 @@ def admin():
     return render_template(
         "management/admin.html", users=users, sheet_years=sheet_years
     )
+
+
+@management_bp.route("/admin/audit-logs")
+@login_required
+def audit_logs():
+    """
+    Simple audit log viewer with basic filters.
+    Query params:
+      - action, resource_type, user_id
+    """
+    if not current_user.is_admin:
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("main.index"))
+
+    from models.audit_log import AuditLog
+
+    q = AuditLog.query.order_by(AuditLog.created_at.desc())
+    action = request.args.get("action", "").strip()
+    resource_type = request.args.get("resource_type", "").strip()
+    user_id = request.args.get("user_id", type=int)
+
+    if action:
+        q = q.filter(AuditLog.action == action)
+    if resource_type:
+        q = q.filter(AuditLog.resource_type == resource_type)
+    if user_id:
+        q = q.filter(AuditLog.user_id == user_id)
+
+    logs = q.limit(500).all()
+
+    # Render a minimal list directly if template is missing
+    try:
+        return render_template(
+            "management/audit_logs.html",
+            logs=logs,
+            filters={
+                "action": action,
+                "resource_type": resource_type,
+                "user_id": user_id,
+            },
+        )
+    except Exception:
+        # Fallback text view
+        return jsonify(
+            [
+                {
+                    "at": log.created_at.isoformat() if log.created_at else None,
+                    "user_id": log.user_id,
+                    "action": log.action,
+                    "resource_type": log.resource_type,
+                    "resource_id": log.resource_id,
+                    "method": log.method,
+                    "path": log.path,
+                    "ip": log.ip,
+                }
+                for log in logs
+            ]
+        )
 
 
 @management_bp.route("/admin/import", methods=["POST"])
@@ -535,6 +594,9 @@ def delete_google_sheet(sheet_id):
         academic_year = sheet.academic_year
         db.session.delete(sheet)
         db.session.commit()
+        log_audit_action(
+            action="delete", resource_type="google_sheet", resource_id=sheet_id
+        )
         return jsonify(
             {
                 "success": True,
@@ -825,6 +887,7 @@ def delete_school(school_id):
         school = School.query.get_or_404(school_id)
         db.session.delete(school)
         db.session.commit()
+        log_audit_action(action="delete", resource_type="school", resource_id=school_id)
         return jsonify({"success": True, "message": "School deleted successfully"})
     except Exception as e:
         db.session.rollback()
@@ -841,6 +904,9 @@ def delete_district(district_id):
         district = District.query.get_or_404(district_id)
         db.session.delete(district)  # This will cascade delete associated schools
         db.session.commit()
+        log_audit_action(
+            action="delete", resource_type="district", resource_id=district_id
+        )
         return jsonify(
             {
                 "success": True,
@@ -896,6 +962,9 @@ def delete_bug_report(report_id):
         report = BugReport.query.get_or_404(report_id)
         db.session.delete(report)
         db.session.commit()
+        log_audit_action(
+            action="delete", resource_type="bug_report", resource_id=report_id
+        )
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()

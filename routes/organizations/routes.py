@@ -94,7 +94,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School  # Add this import at the top
 from models.teacher import Teacher  # Add this import at the top
 from models.volunteer import EventParticipation
-from routes.utils import parse_date
+from routes.utils import log_audit_action, parse_date
 
 # Create the organizations blueprint
 organizations_bp = Blueprint("organizations", __name__)
@@ -394,6 +394,7 @@ def delete_organization(id):
         # Delete the organization itself
         db.session.delete(organization)
         db.session.commit()
+        log_audit_action(action="delete", resource_type="organization", resource_id=id)
 
         return jsonify({"success": True})
     except Exception as e:
@@ -493,6 +494,7 @@ def purge_organizations():
 
         # Commit the changes
         db.session.commit()
+        log_audit_action(action="purge", resource_type="organization")
 
         return jsonify(
             {

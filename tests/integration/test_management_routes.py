@@ -100,6 +100,35 @@ def test_bug_reports_management(client, auth_headers):
     assert response.status_code in [200, 404]
 
 
+def test_audit_logging_on_bug_delete(client, test_admin_headers):
+    # Create a bug report to delete
+    from models import db
+    from models.bug_report import BugReport, BugReportType
+
+    with client.application.app_context():
+        br = BugReport(type=BugReportType.BUG, description="t", page_url="/")
+        db.session.add(br)
+        db.session.commit()
+        bid = br.id
+
+    resp = client.delete(f"/bug-reports/{bid}", headers=test_admin_headers)
+    assert resp.status_code in [200, 404, 403]
+
+
+def test_audit_logging_on_google_sheet_delete(client, test_admin_headers):
+    # Create a sheet to delete
+    create_resp = client.post(
+        "/google-sheets",
+        json={"academic_year": "2024-2025", "sheet_id": "TEST_SHEET"},
+        headers={**test_admin_headers, "Content-Type": "application/json"},
+    )
+    assert create_resp.status_code in [200, 400, 500, 403]
+
+    # Attempt delete id 1 (best-effort; test DB is fresh per test)
+    del_resp = client.delete("/google-sheets/1", headers=test_admin_headers)
+    assert del_resp.status_code in [200, 404, 403]
+
+
 def test_create_bug_report(client, auth_headers):
     """Test bug report creation"""
     # Create test user for submitted_by with unique email

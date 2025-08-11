@@ -50,15 +50,16 @@ Acceptance criteria:
 - Event Attendance Impact
   - Connect with End of Year reporting: Planned
 
-Follow-ups to close for Phase B:
+ Follow-ups to close for Phase B:
 - [x] Implement CLI `manage_imports.py --sequential --only=<step>` with structured logging (timestamps, IDs)
 - [x] Add CLI ergonomics for fast testing and selective runs:
   - [x] `--exclude <steps>` to skip specific steps during a sequential run (e.g., skip `schools,classes,students`)
   - [x] `--plan-only` to print planned steps and exit without executing (dry-run)
   - [x] `--students-max-chunks N` to limit student import to N chunks for quick verification
   - [x] `--fail-fast` to abort on first failure (optional)
-- [ ] Add audit logging + explicit permission decorators to destructive endpoints
-- [ ] Implement sortable columns in `district_year_end_detail` views
+- [x] Add audit logging to destructive endpoints (volunteers, events, orgs, attendance, bug, sheets, school/district)
+- [ ] Add explicit permission decorators/guards to any remaining destructive endpoints (tighten RBAC)
+- [x] Implement sortable columns in `district_year_end_detail` views
 - [x] Wire `OrganizationReport` routes to use caches with invalidation controls
 - [x] Add "Refresh All Caches" actions in Admin for reports/org caches
 - [x] Replace legacy `pathways` import step with `pathway-events/sync-unaffiliated-events` in CLI sequence

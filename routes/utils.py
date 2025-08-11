@@ -54,7 +54,11 @@ Usage:
 
 from datetime import datetime
 
+from flask import request
+from flask_login import current_user
+
 from models import db
+from models.audit_log import AuditLog
 from models.contact import ContactTypeEnum, Email
 from models.district_model import District
 from models.event import CancellationReason, EventFormat, EventType
@@ -451,3 +455,30 @@ def parse_event_skills(skills_str, is_needed=False):
         skills.append(skill)
 
     return skills
+
+
+def log_audit_action(action: str, resource_type: str, resource_id=None, metadata=None):
+    """
+    Append an audit log entry. Safe to call in routes.
+    """
+    try:
+        entry = AuditLog(
+            user_id=getattr(current_user, "id", None),
+            action=action,
+            resource_type=resource_type,
+            resource_id=str(resource_id) if resource_id is not None else None,
+            method=getattr(request, "method", None),
+            path=getattr(request, "path", None),
+            ip=(
+                (request.headers.get("X-Forwarded-For") or request.remote_addr)
+                if request
+                else None
+            ),
+            meta=metadata or {},
+        )
+        db.session.add(entry)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        # Avoid raising audit failures; keep non-blocking
+        pass

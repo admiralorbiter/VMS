@@ -47,6 +47,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+from .audit_log import AuditLog
 from .google_sheet import GoogleSheet
 
 # Import your models after db initialization
@@ -54,4 +55,4 @@ from .user import User
 from .volunteer import Volunteer
 
 # Export the things you want to make available when importing from models
-__all__ = ["db", "User", "Volunteer", "GoogleSheet"]
+__all__ = ["db", "User", "Volunteer", "GoogleSheet", "AuditLog"]

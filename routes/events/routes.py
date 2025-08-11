@@ -67,6 +67,7 @@ from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.utils import (
     DISTRICT_MAPPINGS,
+    log_audit_action,
     map_cancellation_reason,
     map_event_format,
     map_session_type,
@@ -938,6 +939,7 @@ def purge_events():
         Event.query.delete()
 
         db.session.commit()
+        log_audit_action(action="purge", resource_type="event")
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -975,6 +977,7 @@ def delete_event(id):
         # Then delete the event
         db.session.delete(event)
         db.session.commit()
+        log_audit_action(action="delete", resource_type="event", resource_id=id)
 
         return jsonify({"success": True})
     except Exception as e:

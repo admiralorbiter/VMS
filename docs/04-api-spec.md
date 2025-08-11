@@ -258,6 +258,21 @@ The VMS system primarily operates through web-based routes rather than a compreh
 
 - **GET** `/reports` - Main reports page
 - **GET** `/reports/attendance` - Attendance reports
+### Management/Admin Routes
+
+- **GET** `/admin` - Admin dashboard
+- **GET** `/admin/audit-logs` - View audit logs (admin-only; filters: `action`, `resource_type`, `user_id`)
+- **POST** `/management/refresh-all-caches` - Refresh caches (query: `scope=all|virtual|org|district|first_time_volunteer`, optional `school_year`, optional `host_filter`)
+
+### Audit Logging
+
+Audit entries are recorded for destructive actions (delete/purge) across volunteers, events, organizations, attendance, bug reports, Google Sheets, schools, and districts.
+
+Schema (AuditLog):
+- id, created_at (UTC), user_id, action, resource_type, resource_id, method, path, ip, meta (JSON)
+
+Notes:
+- Tables are auto-created on startup; `AuditLog` appears as `audit_log` in the DB.
 - **GET** `/reports/contact` - Contact reports
 - **GET** `/reports/first-time-volunteer` - First-time volunteer reports
 - **GET** `/reports/organization/report` - Organization reports

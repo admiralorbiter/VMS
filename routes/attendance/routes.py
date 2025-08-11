@@ -24,7 +24,7 @@ from models.event import Event, EventTeacher, EventType
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher, TeacherStatus
-from routes.utils import parse_date
+from routes.utils import log_audit_action, parse_date
 
 # Create Blueprint for attendance routes
 attendance = Blueprint("attendance", __name__)
@@ -157,6 +157,9 @@ def purge_attendance():
             Teacher.query.delete()
             db.session.commit()
 
+        log_audit_action(
+            action="purge", resource_type="attendance", metadata={"scope": purge_type}
+        )
         return jsonify(
             {"status": "success", "message": f"Successfully purged {purge_type} data"}
         )

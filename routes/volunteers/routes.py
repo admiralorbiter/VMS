@@ -74,6 +74,7 @@ from models.volunteer import (
 from routes.utils import (
     get_email_addresses,
     get_phone_numbers,
+    log_audit_action,
     parse_date,
     parse_skills,
 )
@@ -957,6 +958,12 @@ def purge_volunteers():
         )
 
         db.session.commit()
+        log_audit_action(
+            action="purge",
+            resource_type="volunteer",
+            resource_id=None,
+            metadata={"count": len(volunteer_ids)},
+        )
         return jsonify(
             {
                 "success": True,
@@ -996,6 +1003,11 @@ def delete_volunteer(id):
         # Delete the volunteer
         db.session.delete(volunteer)
         db.session.commit()
+        log_audit_action(
+            action="delete",
+            resource_type="volunteer",
+            resource_id=id,
+        )
 
         return jsonify({"success": True, "message": "Volunteer deleted successfully"})
     except Exception as e:

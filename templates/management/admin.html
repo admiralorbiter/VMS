@@ -493,6 +493,11 @@
                 <a href="{{ url_for('management.google_sheets') }}" class="btn btn-info">
                     <i class="fas fa-file-spreadsheet"></i> Manage Google Sheets
                 </a>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('management.audit_logs') }}" class="btn btn-outline-secondary ms-2">
+                    <i class="fas fa-clipboard-list"></i> View Audit Logs
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -81,6 +81,7 @@ tags: [features, tracking, status, implementation]
 | Basic Information | ✅ Complete | High | - | Core details |
 | Address Information | ✅ Complete | Medium | - | Full address tracking |
 | Timestamps | ✅ Complete | Low | - | Audit trail |
+| Audit Logs (Viewer) | ✅ Complete | Medium | - | Admin page to view/filter audit entries |
 | Associated Volunteers | ✅ Complete | High | - | Volunteer relationships |
 | Data Management | ✅ Complete | High | - | Purge operations |
 
@@ -238,6 +239,7 @@ tags: [features, tracking, status, implementation]
 | Purge Volunteer Data | ✅ Complete | High | - | Data cleanup |
 | Purge Event Data | ✅ Complete | High | - | Event cleanup |
 | Refresh All Caches | ✅ Complete | Medium | - | Admin button + route to refresh virtual, org, FTV, and district caches |
+| Audit Logging on Destructive Actions | ✅ Complete | High | - | Logged delete/purge across core modules |
 | Link to Bug Report | ✅ Complete | Medium | - | Bug reporting |
 
 ### Google Sheets Management

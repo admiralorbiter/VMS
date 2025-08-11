@@ -39,30 +39,17 @@ instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "instan
 if not os.path.exists(instance_path):
     os.makedirs(instance_path)
 
-# Only create tables if they don't exist
+# Create DB tables on startup (idempotent). This will create any missing tables for new models.
 with app.app_context():
-    # Check if database exists and has tables
-    inspector = db.inspect(db.engine)
-    existing_tables = inspector.get_table_names()
-
-    if not existing_tables:
-        # Database is empty, create all tables
+    try:
+        # Always call create_all; it only creates tables that don't exist
         db.create_all()
-        print("Database initialized with all tables.")
-    else:
-        # Check for any missing expected tables
-        expected_tables = [
-            "event",
-            "event_volunteers",
-            "event_districts",
-            "event_skills",
-            "event_participation",
-        ]
-        missing_tables = [
-            table for table in expected_tables if table not in existing_tables
-        ]
-        if missing_tables:
-            print(f"Warning: Missing tables detected: {missing_tables}")
+    except Exception as e:
+        # Fallback/diagnostic output if something goes wrong creating tables
+        inspector = db.inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        print(f"Database initialization error: {e}")
+        print(f"Existing tables: {existing_tables}")
 
 
 # User loader callback for Flask-Login
