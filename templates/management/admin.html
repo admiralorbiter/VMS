@@ -467,11 +467,18 @@
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Report Cache Management</h5>
-            <button onclick="refreshDistrictReport()" class="btn admin-btn-import" id="refreshDistrictReportBtn">
+            <div class="d-grid gap-2 d-md-flex">
+            <button onclick="refreshDistrictReport()" class="btn admin-btn-import me-2" id="refreshDistrictReportBtn">
                 <i class="fas fa-sync"></i>
                 <span>Refresh District Year-End Report Cache</span>
             </button>
+            <button onclick="refreshAllCaches('all')" class="btn btn-warning" id="refreshAllCachesBtn">
+                <i class="fas fa-broom"></i>
+                <span>Refresh All Caches</span>
+            </button>
+            </div>
             <div class="import-status" id="refreshDistrictReportStatus"></div>
+            <div class="import-status" id="refreshAllCachesStatus"></div>
         </div>
     </div>
 
@@ -1171,6 +1178,36 @@ function refreshDistrictReport() {
     .finally(() => {
         btn.disabled = false;
     });
+}
+
+async function refreshAllCaches(scope = 'all') {
+    if (!confirm('Refresh caches? This will clear cached report data.')) {
+        return;
+    }
+    const btn = document.getElementById('refreshAllCachesBtn');
+    const status = document.getElementById('refreshAllCachesStatus');
+    btn.disabled = true;
+    status.textContent = 'Refreshing caches...';
+
+    try {
+        const response = await fetch(`/management/refresh-all-caches?scope=${encodeURIComponent(scope)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (data.success) {
+            status.textContent = 'All caches refreshed';
+            showToast('Success', 'All caches refreshed', 'success');
+            console.log('Refresh result:', data.result);
+        } else {
+            throw new Error(data.error || 'Failed to refresh caches');
+        }
+    } catch (error) {
+        status.textContent = 'Error: ' + error.message;
+        showToast('Error', 'Failed to refresh caches: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 function importVirtualEvents() {

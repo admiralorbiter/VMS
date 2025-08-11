@@ -237,7 +237,7 @@ tags: [features, tracking, status, implementation]
  | Update Local Statuses | ✅ Complete | Medium | - | Status updates |
 | Purge Volunteer Data | ✅ Complete | High | - | Data cleanup |
 | Purge Event Data | ✅ Complete | High | - | Event cleanup |
-| Refresh All Caches | 📋 Planned | Medium | - | Cache management |
+| Refresh All Caches | ✅ Complete | Medium | - | Admin button + route to refresh virtual, org, FTV, and district caches |
 | Link to Bug Report | ✅ Complete | Medium | - | Bug reporting |
 
 ### Google Sheets Management

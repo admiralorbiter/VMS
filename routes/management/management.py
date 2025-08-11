@@ -104,8 +104,17 @@ from models.class_model import Class
 from models.client_project_model import ClientProject, ProjectStatus
 from models.district_model import District
 from models.google_sheet import GoogleSheet
+from models.reports import (
+    DistrictYearEndReport,
+    FirstTimeVolunteerReportCache,
+    OrganizationDetailCache,
+    OrganizationSummaryCache,
+    VirtualSessionDistrictCache,
+    VirtualSessionReportCache,
+)
 from models.school_model import School
 from models.user import SecurityLevel, User
+from routes.reports.virtual_session import invalidate_virtual_session_caches
 from utils.academic_year import get_academic_year_range
 
 management_bp = Blueprint("management", __name__)
@@ -432,6 +441,65 @@ def create_google_sheet():
         traceback.print_exc()
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+@management_bp.route("/management/refresh-all-caches", methods=["POST"])
+@login_required
+def refresh_all_caches():
+    """
+    Refresh/invalidate all report caches.
+
+    Optional query params:
+      - scope: one of 'all' (default), 'virtual', 'org', 'district', 'first_time_volunteer'
+      - school_year: for district caches (YYZZ), defaults to current
+      - host_filter: for district caches, defaults to 'all'
+
+    Returns JSON with counts of deleted/invalidated records.
+    Requires admin.
+    """
+    if not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    scope = request.args.get("scope", "all").lower()
+    school_year = request.args.get("school_year")
+    host_filter = request.args.get("host_filter", "all")
+
+    summary = {"scope": scope, "deleted": {}, "invalidated": []}
+    try:
+        if scope in ("all", "virtual"):
+            invalidate_virtual_session_caches()  # all years
+            summary["invalidated"].append("virtual_session_caches")
+
+        if scope in ("all", "org"):
+            deleted_detail = OrganizationDetailCache.query.delete()
+            deleted_summary = OrganizationSummaryCache.query.delete()
+            db.session.commit()
+            summary["deleted"]["OrganizationDetailCache"] = deleted_detail
+            summary["deleted"]["OrganizationSummaryCache"] = deleted_summary
+
+        if scope in ("all", "first_time_volunteer"):
+            deleted_ftv = FirstTimeVolunteerReportCache.query.delete()
+            db.session.commit()
+            summary["deleted"]["FirstTimeVolunteerReportCache"] = deleted_ftv
+
+        if scope in ("all", "district"):
+            # If a specific school_year is provided, scope deletion; else delete all
+            if school_year:
+                deleted_district = DistrictYearEndReport.query.filter_by(
+                    school_year=school_year, host_filter=host_filter
+                ).delete()
+            else:
+                deleted_district = DistrictYearEndReport.query.delete()
+            db.session.commit()
+            summary["deleted"]["DistrictYearEndReport"] = deleted_district
+
+        return jsonify(
+            {"success": True, "message": "Caches refreshed", "result": summary}
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @management_bp.route("/google-sheets/<int:sheet_id>", methods=["PUT"])
