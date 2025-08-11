@@ -6,6 +6,15 @@ tags: [architecture, technical-design, patterns]
 
 # VMS Architecture
 
+## 🔍 High-Level Diagram
+
+```mermaid
+flowchart LR
+    U[User] -->|HTTP| F[Flask App]
+    F --> DB[(SQLite)]
+    F --> SF[Salesforce API]
+```
+
 ## 🏗️ System Design Principles
 
 ### 1. Single Source of Truth

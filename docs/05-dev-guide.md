@@ -81,6 +81,18 @@ Before setting up the VMS development environment, ensure you have:
    ```
    The application will be available at `http://localhost:5050`
 
+8. **Set up pre-commit (recommended)**
+   ```bash
+   pip install -r requirements-dev.txt
+   pre-commit install
+   pre-commit run --all-files
+   ```
+
+9. **Run tests**
+   ```bash
+   python run_tests.py
+   ```
+
 ## 📁 Project Structure
 
 ```

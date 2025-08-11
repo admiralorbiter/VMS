@@ -32,23 +32,14 @@ tags: [phase-a, baseline, pre-commit, ci]
 Acceptance criteria:
 - [x] All hooks pass locally on a clean checkout
 
-### 2) CI pipeline
-- [ ] Create `.github/workflows/ci.yml` with matrix (3.8–3.11)
-- [ ] Steps: install deps, run pre-commit, run pytest, run bandit
-- [ ] Cache pip for speed
-- [ ] Add README badges (build, coverage)
+### 2) Documentation baseline
+- [x] Update `docs/01-overview.md` with purpose and outcomes
+- [x] Add a simple Mermaid diagram to `docs/02-architecture.md`
+- [x] Verify quick start in `docs/05-dev-guide.md`
+- [x] Ensure links in `docs/README.md` are valid
 
 Acceptance criteria:
-- [ ] CI passes on PRs and main
-
-### 3) Documentation baseline
-- [ ] Update `docs/01-overview.md` with purpose and outcomes
-- [ ] Add a simple Mermaid diagram to `docs/02-architecture.md`
-- [ ] Verify quick start in `docs/05-dev-guide.md`
-- [ ] Ensure links in `docs/README.md` are valid
-
-Acceptance criteria:
-- [ ] New developer can set up and run tests in <30 minutes
+- [x] New developer can set up and run tests in <30 minutes
 
 ## Dependencies
 
