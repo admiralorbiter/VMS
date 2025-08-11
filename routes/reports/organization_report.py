@@ -14,6 +14,7 @@ from models.attendance import EventAttendanceDetail
 from models.district_model import District
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.organization import Organization, VolunteerOrganization
+from models.reports import OrganizationDetailCache, OrganizationSummaryCache
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
@@ -30,8 +31,49 @@ def load_routes(bp):
         # Get filter parameters - use school year format (e.g., '2425' for 2024-25)
         school_year = request.args.get("school_year", get_current_school_year())
         host_filter = request.args.get("host_filter", "all")  # 'all' or 'prepkc'
+        refresh_requested = request.args.get("refresh", "0") == "1"
         sort = request.args.get("sort", "total_hours")
         order = request.args.get("order", "desc")
+
+        # If host_filter == 'all' and no refresh is requested, try to use cached summary
+        if host_filter == "all" and not refresh_requested:
+            cached_summary = OrganizationSummaryCache.query.filter_by(
+                school_year=school_year
+            ).first()
+            if cached_summary and cached_summary.organizations_data:
+                org_data = cached_summary.organizations_data or []
+
+                # Sorting still applies client-side based on query params
+                def get_sort_key(org):
+                    if sort == "name":
+                        return org.get("name", "").lower() if org.get("name") else ""
+                    elif sort == "unique_sessions":
+                        return org.get("unique_sessions", 0)
+                    elif sort == "total_hours":
+                        return org.get("total_hours", 0)
+                    elif sort == "unique_volunteers":
+                        return org.get("unique_volunteers", 0)
+                    return org.get("total_hours", 0)
+
+                org_data.sort(key=get_sort_key, reverse=(order == "desc"))
+
+                # Generate list of school years (from 2020-21 to current+1)
+                current_year = int(get_current_school_year()[:2])
+                school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+                school_years.reverse()  # Most recent first
+
+                return render_template(
+                    "reports/organization_report.html",
+                    organizations=org_data,
+                    school_year=school_year,
+                    school_years=school_years,
+                    now=datetime.now(),
+                    sort=sort,
+                    order=order,
+                    host_filter=host_filter,
+                    is_cached=True,
+                    last_refreshed=cached_summary.last_updated,
+                )
 
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
@@ -99,6 +141,23 @@ def load_routes(bp):
 
         org_data.sort(key=get_sort_key, reverse=(order == "desc"))
 
+        # Save to summary cache only for host_filter == 'all'
+        if host_filter == "all":
+            try:
+                cache = OrganizationSummaryCache.query.filter_by(
+                    school_year=school_year
+                ).first()
+                if not cache:
+                    cache = OrganizationSummaryCache(
+                        school_year=school_year, organizations_data=org_data
+                    )
+                    db.session.add(cache)
+                else:
+                    cache.organizations_data = org_data
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
@@ -120,10 +179,84 @@ def load_routes(bp):
     def organization_report_detail(org_id):
         # Get filter parameters
         school_year = request.args.get("school_year", get_current_school_year())
+        refresh_requested = request.args.get("refresh", "0") == "1"
         sort_vol = request.args.get("sort_vol", "hours")
         order_vol = request.args.get("order_vol", "desc")
         sort_evt = request.args.get("sort_evt", "date")
         order_evt = request.args.get("order_evt", "asc")
+
+        # Check cache first (unless refresh requested)
+        if not refresh_requested:
+            cache = OrganizationDetailCache.query.filter_by(
+                organization_id=org_id, school_year=school_year
+            ).first()
+            if cache:
+                # Use cached data
+                organization = Organization.query.get_or_404(org_id)
+                summary_stats = cache.summary_stats or {}
+                volunteers_data = cache.volunteers_data or []
+                in_person_events_data = cache.in_person_events or []
+                virtual_events_data = cache.virtual_events or []
+                cancelled_events_data = cache.cancelled_events or []
+
+                # Derive totals from summary if present, else compute quickly
+                total_inperson_sessions = summary_stats.get(
+                    "total_inperson_sessions", len(in_person_events_data)
+                )
+                total_virtual_sessions = summary_stats.get(
+                    "total_virtual_sessions", len(virtual_events_data)
+                )
+                total_sessions = summary_stats.get(
+                    "total_sessions", total_inperson_sessions + total_virtual_sessions
+                )
+                total_hours = summary_stats.get(
+                    "total_hours", sum(vol.get("hours", 0) for vol in volunteers_data)
+                )
+                total_volunteers = summary_stats.get(
+                    "total_volunteers", len(volunteers_data)
+                )
+                total_cancelled = summary_stats.get(
+                    "total_cancelled", len(cancelled_events_data)
+                )
+                total_students_reached = summary_stats.get(
+                    "total_students_reached",
+                    sum(evt.get("students", 0) for evt in in_person_events_data),
+                )
+                total_classrooms_reached = summary_stats.get(
+                    "total_classrooms_reached",
+                    sum(evt.get("classrooms", 0) for evt in virtual_events_data),
+                )
+
+                # Generate list of school years
+                current_year = int(get_current_school_year()[:2])
+                school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+                school_years.reverse()
+
+                return render_template(
+                    "reports/organization_report_detail.html",
+                    organization=organization,
+                    volunteers=volunteers_data,
+                    in_person_events=in_person_events_data,
+                    virtual_events=virtual_events_data,
+                    cancelled_events=cancelled_events_data,
+                    school_year=school_year,
+                    school_years=school_years,
+                    now=datetime.now(),
+                    sort_vol=sort_vol,
+                    order_vol=order_vol,
+                    sort_evt=sort_evt,
+                    order_evt=order_evt,
+                    total_sessions=total_sessions,
+                    total_hours=total_hours,
+                    total_volunteers=total_volunteers,
+                    total_cancelled=total_cancelled,
+                    total_students_reached=total_students_reached,
+                    total_classrooms_reached=total_classrooms_reached,
+                    total_inperson_sessions=total_inperson_sessions,
+                    total_virtual_sessions=total_virtual_sessions,
+                    is_cached=True,
+                    last_refreshed=cache.last_updated,
+                )
 
         # Get date range for the school year
         start_date, end_date = get_school_year_date_range(school_year)
@@ -581,6 +714,44 @@ def load_routes(bp):
         current_year = int(get_current_school_year()[:2])
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
         school_years.reverse()  # Most recent first
+
+        # Persist to OrganizationDetailCache
+        try:
+            detail_cache = OrganizationDetailCache.query.filter_by(
+                organization_id=org_id, school_year=school_year
+            ).first()
+            summary_stats = {
+                "total_inperson_sessions": total_inperson_sessions,
+                "total_virtual_sessions": total_virtual_sessions,
+                "total_sessions": total_sessions,
+                "total_hours": total_hours,
+                "total_volunteers": total_volunteers,
+                "total_cancelled": total_cancelled,
+                "total_students_reached": total_students_reached,
+                "total_classrooms_reached": total_classrooms_reached,
+            }
+            if not detail_cache:
+                detail_cache = OrganizationDetailCache(
+                    organization_id=org_id,
+                    school_year=school_year,
+                    organization_name=organization.name,
+                    in_person_events=in_person_events_data,
+                    virtual_events=virtual_events_data,
+                    cancelled_events=cancelled_events_data,
+                    volunteers_data=volunteers_data,
+                    summary_stats=summary_stats,
+                )
+                db.session.add(detail_cache)
+            else:
+                detail_cache.organization_name = organization.name
+                detail_cache.in_person_events = in_person_events_data
+                detail_cache.virtual_events = virtual_events_data
+                detail_cache.cancelled_events = cancelled_events_data
+                detail_cache.volunteers_data = volunteers_data
+                detail_cache.summary_stats = summary_stats
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
         return render_template(
             "reports/organization_report_detail.html",

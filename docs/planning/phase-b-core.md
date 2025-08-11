@@ -59,7 +59,7 @@ Follow-ups to close for Phase B:
   - [x] `--fail-fast` to abort on first failure (optional)
 - [ ] Add audit logging + explicit permission decorators to destructive endpoints
 - [ ] Implement sortable columns in `district_year_end_detail` views
-- [ ] Wire `OrganizationReport` routes to use caches with invalidation controls
+- [x] Wire `OrganizationReport` routes to use caches with invalidation controls
 - [x] Add "Refresh All Caches" actions in Admin for reports/org caches
 - [x] Replace legacy `pathways` import step with `pathway-events/sync-unaffiliated-events` in CLI sequence
 - [ ] Tests: unauthorized access, audit records, and new CLI behaviors
