@@ -43,8 +43,8 @@ Create a new `/docs` folder and add these files:
 
 ### 🟢 Phase A – Establish Baseline (Week 1)
 
-- [ ] Create `docs/` folder structure
-- [ ] Improve README:
+- [x] Create `docs/` folder structure
+- [x] Improve README:
   - Add architecture summary or Mermaid diagram
   - Add project purpose at top
 - [ ] Setup pre-commit:
