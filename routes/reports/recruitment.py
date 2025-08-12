@@ -1,12 +1,15 @@
+import csv
+import io
 from datetime import datetime
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, Response, render_template, request
 from flask_login import login_required
 
 from models import db
+from models.contact import LocalStatusEnum
 
 # from models.upcoming_events import UpcomingEvent  # Moved to microservice
-from models.event import Event
+from models.event import Event, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
 
@@ -31,6 +34,13 @@ def load_routes(bp):
                 "description": "Search volunteers using multiple filters including skills, past events, and volunteer history.",
                 "icon": "fa-solid fa-search",
                 "url": "/reports/recruitment/search",
+                "category": "Recruitment",
+            },
+            {
+                "title": "Event Candidate Matches",
+                "description": "Ranked volunteer recommendations by event with explainable reasons.",
+                "icon": "fa-solid fa-user-check",
+                "url": "/reports/recruitment/candidates",
                 "category": "Recruitment",
             },
         ]
@@ -291,3 +301,589 @@ def load_routes(bp):
             order=order,
             search_mode=search_mode,  # Pass the search mode to the template
         )
+
+    @bp.route("/reports/recruitment/candidates")
+    @login_required
+    def recruitment_candidates():
+        """Event-based candidate list with simple deterministic scoring.
+
+        Query params:
+            - event_id: int (optional). If missing, show an event selector.
+            - limit: int (optional, default 100)
+            - min_score: float (optional, default None)
+        """
+        from sqlalchemy import and_, or_
+
+        event_id = request.args.get("event_id", type=int)
+        limit = request.args.get("limit", 100, type=int)
+        min_score = request.args.get("min_score", type=float)
+
+        # If no event chosen, show simple selector of upcoming/recent events
+        if not event_id:
+            # Upcoming (next 180 days) or recent past (last 30 days) for convenience
+            now = datetime.utcnow()
+            upcoming = (
+                Event.query.filter(Event.start_date >= now)
+                .order_by(Event.start_date.asc())
+                .limit(50)
+                .all()
+            )
+            recent = (
+                Event.query.filter(Event.start_date < now)
+                .order_by(Event.start_date.desc())
+                .limit(50)
+                .all()
+            )
+            return render_template(
+                "reports/recruitment_candidates.html",
+                event=None,
+                candidates=[],
+                upcoming_events=upcoming,
+                recent_events=recent,
+                limit=limit,
+                min_score=min_score,
+            )
+
+        event = Event.query.get(event_id)
+        if not event:
+            return (
+                render_template(
+                    "reports/recruitment_candidates.html",
+                    event=None,
+                    candidates=[],
+                    error=f"Event {event_id} not found",
+                    upcoming_events=[],
+                    recent_events=[],
+                    limit=limit,
+                    min_score=min_score,
+                ),
+                404,
+            )
+
+        # Build keyword set from event title/description and type
+        def derive_keywords(e: Event) -> set[str]:
+            text = f"{(e.title or '').lower()} {(getattr(e, 'description', '') or '').lower()}"
+            keywords: set[str] = set()
+            # Data/BI themed
+            if e.type == EventType.DATA_VIZ or any(
+                tok in text
+                for tok in ["data", "analytics", "bi", "viz", "tableau", "power bi"]
+            ):
+                keywords.update(
+                    {
+                        "data",
+                        "analytics",
+                        "analyst",
+                        "bi",
+                        "sql",
+                        "excel",
+                        "tableau",
+                        "power bi",
+                        "python",
+                        "r ",
+                    }
+                )
+            # Finance themed
+            if any(
+                tok in text for tok in ["finance", "financial", "accounting", "budget"]
+            ):
+                keywords.update({"finance", "financial", "accounting", "excel"})
+            # Tech/general STEM
+            if any(
+                tok in text
+                for tok in ["tech", "software", "engineering", "stem", "computer"]
+            ):
+                keywords.update(
+                    {"tech", "software", "engineer", "engineering", "developer"}
+                )
+            return keywords
+
+        kw = derive_keywords(event)
+
+        # Governance filters: exclude do-not-contact and email opt-outs
+        base_query = Volunteer.query
+
+        # Build a prefilter when keywords exist to reduce candidate pool size
+        if kw:
+            ors = []
+            for term in kw:
+                like = f"%{term}%"
+                ors.append(
+                    or_(
+                        Volunteer.title.ilike(like),
+                        Volunteer.department.ilike(like),
+                        Volunteer.industry.ilike(like),
+                        Volunteer.skills.any(Skill.name.ilike(like)),
+                    )
+                )
+            base_query = base_query.filter(or_(*ors))
+
+        # Apply governance and status filters
+        try:
+            base_query = base_query.filter(
+                and_(
+                    or_(Volunteer.status == None, Volunteer.status != "inactive"),
+                    or_(
+                        Volunteer.do_not_contact == False,
+                        Volunteer.do_not_contact.is_(False),
+                    ),
+                    or_(
+                        Volunteer.email_opt_out == False,
+                        Volunteer.email_opt_out.is_(False),
+                    ),
+                    or_(
+                        Volunteer.exclude_from_reports == False,
+                        Volunteer.exclude_from_reports.is_(False),
+                    ),
+                )
+            )
+        except Exception:
+            # Fallback if inherited contact fields are not directly mapped on Volunteer in this ORM context
+            pass
+
+        volunteers = base_query.limit(2000).all()
+
+        # Precompute past participation by event type for scoring
+        same_type_counts = {
+            row[0]: row[1]
+            for row in (
+                db.session.query(
+                    EventParticipation.volunteer_id,
+                    db.func.count(EventParticipation.id),
+                )
+                .join(Event, Event.id == EventParticipation.event_id)
+                .filter(Event.type == event.type)
+                .group_by(EventParticipation.volunteer_id)
+                .all()
+            )
+        }
+
+        # Precompute overall participation frequency for all events
+        total_participation_counts = {
+            row[0]: row[1]
+            for row in (
+                db.session.query(
+                    EventParticipation.volunteer_id,
+                    db.func.count(EventParticipation.id),
+                )
+                .group_by(EventParticipation.volunteer_id)
+                .all()
+            )
+        }
+
+        def recency_boost(last_date) -> float:
+            if not last_date:
+                return 0.0
+            try:
+                days = (datetime.utcnow().date() - last_date).days
+            except Exception:
+                return 0.0
+            if days <= 90:
+                return 0.35
+            if days <= 180:
+                return 0.15
+            return 0.0
+
+        def local_boost(local_status) -> float:
+            try:
+                if local_status == LocalStatusEnum.local:
+                    return 0.2
+                if local_status == LocalStatusEnum.partial:
+                    return 0.1
+            except Exception:
+                pass
+            return 0.0
+
+        def score_and_reasons(v: Volunteer) -> tuple[float, list[str], str]:
+            score = 0.0
+            reasons: list[str] = []
+            breakdown_lines: list[str] = []
+
+            # Same event type participation
+            stc = same_type_counts.get(v.id, 0)
+            if stc > 0:
+                comp = 1.0
+                score += comp
+                et = str(event.type).split(".")[-1].replace("_", " ").title()
+                reasons.append(f"Past {et} event ({stc}x)")
+                breakdown_lines.append(f"Past {et} events: +{comp:.2f} (count {stc})")
+
+            # Title/department keyword match
+            title_text = f"{(v.title or '').lower()} {(v.department or '').lower()} {(v.industry or '').lower()}"
+            if kw and any(k in title_text for k in kw):
+                comp = 0.6
+                score += comp
+                hit = next((k for k in kw if k in title_text), None)
+                if hit:
+                    reasons.append(f"Title/industry match: {hit}")
+                    breakdown_lines.append(
+                        f"Title/industry keyword ({hit}): +{comp:.2f}"
+                    )
+                else:
+                    breakdown_lines.append(f"Title/industry keyword: +{comp:.2f}")
+
+            # Skill match
+            skill_names = {
+                s.name.lower()
+                for s in getattr(v, "skills", [])
+                if getattr(s, "name", None)
+            }
+            skill_overlap = kw.intersection(skill_names) if kw else set()
+            if skill_overlap:
+                comp = 0.8
+                score += comp
+                skills_txt = ", ".join(sorted(skill_overlap))
+                reasons.append(f"Skills: {skills_txt}")
+                breakdown_lines.append(f"Skill overlap ({skills_txt}): +{comp:.2f}")
+
+            # Recency boost
+            rb = recency_boost(getattr(v, "last_volunteer_date", None))
+            if rb > 0:
+                score += rb
+                reasons.append("Recent activity")
+                breakdown_lines.append(f"Recency: +{rb:.2f}")
+
+            # Locality
+            lb = local_boost(getattr(v, "local_status", None))
+            if lb > 0:
+                score += lb
+                reasons.append("Local/nearby")
+                breakdown_lines.append(f"Locality: +{lb:.2f}")
+
+            # Frequency boost with diminishing returns
+            freq = total_participation_counts.get(v.id, 0)
+            if freq >= 10:
+                comp = 0.3
+                score += comp
+                reasons.append(f"Frequent volunteer ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+            elif freq >= 5:
+                comp = 0.2
+                score += comp
+                reasons.append(f"Frequent volunteer ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+            elif freq >= 2:
+                comp = 0.1
+                score += comp
+                reasons.append(f"Volunteer history ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+
+            breakdown = "\n".join(breakdown_lines)
+            return round(score, 3), reasons, breakdown
+
+        candidates = []
+        for v in volunteers:
+            score, reasons, breakdown = score_and_reasons(v)
+            if min_score is not None and score < min_score:
+                continue
+            # Derive organization display
+            org_name = getattr(v, "organization_name", None)
+            if not org_name:
+                try:
+                    if getattr(v, "volunteer_organizations", None):
+                        org_name = v.volunteer_organizations[0].organization.name
+                except Exception:
+                    org_name = None
+
+            candidates.append(
+                {
+                    "id": v.id,
+                    "name": f"{getattr(v, 'first_name', '')} {getattr(v, 'last_name', '')}".strip(),
+                    "email": getattr(v, "primary_email", None),
+                    "title": v.title,
+                    "organization": org_name,
+                    "skills": sorted(
+                        [
+                            s.name
+                            for s in getattr(v, "skills", [])
+                            if getattr(s, "name", None)
+                        ]
+                    )[:8],
+                    "score": score,
+                    "reasons": reasons,
+                    "breakdown": breakdown,
+                }
+            )
+
+        # Sort by score desc and cap results
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        candidates = candidates[:limit]
+
+        return render_template(
+            "reports/recruitment_candidates.html",
+            event=event,
+            candidates=candidates,
+            upcoming_events=[],
+            recent_events=[],
+            limit=limit,
+            min_score=min_score,
+        )
+
+    @bp.route("/reports/recruitment/candidates.csv")
+    @login_required
+    def recruitment_candidates_csv():
+        """CSV export of event-based candidates using the same scoring heuristics."""
+        from sqlalchemy import and_, or_
+
+        event_id = request.args.get("event_id", type=int)
+        limit = request.args.get("limit", 100, type=int)
+        min_score = request.args.get("min_score", type=float)
+
+        event = Event.query.get(event_id) if event_id else None
+        if not event:
+            return Response("event_id is required", status=400)
+
+        # Same helpers as HTML route
+        def derive_keywords(e: Event) -> set[str]:
+            text = f"{(e.title or '').lower()} {(getattr(e, 'description', '') or '').lower()}"
+            keywords: set[str] = set()
+            if e.type == EventType.DATA_VIZ or any(
+                tok in text
+                for tok in ["data", "analytics", "bi", "viz", "tableau", "power bi"]
+            ):
+                keywords.update(
+                    {
+                        "data",
+                        "analytics",
+                        "analyst",
+                        "bi",
+                        "sql",
+                        "excel",
+                        "tableau",
+                        "power bi",
+                        "python",
+                        "r ",
+                    }
+                )
+            if any(
+                tok in text for tok in ["finance", "financial", "accounting", "budget"]
+            ):
+                keywords.update({"finance", "financial", "accounting", "excel"})
+            if any(
+                tok in text
+                for tok in ["tech", "software", "engineering", "stem", "computer"]
+            ):
+                keywords.update(
+                    {"tech", "software", "engineer", "engineering", "developer"}
+                )
+            return keywords
+
+        kw = derive_keywords(event)
+
+        base_query = Volunteer.query
+        if kw:
+            ors = []
+            for term in kw:
+                like = f"%{term}%"
+                ors.append(
+                    or_(
+                        Volunteer.title.ilike(like),
+                        Volunteer.department.ilike(like),
+                        Volunteer.industry.ilike(like),
+                        Volunteer.skills.any(Skill.name.ilike(like)),
+                    )
+                )
+            base_query = base_query.filter(or_(*ors))
+
+        try:
+            base_query = base_query.filter(
+                and_(
+                    or_(Volunteer.status == None, Volunteer.status != "inactive"),
+                    or_(
+                        Volunteer.do_not_contact == False,
+                        Volunteer.do_not_contact.is_(False),
+                    ),
+                    or_(
+                        Volunteer.email_opt_out == False,
+                        Volunteer.email_opt_out.is_(False),
+                    ),
+                    or_(
+                        Volunteer.exclude_from_reports == False,
+                        Volunteer.exclude_from_reports.is_(False),
+                    ),
+                )
+            )
+        except Exception:
+            pass
+
+        volunteers = base_query.limit(2000).all()
+
+        same_type_counts = {
+            row[0]: row[1]
+            for row in (
+                db.session.query(
+                    EventParticipation.volunteer_id,
+                    db.func.count(EventParticipation.id),
+                )
+                .join(Event, Event.id == EventParticipation.event_id)
+                .filter(Event.type == event.type)
+                .group_by(EventParticipation.volunteer_id)
+                .all()
+            )
+        }
+
+        # Precompute overall participation frequency for all events (CSV route)
+        total_participation_counts = {
+            row[0]: row[1]
+            for row in (
+                db.session.query(
+                    EventParticipation.volunteer_id,
+                    db.func.count(EventParticipation.id),
+                )
+                .group_by(EventParticipation.volunteer_id)
+                .all()
+            )
+        }
+
+        def recency_boost(last_date) -> float:
+            if not last_date:
+                return 0.0
+            try:
+                days = (datetime.utcnow().date() - last_date).days
+            except Exception:
+                return 0.0
+            if days <= 90:
+                return 0.4
+            if days <= 180:
+                return 0.2
+            return 0.0
+
+        def local_boost(local_status) -> float:
+            try:
+                if local_status == LocalStatusEnum.local:
+                    return 0.2
+                if local_status == LocalStatusEnum.partial:
+                    return 0.1
+            except Exception:
+                pass
+            return 0.0
+
+        rows = []
+        for v in volunteers:
+            score = 0.0
+            reasons = []
+            breakdown_lines: list[str] = []
+
+            stc = same_type_counts.get(v.id, 0)
+            if stc > 0:
+                comp = 1.0
+                score += comp
+                et = str(event.type).split(".")[-1].replace("_", " ").title()
+                reasons.append(f"Past {et} event ({stc}x)")
+                breakdown_lines.append(f"Past {et} events: +{comp:.2f} (count {stc})")
+
+            title_text = f"{(v.title or '').lower()} {(v.department or '').lower()} {(v.industry or '').lower()}"
+            if kw and any(k in title_text for k in kw):
+                comp = 0.6
+                score += comp
+                hit = next((k for k in kw if k in title_text), None)
+                if hit:
+                    reasons.append(f"Title/industry match: {hit}")
+                    breakdown_lines.append(
+                        f"Title/industry keyword ({hit}): +{comp:.2f}"
+                    )
+                else:
+                    breakdown_lines.append(f"Title/industry keyword: +{comp:.2f}")
+
+            skill_names = {
+                s.name.lower()
+                for s in getattr(v, "skills", [])
+                if getattr(s, "name", None)
+            }
+            skill_overlap = kw.intersection(skill_names) if kw else set()
+            if skill_overlap:
+                comp = 0.8
+                score += comp
+                skills_txt = ", ".join(sorted(skill_overlap))
+                reasons.append(f"Skills: {skills_txt}")
+                breakdown_lines.append(f"Skill overlap ({skills_txt}): +{comp:.2f}")
+
+            rb = recency_boost(getattr(v, "last_volunteer_date", None))
+            if rb > 0:
+                score += rb
+                reasons.append("Recent activity")
+                breakdown_lines.append(f"Recency: +{rb:.2f}")
+
+            lb = local_boost(getattr(v, "local_status", None))
+            if lb > 0:
+                score += lb
+                reasons.append("Local/nearby")
+                breakdown_lines.append(f"Locality: +{lb:.2f}")
+
+            # Frequency boost with diminishing returns
+            freq = total_participation_counts.get(v.id, 0)
+            if freq >= 10:
+                comp = 0.3
+                score += comp
+                reasons.append(f"Frequent volunteer ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+            elif freq >= 5:
+                comp = 0.2
+                score += comp
+                reasons.append(f"Frequent volunteer ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+            elif freq >= 2:
+                comp = 0.1
+                score += comp
+                reasons.append(f"Volunteer history ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+
+            if min_score is not None and score < min_score:
+                continue
+
+            org_name = getattr(v, "organization_name", None)
+            if not org_name:
+                try:
+                    if getattr(v, "volunteer_organizations", None):
+                        org_name = v.volunteer_organizations[0].organization.name
+                except Exception:
+                    org_name = None
+
+            rows.append(
+                [
+                    v.id,
+                    f"{getattr(v, 'first_name', '')} {getattr(v, 'last_name', '')}".strip(),
+                    getattr(v, "primary_email", None),
+                    v.title,
+                    org_name,
+                    "; ".join(
+                        sorted(
+                            [
+                                s.name
+                                for s in getattr(v, "skills", [])
+                                if getattr(s, "name", None)
+                            ]
+                        )[:12]
+                    ),
+                    f"{score:.3f}",
+                    " | ".join(reasons),
+                ]
+            )
+
+        # Sort and limit
+        rows.sort(key=lambda r: float(r[6]), reverse=True)
+        rows = rows[:limit]
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "Volunteer ID",
+                "Name",
+                "Email",
+                "Title",
+                "Organization",
+                "Skills",
+                "Score",
+                "Reasons",
+            ]
+        )
+        writer.writerows(rows)
+        csv_data = output.getvalue()
+
+        filename = f"event_{event.id}_candidates.csv"
+        headers = {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": f"attachment; filename={filename}",
+        }
+        return Response(csv_data, headers=headers)

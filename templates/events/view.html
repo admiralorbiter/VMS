@@ -51,6 +51,9 @@
                     <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" class="action-btn contact-btn" title="View emergency contact list">
                         <i class="fa-solid fa-address-book"></i> Contact Report
                     </a>
+                    <a href="{{ url_for('report.recruitment_candidates', event_id=event.id) }}" class="action-btn" title="Find volunteer candidates for this event">
+                        <i class="fa-solid fa-user-check"></i> Find Candidates
+                    </a>
                     <a href="{{ url_for('events.export_event_excel', id=event.id) }}" class="action-btn export-btn" title="Export event data">
                         <i class="fa-solid fa-download"></i> Export
                     </a>

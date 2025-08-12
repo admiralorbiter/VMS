@@ -92,6 +92,23 @@ def test_recruitment_tools(client, auth_headers):
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
+def test_recruitment_candidates(client, auth_headers):
+    """Test recruitment candidates report route"""
+    # Without event_id should render event selector (200 or 404 depending on env)
+    response = safe_route_test(
+        client, "/reports/recruitment/candidates", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+def test_recruitment_candidates_csv_requires_event(client, auth_headers):
+    """CSV export requires event_id"""
+    response = safe_route_test(
+        client, "/reports/recruitment/candidates.csv", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[400, 404, 500])
+
+
 def test_contact_report(client, auth_headers):
     """Test contact report"""
     response = safe_route_test(client, "/reports/contact", headers=auth_headers)

@@ -310,6 +310,17 @@ Notes:
 - **GET** `/reports/volunteer/thankyou` - Volunteer thank you reports
 - **GET** `/reports/volunteers/recent` - Recent volunteers report (filters: `event_types`, `school_year` or `date_from/date_to`, `title`, sorting `sort`=`last_event_date|total_hours|total_events|name|event_type`, `order`, pagination `page`, `per_page`). Excel export at `/reports/volunteers/recent/excel` with same query params.
 
+- **GET** `/reports/recruitment/candidates` - Event candidate matches UI
+  - Query params:
+    - `event_id` (int, optional): When omitted shows event selector; when provided renders ranked candidates for that event.
+    - `limit` (int, optional, default: 100)
+    - `min_score` (float, optional): Filter by minimum score
+  - Response: HTML with ranked candidates, reasons, and CSV export link.
+
+- **GET** `/reports/recruitment/candidates.csv` - CSV export of event candidate matches
+  - Query params: same as above; `event_id` required
+  - Response: CSV with columns: Volunteer ID, Name, Email, Title, Organization, Skills, Score, Reasons
+
 ### Management Routes
 
 - **GET** `/admin` - Admin dashboard

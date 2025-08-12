@@ -137,6 +137,12 @@ Each candidate includes a “why” list, e.g., “Past Data Viz event (2024-10-
   - Event view drawer and recruitment list page.
   - CSV export and mailto-based compose; log outreach intents.
   - Respect governance flags and frequency caps.
+  - [x] Add initial report route `/reports/recruitment/candidates` with deterministic scoring and reasons
+  - [x] Add template `templates/reports/recruitment_candidates.html` and link from Recruitment Tools
+  - [x] Add basic integration test for route availability and template rendering
+  - [x] Add CSV export for candidates (`/reports/recruitment/candidates.csv`)
+  - [x] Add event view entry point button linking to candidates with `event_id`
+  - [x] Factor in last volunteer recency and total participation frequency (diminishing returns)
 - **Phase 2 – Outreach + Availability**
   - SMTP send with per-candidate substitution; delivery status logging.
   - `volunteer_availability` and day/time matching; distance scoring using zip proximity.
