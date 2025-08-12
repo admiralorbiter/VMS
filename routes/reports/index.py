@@ -162,6 +162,13 @@ def load_routes(bp):
                 "url": "/reports/contact",
                 "category": "Event Management",
             },
+            {
+                "title": "Volunteers by Event",
+                "description": "Find volunteers who participated in selected event types (e.g., Career Fair, Data Viz) in a date range or school year; export to Excel.",
+                "icon": "fa-solid fa-users",
+                "url": "/reports/volunteers/by-event",
+                "category": "Volunteer Reports",
+            },
             # {
             #     'title': 'Pathway Report',
             #     'description': 'View pathway statistics including student participation, events, and contact engagement.',

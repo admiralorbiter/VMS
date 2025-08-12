@@ -427,3 +427,19 @@ def test_reports_sorting(client, auth_headers):
     """Test reports sorting"""
     response = safe_route_test(client, "/reports?sort_by=date", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+def test_volunteers_by_event_report(client, auth_headers):
+    """Test volunteers by event report main page"""
+    response = safe_route_test(
+        client, "/reports/volunteers/by-event", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+def test_volunteers_by_event_export(client, auth_headers):
+    """Test volunteers by event report excel export"""
+    response = safe_route_test(
+        client, "/reports/volunteers/by-event/excel", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[200, 404, 500])
