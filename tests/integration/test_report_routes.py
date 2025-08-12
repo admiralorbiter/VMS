@@ -51,20 +51,7 @@ def test_volunteer_thankyou_detail_report(client, auth_headers):
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
-def test_organization_thankyou_report(client, auth_headers):
-    """Test organization thank you report"""
-    response = safe_route_test(
-        client, "/reports/organization-thankyou", headers=auth_headers
-    )
-    assert_route_response(response, expected_statuses=[200, 404, 500])
-
-
-def test_organization_thankyou_detail_report(client, auth_headers):
-    """Test organization thank you detail report"""
-    response = safe_route_test(
-        client, "/reports/organization-thankyou-detail", headers=auth_headers
-    )
-    assert_route_response(response, expected_statuses=[200, 404, 500])
+# Removed: Organization Thank You report has been merged into Organization Report
 
 
 def test_district_year_end_report(client, auth_headers):

@@ -120,13 +120,7 @@ def load_routes(bp):
                 "url": "/reports/volunteer/thankyou",
                 "category": "Volunteer Recognition",
             },
-            {
-                "title": "Organization Thank You Report",
-                "description": "View organization contributions by sessions, hours, and volunteer participation.",
-                "icon": "fa-solid fa-building",
-                "url": "/reports/organization/thankyou",
-                "category": "Organization Recognition",
-            },
+            # Organization Thank You Report has been merged into Organization Report
             {
                 "title": "Organization Report",
                 "description": "View detailed organization engagement with in-person and virtual experiences, student counts, and classroom breakdowns.",

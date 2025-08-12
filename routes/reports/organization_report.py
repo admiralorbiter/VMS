@@ -35,6 +35,32 @@ def load_routes(bp):
         sort = request.args.get("sort", "total_hours")
         order = request.args.get("order", "desc")
 
+        # Get date range up front so we can compute summary stats even when using cache
+        start_date, end_date = get_school_year_date_range(school_year)
+
+        # Compute distinct volunteers across the selected time range (for summary tile)
+        unique_volunteers_query = (
+            db.session.query(db.func.count(db.distinct(Volunteer.id)))
+            .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
+            .join(Event, EventParticipation.event_id == Event.id)
+            .filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                EventParticipation.status.in_(
+                    ["Attended", "Completed", "Successfully Completed"]
+                ),
+            )
+        )
+        if host_filter == "prepkc":
+            unique_volunteers_query = unique_volunteers_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        unique_volunteers_count = unique_volunteers_query.scalar() or 0
+
         # If host_filter == 'all' and no refresh is requested, try to use cached summary
         if host_filter == "all" and not refresh_requested:
             cached_summary = OrganizationSummaryCache.query.filter_by(
@@ -57,6 +83,18 @@ def load_routes(bp):
 
                 org_data.sort(key=get_sort_key, reverse=(order == "desc"))
 
+                # Build summary stats from cached data plus computed distinct volunteers
+                summary_stats = {
+                    "unique_organizations": len(org_data),
+                    "total_sessions": sum(
+                        org.get("unique_sessions", 0) for org in org_data
+                    ),
+                    "total_hours": round(
+                        sum(org.get("total_hours", 0) for org in org_data), 2
+                    ),
+                    "unique_volunteers": unique_volunteers_count,
+                }
+
                 # Generate list of school years (from 2020-21 to current+1)
                 current_year = int(get_current_school_year()[:2])
                 school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
@@ -73,10 +111,8 @@ def load_routes(bp):
                     host_filter=host_filter,
                     is_cached=True,
                     last_refreshed=cached_summary.last_updated,
+                    summary_stats=summary_stats,
                 )
-
-        # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
 
         # Query organization participation through EventParticipation
         org_stats = (
@@ -141,6 +177,14 @@ def load_routes(bp):
 
         org_data.sort(key=get_sort_key, reverse=(order == "desc"))
 
+        # Build summary statistics for tiles
+        summary_stats = {
+            "unique_organizations": len(org_data),
+            "total_sessions": sum(org.get("unique_sessions", 0) for org in org_data),
+            "total_hours": round(sum(org.get("total_hours", 0) for org in org_data), 2),
+            "unique_volunteers": unique_volunteers_count,
+        }
+
         # Save to summary cache only for host_filter == 'all'
         if host_filter == "all":
             try:
@@ -172,6 +216,7 @@ def load_routes(bp):
             sort=sort,
             order=order,
             host_filter=host_filter,
+            summary_stats=summary_stats,
         )
 
     @bp.route("/reports/organization/report/detail/<int:org_id>")

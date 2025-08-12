@@ -15,7 +15,6 @@ from routes.reports.index import load_routes
 from routes.reports.organization_report import (
     load_routes as load_organization_report_routes,
 )
-from routes.reports.organization_thankyou import load_routes as load_organization_routes
 from routes.reports.pathways import load_routes as load_pathways_routes
 from routes.reports.recruitment import load_routes as load_recruitment_routes
 from routes.reports.virtual_session import load_routes as load_virtual_routes
@@ -28,7 +27,6 @@ from routes.reports.volunteers_by_event import (
 load_routes(report_bp)  # This registers the main /reports route
 load_virtual_routes(report_bp)
 load_volunteer_routes(report_bp)
-load_organization_routes(report_bp)
 load_organization_report_routes(report_bp)
 load_district_routes(report_bp)
 
