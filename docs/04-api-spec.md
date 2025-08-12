@@ -277,7 +277,14 @@ The VMS system primarily operates through web-based routes rather than a compreh
   - Filters: `action`, `resource_type`, `user_id`, `start_date`, `end_date`
   - Pagination: `page` (default: 1), `per_page` (default: 50; supports 25/50/100/200)
   - Responses: 200 OK with list and pagination, 302/403 when not authorized
-- **POST** `/management/refresh-all-caches` - Refresh caches (query: `scope=all|virtual|org|district|first_time_volunteer`, optional `school_year`, optional `host_filter`)
+- **POST** `/management/refresh-all-caches` - Refresh caches
+  - Query params:
+    - `scope=all|virtual|org|district|first_time_volunteer|recent_volunteers`
+    - `school_year` (YYZZ) for district or recent volunteers
+    - `host_filter` (district scope)
+    - `date_from`/`date_to` (YYYY-MM-DD) for recent volunteers when `school_year` omitted
+    - `title` optional title filter for recent volunteers caches
+  - For `recent_volunteers`, the endpoint precomputes BASE cache (all event types) for the date window and derived typed caches for each `EventType`.
 - **GET** `/schools` - Schools & Districts admin (admin-only)
   - District filters: `district_q` (name/code), pagination `d_page`, `d_per_page`
   - School filters: `school_q` (name), `district_q`, `level`, pagination `s_page`, `s_per_page`
@@ -301,6 +308,7 @@ Notes:
 - **GET** `/reports/district/year-end` - District year-end reports
 - **GET** `/reports/virtual/usage` - Virtual session usage reports
 - **GET** `/reports/volunteer/thankyou` - Volunteer thank you reports
+- **GET** `/reports/volunteers/recent` - Recent volunteers report (filters: `event_types`, `school_year` or `date_from/date_to`, `title`, sorting `sort`=`last_event_date|total_hours|total_events|name|event_type`, `order`, pagination `page`, `per_page`). Excel export at `/reports/volunteers/recent/excel` with same query params.
 
 ### Management Routes
 

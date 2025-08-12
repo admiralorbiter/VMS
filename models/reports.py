@@ -439,6 +439,49 @@ class VirtualSessionReportCache(db.Model):
         return f"<VirtualSessionReportCache {self.virtual_year}>"
 
 
+class RecentVolunteersReportCache(db.Model):
+    """
+    Model for caching recent volunteers report data.
+
+    Cache is parameterized by either a school_year (YYZZ) or a date range
+    (date_from/date_to), plus event types and optional title filter.
+    """
+
+    __tablename__ = "recent_volunteers_report_cache"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Filter keys
+    school_year = db.Column(db.String(4), nullable=True, index=True)
+    date_from = db.Column(db.Date, nullable=True, index=True)
+    date_to = db.Column(db.Date, nullable=True, index=True)
+    event_types = db.Column(
+        db.String(600), nullable=False, index=True
+    )  # comma-joined, sorted
+    title_filter = db.Column(db.String(255), nullable=True, index=True)
+
+    # Cached JSON payload
+    report_data = db.Column(db.JSON, nullable=False)
+
+    last_updated = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "school_year",
+            "date_from",
+            "date_to",
+            "event_types",
+            "title_filter",
+            name="uq_recent_volunteers_report_cache",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<RecentVolunteersReportCache sy={self.school_year} from={self.date_from} to={self.date_to} types={self.event_types}>"
+
+
 class VirtualSessionDistrictCache(db.Model):
     """
     Model for caching district-specific virtual session reports.

@@ -163,6 +163,13 @@ def load_routes(bp):
                 "url": "/reports/volunteers/by-event",
                 "category": "Volunteer Reports",
             },
+            {
+                "title": "Recent Volunteers",
+                "description": "See volunteers active in the selected period and first-time volunteers in that period; filter by event type, sort, paginate, and export.",
+                "icon": "fa-solid fa-user-clock",
+                "url": "/reports/volunteers/recent",
+                "category": "Volunteer Reports",
+            },
             # {
             #     'title': 'Pathway Report',
             #     'description': 'View pathway statistics including student participation, events, and contact engagement.',

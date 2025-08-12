@@ -430,3 +430,19 @@ def test_volunteers_by_event_export(client, auth_headers):
         client, "/reports/volunteers/by-event/excel", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+def test_recent_volunteers_report(client, auth_headers):
+    """Test recent volunteers report main page"""
+    response = safe_route_test(
+        client, "/reports/volunteers/recent", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+def test_recent_volunteers_export(client, auth_headers):
+    """Test recent volunteers report excel export"""
+    response = safe_route_test(
+        client, "/reports/volunteers/recent/excel", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[200, 404, 500])

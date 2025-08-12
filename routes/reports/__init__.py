@@ -16,6 +16,9 @@ from routes.reports.organization_report import (
     load_routes as load_organization_report_routes,
 )
 from routes.reports.pathways import load_routes as load_pathways_routes
+from routes.reports.recent_volunteers import (
+    load_routes as load_recent_volunteers_routes,
+)
 from routes.reports.recruitment import load_routes as load_recruitment_routes
 from routes.reports.virtual_session import load_routes as load_virtual_routes
 from routes.reports.volunteer_thankyou import load_routes as load_volunteer_routes
@@ -36,3 +39,4 @@ load_pathways_routes(report_bp)
 load_attendance_routes(report_bp)
 load_first_time_volunteer_routes(report_bp)
 load_volunteers_by_event_routes(report_bp)
+load_recent_volunteers_routes(report_bp)

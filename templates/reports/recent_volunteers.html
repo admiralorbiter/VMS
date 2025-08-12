@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Recent Volunteers{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+  .report-container { max-width: 1600px; margin: 20px auto; padding: 0 16px; }
+  .filters-card { background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:16px; }
+  .event-types { display:flex; flex-wrap:wrap; gap:10px; max-height: 240px; overflow:auto; padding:10px; background: #fff; border: 1px solid #e5e7eb; border-radius:8px; }
+  .event-pill { --bs-btn-padding-y:.2rem; --bs-btn-padding-x:.6rem; --bs-btn-font-size:.85rem; border-radius:20px; }
+  .btn-check:checked + .event-pill { background:#2c5aa0; color:#fff; border-color:#2c5aa0; box-shadow: 0 0 0 .15rem rgba(44,90,160,.25); }
+  .event-pill:hover { border-color:#2c5aa0; color:#2c5aa0; }
+  .table thead th { background:#2c5aa0; color:#fff; position:sticky; top:0; z-index:1; }
+  .table thead th.sortable { cursor:pointer; user-select:none; }
+  .table thead th.sortable::after { content:'\2195'; opacity:.7; margin-left:6px; }
+  .table thead th.sort-asc::after { content:'\2191'; opacity:1; }
+  .table thead th.sort-desc::after { content:'\2193'; opacity:1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>Recent Volunteers</h1>
+  <p class="text-muted">Volunteers active in the selected period, plus first-time volunteers whose first activity falls in the same period. Filter by event types, sort, paginate, and export.</p>
+
+  <form class="card p-3 mb-3 filters-card" method="get">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">School Year (YYZZ)</label>
+        <input type="text" name="school_year" class="form-control" value="{{ school_year }}" placeholder="2425">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">From</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">To</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Event title contains</label>
+        <input type="text" name="title" class="form-control" value="{{ title_contains }}" placeholder="e.g. Career Fair">
+      </div>
+    </div>
+
+    <div class="row g-2 align-items-end mt-2">
+      <div class="col-12">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
+          <label class="form-label mb-0">Event Types</label>
+          <div class="event-pills-actions d-flex align-items-center">
+            <input class="form-control form-control-sm d-inline-block w-auto me-2" id="eventTypeSearch" type="text" placeholder="Search types...">
+            <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="btnSelectAll">Select all</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="btnClearAll">Clear</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnDefaults">Defaults</button>
+          </div>
+        </div>
+        <div class="event-types mt-2" id="eventTypePills">
+          {% for value, label in type_choices %}
+            <input class="btn-check" type="checkbox" name="event_types" value="{{ value }}" id="type_{{ value }}" {% if value in selected_types %}checked{% endif %}>
+            <label class="btn btn-outline-secondary event-pill" for="type_{{ value }}" data-label="{{ label|lower }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <div class="form-text">Leave all unchecked to include all types.</div>
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <label class="form-label">Sort</label>
+        <select class="form-select" name="sort">
+          <option value="last_event_date" {% if sort == 'last_event_date' %}selected{% endif %}>Last Event Date</option>
+          <option value="total_hours" {% if sort == 'total_hours' %}selected{% endif %}>Total Hours</option>
+          <option value="total_events" {% if sort == 'total_events' %}selected{% endif %}>Total Events</option>
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
+          <option value="event_type" {% if sort == 'event_type' %}selected{% endif %}>Last Event Type</option>
+        </select>
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <label class="form-label">Order</label>
+        <select class="form-select" name="order">
+          <option value="desc" {% if order == 'desc' %}selected{% endif %}>Desc</option>
+          <option value="asc" {% if order == 'asc' %}selected{% endif %}>Asc</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn btn-success" href="{{ url_for('report.recent_volunteers_excel', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains) }}">Export Excel</a>
+      {% if first_time_payload_ts %}
+      <span class="ms-auto small text-muted">Cached: {{ first_time_payload_ts.strftime('%b %d, %Y %I:%M %p') }}</span>
+      {% endif %}
+      <a class="btn btn-outline-secondary ms-2" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=ft_page, ft_per_page=ft_per_page, ft_sort=ft_sort, ft_order=ft_order, refresh=1) }}">Refresh Cache</a>
+    </div>
+  </form>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Active Volunteers</strong>
+          <span class="text-muted">{{ active_total }} total</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0" id="activeTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="name">Name</th>
+                <th class="sortable" data-sort="org">Org</th>
+                <th class="text-end sortable" data-sort="events">Events</th>
+                <th class="text-end sortable" data-sort="hours">Hours</th>
+                <th class="sortable" data-sort="last">Last Event</th>
+                <th>Titles</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in active_volunteers %}
+              <tr>
+                <td class="cell-name">{{ v.name }}</td>
+                <td class="cell-org">{{ v.organization }}</td>
+                <td class="text-end cell-events" data-count="{{ v.event_count }}">{{ v.event_count }}</td>
+                <td class="text-end cell-hours">{{ '%.1f'|format(v.total_hours) }}</td>
+                <td class="cell-last" data-date="{{ v.last_event_date.strftime('%Y-%m-%d') if v.last_event_date }}">
+                  {% if v.last_event_date %}
+                  {{ v.last_event_date.strftime('%b %d, %Y') }}
+                  {% endif %}
+                </td>
+                <td>{{ v.events_display }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center text-muted">No volunteers found</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <div class="text-muted small">Page {{ page }} of {{ active_pages }}</div>
+          <div class="d-flex gap-1">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, per_page=per_page, page=1) }}">First</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, per_page=per_page, page=(page-1 if page>1 else 1)) }}">Prev</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, per_page=per_page, page=(page+1 if page<active_pages else active_pages)) }}">Next</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, per_page=per_page, page=active_pages) }}">Last</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>First-Time Volunteers In Range</strong>
+          <span class="text-muted">{{ ft_total }} total</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>
+                  <a href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=1, ft_per_page=ft_per_page, ft_sort='name', ft_order=ft_next_orders['name']) }}">Name</a>
+                </th>
+                <th>
+                  <a href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=1, ft_per_page=ft_per_page, ft_sort='first_volunteer_date', ft_order=ft_next_orders['first_volunteer_date']) }}">First Date</a>
+                </th>
+                <th class="text-end">
+                  <a href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=1, ft_per_page=ft_per_page, ft_sort='total_events', ft_order=ft_next_orders['total_events']) }}">Events</a>
+                </th>
+                <th class="text-end">
+                  <a href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=1, ft_per_page=ft_per_page, ft_sort='total_hours', ft_order=ft_next_orders['total_hours']) }}">Hours</a>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in ft_volunteers %}
+              <tr>
+                <td>{{ r.name }}</td>
+                <td>{% if r.first_volunteer_date %}{{ r.first_volunteer_date.strftime('%b %d, %Y') }}{% endif %}</td>
+                <td class="text-end">{{ r.total_events }}</td>
+                <td class="text-end">{{ '%.1f'|format(r.total_hours) }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No first-time volunteers in range</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <div class="text-muted small">Page {{ ft_page }} of {{ ft_pages }}</div>
+          <div class="d-flex gap-1">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=1, ft_per_page=ft_per_page, ft_sort=ft_sort, ft_order=ft_order) }}">First</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=(ft_page-1 if ft_page>1 else 1), ft_per_page=ft_per_page, ft_sort=ft_sort, ft_order=ft_order) }}">Prev</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=(ft_page+1 if ft_page<ft_pages else ft_pages), ft_per_page=ft_per_page, ft_sort=ft_sort, ft_order=ft_order) }}">Next</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('report.recent_volunteers', event_types=','.join(selected_types), school_year=school_year, date_from=date_from, date_to=date_to, title=title_contains, sort=sort, order=order, page=page, per_page=per_page, ft_page=ft_pages, ft_per_page=ft_per_page, ft_sort=ft_sort, ft_order=ft_order) }}">Last</a>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="small">Summary: {{ summary.active_volunteers }} active volunteers; {{ summary.active_total_events }} total events; {{ '%.1f'|format(summary.active_total_hours) }} hours.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Client-side sorting for Active Volunteers table
+  const table = document.getElementById('activeTable');
+  if (table) {
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('th.sortable');
+    let currentSort = { key: null, dir: 'asc' };
+    headers.forEach(h => {
+      h.addEventListener('click', () => {
+        const key = h.dataset.sort;
+        if (currentSort.key === key) {
+          currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSort = { key, dir: 'asc' };
+        }
+        headers.forEach(x => x.classList.remove('sort-asc','sort-desc'));
+        h.classList.add(currentSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+        sortRows(currentSort.key, currentSort.dir);
+      });
+    });
+    function sortRows(key, dir) {
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const mult = dir === 'asc' ? 1 : -1;
+      rows.sort((a,b) => {
+        let av='', bv='';
+        switch(key){
+          case 'name': av = a.querySelector('.cell-name')?.textContent.trim().toLowerCase() || ''; bv = b.querySelector('.cell-name')?.textContent.trim().toLowerCase() || ''; break;
+          case 'org': av = a.querySelector('.cell-org')?.textContent.trim().toLowerCase() || ''; bv = b.querySelector('.cell-org')?.textContent.trim().toLowerCase() || ''; break;
+          case 'events': av = parseInt(a.querySelector('.cell-events')?.dataset.count || '0'); bv = parseInt(b.querySelector('.cell-events')?.dataset.count || '0'); break;
+          case 'hours': av = parseFloat(a.querySelector('.cell-hours')?.textContent || '0'); bv = parseFloat(b.querySelector('.cell-hours')?.textContent || '0'); break;
+          case 'last':
+            av = a.querySelector('.cell-last')?.dataset.date || ''; bv = b.querySelector('.cell-last')?.dataset.date || '';
+            // empty dates sort to bottom
+            if (!av && !bv) return 0;
+            if (!av) return 1*mult; if (!bv) return -1*mult;
+            return (av > bv ? 1 : (av < bv ? -1 : 0)) * mult;
+        }
+        if (typeof av === 'string' && typeof bv === 'string') { if (av > bv) return 1*mult; if (av < bv) return -1*mult; return 0; }
+        return (av - bv) * mult;
+      });
+      tbody.innerHTML=''; rows.forEach(r => tbody.appendChild(r));
+    }
+  }
+
+  // Event type pills behavior (search/select all/clear/defaults)
+  const search = document.getElementById('eventTypeSearch');
+  const container = document.getElementById('eventTypePills');
+  const btnSelectAll = document.getElementById('btnSelectAll');
+  const btnClearAll = document.getElementById('btnClearAll');
+  const btnDefaults = document.getElementById('btnDefaults');
+
+  function allInputs(){ return container ? Array.from(container.querySelectorAll('input.btn-check')) : []; }
+  if (search && container) {
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      const labels = container.querySelectorAll('label.event-pill');
+      labels.forEach(l => {
+        const match = (l.dataset.label || '').includes(q);
+        l.style.display = match ? '' : 'none';
+      });
+    });
+  }
+  if (btnSelectAll) btnSelectAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = true); });
+  if (btnClearAll) btnClearAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = false); });
+  if (btnDefaults) btnDefaults.addEventListener('click', () => {
+    const defaults = new Set(['career_fair','data_viz']);
+    allInputs().forEach(i => { i.checked = defaults.has(i.value); });
+  });
+});
+</script>
+{% endblock %}

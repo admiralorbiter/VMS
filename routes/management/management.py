@@ -104,17 +104,26 @@ from models.bug_report import BugReport, BugReportType
 from models.class_model import Class
 from models.client_project_model import ClientProject, ProjectStatus
 from models.district_model import District
+from models.event import EventType
 from models.google_sheet import GoogleSheet
 from models.reports import (
     DistrictYearEndReport,
     FirstTimeVolunteerReportCache,
     OrganizationDetailCache,
     OrganizationSummaryCache,
+    RecentVolunteersReportCache,
     VirtualSessionDistrictCache,
     VirtualSessionReportCache,
 )
 from models.school_model import School
 from models.user import SecurityLevel, User
+from routes.reports.common import get_school_year_date_range
+from routes.reports.recent_volunteers import (
+    _derive_filtered_from_base,
+    _query_active_volunteers_all,
+    _query_first_time_in_range,
+    _serialize_for_cache,
+)
 from routes.reports.virtual_session import invalidate_virtual_session_caches
 from routes.utils import log_audit_action
 from utils.academic_year import get_academic_year_range
@@ -534,11 +543,13 @@ def refresh_all_caches():
     Refresh/invalidate all report caches.
 
     Optional query params:
-      - scope: one of 'all' (default), 'virtual', 'org', 'district', 'first_time_volunteer'
-      - school_year: for district caches (YYZZ), defaults to current
+      - scope: one of 'all' (default), 'virtual', 'org', 'district', 'first_time_volunteer', 'recent_volunteers'
+      - school_year: for district caches (YYZZ), also used for recent volunteers if provided
       - host_filter: for district caches, defaults to 'all'
+      - date_from/date_to (YYYY-MM-DD): optional for recent volunteers when school_year not provided
+      - title: optional title filter applied for recent volunteers caches
 
-    Returns JSON with counts of deleted/invalidated records.
+    Returns JSON with counts of deleted/invalidated/updated records.
     Requires admin.
     """
     if not current_user.is_admin:
@@ -548,7 +559,7 @@ def refresh_all_caches():
     school_year = request.args.get("school_year")
     host_filter = request.args.get("host_filter", "all")
 
-    summary = {"scope": scope, "deleted": {}, "invalidated": []}
+    summary = {"scope": scope, "deleted": {}, "invalidated": [], "updated": {}}
     try:
         if scope in ("all", "virtual"):
             invalidate_virtual_session_caches()  # all years
@@ -576,6 +587,141 @@ def refresh_all_caches():
                 deleted_district = DistrictYearEndReport.query.delete()
             db.session.commit()
             summary["deleted"]["DistrictYearEndReport"] = deleted_district
+
+        # Recent Volunteers caches (base + per-event-type typed caches)
+        if scope in ("all", "recent_volunteers"):
+            # Determine date window
+            rv_school_year = request.args.get("school_year")
+            date_from_str = request.args.get("date_from")
+            date_to_str = request.args.get("date_to")
+            title_filter = (request.args.get("title") or "").strip() or None
+
+            try:
+                if rv_school_year:
+                    start_dt, end_dt = get_school_year_date_range(rv_school_year)
+                else:
+                    # Fallback: parse provided dates or default to last 365 days
+                    from datetime import datetime, timedelta, timezone
+
+                    end_dt = (
+                        datetime.strptime(date_to_str, "%Y-%m-%d").replace(
+                            tzinfo=timezone.utc
+                        )
+                        if date_to_str
+                        else datetime.now(timezone.utc)
+                    )
+                    start_dt = (
+                        datetime.strptime(date_from_str, "%Y-%m-%d").replace(
+                            tzinfo=timezone.utc
+                        )
+                        if date_from_str
+                        else end_dt - timedelta(days=365)
+                    )
+            except Exception:
+                # On parse error, default last 365 days
+                from datetime import datetime, timedelta, timezone
+
+                end_dt = datetime.now(timezone.utc)
+                start_dt = end_dt - timedelta(days=365)
+
+            # Build BASE cache (ALL types)
+            base_active = _query_active_volunteers_all(start_dt, end_dt, title_filter)
+            base_first = _query_first_time_in_range(start_dt, end_dt)
+            base_payload = _serialize_for_cache(base_active, base_first)
+
+            # Upsert BASE row
+            base_key = "ALL"
+            updated_counts = {"base": 0, "typed": 0}
+            try:
+                existing_base = RecentVolunteersReportCache.query.filter_by(
+                    school_year=rv_school_year or None,
+                    date_from=(
+                        start_dt.date() if (start_dt and not rv_school_year) else None
+                    ),
+                    date_to=(
+                        end_dt.date() if (end_dt and not rv_school_year) else None
+                    ),
+                    event_types=base_key,
+                    title_filter=title_filter or None,
+                ).first()
+                if not existing_base:
+                    existing_base = RecentVolunteersReportCache(
+                        school_year=rv_school_year or None,
+                        date_from=(
+                            start_dt.date()
+                            if (start_dt and not rv_school_year)
+                            else None
+                        ),
+                        date_to=(
+                            end_dt.date() if (end_dt and not rv_school_year) else None
+                        ),
+                        event_types=base_key,
+                        title_filter=title_filter or None,
+                        report_data=base_payload,
+                    )
+                    db.session.add(existing_base)
+                else:
+                    existing_base.report_data = base_payload
+                    existing_base.last_updated = datetime.now(timezone.utc)
+                db.session.commit()
+                updated_counts["base"] = 1
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(
+                    f"Failed to save RecentVolunteers BASE cache: {e}"
+                )
+
+            # Derive and upsert typed caches for each EventType
+            try:
+                for et in EventType:
+                    active_typed, first_typed = _derive_filtered_from_base(
+                        base_active, base_first, [et]
+                    )
+                    typed_payload = _serialize_for_cache(active_typed, first_typed)
+                    typed_key = et.value
+                    typed_row = RecentVolunteersReportCache.query.filter_by(
+                        school_year=rv_school_year or None,
+                        date_from=(
+                            start_dt.date()
+                            if (start_dt and not rv_school_year)
+                            else None
+                        ),
+                        date_to=(
+                            end_dt.date() if (end_dt and not rv_school_year) else None
+                        ),
+                        event_types=typed_key,
+                        title_filter=title_filter or None,
+                    ).first()
+                    if not typed_row:
+                        typed_row = RecentVolunteersReportCache(
+                            school_year=rv_school_year or None,
+                            date_from=(
+                                start_dt.date()
+                                if (start_dt and not rv_school_year)
+                                else None
+                            ),
+                            date_to=(
+                                end_dt.date()
+                                if (end_dt and not rv_school_year)
+                                else None
+                            ),
+                            event_types=typed_key,
+                            title_filter=title_filter or None,
+                            report_data=typed_payload,
+                        )
+                        db.session.add(typed_row)
+                    else:
+                        typed_row.report_data = typed_payload
+                        typed_row.last_updated = datetime.now(timezone.utc)
+                    db.session.commit()
+                    updated_counts["typed"] += 1
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(
+                    f"Failed to save RecentVolunteers typed cache for {et.value if 'et' in locals() else 'unknown'}: {e}"
+                )
+
+            summary["updated"]["RecentVolunteersReportCache"] = updated_counts
 
         return jsonify(
             {"success": True, "message": "Caches refreshed", "result": summary}
