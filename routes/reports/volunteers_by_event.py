@@ -32,16 +32,24 @@ def _default_date_range():
 
 
 def _event_type_choices():
-    # Friendly name mapping for display
-    return [
-        (EventType.CAREER_FAIR.value, "Career Fair"),
-        (EventType.DATA_VIZ.value, "Data Viz"),
-        (EventType.CLASSROOM_SPEAKER.value, "Classroom Speaker"),
-        (EventType.WORKPLACE_VISIT.value, "Workplace Visit"),
-        (EventType.VIRTUAL_SESSION.value, "Virtual Session"),
-        (EventType.CLIENT_CONNECTED_PROJECT.value, "Client Connected Project"),
-        (EventType.MENTORING.value, "Mentoring"),
-    ]
+    """Return all event types with friendly labels, sorted alphabetically."""
+
+    def friendly_label(value: str) -> str:
+        label = value.replace("_", " ").title()
+        # Fix common acronym casing
+        fixes = {
+            "Fafsa": "FAFSA",
+            "Dia": "DIA",
+            "P2gd": "P2GD",
+            "Sla": "SLA",
+            "Bfi": "BFI",
+        }
+        return fixes.get(label, label)
+
+    choices = [(et.value, friendly_label(et.value)) for et in EventType]
+    # Sort by label
+    choices.sort(key=lambda x: x[1].lower())
+    return choices
 
 
 def _normalize_selected_types(raw_types: list[str] | None) -> list[EventType]:
@@ -171,11 +179,13 @@ def load_routes(bp: Blueprint):
     @login_required
     def volunteers_by_event_report():
         # Params: event_types (comma-separated), date_from, date_to, school_year, title
-        raw_types = (
-            request.args.get("event_types", "").split(",")
-            if request.args.get("event_types")
-            else None
-        )
+        raw_types = request.args.getlist("event_types")
+        if not raw_types:
+            raw_types = (
+                request.args.get("event_types", "").split(",")
+                if request.args.get("event_types")
+                else None
+            )
         selected_types = _normalize_selected_types(raw_types)
 
         school_year = request.args.get("school_year")
@@ -241,11 +251,13 @@ def load_routes(bp: Blueprint):
     @bp.route("/reports/volunteers/by-event/excel")
     @login_required
     def volunteers_by_event_excel():
-        raw_types = (
-            request.args.get("event_types", "").split(",")
-            if request.args.get("event_types")
-            else None
-        )
+        raw_types = request.args.getlist("event_types")
+        if not raw_types:
+            raw_types = (
+                request.args.get("event_types", "").split(",")
+                if request.args.get("event_types")
+                else None
+            )
         selected_types = _normalize_selected_types(raw_types)
 
         school_year = request.args.get("school_year")
