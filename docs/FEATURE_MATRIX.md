@@ -160,6 +160,16 @@ tags: [features, tracking, status, implementation]
 | Event Host Filter | ✅ Complete | Medium | - | Host filtering |
 | Export to Excel | ✅ Complete | High | - | Excel export |
 
+#### Volunteers by Event Report
+
+| Feature | Status | Priority | Assigned | Notes |
+|---------|--------|----------|----------|-------|
+| Event Type Filter | ✅ Complete | High | - | Select one or more event types |
+| School Year or Date Range | ✅ Complete | High | - | YYZZ academic year or ISO date range |
+| Title Contains Filter | ✅ Complete | Medium | - | Case-insensitive substring on event title |
+| Table View | ✅ Complete | High | - | Name, Email, Organization, Skills, Events summary, Last Event |
+| Export to Excel | ✅ Complete | High | - | Name, Email, Organization, Skills, Events (Count), Last Event, Event Titles |
+
 #### End of Year Report
 
 | Feature | Status | Priority | Assigned | Notes |

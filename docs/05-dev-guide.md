@@ -498,8 +498,24 @@ def add_volunteer():
 {% endblock %}
 ```
 
-## 🧪 Testing
+### Reports: Volunteers by Event
 
+A report to list volunteers by selected event types within a date range or school year.
+
+- Route (UI): `/reports/volunteers/by-event`
+- Export: `/reports/volunteers/by-event/excel`
+- Default filter: `career_fair,data_viz` over past 365 days if no `school_year` is provided
+- Query params: `event_types`, `school_year` (YYZZ), `date_from`, `date_to`, `title`
+- Displayed fields: Name, Email, Organization (friendly name), Skills, Events (summary), Last Event
+- Export columns: Name, Email, Organization, Skills, Events (Count), Last Event, Event Titles
+Developer notes:
+- Friendly organization name is resolved via `Volunteer.volunteer_organizations` (primary if set) and falls back to `Volunteer.organization_name` only when it is not a raw Salesforce 18-char ID.
+- Skills are aggregated from `Volunteer.skills` and rendered as a comma-separated list.
+- Participation filter uses `EventParticipation.status in ["Attended", "Completed", "Successfully Completed", "Simulcast"]` and `Event.status == Completed`.
+- Event types accept either enum names or values from `EventType`.
+- Excel generation follows existing `pandas` + `xlsxwriter` convention.
+
+## 🧪 Testing
 ### Running Tests
 
 #### Run All Tests

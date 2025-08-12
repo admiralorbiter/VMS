@@ -7,6 +7,7 @@ from flask_login import login_required
 
 from models import db
 from models.event import Event, EventStatus, EventType
+from models.organization import Organization, VolunteerOrganization
 from models.volunteer import EventParticipation, Volunteer
 from routes.reports.common import get_current_school_year, get_school_year_date_range
 
@@ -68,6 +69,29 @@ def _normalize_selected_types(raw_types: list[str] | None) -> list[EventType]:
     return unique or [EventType.CAREER_FAIR, EventType.DATA_VIZ]
 
 
+def _get_primary_org_name(volunteer: Volunteer) -> str | None:
+    # Prefer explicit primary org from association table
+    if getattr(volunteer, "volunteer_organizations", None):
+        primary = next(
+            (vo for vo in volunteer.volunteer_organizations if vo.is_primary), None
+        )
+        if primary and primary.organization and primary.organization.name:
+            return primary.organization.name
+        # Fall back to first org if no primary
+        first = (
+            volunteer.volunteer_organizations[0].organization
+            if volunteer.volunteer_organizations
+            else None
+        )
+        if first and first.name:
+            return first.name
+    # Avoid showing raw Salesforce IDs stored in organization_name
+    org_name = getattr(volunteer, "organization_name", None)
+    if org_name and not (len(org_name) == 18 and org_name.isalnum()):
+        return org_name
+    return None
+
+
 def _query_volunteers(
     start_date: datetime,
     end_date: datetime,
@@ -106,8 +130,16 @@ def _query_volunteers(
                 "id": volunteer.id,
                 "name": f"{volunteer.first_name} {volunteer.last_name}",
                 "email": volunteer.primary_email,
-                "phone": volunteer.primary_phone,
-                "organization": volunteer.organization_name,
+                "organization": _get_primary_org_name(volunteer),
+                "skills": ", ".join(
+                    sorted(
+                        {
+                            s.name
+                            for s in getattr(volunteer, "skills", [])
+                            if getattr(s, "name", None)
+                        }
+                    )
+                ),
                 "events": [],
                 "event_count": 0,
                 "last_event_date": None,
@@ -174,6 +206,9 @@ def load_routes(bp: Blueprint):
             v["events_display"] = "; ".join(unique_titles[:5]) + (
                 " …" if len(unique_titles) > 5 else ""
             )
+            # Ensure organization and skills strings for UI
+            v["organization"] = v.get("organization") or "None"
+            v["skills"] = v.get("skills") or ""
 
         # Build list of selectable event types for the form
         type_choices = _event_type_choices()
@@ -242,8 +277,8 @@ def load_routes(bp: Blueprint):
                 {
                     "Name": v["name"],
                     "Email": v["email"],
-                    "Phone": v["phone"],
-                    "Organization": v["organization"],
+                    "Organization": v.get("organization") or "",
+                    "Skills": v.get("skills") or "",
                     "Events (Count)": v["event_count"],
                     "Last Event": last_date,
                     "Event Titles": "; ".join(sorted(set(titles))),
@@ -257,11 +292,11 @@ def load_routes(bp: Blueprint):
             ws = writer.sheets["Volunteers"]
             ws.set_column("A:A", 28)
             ws.set_column("B:B", 36)
-            ws.set_column("C:C", 16)
-            ws.set_column("D:D", 26)
-            ws.set_column("E:E", 14)
-            ws.set_column("F:F", 14)
-            ws.set_column("G:G", 60)
+            ws.set_column("C:C", 26)  # Organization
+            ws.set_column("D:D", 40)  # Skills
+            ws.set_column("E:E", 14)  # Events (Count)
+            ws.set_column("F:F", 14)  # Last Event
+            ws.set_column("G:G", 60)  # Event Titles
 
         output.seek(0)
 

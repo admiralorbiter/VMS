@@ -118,6 +118,7 @@ graph TB
 - **Features**:
   - Usage reports and metrics
   - Organization performance analytics
+  - Volunteers by Event report (identify volunteers for selected event types like Career Fair and Data Viz) with Excel export
   - Data visualization
   - Export capabilities (Excel, PDF)
 

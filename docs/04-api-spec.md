@@ -258,6 +258,18 @@ The VMS system primarily operates through web-based routes rather than a compreh
 
 - **GET** `/reports` - Main reports page
 - **GET** `/reports/attendance` - Attendance reports
+- **GET** `/reports/volunteers/by-event` - Volunteers by Event report UI
+  - Query params:
+    - `event_types` (string, optional): Comma-separated event types to include. Defaults to `career_fair,data_viz`.
+    - `school_year` (string, optional): Academic year `YYZZ` (e.g., `2324`). If set, overrides `date_from`/`date_to`.
+    - `date_from` (date, optional): ISO `YYYY-MM-DD`. Defaults to past 365 days when `school_year` not set.
+    - `date_to` (date, optional): ISO `YYYY-MM-DD`.
+    - `title` (string, optional): Case-insensitive substring filter on event title.
+  - Response: HTML page with filter form and table showing volunteer Name, Email, Organization (friendly name), Skills, Events summary, Last Event date.
+
+- **GET** `/reports/volunteers/by-event/excel` - Volunteers by Event Excel export
+  - Same query params as above
+  - Response: `.xlsx` with columns: Name, Email, Organization, Skills, Events (Count), Last Event, Event Titles.
 ### Management/Admin Routes
 
 - **GET** `/admin` - Admin dashboard
