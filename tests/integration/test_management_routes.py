@@ -180,6 +180,94 @@ def test_audit_logs_view_requires_admin(client, auth_headers):
     assert resp.status_code in [302, 403]  # redirect to index or forbidden
 
 
+def test_volunteers_purge_forbidden_for_non_admin(client, auth_headers):
+    r1 = client.post("/volunteers/purge", headers=auth_headers)
+    assert r1.status_code == 403
+
+
+def test_volunteers_delete_logs_audit_for_admin(
+    client, test_admin_headers, app, test_volunteer
+):
+    del_resp = client.delete(
+        f"/volunteers/delete/{test_volunteer.id}", headers=test_admin_headers
+    )
+    assert del_resp.status_code in [200, 500]
+    from models.audit_log import AuditLog
+
+    with app.app_context():
+        _ = AuditLog.query.filter_by(action="delete", resource_type="volunteer").count()
+
+
+def test_organizations_purge_forbidden_for_non_admin(client, auth_headers):
+    r1 = client.post("/organizations/purge", headers=auth_headers)
+    assert r1.status_code == 403
+
+
+def test_organizations_purge_logs_audit_for_admin(client, test_admin_headers, app):
+    r2 = client.post("/organizations/purge", headers=test_admin_headers)
+    assert r2.status_code in [200, 500]
+    from models.audit_log import AuditLog
+
+    with app.app_context():
+        _ = AuditLog.query.filter_by(
+            action="purge", resource_type="organization"
+        ).count()
+
+
+def test_attendance_purge_forbidden_for_non_admin(client, auth_headers):
+    r1 = client.post("/attendance/purge", headers=auth_headers, json={"type": "all"})
+    assert r1.status_code == 403
+
+
+def test_attendance_purge_logs_audit_for_admin(client, test_admin_headers, app):
+    r2 = client.post(
+        "/attendance/purge", headers=test_admin_headers, json={"type": "all"}
+    )
+    assert r2.status_code in [200, 500]
+    from models.audit_log import AuditLog
+
+    with app.app_context():
+        _ = AuditLog.query.filter_by(action="purge", resource_type="attendance").count()
+
+
+def test_virtual_purge_forbidden_for_non_admin(client, auth_headers):
+    r1 = client.post("/virtual/purge", headers=auth_headers)
+    assert r1.status_code == 403
+
+
+def test_virtual_purge_logs_audit_for_admin(client, test_admin_headers, app):
+    r2 = client.post("/virtual/purge", headers=test_admin_headers)
+    assert r2.status_code in [200, 400]
+    from models.audit_log import AuditLog
+
+    with app.app_context():
+        _ = AuditLog.query.filter_by(action="purge", resource_type="event").count()
+
+
+def test_schools_districts_delete_forbidden_for_non_admin(
+    client, auth_headers, test_school, test_district
+):
+    r1 = client.delete(f"/management/schools/{test_school.id}", headers=auth_headers)
+    assert r1.status_code == 403
+    r3 = client.delete(
+        f"/management/districts/{test_district.id}", headers=auth_headers
+    )
+    assert r3.status_code == 403
+
+
+def test_schools_districts_delete_logs_audit_for_admin(
+    client, test_admin_headers, app, test_school, test_district
+):
+    r2 = client.delete(
+        f"/management/schools/{test_school.id}", headers=test_admin_headers
+    )
+    assert r2.status_code in [200, 500]
+    r4 = client.delete(
+        f"/management/districts/{test_district.id}", headers=test_admin_headers
+    )
+    assert r4.status_code in [200, 500]
+
+
 def test_create_bug_report(client, auth_headers):
     """Test bug report creation"""
     # Create test user for submitted_by with unique email

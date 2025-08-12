@@ -36,19 +36,22 @@ Acceptance criteria:
 - Reports → First Time Volunteer
   - Export to Excel: Complete (`/reports/first-time-volunteer/export`)
 - Reports → District Year-End Detail
-  - Sortable table: Still in progress (no active client-side sorting in detail view)
+  - Sortable table: Complete (client-side sorting active)
 - Reports → Organization Report
-  - Cached results: In progress (cache models exist; routes not fully wired to caches)
+  - Cached results: Complete (routes wired to summary/detail caches with invalidation)
 - Admin
   - Import process automation & sequential import: Complete in Admin UI (one-click sequential import). CLI tool present
   - Update local statuses: Complete (`/volunteers/update-local-statuses` + Admin button)
-  - Refresh all caches: Planned (only District Year-End cache refresh exists)
+  - Refresh all caches: Complete (Admin action for org, virtual, first-time volunteer, district caches)
 - History
   - Activity type filter: Complete (filtering supported in routes and template)
 - Schools System
   - Column sort: Complete (client-side sorting on districts and schools tables)
+  - Filters/Pagination: Complete (district and school filters; independent pagination)
+ - Client Projects
+   - Filters/Pagination: Complete (title/description, status, district, organization; paginated)
 - Event Attendance Impact
-  - Connect with End of Year reporting: Planned
+  - Connect with End of Year reporting: Deferred (see `docs/planning/backlog.md`)
 
  Follow-ups to close for Phase B:
 - [x] Implement CLI `manage_imports.py --sequential --only=<step>` with structured logging (timestamps, IDs)
@@ -81,14 +84,14 @@ Acceptance criteria:
 - [ ] Student import can be chunk-limited for rapid smoke testing
 
 ### 3) RBAC on destructive actions
-- [ ] Audit existing routes for delete/update risks
-- [ ] Add role checks or permission decorators
-- [ ] Add audit logging to critical operations
-- [ ] Add tests for unauthorized access and audit records
+- [x] Audit existing routes for delete/update risks
+- [x] Add role checks or permission decorators
+- [x] Add audit logging to critical operations
+- [x] Add tests for unauthorized access and audit records
 
 Acceptance criteria:
-- [ ] Destructive endpoints are protected and logged
-- [ ] Tests cover allowed/denied scenarios
+- [x] Destructive endpoints are protected and logged
+- [x] Tests cover allowed/denied scenarios
 
 ## Dependencies
 

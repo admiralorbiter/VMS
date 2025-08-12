@@ -94,6 +94,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from sqlalchemy import func
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -886,8 +887,46 @@ def schools():
         flash("Access denied. Admin privileges required.", "error")
         return redirect(url_for("index"))
 
-    districts = District.query.order_by(District.name).all()
-    schools = School.query.order_by(School.name).all()
+    # Filters and pagination
+    district_q = request.args.get("district_q", "").strip()
+    school_q = request.args.get("school_q", "").strip()
+    level_q = request.args.get("level", "").strip()
+    d_page = request.args.get("d_page", type=int, default=1)
+    d_per_page = request.args.get("d_per_page", type=int, default=25)
+    s_page = request.args.get("s_page", type=int, default=1)
+    s_per_page = request.args.get("s_per_page", type=int, default=25)
+
+    # Districts query
+    dq = District.query
+    if district_q:
+        like = f"%{district_q.lower()}%"
+        # Support name and district_code if present
+        code_col = getattr(District, "district_code", None)
+        if code_col is not None:
+            dq = dq.filter(
+                func.lower(District.name).like(like) | func.lower(code_col).like(like)
+            )
+        else:
+            dq = dq.filter(func.lower(District.name).like(like))
+    districts_pagination = dq.order_by(District.name).paginate(
+        page=d_page, per_page=d_per_page, error_out=False
+    )
+    districts = districts_pagination.items
+
+    # Schools query
+    sq = School.query
+    if school_q:
+        sq = sq.filter(func.lower(School.name).like(f"%{school_q.lower()}%"))
+    if district_q:
+        sq = sq.join(District, isouter=True).filter(
+            func.lower(District.name).like(f"%{district_q.lower()}%")
+        )
+    if level_q:
+        sq = sq.filter(func.lower(School.level) == level_q.lower())
+    schools_pagination = sq.order_by(School.name).paginate(
+        page=s_page, per_page=s_per_page, error_out=False
+    )
+    schools = schools_pagination.items
     sheet_id = os.getenv("SCHOOL_MAPPING_GOOGLE_SHEET")
     sheet_url = (
         f"https://docs.google.com/spreadsheets/d/{sheet_id}" if sheet_id else None
@@ -897,6 +936,17 @@ def schools():
         "management/schools.html",
         districts=districts,
         schools=schools,
+        d_pagination=districts_pagination,
+        s_pagination=schools_pagination,
+        filters={
+            "district_q": district_q,
+            "school_q": school_q,
+            "level": level_q,
+            "d_page": d_page,
+            "d_per_page": d_per_page,
+            "s_page": s_page,
+            "s_per_page": s_per_page,
+        },
         sheet_url=sheet_url,
     )
 

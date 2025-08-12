@@ -82,6 +82,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from sqlalchemy import func
 
 from models import db
 from models.client_project_model import ClientProject, ProjectStatus
@@ -113,12 +114,46 @@ def index():
         flash("Access denied. Admin privileges required.", "error")
         return redirect(url_for("index"))
 
-    projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()
+    # Filters and pagination
+    q = request.args.get("q", "").strip()
+    status = request.args.get("status", "").strip()
+    district = request.args.get("district", "").strip()
+    organization = request.args.get("organization", "").strip()
+    page = request.args.get("page", type=int, default=1)
+    per_page = request.args.get("per_page", type=int, default=25)
+
+    qry = ClientProject.query
+    if q:
+        like = f"%{q.lower()}%"
+        qry = qry.filter(
+            (func.lower(ClientProject.project_title).like(like))
+            | (func.lower(ClientProject.project_description).like(like))
+        )
+    if status:
+        qry = qry.filter(ClientProject.status == status)
+    if district:
+        qry = qry.filter(func.lower(ClientProject.district) == district.lower())
+    if organization:
+        qry = qry.filter(func.lower(ClientProject.organization) == organization.lower())
+
+    pagination = qry.order_by(ClientProject.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    projects = pagination.items
     return render_template(
         "client_connected_projects/client_connected_projects.html",
         projects=projects,
+        pagination=pagination,
         ProjectStatus=ProjectStatus,
         config={"CLIENT_PROJECTS_SHEET_ID": getenv("CLIENT_PROJECTS_SHEET_ID")},
+        filters={
+            "q": q,
+            "status": status,
+            "district": district,
+            "organization": organization,
+            "page": page,
+            "per_page": per_page,
+        },
     )
 
 

@@ -266,6 +266,13 @@ The VMS system primarily operates through web-based routes rather than a compreh
   - Pagination: `page` (default: 1), `per_page` (default: 50; supports 25/50/100/200)
   - Responses: 200 OK with list and pagination, 302/403 when not authorized
 - **POST** `/management/refresh-all-caches` - Refresh caches (query: `scope=all|virtual|org|district|first_time_volunteer`, optional `school_year`, optional `host_filter`)
+- **GET** `/schools` - Schools & Districts admin (admin-only)
+  - District filters: `district_q` (name/code), pagination `d_page`, `d_per_page`
+  - School filters: `school_q` (name), `district_q`, `level`, pagination `s_page`, `s_per_page`
+  - Responses: 200 OK, 302/403 when not authorized
+- **GET** `/management/client-projects/` - Client Projects admin (admin-only)
+  - Filters: `q` (title/description), `status`, `district`, `organization`, pagination `page`, `per_page`
+  - Responses: 200 OK, 302/403 when not authorized
 
 ### Audit Logging
 

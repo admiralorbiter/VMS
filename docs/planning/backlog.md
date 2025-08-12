@@ -21,6 +21,9 @@ tags: [backlog, enhancements]
 ### Features
 - [ ] Schools module parity with requirements
 - [ ] Client Projects enhancements
+- [ ] Event Attendance Impact → Connect with End of Year reporting
+  - Add navigation hooks from District Year-End views to Impact view with scoped filters
+  - Align data context (school year, district) and validate totals parity
 
 ### Observability
 - [ ] Metrics export (Prometheus/OpenTelemetry)
