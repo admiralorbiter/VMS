@@ -39,6 +39,7 @@ A clear, chronologically ordered roadmap from baseline to release, split into ex
 - Backlog and non-blocking improvements: `docs/planning/backlog.md`
 - Checklists (PR, feature spec, runbooks): `docs/planning/checklists.md`
 - Tooling deep dive and configs: `docs/planning/tooling.md`
+- Automated Volunteer Recruitment & Matching: `docs/planning/volunteer-recruitment-automation.md`
 
 ## This Week’s Action Items
 
