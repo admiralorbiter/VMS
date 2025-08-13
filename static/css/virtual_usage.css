@@ -359,6 +359,26 @@ body > main {
     margin-top: 5px;
 }
 
+/* Small secondary line under a stat for percentages or extra context */
+.stat-subvalue {
+    display: block;
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-top: 4px;
+    line-height: 1.1;
+}
+
+/* Compact rounded badge for percents inside district stat items */
+.percent-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f1f3f5;
+    color: #495057;
+    font-size: 0.78em;
+    font-weight: 700;
+}
+
 .no-data {
     text-align: center;
     padding: 40px;

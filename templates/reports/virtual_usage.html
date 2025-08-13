@@ -400,6 +400,16 @@
                 <div class="stat-value">{{ overall_summary.professional_count }}</div>
                 <div class="stat-label">PROS</div>
             </div>
+            <div class="stat-card" title="Sessions led by a Local professional">
+                <div class="stat-value">{{ overall_summary.local_session_count or 0 }}</div>
+                <div class="stat-subvalue">{{ overall_summary.local_session_percent or 0 }}% of sessions</div>
+                <div class="stat-label">LOCAL SESS</div>
+            </div>
+            <div class="stat-card" title="Sessions led by a Professional of Color">
+                <div class="stat-value">{{ overall_summary.poc_session_count or 0 }}</div>
+                <div class="stat-subvalue">{{ overall_summary.poc_session_percent or 0 }}% of sessions</div>
+                <div class="stat-label">POC SESS</div>
+            </div>
             <div class="stat-card">
                 <div class="stat-value">{{ overall_summary.local_professional_count or 0 }}</div>
                 <div class="stat-label">LOCAL PROS</div>
@@ -459,9 +469,15 @@
                                 <span class="stat-value">{{ summary.professional_count }}</span>
                                 <span class="stat-label">PROS</span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-value">{{ summary.local_professional_count or 0 }}</span>
-                                <span class="stat-label">LOCAL</span>
+                            <div class="stat-item" title="Local-led sessions">
+                                <span class="stat-value">{{ summary.local_session_count or 0 }}</span>
+                                <span class="stat-subvalue"><span class="percent-pill">{{ summary.local_session_percent or 0 }}%</span></span>
+                                <span class="stat-label">LOCAL SESS</span>
+                            </div>
+                            <div class="stat-item" title="POC-led sessions">
+                                <span class="stat-value">{{ summary.poc_session_count or 0 }}</span>
+                                <span class="stat-subvalue"><span class="percent-pill">{{ summary.poc_session_percent or 0 }}%</span></span>
+                                <span class="stat-label">POC SESS</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-value">{{ summary.professional_of_color_count }}</span>

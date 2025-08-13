@@ -452,6 +452,8 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         "professional_count": set(),
         "professional_of_color_count": set(),
         "local_professional_count": set(),
+        "local_sessions": set(),
+        "poc_sessions": set(),
         "school_count": set(),
     }
 
@@ -486,10 +488,16 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                 district_summary["schools"].add(session["school_name"])
                 overall_stats["school_count"].add(session["school_name"])
 
-            # Count unique sessions (by title)
-            if session["session_title"]:
+            # Count unique sessions (prefer id when available)
+            if session.get("session_title"):
                 district_summary["sessions"].add(session["session_title"])
                 overall_stats["session_count"].add(session["session_title"])
+            if session.get("event_id"):
+                # Attach id sets lazily to avoid key errors if older cache present
+                if "session_ids" not in district_summary:
+                    district_summary["session_ids"] = set()
+                district_summary["session_ids"].add(session["event_id"])
+                overall_stats.setdefault("session_ids", set()).add(session["event_id"])
 
             # Count experiences (every row counts as an experience)
             district_summary["total_experiences"] += 1
@@ -497,7 +505,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
 
             # Student count will be calculated after we have unique teacher count
 
-            # Process presenters and check for People of Color
+            # Process presenters and check for People of Color; also mark session as Local/POC
             if session["presenter_data"]:
                 for presenter_data in session["presenter_data"]:
                     presenter_name = presenter_data.get("name", "")
@@ -565,6 +573,23 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                                     )
                         except Exception:
                             pass
+
+                # Session-level flags (local / POC sessions)
+                sid_flag = session.get("event_id") or session.get("session_title")
+                if sid_flag:
+                    if any(p.get("is_local") for p in session["presenter_data"]):
+                        overall_stats["local_sessions"].add(sid_flag)
+                        # mirror per-district; initialize lazily
+                        if "local_sessions" not in district_summary:
+                            district_summary["local_sessions"] = set()
+                        district_summary["local_sessions"].add(sid_flag)
+                    if any(
+                        p.get("is_people_of_color") for p in session["presenter_data"]
+                    ):
+                        overall_stats["poc_sessions"].add(sid_flag)
+                        if "poc_sessions" not in district_summary:
+                            district_summary["poc_sessions"] = set()
+                        district_summary["poc_sessions"].add(sid_flag)
             elif session["presenter"]:
                 # Fallback to old presenter format
                 presenters = [p.strip() for p in session["presenter"].split(",")]
@@ -578,11 +603,29 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
     for district_name, summary in district_summaries.items():
         summary["teacher_count"] = len(summary["teachers"])
         summary["school_count"] = len(summary["schools"])
-        summary["session_count"] = len(summary["sessions"])
+        # Prefer event-id based counting if present
+        summary["session_count"] = (
+            len(summary.get("session_ids", set()))
+            if summary.get("session_ids")
+            else len(summary["sessions"])
+        )
         summary["organization_count"] = len(summary["organizations"])
         summary["professional_count"] = len(summary["professionals"])
         summary["professional_of_color_count"] = len(summary["professionals_of_color"])
         summary["local_professional_count"] = len(summary["local_professionals"])
+        # Session-level flags
+        summary["local_session_count"] = len(summary.get("local_sessions", set()))
+        summary["poc_session_count"] = len(summary.get("poc_sessions", set()))
+        if summary["session_count"]:
+            summary["local_session_percent"] = round(
+                100 * summary["local_session_count"] / summary["session_count"]
+            )
+            summary["poc_session_percent"] = round(
+                100 * summary["poc_session_count"] / summary["session_count"]
+            )
+        else:
+            summary["local_session_percent"] = 0
+            summary["poc_session_percent"] = 0
 
         # Calculate student count as unique teachers × 25
         summary["total_students"] = summary["teacher_count"] * 25
@@ -590,10 +633,16 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         del summary["teachers"]
         del summary["schools"]
         del summary["sessions"]
+        if "session_ids" in summary:
+            del summary["session_ids"]
         del summary["organizations"]
         del summary["professionals"]
         del summary["professionals_of_color"]
         del summary["local_professionals"]
+        if "local_sessions" in summary:
+            del summary["local_sessions"]
+        if "poc_sessions" in summary:
+            del summary["poc_sessions"]
 
     # Filter to only show main districts by default (unless admin requests all)
     if not show_all_districts:
@@ -623,7 +672,22 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         ),
         "local_professional_count": len(overall_stats["local_professional_count"]),
         "school_count": len(overall_stats["school_count"]),
+        "local_session_count": len(overall_stats["local_sessions"]),
+        "poc_session_count": len(overall_stats["poc_sessions"]),
     }
+
+    # Percentages overall
+    denom = overall_summary["session_count"] or 1
+    overall_summary["local_session_percent"] = (
+        round(100 * overall_summary["local_session_count"] / denom)
+        if overall_summary["local_session_count"]
+        else 0
+    )
+    overall_summary["poc_session_percent"] = (
+        round(100 * overall_summary["poc_session_count"] / denom)
+        if overall_summary["poc_session_count"]
+        else 0
+    )
 
     return district_summaries, overall_summary
 
@@ -868,7 +932,12 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 session_data.append(
                     {
                         "event_id": event.id,
-                        "status": teacher_reg.status or "registered",
+                        # Use the event's status for session-level filtering (completed/simulcast),
+                        # not the individual teacher registration status
+                        "status": (
+                            event.status.value if getattr(event, "status", None) else ""
+                        )
+                        or "registered",
                         "date": (
                             event.start_date.strftime("%m/%d/%y")
                             if event.start_date
@@ -1159,6 +1228,9 @@ def compute_virtual_session_district_data(
                             if v.organizations
                             else []
                         ),
+                        # Derive locality from volunteer.local_status
+                        "is_local": getattr(v, "local_status", None)
+                        == LocalStatusEnum.local,
                     }
                     for v in event.volunteers
                 ]
@@ -1559,6 +1631,30 @@ def compute_virtual_session_district_data(
                 except Exception:
                     pass
 
+    # Add district-level session coverage fields based on session_data
+    # Build sets of unique session ids and flags
+    _session_ids = set()
+    _local_sessions = set()
+    _poc_sessions = set()
+    for s in session_data:
+        sid = s.get("event_id") or s.get("session_title")
+        if not sid:
+            continue
+        # Only count completed/simulcast at district detail level
+        st = (s.get("status") or "").strip().lower()
+        if st not in ("completed", "simulcast", "successfully completed"):
+            continue
+        _session_ids.add(sid)
+        try:
+            if any(p.get("is_local") for p in s.get("presenter_data", []) or []):
+                _local_sessions.add(sid)
+            if any(
+                p.get("is_people_of_color") for p in s.get("presenter_data", []) or []
+            ):
+                _poc_sessions.add(sid)
+        except Exception:
+            pass
+
     summary_stats = {
         "total_teachers": len(total_teachers_completed),
         "total_students": estimated_students,
@@ -1569,7 +1665,23 @@ def compute_virtual_session_district_data(
         "total_professionals_of_color": len(total_professionals_of_color_completed),
         "total_local_professionals": len(total_local_professionals),
         "total_schools": len(total_schools),
+        # District-level coverage
+        "local_session_count": len(_local_sessions),
+        "poc_session_count": len(_poc_sessions),
     }
+
+    # Add percents derived from unique session ids
+    denom = len(_session_ids) or 1
+    summary_stats["local_session_percent"] = (
+        round(100 * summary_stats["local_session_count"] / denom)
+        if summary_stats["local_session_count"]
+        else 0
+    )
+    summary_stats["poc_session_percent"] = (
+        round(100 * summary_stats["poc_session_count"] / denom)
+        if summary_stats["poc_session_count"]
+        else 0
+    )
 
     return (
         session_data,
@@ -1683,7 +1795,7 @@ def load_routes(bp):
                 overall_summary = cached_data.overall_summary
                 filter_options = cached_data.filter_options
 
-                # Check if cached data has the new fields; if local_pro metric missing, recompute summaries
+                # Check if cached data has the new fields; if any are missing, recompute summaries
                 if session_data and len(session_data) > 0:
                     sample_session = session_data[0]
                     needs_recompute = False
@@ -1692,11 +1804,29 @@ def load_routes(bp):
                         or "presenter_data" not in sample_session
                     ):
                         needs_recompute = True
+                    # Ensure newer Local/POC session coverage fields exist
                     if not needs_recompute and (
                         overall_summary is None
                         or "local_professional_count" not in overall_summary
+                        or "local_session_count" not in overall_summary
+                        or "poc_session_count" not in overall_summary
                     ):
                         needs_recompute = True
+                    # Also ensure district summaries contain the new session coverage fields
+                    if (
+                        not needs_recompute
+                        and isinstance(district_summaries, dict)
+                        and district_summaries
+                    ):
+                        try:
+                            any_district = next(iter(district_summaries.values()))
+                            if (
+                                "local_session_count" not in any_district
+                                or "poc_session_count" not in any_district
+                            ):
+                                needs_recompute = True
+                        except Exception:
+                            pass
                     if needs_recompute:
                         (
                             session_data,
@@ -1968,6 +2098,7 @@ def load_routes(bp):
                         "total_professionals_of_color"
                     ],
                     total_schools=summary_stats["total_schools"],
+                    summary_stats=summary_stats,
                     school_breakdown=school_breakdown,
                     teacher_breakdown=teacher_breakdown,
                     session_data=session_data,
@@ -2020,6 +2151,7 @@ def load_routes(bp):
             total_local_professionals=summary_stats.get("total_local_professionals", 0),
             total_professionals_of_color=summary_stats["total_professionals_of_color"],
             total_schools=summary_stats["total_schools"],
+            summary_stats=summary_stats,
             school_breakdown=school_breakdown,
             teacher_breakdown=teacher_breakdown,
             session_data=session_data,

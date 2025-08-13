@@ -535,6 +535,16 @@
             <span class="stat-value">{{ total_professionals }}</span>
             <span class="stat-label">Professionals</span>
         </div>
+        <div class="stat-card" title="Sessions led by a Local professional">
+            <span class="stat-value">{{ summary_stats.local_session_count or 0 }}</span>
+            <span class="stat-subvalue">{{ summary_stats.local_session_percent or 0 }}% of sessions</span>
+            <span class="stat-label">Local Sessions</span>
+        </div>
+        <div class="stat-card" title="Sessions led by a Professional of Color">
+            <span class="stat-value">{{ summary_stats.poc_session_count or 0 }}</span>
+            <span class="stat-subvalue">{{ summary_stats.poc_session_percent or 0 }}% of sessions</span>
+            <span class="stat-label">POC Sessions</span>
+        </div>
         <div class="stat-card">
             <span class="stat-value">{{ total_local_professionals or 0 }}</span>
             <span class="stat-label">Local Professionals</span>
