@@ -41,6 +41,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    row-gap: 10px;
 }
 
 .district-header h3 {
@@ -74,22 +76,23 @@
 }
 
 .stat-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 12px;
     margin-bottom: 0;
 }
 
 .stat-item {
     flex: 1 1 0;
-    min-width: 70px;
+    min-width: 0;
     text-align: center;
     margin: 0 2px;
+    padding: 2px 0;
 }
 
 .stat-value {
     display: block;
-    font-size: 1.7em;
+    font-size: 1.5em;
     font-weight: 700;
     color: #007bff;
     margin-bottom: 2px;
@@ -114,6 +117,10 @@
     .district-grid {
         grid-template-columns: 1fr;
     }
+}
+
+@media (max-width: 1200px) {
+    .stat-value { font-size: 1.35em; }
 }
 
 /* Filter Actions Button Layout */
