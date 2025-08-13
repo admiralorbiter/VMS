@@ -202,6 +202,7 @@ VMS/
 │   ├── create_admin.py             # Create admin user
 │   ├── copy_students.py            # Data migration
 │   ├── copy_users.py               # User migration
+│   ├── copy_google_sheets.py       # Google Sheets config migration (with optional re-encryption)
 │   ├── mark_excluded_volunteers.py # Data cleanup
 │   ├── setup_encryption_key.py     # Security setup
 │   ├── sync_script.py              # Data synchronization

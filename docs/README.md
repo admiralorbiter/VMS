@@ -83,6 +83,7 @@ Welcome to the comprehensive documentation for the Volunteer Management System (
 - [Database Design](03-data-model.md#detailed-table-definitions)
 - [Import Processes](03-data-model.md#data-importexport)
 - [Backup Procedures](06-ops-guide.md#database-maintenance)
+- [Restore Google Sheets Configs](06-ops-guide.md#🧰-data-recovery-google-sheets-configs)
 
 ### By User Role
 

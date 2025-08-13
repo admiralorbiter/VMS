@@ -275,6 +275,37 @@ Tips:
 - Use `--exclude` to skip heavy steps on weekdays, and run full imports weekly
 - Use `--plan-only` with logging on a different schedule to validate connectivity
 
+## 🧰 Data Recovery: Google Sheets Configs
+
+The `google_sheets` table stores encrypted Google Sheets configurations (by academic year and purpose) and a `created_by` user reference. To restore from a backup SQLite file (`instance/old.db`) into the active DB (`instance/your_database.db`) while preserving `created_by` links and handling encryption keys, use the migration script:
+
+### Script
+
+```bash
+python scripts/copy_google_sheets.py --mode raw
+```
+
+Modes:
+- `raw` (default): copies `sheet_id` ciphertext as-is. Use this if the encryption key hasn't changed between backup and current environment.
+- `recrypt`: decrypt with `OLD_ENCRYPTION_KEY` and re-encrypt with `ENCRYPTION_KEY`. Use this if the key has changed or you want to normalize to the current key.
+
+Example (PowerShell):
+```powershell
+$env:OLD_ENCRYPTION_KEY="<old-fernet-key>"
+$env:ENCRYPTION_KEY="<current-fernet-key>"
+python scripts/copy_google_sheets.py --mode recrypt
+```
+
+Behavior:
+- Preserves `created_by` by matching users from backup to current DB via `username` or `email`.
+- Avoids duplicates using `(academic_year, purpose, sheet_name)` logical key; skips duplicates.
+- If a row ID already exists in target, inserts without specifying `id` (new primary key).
+- If a user cannot be matched, sets `created_by = NULL`.
+
+Requirements:
+- `instance/old.db` and `instance/your_database.db` must exist.
+- For `recrypt`, set `OLD_ENCRYPTION_KEY` and `ENCRYPTION_KEY` env vars.
+
 ### PythonAnywhere (Web)
 
 Use a Scheduled Task with a bash command that activates your venv, changes to the repo, and runs the CLI excluding students:
