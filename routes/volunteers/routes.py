@@ -1844,7 +1844,9 @@ def update_local_statuses():
 def get_organizations_json(volunteer_id):
     """Get organizations data for a specific volunteer as JSON"""
     try:
-        volunteer = Volunteer.query.get_or_404(volunteer_id)
+        from models import eagerload_volunteer_bundle
+
+        volunteer = eagerload_volunteer_bundle(Volunteer.query).get_or_404(volunteer_id)
         organizations_data = []
 
         for vol_org in volunteer.volunteer_organizations:

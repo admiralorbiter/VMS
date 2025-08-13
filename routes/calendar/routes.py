@@ -63,6 +63,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, render_template, request
 from sqlalchemy import and_, literal, or_
 
+from models import eagerload_event_bundle
 from models.event import Event, EventStatus
 
 # Create calendar blueprint
@@ -141,7 +142,8 @@ def get_events():
     # Query events within the specified date range
     # Include events that either end within the range or have no end date
     events = (
-        Event.query.filter(
+        eagerload_event_bundle(Event.query)
+        .filter(
             or_(
                 and_(Event.end_date != None, Event.end_date >= literal(start_date)),
                 Event.end_date == None,

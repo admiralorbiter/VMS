@@ -5,6 +5,38 @@ tags: [operations, deployment, monitoring, maintenance, troubleshooting]
 ---
 
 # VMS Operations Guide
+## Database Operations
+
+### Timestamps and Timezone
+
+- All timestamp columns are UTC with `DateTime(timezone=True)` and DB-side defaults (`now()` on insert/update).
+- Application converts to local time for display only.
+
+### Query Performance
+
+- Code uses eager-loading bundles to avoid N+1 issues on common pages.
+- Ensure migrations add appropriate composite indexes (e.g., `(school, start_date)` for events).
+
+### Migrations (recommended)
+
+- Use Alembic for schema changes: generate, review, apply.
+- For enum changes in Postgres, use named types and explicit migrations.
+- For the participation uniqueness rollout:
+  - Step 1: Run `/admin/scan-student-participation-duplicates` to assess scope.
+  - Step 2: POST `/admin/dedupe-student-participations` and verify no pairs remain.
+  - Step 3: Apply migration adding unique (event_id, student_id) on `event_student_participation`.
+    - Commands: `alembic upgrade head` (local/staging/prod)
+  - Step 4: Monitor logs for constraint violations on import; the app has a guard to coalesce updates.
+
+CI suggestion:
+- Add a CI job step to run `alembic upgrade head` against a disposable database to validate migrations on each PR.
+
+Alembic tips
+- If database already has schema but no Alembic version, you can align it with: `alembic stamp head` (use carefully; prefer applying real migrations).
+- To create a new migration: `alembic revision --autogenerate -m "<message>"`, review the diff, then `alembic upgrade head`.
+- On SQLite, use batch operations (our migrations already use `op.batch_alter_table`) for ALTERs.
+- To downgrade one step: `alembic downgrade -1` (only for local/dev; avoid in prod without a plan).
+
 
 ## 🚀 Deployment
 

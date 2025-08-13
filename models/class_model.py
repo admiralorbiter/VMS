@@ -163,13 +163,10 @@ class Class(db.Model):
     )
     class_year = db.Column(db.Integer, nullable=False)  # Academic year number
 
-    # Audit timestamps
-    # WARNING: These fields are used by data sync processes - do not modify timestamp behavior
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    # Audit timestamps (timezone-aware, DB-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(
-        db.DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
     )
 
     # Explicit relationship with School model

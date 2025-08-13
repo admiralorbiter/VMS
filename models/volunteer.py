@@ -170,9 +170,16 @@ class ConnectorData(db.Model):
     last_login_datetime = db.Column(String(50))  # Last time they logged in
     last_update_date = db.Column(Date)  # Last time their record was updated
 
-    # Automatic timestamp tracking
-    created_at = db.Column(DateTime, nullable=True)
-    updated_at = db.Column(DateTime, nullable=True)
+    # Automatic timestamp tracking (timezone-aware, DB-side defaults)
+    created_at = db.Column(
+        DateTime(timezone=True), server_default=db.func.now(), nullable=True
+    )
+    updated_at = db.Column(
+        DateTime(timezone=True),
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+        nullable=True,
+    )
 
     # Bidirectional relationship with Volunteer model
     # This allows easy access between volunteer and their connector data

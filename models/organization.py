@@ -146,13 +146,16 @@ class Organization(db.Model):
     billing_postal_code = db.Column(String(255), nullable=True)
     billing_country = db.Column(String(255), nullable=True)
 
-    # Automatic timestamp fields for audit trail
-    # created_at: Set once when record is created
-    # updated_at: Automatically updated whenever record is modified
+    # Automatic timestamp fields for audit trail (timezone-aware, DB-side defaults)
     # last_activity_date: Manually set to track business-level activity
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now(), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True),
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+        nullable=False,
     )
     last_activity_date = db.Column(db.DateTime, nullable=True)
 
@@ -202,7 +205,12 @@ class Organization(db.Model):
         """
         Returns the number of volunteers associated with this organization.
         """
-        return len(self.volunteers)
+        # Use association table count to avoid loading entire collection
+        return (
+            db.session.query(VolunteerOrganization)
+            .filter(VolunteerOrganization.organization_id == self.id)
+            .count()
+        )
 
 
 class VolunteerOrganization(db.Model):
@@ -287,10 +295,15 @@ class VolunteerOrganization(db.Model):
         String(50), default="Current"
     )  # e.g., 'Current', 'Past', 'Pending'
 
-    # Automatic timestamps for audit trail
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # Automatic timestamps for audit trail (timezone-aware, DB-side defaults)
+    created_at = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now(), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True),
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+        nullable=False,
     )
 
     # Relationship definitions for direct access to parent models

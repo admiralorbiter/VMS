@@ -94,6 +94,37 @@ This will create the SQLite database with all tables. The app also auto-creates 
    ```
 
 ## RBAC and Audit Logging
+## Timezone and Timestamps
+
+- All timestamp columns use `DateTime(timezone=True)` and database-side defaults.
+- Write timestamps with `server_default=now()` and `onupdate=now()` to ensure consistency across environments.
+- Treat all stored times as UTC; convert to local time only at the view layer.
+
+## Query Loading Strategy
+
+- Prefer explicit eager loading with `selectinload` bundles to avoid N+1 queries.
+- Use provided helpers from `models`:
+  - `eagerload_event_bundle(Event.query)`
+  - `eagerload_organization_bundle(Organization.query)`
+  - `eagerload_volunteer_bundle(Volunteer.query)`
+- Avoid `lazy="dynamic"` unless you need filtered subqueries on very large collections.
+
+## Student Participation Dedupe and Constraint
+
+- Import behavior: Salesforce can emit multiple Session_Participant__c rows per student/session. The app now guards against creating duplicate `(event_id, student_id)` pairs by updating the existing pair when a second record is seen.
+- Admin tools:
+  - Scan duplicates: `/admin/scan-student-participation-duplicates`
+  - Dedupe: POST `/admin/dedupe-student-participations` merges per pair and deletes extras.
+- Schema: `(event_id, student_id)` is enforced unique; update migrations accordingly.
+
+## Alembic Migrations
+
+- Setup: Alembic is configured in `alembic.ini` with environment in `alembic/env.py`.
+- Generate migration: `alembic revision --autogenerate -m "<message>"`
+- Apply migration: `alembic upgrade head`
+- Create a new blank migration: `alembic revision -m "<message>"`
+- Example: Unique (event_id, student_id) added in `alembic/versions/0001_add_unique_event_student.py`.
+
 
 - Destructive routes (delete/purge) are protected by an `admin_required` decorator. Non-admin users receive HTTP 403 responses.
 - Audit entries (`AuditLog`) are written for destructive actions with fields: `user_id`, `action`, `resource_type`, `resource_id`, `method`, `path`, `ip`, and `meta`.

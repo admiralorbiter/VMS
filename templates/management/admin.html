@@ -482,6 +482,25 @@
         </div>
     </div>
 
+    {# Student Participation Integrity #}
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Student Participation Integrity</h5>
+            <p class="text-muted mb-3">Scan for duplicate (event_id, student_id) pairs and deduplicate safely.</p>
+            <div class="d-grid gap-2 d-md-flex">
+                <a href="{{ url_for('management.scan_student_participation_duplicates') }}" target="_blank" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-search"></i>
+                    <span>View Duplicate Pairs (opens in new tab)</span>
+                </a>
+                <button onclick="dedupeStudentParticipations()" class="btn btn-danger" id="dedupeParticipationsBtn">
+                    <i class="fas fa-compress-arrows-alt"></i>
+                    <span>Deduplicate Student Participations</span>
+                </button>
+            </div>
+            <div class="import-status" id="dedupeStudentParticipationsStatus"></div>
+        </div>
+    </div>
+
     {# System Management #}
     <div class="card admin-card mt-4">
         <div class="card-body">
@@ -1220,6 +1239,43 @@ function importVirtualEvents() {
     // Keeping it here for now, but it will not be called by the new button.
     // The new button will navigate to the Google Sheets management page.
     alert('Virtual event import functionality is now managed via the "Manage Virtual Event Google Sheets" button.');
+}
+
+async function dedupeStudentParticipations() {
+    if (!confirm('Deduplicate student participations by merging duplicates and deleting extras? This cannot be undone.')) {
+        return;
+    }
+
+    const btn = document.getElementById('dedupeParticipationsBtn');
+    const status = document.getElementById('dedupeStudentParticipationsStatus');
+    btn.disabled = true;
+    status.textContent = 'Running dedupe...';
+
+    try {
+        const res = await fetch('/admin/dedupe-student-participations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (res.ok && data && data.success) {
+            const s = data.summary || {};
+            const msg = `Pairs processed: ${s.pairs || 0}, updated: ${s.updated || 0}, deleted: ${s.deleted || 0}`;
+            status.textContent = msg;
+            status.classList.add('success');
+            showToast('Success', msg, 'success');
+        } else {
+            const err = (data && (data.error || JSON.stringify(data))) || 'Unknown error';
+            status.textContent = 'Error: ' + err;
+            status.classList.add('error');
+            showToast('Error', 'Dedupe failed: ' + err, 'error');
+        }
+    } catch (e) {
+        status.textContent = 'Error: ' + (e && e.message ? e.message : e);
+        status.classList.add('error');
+        showToast('Error', 'Dedupe failed: ' + (e && e.message ? e.message : e), 'error');
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 function importPathways() {

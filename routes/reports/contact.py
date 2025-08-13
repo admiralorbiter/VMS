@@ -64,7 +64,9 @@ def load_routes(bp):
     @bp.route("/reports/contact/<int:event_id>")
     @login_required
     def contact_report_detail(event_id):
-        event = Event.query.get_or_404(event_id)
+        from models import eagerload_event_bundle
+
+        event = eagerload_event_bundle(Event.query).get_or_404(event_id)
 
         # Get sort parameters
         sort = request.args.get("sort", "name")

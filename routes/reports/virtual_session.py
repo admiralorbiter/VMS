@@ -848,13 +848,9 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
         Tuple of (session_data, district_summaries, overall_summary, filter_options)
     """
     # Base query for virtual session events
-    base_query = Event.query.options(
-        joinedload(Event.districts),
-        joinedload(Event.teacher_registrations)
-        .joinedload(EventTeacher.teacher)
-        .joinedload(Teacher.school),
-        joinedload(Event.volunteers).joinedload(Volunteer.organizations),
-    ).filter(
+    from models import eagerload_event_bundle
+
+    base_query = eagerload_event_bundle(Event.query).filter(
         Event.type == EventType.VIRTUAL_SESSION,
         Event.start_date >= date_from,
         Event.start_date <= date_to,
@@ -1127,12 +1123,9 @@ def compute_virtual_session_district_data(
         Tuple of (session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats)
     """
     # Base query for virtual session events
-    base_query = Event.query.options(
-        joinedload(Event.districts),
-        joinedload(Event.teacher_registrations)
-        .joinedload(EventTeacher.teacher)
-        .joinedload(Teacher.school),
-    ).filter(
+    from models import eagerload_event_bundle
+
+    base_query = eagerload_event_bundle(Event.query).filter(
         Event.type == EventType.VIRTUAL_SESSION,
         Event.start_date >= date_from,
         Event.start_date <= date_to,

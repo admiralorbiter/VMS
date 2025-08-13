@@ -392,7 +392,9 @@ def get_attendance_detail(event_id):
     Returns:
         JSON object with attendance detail data or default values
     """
-    event = Event.query.get_or_404(event_id)
+    from models import eagerload_event_bundle
+
+    event = eagerload_event_bundle(Event.query).get_or_404(event_id)
     detail = event.attendance_detail
     if not detail:
         # Return empty/default values if not set
@@ -436,7 +438,9 @@ def update_attendance_detail(event_id):
     Returns:
         JSON response indicating success
     """
-    event = Event.query.get_or_404(event_id)
+    from models import eagerload_event_bundle
+
+    event = eagerload_event_bundle(Event.query).get_or_404(event_id)
     data = request.json
     detail = event.attendance_detail
     if not detail:

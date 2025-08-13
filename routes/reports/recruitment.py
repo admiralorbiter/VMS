@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import Blueprint, Response, render_template, request
 from flask_login import login_required
 
-from models import db
+from models import db, eagerload_volunteer_bundle
 from models.contact import LocalStatusEnum
 
 # from models.upcoming_events import UpcomingEvent  # Moved to microservice
@@ -81,7 +81,8 @@ def load_routes(bp):
             search_terms = search_query.split()
 
             volunteers_query = (
-                Volunteer.query.outerjoin(Volunteer.volunteer_organizations)
+                eagerload_volunteer_bundle(Volunteer.query)
+                .outerjoin(Volunteer.volunteer_organizations)
                 .outerjoin(VolunteerOrganization.organization)
                 .outerjoin(
                     EventParticipation, EventParticipation.volunteer_id == Volunteer.id
@@ -205,7 +206,8 @@ def load_routes(bp):
 
         # Base query joining necessary tables
         query = (
-            Volunteer.query.outerjoin(VolunteerOrganization)
+            eagerload_volunteer_bundle(Volunteer.query)
+            .outerjoin(VolunteerOrganization)
             .outerjoin(Organization)
             .outerjoin(VolunteerSkill)
             .outerjoin(Skill)
@@ -458,7 +460,7 @@ def load_routes(bp):
                 # Fallback if inherited contact fields are not directly mapped on Volunteer in this ORM context
                 pass
 
-            volunteers = base_query.limit(2000).all()
+            volunteers = eagerload_volunteer_bundle(base_query).limit(2000).all()
 
             # Precompute past participation by event type for scoring
             same_type_counts = {

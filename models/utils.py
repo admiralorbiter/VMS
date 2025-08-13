@@ -42,7 +42,7 @@ def get_utc_now():
         datetime: Current UTC datetime with timezone information
 
     Usage:
-        # In model default values
+        # In model default values (legacy; prefer DB-side defaults)
         created_at = db.Column(db.DateTime, default=get_utc_now)
 
         # In model updates
@@ -52,4 +52,5 @@ def get_utc_now():
         if model.created_at < get_utc_now():
             # Model was created in the past
     """
+    # Prefer DB-side defaults (server_default=func.now()) for most timestamp fields.
     return datetime.now(timezone.utc)

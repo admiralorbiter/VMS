@@ -207,12 +207,10 @@ class Teacher(Contact):
         String(18), nullable=True
     )  # Remove ForeignKey constraint
 
-    # Metadata
-    created_at = db.Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Metadata (timezone-aware, DB-side defaults)
+    created_at = db.Column(DateTime(timezone=True), server_default=db.func.now())
     updated_at = db.Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
     )
 
     # Enhanced event tracking

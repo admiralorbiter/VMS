@@ -1,0 +1,2 @@
+This directory contains Alembic migration environment.
+Use `alembic revision --autogenerate -m "message"` and `alembic upgrade head`.

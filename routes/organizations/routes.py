@@ -86,7 +86,7 @@ from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 from config import Config
-from models import Volunteer, db
+from models import Volunteer, db, eagerload_organization_bundle
 from models.contact import Contact  # Add this import at the top
 from models.district_model import District  # Add this import at the top
 from models.event import Event
@@ -257,7 +257,7 @@ def view_organization(id):
         recent_activities: List of recent volunteer activities
     """
     # Get the organization or return 404 if not found
-    organization = Organization.query.get_or_404(id)
+    organization = eagerload_organization_bundle(Organization.query).get_or_404(id)
 
     # Get volunteer-organization relationships with volunteer data loaded
     # This ensures we have access to both the relationship metadata and volunteer details

@@ -7,7 +7,7 @@ from flask import Blueprint, current_app, render_template, request, send_file
 from flask_login import login_required
 from sqlalchemy import and_, or_
 
-from models import db
+from models import db, eagerload_volunteer_bundle
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.reports import RecentVolunteersReportCache
@@ -210,7 +210,7 @@ def _query_active_volunteers(
         like = f"%{title_contains.strip()}%"
         query = query.filter(Event.title.ilike(like))
 
-    rows = query.all()
+    rows = eagerload_volunteer_bundle(query).all()
 
     # Aggregate per volunteer
     aggregated: dict[int, dict] = {}
@@ -280,7 +280,7 @@ def _query_active_volunteers_all(
         like = f"%{title_contains.strip()}%"
         query = query.filter(Event.title.ilike(like))
 
-    rows = query.all()
+    rows = eagerload_volunteer_bundle(query).all()
 
     aggregated: dict[int, dict] = {}
     for volunteer, event, participation in rows:

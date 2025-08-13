@@ -203,6 +203,58 @@ def test_event_reports(client, auth_headers):
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
+def test_student_participation_import_guard(client, auth_headers, test_event, app):
+    """Import guard should not create duplicate (event_id, student_id) pairs."""
+    from models.event import EventStudentParticipation
+    from models.student import Student
+
+    with app.app_context():
+        # Create a Student (inherits Contact fields)
+        student = Student(
+            salesforce_individual_id="003TESTSTUDENT001",
+            first_name="Stu",
+            last_name="Dent",
+        )
+        db.session.add(student)
+        db.session.commit()
+
+        # Simulate two Salesforce rows for same event/student
+        row1 = {
+            "Session__c": test_event.salesforce_id or "EVT_SF_1",
+            "Contact__c": student.salesforce_individual_id,
+            "Id": "SP_SF_1",
+            "Status__c": "Scheduled",
+            "Delivery_Hours__c": None,
+            "Age_Group__c": None,
+        }
+        row2 = {
+            "Session__c": row1["Session__c"],
+            "Contact__c": row1["Contact__c"],
+            "Id": "SP_SF_2",
+            "Status__c": "Scheduled",
+            "Delivery_Hours__c": None,
+            "Age_Group__c": None,
+        }
+
+        # Ensure event has a salesforce_id for the import logic to match
+        if not test_event.salesforce_id:
+            test_event.salesforce_id = row1["Session__c"]
+            db.session.commit()
+
+        from routes.events.routes import process_student_participation_row
+
+        success, errors = 0, 0
+        success, errors = process_student_participation_row(row1, success, errors, [])
+        success, errors = process_student_participation_row(row2, success, errors, [])
+        db.session.commit()
+
+        # Assert only one DB row exists for this event/student
+        count = EventStudentParticipation.query.filter_by(
+            event_id=test_event.id, student_id=student.id
+        ).count()
+        assert count == 1
+
+
 def test_event_validation(client, auth_headers):
     """Test event data validation"""
     invalid_data = {

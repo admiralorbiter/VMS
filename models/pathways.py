@@ -144,10 +144,15 @@ class Pathway(db.Model):
         lazy="dynamic",
     )
 
-    # Automatic timestamp fields for auditing and tracking
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # Automatic timestamp fields (timezone-aware, DB-side defaults)
+    created_at = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now(), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True),
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+        nullable=False,
     )
 
 

@@ -194,6 +194,7 @@ erDiagram
         string salesforce_id UK
         int event_id FK
         int student_id FK
+        -- Unique: (event_id, student_id)
         string status
         float delivery_hours
         string age_group

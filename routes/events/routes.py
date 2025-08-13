@@ -50,7 +50,7 @@ from sqlalchemy.sql import func
 
 from config import Config
 from forms import EventForm
-from models import db
+from models import db, eagerload_event_bundle
 from models.district_model import District
 from models.event import (
     Event,
@@ -381,21 +381,37 @@ def process_student_participation_row(row, success_count, error_count, errors):
             # Optionally, you could add logic here to update the existing record if needed.
             return success_count, error_count
         else:
-            # --- Create New Participation Record ---
+            # Before creating, guard against duplicate event/student pair
+            pair_participation = EventStudentParticipation.query.filter_by(
+                event_id=event.id, student_id=student.id
+            ).first()
+
             delivery_hours = safe_parse_delivery_hours(delivery_hours_str)
 
-            new_participation = EventStudentParticipation(
-                event_id=event.id,
-                student_id=student.id,  # Use the primary key of the found student
-                status=status,
-                delivery_hours=delivery_hours,
-                age_group=age_group,
-                salesforce_id=participation_sf_id,  # Store the unique SF participation ID
-            )
-            db.session.add(new_participation)
-            # You could add db.session.flush() here if you want to catch potential DB errors immediately
-            # print(f"Successfully queued addition of student participation: SF ID {participation_sf_id} for Event {event.id}, Student {student.id}")
-            return success_count + 1, error_count
+            if pair_participation:
+                # Update existing pair record if needed and attach Salesforce ID
+                if not pair_participation.salesforce_id:
+                    pair_participation.salesforce_id = participation_sf_id
+                # Optionally refresh fields if provided
+                if status:
+                    pair_participation.status = status
+                if delivery_hours is not None:
+                    pair_participation.delivery_hours = delivery_hours
+                if age_group:
+                    pair_participation.age_group = age_group
+                return success_count + 1, error_count
+            else:
+                # --- Create New Participation Record ---
+                new_participation = EventStudentParticipation(
+                    event_id=event.id,
+                    student_id=student.id,  # Use the primary key of the found student
+                    status=status,
+                    delivery_hours=delivery_hours,
+                    age_group=age_group,
+                    salesforce_id=participation_sf_id,  # Store the unique SF participation ID
+                )
+                db.session.add(new_participation)
+                return success_count + 1, error_count
 
     except Exception as e:
         db.session.rollback()  # Rollback the transaction for this row on error
@@ -553,7 +569,7 @@ def events():
     current_filters["sort_direction"] = sort_direction
 
     # Build query
-    query = Event.query
+    query = eagerload_event_bundle(Event.query)
 
     # Apply filters
     if current_filters.get("search_title"):

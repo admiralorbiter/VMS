@@ -56,3 +56,39 @@ from .volunteer import Volunteer
 
 # Export the things you want to make available when importing from models
 __all__ = ["db", "User", "Volunteer", "GoogleSheet", "AuditLog"]
+
+# Eager-loading helper options
+from sqlalchemy.orm import joinedload, selectinload
+
+
+def eagerload_event_bundle(query):
+    """Apply a standard eager-loading bundle for Event-heavy views."""
+    from .event import Event
+
+    return query.options(
+        selectinload(Event.teacher_registrations),
+        selectinload(Event.volunteers),
+        selectinload(Event.districts),
+        selectinload(Event.skills),
+    )
+
+
+def eagerload_organization_bundle(query):
+    """Apply standard eager loading for Organization detail pages."""
+    from .organization import Organization
+
+    return query.options(
+        selectinload(Organization.volunteers),
+        selectinload(Organization.volunteer_organizations),
+    )
+
+
+def eagerload_volunteer_bundle(query):
+    """Apply standard eager loading for Volunteer detail pages."""
+    from .volunteer import Volunteer
+
+    return query.options(
+        selectinload(Volunteer.organizations),
+        selectinload(Volunteer.skills),
+        selectinload(Volunteer.volunteer_organizations),
+    )

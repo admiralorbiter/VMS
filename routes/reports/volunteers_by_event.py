@@ -5,7 +5,7 @@ import pandas as pd
 from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required
 
-from models import db
+from models import db, eagerload_volunteer_bundle
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import EventParticipation, Volunteer
@@ -128,7 +128,7 @@ def _query_volunteers(
         query = query.filter(Event.title.ilike(like))
 
     # Fetch and aggregate by volunteer
-    rows = query.all()
+    rows = eagerload_volunteer_bundle(query).all()
 
     aggregated: dict[int, dict] = {}
     for volunteer, event, participation in rows:

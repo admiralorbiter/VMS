@@ -192,13 +192,11 @@ class History(db.Model):
         db.String(50), index=True
     )  # Current status of the activity
 
-    # Timestamp Fields - Track record lifecycle
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    # Timestamp Fields - Track record lifecycle (timezone-aware, DB-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     completed_at = db.Column(db.DateTime)  # When the activity was completed
     last_modified_at = db.Column(
-        db.DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
     )
 
     # Status and Integration Fields

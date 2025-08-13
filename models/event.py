@@ -431,6 +431,24 @@ class Event(db.Model):
         db.Index("idx_district_partner", "district_partner"),
         # Add new composite index for district year-end report queries
         db.Index("idx_event_status_date_type", "status", "start_date", "type"),
+        # Improve calendar queries filtered by school and start date
+        db.Index("idx_event_school_start", "school", "start_date"),
+        # Non-negative checks for counters and duration
+        db.CheckConstraint(
+            "duration IS NULL OR duration >= 0", name="ck_event_duration_nonneg"
+        ),
+        db.CheckConstraint(
+            "participant_count >= 0", name="ck_event_participant_nonneg"
+        ),
+        db.CheckConstraint("registered_count >= 0", name="ck_event_registered_nonneg"),
+        db.CheckConstraint("attended_count >= 0", name="ck_event_attended_nonneg"),
+        db.CheckConstraint("available_slots >= 0", name="ck_event_available_nonneg"),
+        db.CheckConstraint(
+            "scheduled_participants_count >= 0", name="ck_event_scheduled_nonneg"
+        ),
+        db.CheckConstraint(
+            "total_requested_volunteer_jobs >= 0", name="ck_event_total_jobs_nonneg"
+        ),
     )
 
     # Event timing - Consider adding validation to ensure end_date > start_date
@@ -487,16 +505,16 @@ class Event(db.Model):
     professionals = db.Column(db.Text)  # Consider normalizing this data
     professional_ids = db.Column(db.Text)  # Consider normalizing this data
 
-    # Timestamps for auditing
+    # Timestamps for auditing (timezone-aware, DB-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        server_default=db.func.now(),
         nullable=False,
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
         nullable=False,
     )
 
@@ -563,7 +581,12 @@ class Event(db.Model):
     @property
     def volunteer_count(self):
         """Get current volunteer count"""
-        return len(self.volunteers)
+        # Count via association table to avoid loading entire collection
+        return (
+            db.session.query(event_volunteers)
+            .filter(event_volunteers.c.event_id == self.id)
+            .count()
+        )
 
     @property
     def attendance_status(self):
@@ -973,7 +996,7 @@ class Event(db.Model):
     @property
     def registered_teacher_count(self):
         """Get count of registered teachers"""
-        return len(self.teacher_registrations)
+        return EventTeacher.query.filter(EventTeacher.event_id == self.id).count()
 
 
 class EventTeacher(db.Model):
@@ -1059,8 +1082,10 @@ class EventStudentParticipation(db.Model):
         "Student", backref=db.backref("event_participations", lazy="dynamic")
     )
 
-    # Add unique constraint for event/student pair if needed, although SF ID should handle uniqueness mostly
-    # __table_args__ = (db.UniqueConstraint('event_id', 'student_id', name='uq_event_student'),)
+    # Enforce uniqueness for a given event/student pair
+    __table_args__ = (
+        db.UniqueConstraint("event_id", "student_id", name="uq_event_student"),
+    )
 
     def __repr__(self):
         return f"<EventStudentParticipation SF_ID:{self.salesforce_id} Event:{self.event_id} Student:{self.student_id}>"
