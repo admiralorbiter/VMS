@@ -32,7 +32,7 @@ function showAttendanceDetailModal(eventId, data, row) {
         modal.style.width = '100%';
         modal.style.height = '100%';
         modal.style.backgroundColor = 'rgba(0,0,0,0.4)';
-        
+
         const modalContent = document.createElement('div');
         modalContent.style.backgroundColor = '#fefefe';
         modalContent.style.margin = '5% auto';
@@ -41,7 +41,7 @@ function showAttendanceDetailModal(eventId, data, row) {
         modalContent.style.width = '80%';
         modalContent.style.maxWidth = '600px';
         modalContent.style.borderRadius = '5px';
-        
+
         modalContent.innerHTML = `
             <h2>Edit Attendance Details</h2>
             <form id="attendanceDetailForm">
@@ -95,11 +95,11 @@ function showAttendanceDetailModal(eventId, data, row) {
                 </div>
             </form>
         `;
-        
+
         modal.appendChild(modalContent);
         document.body.appendChild(modal);
     }
-    
+
     // Populate form with data
     const form = document.getElementById('attendanceDetailForm');
     form.total_students.value = data.total_students || '';
@@ -111,13 +111,13 @@ function showAttendanceDetailModal(eventId, data, row) {
     form.groups_rotations.value = data.groups_rotations || '';
     form.is_stem.checked = !!data.is_stem;
     form.attendance_link.value = data.attendance_link || '';
-    
+
     // Add event listeners for automatic calculation
     const calculateStudentsPerVolunteer = () => {
         const totalStudents = parseInt(form.total_students.value) || 0;
         const numClassrooms = parseInt(form.num_classrooms.value) || 0;
         const rotations = parseInt(form.rotations.value) || 0;
-        
+
         if (totalStudents > 0 && numClassrooms > 0 && rotations > 0) {
             const calculated = Math.floor((totalStudents / numClassrooms) * rotations);
             form.students_per_volunteer.value = calculated;
@@ -125,15 +125,15 @@ function showAttendanceDetailModal(eventId, data, row) {
             form.students_per_volunteer.value = '';
         }
     };
-    
+
     // Add event listeners to the calculation fields
     form.total_students.addEventListener('input', calculateStudentsPerVolunteer);
     form.num_classrooms.addEventListener('input', calculateStudentsPerVolunteer);
     form.rotations.addEventListener('input', calculateStudentsPerVolunteer);
-    
+
     // Calculate initial value
     calculateStudentsPerVolunteer();
-    
+
     // Submit logic
     form.onsubmit = function(e) {
         e.preventDefault();
@@ -165,4 +165,4 @@ function showAttendanceDetailModal(eventId, data, row) {
         });
     };
     modal.style.display = 'block';
-} 
+}

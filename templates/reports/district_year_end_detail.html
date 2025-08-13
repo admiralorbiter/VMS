@@ -213,7 +213,7 @@
         text-decoration: none;
         transition: background-color 0.2s ease;
     }
-    
+
     .download-button:hover {
         background-color: #218838;
         color: white;
@@ -284,6 +284,30 @@
     .event-title-link:active {
         transform: translateX(1px);
         background-color: rgba(70, 117, 153, 0.12);
+    }
+
+    /* Sortable table headers */
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .sort-indicator {
+        display: inline-block;
+        margin-left: 6px;
+        width: 0; height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid #adb5bd; /* default triangle */
+        transform: translateY(-2px);
+    }
+    .sortable-header.sorted-asc .sort-indicator {
+        border-top: 0;
+        border-bottom: 6px solid var(--ucla-blue);
+    }
+    .sortable-header.sorted-desc .sort-indicator {
+        border-top: 6px solid var(--ucla-blue);
+        border-bottom: 0;
     }
 
     /* No events message styling */
@@ -526,7 +550,7 @@
                 </button>
             </div>
         </div>
-        
+
         <!-- Quick Overview (always visible) -->
         <div class="quick-overview">
             <div class="stat-card overview-card">
@@ -551,11 +575,11 @@
                 <div class="stat-label">Volunteer Organizations</div>
             </div>
         </div>
-        
+
         <!-- Detailed Breakdown (collapsible) -->
         <div class="detailed-breakdown" id="detailed-breakdown" style="display: none;">
             {% if stats.enhanced %}
-            
+
             <!-- Events Breakdown -->
             <div class="breakdown-section">
                 <h3><i class="fas fa-calendar-alt"></i> Events Breakdown</h3>
@@ -580,7 +604,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Students Breakdown -->
             <div class="breakdown-section">
                 <h3><i class="fas fa-user-graduate"></i> Students Breakdown</h3>
@@ -622,9 +646,9 @@
                     </div>
                 </div>
             </div>
-            
 
-            
+
+
             <!-- Enhanced Volunteers Breakdown -->
             <div class="breakdown-section">
                 <h3><i class="fas fa-users"></i> Enhanced Volunteers Breakdown</h3>
@@ -683,7 +707,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Enhanced Organizations Breakdown -->
             <div class="breakdown-section">
                 <h3><i class="fas fa-building"></i> Enhanced Organizations Breakdown</h3>
@@ -726,7 +750,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Virtual Sessions Breakdown -->
             <div class="breakdown-section">
                 <h3><i class="fas fa-video"></i> Virtual Sessions Breakdown</h3>
@@ -765,7 +789,7 @@
                     </div>
                 </div>
             </div>
-            
+
             {% else %}
             <!-- Fallback to original stats display -->
             <div class="breakdown-section">
@@ -859,19 +883,19 @@
                         <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
                     </div>
                 </div>
-                
+
                 <div class="events-table-wrapper collapsed" id="month-content-{{ month|replace(' ', '_') }}">
                     <table class="events-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Event</th>
-                                <th>Type</th>
-                                <th>Location</th>
-                                <th>Students</th>
-                                <th>Volunteers</th>
-                                <th>Hours</th>
+                                <th class="sortable-header" data-type="date">Date<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="time">Time<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="text">Event<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="text">Type<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="text">Location<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="number">Students<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="number">Volunteers<span class="sort-indicator"></span></th>
+                                <th class="sortable-header" data-type="number">Hours<span class="sort-indicator"></span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1087,40 +1111,40 @@ document.addEventListener('DOMContentLoaded', function() {
         if (volunteerCard) {
             volunteerCard.textContent = `${filteredStats.uniqueVolunteers} unique`;
         }
-        
+
         // Update enhanced breakdown if available
         if (filteredStats.enhanced) {
             updateEnhancedBreakdown(filteredStats.enhanced);
         }
     }
-    
+
     function updateEnhancedBreakdown(enhanced) {
         // Update events breakdown
         updateBreakdownCard('events', enhanced.events);
-        
+
         // Update students breakdown
         updateBreakdownCard('students', enhanced.students);
-        
+
         // Update volunteers breakdown (enhanced with hours)
         updateVolunteersBreakdown(enhanced.volunteers);
-        
+
         // Update organizations breakdown (enhanced with hours)
         updateOrganizationsBreakdown(enhanced.organizations);
-        
+
         // Update virtual sessions breakdown
         updateVirtualSessionsBreakdown(enhanced.virtual_sessions);
     }
-    
+
     function updateBreakdownCard(category, data) {
         // Find breakdown cards by looking for specific titles
         const breakdownCards = document.querySelectorAll('.breakdown-card');
-        
+
         breakdownCards.forEach(card => {
             const title = card.querySelector('.breakdown-title');
             if (!title) return;
-            
+
             const titleText = title.textContent.toLowerCase();
-            
+
             // Update based on category and title matching
             if (category === 'events' && titleText.includes('total events')) {
                 updateCardValues(card, data);
@@ -1139,24 +1163,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     function updateCardValues(card, data, skipPercentages = false, isDecimal = false) {
         // Update total
         const total = card.querySelector('.breakdown-total');
         if (total) {
             total.textContent = isDecimal ? data.total.toFixed(1) : data.total;
         }
-        
+
         // Update breakdown items
         const items = card.querySelectorAll('.breakdown-item');
         items.forEach(item => {
             const label = item.querySelector('.breakdown-label');
             if (!label) return;
-            
+
             const labelText = label.textContent.toLowerCase();
             const value = item.querySelector('.breakdown-value');
             const percent = item.querySelector('.breakdown-percent');
-            
+
             if (labelText.includes('in-person')) {
                 if (value) {
                     value.textContent = isDecimal ? data.in_person.toFixed(1) : data.in_person;
@@ -1199,12 +1223,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     totalStudents += event.students;
                     totalVolunteers += event.volunteers;
                     totalVolunteerHours += event.volunteerHours;
-                    
+
                     // For virtual vs in-person, we'd need the event format
                     // For now, assume all filtered events contribute to in-person
                     // You may need to add event format to the eventsData structure
                     totalInPersonStudents += event.students;
-                    
+
                     // Note: For true unique counting, we'd need individual IDs
                     // This is a simplified calculation
                     // You might want to make an AJAX call for precise unique counts
@@ -1229,12 +1253,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedTypes.size === 0) {
             return originalStats;
         }
-        
+
         const params = new URLSearchParams();
         params.append('school_year', '{{ school_year }}');
         params.append('host_filter', '{{ host_filter }}');
         selectedTypes.forEach(type => params.append('event_types[]', type));
-        
+
         try {
             const response = await fetch(`{{ url_for('report.get_filtered_stats', district_name=district.name) }}?${params}`);
             const data = await response.json();
@@ -1266,7 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateAllStats();
             return;
         }
-        
+
         // Filter monthly view
         document.querySelectorAll('#monthly-view .events-table tbody tr').forEach(row => {
             const typeCell = row.querySelector('td:nth-child(4)');
@@ -1276,14 +1300,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.style.display = 'none';
             }
         });
-        
+
         // Filter school view
         document.querySelectorAll('#schools-view .school-card').forEach(card => {
             card.style.display = '';
-            
+
             const eventRows = card.querySelectorAll('.events-table tbody tr');
             let visibleEvents = 0;
-            
+
             eventRows.forEach(row => {
                 const typeCell = row.querySelector('td:nth-child(3)'); // Type is in the 3rd column for school view
                 if (typeCell && eventTypes.has(typeCell.textContent.trim())) {
@@ -1293,17 +1317,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.style.display = 'none';
                 }
             });
-            
+
             // Update this school's stats based on visible events
             updateSchoolStats(card, eventRows);
         });
-        
+
         // Update monthly view stats
         document.querySelectorAll('#monthly-view .month-card').forEach(card => {
-            const visibleEvents = Array.from(card.querySelectorAll('tbody tr')).filter(row => 
+            const visibleEvents = Array.from(card.querySelectorAll('tbody tr')).filter(row =>
                 row.style.display !== 'none'
             );
-            
+
             updateMonthlyStats(card, visibleEvents);
         });
 
@@ -1317,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let totalStudents = 0;
         let totalVolunteers = 0;
         let totalHours = 0;
-        
+
         eventRows.forEach(row => {
             if (row.style.display !== 'none') {
                 totalEvents++;
@@ -1326,7 +1350,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
             }
         });
-        
+
         // Update school stats display
         const statsElements = card.querySelectorAll('.school-stat');
         if (statsElements.length >= 5) {
@@ -1342,13 +1366,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let totalStudents = 0;
         let totalVolunteers = 0;
         let totalHours = 0;
-        
+
         visibleEvents.forEach(row => {
             totalStudents += parseInt(row.querySelector('td:nth-child(6)').textContent) || 0; // Students column
-            totalVolunteers += parseInt(row.querySelector('td:nth-child(7)').textContent) || 0; // Volunteers column  
+            totalVolunteers += parseInt(row.querySelector('td:nth-child(7)').textContent) || 0; // Volunteers column
             totalHours += parseFloat(row.querySelector('td:nth-child(8)').textContent) || 0; // Hours column
         });
-        
+
         const statsElement = card.querySelector('.month-stats');
         if (statsElement) {
             const stats = statsElement.querySelectorAll('span');
@@ -1360,28 +1384,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    
+
     function updateAllStats() {
         // Reset all stats to their original values (same as before)
         document.querySelectorAll('.school-card').forEach(card => {
             const eventRows = card.querySelectorAll('.events-table tbody tr');
             const totalEvents = eventRows.length;
-            
+
             const eventCountElement = card.querySelector('.school-stat:first-child');
             if (eventCountElement) {
                 eventCountElement.innerHTML = `<i class="fas fa-calendar-check"></i> ${totalEvents} Events`;
             }
-            
+
             let totalStudents = 0;
             let totalVolunteers = 0;
             let totalHours = 0;
-            
+
             eventRows.forEach(row => {
                 totalStudents += parseInt(row.querySelector('td:nth-child(4)').textContent) || 0;
                 totalVolunteers += parseInt(row.querySelector('td:nth-child(5)').textContent) || 0;
                 totalHours += parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
             });
-            
+
             const statsElements = card.querySelectorAll('.school-stat');
             if (statsElements.length >= 4) {
                 statsElements[1].innerHTML = `<i class="fas fa-user-graduate"></i> ${totalStudents} Students`;
@@ -1389,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 statsElements[3].innerHTML = `<i class="fas fa-clock"></i> ${totalHours.toFixed(1)} Hours`;
             }
         });
-        
+
         document.querySelectorAll('.month-card').forEach(card => {
             const totalEvents = card.querySelectorAll('tbody tr').length;
             const statsElement = card.querySelector('.month-stats');
@@ -1412,10 +1436,10 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Toggle function called'); // Debug log
         const content = document.getElementById('event-types-filter-content');
         const toggleIcon = document.getElementById('event-filter-toggle');
-        
+
         console.log('Content element:', content); // Debug log
         console.log('Toggle icon:', toggleIcon); // Debug log
-        
+
         if (content && toggleIcon) {
             if (content.classList.contains('collapsed')) {
                 content.classList.remove('collapsed');
@@ -1436,10 +1460,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleEventTypeSelection(eventType, event) {
         const card = document.querySelector(`[data-type="${eventType}"]`);
         if (!card) return;
-        
+
         // Check if Ctrl/Cmd key is held for multi-select
         const isMultiSelect = event.ctrlKey || event.metaKey;
-        
+
         if (isMultiSelect) {
             if (selectedEventTypes.has(eventType)) {
                 selectedEventTypes.delete(eventType);
@@ -1462,7 +1486,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 card.classList.add('selected');
             }
         }
-        
+
         filterByEventTypes(selectedEventTypes);
     }
 
@@ -1472,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', function() {
             switchView(this.dataset.view);
         });
     });
-    
+
     // Add event listeners for filterable event type cards
     eventTypeCards.forEach(card => {
         card.addEventListener('click', function(e) {
@@ -1480,22 +1504,85 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleEventTypeSelection(type, e);
         });
     });
-    
+
 
 
     // Initialize the view (default to monthly)
     switchView('monthly');
 });
 
-// Make functions available globally
+    // Table sorting for monthly and schools views
+    function compareValues(a, b, type) {
+        if (type === 'number') {
+            const na = parseFloat(a) || 0;
+            const nb = parseFloat(b) || 0;
+            return na - nb;
+        }
+        if (type === 'date') {
+            // Expecting YYYY-MM-DD; fallback to Date parsing
+            const da = new Date(a);
+            const db = new Date(b);
+            return da - db;
+        }
+        if (type === 'time') {
+            // Expecting HH:MM AM/PM or 24h; normalize
+            return new Date(`1970-01-01T${a.replace(' ', '')}`) - new Date(`1970-01-01T${b.replace(' ', '')}`);
+        }
+        // text
+        return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+    }
+
+    function attachTableSorting(container) {
+        const tables = container.querySelectorAll('table.events-table');
+        tables.forEach(table => {
+            const headers = table.querySelectorAll('thead th.sortable-header');
+            headers.forEach((header, colIndex) => {
+                header.addEventListener('click', () => {
+                    const type = header.dataset.type || 'text';
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                    // Determine new sort direction
+                    const isDesc = header.classList.contains('sorted-desc');
+                    headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                    header.classList.add(isDesc ? 'sorted-asc' : 'sorted-desc');
+
+                    rows.sort((r1, r2) => {
+                        const c1 = r1.children[colIndex]?.innerText.trim() || '';
+                        const c2 = r2.children[colIndex]?.innerText.trim() || '';
+                        const cmp = compareValues(c1, c2, type);
+                        return isDesc ? -cmp : cmp;
+                    });
+
+                    // Re-append in sorted order
+                    rows.forEach(r => tbody.appendChild(r));
+
+                    // Update summary row stats for visible rows in this table's card
+                    const monthCard = table.closest('.month-card');
+                    if (monthCard) {
+                        const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(tr => tr.style.display !== 'none');
+                        updateMonthlyStats(monthCard, visibleRows);
+                    }
+                });
+            });
+        });
+    }
+
+    // Attach sorting to both monthly and schools views
+    const monthlyViewEl = document.getElementById('monthly-view');
+    const schoolsViewEl = document.getElementById('schools-view');
+    if (monthlyViewEl) attachTableSorting(monthlyViewEl);
+    if (schoolsViewEl) attachTableSorting(schoolsViewEl);
+
+    // Make functions available globally
 window.toggleEventTypeFilter = function() {
     console.log('Global toggle function called'); // Debug log
     const content = document.getElementById('event-types-filter-content');
     const toggleIcon = document.getElementById('event-filter-toggle');
-    
+
     console.log('Content element:', content); // Debug log
     console.log('Toggle icon:', toggleIcon); // Debug log
-    
+
     if (content && toggleIcon) {
         if (content.classList.contains('collapsed')) {
             content.classList.remove('collapsed');
@@ -1518,12 +1605,12 @@ window.clearEventTypeFilter = function() {
     // We need to access the variables from the DOMContentLoaded scope
     const eventTypeCards = document.querySelectorAll('.event-type-card.filterable');
     eventTypeCards.forEach(card => card.classList.remove('selected'));
-    
+
     // Reset all table rows to visible
     document.querySelectorAll('.events-table tbody tr').forEach(row => {
         row.style.display = '';
     });
-    
+
     // Reset stats to original values
     // This is a simplified reset - in a real implementation you'd want to call the original functions
     location.reload(); // Simple solution: reload the page to reset everything
@@ -1533,10 +1620,10 @@ window.toggleMonthCard = function(monthId) {
     console.log('Toggle month card called for:', monthId); // Debug log
     const content = document.getElementById('month-content-' + monthId);
     const toggleIcon = document.getElementById('month-toggle-' + monthId);
-    
+
     console.log('Month content element:', content); // Debug log
     console.log('Month toggle icon:', toggleIcon); // Debug log
-    
+
     if (content && toggleIcon) {
         if (content.classList.contains('collapsed')) {
             content.classList.remove('collapsed');
@@ -1558,10 +1645,10 @@ window.toggleSchoolCard = function(schoolId) {
     console.log('Toggle school card called for:', schoolId); // Debug log
     const content = document.getElementById('school-content-' + schoolId);
     const toggleIcon = document.getElementById('school-toggle-' + schoolId);
-    
+
     console.log('School content element:', content); // Debug log
     console.log('School toggle icon:', toggleIcon); // Debug log
-    
+
     if (content && toggleIcon) {
         if (content.classList.contains('collapsed')) {
             content.classList.remove('collapsed');
@@ -1582,7 +1669,7 @@ window.toggleSchoolCard = function(schoolId) {
 window.toggleSummaryView = function() {
     const detailedBreakdown = document.getElementById('detailed-breakdown');
     const toggleBtn = document.getElementById('summary-toggle-btn');
-    
+
     if (detailedBreakdown && toggleBtn) {
         if (detailedBreakdown.style.display === 'none') {
             detailedBreakdown.style.display = 'block';
@@ -1599,23 +1686,23 @@ function updateVolunteersBreakdown(volunteers) {
     // Find the Enhanced Volunteers Breakdown section
     const volunteersSections = document.querySelectorAll('.breakdown-section');
     let volunteersSection = null;
-    
+
     volunteersSections.forEach(section => {
         const header = section.querySelector('h3');
         if (header && header.textContent.includes('Enhanced Volunteers')) {
             volunteersSection = section;
         }
     });
-    
+
     if (volunteersSection) {
         const cards = volunteersSection.querySelectorAll('.breakdown-card');
         if (cards.length >= 3) {
             // Engagements card
             updateBreakdownCardData(cards[0], volunteers.total, volunteers.in_person, volunteers.virtual, volunteers.in_person_pct, volunteers.virtual_pct);
-            
+
             // Unique volunteers card
             updateBreakdownCardData(cards[1], volunteers.unique_total, volunteers.unique_in_person, volunteers.unique_virtual);
-            
+
             // Volunteer hours card
             updateBreakdownCardData(cards[2], volunteers.hours_total.toFixed(1), volunteers.hours_in_person.toFixed(1), volunteers.hours_virtual.toFixed(1), volunteers.hours_in_person_pct, volunteers.hours_virtual_pct);
         }
@@ -1626,20 +1713,20 @@ function updateOrganizationsBreakdown(organizations) {
     // Find the Enhanced Organizations Breakdown section
     const orgSections = document.querySelectorAll('.breakdown-section');
     let orgSection = null;
-    
+
     orgSections.forEach(section => {
         const header = section.querySelector('h3');
         if (header && header.textContent.includes('Enhanced Organizations')) {
             orgSection = section;
         }
     });
-    
+
     if (orgSection) {
         const cards = orgSection.querySelectorAll('.breakdown-card');
         if (cards.length >= 2) {
             // Unique organizations card
             updateBreakdownCardData(cards[0], organizations.unique_total, organizations.unique_in_person, organizations.unique_virtual, organizations.unique_in_person_pct, organizations.unique_virtual_pct);
-            
+
             // Organization volunteer hours card
             updateBreakdownCardData(cards[1], organizations.volunteer_hours_total.toFixed(1), organizations.volunteer_hours_in_person.toFixed(1), organizations.volunteer_hours_virtual.toFixed(1), organizations.volunteer_hours_in_person_pct, organizations.volunteer_hours_virtual_pct);
         }
@@ -1650,14 +1737,14 @@ function updateVirtualSessionsBreakdown(virtualSessions) {
     // Find the Virtual Sessions Breakdown section
     const virtualSections = document.querySelectorAll('.breakdown-section');
     let virtualSection = null;
-    
+
     virtualSections.forEach(section => {
         const header = section.querySelector('h3');
         if (header && header.textContent.includes('Virtual Sessions')) {
             virtualSection = section;
         }
     });
-    
+
     if (virtualSection) {
         const cards = virtualSection.querySelectorAll('.breakdown-card');
         if (cards.length >= 2) {
@@ -1665,18 +1752,18 @@ function updateVirtualSessionsBreakdown(virtualSessions) {
             const classroomsCard = cards[0];
             const classroomsTotal = classroomsCard.querySelector('.breakdown-total');
             const classroomsItems = classroomsCard.querySelectorAll('.breakdown-item .breakdown-value');
-            
+
             if (classroomsTotal) classroomsTotal.textContent = virtualSessions.classrooms_reached;
             if (classroomsItems.length >= 2) {
                 classroomsItems[0].textContent = virtualSessions.registered_teachers;
                 classroomsItems[1].textContent = virtualSessions.confirmed_teachers;
             }
-            
+
             // Unique teachers card
             const teachersCard = cards[1];
             const teachersTotal = teachersCard.querySelector('.breakdown-total');
             const teachersItems = teachersCard.querySelectorAll('.breakdown-item .breakdown-value');
-            
+
             if (teachersTotal) teachersTotal.textContent = virtualSessions.unique_teachers;
             if (teachersItems.length >= 2) {
                 teachersItems[0].textContent = virtualSessions.registered_teachers;
@@ -1689,17 +1776,17 @@ function updateVirtualSessionsBreakdown(virtualSessions) {
 function updateBreakdownCardData(card, total, inPerson, virtual, inPersonPct, virtualPct) {
     const totalElement = card.querySelector('.breakdown-total');
     const items = card.querySelectorAll('.breakdown-item');
-    
+
     if (totalElement) {
         totalElement.textContent = total;
     }
-    
+
     if (items.length >= 2) {
         const inPersonValue = items[0].querySelector('.breakdown-value');
         const inPersonPercent = items[0].querySelector('.breakdown-percent');
         const virtualValue = items[1].querySelector('.breakdown-value');
         const virtualPercent = items[1].querySelector('.breakdown-percent');
-        
+
         if (inPersonValue) inPersonValue.textContent = inPerson;
         if (inPersonPercent && inPersonPct !== undefined) inPersonPercent.textContent = `(${inPersonPct}%)`;
         if (virtualValue) virtualValue.textContent = virtual;
@@ -1707,4 +1794,4 @@ function updateBreakdownCardData(card, total, inPerson, virtual, inPersonPct, vi
     }
 }
 </script>
-{% endblock %} 
+{% endblock %}

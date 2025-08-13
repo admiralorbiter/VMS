@@ -1,23 +1,23 @@
-{# 
+{#
   Event Creation Template
   ======================
-  
+
   This template provides a form for creating new events in the VMS system.
-  
+
   Key Features:
   - Form validation with error display
   - Organized sections for basic info and event details
   - FontAwesome icons for visual enhancement
   - Responsive grid layout for form fields
   - CSRF protection for security
-  
+
   Template Variables:
   - form: EventForm instance with validation and field definitions
-  
+
   Form Sections:
   1. Basic Information: Title, type, dates, location, format, status, volunteers needed
   2. Event Details: Description field for detailed event information
-  
+
   Security: CSRF token included for POST request protection
 #}
 
@@ -44,7 +44,7 @@
     <form method="POST" class="event-form">
         {# CSRF protection token - required for all POST requests #}
         {{ form.csrf_token }}
-        
+
         {# Error display section - shows validation errors if form submission fails #}
         {% if form.errors %}
             <div class="alert alert-danger">

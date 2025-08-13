@@ -1,8 +1,8 @@
-{# 
+{#
   View Organization Template
-  
+
   This template displays detailed information about a specific organization.
-  
+
   Features:
   - Organization header with name, type, and action buttons
   - Basic organization details (description, address, timestamps)
@@ -10,17 +10,17 @@
   - Salesforce integration links
   - Edit and navigation actions
   - Responsive card-based layout
-  
+
   Template Variables:
   - organization: Organization object with all details
   - volunteer_organizations: List of volunteer-organization relationships
   - recent_activities: List of recent activities for associated volunteers
   - current_user: Current authenticated user (for permissions)
-  
+
   Routes:
   - GET: Display organization details
   - POST: Not used in this template
-  
+
   Data Displayed:
   - Organization name and type
   - Description and address information
@@ -29,7 +29,7 @@
   - Salesforce ID and URL
   - Associated volunteers with roles and status
   - Volunteer start/end dates
-  
+
   Security Notes:
   - TODO: Add permission checks for viewing organization details
   - TODO: Add permission checks for edit actions
@@ -53,8 +53,8 @@
         </div>
         <div class="header-actions">
             {% if organization.salesforce_id %}
-            <a href="{{ organization.salesforce_url }}" 
-               target="_blank" 
+            <a href="{{ organization.salesforce_url }}"
+               target="_blank"
                class="action-btn salesforce-btn">
                 <i class="fa-solid fa-cloud"></i>
             </a>

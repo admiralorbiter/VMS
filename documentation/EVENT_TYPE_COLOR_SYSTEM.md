@@ -54,7 +54,7 @@ The VMS application now includes a comprehensive, centralized color mapping syst
 ### Career Development Events
 - **Primary Color**: Sea Green (#2E8B57)
 - **Light Color**: Pale Green (#98FB98)
-- **Event Types**: 
+- **Event Types**:
   - `career_fair` - Primary background, white text
   - `career_speaker` - Light background, primary text
   - `career_jumping` - Primary background, white text

@@ -155,7 +155,7 @@
             ← Back to Reports
         </a>
     </div>
-    
+
     <div class="mb-3">
         <h2>Academic Year: {{ academic_year }}</h2>
         <p class="text-muted">Manage Google Sheets associated with this academic year for district reporting.</p>
@@ -169,26 +169,26 @@
         <h3>Add Google Sheet</h3>
         <form id="sheetForm">
             <input type="hidden" name="school_year" value="{{ school_year }}">
-            
+
             <div class="form-group">
                 <label for="sheet_name">Sheet Name (Optional)</label>
-                <input type="text" id="sheet_name" name="sheet_name" 
+                <input type="text" id="sheet_name" name="sheet_name"
                        placeholder="Enter a descriptive name for this sheet (e.g., District Report 2024-2025)">
                 <small class="form-text text-muted">
                     Optional: Give this sheet a descriptive name to help identify it
                 </small>
             </div>
-            
+
             <div class="form-group">
                 <label for="sheet_id">Google Sheet ID</label>
-                <input type="text" id="sheet_id" name="sheet_id" 
+                <input type="text" id="sheet_id" name="sheet_id"
                        placeholder="Enter Google Sheet ID (e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms)"
                        required>
                 <small class="form-text text-muted">
                     You can find the Sheet ID in the URL of your Google Sheet between '/d/' and '/edit'
                 </small>
             </div>
-            
+
             <button type="submit" class="btn-primary">
                 <i class="fas fa-plus"></i> Add Sheet
             </button>
@@ -198,7 +198,7 @@
     <!-- Existing Sheets -->
     <div class="sheet-list">
         <h3>Current Google Sheets</h3>
-        
+
         {% if sheets %}
             <div id="sheetsList">
                 {% for sheet in sheets %}
@@ -211,11 +211,11 @@
                         {% endif %}
                         <div class="sheet-id">{{ sheet.decrypted_sheet_id }}</div>
                         <div class="sheet-meta">
-                            Created by {{ sheet.creator.username if sheet.creator else 'Unknown' }} 
+                            Created by {{ sheet.creator.username if sheet.creator else 'Unknown' }}
                             on {{ sheet.created_at.strftime('%B %d, %Y at %I:%M %p') if sheet.created_at else 'Unknown date' }}
                         </div>
                         <div class="sheet-meta">
-                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" 
+                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit"
                                target="_blank" class="text-primary">
                                 <i class="fas fa-external-link-alt"></i> Open in Google Sheets
                             </a>
@@ -240,14 +240,14 @@
 <script>
 document.getElementById('sheetForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
     const submitBtn = this.querySelector('button[type="submit"]');
-    
+
     // Disable submit button
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
-    
+
     fetch('{{ url_for("report.add_google_sheet") }}', {
         method: 'POST',
         body: formData
@@ -282,11 +282,11 @@ function removeSheet(sheetId, academicYear) {
     if (!confirm('Are you sure you want to remove this Google Sheet?')) {
         return;
     }
-    
+
     const formData = new FormData();
     formData.append('sheet_id', sheetId);
     formData.append('academic_year', academicYear);
-    
+
     fetch('{{ url_for("report.remove_google_sheet") }}', {
         method: 'POST',
         body: formData
@@ -300,7 +300,7 @@ function removeSheet(sheetId, academicYear) {
             if (sheetItem) {
                 sheetItem.remove();
             }
-            
+
             // Check if no sheets left
             const sheetsList = document.getElementById('sheetsList');
             if (sheetsList && sheetsList.children.length === 0) {
@@ -321,18 +321,18 @@ function removeSheet(sheetId, academicYear) {
 function showAlert(type, message) {
     const alertContainer = document.getElementById('alertContainer');
     const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-    
+
     alertContainer.innerHTML = `
         <div class="alert ${alertClass}">
             <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
             ${message}
         </div>
     `;
-    
+
     // Auto-hide alert after 5 seconds
     setTimeout(() => {
         alertContainer.innerHTML = '';
     }, 5000);
 }
 </script>
-{% endblock %} 
+{% endblock %}

@@ -10,7 +10,7 @@
 <div class="recruitment-container">
     <div class="events-column">
         <h3>Upcoming Unfilled Events</h3>
-        
+
         <!-- Filter Section -->
         <div class="filter-section">
             <form method="get" action="{{ url_for('report.quick_recruitment') }}">
@@ -74,10 +74,10 @@
         <h3>Volunteer Search</h3>
         <div class="search-container">
             <form method="get" action="{{ url_for('report.quick_recruitment') }}">
-                <input type="text" 
-                       class="search-input" 
-                       id="volunteerSearch" 
-                       name="search" 
+                <input type="text"
+                       class="search-input"
+                       id="volunteerSearch"
+                       name="search"
                        placeholder="Search volunteers by name, skills, or organization..."
                        value="{{ search_query }}">
                 <input type="hidden" name="event_type" value="{{ event_type_filter }}">
@@ -156,7 +156,7 @@
                         <a class="page-link" href="{{ url_for('report.quick_recruitment', page=pagination.prev_num, search=search_query, event_type=event_type_filter, exclude_dia=exclude_dia) }}">&laquo; Previous</a>
                     </li>
                     {% endif %}
-                    
+
                     {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
                         {% if page_num %}
                             <li class="page-item {% if page_num == pagination.page %}active{% endif %}">

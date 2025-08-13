@@ -49,7 +49,7 @@
 <!-- Main container for event attendance details -->
 <div class="attendance-details-container">
     <h1>Event Attendance Details (Academic Year)</h1>
-    
+
     <!-- Academic year selection form -->
     <form id="yearSelectForm" method="get" style="margin-bottom: 1.5rem;">
         <label for="yearSelect"><strong>Academic Year:</strong></label>
@@ -59,7 +59,7 @@
             {% endfor %}
         </select>
     </form>
-    
+
     <!-- Event type filter section with interactive checkboxes -->
     <div id="eventTypeFilter" class="event-type-filter">
         <strong>Event Types:</strong>
@@ -74,7 +74,7 @@
         {% endfor %}
         </div>
     </div>
-    
+
     <!-- Main attendance details table -->
     <table class="table attendance-details-table" id="detailsTable">
         <thead>
@@ -131,12 +131,12 @@ function fetchAndRenderEvents() {
     // Get selected academic year and checked event types
     const year = document.getElementById('yearSelect').value;
     const checked = Array.from(document.querySelectorAll('.event-type-checkbox:checked')).map(cb => cb.value);
-    
+
     // Build query parameters for AJAX request
     const params = new URLSearchParams();
     params.append('year', year);
     checked.forEach(t => params.append('types[]', t));
-    
+
     // Fetch filtered events from server
     fetch(`/attendance/details/events_json?${params.toString()}`)
         .then(res => res.json())
@@ -144,13 +144,13 @@ function fetchAndRenderEvents() {
             // Update table body with filtered results
             const tbody = document.getElementById('detailsTableBody');
             tbody.innerHTML = '';
-            
+
             // Render each event row
             events.forEach(event => {
                 const ad = event.attendance_detail || {};
                 // The server now returns dates in MM/DD format, so we can use them directly
                 const formattedDate = event.start_date || '';
-                
+
                 tbody.innerHTML += `
                 <tr data-event-id="${event.id}">
                     <td><a href="/events/view/${event.id}" title="View event details">${event.title}</a></td>
@@ -178,4 +178,4 @@ document.querySelectorAll('.event-type-checkbox').forEach(cb => {
 // Fetch events on page load if any checkboxes are checked by default
 fetchAndRenderEvents();
 </script>
-{% endblock %} 
+{% endblock %}

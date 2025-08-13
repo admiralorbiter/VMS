@@ -41,7 +41,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     VOLUNTEER {
         int id FK
         string organization_name
@@ -64,7 +64,7 @@ erDiagram
         text interests
         enum status
     }
-    
+
     TEACHER {
         int id FK
         string school_id FK
@@ -75,7 +75,7 @@ erDiagram
         boolean is_active
         date last_activity_date
     }
-    
+
     STUDENT {
         int id FK
         string school_id FK
@@ -85,7 +85,7 @@ erDiagram
         boolean is_active
         date last_activity_date
     }
-    
+
     CONNECTOR_DATA {
         int id PK
         int volunteer_id FK
@@ -103,7 +103,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     USERS {
         int id PK
         string username UK
@@ -117,7 +117,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     ORGANIZATION {
         int id PK
         string salesforce_id UK
@@ -131,7 +131,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     EVENT {
         int id PK
         string salesforce_id UK
@@ -167,7 +167,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     EVENT_ATTENDANCE_DETAIL {
         int id PK
         int event_id FK
@@ -177,7 +177,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     EVENT_TEACHER {
         int event_id FK
         int teacher_id FK
@@ -188,7 +188,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     EVENT_STUDENT_PARTICIPATION {
         int id PK
         string salesforce_id UK
@@ -200,19 +200,19 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     SKILL {
         int id PK
         string name UK
     }
-    
+
     VOLUNTEER_SKILLS {
         int volunteer_id FK
         int skill_id FK
         enum source
         string interest_level
     }
-    
+
     ENGAGEMENT {
         int id PK
         int volunteer_id FK
@@ -220,7 +220,7 @@ erDiagram
         string engagement_type
         text notes
     }
-    
+
     EVENT_PARTICIPATION {
         int id PK
         int volunteer_id FK
@@ -234,7 +234,7 @@ erDiagram
         string participant_type
         string contact
     }
-    
+
     SCHOOL {
         int id PK
         string name
@@ -249,7 +249,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     DISTRICT {
         int id PK
         string name
@@ -264,7 +264,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     CLASS {
         int id PK
         string name
@@ -277,7 +277,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     CLIENT_PROJECTS {
         int id PK
         string name
@@ -290,7 +290,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     PATHWAY {
         int id PK
         string name
@@ -300,7 +300,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     BUG_REPORTS {
         int id PK
         string type
@@ -310,7 +310,7 @@ erDiagram
         datetime created_at
         datetime resolved_at
     }
-    
+
     GOOGLE_SHEETS {
         int id PK
         string name
@@ -319,7 +319,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
-    
+
     HISTORY {
         int id PK
         string action
@@ -330,7 +330,7 @@ erDiagram
         int user_id FK
         datetime created_at
     }
-    
+
     PHONE {
         int id PK
         int contact_id FK
@@ -338,7 +338,7 @@ erDiagram
         enum type
         boolean primary
     }
-    
+
     EMAIL {
         int id PK
         int contact_id FK
@@ -346,7 +346,7 @@ erDiagram
         enum type
         boolean primary
     }
-    
+
     ADDRESS {
         int id PK
         int contact_id FK
@@ -359,7 +359,7 @@ erDiagram
         enum type
         boolean primary
     }
-    
+
     VOLUNTEER_ORGANIZATION {
         int volunteer_id FK
         int organization_id FK
@@ -368,7 +368,7 @@ erDiagram
         date end_date
         boolean is_primary
     }
-    
+
     EVENT_VOLUNTEERS {
         int event_id FK
         int volunteer_id FK
@@ -376,55 +376,55 @@ erDiagram
         string status
         datetime registered_at
     }
-    
+
     EVENT_DISTRICTS {
         int event_id FK
         int district_id FK
     }
-    
+
     EVENT_SKILLS {
         int event_id FK
         int skill_id FK
     }
-    
+
     CONTACT ||--o{ PHONE : has
     CONTACT ||--o{ EMAIL : has
     CONTACT ||--o{ ADDRESS : has
     CONTACT ||--o{ HISTORY : tracks
-    
+
     CONTACT ||--|| VOLUNTEER : is_a
     CONTACT ||--|| TEACHER : is_a
     CONTACT ||--|| STUDENT : is_a
-    
+
     VOLUNTEER ||--|| CONNECTOR_DATA : has
     VOLUNTEER ||--o{ VOLUNTEER_SKILLS : has
     VOLUNTEER ||--o{ ENGAGEMENT : participates
     VOLUNTEER ||--o{ EVENT_PARTICIPATION : participates
     VOLUNTEER ||--o{ VOLUNTEER_ORGANIZATION : belongs_to
-    
+
     TEACHER ||--o{ EVENT_TEACHER : participates
     STUDENT ||--o{ EVENT_STUDENT_PARTICIPATION : participates
-    
+
     SCHOOL ||--o{ TEACHER : employs
     SCHOOL ||--o{ STUDENT : enrolls
     SCHOOL ||--o{ CLASS : contains
     SCHOOL ||--o{ EVENT : hosts
-    
+
     DISTRICT ||--o{ SCHOOL : contains
     DISTRICT ||--o{ EVENT : sponsors
-    
+
     ORGANIZATION ||--o{ VOLUNTEER_ORGANIZATION : employs
-    
+
     EVENT ||--|| EVENT_ATTENDANCE_DETAIL : tracks
     EVENT ||--o{ EVENT_TEACHER : involves
     EVENT ||--o{ EVENT_STUDENT_PARTICIPATION : involves
     EVENT ||--o{ EVENT_VOLUNTEERS : involves
     EVENT ||--o{ EVENT_DISTRICTS : involves
     EVENT ||--o{ EVENT_SKILLS : requires
-    
+
     SKILL ||--o{ VOLUNTEER_SKILLS : possessed_by
     SKILL ||--o{ EVENT_SKILLS : required_by
-    
+
     USERS ||--o{ HISTORY : performs
     USERS ||--o{ BUG_REPORTS : reports
 ```
@@ -1051,14 +1051,14 @@ CREATE TABLE class (
 ### Volunteer Queries
 ```sql
 -- Find active volunteers by local status
-SELECT v.*, c.first_name, c.last_name 
-FROM volunteer v 
-JOIN contact c ON v.id = c.id 
+SELECT v.*, c.first_name, c.last_name
+FROM volunteer v
+JOIN contact c ON v.id = c.id
 WHERE v.local_status = 'local' AND v.status = 'active';
 
 -- Find volunteers with specific skills
 SELECT v.*, c.first_name, c.last_name, s.name as skill_name
-FROM volunteer v 
+FROM volunteer v
 JOIN contact c ON v.id = c.id
 JOIN volunteer_skills vs ON v.id = vs.volunteer_id
 JOIN skill s ON vs.skill_id = s.id
@@ -1066,7 +1066,7 @@ WHERE s.name = 'Python Programming';
 
 -- Find volunteers by organization
 SELECT v.*, c.first_name, c.last_name, o.name as org_name
-FROM volunteer v 
+FROM volunteer v
 JOIN contact c ON v.id = c.id
 JOIN volunteer_organization vo ON v.id = vo.volunteer_id
 JOIN organization o ON vo.organization_id = o.id
@@ -1076,9 +1076,9 @@ WHERE o.name = 'Tech Company';
 ### Event Queries
 ```sql
 -- Find upcoming events by type
-SELECT * FROM event 
-WHERE start_date > CURRENT_TIMESTAMP 
-AND type = 'career_fair' 
+SELECT * FROM event
+WHERE start_date > CURRENT_TIMESTAMP
+AND type = 'career_fair'
 AND status = 'Confirmed'
 ORDER BY start_date;
 
@@ -1086,7 +1086,7 @@ ORDER BY start_date;
 SELECT e.*, ead.status as attendance_status
 FROM event e
 LEFT JOIN event_attendance_detail ead ON e.id = ead.event_id
-WHERE ead.status = 'not_taken' 
+WHERE ead.status = 'not_taken'
 AND e.start_date < CURRENT_TIMESTAMP;
 
 -- Find events by district
@@ -1100,7 +1100,7 @@ WHERE d.name = 'Kansas City School District';
 ### Report Queries
 ```sql
 -- Volunteer activity summary
-SELECT 
+SELECT
     COUNT(DISTINCT v.id) as total_volunteers,
     COUNT(DISTINCT ep.event_id) as total_events,
     SUM(ep.delivery_hours) as total_hours
@@ -1109,7 +1109,7 @@ LEFT JOIN event_participation ep ON v.id = ep.volunteer_id
 WHERE ep.status = 'Attended';
 
 -- Event participation by type
-SELECT 
+SELECT
     e.type,
     COUNT(DISTINCT e.id) as event_count,
     COUNT(ep.id) as participation_count,
@@ -1153,4 +1153,4 @@ GROUP BY e.type;
 ### Backup Strategy
 - **Daily Backups**: Automated daily database backups
 - **Point-in-Time Recovery**: Transaction log backups for recovery
-- **Export Backups**: CSV exports for data portability 
+- **Export Backups**: CSV exports for data portability

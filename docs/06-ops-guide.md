@@ -243,6 +243,60 @@ volumes:
   postgres_data:
 ```
 
+## 📅 Scheduling Imports
+
+You can schedule nightly imports using your OS scheduler.
+
+### Windows Task Scheduler
+
+1. Open Task Scheduler → Create Task…
+2. Triggers: Daily at 2:00 AM (or preferred time)
+3. Actions: Start a program
+   - Program/script: `python`
+   - Add arguments: `manage_imports.py --sequential --timeout 0 --base-url http://localhost:5050 --username %ADMIN_USERNAME% --password %ADMIN_PASSWORD%`
+   - Start in: path to your VMS repo
+4. Conditions: Uncheck “Start only if the computer is on AC power” if needed
+5. Settings: Stop the task if it runs longer than X hours (optional)
+
+Notes:
+- Ensure a Python venv is activated via a wrapper `.cmd` if needed. Example action target:
+  - Program/script: `C:\\Windows\\System32\\cmd.exe`
+  - Add arguments: `/c "C:\\path\\to\\venv\\Scripts\\activate && python manage_imports.py --sequential --timeout 0 --base-url http://localhost:5050 --username %ADMIN_USERNAME% --password %ADMIN_PASSWORD%"`
+
+### Linux/macOS (cron)
+
+Edit crontab with `crontab -e`:
+
+```
+0 2 * * * cd /path/to/VMS && /path/to/venv/bin/python manage_imports.py --sequential --timeout 0 --base-url http://localhost:5050 --username "$ADMIN_USERNAME" --password "$ADMIN_PASSWORD" >> logs/import_cron.log 2>&1
+```
+
+Tips:
+- Use `--exclude` to skip heavy steps on weekdays, and run full imports weekly
+- Use `--plan-only` with logging on a different schedule to validate connectivity
+
+### PythonAnywhere (Web)
+
+Use a Scheduled Task with a bash command that activates your venv, changes to the repo, and runs the CLI excluding students:
+
+```bash
+cd /home/yourusername/VMS && \
+source /home/yourusername/.virtualenvs/your_venv/bin/activate && \
+ADMIN_USERNAME=youradmin ADMIN_PASSWORD=yourpass \
+VMS_BASE_URL=https://yourusername.pythonanywhere.com \
+python manage_imports.py --sequential --exclude students --timeout 0 --base-url "$VMS_BASE_URL"
+```
+
+Alternatively, place your command logic into `scripts/nightly_import_no_students.sh` and schedule:
+
+```bash
+cd /home/yourusername/VMS && \
+VENV_PATH=/home/yourusername/.virtualenvs/your_venv \
+ADMIN_USERNAME=youradmin ADMIN_PASSWORD=yourpass \
+VMS_BASE_URL=https://yourusername.pythonanywhere.com \
+bash scripts/nightly_import_no_students.sh
+```
+
 ## 📊 Monitoring
 
 ### Application Monitoring
@@ -256,10 +310,10 @@ def health_check():
     try:
         # Check database connection
         db.session.execute('SELECT 1')
-        
+
         # Check Salesforce connection
         sf_status = check_salesforce_connection()
-        
+
         return {
             'status': 'healthy',
             'timestamp': datetime.utcnow().isoformat(),
@@ -285,7 +339,7 @@ from logging.handlers import RotatingFileHandler
 
 def configure_logging(app):
     """Configure structured logging."""
-    
+
     # Configure structlog
     structlog.configure(
         processors=[
@@ -304,26 +358,26 @@ def configure_logging(app):
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
-    
+
     # File handler
     file_handler = RotatingFileHandler(
-        'logs/vms.log', 
+        'logs/vms.log',
         maxBytes=10485760,  # 10MB
         backupCount=10
     )
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
-    
+
     # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    
+
     # Configure app logger
     app.logger.addHandler(file_handler)
     app.logger.addHandler(console_handler)
     app.logger.setLevel(logging.INFO)
-    
+
     # Disable Werkzeug logger
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
 ```
@@ -344,22 +398,22 @@ def monitor_performance(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         start_time = time.time()
-        
+
         try:
             result = f(*args, **kwargs)
             execution_time = time.time() - start_time
-            
+
             logger.info(
                 "function_execution",
                 function=f.__name__,
                 execution_time=execution_time,
                 success=True
             )
-            
+
             return result
         except Exception as e:
             execution_time = time.time() - start_time
-            
+
             logger.error(
                 "function_execution",
                 function=f.__name__,
@@ -368,7 +422,7 @@ def monitor_performance(f):
                 error=str(e)
             )
             raise
-    
+
     return decorated_function
 
 def log_request():
@@ -379,7 +433,7 @@ def log_response(response):
     """Log response details."""
     if hasattr(g, 'start_time'):
         execution_time = time.time() - g.start_time
-        
+
         logger.info(
             "request_processed",
             method=request.method,
@@ -389,7 +443,7 @@ def log_response(response):
             user_agent=request.headers.get('User-Agent'),
             ip_address=request.remote_addr
         )
-    
+
     return response
 ```
 
@@ -619,14 +673,14 @@ python -c "import gc; gc.collect(); print('Garbage collection completed')"
 ```bash
 # Check database performance
 psql -U vms_user -d vms_production -c "
-SELECT 
+SELECT
     query,
     calls,
     total_time,
     mean_time,
     rows
-FROM pg_stat_statements 
-ORDER BY total_time DESC 
+FROM pg_stat_statements
+ORDER BY total_time DESC
 LIMIT 10;
 "
 
@@ -743,10 +797,10 @@ engine = create_engine(
 @admin_required
 def metrics():
     """System metrics dashboard."""
-    
+
     # Database metrics
     db_stats = db.session.execute("""
-        SELECT 
+        SELECT
             schemaname,
             tablename,
             n_tup_ins as inserts,
@@ -754,7 +808,7 @@ def metrics():
             n_tup_del as deletes
         FROM pg_stat_user_tables
     """).fetchall()
-    
+
     # Application metrics
     app_stats = {
         'total_volunteers': Volunteer.query.count(),
@@ -762,9 +816,9 @@ def metrics():
         'total_organizations': Organization.query.count(),
         'active_sessions': len(current_app.login_manager._session_protector._sessions)
     }
-    
-    return render_template('admin/metrics.html', 
-                         db_stats=db_stats, 
+
+    return render_template('admin/metrics.html',
+                         db_stats=db_stats,
                          app_stats=app_stats)
 ```
 
@@ -777,4 +831,4 @@ def metrics():
 
 ---
 
-*Last updated: August 2025* 
+*Last updated: August 2025*

@@ -460,27 +460,27 @@ code {
     .organization-detail-container {
         padding: 1rem;
     }
-    
+
     .organization-title {
         font-size: 2rem;
     }
-    
+
     .detail-header-content {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .summary-grid {
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: 1rem;
     }
-    
+
     .enhanced-table {
         font-size: 0.8rem;
     }
-    
+
     .enhanced-table th,
     .enhanced-table td {
         padding: 0.5rem 0.4rem;
     }
-} 
+}

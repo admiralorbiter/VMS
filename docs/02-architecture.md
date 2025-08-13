@@ -6,6 +6,15 @@ tags: [architecture, technical-design, patterns]
 
 # VMS Architecture
 
+## 🔍 High-Level Diagram
+
+```mermaid
+flowchart LR
+    U[User] -->|HTTP| F[Flask App]
+    F --> DB[(SQLite)]
+    F --> SF[Salesforce API]
+```
+
 ## 🏗️ System Design Principles
 
 ### 1. Single Source of Truth
@@ -74,7 +83,7 @@ sequenceDiagram
     U->>F: HTTP Request
     F->>A: Check Authentication
     A->>F: User Session
-    
+
     alt Authenticated
         F->>M: Process Request
         M->>D: Database Query
@@ -181,7 +190,7 @@ flowchart TD
     C --> E[Set Session Cookie]
     E --> F[Redirect to Dashboard]
     D --> G[Return to Login]
-    
+
     H[Protected Route] --> I{Session Valid?}
     I -->|Yes| J[Allow Access]
     I -->|No| K[Redirect to Login]
@@ -204,13 +213,13 @@ class SalesforceSync:
     def __init__(self, config):
         self.client = SalesforceClient(config)
         self.db = Database()
-    
+
     def sync_volunteers(self):
         """Sync volunteer data from Salesforce"""
         sf_volunteers = self.client.get_volunteers()
         for volunteer in sf_volunteers:
             self.db.upsert_volunteer(volunteer)
-    
+
     def sync_organizations(self):
         """Sync organization data from Salesforce"""
         sf_orgs = self.client.get_organizations()
@@ -282,13 +291,13 @@ const VolunteerManager = {
         this.bindEvents();
         this.initializeComponents();
     },
-    
+
     bindEvents() {
         document.querySelectorAll('.volunteer-action').forEach(el => {
             el.addEventListener('click', this.handleAction.bind(this));
         });
     },
-    
+
     handleAction(event) {
         // Handle volunteer actions
     }
@@ -302,7 +311,7 @@ const VolunteerManager = {
 ```
     /\
    /  \     E2E Tests (Few)
-  /____\    
+  /____\
  /      \   Integration Tests (Some)
 /________\  Unit Tests (Many)
 ```
@@ -409,4 +418,4 @@ FEATURES = {
 
 ---
 
-*Last updated: August 2025* 
+*Last updated: August 2025*

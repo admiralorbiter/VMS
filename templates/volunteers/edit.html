@@ -1,4 +1,4 @@
-{# 
+{#
 Volunteer Management System - Edit Volunteer Template
 
 This template provides a comprehensive form for editing existing volunteer information.
@@ -57,7 +57,7 @@ Last Updated: 2024
     <div class="volunteer-form-container">
         <form method="POST" class="volunteer-form">
             {{ form.csrf_token }}
-            
+
             {# Form validation errors display #}
             {% if form.errors %}
                 <div class="alert alert-danger">
@@ -70,7 +70,7 @@ Last Updated: 2024
                     </ul>
                 </div>
             {% endif %}
-            
+
             {# Personal Information Section #}
             <div class="form-section">
                 <h2><i class="fa-solid fa-user"></i> Personal Information</h2>

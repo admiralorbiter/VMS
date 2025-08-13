@@ -1,10 +1,10 @@
 /**
  * Organizations Management JavaScript Module
  * ========================================
- * 
+ *
  * This module provides comprehensive functionality for managing organizations
  * in the VMS, including search, sorting, pagination, deletion, and purge operations.
- * 
+ *
  * Key Features:
  * - Debounced search functionality
  * - Sortable table columns with visual indicators
@@ -13,46 +13,46 @@
  * - Purge functionality for bulk operations
  * - Notification system for user feedback
  * - URL parameter management
- * 
+ *
  * Search Functionality:
  * - Debounced input handling (600ms delay)
  * - Real-time form submission
  * - Multiple search field support
  * - URL parameter preservation
- * 
+ *
  * Sorting System:
  * - Clickable column headers
  * - Visual sort direction indicators
  * - Toggle between ascending/descending
  * - URL state management
  * - Reset to first page on sort
- * 
+ *
  * Pagination:
  * - Per-page selection (10, 25, 50, 100)
  * - URL parameter management
  * - Reset to first page on change
- * 
+ *
  * Delete Operations:
  * - Confirmation modal for safety
  * - AJAX delete requests
  * - Error handling and user feedback
  * - Page reload after successful deletion
- * 
+ *
  * Purge Operations:
  * - Confirmation dialog for bulk deletion
  * - AJAX purge requests
  * - Success/error notifications
  * - Automatic page reload
- * 
+ *
  * Dependencies:
  * - Bootstrap 5.3.3 CSS/JS for modal functionality
  * - FontAwesome icons for visual indicators
  * - Custom CSS for notification styling
- * 
+ *
  * API Endpoints:
  * - DELETE /organizations/delete/{id}: Delete specific organization
  * - POST /organizations/purge: Purge all organizations
- * 
+ *
  * CSS Classes:
  * - .sortable: Sortable column headers
  * - .notification: Notification styling
@@ -149,7 +149,7 @@ document.getElementById('confirmDelete').addEventListener('click', async functio
             const response = await fetch(`/organizations/delete/${organizationToDelete}`, {
                 method: 'DELETE',
             });
-            
+
             if (response.ok) {
                 window.location.reload();
             } else {
@@ -214,12 +214,12 @@ function showNotification(type, message) {
         <i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
         <span>${message}</span>
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     // Fade in
     setTimeout(() => notification.classList.add('show'), 100);
-    
+
     // Remove after 5 seconds
     setTimeout(() => {
         notification.classList.remove('show');
@@ -267,7 +267,7 @@ function handleSort(event) {
     const header = event.currentTarget;
     const sortField = header.dataset.sort;
     const currentSort = getCurrentSort();
-    
+
     let newDirection = 'asc';
     if (currentSort.sort === sortField) {
         // Toggle direction if clicking the same column

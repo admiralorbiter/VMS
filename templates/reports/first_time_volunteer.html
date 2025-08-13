@@ -10,27 +10,27 @@
         max-width: 1600px;
         margin: 0 auto;
     }
-    
+
     .page-header {
         color: #2c5aa0;
         margin-bottom: 20px;
         font-size: 2.5em;
     }
-    
+
     .filters {
         background: #f8f9fa;
         padding: 15px;
         border-radius: 5px;
         margin-bottom: 20px;
     }
-    
+
     .year-filter select {
         padding: 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
         margin-left: 10px;
     }
-    
+
     .summary-stats {
         display: flex;
         gap: 20px;
@@ -38,7 +38,7 @@
         flex-wrap: wrap;
         align-items: center;
     }
-    
+
     .stat-card {
         background: #fff;
         border: 1px solid #ddd;
@@ -49,23 +49,23 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         min-width: 200px;
     }
-    
+
     .stat-number {
         font-size: 2em;
         font-weight: bold;
         color: #2c5aa0;
         margin-bottom: 5px;
     }
-    
+
     .stat-label {
         color: #666;
         font-size: 0.9em;
     }
-    
+
     .export-button {
         margin-left: auto;
     }
-    
+
     .btn-success {
         background: #28a745;
         color: #fff !important;
@@ -80,13 +80,13 @@
         transition: background 0.2s;
         font-weight: 500;
     }
-    
+
     .btn-success:hover {
         background: #218838;
         color: #fff !important;
         text-decoration: none;
     }
-    
+
     .volunteer-table {
         background: white;
         border-radius: 8px;
@@ -96,14 +96,14 @@
         margin: 0; /* Remove negative margins */
         width: 100%;
     }
-    
+
     .volunteer-table table {
         width: 100%;
         border-collapse: collapse;
         min-width: 1400px;
         table-layout: fixed;
     }
-    
+
     .volunteer-table th {
         background: #2c5aa0;
         color: white;
@@ -115,81 +115,81 @@
         user-select: none;
         position: relative;
     }
-    
+
     .volunteer-table th:hover {
         background: #1e4a8a;
     }
-    
+
     .volunteer-table th.sortable::after {
         content: '↕';
         position: absolute;
         right: 10px;
         opacity: 0.7;
     }
-    
+
     .volunteer-table th.sort-asc::after {
         content: '↑';
         opacity: 1;
     }
-    
+
     .volunteer-table th.sort-desc::after {
         content: '↓';
         opacity: 1;
     }
-    
+
     .volunteer-table td {
         padding: 12px 15px;
         border-bottom: 1px solid #eee;
         vertical-align: top;
     }
-    
+
     .volunteer-table tr:hover {
         background: #f8f9fa;
     }
-    
+
     .volunteer-name-cell {
         width: 22%;
         min-width: 250px;
     }
-    
+
     .volunteer-name {
         font-weight: 600;
         color: #2c5aa0;
         margin-bottom: 4px;
         font-size: 1em;
     }
-    
+
     .volunteer-date {
         color: #666;
         font-size: 0.9em;
         font-weight: normal;
         margin-bottom: 6px;
     }
-    
+
     .volunteer-salesforce {
         margin-top: 6px;
     }
-    
+
     .events-hours-cell {
         width: 12%;
         min-width: 120px;
         text-align: center;
     }
-    
+
     .events-count {
         font-weight: 600;
         color: #2c5aa0;
         font-size: 1.1em;
         margin-bottom: 2px;
     }
-    
+
     .hours-count {
         color: #666;
         font-size: 0.9em;
     }
-    
 
-    
+
+
     .title-cell {
         width: 17%;
         max-width: 200px;
@@ -197,19 +197,19 @@
         font-size: 0.9em;
         color: #333;
     }
-    
+
     .organization-cell {
         width: 13%;
         word-wrap: break-word;
         font-size: 0.9em;
     }
-    
+
     .events-cell {
         width: 36%;
         max-width: 500px;
         font-size: 0.85em;
     }
-    
+
     .event-item {
         margin-bottom: 8px;
         padding: 6px 8px;
@@ -217,13 +217,13 @@
         border-radius: 4px;
         border-left: 3px solid #2c5aa0;
     }
-    
+
     .event-title {
         font-weight: 500;
         color: #2c5aa0;
         margin-bottom: 2px;
     }
-    
+
     .event-details {
         color: #666;
         font-size: 0.9em;
@@ -232,11 +232,11 @@
         align-items: center;
         gap: 10px;
     }
-    
+
     .event-date {
         font-weight: 500;
     }
-    
+
     .event-hours {
         background: #e9ecef;
         padding: 1px 6px;
@@ -244,7 +244,7 @@
         font-size: 0.8em;
         white-space: nowrap;
     }
-    
+
     .salesforce-btn {
         background: #00D4AA;
         color: white;
@@ -258,24 +258,24 @@
         transition: background 0.3s ease;
         white-space: nowrap;
     }
-    
+
     .salesforce-btn:hover {
         background: #00B89A;
         color: white;
         text-decoration: none;
     }
-    
+
     .salesforce-btn i {
         font-size: 0.9em;
     }
-    
+
     .no-data {
         text-align: center;
         padding: 40px;
         color: #666;
         font-style: italic;
     }
-    
+
     .no-events {
         color: #999;
         font-style: italic;
@@ -346,7 +346,7 @@
         cursor: not-allowed;
         pointer-events: none;
     }
-    
+
     /* Only override main for this page, not globally */
     main {
         max-width: none !important;
@@ -377,7 +377,7 @@
 {% block content %}
 <div class="first-time-volunteer-container">
     <h1 class="page-header">First Time Volunteer Report</h1>
-    
+
     <div class="filters">
         <form method="GET" class="year-filter">
             <label for="school_year">School Year:</label>
@@ -440,18 +440,18 @@
                     <span class="page-btn disabled">First</span>
                     <span class="page-btn disabled">← Prev</span>
                 {% endif %}
-                
+
                 <!-- Page numbers -->
                 {% set start_page = [1, page - 2] | max %}
                 {% set end_page = [total_pages, page + 2] | min %}
-                
+
                 {% if start_page > 1 %}
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=1, per_page=per_page) }}" class="page-btn">1</a>
                     {% if start_page > 2 %}
                         <span class="page-btn disabled">...</span>
                     {% endif %}
                 {% endif %}
-                
+
                 {% for p in range(start_page, end_page + 1) %}
                     {% if p == page %}
                         <span class="page-btn current">{{ p }}</span>
@@ -459,14 +459,14 @@
                         <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=p, per_page=per_page) }}" class="page-btn">{{ p }}</a>
                     {% endif %}
                 {% endfor %}
-                
+
                 {% if end_page < total_pages %}
                     {% if end_page < total_pages - 1 %}
                         <span class="page-btn disabled">...</span>
                     {% endif %}
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">{{ total_pages }}</a>
                 {% endif %}
-                
+
                 {% if has_next %}
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=page+1, per_page=per_page) }}" class="page-btn">Next →</a>
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">Last</a>
@@ -550,18 +550,18 @@
                     <span class="page-btn disabled">First</span>
                     <span class="page-btn disabled">← Prev</span>
                 {% endif %}
-                
+
                 <!-- Page numbers -->
                 {% set start_page = [1, page - 2] | max %}
                 {% set end_page = [total_pages, page + 2] | min %}
-                
+
                 {% if start_page > 1 %}
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=1, per_page=per_page) }}" class="page-btn">1</a>
                     {% if start_page > 2 %}
                         <span class="page-btn disabled">...</span>
                     {% endif %}
                 {% endif %}
-                
+
                 {% for p in range(start_page, end_page + 1) %}
                     {% if p == page %}
                         <span class="page-btn current">{{ p }}</span>
@@ -569,14 +569,14 @@
                         <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=p, per_page=per_page) }}" class="page-btn">{{ p }}</a>
                     {% endif %}
                 {% endfor %}
-                
+
                 {% if end_page < total_pages %}
                     {% if end_page < total_pages - 1 %}
                         <span class="page-btn disabled">...</span>
                     {% endif %}
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">{{ total_pages }}</a>
                 {% endif %}
-                
+
                 {% if has_next %}
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=page+1, per_page=per_page) }}" class="page-btn">Next →</a>
                     <a href="{{ url_for('report.first_time_volunteer', school_year=school_year, page=total_pages, per_page=per_page) }}" class="page-btn">Last</a>
@@ -601,19 +601,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const table = document.querySelector('.volunteer-table table');
     const tbody = table.querySelector('tbody');
     const headers = table.querySelectorAll('th.sortable');
-    
+
     let currentSort = {
         column: null,
         direction: 'asc'
     };
-    
+
     // Store original data for sorting
     const originalRows = Array.from(tbody.querySelectorAll('tr'));
-    
+
     headers.forEach(header => {
         header.addEventListener('click', function() {
             const sortKey = this.dataset.sort;
-            
+
             // Update sort direction
             if (currentSort.column === sortKey) {
                 currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
@@ -621,24 +621,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentSort.column = sortKey;
                 currentSort.direction = 'asc';
             }
-            
+
             // Update header classes
             headers.forEach(h => {
                 h.classList.remove('sort-asc', 'sort-desc');
             });
             this.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
-            
+
             // Sort the data
             sortTable(sortKey, currentSort.direction);
         });
     });
-    
+
     function sortTable(sortKey, direction) {
         const rows = Array.from(tbody.querySelectorAll('tr'));
-        
+
         rows.sort((a, b) => {
             let aValue, bValue;
-            
+
             switch(sortKey) {
                 case 'name':
                     aValue = a.querySelector('.volunteer-name').textContent.trim();
@@ -665,24 +665,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 default:
                     return 0;
             }
-            
+
             // Handle string comparison
             if (typeof aValue === 'string') {
                 aValue = aValue.toLowerCase();
                 bValue = bValue.toLowerCase();
             }
-            
+
             if (direction === 'asc') {
                 return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
             } else {
                 return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
             }
         });
-        
+
         // Clear and re-append sorted rows
         tbody.innerHTML = '';
         rows.forEach(row => tbody.appendChild(row));
     }
 });
 </script>
-{% endblock %} 
+{% endblock %}

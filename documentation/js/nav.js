@@ -47,4 +47,4 @@ function setActiveNavigation() {
             item.classList.add('active');
         }
     });
-} 
+}

@@ -1,11 +1,11 @@
-{# 
+{#
   Activity History Template
   ========================
-  
+
   This template provides the main interface for viewing and managing activity history
   in the Volunteer Management System. It includes filtering, sorting, pagination,
   and detailed view functionality for tracking system activities.
-  
+
   Key Features:
   - Comprehensive filtering system
   - Sortable table columns
@@ -14,40 +14,40 @@
   - Date range filtering
   - Search functionality
   - Action buttons for detailed views
-  
+
   Filter Options:
   - Text search in summary and description
   - Activity type dropdown
   - Status dropdown
   - Date range selection (start/end dates)
   - Per-page selection (10, 25, 50, 100)
-  
+
   Table Features:
   - Sortable columns with visual indicators
   - Activity type badges with styling
   - Status badges with color coding
   - Action buttons for view and event links
   - Responsive design
-  
+
   Sorting System:
   - Clickable column headers
   - Visual sort direction indicators
   - Toggle between ascending/descending
   - URL parameter management
-  
+
   Template Variables:
   - history: Paginated list of activity items
   - pagination: Pagination object with navigation info
   - current_filters: Dictionary of active filter parameters
   - activity_types: List of available activity types
   - activity_statuses: List of available statuses
-  
+
   Dependencies:
   - Bootstrap 5.3.3 CSS/JS
   - FontAwesome icons
   - Custom history.css for styling
   - Custom history.js for functionality
-  
+
   JavaScript Functions:
   - changePerPage(): Update items per page
   - sortTable(): Handle column sorting
@@ -78,12 +78,12 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="search_summary">Search</label>
-                    <input type="text" name="search_summary" id="search_summary" 
+                    <input type="text" name="search_summary" id="search_summary"
                            value="{{ current_filters.search_summary }}"
-                           class="form-control" 
+                           class="form-control"
                            placeholder="Search summary and description...">
                 </div>
-                
+
                 <div class="filter-group">
                     <label for="activity_type">Activity Type</label>
                     <select name="activity_type" id="activity_type" class="form-select">
@@ -101,7 +101,7 @@
                     <select name="activity_status" id="activity_status" class="form-control">
                         <option value="">All Statuses</option>
                         {% for status in activity_statuses %}
-                        <option value="{{ status }}" 
+                        <option value="{{ status }}"
                                 {% if current_filters.activity_status == status %}selected{% endif %}>
                             {{ status }}
                         </option>
@@ -114,14 +114,14 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="start_date">Start Date</label>
-                    <input type="date" name="start_date" id="start_date" 
+                    <input type="date" name="start_date" id="start_date"
                            value="{{ current_filters.start_date }}"
                            class="form-control">
                 </div>
 
                 <div class="filter-group">
                     <label for="end_date">End Date</label>
-                    <input type="date" name="end_date" id="end_date" 
+                    <input type="date" name="end_date" id="end_date"
                            value="{{ current_filters.end_date }}"
                            class="form-control">
                 </div>
@@ -142,7 +142,7 @@
                 <tr>
                     {# Sortable summary column with visual indicators #}
                     <th class="sortable" data-sort="summary">
-                        Summary 
+                        Summary
                         {% if current_filters.sort_by == 'summary' %}
                             <i class="fa-solid fa-sort-{{ 'down' if current_filters.sort_direction == 'desc' else 'up' }}"></i>
                         {% else %}
@@ -151,7 +151,7 @@
                     </th>
                     {# Sortable activity type column #}
                     <th class="sortable" data-sort="activity_type">
-                        Type 
+                        Type
                         {% if current_filters.sort_by == 'activity_type' %}
                             <i class="fa-solid fa-sort-{{ 'down' if current_filters.sort_direction == 'desc' else 'up' }}"></i>
                         {% else %}
@@ -160,7 +160,7 @@
                     </th>
                     {# Sortable date column #}
                     <th class="sortable" data-sort="activity_date">
-                        Date 
+                        Date
                         {% if current_filters.sort_by == 'activity_date' %}
                             <i class="fa-solid fa-sort-{{ 'down' if current_filters.sort_direction == 'desc' else 'up' }}"></i>
                         {% else %}
@@ -222,18 +222,18 @@
                     <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 per page</option>
                     <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
                 </select>
-                
+
                 {# Pagination navigation buttons #}
                 <div class="pagination-buttons">
                     {% if pagination.has_prev %}
-                        <a href="{{ url_for('history.history_table', page=pagination.prev_num, **current_filters) }}" 
+                        <a href="{{ url_for('history.history_table', page=pagination.prev_num, **current_filters) }}"
                            class="pagination-btn">
                             <i class="fa-solid fa-chevron-left"></i> Previous
                         </a>
                     {% endif %}
-                    
+
                     {% if pagination.has_next %}
-                        <a href="{{ url_for('history.history_table', page=pagination.next_num, **current_filters) }}" 
+                        <a href="{{ url_for('history.history_table', page=pagination.next_num, **current_filters) }}"
                            class="pagination-btn">
                             Next <i class="fa-solid fa-chevron-right"></i>
                         </a>
@@ -241,7 +241,7 @@
                 </div>
             </div>
         </div>
-        
+
         {# Pagination summary information #}
         <div class="pagination-summary">
             Showing {{ pagination.items|length }} of {{ pagination.total }} activities
@@ -266,7 +266,7 @@ function sortTable(column) {
     const url = new URL(window.location);
     const currentSort = url.searchParams.get('sort_by');
     const currentDirection = url.searchParams.get('sort_direction');
-    
+
     if (currentSort === column) {
         // Toggle direction if same column
         url.searchParams.set('sort_direction', currentDirection === 'asc' ? 'desc' : 'asc');
@@ -275,7 +275,7 @@ function sortTable(column) {
         url.searchParams.set('sort_by', column);
         url.searchParams.set('sort_direction', 'asc');
     }
-    
+
     window.location.href = url.toString();
 }
 </script>

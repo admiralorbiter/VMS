@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Audit Logs</h1>
+    <div>
+      <a href="{{ url_for('management.admin') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Admin
+      </a>
+    </div>
+  </div>
+
+  <form class="row g-3 mb-3" method="get" action="{{ url_for('management.audit_logs') }}">
+    <div class="col-md-3">
+      <label for="action" class="form-label">Action</label>
+      <input type="text" id="action" name="action" class="form-control" value="{{ (filters.action if filters else '') or '' }}" placeholder="e.g., delete, purge" />
+    </div>
+    <div class="col-md-3">
+      <label for="resource_type" class="form-label">Resource Type</label>
+      <input type="text" id="resource_type" name="resource_type" class="form-control" value="{{ (filters.resource_type if filters else '') or '' }}" placeholder="e.g., volunteer, event" />
+    </div>
+    <div class="col-md-2">
+      <label for="user_id" class="form-label">User ID</label>
+      <input type="number" id="user_id" name="user_id" class="form-control" value="{{ (filters.user_id if filters else '') or '' }}" />
+    </div>
+    <div class="col-md-3">
+      <label for="start_date" class="form-label">Start Date</label>
+      <input type="datetime-local" id="start_date" name="start_date" class="form-control" value="{{ (filters.start_date if filters else '') or '' }}" />
+    </div>
+    <div class="col-md-3">
+      <label for="end_date" class="form-label">End Date</label>
+      <input type="datetime-local" id="end_date" name="end_date" class="form-control" value="{{ (filters.end_date if filters else '') or '' }}" />
+    </div>
+    <div class="col-md-2">
+      <label for="per_page" class="form-label">Per Page</label>
+      <select id="per_page" name="per_page" class="form-select">
+        {% for n in [25,50,100,200] %}
+        <option value="{{n}}" {% if filters.per_page == n %}selected{% endif %}>{{n}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end gap-2">
+      <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply Filters</button>
+      <a href="{{ url_for('management.audit_logs') }}" class="btn btn-outline-secondary">Clear</a>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="white-space:nowrap;">Time (UTC)</th>
+          <th>User ID</th>
+          <th>Action</th>
+          <th>Resource</th>
+          <th>Resource ID</th>
+          <th>Method</th>
+          <th>Path</th>
+          <th>IP</th>
+          <th>Meta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="white-space:nowrap;">{{ (log.created_at or '') }}</td>
+          <td>{{ log.user_id or '' }}</td>
+          <td><span class="badge bg-secondary">{{ log.action }}</span></td>
+          <td>{{ log.resource_type }}</td>
+          <td>{{ log.resource_id or '' }}</td>
+          <td>{{ log.method or '' }}</td>
+          <td class="text-truncate" style="max-width: 320px;" title="{{ log.path }}">{{ log.path }}</td>
+          <td>{{ log.ip or '' }}</td>
+          <td class="text-truncate" style="max-width: 360px;" title="{{ log.meta }}">{{ log.meta }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted">No audit entries found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination %}
+  <nav aria-label="Audit pagination">
+    <ul class="pagination">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('management.audit_logs', page=pagination.prev_num, per_page=filters.per_page, action=filters.action, resource_type=filters.resource_type, user_id=filters.user_id, start_date=filters.start_date, end_date=filters.end_date) }}">Previous</a>
+      </li>
+      <li class="page-item disabled"><span class="page-link">Page {{ pagination.page }} of {{ pagination.pages }}</span></li>
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('management.audit_logs', page=pagination.next_num, per_page=filters.per_page, action=filters.action, resource_type=filters.resource_type, user_id=filters.user_id, start_date=filters.start_date, end_date=filters.end_date) }}">Next</a>
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

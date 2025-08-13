@@ -240,9 +240,9 @@
     .filters-form {
         grid-template-columns: 1fr;
     }
-    
+
     .filter-actions {
         flex-direction: column;
         gap: 0.5rem;
     }
-} 
+}

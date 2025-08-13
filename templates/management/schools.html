@@ -26,13 +26,29 @@
         <div class="col">
             <div class="admin-card p-4">
                 <h3 class="card-title">Districts</h3>
+                <form class="row g-2 mb-3" method="get" action="{{ url_for('management.schools') }}">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="district_q" placeholder="Search districts by name/code" value="{{ (filters.district_q if filters else '') or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" name="d_per_page">
+                            {% for n in [25,50,100,200] %}
+                            <option value="{{n}}" {% if filters and filters.d_per_page == n %}selected{% endif %}>{{n}} / page</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary" type="submit">Apply</button>
+                        <a class="btn btn-outline-secondary" href="{{ url_for('management.schools') }}">Clear</a>
+                    </div>
+                </form>
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table" id="districts-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>District Code</th>
-                                <th>Number of Schools</th>
+                                <th data-sort-key="text">Name</th>
+                                <th data-sort-key="text">District Code</th>
+                                <th data-sort-key="number">Number of Schools</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -52,6 +68,19 @@
                         </tbody>
                     </table>
                 </div>
+                {% if d_pagination %}
+                <nav aria-label="Districts pagination">
+                  <ul class="pagination">
+                    <li class="page-item {% if not d_pagination.has_prev %}disabled{% endif %}">
+                      <a class="page-link" href="{{ url_for('management.schools', district_q=filters.district_q, d_page=d_pagination.prev_num, d_per_page=filters.d_per_page, school_q=filters.school_q, level=filters.level, s_page=filters.s_page, s_per_page=filters.s_per_page) }}">Previous</a>
+                    </li>
+                    <li class="page-item disabled"><span class="page-link">Page {{ d_pagination.page }} of {{ d_pagination.pages }}</span></li>
+                    <li class="page-item {% if not d_pagination.has_next %}disabled{% endif %}">
+                      <a class="page-link" href="{{ url_for('management.schools', district_q=filters.district_q, d_page=d_pagination.next_num, d_per_page=filters.d_per_page, school_q=filters.school_q, level=filters.level, s_page=filters.s_page, s_per_page=filters.s_per_page) }}">Next</a>
+                    </li>
+                  </ul>
+                </nav>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -73,14 +102,35 @@
                         {% endif %}
                     </div>
                 </div>
+                <form class="row g-2 mb-3" method="get" action="{{ url_for('management.schools') }}">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="school_q" placeholder="Search schools by name" value="{{ (filters.school_q if filters else '') or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="district_q" placeholder="Filter by district" value="{{ (filters.district_q if filters else '') or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" class="form-control" name="level" placeholder="Level (e.g., High)" value="{{ (filters.level if filters else '') or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" name="s_per_page">
+                            {% for n in [25,50,100,200] %}
+                            <option value="{{n}}" {% if filters and filters.s_per_page == n %}selected{% endif %}>{{n}} / page</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button class="btn btn-primary w-100" type="submit">Apply</button>
+                    </div>
+                </form>
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table" id="schools-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Level</th>
-                                <th>District</th>
-                                <th>School Code</th>
+                                <th data-sort-key="text">Name</th>
+                                <th data-sort-key="text">Level</th>
+                                <th data-sort-key="text">District</th>
+                                <th data-sort-key="text">School Code</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -101,6 +151,19 @@
                         </tbody>
                     </table>
                 </div>
+                {% if s_pagination %}
+                <nav aria-label="Schools pagination">
+                  <ul class="pagination">
+                    <li class="page-item {% if not s_pagination.has_prev %}disabled{% endif %}">
+                      <a class="page-link" href="{{ url_for('management.schools', school_q=filters.school_q, district_q=filters.district_q, level=filters.level, s_page=s_pagination.prev_num, s_per_page=filters.s_per_page, d_page=filters.d_page, d_per_page=filters.d_per_page) }}">Previous</a>
+                    </li>
+                    <li class="page-item disabled"><span class="page-link">Page {{ s_pagination.page }} of {{ s_pagination.pages }}</span></li>
+                    <li class="page-item {% if not s_pagination.has_next %}disabled{% endif %}">
+                      <a class="page-link" href="{{ url_for('management.schools', school_q=filters.school_q, district_q=filters.district_q, level=filters.level, s_page=s_pagination.next_num, s_per_page=filters.s_per_page, d_page=filters.d_page, d_per_page=filters.d_per_page) }}">Next</a>
+                    </li>
+                  </ul>
+                </nav>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -111,6 +174,53 @@
 
 {% block extra_js %}
 <script>
+function sortTable(tableId, colIndex, type, toggle=true) {
+  const table = document.getElementById(tableId);
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const currentDir = table.getAttribute('data-sort-dir') || 'asc';
+  let dir = currentDir;
+  if (toggle) {
+    dir = currentDir === 'asc' ? 'desc' : 'asc';
+  }
+
+  const comparator = (a, b) => {
+    const aText = a.children[colIndex].innerText.trim();
+    const bText = b.children[colIndex].innerText.trim();
+    if (type === 'number') {
+      const aNum = parseFloat(aText) || 0;
+      const bNum = parseFloat(bText) || 0;
+      return dir === 'asc' ? aNum - bNum : bNum - aNum;
+    }
+    // default text compare
+    const res = aText.localeCompare(bText, undefined, { sensitivity: 'base' });
+    return dir === 'asc' ? res : -res;
+  };
+
+  rows.sort(comparator);
+  rows.forEach(r => tbody.appendChild(r));
+
+  table.setAttribute('data-sort-dir', dir);
+}
+
+function attachSortHandlers(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const headers = table.querySelectorAll('thead th');
+  headers.forEach((th, idx) => {
+    const key = th.getAttribute('data-sort-key');
+    if (!key) return;
+    th.style.cursor = 'pointer';
+    th.title = 'Click to sort';
+    th.addEventListener('click', () => sortTable(tableId, idx, key, true));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  attachSortHandlers('districts-table');
+  attachSortHandlers('schools-table');
+});
+
 function importDistricts() {
     fetch('/management/import-districts', {
         method: 'POST',
@@ -198,11 +308,11 @@ function deleteDistrict(districtId) {
 function updateSchoolLevels() {
     const button = event.target.closest('button');
     const icon = button.querySelector('i');
-    
+
     // Add spinning animation
     icon.classList.add('fa-spin');
     button.disabled = true;
-    
+
     fetch('/management/update-school-levels', {
         method: 'POST',
         headers: {

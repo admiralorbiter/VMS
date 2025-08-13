@@ -42,7 +42,7 @@
                         {% if contact.suffix %}{{ contact.suffix.value }}{% endif %}
                     </span>
                 </div>
-                
+
                 <!-- Gender information (if available) -->
                 {% if contact.gender %}
                 <div class="detail-item">
@@ -225,7 +225,7 @@
                         <button class="btn btn-outline-secondary btn-sm" onclick="toggleExcludeControls()">
                             <i class="fas fa-cog"></i> Admin: Manage Report Exclusion
                         </button>
-                        
+
                         <div id="exclude-controls" style="display: none;" class="mt-3">
                             {% if contact.exclude_from_reports %}
                             <div class="alert alert-info" role="alert">

@@ -279,7 +279,7 @@ python scripts/change_password.py --username <username>
    -- Create indexes
    CREATE INDEX idx_volunteers_email ON volunteers(email);
    CREATE INDEX idx_events_date ON events(start_date);
-   
+
    -- Analyze tables
    ANALYZE;
    ```
@@ -295,7 +295,7 @@ python scripts/change_password.py --username <username>
    ```bash
    # Check memory usage
    free -h
-   
+
    # Check CPU usage
    top
    ```
@@ -497,4 +497,4 @@ python scripts/change_password.py --username <username>
 
 ---
 
-*Last updated: August 2025* 
+*Last updated: August 2025*

@@ -1,4 +1,4 @@
-{# 
+{#
 Volunteer Management System - Individual Volunteer View Template
 
 This template provides a detailed view of a single volunteer's information,
@@ -84,14 +84,14 @@ Last Updated: 2024
                     <i class="fas fa-user-slash"></i> <strong>Do Not Contact This Volunteer</strong>
                 </div>
                 {% endif %}
-                
+
                 {# Admin-only Report Exclusion Controls #}
                 {% if current_user.is_admin %}
                 <div class="admin-controls mb-3">
                     <button class="btn btn-outline-secondary btn-sm" onclick="toggleExcludeControls()">
                         <i class="fas fa-cog"></i> Admin: Manage Report Exclusion
                     </button>
-                    
+
                     <div id="exclude-controls" style="display: none;" class="mt-3">
                         {% if volunteer.exclude_from_reports %}
                         <div class="alert alert-info" role="alert">
@@ -113,13 +113,13 @@ Last Updated: 2024
                     </div>
                 </div>
                 {% endif %}
-                
+
                 {# Basic volunteer information #}
                 <div class="info-group">
                     <label>Full Name</label>
                     <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
                 </div>
-                
+
                 {% if volunteer.title %}
                 <div class="info-group">
                     <label>Title</label>
@@ -280,7 +280,7 @@ Last Updated: 2024
                         <p class="org-name">{{ volunteer.organization_name }}</p>
                     </div>
                 {% endif %}
-                
+
                 <div class="demographics-row">
                     <div class="info-group">
                         <label>Department</label>
@@ -447,7 +447,7 @@ Last Updated: 2024
                                 {% endif %}
                             </div>
                             {% endfor %}
-                            
+
                             {% if events|length > 5 %}
                             {# Hidden events that will be shown when expanded #}
                             <div class="event-items-hidden" style="display: none;">
@@ -477,7 +477,7 @@ Last Updated: 2024
                                 </div>
                                 {% endfor %}
                             </div>
-                            
+
                             <button class="show-more-btn" onclick="toggleEventExpansion('{{ status }}', this)">
                                 <i class="fa-solid fa-chevron-down"></i>
                                 Show {{ events|length - 5 }} more events
@@ -564,7 +564,7 @@ Last Updated: 2024
                             <span>Meeting</span>
                         </div>
                     </div>
-                    
+
                     <div class="history-timeline" style="max-height: 400px; overflow-y: auto;">
                         {% for history in histories[:10] %}  {# Show only first 10 history items #}
                         <div class="history-item" data-type="{{ history.activity_type }}">
@@ -693,7 +693,7 @@ function toggleEmailContent(button) {
     const historyItem = button.closest('.history-item');
     const fullContent = historyItem.querySelector('.full-email-content');
     const preview = historyItem.querySelector('.email-preview');
-    
+
     if (fullContent.style.display === 'none') {
         fullContent.style.display = 'block';
         preview.style.display = 'none';

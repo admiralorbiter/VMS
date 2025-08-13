@@ -13,15 +13,15 @@
                     <p class="text-muted mb-0">Organization Report Detail - {{ school_year[:2] }}-{{ school_year[2:] }} School Year</p>
                 </div>
                 <div class="btn-group" role="group">
-                    <a href="{{ url_for('report.organization_report_detail_excel', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}" 
+                    <a href="{{ url_for('report.organization_report_detail_excel', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}"
                        class="btn btn-success">
                         <i class="fas fa-file-excel"></i> Export Excel
                     </a>
-                    <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}" 
+                    <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}"
                        class="btn btn-outline-secondary">
                         <i class="fas fa-sync"></i> Refresh
                     </a>
-                    <a href="{{ url_for('report.organization_report') }}?school_year={{ school_year }}&host_filter={{ request.args.get('host_filter', 'all') }}" 
+                    <a href="{{ url_for('report.organization_report') }}?school_year={{ school_year }}&host_filter={{ request.args.get('host_filter', 'all') }}"
                        class="btn btn-outline-primary">
                         <i class="fas fa-arrow-left"></i> Back to Report
                     </a>
@@ -234,7 +234,7 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Classroom Breakdown -->
                     <div class="mt-4">
                         <h6 class="text-muted mb-3">
@@ -259,7 +259,7 @@
                                         <tbody>
                                             {% set unique_teachers = [] %}
                                             {% set teacher_session_counts = {} %}
-                                            
+
                                             {# First pass: count sessions per teacher #}
                                             {% for event in virtual_events %}
                                                 {% if event.classroom_details %}
@@ -272,7 +272,7 @@
                                                     {% endfor %}
                                                 {% endif %}
                                             {% endfor %}
-                                            
+
                                             {# Second pass: display unique teachers #}
                                             {% for event in virtual_events %}
                                                 {% if event.classroom_details %}
@@ -465,4 +465,4 @@
     padding: 0.35em 0.65em;
 }
 </style>
-{% endblock %} 
+{% endblock %}

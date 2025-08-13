@@ -102,4 +102,4 @@ To add a new section to the navigation:
 - Print-friendly styles
 - Dark mode support
 - Interactive demos
-- Video tutorials integration 
+- Video tutorials integration

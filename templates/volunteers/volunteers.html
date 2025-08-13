@@ -1,4 +1,4 @@
-{# 
+{#
 Volunteer Management System - Main Listing Template
 
 This template provides the primary interface for viewing and managing volunteers.
@@ -46,17 +46,17 @@ Last Updated: 2024
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="search_name">Name Search</label>
-                    <input type="text" name="search_name" id="search_name" 
-                           value="{{ current_filters.search_name }}" 
-                           class="form-control" 
+                    <input type="text" name="search_name" id="search_name"
+                           value="{{ current_filters.search_name }}"
+                           class="form-control"
                            placeholder="Search by name...">
                 </div>
-                
+
                 <div class="filter-group">
                     <label for="org_search">Organization/Role</label>
-                    <input type="text" name="org_search" id="org_search" 
-                           value="{{ current_filters.org_search }}" 
-                           class="form-control" 
+                    <input type="text" name="org_search" id="org_search"
+                           value="{{ current_filters.org_search }}"
+                           class="form-control"
                            placeholder="Search organization, title, department...">
                 </div>
 
@@ -84,17 +84,17 @@ Last Updated: 2024
             <div class="filter-row">
                 <div class="filter-group">
                     <label for="email_search">Email</label>
-                    <input type="text" name="email_search" id="email_search" 
-                           value="{{ current_filters.email_search }}" 
-                           class="form-control" 
+                    <input type="text" name="email_search" id="email_search"
+                           value="{{ current_filters.email_search }}"
+                           class="form-control"
                            placeholder="Search by email...">
                 </div>
 
                 <div class="filter-group">
                     <label for="skill_search">Skills</label>
-                    <input type="text" name="skill_search" id="skill_search" 
-                           value="{{ current_filters.skill_search }}" 
-                           class="form-control" 
+                    <input type="text" name="skill_search" id="skill_search"
+                           value="{{ current_filters.skill_search }}"
+                           class="form-control"
                            placeholder="Search by skill...">
                 </div>
             </div>
@@ -143,7 +143,7 @@ Last Updated: 2024
                             {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.middle_name }} {{ volunteer.volunteer.last_name }}
                         </a>
                     </td>
-                    
+
                     {# Current position/role information #}
                     <td>
                         {% if volunteer.organizations %}
@@ -152,7 +152,7 @@ Last Updated: 2024
                             {% if not primary_org %}
                                 {% set primary_org = volunteer.organizations|first %}
                             {% endif %}
-                            
+
                             {% if primary_org.role %}
                                 <div class="current-position">
                                     <span class="position-badge">{{ primary_org.role }}</span>
@@ -166,7 +166,7 @@ Last Updated: 2024
                                     <span class="position-badge no-position">No position specified</span>
                                 </div>
                             {% endif %}
-                            
+
                             {% if volunteer.volunteer.department %}
                                 <div class="department-info">
                                     <small class="department-text">{{ volunteer.volunteer.department }}</small>
@@ -183,7 +183,7 @@ Last Updated: 2024
                                     <span class="position-badge no-position">No position specified</span>
                                 </div>
                             {% endif %}
-                            
+
                             {% if volunteer.volunteer.department %}
                                 <div class="department-info">
                                     <small class="department-text">{{ volunteer.volunteer.department }}</small>
@@ -191,7 +191,7 @@ Last Updated: 2024
                             {% endif %}
                         {% endif %}
                     </td>
-                    
+
                     {# Organization information #}
                     <td>
                         {% if volunteer.organizations %}
@@ -200,18 +200,18 @@ Last Updated: 2024
                             {% if not primary_org %}
                                 {% set primary_org = volunteer.organizations|first %}
                             {% endif %}
-                            
+
                             <div class="org-name">
                                 <a href="{{ url_for('organizations.view_organization', id=primary_org.organization.id) }}">
                                     {{ primary_org.organization.name }}
                                 </a>
                             </div>
-                            
+
                             {# Show additional organizations if any #}
                             {% set additional_orgs = volunteer.organizations|rejectattr('is_primary', 'equalto', true)|list %}
                             {% if additional_orgs and additional_orgs|length >= 2 %}
                                 <div class="additional-orgs">
-                                    <button class="org-expand-btn" 
+                                    <button class="org-expand-btn"
                                             onclick="showOrganizations({{ volunteer.volunteer.id }})"
                                             title="Click to see all organizations for {{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
                                         <small class="additional-org-text">
@@ -228,12 +228,12 @@ Last Updated: 2024
                             </div>
                         {% endif %}
                     </td>
-                    
+
                     {# Times volunteered count #}
                     <td class="text-center">
                         {{ volunteer.volunteer.total_times_volunteered }}
                     </td>
-                    
+
                     {# Skills display with overflow handling #}
                     <td>
                         <div class="skills-container">
@@ -243,14 +243,14 @@ Last Updated: 2024
                             {% endfor %}
                             {# Show overflow indicator if more than 3 skills #}
                             {% if volunteer.volunteer.skills|length > 3 %}
-                                <span class="skill-badge more-skills" 
+                                <span class="skill-badge more-skills"
                                       title="{{ volunteer.volunteer.skills[3:]|map(attribute='name')|join(', ') }}">
                                     +{{ volunteer.volunteer.skills|length - 3 }}
                                 </span>
                             {% endif %}
                         </div>
                     </td>
-                    
+
                     {# Action buttons for each volunteer #}
                     <td class="actions-col">
                         <div class="action-buttons">
@@ -265,7 +265,7 @@ Last Updated: 2024
                                 <i class="fa-solid fa-building-user"></i>
                             </a>
                             {% endif %} -->
-                            
+
                             {# View volunteer details #}
                             <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn view-btn">
                                 <i class="fas fa-eye"></i>
@@ -274,7 +274,7 @@ Last Updated: 2024
                             <a href="{{ url_for('volunteers.edit_volunteer', id=volunteer.volunteer.id) }}" class="btn action-btn edit-btn">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <button class="btn action-btn delete-btn" data-volunteer-id="{{ volunteer.volunteer.id }}" 
+                            <button class="btn action-btn delete-btn" data-volunteer-id="{{ volunteer.volunteer.id }}"
                                     data-volunteer-name="{{ volunteer.volunteer.first_name }} {{ volunteer.volunteer.last_name }}">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -297,18 +297,18 @@ Last Updated: 2024
                         <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 per page</option>
                         <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 per page</option>
                     </select>
-                    
+
                     {# Previous/Next navigation buttons #}
                     <div class="pagination-buttons">
                         {% if pagination.has_prev %}
-                            <a href="{{ url_for('volunteers.volunteers', page=pagination.prev_num, **current_filters) }}" 
+                            <a href="{{ url_for('volunteers.volunteers', page=pagination.prev_num, **current_filters) }}"
                                class="pagination-btn">
                                 <i class="fa-solid fa-chevron-left"></i> Previous
                             </a>
                         {% endif %}
-                        
+
                         {% if pagination.has_next %}
-                            <a href="{{ url_for('volunteers.volunteers', page=pagination.next_num, **current_filters) }}" 
+                            <a href="{{ url_for('volunteers.volunteers', page=pagination.next_num, **current_filters) }}"
                                class="pagination-btn">
                                 Next <i class="fa-solid fa-chevron-right"></i>
                             </a>
@@ -316,10 +316,10 @@ Last Updated: 2024
                     </div>
                 </div>
             </div>
-            
+
             {# Pagination summary showing current page info #}
             <div class="pagination-summary">
-                Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers 
+                Showing {{ pagination.items|length }} of {{ pagination.total }} volunteers
                 (Page {{ pagination.page }} of {{ pagination.pages }})
             </div>
         </div>
@@ -359,7 +359,7 @@ Last Updated: 2024
 // Organizations Modal Functions
 function showOrganizations(volunteerId) {
     console.log('showOrganizations called with:', volunteerId);
-    
+
     // Get organizations data from the server
     fetch(`/volunteers/${volunteerId}/organizations`)
         .then(response => response.json())
@@ -375,28 +375,28 @@ function showOrganizations(volunteerId) {
 
 function showAllOrganizations(volunteerId, organizations) {
     console.log('showAllOrganizations called with:', { volunteerId, organizations });
-    
+
     // Validate input
     if (!organizations || !Array.isArray(organizations)) {
         console.error('Invalid organizations data:', organizations);
         alert('Error: Invalid organization data');
         return;
     }
-    
+
     const modal = document.getElementById('organizationsModal');
     const title = document.getElementById('organizationsModalTitle');
     const list = document.getElementById('organizationsList');
-    
+
     if (!modal) {
         console.error('Modal element not found!');
         return;
     }
-    
+
     if (!title || !list) {
         console.error('Modal title or list element not found!');
         return;
     }
-    
+
     // Get volunteer name from the table row
     const volunteerRow = document.querySelector(`tr[data-volunteer-id="${volunteerId}"]`);
     let volunteerName = 'Volunteer';
@@ -415,26 +415,26 @@ function showAllOrganizations(volunteerId, organizations) {
             }
         }
     }
-    
+
     console.log('Volunteer name:', volunteerName);
-    
+
     title.textContent = `Organizations for ${volunteerName}`;
-    
+
     // Build the organizations list
     let html = '<div class="organizations-list">';
-    
+
     if (organizations.length === 0) {
         html += '<div class="no-organizations">No organizations found for this volunteer.</div>';
     } else {
         organizations.forEach((orgInfo, index) => {
             console.log('Processing organization:', orgInfo);
-            
+
             const isPrimary = orgInfo.is_primary;
             const role = orgInfo.role || 'No role specified';
             const status = orgInfo.status || 'Current';
             const orgName = orgInfo.organization?.name || 'Unknown Organization';
             const orgId = orgInfo.organization?.id || 0;
-            
+
             html += `
                 <div class="organization-item ${isPrimary ? 'primary-org' : ''}">
                     <div class="org-header">
@@ -457,16 +457,16 @@ function showAllOrganizations(volunteerId, organizations) {
             `;
         });
     }
-    
+
     html += '</div>';
-    
+
     console.log('Generated HTML:', html);
-    
+
     list.innerHTML = html;
     modal.style.display = 'block';
-    
+
     console.log('Modal should now be visible');
-    
+
     // Add click outside to close
     modal.onclick = function(e) {
         if (e.target === modal) {

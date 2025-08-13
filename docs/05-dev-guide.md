@@ -29,10 +29,10 @@ Before setting up the VMS development environment, ensure you have:
 2. **Create virtual environment**
    ```bash
    python -m venv venv
-   
+
    # On Windows
    venv\Scripts\activate
-   
+
    # On macOS/Linux
    source venv/bin/activate
    ```
@@ -48,16 +48,16 @@ Before setting up the VMS development environment, ensure you have:
    # Flask Configuration
    FLASK_ENV=development
    SECRET_KEY=your-secret-key-here
-   
+
    # Database Configuration
    DATABASE_URL=sqlite:///instance/your_database.db
-   
+
    # Salesforce Integration
    SF_USERNAME=your-salesforce-username
    SF_PASSWORD=your-salesforce-password
    SF_SECURITY_TOKEN=your-salesforce-security-token
    SYNC_AUTH_TOKEN=your-sync-auth-token
-   
+
    # Google Sheets Integration
    CLIENT_PROJECTS_SHEET_ID=your-google-sheet-id
    SCHOOL_MAPPING_GOOGLE_SHEET=your-school-mapping-sheet
@@ -65,10 +65,10 @@ Before setting up the VMS development environment, ensure you have:
    ```
 
 5. **Initialize the database**
-   ```bash
-   python app.py
-   ```
-   This will create the SQLite database with all tables.
+```bash
+python app.py
+```
+This will create the SQLite database with all tables. The app also auto-creates any missing tables at startup, so new models like `AuditLog` are created without manual migrations in development.
 
 6. **Create admin user**
    ```bash
@@ -80,6 +80,24 @@ Before setting up the VMS development environment, ensure you have:
    python app.py
    ```
    The application will be available at `http://localhost:5050`
+
+8. **Set up pre-commit (recommended)**
+   ```bash
+   pip install -r requirements-dev.txt
+   pre-commit install
+   pre-commit run --all-files
+   ```
+
+9. **Run tests**
+   ```bash
+   python run_tests.py
+   ```
+
+## RBAC and Audit Logging
+
+- Destructive routes (delete/purge) are protected by an `admin_required` decorator. Non-admin users receive HTTP 403 responses.
+- Audit entries (`AuditLog`) are written for destructive actions with fields: `user_id`, `action`, `resource_type`, `resource_id`, `method`, `path`, `ip`, and `meta`.
+- Admins can view audit entries at `/admin/audit-logs` with filters (`action`, `resource_type`, `user_id`, `start_date`, `end_date`) and pagination (`page`, `per_page`).
 
 ## 📁 Project Structure
 
@@ -292,31 +310,31 @@ from utils.academic_year import get_current_academic_year
 
 #### Documentation
 ```python
-def calculate_volunteer_hours(volunteer_id: int, start_date: datetime, 
+def calculate_volunteer_hours(volunteer_id: int, start_date: datetime,
                              end_date: datetime) -> float:
     """
     Calculate total volunteer hours for a specific period.
-    
+
     Args:
         volunteer_id: The volunteer's unique identifier
         start_date: Start of the calculation period
         end_date: End of the calculation period
-        
+
     Returns:
         Total volunteer hours as a float
-        
+
     Raises:
         ValueError: If start_date is after end_date
         NotFoundError: If volunteer doesn't exist
-        
+
     Example:
-        >>> hours = calculate_volunteer_hours(1, 
+        >>> hours = calculate_volunteer_hours(1,
         ...     datetime(2024, 1, 1), datetime(2024, 12, 31))
         >>> print(f"Total hours: {hours}")
     """
     if start_date > end_date:
         raise ValueError("Start date must be before end date")
-    
+
     # Implementation here
     return total_hours
 ```
@@ -328,32 +346,32 @@ def calculate_volunteer_hours(volunteer_id: int, start_date: datetime,
 class Volunteer(Contact):
     """
     Volunteer model inheriting from Contact base class.
-    
+
     Represents volunteers in the system with specialized fields
     for volunteer management and activity tracking.
     """
     __tablename__ = 'volunteer'
-    
+
     # Primary key (inherited from Contact)
     id = db.Column(Integer, ForeignKey('contact.id'), primary_key=True)
-    
+
     # Volunteer-specific fields
     organization_name = db.Column(String(100))
     title = db.Column(String(50))
-    local_status = db.Column(Enum(LocalStatusEnum), 
+    local_status = db.Column(Enum(LocalStatusEnum),
                             default=LocalStatusEnum.unknown, index=True)
-    
+
     # Relationships
-    engagements = relationship('Engagement', backref='volunteer', 
+    engagements = relationship('Engagement', backref='volunteer',
                              lazy='dynamic', cascade="all, delete-orphan")
-    
+
     # SQLAlchemy inheritance configuration
     __mapper_args__ = {
         'polymorphic_identity': 'volunteer',
         'confirm_deleted_rows': False,
         'inherit_condition': id == Contact.id
     }
-    
+
     def __repr__(self):
         return f"<Volunteer {self.full_name}>"
 ```
@@ -403,7 +421,7 @@ def add_volunteer():
         db.session.commit()
         flash('Volunteer added successfully!', 'success')
         return redirect(url_for('volunteers.list_volunteers'))
-    
+
     return render_template('volunteers/add_volunteer.html', form=form)
 ```
 
@@ -423,7 +441,7 @@ def add_volunteer():
 </head>
 <body>
     {% include 'nav.html' %}
-    
+
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -432,10 +450,10 @@ def add_volunteer():
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         {% block content %}{% endblock %}
     </main>
-    
+
     <script src="{{ url_for('static', filename='js/nav.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
@@ -452,10 +470,10 @@ def add_volunteer():
 {% block content %}
 <div class="form-container">
     <h1>Add New Volunteer</h1>
-    
+
     <form method="POST" class="volunteer-form">
         {{ form.hidden_tag() }}
-        
+
         <div class="form-group">
             {{ form.first_name.label }}
             {{ form.first_name(class="form-control") }}
@@ -467,12 +485,12 @@ def add_volunteer():
                 </div>
             {% endif %}
         </div>
-        
+
         <!-- Additional form fields -->
-        
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Add Volunteer</button>
-            <a href="{{ url_for('volunteers.list_volunteers') }}" 
+            <a href="{{ url_for('volunteers.list_volunteers') }}"
                class="btn btn-secondary">Cancel</a>
         </div>
     </form>
@@ -480,8 +498,24 @@ def add_volunteer():
 {% endblock %}
 ```
 
-## 🧪 Testing
+### Reports: Volunteers by Event
 
+A report to list volunteers by selected event types within a date range or school year.
+
+- Route (UI): `/reports/volunteers/by-event`
+- Export: `/reports/volunteers/by-event/excel`
+- Default filter: `career_fair,data_viz` over past 365 days if no `school_year` is provided
+- Query params: `event_types`, `school_year` (YYZZ), `date_from`, `date_to`, `title`
+- Displayed fields: Name, Email, Organization (friendly name), Skills, Events (summary), Last Event
+- Export columns: Name, Email, Organization, Skills, Events (Count), Last Event, Event Titles
+Developer notes:
+- Friendly organization name is resolved via `Volunteer.volunteer_organizations` (primary if set) and falls back to `Volunteer.organization_name` only when it is not a raw Salesforce 18-char ID.
+- Skills are aggregated from `Volunteer.skills` and rendered as a comma-separated list.
+- Participation filter uses `EventParticipation.status in ["Attended", "Completed", "Successfully Completed", "Simulcast"]` and `Event.status == Completed`.
+- Event types accept either enum names or values from `EventType`.
+- Excel generation follows existing `pandas` + `xlsxwriter` convention.
+
+## 🧪 Testing
 ### Running Tests
 
 #### Run All Tests
@@ -522,7 +556,7 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
-addopts = 
+addopts =
     --strict-markers
     --disable-warnings
     --tb=short
@@ -545,7 +579,7 @@ from models.contact import Contact, GenderEnum
 
 class TestVolunteer:
     """Test cases for Volunteer model."""
-    
+
     def test_volunteer_creation(self, app):
         """Test creating a new volunteer."""
         with app.app_context():
@@ -557,7 +591,7 @@ class TestVolunteer:
             )
             db.session.add(contact)
             db.session.flush()
-            
+
             volunteer = Volunteer(
                 id=contact.id,
                 organization_name="Tech Corp",
@@ -566,11 +600,11 @@ class TestVolunteer:
             )
             db.session.add(volunteer)
             db.session.commit()
-            
+
             assert volunteer.id is not None
             assert volunteer.full_name == "John Doe"
             assert volunteer.status == VolunteerStatus.ACTIVE
-    
+
     def test_volunteer_local_status_calculation(self, app):
         """Test local status calculation based on address."""
         with app.app_context():
@@ -581,29 +615,29 @@ class TestVolunteer:
             )
             db.session.add(contact)
             db.session.flush()
-            
+
             volunteer = Volunteer(id=contact.id)
             db.session.add(volunteer)
             db.session.commit()
-            
+
             # Test local status calculation
             volunteer.calculate_local_status()
             assert volunteer.local_status in ['local', 'partial', 'non_local', 'unknown']
-    
+
     def test_volunteer_date_validation(self, app):
         """Test volunteer date validation."""
         with app.app_context():
             contact = Contact(first_name="Test", last_name="User")
             db.session.add(contact)
             db.session.flush()
-            
+
             volunteer = Volunteer(id=contact.id)
             db.session.add(volunteer)
-            
+
             # Test invalid date combination
             volunteer.first_volunteer_date = date(2024, 12, 31)
             volunteer.last_volunteer_date = date(2024, 1, 1)
-            
+
             with pytest.raises(ValueError):
                 db.session.commit()
 ```
@@ -616,19 +650,19 @@ from flask import url_for
 
 class TestVolunteerRoutes:
     """Integration tests for volunteer routes."""
-    
+
     def test_list_volunteers_page(self, client, auth_headers):
         """Test volunteer list page loads correctly."""
         response = client.get('/volunteers', headers=auth_headers)
         assert response.status_code == 200
         assert b'Volunteers' in response.data
-    
+
     def test_add_volunteer_form(self, client, auth_headers):
         """Test volunteer add form loads correctly."""
         response = client.get('/volunteers/add', headers=auth_headers)
         assert response.status_code == 200
         assert b'Add Volunteer' in response.data
-    
+
     def test_create_volunteer(self, client, auth_headers):
         """Test creating a new volunteer."""
         data = {
@@ -638,13 +672,13 @@ class TestVolunteerRoutes:
             'organization_name': 'Test Org',
             'status': 'active'
         }
-        
-        response = client.post('/volunteers/add', 
+
+        response = client.post('/volunteers/add',
                              data=data, headers=auth_headers)
-        
+
         # Should redirect to volunteer list
         assert response.status_code in [200, 302]
-        
+
         # Check volunteer was created
         from models import Volunteer
         volunteer = Volunteer.query.filter_by(
@@ -661,40 +695,40 @@ import json
 
 class TestAPIEndpoints:
     """Integration tests for API endpoints."""
-    
+
     def test_token_generation(self, client):
         """Test API token generation."""
         data = {
             'username': 'test@example.com',
             'password': 'password123'
         }
-        
-        response = client.post('/api/v1/token', 
+
+        response = client.post('/api/v1/token',
                              data=json.dumps(data),
                              content_type='application/json')
-        
+
         assert response.status_code == 200
         result = json.loads(response.data)
         assert 'token' in result
         assert 'expires_at' in result
-    
+
     def test_user_sync_with_token(self, client, test_user):
         """Test user synchronization with valid token."""
         # First get a token
-        token_response = client.post('/api/v1/token', 
+        token_response = client.post('/api/v1/token',
                                    data=json.dumps({
                                        'username': test_user.username,
                                        'password': 'password123'
                                    }),
                                    content_type='application/json')
-        
+
         token_data = json.loads(token_response.data)
         token = token_data['token']
-        
+
         # Use token to sync users
         headers = {'X-API-Token': token}
         response = client.get('/api/v1/users/sync', headers=headers)
-        
+
         assert response.status_code == 200
         result = json.loads(response.data)
         assert 'users' in result
@@ -711,12 +745,12 @@ def app():
     """Create and configure a new app instance for each test."""
     app = Flask(__name__)
     app.config.from_object(TestingConfig)
-    
+
     # Initialize extensions
     db.init_app(app)
     login_manager = LoginManager()
     login_manager.init_app(app)
-    
+
     with app.app_context():
         db.create_all()
         yield app
@@ -753,7 +787,7 @@ def test_volunteer(app):
     )
     db.session.add(contact)
     db.session.flush()
-    
+
     volunteer = Volunteer(
         id=contact.id,
         organization_name='Test Corp',
@@ -849,19 +883,19 @@ repos:
       - id: black
         language_version: python3
         args: [--line-length=88]
-  
+
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
         args: [--profile=black]
-  
+
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0
     hooks:
       - id: flake8
         args: [--max-line-length=88, --extend-ignore=E203,W503]
-  
+
   - repo: https://github.com/pycqa/bandit
     rev: 1.7.5
     hooks:
@@ -900,14 +934,14 @@ from logging.handlers import RotatingFileHandler
 
 # Configure logging
 if not app.debug:
-    file_handler = RotatingFileHandler('logs/vms.log', 
+    file_handler = RotatingFileHandler('logs/vms.log',
                                      maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
-    
+
     app.logger.setLevel(logging.INFO)
     app.logger.info('VMS startup')
 ```
@@ -1084,4 +1118,4 @@ csrf = CSRFProtect(app)
 
 ---
 
-*Last updated: January 2025* 
+*Last updated: January 2025*

@@ -68,7 +68,7 @@
     padding: 2rem;
     color: var(--ucla-blue);
     font-style: italic;
-} 
+}
 
 /* --- Virtual Usage Table & Filters (Modern Table Style) --- */
 /* Use more horizontal space for the virtual usage report table */
@@ -442,4 +442,4 @@ body > main {
     .orgs-table-container {
         padding: 0.5rem;
     }
-} 
+}

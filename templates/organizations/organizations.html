@@ -1,8 +1,8 @@
-{# 
+{#
   Organizations Listing Template
-  
+
   This template displays a paginated list of organizations with filtering capabilities.
-  
+
   Features:
   - Search organizations by name
   - Filter by organization type
@@ -10,14 +10,14 @@
   - Pagination controls
   - Admin actions (edit/delete) - currently disabled
   - Salesforce integration links
-  
+
   Template Variables:
   - organizations: List of organization objects
   - organization_types: Available organization types for filtering
   - current_filters: Current filter state
   - pagination: Pagination object with navigation info
   - current_user: Current authenticated user
-  
+
   Routes:
   - GET: Display organizations with optional filters
   - POST: Not used in this template
@@ -51,12 +51,12 @@
                 {# Organization Name Search Filter #}
                 <div class="filter-group">
                     <label for="search_name">Organization Search</label>
-                    <input type="text" name="search_name" id="search_name" 
+                    <input type="text" name="search_name" id="search_name"
                            value="{{ current_filters.get('search_name', '') }}"
-                           class="form-control" 
+                           class="form-control"
                            placeholder="Search by name...">
                 </div>
-                
+
                 {# Organization Type Filter Dropdown #}
                 <div class="filter-group">
                     <label for="type">Organization Type</label>
@@ -143,20 +143,20 @@
                 Showing {{ organizations|length }} of {{ pagination.total }} organizations
             </span>
         </div>
-        
+
         {# Pagination Navigation Buttons #}
         <div class="pagination-controls">
             {# Previous Page Button #}
             {% if pagination.has_prev %}
-            <a href="{{ url_for('organizations.organizations', page=pagination.prev_num, **current_filters) }}" 
+            <a href="{{ url_for('organizations.organizations', page=pagination.prev_num, **current_filters) }}"
                class="pagination-btn">
                 <i class="fa-solid fa-chevron-left"></i> Previous
             </a>
             {% endif %}
-            
+
             {# Next Page Button #}
             {% if pagination.has_next %}
-            <a href="{{ url_for('organizations.organizations', page=pagination.next_num, **current_filters) }}" 
+            <a href="{{ url_for('organizations.organizations', page=pagination.next_num, **current_filters) }}"
                class="pagination-btn">
                 Next <i class="fa-solid fa-chevron-right"></i>
             </a>
@@ -180,4 +180,4 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/organizations.js') }}"></script>
-{% endblock %} 
+{% endblock %}

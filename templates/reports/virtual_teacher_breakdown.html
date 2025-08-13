@@ -244,17 +244,17 @@
     .teacher-table {
         font-size: 12px;
     }
-    
+
     .teacher-table th,
     .teacher-table td {
         padding: 6px 8px;
     }
-    
+
     .school-header {
         font-size: 0.9em;
         padding: 15px 8px;
     }
-    
+
     .filters-form {
         grid-template-columns: 1fr;
     }
@@ -286,20 +286,20 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="date_from">From:</label>
-                <input type="date" id="date_from" name="date_from" 
+                <input type="date" id="date_from" name="date_from"
                        value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
             </div>
             <div class="filter-group">
                 <label for="date_to">To:</label>
-                <input type="date" id="date_to" name="date_to" 
+                <input type="date" id="date_to" name="date_to"
                        value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
             </div>
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
-                <a href="{{ url_for('report.virtual_district_teacher_breakdown', district_name=district_name) }}" 
+                <a href="{{ url_for('report.virtual_district_teacher_breakdown', district_name=district_name) }}"
                    class="reset-btn">Reset</a>
             </div>
         </form>
@@ -323,7 +323,7 @@
                 <tbody>
                     <!-- Calculate max teachers per school to determine number of rows needed -->
                     {% set max_teachers = teacher_school_breakdown.values() | map(attribute='teachers') | map('length') | max %}
-                    
+
                     {% for row_index in range(max_teachers) %}
                     <tr>
                         {% for school_name, school_data in teacher_school_breakdown.items() %}
@@ -346,7 +346,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- Summary Section -->
         <div class="summary-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
             <div class="stat-card" style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); text-align: center; border-left: 4px solid #007bff;">
@@ -380,4 +380,4 @@
         </div>
     {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}

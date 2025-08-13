@@ -17,14 +17,14 @@ sequenceDiagram
     participant Client
     participant API
     participant Database
-    
+
     Client->>API: POST /api/v1/token (username, password)
     API->>Database: Validate credentials
     Database-->>API: User data
     API->>API: Generate API token
     API->>Database: Store token with expiry
     API-->>Client: Token response
-    
+
     Client->>API: GET /api/v1/users/sync (X-API-Token)
     API->>API: Validate token
     API->>Database: Query user data
@@ -258,12 +258,68 @@ The VMS system primarily operates through web-based routes rather than a compreh
 
 - **GET** `/reports` - Main reports page
 - **GET** `/reports/attendance` - Attendance reports
+- **GET** `/reports/volunteers/by-event` - Volunteers by Event report UI
+  - Query params:
+    - `event_types` (string, optional): Comma-separated event types to include. Defaults to `career_fair,data_viz`.
+    - `school_year` (string, optional): Academic year `YYZZ` (e.g., `2324`). If set, overrides `date_from`/`date_to`.
+    - `date_from` (date, optional): ISO `YYYY-MM-DD`. Defaults to past 365 days when `school_year` not set.
+    - `date_to` (date, optional): ISO `YYYY-MM-DD`.
+    - `title` (string, optional): Case-insensitive substring filter on event title.
+  - Response: HTML page with filter form and table showing volunteer Name, Email, Organization (friendly name), Skills, Events summary, Last Event date.
+
+- **GET** `/reports/volunteers/by-event/excel` - Volunteers by Event Excel export
+  - Same query params as above
+  - Response: `.xlsx` with columns: Name, Email, Organization, Skills, Events (Count), Last Event, Event Titles.
+### Management/Admin Routes
+
+- **GET** `/admin` - Admin dashboard
+- **GET** `/admin/audit-logs` - View audit logs (admin-only)
+  - Filters: `action`, `resource_type`, `user_id`, `start_date`, `end_date`
+  - Pagination: `page` (default: 1), `per_page` (default: 50; supports 25/50/100/200)
+  - Responses: 200 OK with list and pagination, 302/403 when not authorized
+- **POST** `/management/refresh-all-caches` - Refresh caches
+  - Query params:
+    - `scope=all|virtual|org|district|first_time_volunteer|recent_volunteers`
+    - `school_year` (YYZZ) for district or recent volunteers
+    - `host_filter` (district scope)
+    - `date_from`/`date_to` (YYYY-MM-DD) for recent volunteers when `school_year` omitted
+    - `title` optional title filter for recent volunteers caches
+  - For `recent_volunteers`, the endpoint precomputes BASE cache (all event types) for the date window and derived typed caches for each `EventType`.
+- **GET** `/schools` - Schools & Districts admin (admin-only)
+  - District filters: `district_q` (name/code), pagination `d_page`, `d_per_page`
+  - School filters: `school_q` (name), `district_q`, `level`, pagination `s_page`, `s_per_page`
+  - Responses: 200 OK, 302/403 when not authorized
+- **GET** `/management/client-projects/` - Client Projects admin (admin-only)
+  - Filters: `q` (title/description), `status`, `district`, `organization`, pagination `page`, `per_page`
+  - Responses: 200 OK, 302/403 when not authorized
+
+### Audit Logging
+
+Audit entries are recorded for destructive actions (delete/purge) across volunteers, events, organizations, attendance, bug reports, Google Sheets, schools, and districts. Destructive endpoints are protected by RBAC; non-admins receive 403.
+
+Schema (AuditLog):
+- id, created_at (UTC), user_id, action, resource_type, resource_id, method, path, ip, meta (JSON)
+
+Notes:
+- Tables are auto-created on startup; `AuditLog` appears as `audit_log` in the DB.
 - **GET** `/reports/contact` - Contact reports
 - **GET** `/reports/first-time-volunteer` - First-time volunteer reports
 - **GET** `/reports/organization/report` - Organization reports
 - **GET** `/reports/district/year-end` - District year-end reports
 - **GET** `/reports/virtual/usage` - Virtual session usage reports
 - **GET** `/reports/volunteer/thankyou` - Volunteer thank you reports
+- **GET** `/reports/volunteers/recent` - Recent volunteers report (filters: `event_types`, `school_year` or `date_from/date_to`, `title`, sorting `sort`=`last_event_date|total_hours|total_events|name|event_type`, `order`, pagination `page`, `per_page`). Excel export at `/reports/volunteers/recent/excel` with same query params.
+
+- **GET** `/reports/recruitment/candidates` - Event candidate matches UI
+  - Query params:
+    - `event_id` (int, optional): When omitted shows event selector; when provided renders ranked candidates for that event.
+    - `limit` (int, optional, default: 100)
+    - `min_score` (float, optional): Filter by minimum score
+  - Response: HTML with ranked candidates, reasons, and CSV export link.
+
+- **GET** `/reports/recruitment/candidates.csv` - CSV export of event candidate matches
+  - Query params: same as above; `event_id` required
+  - Response: CSV with columns: Volunteer ID, Name, Email, Title, Organization, Skills, Score, Reasons
 
 ### Management Routes
 
@@ -447,7 +503,7 @@ class VMSClient:
     def __init__(self, base_url, username, password):
         self.base_url = base_url
         self.token = self._authenticate(username, password)
-    
+
     def _authenticate(self, username, password):
         response = requests.post(
             f"{self.base_url}/api/v1/token",
@@ -455,13 +511,13 @@ class VMSClient:
         )
         response.raise_for_status()
         return response.json()["token"]
-    
+
     def get_users(self, since_date=None, limit=100, offset=0):
         headers = {"X-API-Token": self.token}
         params = {"limit": limit, "offset": offset}
         if since_date:
             params["since_date"] = since_date
-        
+
         response = requests.get(
             f"{self.base_url}/api/v1/users/sync",
             headers=headers,
@@ -469,7 +525,7 @@ class VMSClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def revoke_token(self):
         headers = {"X-API-Token": self.token}
         response = requests.post(
@@ -494,7 +550,7 @@ class VMSClient {
         this.token = null;
         this.authenticate(username, password);
     }
-    
+
     async authenticate(username, password) {
         const response = await fetch(`${this.baseUrl}/api/v1/token`, {
             method: 'POST',
@@ -503,42 +559,42 @@ class VMSClient {
             },
             body: JSON.stringify({ username, password })
         });
-        
+
         if (!response.ok) {
             throw new Error('Authentication failed');
         }
-        
+
         const data = await response.json();
         this.token = data.token;
     }
-    
+
     async getUsers(sinceDate = null, limit = 100, offset = 0) {
         const headers = {
             'X-API-Token': this.token,
             'Accept': 'application/json'
         };
-        
+
         const params = new URLSearchParams({
             limit: limit.toString(),
             offset: offset.toString()
         });
-        
+
         if (sinceDate) {
             params.append('since_date', sinceDate);
         }
-        
+
         const response = await fetch(
             `${this.baseUrl}/api/v1/users/sync?${params}`,
             { headers }
         );
-        
+
         if (!response.ok) {
             throw new Error('Failed to fetch users');
         }
-        
+
         return await response.json();
     }
-    
+
     async revokeToken() {
         const response = await fetch(`${this.baseUrl}/api/v1/token/revoke`, {
             method: 'POST',
@@ -546,11 +602,11 @@ class VMSClient {
                 'X-API-Token': this.token
             }
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to revoke token');
         }
-        
+
         return await response.json();
     }
 }
@@ -572,4 +628,4 @@ client.getUsers('2024-01-01').then(users => {
 
 ---
 
-*Last updated: January 2025* 
+*Last updated: January 2025*

@@ -81,6 +81,7 @@ tags: [features, tracking, status, implementation]
 | Basic Information | ✅ Complete | High | - | Core details |
 | Address Information | ✅ Complete | Medium | - | Full address tracking |
 | Timestamps | ✅ Complete | Low | - | Audit trail |
+| Audit Logs (Viewer) | ✅ Complete | Medium | - | Admin page to view/filter audit entries with pagination and date range filters |
 | Associated Volunteers | ✅ Complete | High | - | Volunteer relationships |
 | Data Management | ✅ Complete | High | - | Purge operations |
 
@@ -126,7 +127,7 @@ tags: [features, tracking, status, implementation]
 | District Filter | ✅ Complete | High | - | District-based filtering |
 | School Filter | ✅ Complete | Medium | - | School-based filtering |
 | Status Filter | ✅ Complete | Medium | - | Status filtering |
-| Link to Core Spreadsheet | 🔄 In Progress | Medium | - | External integration |
+ | Link to Core Spreadsheet | ✅ Complete | Medium | - | External integration |
 | Export to Excel | ✅ Complete | High | - | Excel export |
 | Summary Stats | ✅ Complete | High | - | Statistical summary |
 | Column Sort | ✅ Complete | Medium | - | Sortable columns |
@@ -159,6 +160,16 @@ tags: [features, tracking, status, implementation]
 | Event Host Filter | ✅ Complete | Medium | - | Host filtering |
 | Export to Excel | ✅ Complete | High | - | Excel export |
 
+#### Volunteers by Event Report
+
+| Feature | Status | Priority | Assigned | Notes |
+|---------|--------|----------|----------|-------|
+| Event Type Filter | ✅ Complete | High | - | Select one or more event types |
+| School Year or Date Range | ✅ Complete | High | - | YYZZ academic year or ISO date range |
+| Title Contains Filter | ✅ Complete | Medium | - | Case-insensitive substring on event title |
+| Table View | ✅ Complete | High | - | Name, Email, Organization, Skills, Events summary, Last Event |
+| Export to Excel | ✅ Complete | High | - | Name, Email, Organization, Skills, Events (Count), Last Event, Event Titles |
+
 #### End of Year Report
 
 | Feature | Status | Priority | Assigned | Notes |
@@ -177,7 +188,7 @@ tags: [features, tracking, status, implementation]
 |---------|--------|----------|----------|-------|
 | Summary Stats | ✅ Complete | High | - | Statistical summary |
 | Export to Excel | ✅ Complete | High | - | Excel export |
-| Sortable Table | 🔄 In Progress | Medium | - | Table sorting |
+ | Sortable Table | ✅ Complete | Medium | - | Table sorting |
 | Event Host Filter | ✅ Complete | Medium | - | Host filtering |
 
 #### First Time Volunteer Report
@@ -186,7 +197,7 @@ tags: [features, tracking, status, implementation]
 |---------|--------|----------|----------|-------|
 | Academic Year Filter | ✅ Complete | High | - | Year filtering |
 | Summary Stats | ✅ Complete | High | - | Statistical summary |
-| Export to Excel | 🔄 In Progress | Medium | - | Excel export |
+ | Export to Excel | ✅ Complete | Medium | - | Excel export |
 | Sortable Table | ✅ Complete | Medium | - | Table sorting |
 | Pagination | ✅ Complete | Medium | - | Page navigation |
 
@@ -214,7 +225,7 @@ tags: [features, tracking, status, implementation]
 |---------|--------|----------|----------|-------|
 | Academic Year Filter | ✅ Complete | High | - | Year filtering |
 | Pagination | ✅ Complete | Medium | - | Page navigation |
-| Cached Results | ✅ Complete | High | - | Performance optimization |
+ | Cached Results | ✅ Complete | High | - | Summary/detail caching with refresh controls |
 | Organization Breakdown | ✅ Complete | High | - | Organization details |
 | Output to Excel | ✅ Complete | High | - | Excel export |
 | Summary Stats | ✅ Complete | High | - | Statistical summary |
@@ -231,13 +242,15 @@ tags: [features, tracking, status, implementation]
 | Change Password | ✅ Complete | High | - | Password management |
 | Delete User | ✅ Complete | High | - | User removal |
 | Edit User | ✅ Complete | High | - | User editing |
-| Import Process Automation | 🔄 In Progress | High | - | Automated imports |
-| Sequential Data Import | 📋 Planned | High | - | One-click import |
+ | Import Process Automation | ✅ Complete | High | - | Automated imports (admin UI sequential import) |
+ | Sequential Data Import | ✅ Complete | High | - | Admin UI one-click sequential import |
 | Salesforce Imports | ✅ Complete | High | - | Salesforce integration |
-| Update Local Statuses | 📋 Planned | Medium | - | Status updates |
+ | Update Local Statuses | ✅ Complete | Medium | - | Status updates |
 | Purge Volunteer Data | ✅ Complete | High | - | Data cleanup |
 | Purge Event Data | ✅ Complete | High | - | Event cleanup |
-| Refresh All Caches | 📋 Planned | Medium | - | Cache management |
+| Refresh All Caches | ✅ Complete | Medium | - | Admin button + route to refresh virtual, org, FTV, and district caches |
+| RBAC on Destructive Actions | ✅ Complete | High | - | Admin-only enforced via decorator |
+| Audit Logging on Destructive Actions | ✅ Complete | High | - | Logged delete/purge across core modules |
 | Link to Bug Report | ✅ Complete | Medium | - | Bug reporting |
 
 ### Google Sheets Management
@@ -279,7 +292,7 @@ tags: [features, tracking, status, implementation]
 | Search Functionality | ✅ Complete | High | - | History search |
 | Summary Search | ✅ Complete | Medium | - | Quick search |
 | Detailed Search | ✅ Complete | Medium | - | Advanced search |
-| Activity Type Filter | 📋 Planned | Low | - | Activity filtering |
+ | Activity Type Filter | ✅ Complete | Low | - | Activity filtering |
 | Status Filter | ✅ Complete | Medium | - | Status filtering |
 | Start Date Filter | ✅ Complete | Medium | - | Date filtering |
 | End Date Filter | ✅ Complete | Medium | - | Date filtering |
@@ -290,13 +303,17 @@ tags: [features, tracking, status, implementation]
 
 | Feature | Status | Priority | Assigned | Notes |
 |---------|--------|----------|----------|-------|
-| Column Sort | 📋 Planned | Low | - | Sortable columns |
+| Column Sort | ✅ Complete | Low | - | Client-side sorting on districts and schools tables |
+| Search/Filter | ✅ Complete | Low | - | Filters for district name/code, school name, and level |
+| Pagination | ✅ Complete | Low | - | Independent pagination for districts and schools |
 | Usage Investigation | 📋 Planned | Low | - | Feature analysis |
 
 ### Client Projects System
 
 | Feature | Status | Priority | Assigned | Notes |
 |---------|--------|----------|----------|-------|
+| Filters | ✅ Complete | Low | - | Title/description, status, district, organization |
+| Pagination | ✅ Complete | Low | - | Page navigation |
 | Usage Investigation | 📋 Planned | Low | - | Feature analysis |
 
 ### Attendance System
@@ -356,4 +373,4 @@ tags: [features, tracking, status, implementation]
 
 ---
 
-*Last updated: August 2025* 
+*Last updated: August 2025*
