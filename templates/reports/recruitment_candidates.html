@@ -58,9 +58,17 @@
 
   {% if event %}
   <div class="d-flex justify-content-between align-items-center mt-4">
-    <h5>Top Candidates for: {{ event.title }} <small class="text-muted">({{ candidates|length }})</small></h5>
-    <div>
+    <h5>
+      Top Candidates for: {{ event.title }}
+      <small class="text-muted">({{ candidates|length }})</small>
+    </h5>
+    <div class="d-flex gap-2 align-items-center">
+      {% if is_cached %}
+        <span class="badge text-bg-info">Cached</span>
+        <small class="text-muted">Refreshed {{ last_refreshed }}</small>
+      {% endif %}
       <a class="btn btn-sm btn-outline-secondary" href="/events/view/{{ event.id }}">View Event</a>
+      <a class="btn btn-sm btn-outline-primary" href="?event_id={{ event.id }}&limit={{ limit }}&min_score={{ min_score or '' }}&refresh=1">Refresh</a>
       <a class="btn btn-sm btn-success" href="/reports/recruitment/candidates.csv?event_id={{ event.id }}&limit={{ limit }}&min_score={{ min_score or '' }}">Export CSV</a>
     </div>
   </div>

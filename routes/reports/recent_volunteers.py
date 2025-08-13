@@ -556,7 +556,7 @@ def load_routes(bp: Blueprint):
             f"Filters parsed: school_year={school_year}, start={start_date}, end={end_date}, types={[t.value for t in selected_types]}, title={bool(title_contains)}"
         )
 
-        # Try cache first. If no exact match, fall back to base (ALL types) cache
+        # Try cache first. If no exact match or invalid, fall back to base (ALL types) cache
         all_type_values = {et.value for et in EventType}
         selected_values = {t.value for t in selected_types}
         is_all_types = selected_values == all_type_values
@@ -584,49 +584,36 @@ def load_routes(bp: Blueprint):
                 f"Using cache payload: active={len(active_volunteers)} first_time={len(first_time_in_range)}"
             )
         else:
-            # Try base cache (ALL types) for this date window
-            base_cache = None
-            if not is_all_types:
-                base_cache = RecentVolunteersReportCache.query.filter_by(
-                    school_year=school_year or None,
-                    date_from=(
-                        start_date.date() if (start_date and not school_year) else None
-                    ),
-                    date_to=(
-                        end_date.date() if (end_date and not school_year) else None
-                    ),
-                    event_types=base_key,
-                    title_filter=title_contains or None,
-                ).first()
+            # Try base cache (ALL types) for this date window always
+            base_cache = RecentVolunteersReportCache.query.filter_by(
+                school_year=school_year or None,
+                date_from=(
+                    start_date.date() if (start_date and not school_year) else None
+                ),
+                date_to=(end_date.date() if (end_date and not school_year) else None),
+                event_types=base_key,
+                title_filter=title_contains or None,
+            ).first()
+
             if base_cache and _is_cache_valid(base_cache):
                 log_info("Using base cache and deriving filtered view in-memory")
                 base_active, base_first = _deserialize_from_cache(
                     base_cache.report_data or {}
                 )
-                active_volunteers, first_time_in_range = _derive_filtered_from_base(
-                    base_active, base_first, selected_types
-                )
-                # Optionally store typed derived cache to speed subsequent loads
-                cache_save_start = perf_counter()
-                typed_payload = _serialize_for_cache(
-                    active_volunteers, first_time_in_range
-                )
-                try:
-                    typed_cache = RecentVolunteersReportCache.query.filter_by(
-                        school_year=school_year or None,
-                        date_from=(
-                            start_date.date()
-                            if (start_date and not school_year)
-                            else None
-                        ),
-                        date_to=(
-                            end_date.date() if (end_date and not school_year) else None
-                        ),
-                        event_types=event_types_key,
-                        title_filter=title_contains or None,
-                    ).first()
-                    if not typed_cache:
-                        typed_cache = RecentVolunteersReportCache(
+                if is_all_types:
+                    # All types selected: use base directly
+                    active_volunteers, first_time_in_range = base_active, base_first
+                else:
+                    active_volunteers, first_time_in_range = _derive_filtered_from_base(
+                        base_active, base_first, selected_types
+                    )
+                    # Optionally store typed derived cache to speed subsequent loads
+                    cache_save_start = perf_counter()
+                    typed_payload = _serialize_for_cache(
+                        active_volunteers, first_time_in_range
+                    )
+                    try:
+                        typed_cache = RecentVolunteersReportCache.query.filter_by(
                             school_year=school_year or None,
                             date_from=(
                                 start_date.date()
@@ -640,19 +627,35 @@ def load_routes(bp: Blueprint):
                             ),
                             event_types=event_types_key,
                             title_filter=title_contains or None,
-                            report_data=typed_payload,
+                        ).first()
+                        if not typed_cache:
+                            typed_cache = RecentVolunteersReportCache(
+                                school_year=school_year or None,
+                                date_from=(
+                                    start_date.date()
+                                    if (start_date and not school_year)
+                                    else None
+                                ),
+                                date_to=(
+                                    end_date.date()
+                                    if (end_date and not school_year)
+                                    else None
+                                ),
+                                event_types=event_types_key,
+                                title_filter=title_contains or None,
+                                report_data=typed_payload,
+                            )
+                            db.session.add(typed_cache)
+                        else:
+                            typed_cache.report_data = typed_payload
+                            typed_cache.last_updated = datetime.now(timezone.utc)
+                        db.session.commit()
+                        log_info(
+                            f"Derived typed cache saved in {(perf_counter()-cache_save_start)*1000:.1f} ms"
                         )
-                        db.session.add(typed_cache)
-                    else:
-                        typed_cache.report_data = typed_payload
-                        typed_cache.last_updated = datetime.now(timezone.utc)
-                    db.session.commit()
-                    log_info(
-                        f"Derived typed cache saved in {(perf_counter()-cache_save_start)*1000:.1f} ms"
-                    )
-                except Exception:
-                    db.session.rollback()
-                    log_info("Derived typed cache save failed; rolled back")
+                    except Exception:
+                        db.session.rollback()
+                        log_info("Derived typed cache save failed; rolled back")
             else:
                 # Compute fresh BASE (all event types) and save as base cache
                 q1_start = perf_counter()
@@ -715,10 +718,13 @@ def load_routes(bp: Blueprint):
                     db.session.rollback()
                     log_info("Base cache save failed; rolled back")
 
-                # Derive typed view from base
-                active_volunteers, first_time_in_range = _derive_filtered_from_base(
-                    base_active, base_first, selected_types
-                )
+                # From base, either use directly (all types) or derive filtered
+                if is_all_types:
+                    active_volunteers, first_time_in_range = base_active, base_first
+                else:
+                    active_volunteers, first_time_in_range = _derive_filtered_from_base(
+                        base_active, base_first, selected_types
+                    )
 
         # Sorting + pagination for active list
         sp1_start = perf_counter()
@@ -823,10 +829,36 @@ def load_routes(bp: Blueprint):
             start_date = _parse_date(date_from_param, start_date)
             end_date = _parse_date(date_to_param, end_date)
 
-        active_volunteers = _query_active_volunteers(
-            start_date, end_date, selected_types, title_contains
+        # Attempt to use cache first for export
+        all_type_values = {et.value for et in EventType}
+        selected_values = {t.value for t in selected_types}
+        is_all_types = selected_values == all_type_values
+        event_types_key = (
+            ",".join(sorted(selected_values)) if selected_values else "ALL"
         )
-        first_time_in_range = _query_first_time_in_range(start_date, end_date)
+        base_key = "ALL"
+
+        cache = RecentVolunteersReportCache.query.filter_by(
+            school_year=school_year or None,
+            date_from=(start_date.date() if (start_date and not school_year) else None),
+            date_to=(end_date.date() if (end_date and not school_year) else None),
+            event_types=(base_key if is_all_types else event_types_key),
+            title_filter=title_contains or None,
+        ).first()
+
+        if cache:
+            base_active, base_first = _deserialize_from_cache(cache.report_data or {})
+            if is_all_types:
+                active_volunteers, first_time_in_range = base_active, base_first
+            else:
+                active_volunteers, first_time_in_range = _derive_filtered_from_base(
+                    base_active, base_first, selected_types
+                )
+        else:
+            active_volunteers = _query_active_volunteers(
+                start_date, end_date, selected_types, title_contains
+            )
+            first_time_in_range = _query_first_time_in_range(start_date, end_date)
 
         # Build DataFrames
         active_rows = []

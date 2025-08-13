@@ -556,3 +556,28 @@ class VirtualSessionDistrictCache(db.Model):
 
     def __repr__(self):
         return f"<VirtualSessionDistrictCache {self.district_name} {self.virtual_year}>"
+
+
+class RecruitmentCandidatesCache(db.Model):
+    """
+    Cache for recruitment candidate recommendations per event.
+
+    Stores the unfiltered candidate list (with scores and reasons) for an
+    event so that the UI can apply runtime filters like min_score and limit
+    without recomputing heavy queries.
+    """
+
+    __tablename__ = "recruitment_candidates_cache"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, nullable=False, index=True, unique=True)
+
+    # Cached JSON payload: list of candidate dicts
+    candidates_data = db.Column(db.JSON, nullable=False)
+
+    last_updated = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    def __repr__(self):
+        return f"<RecruitmentCandidatesCache event_id={self.event_id}>"

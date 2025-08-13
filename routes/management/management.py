@@ -112,6 +112,7 @@ from models.reports import (
     OrganizationDetailCache,
     OrganizationSummaryCache,
     RecentVolunteersReportCache,
+    RecruitmentCandidatesCache,
     VirtualSessionDistrictCache,
     VirtualSessionReportCache,
 )
@@ -576,6 +577,12 @@ def refresh_all_caches():
             deleted_ftv = FirstTimeVolunteerReportCache.query.delete()
             db.session.commit()
             summary["deleted"]["FirstTimeVolunteerReportCache"] = deleted_ftv
+
+        # Recruitment candidates caches
+        if scope in ("all", "recruitment"):
+            deleted_recruitment = RecruitmentCandidatesCache.query.delete()
+            db.session.commit()
+            summary["deleted"]["RecruitmentCandidatesCache"] = deleted_recruitment
 
         if scope in ("all", "district"):
             # If a specific school_year is provided, scope deletion; else delete all
