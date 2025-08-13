@@ -115,7 +115,7 @@ from requests.adapters import HTTPAdapter
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload  # Import for potential optimization if needed
 
-from models.contact import Contact, ContactTypeEnum, RaceEthnicityEnum
+from models.contact import Contact, ContactTypeEnum, LocalStatusEnum, RaceEthnicityEnum
 from models.district_model import District
 from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType, db
 from models.history import History
@@ -233,6 +233,7 @@ def process_presenter(row, event, is_simulcast):
     volunteer_id = None
     presenter_name = row.get("Presenter")
     presenter_org = standardize_organization(row.get("Organization", ""))
+    presenter_location_col = row.get("Presenter Location")
     people_of_color = row.get("Presenter of Color?", "")
 
     if presenter_name and not pd.isna(presenter_name):
@@ -251,6 +252,23 @@ def process_presenter(row, event, is_simulcast):
 
                 # Handle volunteer association
                 update_volunteer_association(event, volunteer, is_simulcast)
+
+                # Optionally map volunteer local status using the same column when no address is available
+                try:
+                    # Normalize presenter location column
+                    loc_str = None
+                    if presenter_location_col and not pd.isna(presenter_location_col):
+                        loc_str = str(presenter_location_col).strip()
+                    # Map volunteer local status only if currently unknown
+                    current_local_status = getattr(volunteer, "local_status", None)
+                    if current_local_status in (None, LocalStatusEnum.unknown):
+                        if loc_str and loc_str.lower().startswith("local"):
+                            volunteer.local_status = LocalStatusEnum.local
+                        else:
+                            volunteer.local_status = LocalStatusEnum.non_local
+                except Exception:
+                    # Non-fatal; keep importing
+                    pass
 
 
 def find_or_create_volunteer(
@@ -596,6 +614,32 @@ def list_events():
                 for et in event.teacher_registrations
             ]
 
+            # Derive presenter info from participations/volunteer since we no longer store on event
+            presenter_participations = [
+                p
+                for p in getattr(event, "volunteer_participations", [])
+                if getattr(p, "participant_type", "") == "Presenter"
+            ]
+            presenter_name = None
+            presenter_org = None
+            presenter_location_type = None
+            if presenter_participations:
+                # take the first presenter participation for summary
+                p = presenter_participations[0]
+                if getattr(p, "volunteer", None):
+                    v = p.volunteer
+                    presenter_name = f"{v.first_name} {v.last_name}".strip()
+                    presenter_org = v.organization_name
+                    try:
+                        if v.local_status == LocalStatusEnum.local:
+                            presenter_location_type = "Local (KS/MO)"
+                        elif v.local_status == LocalStatusEnum.non_local:
+                            presenter_location_type = "Non-local"
+                        else:
+                            presenter_location_type = None
+                    except Exception:
+                        presenter_location_type = None
+
             events_data.append(
                 {
                     "id": event.id,
@@ -614,9 +658,9 @@ def list_events():
                     "session_type": event.additional_information,
                     "topic": event.series,
                     "session_link": event.registration_link,
-                    "presenter_name": event.presenter_name,
-                    "presenter_organization": event.presenter_organization,
-                    "presenter_location_type": event.presenter_location_type,
+                    "presenter_name": presenter_name,
+                    "presenter_organization": presenter_org,
+                    "presenter_location_type": presenter_location_type,
                     "teachers": teacher_data,
                 }
             )
@@ -649,6 +693,31 @@ def get_event(event_id):
             for et in event.teacher_registrations
         ]
 
+        # Derive presenter info for detail response
+        presenter_participations = [
+            p
+            for p in getattr(event, "volunteer_participations", [])
+            if getattr(p, "participant_type", "") == "Presenter"
+        ]
+        presenter_name = None
+        presenter_org = None
+        presenter_location_type = None
+        if presenter_participations:
+            p = presenter_participations[0]
+            if getattr(p, "volunteer", None):
+                v = p.volunteer
+                presenter_name = f"{v.first_name} {v.last_name}".strip()
+                presenter_org = v.organization_name
+                try:
+                    if v.local_status == LocalStatusEnum.local:
+                        presenter_location_type = "Local (KS/MO)"
+                    elif v.local_status == LocalStatusEnum.non_local:
+                        presenter_location_type = "Non-local"
+                    else:
+                        presenter_location_type = None
+                except Exception:
+                    presenter_location_type = None
+
         return jsonify(
             {
                 "success": True,
@@ -669,9 +738,9 @@ def get_event(event_id):
                     "session_type": event.additional_information,
                     "topic": event.series,
                     "session_link": event.registration_link,
-                    "presenter_name": event.presenter_name,
-                    "presenter_organization": event.presenter_organization,
-                    "presenter_location_type": event.presenter_location_type,
+                    "presenter_name": presenter_name,
+                    "presenter_organization": presenter_org,
+                    "presenter_location_type": presenter_location_type,
                     "teachers": teacher_data,
                 },
             }
