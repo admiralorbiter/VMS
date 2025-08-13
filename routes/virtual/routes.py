@@ -264,8 +264,11 @@ def process_presenter(row, event, is_simulcast):
                     if current_local_status in (None, LocalStatusEnum.unknown):
                         if loc_str and loc_str.lower().startswith("local"):
                             volunteer.local_status = LocalStatusEnum.local
+                            # Hint presenter_data enrichment via transient attr used in reporting
+                            setattr(volunteer, "_is_local_hint", True)
                         else:
                             volunteer.local_status = LocalStatusEnum.non_local
+                            setattr(volunteer, "_is_local_hint", False)
                 except Exception:
                     # Non-fatal; keep importing
                     pass

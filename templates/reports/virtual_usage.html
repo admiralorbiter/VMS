@@ -401,6 +401,10 @@
                 <div class="stat-label">PROS</div>
             </div>
             <div class="stat-card">
+                <div class="stat-value">{{ overall_summary.local_professional_count or 0 }}</div>
+                <div class="stat-label">LOCAL PROS</div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-value">{{ overall_summary.professional_of_color_count }}</div>
                 <div class="stat-label">POC</div>
             </div>
@@ -454,6 +458,10 @@
                             <div class="stat-item">
                                 <span class="stat-value">{{ summary.professional_count }}</span>
                                 <span class="stat-label">PROS</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{{ summary.local_professional_count or 0 }}</span>
+                                <span class="stat-label">LOCAL</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-value">{{ summary.professional_of_color_count }}</span>
@@ -566,7 +574,11 @@
                                 {% for presenter in session.presenter_data %}
                                     <a href="{{ url_for('volunteers.view_volunteer', id=presenter.id) }}" class="presenter-link" style="color: #007bff; text-decoration: none;">
                                         {{ presenter.name }}
-                                    </a>{% if not loop.last %}, {% endif %}
+                                    </a>
+                                    {% if presenter.is_local %}
+                                        <i class="fa-solid fa-location-dot" title="Local (KS/MO)" style="color: #28a745; margin-left: 4px;"></i>
+                                    {% endif %}
+                                    {% if not loop.last %}, {% endif %}
                                 {% endfor %}
                             {% else %}
                                 {{ session.presenter }}

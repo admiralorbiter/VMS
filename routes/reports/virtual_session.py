@@ -19,6 +19,7 @@ from sqlalchemy import extract, func, or_
 from sqlalchemy.orm import joinedload
 
 from models import db
+from models.contact import LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
@@ -450,6 +451,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         "organization_count": set(),
         "professional_count": set(),
         "professional_of_color_count": set(),
+        "local_professional_count": set(),
         "school_count": set(),
     }
 
@@ -470,6 +472,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                     "organizations": set(),
                     "professionals": set(),
                     "professionals_of_color": set(),
+                    "local_professionals": set(),
                 }
             district_summary = district_summaries[session["district"]]
 
@@ -530,6 +533,38 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                                 overall_stats["professional_of_color_count"].add(
                                     presenter_name
                                 )
+                        # Count local professionals (based on derived is_local flag)
+                        if presenter_data.get("is_local"):
+                            if presenter_id:
+                                district_summary["local_professionals"].add(
+                                    presenter_id
+                                )
+                                overall_stats["local_professional_count"].add(
+                                    presenter_id
+                                )
+                            else:
+                                district_summary["local_professionals"].add(
+                                    presenter_name
+                                )
+                                overall_stats["local_professional_count"].add(
+                                    presenter_name
+                                )
+                        # Count local professionals (based on volunteer.local_status)
+                        try:
+                            # We don't have local flag in presenter_data today; derive from volunteer.id later if needed
+                            # For now, assume presenter_data includes a boolean 'is_local' when set by import
+                            is_local = presenter_data.get("is_local")
+                            if is_local:
+                                if presenter_id:
+                                    overall_stats["local_professional_count"].add(
+                                        presenter_id
+                                    )
+                                else:
+                                    overall_stats["local_professional_count"].add(
+                                        presenter_name
+                                    )
+                        except Exception:
+                            pass
             elif session["presenter"]:
                 # Fallback to old presenter format
                 presenters = [p.strip() for p in session["presenter"].split(",")]
@@ -547,6 +582,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         summary["organization_count"] = len(summary["organizations"])
         summary["professional_count"] = len(summary["professionals"])
         summary["professional_of_color_count"] = len(summary["professionals_of_color"])
+        summary["local_professional_count"] = len(summary["local_professionals"])
 
         # Calculate student count as unique teachers × 25
         summary["total_students"] = summary["teacher_count"] * 25
@@ -557,6 +593,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         del summary["organizations"]
         del summary["professionals"]
         del summary["professionals_of_color"]
+        del summary["local_professionals"]
 
     # Filter to only show main districts by default (unless admin requests all)
     if not show_all_districts:
@@ -584,6 +621,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         "professional_of_color_count": len(
             overall_stats["professional_of_color_count"]
         ),
+        "local_professional_count": len(overall_stats["local_professional_count"]),
         "school_count": len(overall_stats["school_count"]),
     }
 
@@ -869,6 +907,8 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                                         if v.organizations
                                         else []
                                     ),
+                                    "is_local": getattr(v, "local_status", None)
+                                    == LocalStatusEnum.local,
                                 }
                                 for v in event.volunteers
                             ]
@@ -946,6 +986,8 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                                     if v.organizations
                                     else []
                                 ),
+                                "is_local": getattr(v, "local_status", None)
+                                == LocalStatusEnum.local,
                             }
                             for v in event.volunteers
                         ]
@@ -1146,6 +1188,7 @@ def compute_virtual_session_district_data(
     total_organizations = set()
     total_professionals = set()
     total_professionals_of_color = set()
+    total_local_professionals = set()
     total_schools = set()
     school_breakdown = {}
     teacher_breakdown = {}
@@ -1188,7 +1231,7 @@ def compute_virtual_session_district_data(
         if not event_has_target_district_teacher:
             continue
 
-        # Only count completed sessions for teacher breakdown
+        # Only count completed sessions for teacher breakdown and totals
         # Check both mapped status and original status string
         should_skip = False
         if event.status and event.status.value not in ["Completed", "Simulcast"]:
@@ -1267,6 +1310,25 @@ def compute_virtual_session_district_data(
                     }
                 teacher_sessions[teacher_id] += 1
                 total_teachers.add(teacher_name)
+
+        # Count local professionals for this included, completed event
+        for v in event.volunteers or []:
+            try:
+                from models.contact import LocalStatusEnum as _LSE
+
+                if getattr(v, "local_status", None) == _LSE.local:
+                    total_local_professionals.add(
+                        v.id or f"{v.first_name} {v.last_name}"
+                    )
+            except Exception:
+                # Fallback string check if enum import not available at runtime
+                try:
+                    if str(getattr(v, "local_status", "")).lower().endswith("local"):
+                        total_local_professionals.add(
+                            v.id or f"{v.first_name} {v.last_name}"
+                        )
+                except Exception:
+                    pass
 
     # Build teacher breakdown from the collected data
     for teacher_id, session_count in teacher_sessions.items():
@@ -1484,6 +1546,19 @@ def compute_virtual_session_district_data(
     # Calculate estimated students as unique teachers * 25
     estimated_students = len(total_teachers_completed) * 25
 
+    # Compute local professional count across completed sessions
+    local_professionals = set()
+    for stats in monthly_stats.values():
+        for evt in stats["events"]:
+            for p in evt.get("presenter_data", []) or []:
+                try:
+                    # Prefer id when available
+                    pid = p.get("id") or p.get("name")
+                    if p.get("is_local"):
+                        local_professionals.add(pid)
+                except Exception:
+                    pass
+
     summary_stats = {
         "total_teachers": len(total_teachers_completed),
         "total_students": estimated_students,
@@ -1492,6 +1567,7 @@ def compute_virtual_session_district_data(
         "total_organizations": len(total_organizations_completed),
         "total_professionals": len(total_professionals_completed),
         "total_professionals_of_color": len(total_professionals_of_color_completed),
+        "total_local_professionals": len(total_local_professionals),
         "total_schools": len(total_schools),
     }
 
@@ -1607,16 +1683,21 @@ def load_routes(bp):
                 overall_summary = cached_data.overall_summary
                 filter_options = cached_data.filter_options
 
-                # Check if cached data has the new fields and invalidate if missing
+                # Check if cached data has the new fields; if local_pro metric missing, recompute summaries
                 if session_data and len(session_data) > 0:
                     sample_session = session_data[0]
+                    needs_recompute = False
                     if (
                         "teacher_id" not in sample_session
                         or "presenter_data" not in sample_session
                     ):
-                        # Force fresh data if new fields are missing
-                        invalidate_virtual_session_caches(selected_virtual_year)
-                        # Recompute
+                        needs_recompute = True
+                    if not needs_recompute and (
+                        overall_summary is None
+                        or "local_professional_count" not in overall_summary
+                    ):
+                        needs_recompute = True
+                    if needs_recompute:
                         (
                             session_data,
                             district_summaries,
@@ -1880,6 +1961,9 @@ def load_routes(bp):
                     total_experiences=summary_stats["total_experiences"],
                     total_organizations=summary_stats["total_organizations"],
                     total_professionals=summary_stats["total_professionals"],
+                    total_local_professionals=summary_stats.get(
+                        "total_local_professionals", 0
+                    ),
                     total_professionals_of_color=summary_stats[
                         "total_professionals_of_color"
                     ],
@@ -1933,6 +2017,7 @@ def load_routes(bp):
             total_experiences=summary_stats["total_experiences"],
             total_organizations=summary_stats["total_organizations"],
             total_professionals=summary_stats["total_professionals"],
+            total_local_professionals=summary_stats.get("total_local_professionals", 0),
             total_professionals_of_color=summary_stats["total_professionals_of_color"],
             total_schools=summary_stats["total_schools"],
             school_breakdown=school_breakdown,
