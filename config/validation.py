@@ -596,6 +596,468 @@ LOGGING_CONFIG = {
     == "true",
 }
 
+# Business rule validation rules
+VALIDATION_BUSINESS_RULES = {
+    "validation_settings": {
+        "enable_status_transition_validation": True,
+        "enable_date_range_validation": True,
+        "enable_capacity_limit_validation": True,
+        "enable_business_constraint_validation": True,
+        "enable_workflow_validation": True,
+        "enable_data_quality_scoring": True,
+        "enable_trend_analysis": True,
+        "enable_custom_rules": True,
+        "validation_thresholds": {
+            "min_success_rate": 80.0,
+            "max_warning_rate": 15.0,
+            "max_error_rate": 5.0,
+        },
+        "quality_scoring": {
+            "critical_violation_weight": 10.0,
+            "error_violation_weight": 5.0,
+            "warning_violation_weight": 2.0,
+            "info_violation_weight": 0.5,
+            "base_score": 100.0,
+            "min_acceptable_score": 70.0,
+        },
+        "performance": {
+            "max_parallel_validators": 4,
+            "enable_caching": True,
+            "cache_ttl_seconds": 3600,
+            "smart_sampling_enabled": True,
+            "max_sample_size": 1000,
+            "min_sample_size": 100,
+        },
+    },
+    "custom_rules": {
+        "rule_sources": ["config/validation.py", "rules/external/", "rules/dynamic/"],
+        "rule_templates": {
+            "field_required_when": {
+                "type": "cross_field",
+                "description": "Field is required when another field has specific value",
+                "parameters": ["if_field", "if_value", "then_field", "then_required"],
+            },
+            "numeric_range": {
+                "type": "business_constraint",
+                "description": "Numeric field must be within specified range",
+                "parameters": ["field_name", "min_value", "max_value", "severity"],
+            },
+            "date_sequence": {
+                "type": "date_range",
+                "description": "Date fields must follow logical sequence",
+                "parameters": [
+                    "start_field",
+                    "end_field",
+                    "min_duration",
+                    "max_duration",
+                ],
+            },
+        },
+        "rule_versioning": {
+            "enabled": True,
+            "track_changes": True,
+            "impact_analysis": True,
+        },
+    },
+    "trend_analysis": {
+        "enabled": True,
+        "analysis_periods": ["daily", "weekly", "monthly"],
+        "metrics_to_track": [
+            "overall_quality_score",
+            "critical_violations",
+            "error_violations",
+            "warning_violations",
+            "success_rate",
+        ],
+        "alerting": {
+            "quality_decline_threshold": 5.0,  # 5% decline triggers alert
+            "violation_spike_threshold": 20.0,  # 20% increase triggers alert
+            "trend_detection_window": 7,  # days
+        },
+    },
+    "business_rules": {
+        "volunteer": {
+            "contact_type_validation": {
+                "type": "business_constraint",
+                "field_name": "Contact_Type__c",
+                "allowed_values": ["Volunteer", "Student", "Teacher", "Staff"],
+                "severity": "warning",
+                "description": "Contact type must be from predefined list",
+            },
+            "organization_association_validation": {
+                "type": "business_constraint",
+                "field_name": "AccountId",
+                "min_value": 1,  # Should have a valid organization ID
+                "severity": "info",
+                "description": "Volunteer should be associated with an organization",
+            },
+            "name_validation": {
+                "type": "business_constraint",
+                "field_name": "FirstName",
+                "min_value": 1,  # Minimum characters
+                "max_value": 50,  # Maximum characters
+                "required": True,  # Required field
+                "severity": "warning",
+                "description": "First name should have reasonable length",
+            },
+            "email_format_validation": {
+                "type": "business_constraint",
+                "field_name": "Email",
+                "min_value": 1,  # Should have email if provided
+                "max_value": 100,  # Maximum email length
+                "required": False,  # Not required but should be valid if present
+                "severity": "info",
+                "description": "Email should have reasonable format and length",
+            },
+            "status_transition_validation": {
+                "type": "status_transition",
+                "status_field": "Status__c",
+                "allowed_transitions": {
+                    "Active": ["Inactive", "Suspended"],
+                    "Inactive": ["Active"],
+                    "Suspended": ["Active", "Inactive"],
+                },
+                "severity": "warning",
+                "description": "Volunteer status transitions must follow business logic",
+            },
+            "cross_field_validation": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "Contact_Type__c",
+                        "if_value": "Volunteer",
+                        "then_field": "Volunteer_Skills__c",
+                        "then_required": True,
+                        "message": "Volunteers must have skills specified",
+                    },
+                    {
+                        "if_field": "Contact_Type__c",
+                        "if_value": "Volunteer",
+                        "then_field": "Availability__c",
+                        "then_required": True,
+                        "message": "Volunteers must specify availability",
+                    },
+                ],
+                "severity": "warning",
+                "description": "Cross-field validation for volunteer requirements",
+            },
+            "workflow_validation": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "Registration",
+                        "required_fields": ["FirstName", "Email", "Contact_Type__c"],
+                        "next_steps": ["Background_Check", "Skills_Assessment"],
+                    },
+                    {
+                        "step": "Background_Check",
+                        "required_fields": ["Background_Check_Status__c"],
+                        "next_steps": ["Approval", "Rejection"],
+                        "depends_on": "Registration",
+                    },
+                    {
+                        "step": "Skills_Assessment",
+                        "required_fields": ["Volunteer_Skills__c"],
+                        "next_steps": ["Approval", "Training_Required"],
+                        "depends_on": "Registration",
+                    },
+                    {
+                        "step": "Approval",
+                        "required_fields": ["Approval_Date__c", "Approved_By__c"],
+                        "next_steps": ["Active"],
+                        "depends_on": ["Background_Check", "Skills_Assessment"],
+                    },
+                ],
+                "severity": "warning",
+                "description": "Volunteer onboarding workflow validation",
+            },
+        },
+        "organization": {
+            "type_validation": {
+                "type": "business_constraint",
+                "field_name": "Type",
+                "allowed_values": [
+                    "School",
+                    "Non-Profit",
+                    "Government",
+                    "Corporate",
+                    "Community",
+                ],
+                "severity": "warning",
+                "description": "Organization type must be from predefined list",
+            },
+            "name_validation": {
+                "type": "business_constraint",
+                "field_name": "Name",
+                "min_value": 2,  # Minimum characters
+                "max_value": 100,  # Maximum characters
+                "severity": "warning",
+                "description": "Organization name should have reasonable length",
+            },
+            "address_validation": {
+                "type": "business_constraint",
+                "field_name": "BillingCity",
+                "min_value": 1,  # Should have city if provided
+                "max_value": 50,  # Maximum city name length
+                "severity": "info",
+                "description": "Billing city should have reasonable length",
+            },
+            "status_transition_validation": {
+                "type": "status_transition",
+                "status_field": "Status__c",
+                "allowed_transitions": {
+                    "Active": ["Inactive", "Suspended"],
+                    "Inactive": ["Active"],
+                    "Suspended": ["Active", "Inactive"],
+                },
+                "severity": "warning",
+                "description": "Organization status transitions must follow business logic",
+            },
+            "cross_field_validation": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "Type",
+                        "if_value": "School",
+                        "then_field": "School_District__c",
+                        "then_required": True,
+                        "message": "Schools must specify school district",
+                    },
+                    {
+                        "if_field": "Type",
+                        "if_value": "Non-Profit",
+                        "then_field": "Tax_ID__c",
+                        "then_required": True,
+                        "message": "Non-profits must have tax ID",
+                    },
+                ],
+                "severity": "warning",
+                "description": "Cross-field validation for organization requirements",
+            },
+        },
+        "event": {
+            "subject_validation": {
+                "type": "business_constraint",
+                "field_name": "Subject",
+                "min_value": 5,  # Minimum characters for meaningful subject
+                "max_value": 200,  # Maximum subject length
+                "severity": "warning",
+                "description": "Event subject should have reasonable length",
+            },
+            "start_date_validation": {
+                "type": "business_constraint",
+                "field_name": "StartDateTime",
+                "min_value": 1,  # Should have start date
+                "severity": "error",
+                "description": "Event must have a start date",
+            },
+            "location_validation": {
+                "type": "business_constraint",
+                "field_name": "Location",
+                "min_value": 1,  # Minimum characters
+                "max_value": 200,  # Maximum location length
+                "severity": "info",
+                "description": "Event location should have reasonable length",
+            },
+            "date_range_validation": {
+                "type": "date_range",
+                "start_field": "StartDateTime",
+                "end_field": "EndDateTime",
+                "min_duration_days": 0.1,  # 2.4 hours minimum
+                "max_duration_days": 30,  # 30 days maximum
+                "severity": "error",
+                "description": "Event dates must be logical with reasonable duration",
+            },
+            "capacity_validation": {
+                "type": "capacity_limit",
+                "capacity_field": "Max_Volunteers__c",
+                "current_field": "Registered_Volunteers__c",
+                "max_capacity": 1000,
+                "severity": "warning",
+                "description": "Event capacity must be reasonable and not exceeded",
+            },
+            "cross_field_validation": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "Event_Type__c",
+                        "if_value": "Virtual",
+                        "then_field": "Virtual_Platform__c",
+                        "then_required": True,
+                        "message": "Virtual events must specify platform",
+                    },
+                    {
+                        "if_field": "Event_Type__c",
+                        "if_value": "In-Person",
+                        "then_field": "Location",
+                        "then_required": True,
+                        "message": "In-person events must have location",
+                    },
+                ],
+                "severity": "warning",
+                "description": "Cross-field validation for event requirements",
+            },
+            "workflow_validation": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "Planning",
+                        "required_fields": [
+                            "Subject",
+                            "StartDateTime",
+                            "Event_Type__c",
+                        ],
+                        "next_steps": ["Approval", "Cancelled"],
+                    },
+                    {
+                        "step": "Approval",
+                        "required_fields": ["Approved_By__c", "Approval_Date__c"],
+                        "next_steps": ["Registration_Open", "Cancelled"],
+                        "depends_on": "Planning",
+                    },
+                    {
+                        "step": "Registration_Open",
+                        "required_fields": [
+                            "Max_Volunteers__c",
+                            "Registration_Deadline__c",
+                        ],
+                        "next_steps": ["Registration_Closed", "Cancelled"],
+                        "depends_on": "Approval",
+                    },
+                    {
+                        "step": "Registration_Closed",
+                        "required_fields": ["Registered_Volunteers__c"],
+                        "next_steps": ["Event_Execution", "Cancelled"],
+                        "depends_on": "Registration_Open",
+                    },
+                    {
+                        "step": "Event_Execution",
+                        "required_fields": ["Actual_Start_Time__c"],
+                        "next_steps": ["Completed", "Cancelled"],
+                        "depends_on": "Registration_Closed",
+                    },
+                ],
+                "severity": "warning",
+                "description": "Event lifecycle workflow validation",
+            },
+        },
+        "student": {
+            "contact_type_validation": {
+                "type": "business_constraint",
+                "field_name": "Contact_Type__c",
+                "allowed_values": ["Student", "Volunteer", "Teacher", "Staff"],
+                "severity": "warning",
+                "description": "Student contact type must be valid",
+            },
+            "name_validation": {
+                "type": "business_constraint",
+                "field_name": "FirstName",
+                "min_value": 1,  # Minimum characters
+                "max_value": 50,  # Maximum characters
+                "required": True,  # Required field
+                "severity": "warning",
+                "description": "Student first name should have reasonable length",
+            },
+            "organization_association_validation": {
+                "type": "business_constraint",
+                "field_name": "AccountId",
+                "min_value": 1,  # Should have a valid school ID
+                "required": True,  # Required field
+                "severity": "warning",
+                "description": "Student should be associated with a school",
+            },
+            "enrollment_validation": {
+                "type": "date_range",
+                "start_field": "Enrollment_Date__c",
+                "end_field": "Graduation_Date__c",
+                "min_duration_days": 30,  # Minimum 1 month
+                "max_duration_days": 2555,  # Maximum 7 years (K-12)
+                "severity": "warning",
+                "description": "Student enrollment period must be reasonable",
+            },
+            "cross_field_validation": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "Grade_Level__c",
+                        "if_value": "K",
+                        "then_field": "Age__c",
+                        "then_min_value": 4,
+                        "then_max_value": 6,
+                        "message": "Kindergarten students should be 4-6 years old",
+                    },
+                    {
+                        "if_field": "Grade_Level__c",
+                        "if_value": "12",
+                        "then_field": "Age__c",
+                        "then_min_value": 16,
+                        "then_max_value": 19,
+                        "message": "12th grade students should be 16-19 years old",
+                    },
+                ],
+                "severity": "warning",
+                "description": "Cross-field validation for student age/grade consistency",
+            },
+        },
+        "teacher": {
+            "contact_type_validation": {
+                "type": "business_constraint",
+                "field_name": "Contact_Type__c",
+                "allowed_values": ["Teacher", "Volunteer", "Student", "Staff"],
+                "severity": "warning",
+                "description": "Teacher contact type must be valid",
+            },
+            "name_validation": {
+                "type": "business_constraint",
+                "field_name": "FirstName",
+                "min_value": 1,  # Minimum characters
+                "max_value": 50,  # Maximum characters
+                "required": True,  # Required field
+                "severity": "warning",
+                "description": "Teacher first name should have reasonable length",
+            },
+            "organization_association_validation": {
+                "type": "business_constraint",
+                "field_name": "AccountId",
+                "min_value": 1,  # Should have a valid school ID
+                "required": True,  # Required field
+                "severity": "warning",
+                "description": "Teacher should be associated with a school",
+            },
+            "title_validation": {
+                "type": "business_constraint",
+                "field_name": "Title",
+                "min_value": 2,  # Minimum characters
+                "max_value": 100,  # Maximum characters
+                "required": False,  # Not required but should be valid if present
+                "severity": "info",
+                "description": "Teacher title should have reasonable length",
+            },
+            "cross_field_validation": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "Title",
+                        "if_value": "Principal",
+                        "then_field": "Years_Experience__c",
+                        "then_min_value": 5,
+                        "message": "Principals should have at least 5 years experience",
+                    },
+                    {
+                        "if_field": "Title",
+                        "if_value": "Substitute",
+                        "then_field": "Certification_Status__c",
+                        "then_required": True,
+                        "message": "Substitute teachers must have certification status",
+                    },
+                ],
+                "severity": "warning",
+                "description": "Cross-field validation for teacher qualifications",
+            },
+        },
+    },
+}
+
 # Main validation configuration dictionary
 VALIDATION_CONFIG = {
     "thresholds": VALIDATION_THRESHOLDS,
@@ -611,6 +1073,7 @@ VALIDATION_CONFIG = {
     "field_completeness_rules": VALIDATION_FIELD_COMPLETENESS_RULES,
     "data_type_rules": VALIDATION_DATA_TYPE_RULES,
     "relationship_rules": VALIDATION_RELATIONSHIP_RULES,
+    "business_rules": VALIDATION_BUSINESS_RULES,  # NEW
     "logging": LOGGING_CONFIG,
 }
 

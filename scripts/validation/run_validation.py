@@ -227,6 +227,42 @@ def run_relationship_validation(entity_type: str = "all", user_id: int = None):
         raise
 
 
+def run_business_rule_validation(entity_type: str = "all", user_id: int = None):
+    """Run business rule validation for specific entity type."""
+    try:
+        # Import and set up Flask app context
+        from app import app
+        from utils.validation_engine import get_validation_engine
+        from utils.validators.business_rule_validator import BusinessRuleValidator
+
+        logger.info(f"Starting business rule validation for {entity_type}...")
+
+        with app.app_context():
+            # Create validator
+            validator = BusinessRuleValidator(run_id=None, entity_type=entity_type)
+
+            # Run validation
+            engine = get_validation_engine()
+            run = engine.run_custom_validation(
+                validators=[validator],
+                run_type="business_rule_validation",
+                name=f"Business Rule Validation - {entity_type.title()}",
+                user_id=user_id,
+            )
+
+            logger.info(f"Business rule validation completed successfully!")
+            logger.info(f"Run ID: {run.id}")
+            logger.info(f"Status: {run.status}")
+            logger.info(f"Results: {run.total_checks} total checks")
+            logger.info(f"Execution time: {run.execution_time_seconds}s")
+
+            return run
+
+    except Exception as e:
+        logger.error(f"Business rule validation failed: {e}")
+        raise
+
+
 def show_run_status(run_id: int):
     """Show status of a validation run."""
     try:
@@ -441,6 +477,20 @@ Examples:
         "--user-id", type=int, help="User ID for the validation run"
     )
 
+    # Business rules validation command
+    business_rules_parser = subparsers.add_parser(
+        "business-rules", help="Run business rule validation"
+    )
+    business_rules_parser.add_argument(
+        "--entity-type",
+        default="all",
+        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        help="Entity type to validate (default: all)",
+    )
+    business_rules_parser.add_argument(
+        "--user-id", type=int, help="User ID for the validation run"
+    )
+
     # Status command
     status_parser = subparsers.add_parser("status", help="Show validation run status")
     status_parser.add_argument(
@@ -486,19 +536,21 @@ Examples:
         print("  field-completeness - Run field completeness validation")
         print("  data-type     - Run data type validation")
         print("  relationships - Run relationship integrity validation")
+        print("  business-rules - Run business rule validation")
         print("  status        - Show validation run status")
         print("  results       - Show validation results")
         print("  help          - Show this help message")
         print()
         print("Examples:")
         print("  python run_validation.py fast")
-        print("  python run_validation.py slow --user-id 1")
+        print("  python run_validation.py slow")
         print("  python run_validation.py count --entity-type volunteer")
         print(
             "  python run_validation.py field-completeness --entity-type organization"
         )
         print("  python run_validation.py data-type --entity-type student")
         print("  python run_validation.py relationships --entity-type volunteer")
+        print("  python run_validation.py business-rules --entity-type volunteer")
         print("  python run_validation.py status --run-id 123")
         print("  python run_validation.py results --run-id 123")
         print()
@@ -519,6 +571,8 @@ Examples:
             run_data_type_validation(args.entity_type, args.user_id)
         elif args.command == "relationships":
             run_relationship_validation(args.entity_type, args.user_id)
+        elif args.command == "business-rules":
+            run_business_rule_validation(args.entity_type, args.user_id)
         elif args.command == "status":
             show_run_status(args.run_id)
         elif args.command == "recent":

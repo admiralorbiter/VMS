@@ -4,207 +4,275 @@ description: "Complete documentation for the Volunteer Management System"
 tags: [documentation, index, navigation]
 ---
 
-# VMS Documentation
+# VMS Salesforce Data Validation System
 
-Welcome to the comprehensive documentation for the Volunteer Management System (VMS). This documentation is designed to help developers, administrators, and users understand, deploy, and maintain the VMS application.
+A comprehensive data validation and quality monitoring system for Volunteer Management System (VMS) Salesforce integration.
 
-## 📚 **Documentation Index**
+## 🚀 **Current Status: Phase 3.3 Complete**
 
-### **Core Documentation**
-- [**Overview**](01-overview.md) - System overview and high-level architecture
-- [**Architecture**](02-architecture.md) - Technical architecture and design patterns
-- [**Data Model**](03-data-model.md) - Database schema and data relationships
-- [**API Specification**](04-api-spec.md) - REST API endpoints and data formats
-- [**Development Guide**](05-dev-guide.md) - Setup, development, and contribution guidelines
-- [**Operations Guide**](06-ops-guide.md) - Deployment, monitoring, and maintenance
-- [**Testing Guide**](07-test-guide.md) - Testing strategies and procedures
+**Latest Achievement**: **Business Rule Validation System** - Comprehensive business logic validation across all entities with advanced features including data quality scoring, trend analysis, and performance optimization.
 
-### **Specialized Documentation**
-- [**Release Notes**](08-release-notes/) - Version history and release information
-- [**FAQ**](09-faq.md) - Frequently asked questions and troubleshooting
-- [**Validation System**](VALIDATION_SYSTEM_README.md) - Salesforce data validation framework
-- [**Data Quality Report**](DATA_QUALITY_REPORT_2024.md) - **NEW** - Comprehensive data quality assessment and recommendations
-
-### **Planning and Development**
-- [**Planning Overview**](PLANNING.md) - Project planning and roadmap
-- [**Feature Matrix**](FEATURE_MATRIX.md) - Feature status and implementation tracking
-- [**Planning Documents**](planning/) - Detailed planning and implementation guides
-
-## 🎯 Quick Start Guide
-
-### For Developers
-
-1. **Start here**: [Development Guide](05-dev-guide.md)
-2. **Understand the system**: [System Overview](01-overview.md)
-3. **Learn the architecture**: [Architecture](02-architecture.md)
-4. **Explore the data model**: [Data Model](03-data-model.md)
-5. **Test your setup**: [Test Guide](07-test-guide.md)
-
-### For Administrators
-
-1. **Start here**: [Operations Guide](06-ops-guide.md)
-2. **Understand the system**: [System Overview](01-overview.md)
-3. **Check the FAQ**: [FAQ](09-faq.md)
-4. **Review API docs**: [API Specification](04-api-spec.md)
-
-### For Users
-
-1. **Start here**: [System Overview](01-overview.md)
-2. **Check the FAQ**: [FAQ](09-faq.md)
-3. **Review features**: [Feature Matrix](FEATURE_MATRIX.md)
-
-## 🔍 Documentation Search
-
-### By Topic
-
-#### **Getting Started**
-- [Development Setup](05-dev-guide.md#getting-started)
-- [Environment Configuration](05-dev-guide.md#environment-setup)
-- [First Admin User](05-dev-guide.md#create-admin-user)
-
-#### **System Architecture**
-- [Technology Stack](01-overview.md#technology-stack)
-- [System Design](02-architecture.md#system-design-principles)
-- [Database Schema](03-data-model.md#database-schema-overview)
-
-#### **Development**
-- [Coding Standards](05-dev-guide.md#coding-standards)
-- [Testing Strategy](07-test-guide.md#testing-strategy)
-- [API Endpoints](04-api-spec.md#api-endpoints)
-
-#### **Operations**
-- [Deployment](06-ops-guide.md#deployment)
-- [Monitoring](06-ops-guide.md#monitoring)
-- [Troubleshooting](06-ops-guide.md#troubleshooting)
-
-#### **Data Management**
-- [Database Design](03-data-model.md#detailed-table-definitions)
-- [Import Processes](03-data-model.md#data-importexport)
-- [Backup Procedures](06-ops-guide.md#database-maintenance)
-- [Restore Google Sheets Configs](06-ops-guide.md#🧰-data-recovery-google-sheets-configs)
-
-### By User Role
-
-#### **Developers**
-- [Development Guide](05-dev-guide.md) - Complete development setup
-- [Architecture](02-architecture.md) - System design and patterns
-- [Data Model](03-data-model.md) - Database schema and relationships
-- [API Specification](04-api-spec.md) - API endpoints and usage
-- [Test Guide](07-test-guide.md) - Testing strategies and practices
-
-#### **DevOps/System Administrators**
-- [Operations Guide](06-ops-guide.md) - Deployment and maintenance
-- [Architecture](02-architecture.md) - System architecture
-- [FAQ](09-faq.md) - Common issues and solutions
-
-#### **Project Managers**
-- [Feature Matrix](FEATURE_MATRIX.md) - Feature tracking and status
-- [System Overview](01-overview.md) - Project purpose and goals
-- [Architecture](02-architecture.md) - Technical overview
-
-#### **End Users**
-- [System Overview](01-overview.md) - What the system does
-- [FAQ](09-faq.md) - Common questions and answers
-- [Feature Matrix](FEATURE_MATRIX.md) - Available features
-
-## 📋 Documentation Standards
-
-### Format
-
-All documentation follows these standards:
-- **Markdown format** with YAML frontmatter
-- **Consistent structure** with clear headings
-- **Code examples** for technical content
-- **Cross-references** between related documents
-
-### Content Guidelines
-
-- **Clear and concise** language
-- **Step-by-step instructions** for complex procedures
-- **Code examples** with proper syntax highlighting
-- **Screenshots and diagrams** where helpful
-- **Regular updates** to maintain accuracy
-
-### Maintenance
-
-- **Version control** with the codebase
-- **Regular reviews** for accuracy
-- **User feedback** integration
-- **Automated checks** for broken links
-
-## 🔗 External Resources
-
-### Development Resources
-- [Flask Documentation](https://flask.palletsprojects.com/)
-- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
-- [Pytest Documentation](https://docs.pytest.org/)
-
-### Deployment Resources
-- [Nginx Documentation](https://nginx.org/en/docs/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Docker Documentation](https://docs.docker.com/)
-
-### Testing Resources
-- [Selenium Documentation](https://selenium-python.readthedocs.io/)
-- [Coverage.py Documentation](https://coverage.readthedocs.io/)
-
-## 📞 Support
-
-### Getting Help
-
-1. **Check the FAQ**: [FAQ](09-faq.md) for common questions
-2. **Review documentation**: Browse the relevant guide
-3. **Search issues**: Check existing GitHub issues
-4. **Create issue**: For bugs or feature requests
-
-### Contributing to Documentation
-
-1. **Fork the repository**
-2. **Make your changes** following the documentation standards
-3. **Test your changes** to ensure accuracy
-4. **Submit a pull request** with clear description
-
-### Documentation Feedback
-
-We welcome feedback on our documentation:
-- **Accuracy**: Report any inaccuracies
-- **Clarity**: Suggest improvements for clarity
-- **Completeness**: Request additional information
-- **Structure**: Suggest better organization
-
-## 📈 Documentation Metrics
-
-### Current Status
-- **Total Documents**: 9 core documents
-- **Coverage**: Complete system documentation
-- **Last Updated**: August 2025
-- **Maintenance**: Regular updates with code changes
-
-### Quality Metrics
-- **Completeness**: 95% (all major areas covered)
-- **Accuracy**: 98% (regularly reviewed)
-- **Usability**: High (clear structure and navigation)
-
-## 🚀 Quick Navigation
-
-### Essential Links
-- [System Overview](01-overview.md) - Start here
-- [Development Guide](05-dev-guide.md) - For developers
-- [Operations Guide](06-ops-guide.md) - For administrators
-- [FAQ](09-faq.md) - Common questions
-
-### Technical Documentation
-- [Architecture](02-architecture.md) - System design
-- [Data Model](03-data-model.md) - Database schema
-- [API Specification](04-api-spec.md) - API documentation
-- [Test Guide](07-test-guide.md) - Testing practices
-
-### Project Management
-- [Feature Matrix](FEATURE_MATRIX.md) - Feature tracking
-- [Release Notes](08-release-notes/) - Version history
+**System Capabilities**:
+- ✅ **Record Count Validation** - Fast validation of data synchronization
+- ✅ **Field Completeness Validation** - Comprehensive field population analysis
+- ✅ **Data Type Validation** - Format and type consistency checking
+- ✅ **Relationship Integrity Validation** - Orphaned record detection
+- ✅ **Business Rule Validation** - Business logic and workflow compliance
+- 🚀 **Data Quality Scoring & Trends** - Advanced quality metrics and monitoring
 
 ---
 
-*This documentation is maintained as part of the VMS project. For questions or contributions, please see the [Support](#support) section above.*
+## 📊 **System Overview**
 
-*Last updated: August 2025*
+The VMS Salesforce Data Validation System provides automated validation across multiple dimensions:
+
+### **Core Validation Types**
+- **Fast Validation** (1-2 minutes): Record counts, basic field checks
+- **Slow Validation** (5-10 minutes): Comprehensive data quality analysis
+- **Business Rule Validation** (1-2 minutes): Business logic compliance
+- **Custom Validation**: Targeted validation for specific needs
+
+### **Entity Coverage**
+- **Volunteers**: Contact data, organization associations, skills, availability
+- **Organizations**: Company data, addresses, contact information
+- **Events**: Scheduling, capacity, location, volunteer assignments
+- **Students**: Educational data, school associations, enrollment
+- **Teachers**: Professional data, qualifications, school associations
+
+### **Business Rule Validation Features**
+- **Status Transitions**: Business logic for status changes
+- **Date Ranges**: Duration validation and logical sequences
+- **Capacity Limits**: Resource utilization and overflow detection
+- **Cross-Field Rules**: Conditional field requirements
+- **Workflow Validation**: Business process step dependencies
+- **Data Quality Scoring**: Weighted penalty system
+- **Trend Analysis**: Quality monitoring over time
+- **Performance Optimization**: Smart sampling and caching
+
+---
+
+## 🛠️ **Quick Start**
+
+### **Prerequisites**
+- Python 3.8+
+- Salesforce credentials (username, password, security token)
+- Access to VMS database
+
+### **Installation**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd VMS
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your Salesforce credentials
+```
+
+### **Basic Usage**
+
+#### **Run All Validations**
+```bash
+python scripts/validation/run_validation.py slow
+```
+
+#### **Business Rule Validation**
+```bash
+# Validate all entities
+python scripts/validation/run_validation.py business-rules
+
+# Validate specific entity
+python scripts/validation/run_validation.py business-rules --entity-type volunteer
+
+# Get help
+python scripts/validation/run_validation.py business-rules --help
+```
+
+#### **Field Completeness Validation**
+```bash
+python scripts/validation/run_validation.py field-completeness --entity-type volunteer
+```
+
+#### **Data Type Validation**
+```bash
+python scripts/validation/run_validation.py data-types --entity-type volunteer
+```
+
+#### **Relationship Validation**
+```bash
+python scripts/validation/run_validation.py relationships --entity-type volunteer
+```
+
+---
+
+## 📈 **Data Quality Metrics**
+
+### **Current Quality Scores**
+- **Overall System**: 72% (Target: 85%)
+- **Volunteer Data**: 95% (Excellent)
+- **Organization Data**: 75% (Good)
+- **Event Data**: 85% (Good)
+- **Student Data**: 50% (Needs Attention)
+- **Teacher Data**: 40% (Critical Issues)
+
+### **Business Rule Compliance**
+- **Volunteer**: 95% compliance
+- **Organization**: 75% compliance
+- **Event**: 85% compliance
+- **Student**: 45% compliance
+- **Teacher**: 40% compliance
+
+---
+
+## 🔧 **Configuration**
+
+### **Environment Variables**
+```bash
+# Salesforce Configuration
+SF_USERNAME=your_username
+SF_PASSWORD=your_password
+SF_SECURITY_TOKEN=your_security_token
+
+# Database Configuration
+DATABASE_URL=sqlite:///instance/your_database.db
+
+# Validation Settings
+VALIDATION_LOG_LEVEL=INFO
+VALIDATION_FAST_INTERVAL=3600
+VALIDATION_SLOW_INTERVAL=86400
+```
+
+### **Business Rule Configuration**
+Business rules are configured in `config/validation.py` and include:
+- Field validation rules
+- Cross-field dependencies
+- Workflow step requirements
+- Status transition logic
+- Date range constraints
+- Capacity limits
+
+---
+
+## 📋 **Validation Results**
+
+### **Understanding Results**
+- **Info**: Validation passed successfully
+- **Warning**: Minor issues that should be addressed
+- **Error**: Significant issues requiring attention
+- **Critical**: Major problems that may impact system functionality
+
+### **Result Categories**
+- **Field Completeness**: Missing required fields
+- **Data Types**: Format and type inconsistencies
+- **Relationships**: Orphaned records and broken links
+- **Business Rules**: Business logic violations
+- **Workflows**: Missing process steps
+
+---
+
+## 🚀 **Advanced Features**
+
+### **Data Quality Scoring**
+- Weighted penalty system for violations
+- Configurable scoring weights
+- Quality trend analysis
+- Automated quality alerts
+
+### **Performance Optimization**
+- Smart data sampling strategies
+- Parallel validation processing
+- Result caching and optimization
+- Scalable architecture
+
+### **Custom Rule Engine**
+- Dynamic rule loading
+- Rule templates and patterns
+- Version control for rules
+- Impact analysis capabilities
+
+---
+
+## 📚 **Documentation**
+
+### **User Guides**
+- [Data Quality Report 2024](DATA_QUALITY_REPORT_2024.md) - Current quality assessment
+- [Validation System README](VALIDATION_SYSTEM_README.md) - Detailed system documentation
+- [Development Guide](05-dev-guide.md) - Developer resources
+- [Operations Guide](06-ops-guide.md) - Operational procedures
+
+### **Technical Documentation**
+- [Architecture Overview](02-architecture.md) - System design and components
+- [Data Model](03-data-model.md) - Database schema and relationships
+- [API Specification](04-api-spec.md) - Integration interfaces
+- [Testing Guide](07-test-guide.md) - Testing procedures and examples
+
+---
+
+## 🔮 **Roadmap**
+
+### **✅ Completed Phases**
+- **Phase 1**: Foundation and basic validation
+- **Phase 2**: Field completeness validation
+- **Phase 3.1**: Data type validation
+- **Phase 3.2**: Relationship integrity validation
+- **Phase 3.3**: Business rule validation ✅
+
+### **🚀 Current Phase**
+- **Phase 3.4**: Data Quality Scoring & Trends
+  - Advanced quality metrics
+  - Historical trend analysis
+  - Predictive quality modeling
+  - Quality dashboards
+
+### **📋 Upcoming Phases**
+- **Phase 3.5**: Performance & Scalability
+- **Phase 4**: Integration & Reporting
+- **Phase 5**: Advanced Analytics & ML
+
+---
+
+## 🆘 **Support & Troubleshooting**
+
+### **Common Issues**
+- **Salesforce Connection**: Check credentials and network access
+- **Database Access**: Verify database permissions and connection
+- **Validation Errors**: Review logs for detailed error information
+
+### **Getting Help**
+- Check the [FAQ](09-faq.md) for common questions
+- Review [release notes](08-release-notes/) for known issues
+- Contact the development team for technical support
+
+### **Logs and Debugging**
+```bash
+# Enable debug logging
+export VALIDATION_LOG_LEVEL=DEBUG
+
+# Run validation with verbose output
+python scripts/validation/run_validation.py slow --verbose
+```
+
+---
+
+## 🤝 **Contributing**
+
+We welcome contributions! Please see our [Development Guide](05-dev-guide.md) for:
+- Development environment setup
+- Code standards and guidelines
+- Testing procedures
+- Contribution workflow
+
+---
+
+## 📄 **License**
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+**Last Updated**: August 14, 2024
+**System Version**: Phase 3.3 Complete
+**Next Milestone**: Phase 3.4 - Data Quality Scoring & Trends

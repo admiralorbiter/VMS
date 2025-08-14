@@ -15,6 +15,7 @@ from models.validation.metric import ValidationMetric
 from models.validation.result import ValidationResult
 from models.validation.run import ValidationRun
 from utils.validation_base import DataValidator, ValidationContext
+from utils.validators.business_rule_validator import BusinessRuleValidator
 from utils.validators.count_validator import CountValidator
 from utils.validators.data_type_validator import DataTypeValidator
 from utils.validators.field_completeness_validator import FieldCompletenessValidator
@@ -138,8 +139,8 @@ class ValidationEngine:
                 FieldCompletenessValidator(run_id=run.id, entity_type="all"),
                 DataTypeValidator(run_id=run.id, entity_type="all"),
                 RelationshipValidator(run_id=run.id, entity_type="all"),
+                BusinessRuleValidator(run_id=run.id, entity_type="all"),
                 # Add more validators as they're implemented
-                # BusinessRuleValidator(run_id=run.id),
             ]
 
             # Execute validations
