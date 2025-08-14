@@ -148,6 +148,15 @@ Status: [x] Completed; tests passed.
 
 ## Upcoming candidates and plans
 
+### Salesforce Data Validation System
+- **Plan**: Implement comprehensive data validation system to ensure data integrity between VMS and Salesforce
+- **Documents**:
+  - [Salesforce Data Validation Plan](salesforce-data-validation-plan.md) - High-level planning and architecture
+  - [Implementation Checklist](salesforce-validation-implementation-checklist.md) - Detailed task breakdown
+  - [Technical Specification](salesforce-validation-technical-spec.md) - Implementation details and code examples
+- **Status**: Planning complete, ready for implementation
+- **Timeline**: 10-week phased implementation
+
 - Email normalization and search ergonomics
   - Plan:
     - Add `email_normalized` (lowercase) column with index on `models.contact.Email` (or denormalized on `Contact` if a single-primary policy is sufficient).
