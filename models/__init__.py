@@ -69,7 +69,12 @@ from .teacher import Teacher
 from .user import User
 
 # Import validation models
-from .validation import ValidationMetric, ValidationResult, ValidationRun
+from .validation import (
+    ValidationHistory,
+    ValidationMetric,
+    ValidationResult,
+    ValidationRun,
+)
 from .volunteer import Volunteer
 
 # Export the things you want to make available when importing from models
@@ -98,6 +103,7 @@ __all__ = [
     "ValidationRun",
     "ValidationResult",
     "ValidationMetric",
+    "ValidationHistory",
 ]
 
 # Eager-loading helper options

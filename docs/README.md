@@ -195,19 +195,38 @@ Business rules are configured in `config/validation.py` and include:
 
 ---
 
-## 📚 **Documentation**
+## 📚 **Documentation & Resources**
 
-### **User Guides**
-- [Data Quality Report 2024](DATA_QUALITY_REPORT_2024.md) - Current quality assessment
-- [Validation System README](VALIDATION_SYSTEM_README.md) - Detailed system documentation
-- [Development Guide](05-dev-guide.md) - Developer resources
-- [Operations Guide](06-ops-guide.md) - Operational procedures
+### **Core Documentation**
+- **[Planning Document](PLANNING.md)** - Complete project roadmap and implementation details
+- **[Feature Matrix](FEATURE_MATRIX.md)** - Status tracking for all system features
+- **[Validation System README](VALIDATION_SYSTEM_README.md)** - Technical details and architecture
+- **[Data Quality Report](DATA_QUALITY_REPORT_2024.md)** - Current data quality assessment
 
-### **Technical Documentation**
-- [Architecture Overview](02-architecture.md) - System design and components
-- [Data Model](03-data-model.md) - Database schema and relationships
-- [API Specification](04-api-spec.md) - Integration interfaces
-- [Testing Guide](07-test-guide.md) - Testing procedures and examples
+### **Phase 3.4 Documentation** 🆕
+- **[Phase 3.4 User Guide](PHASE_3_4_USER_GUIDE.md)** - How to use new historical data and aggregation features
+- **[Data Population Guide](DATA_POPULATION_GUIDE.md)** - How to populate and test Phase 3.4 features
+
+### **Getting Started with Phase 3.4**
+1. **Read the User Guide**: Start with `docs/PHASE_3_4_USER_GUIDE.md`
+2. **Populate Test Data**: Use `docs/DATA_POPULATION_GUIDE.md` to generate test data
+3. **Test Features**: Run the test scripts to verify functionality
+4. **Explore Capabilities**: Use the aggregation and history services
+
+### **Quick Start Commands**
+```bash
+# Generate test data for Phase 3.4
+python scripts/validation/populate_phase_3_4_data.py
+
+# Test historical data features
+python scripts/validation/test_history_service.py
+
+# Test aggregation engine
+python scripts/validation/test_aggregation_service.py
+
+# Run business rule validation
+python scripts/validation/run_validation.py business-rules --entity-type volunteer
+```
 
 ---
 

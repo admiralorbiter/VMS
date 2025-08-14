@@ -4,8 +4,18 @@ ValidationMetric model for storing aggregated validation metrics.
 """
 
 from datetime import datetime
+from typing import Dict, List
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -62,6 +72,21 @@ class ValidationMetric(db.Model):
     # Additional context
     metric_metadata = Column(String(500))  # Additional context information
 
+    # Trend analysis fields (NEW for Phase 3.4)
+    trend_period = Column(String(20))  # 'daily', 'weekly', 'monthly', 'quarterly'
+    trend_direction = Column(String(20))  # 'improving', 'declining', 'stable'
+    trend_magnitude = Column(Float)  # Trend strength (-100 to +100)
+    trend_confidence = Column(Float)  # Statistical confidence (0-1)
+    baseline_value = Column(Numeric(15, 6))  # Baseline value for trend comparison
+    change_percentage = Column(Float)  # Percentage change from baseline
+
+    # Aggregation fields (NEW for Phase 3.4)
+    aggregation_type = Column(String(50))  # 'sum', 'average', 'min', 'max', 'count'
+    aggregation_period = Column(String(20))  # 'hourly', 'daily', 'weekly', 'monthly'
+    aggregation_start = Column(DateTime(timezone=True))  # Start of aggregation period
+    aggregation_end = Column(DateTime(timezone=True))  # End of aggregation period
+    aggregation_count = Column(Integer)  # Number of values aggregated
+
     # Relationships
     # Note: back_populates removed to avoid circular import issues
 
@@ -78,6 +103,20 @@ class ValidationMetric(db.Model):
             "metric_name",
             "entity_type",
             "timestamp",
+        ),
+        # New indexes for Phase 3.4 trend analysis
+        Index("idx_validation_metrics_trend_period", "trend_period", "timestamp"),
+        Index("idx_validation_metrics_trend_direction", "trend_direction", "timestamp"),
+        Index(
+            "idx_validation_metrics_aggregation_period",
+            "aggregation_period",
+            "timestamp",
+        ),
+        Index(
+            "idx_validation_metrics_aggregation_type", "aggregation_type", "timestamp"
+        ),
+        Index(
+            "idx_validation_metrics_trend_confidence", "trend_confidence", "timestamp"
         ),
     )
 
@@ -416,3 +455,252 @@ class ValidationMetric(db.Model):
             trend_data["compliance"].append(metric.meets_threshold)
 
         return trend_data
+
+    @classmethod
+    def get_aggregated_metrics(
+        cls,
+        metric_name: str,
+        aggregation_period: str = "daily",
+        entity_type: str = None,
+        days: int = 30,
+    ) -> List["ValidationMetric"]:
+        """
+        Get aggregated metrics for a specific period.
+
+        Args:
+            metric_name: Name of the metric to aggregate
+            aggregation_period: Period for aggregation ('hourly', 'daily', 'weekly', 'monthly')
+            entity_type: Optional entity type filter
+            days: Number of days to look back
+
+        Returns:
+            List of aggregated ValidationMetric records
+        """
+        from datetime import timedelta
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = cls.query.filter(
+            cls.metric_name == metric_name,
+            cls.timestamp >= cutoff_date,
+            cls.aggregation_period == aggregation_period,
+        )
+
+        if entity_type:
+            query = query.filter_by(entity_type=entity_type)
+
+        return query.order_by(cls.aggregation_start.asc()).all()
+
+    @classmethod
+    def calculate_trends_for_metric(
+        cls,
+        metric_name: str,
+        entity_type: str = None,
+        days: int = 30,
+        min_data_points: int = 3,
+    ) -> Dict:
+        """
+        Calculate trend analysis for a specific metric.
+
+        Args:
+            metric_name: Name of the metric to analyze
+            entity_type: Optional entity type filter
+            days: Number of days to analyze
+            min_data_points: Minimum data points required for trend calculation
+
+        Returns:
+            Dictionary containing trend analysis results
+        """
+        from datetime import timedelta
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = cls.query.filter(
+            cls.metric_name == metric_name, cls.timestamp >= cutoff_date
+        )
+
+        if entity_type:
+            query = query.filter_by(entity_type=entity_type)
+
+        metrics = query.order_by(cls.timestamp.asc()).all()
+
+        if len(metrics) < min_data_points:
+            return {
+                "metric_name": metric_name,
+                "entity_type": entity_type,
+                "trend": "insufficient_data",
+                "confidence": 0.0,
+                "data_points": len(metrics),
+                "required_points": min_data_points,
+            }
+
+        # Extract values for trend calculation
+        values = [metric.float_value for metric in metrics]
+        timestamps = [metric.timestamp for metric in metrics]
+
+        # Calculate trend using linear regression
+        trend_result = cls._calculate_linear_trend(values, timestamps)
+
+        # Determine trend direction
+        if trend_result["slope"] > 0.01:
+            trend_direction = "improving"
+        elif trend_result["slope"] < -0.01:
+            trend_direction = "declining"
+        else:
+            trend_direction = "stable"
+
+        return {
+            "metric_name": metric_name,
+            "entity_type": entity_type,
+            "trend": trend_direction,
+            "slope": trend_result["slope"],
+            "confidence": trend_result["confidence"],
+            "data_points": len(metrics),
+            "period_days": days,
+            "baseline_value": values[0],
+            "current_value": values[-1],
+            "change_percentage": (
+                ((values[-1] - values[0]) / values[0] * 100) if values[0] != 0 else 0
+            ),
+            "trend_magnitude": abs(trend_result["slope"]) * 100,  # Scale to 0-100 range
+            "statistical_significance": trend_result["r_squared"],
+        }
+
+    @classmethod
+    def _calculate_linear_trend(
+        cls, values: List[float], timestamps: List[datetime]
+    ) -> Dict:
+        """
+        Calculate linear trend using simple linear regression.
+
+        Args:
+            values: List of metric values
+            timestamps: List of corresponding timestamps
+
+        Returns:
+            Dictionary containing trend analysis results
+        """
+        if len(values) < 2:
+            return {"slope": 0.0, "confidence": 0.0, "r_squared": 0.0}
+
+        # Convert timestamps to numeric values (days since first timestamp)
+        first_timestamp = timestamps[0]
+        x_values = [(ts - first_timestamp).days for ts in timestamps]
+        y_values = values
+
+        # Calculate linear regression
+        n = len(x_values)
+        sum_x = sum(x_values)
+        sum_y = sum(y_values)
+        sum_xy = sum(x * y for x, y in zip(x_values, y_values))
+        sum_x2 = sum(x * x for x in x_values)
+
+        # Calculate slope and intercept
+        if n * sum_x2 - sum_x * sum_x == 0:
+            slope = 0.0
+        else:
+            slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
+
+        intercept = (sum_y - slope * sum_x) / n
+
+        # Calculate R-squared (coefficient of determination)
+        y_mean = sum_y / n
+        ss_tot = sum((y - y_mean) ** 2 for y in y_values)
+        ss_res = sum(
+            (y - (slope * x + intercept)) ** 2 for x, y in zip(x_values, y_values)
+        )
+
+        r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0.0
+
+        # Calculate confidence based on R-squared and data points
+        confidence = min(1.0, r_squared * (len(values) / 10.0))
+
+        return {
+            "slope": slope,
+            "intercept": intercept,
+            "confidence": confidence,
+            "r_squared": r_squared,
+        }
+
+    @classmethod
+    def get_metric_summary_by_period(
+        cls,
+        metric_name: str,
+        period: str = "daily",
+        entity_type: str = None,
+        days: int = 30,
+    ) -> Dict:
+        """
+        Get summary statistics for a metric grouped by time period.
+
+        Args:
+            metric_name: Name of the metric
+            period: Time period for grouping ('hourly', 'daily', 'weekly', 'monthly')
+            entity_type: Optional entity type filter
+            days: Number of days to analyze
+
+        Returns:
+            Dictionary containing period-based summary statistics
+        """
+        from datetime import timedelta
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = cls.query.filter(
+            cls.metric_name == metric_name, cls.timestamp >= cutoff_date
+        )
+
+        if entity_type:
+            query = query.filter_by(entity_type=entity_type)
+
+        metrics = query.order_by(cls.timestamp.asc()).all()
+
+        if not metrics:
+            return {
+                "metric_name": metric_name,
+                "period": period,
+                "entity_type": entity_type,
+                "periods": [],
+                "values": [],
+                "counts": [],
+                "averages": [],
+            }
+
+        # Group metrics by period
+        period_groups = {}
+        for metric in metrics:
+            if period == "hourly":
+                period_key = metric.timestamp.strftime("%Y-%m-%d %H:00")
+            elif period == "daily":
+                period_key = metric.timestamp.strftime("%Y-%m-%d")
+            elif period == "weekly":
+                period_key = metric.timestamp.strftime("%Y-W%U")
+            elif period == "monthly":
+                period_key = metric.timestamp.strftime("%Y-%m")
+            else:
+                period_key = metric.timestamp.strftime("%Y-%m-%d")
+
+            if period_key not in period_groups:
+                period_groups[period_key] = []
+            period_groups[period_key].append(metric.float_value)
+
+        # Calculate statistics for each period
+        periods = sorted(period_groups.keys())
+        values = []
+        counts = []
+        averages = []
+
+        for period_key in periods:
+            period_values = period_groups[period_key]
+            values.append(period_values)
+            counts.append(len(period_values))
+            averages.append(sum(period_values) / len(period_values))
+
+        return {
+            "metric_name": metric_name,
+            "period": period,
+            "entity_type": entity_type,
+            "periods": periods,
+            "values": values,
+            "counts": counts,
+            "averages": averages,
+            "total_periods": len(periods),
+            "total_values": sum(counts),
+        }
