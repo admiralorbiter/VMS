@@ -182,6 +182,64 @@
             border-left: 4px solid var(--success-color);
         }
 
+        .summary-card {
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .summary-card h5 {
+            font-size: 2rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .help-panel {
+            border-radius: 10px;
+        }
+
+        .quality-explanation {
+            font-size: 0.9rem;
+        }
+
+                 .quality-explanation .alert {
+             border-radius: 10px;
+         }
+
+         .context-card {
+             background: #f8f9fa;
+             border-radius: 8px;
+             padding: 1rem;
+             border-left: 4px solid var(--info-color);
+         }
+
+         .score-range {
+             padding: 0.5rem;
+             border-radius: 6px;
+             margin: 0.25rem;
+             font-size: 0.9rem;
+         }
+
+         .score-range.excellent {
+             background: var(--success-color);
+             color: white;
+         }
+
+         .score-range.good {
+             background: var(--info-color);
+             color: white;
+         }
+
+         .score-range.fair {
+             background: var(--warning-color);
+             color: #212529;
+         }
+
+         .score-range.poor {
+             background: var(--danger-color);
+             color: white;
+         }
+
         @media (max-width: 768px) {
             .quality-score {
                 font-size: 2rem;
@@ -266,43 +324,68 @@
             </div>
         </div>
 
-        <!-- Advanced Filters (Collapsible) -->
-        <div class="advanced-filters" id="advancedFilters" style="display: none;">
-            <h5><i class="fas fa-filter me-2"></i>Advanced Filters</h5>
+                 <!-- Advanced Filters (Collapsible) -->
+         <div class="advanced-filters" id="advancedFilters" style="display: none;">
+             <h5><i class="fas fa-filter me-2"></i>Advanced Filters</h5>
+             <div class="alert alert-info mb-3">
+                 <h6><i class="fas fa-info-circle me-2"></i>Using Advanced Filters</h6>
+                 <p class="mb-2">Advanced filters help you focus on specific validation issues and customize your quality analysis. Use these filters to drill down into particular problem areas or validation types.</p>
+                 <small><strong>Tip:</strong> Start with broader filters and narrow down as needed. You can always reset to see the full picture.</small>
+             </div>
             <div class="row">
-                <div class="col-md-3">
-                    <label for="validationType" class="form-label">Validation Type:</label>
-                    <select class="form-select" id="validationType">
-                        <option value="">All Types</option>
-                        <option value="field_completeness">Field Completeness</option>
-                        <option value="data_types">Data Types</option>
-                        <option value="business_rules">Business Rules</option>
-                        <option value="relationships">Relationships</option>
-                        <option value="count">Count Validation</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="severityLevel" class="form-label">Severity Level:</label>
-                    <select class="form-select" id="severityLevel">
-                        <option value="">All Levels</option>
-                        <option value="critical">Critical</option>
-                        <option value="error">Error</option>
-                        <option value="warning">Warning</option>
-                        <option value="info">Info</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="qualityThreshold" class="form-label">Quality Threshold:</label>
-                    <input type="range" class="form-range" id="qualityThreshold" min="0" max="100" value="80">
-                    <small class="text-muted">Threshold: <span id="thresholdValue">80</span>%</small>
-                </div>
-                <div class="col-md-3">
-                    <label for="includeAnomalies" class="form-label">Include Anomalies:</label>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="includeAnomalies" checked>
-                        <label class="form-check-label" for="includeAnomalies">Show anomaly detection</label>
-                    </div>
-                </div>
+                                 <div class="col-md-3">
+                     <label for="validationType" class="form-label">
+                         Validation Type:
+                         <i class="fas fa-question-circle text-info ms-1"
+                            data-bs-toggle="tooltip"
+                            title="Filter by specific validation categories. Field Completeness checks for missing data, Data Types verifies format compliance, Business Rules validates logic, and Relationships checks data connections."></i>
+                     </label>
+                     <select class="form-select" id="validationType">
+                         <option value="">All Types</option>
+                         <option value="field_completeness">Field Completeness</option>
+                         <option value="data_types">Data Types</option>
+                         <option value="business_rules">Business Rules</option>
+                         <option value="relationships">Relationships</option>
+                         <option value="count">Count Validation</option>
+                     </select>
+                 </div>
+                                 <div class="col-md-3">
+                     <label for="severityLevel" class="form-label">
+                         Severity Level:
+                         <i class="fas fa-question-circle text-info ms-1"
+                            data-bs-toggle="tooltip"
+                            title="Filter by issue importance. Critical issues require immediate attention, Errors need prompt fixing, Warnings should be addressed soon, and Info items are for awareness."></i>
+                     </label>
+                     <select class="form-select" id="severityLevel">
+                         <option value="">All Levels</option>
+                         <option value="critical">Critical</option>
+                         <option value="error">Error</option>
+                         <option value="warning">Warning</option>
+                         <option value="info">Info</option>
+                     </select>
+                 </div>
+                                 <div class="col-md-3">
+                     <label for="qualityThreshold" class="form-label">
+                         Quality Threshold:
+                         <i class="fas fa-question-circle text-info ms-1"
+                            data-bs-toggle="tooltip"
+                            title="Set the minimum acceptable quality score. Results below this threshold will be highlighted as needing attention. Higher thresholds are more strict."></i>
+                     </label>
+                     <input type="range" class="form-range" id="qualityThreshold" min="0" max="100" value="80">
+                     <small class="text-muted">Threshold: <span id="thresholdValue">80</span>%</small>
+                 </div>
+                 <div class="col-md-3">
+                     <label for="includeAnomalies" class="form-label">
+                         Include Anomalies:
+                         <i class="fas fa-question-circle text-info ms-1"
+                            data-bs-toggle="tooltip"
+                            title="Enable statistical anomaly detection to identify unusual patterns in your data quality that may indicate system issues or data problems."></i>
+                     </label>
+                     <div class="form-check form-switch">
+                         <input class="form-check-input" type="checkbox" id="includeAnomalies" checked>
+                         <label class="form-check-label" for="includeAnomalies">Show anomaly detection</label>
+                     </div>
+                 </div>
             </div>
         </div>
 
@@ -320,16 +403,40 @@
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
-                            <h4 class="mb-0">
-                                <i class="fas fa-star me-2"></i>
-                                Overall Quality Score
-                            </h4>
-                        </div>
+                                                        <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-star me-2"></i>
+                                        Overall Quality Score
+                                        <i class="fas fa-question-circle text-light ms-2"
+                                           data-bs-toggle="tooltip"
+                                           title="Your overall data quality percentage based on weighted validation results across all dimensions"></i>
+                                    </h4>
+                                </div>
                         <div class="card-body text-center">
                             <div class="quality-score" id="overallScore">--</div>
                             <div class="quality-status" id="qualityStatus">--</div>
                             <div class="quality-description" id="qualityDescription">--</div>
+
+                            <!-- Quality Score Explanation -->
+                            <div class="quality-explanation mt-3">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle me-2"></i>Understanding Your Quality Score</h6>
+                                    <div class="row text-start">
+                                        <div class="col-md-3">
+                                            <strong>90-100%:</strong> Excellent data quality
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>80-89%:</strong> Good data quality
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>70-79%:</strong> Fair - needs attention
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Below 70%:</strong> Poor - immediate action required
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -371,17 +478,44 @@
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card">
-                                <div class="card-header">
-                                    <h4 class="mb-0">
-                                        <i class="fas fa-layer-group me-2"></i>
-                                        Dimension Scores
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <div id="dimensionScores">
-                                        <!-- Dimension scores will be populated here -->
-                                    </div>
-                                </div>
+                                                                 <div class="card-header">
+                                     <h4 class="mb-0">
+                                         <i class="fas fa-layer-group me-2"></i>
+                                         Dimension Scores
+                                         <i class="fas fa-question-circle text-light ms-2"
+                                            data-bs-toggle="tooltip"
+                                            title="Individual quality scores for different aspects of your data. Each dimension represents a specific validation category that contributes to your overall quality score."></i>
+                                     </h4>
+                                 </div>
+                                                                 <div class="card-body">
+                                     <!-- Help Panel -->
+                                     <div class="help-panel mb-4" id="overviewHelpPanel">
+                                         <div class="alert alert-info">
+                                             <h6><i class="fas fa-lightbulb me-2"></i>Understanding the Overview Tab</h6>
+                                             <div class="row">
+                                                 <div class="col-md-6">
+                                                     <h6>What You're Looking At</h6>
+                                                     <p>This tab provides a comprehensive overview of your data quality across all dimensions and entities. It shows the big picture of how well your data meets quality standards.</p>
+                                                 </div>
+                                                 <div class="col-md-6">
+                                                     <h6>Key Metrics Explained</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Dimension Scores</strong>: Individual quality metrics for different validation types</li>
+                                                         <li><strong>Statistics Grid</strong>: Summary counts and performance indicators</li>
+                                                         <li><strong>Improvement Opportunities</strong>: Areas where quality can be enhanced</li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
+                                             <button class="btn btn-sm btn-outline-info" onclick="toggleOverviewHelp()">
+                                                 <i class="fas fa-eye-slash me-1"></i>Hide Help
+                                             </button>
+                                         </div>
+                                     </div>
+
+                                     <div id="dimensionScores">
+                                         <!-- Dimension scores will be populated here -->
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                     </div>
@@ -391,24 +525,84 @@
                         <!-- Statistics will be populated here -->
                     </div>
 
-                    <!-- Improvement Opportunities -->
-                    <div class="row mb-4" id="improvementOpportunities" style="display: none;">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4 class="mb-0">
-                                        <i class="fas fa-lightbulb me-2"></i>
-                                        Improvement Opportunities
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <div id="opportunitiesList">
-                                        <!-- Opportunities will be populated here -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                         <!-- Context Cards for Better Understanding -->
+                     <div class="row mb-4">
+                         <div class="col-12">
+                             <div class="card">
+                                 <div class="card-header">
+                                     <h4 class="mb-0">
+                                         <i class="fas fa-graduation-cap me-2"></i>
+                                         Understanding Your Data Quality
+                                     </h4>
+                                 </div>
+                                 <div class="card-body">
+                                     <div class="row">
+                                         <div class="col-md-6">
+                                             <div class="context-card mb-3">
+                                                 <h6><i class="fas fa-chart-line text-success me-2"></i>Quality Score Ranges</h6>
+                                                 <div class="row text-center">
+                                                     <div class="col-3">
+                                                         <div class="score-range excellent">
+                                                             <strong>90-100%</strong>
+                                                             <small class="d-block">Excellent</small>
+                                                         </div>
+                                                     </div>
+                                                     <div class="col-3">
+                                                         <div class="score-range good">
+                                                             <strong>80-89%</strong>
+                                                             <small class="d-block">Good</small>
+                                                         </div>
+                                                     </div>
+                                                     <div class="col-3">
+                                                         <div class="score-range fair">
+                                                             <strong>70-79%</strong>
+                                                             <small class="d-block">Fair</small>
+                                                         </div>
+                                                     </div>
+                                                     <div class="col-3">
+                                                         <div class="score-range poor">
+                                                             <strong>&lt;70%</strong>
+                                                             <small class="d-block">Poor</small>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                         <div class="col-md-6">
+                                             <div class="context-card mb-3">
+                                                 <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>Common Data Quality Issues</h6>
+                                                 <ul class="mb-0">
+                                                     <li><strong>Missing Required Fields</strong>: Essential data not provided</li>
+                                                     <li><strong>Format Inconsistencies</strong>: Data doesn't match expected patterns</li>
+                                                     <li><strong>Business Rule Violations</strong>: Data doesn't follow company policies</li>
+                                                     <li><strong>Relationship Problems</strong>: Broken connections between data</li>
+                                                 </ul>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+
+                     <!-- Improvement Opportunities -->
+                     <div class="row mb-4" id="improvementOpportunities" style="display: none;">
+                         <div class="col-12">
+                             <div class="card">
+                                 <div class="card-header">
+                                     <h4 class="mb-0">
+                                         <i class="fas fa-lightbulb me-2"></i>
+                                         Improvement Opportunities
+                                     </h4>
+                                 </div>
+                                 <div class="card-body">
+                                     <div id="opportunitiesList">
+                                         <!-- Opportunities will be populated here -->
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
                 </div>
 
                 <!-- Detailed Results Tab -->
@@ -420,9 +614,66 @@
                                     <h4 class="mb-0">
                                         <i class="fas fa-search me-2"></i>
                                         Validation Results Details
+                                        <i class="fas fa-question-circle text-light ms-2"
+                                           data-bs-toggle="tooltip"
+                                           title="Detailed breakdown of all validation issues found in your data"></i>
                                     </h4>
                                 </div>
                                 <div class="card-body">
+                                    <!-- Help Panel -->
+                                    <div class="help-panel mb-4" id="detailsHelpPanel">
+                                        <div class="alert alert-info">
+                                            <h6><i class="fas fa-lightbulb me-2"></i>Understanding This Tab</h6>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6>What You're Looking At</h6>
+                                                    <p>This tab shows detailed validation results for your selected entity type and time period. Each result represents a specific data quality issue that needs attention.</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Understanding the Results</h6>
+                                                    <ul class="mb-0">
+                                                        <li><strong>Severity Levels</strong>: Critical, Error, Warning, Info</li>
+                                                        <li><strong>Validation Types</strong>: Field completeness, data types, business rules</li>
+                                                        <li><strong>Impact</strong>: How each issue affects your data quality</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-info" onclick="toggleDetailsHelp()">
+                                                <i class="fas fa-eye-slash me-1"></i>Hide Help
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Results Summary -->
+                                    <div class="results-summary mb-3" id="resultsSummary" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="summary-card bg-danger text-white">
+                                                    <h5 id="criticalCount">0</h5>
+                                                    <small>Critical Issues</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="summary-card bg-warning text-dark">
+                                                    <h5 id="errorCount">0</h5>
+                                                    <small>Errors</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="summary-card bg-info text-white">
+                                                    <h5 id="warningCount">0</h5>
+                                                    <small>Warnings</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="summary-card bg-secondary text-white">
+                                                    <h5 id="infoCount">0</h5>
+                                                    <small>Info Items</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div id="validationResultsDetails">
                                         <!-- Detailed validation results will be populated here -->
                                     </div>
@@ -437,17 +688,49 @@
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card">
-                                <div class="card-header">
-                                    <h4 class="mb-0">
-                                        <i class="fas fa-tachometer-alt me-2"></i>
-                                        Performance Metrics
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <div id="performanceMetrics">
-                                        <!-- Performance metrics will be populated here -->
-                                    </div>
-                                </div>
+                                                                 <div class="card-header">
+                                     <h4 class="mb-0">
+                                         <i class="fas fa-tachometer-alt me-2"></i>
+                                         Performance Metrics
+                                         <i class="fas fa-question-circle text-light ms-2"
+                                            data-bs-toggle="tooltip"
+                                            title="System performance indicators that show how efficiently your validation processes are running. These metrics help identify optimization opportunities."></i>
+                                     </h4>
+                                 </div>
+                                 <div class="card-body">
+                                     <!-- Help Panel -->
+                                     <div class="help-panel mb-4" id="performanceHelpPanel">
+                                         <div class="alert alert-info">
+                                             <h6><i class="fas fa-lightbulb me-2"></i>Understanding Performance Metrics</h6>
+                                             <div class="row">
+                                                 <div class="col-md-6">
+                                                     <h6>What These Metrics Mean</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Execution Time</strong>: How long validation processes take to complete</li>
+                                                         <li><strong>Memory Usage</strong>: System memory consumed during validation</li>
+                                                         <li><strong>CPU Usage</strong>: Processor utilization during validation runs</li>
+                                                         <li><strong>Records Processed</strong>: Total number of records validated</li>
+                                                     </ul>
+                                                 </div>
+                                                 <div class="col-md-6">
+                                                     <h6>Performance Benchmarks</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Good</strong>: &lt; 5 seconds, &lt; 100MB memory</li>
+                                                         <li><strong>Fair</strong>: 5-15 seconds, 100-500MB memory</li>
+                                                         <li><strong>Poor</strong>: &gt; 15 seconds, &gt; 500MB memory</li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
+                                             <button class="btn btn-sm btn-outline-info" onclick="togglePerformanceHelp()">
+                                                 <i class="fas fa-eye-slash me-1"></i>Hide Help
+                                             </button>
+                                         </div>
+                                     </div>
+
+                                     <div id="performanceMetrics">
+                                         <!-- Performance metrics will be populated here -->
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                     </div>
@@ -458,20 +741,53 @@
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card">
-                                <div class="card-header">
-                                    <h4 class="mb-0">
-                                        <i class="fas fa-chart-line me-2"></i>
-                                        Trend Analysis & Anomaly Detection
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <div id="trendAnalysis">
-                                        <!-- Trend analysis will be populated here -->
-                                    </div>
-                                    <div id="anomalyDetection">
-                                        <!-- Anomaly detection will be populated here -->
-                                    </div>
-                                </div>
+                                                                 <div class="card-header">
+                                     <h4 class="mb-0">
+                                         <i class="fas fa-chart-line me-2"></i>
+                                         Trend Analysis & Anomaly Detection
+                                         <i class="fas fa-question-circle text-light ms-2"
+                                            data-bs-toggle="tooltip"
+                                            title="Historical quality score changes over time and statistical outliers that may indicate data quality issues or system changes."></i>
+                                     </h4>
+                                 </div>
+                                 <div class="card-body">
+                                     <!-- Help Panel -->
+                                     <div class="help-panel mb-4" id="trendsHelpPanel">
+                                         <div class="alert alert-info">
+                                             <h6><i class="fas fa-lightbulb me-2"></i>Understanding Trends & Anomalies</h6>
+                                             <div class="row">
+                                                 <div class="col-md-6">
+                                                     <h6>Trend Analysis</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Improving</strong>: Quality scores are getting better over time</li>
+                                                         <li><strong>Declining</strong>: Quality scores are getting worse over time</li>
+                                                         <li><strong>Stable</strong>: Quality scores remain consistent</li>
+                                                         <li><strong>Fluctuating</strong>: Quality scores vary significantly</li>
+                                                     </ul>
+                                                 </div>
+                                                 <div class="col-md-6">
+                                                     <h6>Anomaly Detection</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Statistical Outliers</strong>: Unusual patterns in your data</li>
+                                                         <li><strong>System Changes</strong>: Impact of updates or modifications</li>
+                                                         <li><strong>Data Issues</strong>: Sudden quality problems</li>
+                                                         <li><strong>Seasonal Patterns</strong>: Regular variations in quality</li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
+                                             <button class="btn btn-sm btn-outline-info" onclick="toggleTrendsHelp()">
+                                                 <i class="fas fa-eye-slash me-1"></i>Hide Help
+                                             </button>
+                                         </div>
+                                     </div>
+
+                                     <div id="trendAnalysis">
+                                         <!-- Trend analysis will be populated here -->
+                                     </div>
+                                     <div id="anomalyDetection">
+                                         <!-- Anomaly detection will be populated here -->
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                     </div>
@@ -482,17 +798,80 @@
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card">
-                                <div class="card-header">
-                                    <h4 class="mb-0">
-                                        <i class="fas fa-cog me-2"></i>
-                                        Quality Scoring Settings
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <div id="qualitySettings">
-                                        <!-- Quality settings will be populated here -->
-                                    </div>
-                                </div>
+                                                                 <div class="card-header">
+                                     <h4 class="mb-0">
+                                         <i class="fas fa-cog me-2"></i>
+                                         Quality Scoring Settings
+                                         <i class="fas fa-question-circle text-light ms-2"
+                                            data-bs-toggle="tooltip"
+                                            title="Configure how quality scores are calculated, including weights for different validation types and quality thresholds for each entity."></i>
+                                     </h4>
+                                 </div>
+                                 <div class="card-body">
+                                     <!-- Help Panel -->
+                                     <div class="help-panel mb-4" id="settingsHelpPanel">
+                                         <div class="alert alert-info">
+                                             <h6><i class="fas fa-lightbulb me-2"></i>Understanding Quality Scoring Settings</h6>
+                                             <div class="row">
+                                                 <div class="col-md-6">
+                                                     <h6>What You Can Configure</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Entity Weights</strong>: How much each entity type contributes to overall score</li>
+                                                         <li><strong>Validation Type Weights</strong>: Importance of different validation categories</li>
+                                                         <li><strong>Quality Thresholds</strong>: Minimum acceptable quality scores</li>
+                                                         <li><strong>Custom Rules</strong>: Entity-specific validation requirements</li>
+                                                     </ul>
+                                                 </div>
+                                                 <div class="col-md-6">
+                                                     <h6>Best Practices</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Critical Fields</strong>: Give higher weights to essential data</li>
+                                                         <li><strong>Business Impact</strong>: Align weights with business priorities</li>
+                                                         <li><strong>Regular Review</strong>: Update settings as requirements change</li>
+                                                         <li><strong>Documentation</strong>: Keep track of custom configurations</li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
+                                             <button class="btn btn-sm btn-outline-info" onclick="toggleSettingsHelp()">
+                                                 <i class="fas fa-eye-slash me-1"></i>Hide Help
+                                             </button>
+                                         </div>
+                                     </div>
+
+                                     <div id="qualitySettings">
+                                         <!-- Quality settings will be populated here -->
+                                     </div>
+
+                                     <!-- Help Panel -->
+                                     <div class="help-panel mb-4" id="settingsHelpPanel">
+                                         <div class="alert alert-info">
+                                             <h6><i class="fas fa-lightbulb me-2"></i>Understanding Quality Scoring Settings</h6>
+                                             <div class="row">
+                                                 <div class="col-md-6">
+                                                     <h6>What You Can Configure</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Entity Weights</strong>: How much each entity type contributes to overall score</li>
+                                                         <li><strong>Validation Type Weights</strong>: Importance of different validation categories</li>
+                                                         <li><strong>Quality Thresholds</strong>: Minimum acceptable quality scores</li>
+                                                         <li><strong>Custom Rules</strong>: Entity-specific validation requirements</li>
+                                                     </ul>
+                                                 </div>
+                                                 <div class="col-md-6">
+                                                     <h6>Best Practices</h6>
+                                                     <ul class="mb-0">
+                                                         <li><strong>Critical Fields</strong>: Give higher weights to essential data</li>
+                                                         <li><strong>Business Impact</strong>: Align weights with business priorities</li>
+                                                         <li><strong>Regular Review</strong>: Update settings as requirements change</li>
+                                                         <li><strong>Documentation</strong>: Keep track of custom configurations</li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
+                                             <button class="btn btn-sm btn-outline-info" onclick="toggleSettingsHelp()">
+                                                 <i class="fas fa-eye-slash me-1"></i>Hide Help
+                                             </button>
+                                         </div>
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                     </div>
@@ -932,26 +1311,81 @@
             container.innerHTML = '';
 
             if (!results || results.length === 0) {
-                container.innerHTML = '<p class="text-muted">No validation results found.</p>';
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5 class="text-success">No Validation Issues Found!</h5>
+                        <p class="text-muted">Your data quality is excellent. No validation problems were detected.</p>
+                    </div>`;
+                document.getElementById('resultsSummary').style.display = 'none';
                 return;
             }
 
+            // Show results summary
+            document.getElementById('resultsSummary').style.display = 'block';
+
+            // Count results by severity
+            const counts = { critical: 0, error: 0, warning: 0, info: 0 };
+            results.forEach(result => {
+                const severity = result.severity?.toLowerCase() || 'info';
+                if (counts.hasOwnProperty(severity)) {
+                    counts[severity]++;
+                }
+            });
+
+            // Update summary counts
+            document.getElementById('criticalCount').textContent = counts.critical;
+            document.getElementById('errorCount').textContent = counts.error;
+            document.getElementById('warningCount').textContent = counts.warning;
+            document.getElementById('infoCount').textContent = counts.info;
+
+            // Display results with enhanced information
             results.forEach(result => {
                 const resultElement = document.createElement('div');
                 resultElement.className = `validation-result-item ${result.severity}`;
                 resultElement.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <strong>${result.field_name || 'N/A'}</strong>
-                            <span class="badge bg-${getSeverityColor(result.severity)} ms-2">${result.severity}</span>
+                    <div class="result-header mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">
+                                    <i class="fas fa-${getSeverityIcon(result.severity)} me-2"></i>
+                                    ${result.field_name || 'Field Validation'}
+                                </h6>
+                                <span class="badge bg-${getSeverityColor(result.severity)} me-2">${result.severity}</span>
+                                <span class="badge bg-secondary">${result.validation_type || 'Unknown'}</span>
+                            </div>
+                            <small class="text-muted">
+                                ${result.timestamp ? new Date(result.timestamp).toLocaleDateString() : 'Recent'}
+                            </small>
                         </div>
-                        <small class="text-muted">${result.validation_type}</small>
                     </div>
-                    <p class="mb-1">${result.message}</p>
-                    <small class="text-muted">
-                        Expected: ${result.expected_value || 'N/A'} |
-                        Actual: ${result.actual_value || 'N/A'}
-                    </small>
+
+                    <div class="result-content">
+                        <p class="mb-2"><strong>Issue:</strong> ${result.message || 'No description available'}</p>
+
+                        <div class="result-details row mb-2">
+                            <div class="col-md-6">
+                                <strong>Expected:</strong>
+                                <span class="text-success">${result.expected_value || 'N/A'}</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Actual:</strong>
+                                <span class="text-danger">${result.actual_value || 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <div class="impact-section mb-2">
+                            <strong>Impact:</strong>
+                            <span class="text-${getImpactColor(result.severity)}">${getImpactDescription(result.severity)}</span>
+                        </div>
+
+                        <div class="action-items">
+                            <strong>Recommended Actions:</strong>
+                            <ul class="mb-0 mt-1">
+                                ${getActionItems(result.validation_type, result.severity)}
+                            </ul>
+                        </div>
+                    </div>
                 `;
                 container.appendChild(resultElement);
             });
@@ -1161,6 +1595,167 @@
             if (!performers || performers.length === 0) return 'None';
             return performers.map(p => `${p.entity_type}: ${p.quality_score}%`).join(', ');
         }
+
+        // Helper functions for enhanced validation results display
+        function getSeverityIcon(severity) {
+            switch (severity?.toLowerCase()) {
+                case 'critical': return 'exclamation-triangle';
+                case 'error': return 'times-circle';
+                case 'warning': return 'exclamation-circle';
+                case 'info': return 'info-circle';
+                default: return 'question-circle';
+            }
+        }
+
+        function getImpactColor(severity) {
+            switch (severity?.toLowerCase()) {
+                case 'critical': return 'danger';
+                case 'error': return 'warning';
+                case 'warning': return 'info';
+                case 'info': return 'secondary';
+                default: return 'secondary';
+            }
+        }
+
+        function getImpactDescription(severity) {
+            switch (severity?.toLowerCase()) {
+                case 'critical': return 'High - May cause system failures or data corruption';
+                case 'error': return 'Medium - Affects data accuracy and reporting';
+                case 'warning': return 'Low - Minor issues that should be addressed';
+                case 'info': return 'Minimal - Informational items for awareness';
+                default: return 'Unknown - Severity level not specified';
+            }
+        }
+
+        function getActionItems(validationType, severity) {
+            const actions = [];
+
+            // Add severity-based actions
+            if (severity?.toLowerCase() === 'critical') {
+                actions.push('Address immediately to prevent system issues');
+                actions.push('Review data entry processes');
+                actions.push('Implement validation rules');
+            } else if (severity?.toLowerCase() === 'error') {
+                actions.push('Fix within 24-48 hours');
+                actions.push('Update data quality procedures');
+                actions.push('Train users on proper data entry');
+            } else if (severity?.toLowerCase() === 'warning') {
+                actions.push('Address within the week');
+                actions.push('Monitor for patterns');
+                actions.push('Consider process improvements');
+            }
+
+            // Add validation type-specific actions
+            if (validationType === 'field_completeness') {
+                actions.push('Ensure required fields are populated');
+                actions.push('Review field requirements');
+                actions.push('Update data entry forms');
+            } else if (validationType === 'data_types') {
+                actions.push('Verify data format requirements');
+                actions.push('Check field type definitions');
+                actions.push('Update data validation rules');
+            } else if (validationType === 'business_rules') {
+                actions.push('Review business logic requirements');
+                actions.push('Update validation rules');
+                actions.push('Train users on business processes');
+            } else if (validationType === 'relationships') {
+                actions.push('Verify foreign key connections');
+                actions.push('Check reference data integrity');
+                actions.push('Update relationship mappings');
+            }
+
+            return actions.length > 0 ? actions.map(action => `<li>${action}</li>`).join('') : '<li>Review and address based on business impact</li>';
+        }
+
+                 // Toggle help panel visibility functions
+         function toggleDetailsHelp() {
+             const helpPanel = document.getElementById('detailsHelpPanel');
+             const button = helpPanel.querySelector('button');
+             const icon = button.querySelector('i');
+
+             if (helpPanel.style.display === 'none') {
+                 helpPanel.style.display = 'block';
+                 icon.className = 'fas fa-eye me-1';
+                 button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Help';
+             } else {
+                 helpPanel.style.display = 'none';
+                 icon.className = 'fas fa-eye-slash me-1';
+                 button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Help';
+             }
+         }
+
+         function toggleOverviewHelp() {
+             const helpPanel = document.getElementById('overviewHelpPanel');
+             const button = helpPanel.querySelector('button');
+             const icon = button.querySelector('i');
+
+             if (helpPanel.style.display === 'none') {
+                 helpPanel.style.display = 'block';
+                 icon.className = 'fas fa-eye me-1';
+                 button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Help';
+             } else {
+                 helpPanel.style.display = 'none';
+                 icon.className = 'fas fa-eye-slash me-1';
+                 button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Help';
+             }
+         }
+
+         function togglePerformanceHelp() {
+             const helpPanel = document.getElementById('performanceHelpPanel');
+             const button = helpPanel.querySelector('button');
+             const icon = button.querySelector('i');
+
+             if (helpPanel.style.display === 'none') {
+                 helpPanel.style.display = 'block';
+                 icon.className = 'fas fa-eye me-1';
+                 button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Help';
+             } else {
+                 helpPanel.style.display = 'none';
+                 icon.className = 'fas fa-eye-slash me-1';
+                 button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Help';
+             }
+         }
+
+         function toggleTrendsHelp() {
+             const helpPanel = document.getElementById('trendsHelpPanel');
+             const button = helpPanel.querySelector('button');
+             const icon = button.querySelector('i');
+
+             if (helpPanel.style.display === 'none') {
+                 helpPanel.style.display = 'block';
+                 icon.className = 'fas fa-eye me-1';
+                 button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Help';
+             } else {
+                 helpPanel.style.display = 'none';
+                 icon.className = 'fas fa-eye-slash me-1';
+                 button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Help';
+             }
+         }
+
+         function toggleSettingsHelp() {
+             const helpPanel = document.getElementById('settingsHelpPanel');
+             const button = helpPanel.querySelector('button');
+             const icon = button.querySelector('i');
+
+             if (helpPanel.style.display === 'none') {
+                 helpPanel.style.display = 'block';
+                 icon.className = 'fas fa-eye me-1';
+                 button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Help';
+             } else {
+                 helpPanel.style.display = 'none';
+                 icon.className = 'fas fa-eye-slash me-1';
+                 button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Help';
+             }
+         }
+
+        // Initialize tooltips when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Bootstrap tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
     </script>
 </body>
 </html>

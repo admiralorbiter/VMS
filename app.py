@@ -125,18 +125,26 @@ def api_quality_score():
                 days=days,
                 include_trends=include_trends,
             )
+
+            # Add validation results for all entities
+            all_validation_results = []
+            for entity in ["volunteer", "organization", "event", "student", "teacher"]:
+                entity_results = get_filtered_validation_results(
+                    entity, days, validation_type, severity_level
+                )
+                all_validation_results.extend(entity_results)
+            result["validation_results"] = all_validation_results
         else:
             # Calculate score for specific entity
             result = quality_service.calculate_entity_quality_score(
                 entity_type=entity_type, days=days, include_details=True
             )
 
-            # Add detailed validation results if requested
-            if validation_type or severity_level:
-                validation_results = get_filtered_validation_results(
-                    entity_type, days, validation_type, severity_level
-                )
-                result["validation_results"] = validation_results
+            # Add detailed validation results (always include for dashboard)
+            validation_results = get_filtered_validation_results(
+                entity_type, days, validation_type, severity_level
+            )
+            result["validation_results"] = validation_results
 
             # Add performance metrics
             result["performance_metrics"] = get_performance_metrics(entity_type, days)
