@@ -155,6 +155,78 @@ def run_field_completeness_validation(entity_type: str = "all", user_id: int = N
         raise
 
 
+def run_data_type_validation(entity_type: str = "all", user_id: int = None):
+    """Run data type validation for specific entity type."""
+    try:
+        # Import and set up Flask app context
+        from app import app
+        from utils.validation_engine import get_validation_engine
+        from utils.validators.data_type_validator import DataTypeValidator
+
+        logger.info(f"Starting data type validation for {entity_type}...")
+
+        with app.app_context():
+            # Create validator
+            validator = DataTypeValidator(run_id=None, entity_type=entity_type)
+
+            # Run validation
+            engine = get_validation_engine()
+            run = engine.run_custom_validation(
+                validators=[validator],
+                run_type="data_type_validation",
+                name=f"Data Type Validation - {entity_type.title()}",
+                user_id=user_id,
+            )
+
+            logger.info(f"Data type validation completed successfully!")
+            logger.info(f"Run ID: {run.id}")
+            logger.info(f"Status: {run.status}")
+            logger.info(f"Results: {run.total_checks} total checks")
+            logger.info(f"Execution time: {run.execution_time_seconds}s")
+
+            return run
+
+    except Exception as e:
+        logger.error(f"Data type validation failed: {e}")
+        raise
+
+
+def run_relationship_validation(entity_type: str = "all", user_id: int = None):
+    """Run relationship integrity validation for specific entity type."""
+    try:
+        # Import and set up Flask app context
+        from app import app
+        from utils.validation_engine import get_validation_engine
+        from utils.validators.relationship_validator import RelationshipValidator
+
+        logger.info(f"Starting relationship validation for {entity_type}...")
+
+        with app.app_context():
+            # Create validator
+            validator = RelationshipValidator(run_id=None, entity_type=entity_type)
+
+            # Run validation
+            engine = get_validation_engine()
+            run = engine.run_custom_validation(
+                validators=[validator],
+                run_type="relationship_validation",
+                name=f"Relationship Validation - {entity_type.title()}",
+                user_id=user_id,
+            )
+
+            logger.info(f"Relationship validation completed successfully!")
+            logger.info(f"Run ID: {run.id}")
+            logger.info(f"Status: {run.status}")
+            logger.info(f"Results: {run.total_checks} total checks")
+            logger.info(f"Execution time: {run.execution_time_seconds}s")
+
+            return run
+
+    except Exception as e:
+        logger.error(f"Relationship validation failed: {e}")
+        raise
+
+
 def show_run_status(run_id: int):
     """Show status of a validation run."""
     try:
@@ -287,6 +359,9 @@ Examples:
   # Run field completeness validation for volunteers
   python run_validation.py field-completeness --entity-type volunteer
 
+  # Run data type validation for volunteers
+  python run_validation.py data-type --entity-type volunteer
+
   # Show status of a specific run
   python run_validation.py status --run-id 123
 
@@ -338,6 +413,34 @@ Examples:
         "--user-id", type=int, help="User ID initiating validation"
     )
 
+    # Data type validation command
+    data_type_parser = subparsers.add_parser(
+        "data-type", help="Run data type validation"
+    )
+    data_type_parser.add_argument(
+        "--entity-type",
+        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        default="all",
+        help="Entity type to validate",
+    )
+    data_type_parser.add_argument(
+        "--user-id", type=int, help="User ID initiating validation"
+    )
+
+    # Relationship validation command
+    relationship_parser = subparsers.add_parser(
+        "relationships", help="Run relationship integrity validation"
+    )
+    relationship_parser.add_argument(
+        "--entity-type",
+        default="all",
+        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        help="Entity type to validate (default: all)",
+    )
+    relationship_parser.add_argument(
+        "--user-id", type=int, help="User ID for the validation run"
+    )
+
     # Status command
     status_parser = subparsers.add_parser("status", help="Show validation run status")
     status_parser.add_argument(
@@ -371,8 +474,36 @@ Examples:
 
     args = parser.parse_args()
 
-    if not args.command:
-        parser.print_help()
+    # Help command
+    if args.command == "help" or len(sys.argv) == 1:
+        print("Salesforce Data Validation System")
+        print("=" * 40)
+        print()
+        print("Available commands:")
+        print("  fast          - Run fast validation (record counts only)")
+        print("  slow          - Run comprehensive validation")
+        print("  count         - Run count validation for specific entity")
+        print("  field-completeness - Run field completeness validation")
+        print("  data-type     - Run data type validation")
+        print("  relationships - Run relationship integrity validation")
+        print("  status        - Show validation run status")
+        print("  results       - Show validation results")
+        print("  help          - Show this help message")
+        print()
+        print("Examples:")
+        print("  python run_validation.py fast")
+        print("  python run_validation.py slow --user-id 1")
+        print("  python run_validation.py count --entity-type volunteer")
+        print(
+            "  python run_validation.py field-completeness --entity-type organization"
+        )
+        print("  python run_validation.py data-type --entity-type student")
+        print("  python run_validation.py relationships --entity-type volunteer")
+        print("  python run_validation.py status --run-id 123")
+        print("  python run_validation.py results --run-id 123")
+        print()
+        print("For detailed help on a specific command:")
+        print("  python run_validation.py <command> --help")
         return
 
     try:
@@ -384,6 +515,10 @@ Examples:
             run_count_validation(args.entity_type, args.user_id)
         elif args.command == "field-completeness":
             run_field_completeness_validation(args.entity_type, args.user_id)
+        elif args.command == "data-type":
+            run_data_type_validation(args.entity_type, args.user_id)
+        elif args.command == "relationships":
+            run_relationship_validation(args.entity_type, args.user_id)
         elif args.command == "status":
             show_run_status(args.run_id)
         elif args.command == "recent":

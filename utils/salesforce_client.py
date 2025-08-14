@@ -344,9 +344,10 @@ class SalesforceClient:
             self._ensure_connection()
             self._rate_limit()
 
-            # Query for volunteer sample
+            # Query for volunteer sample - include fields needed for relationship validation
             query = f"""
-                SELECT Id, FirstName, LastName, Email, Phone, MailingCity, MailingState
+                SELECT Id, FirstName, LastName, Email, Phone, MailingCity, MailingState,
+                       Contact_Type__c, AccountId, npsp__Primary_Affiliation__c
                 FROM Contact
                 WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''
                 LIMIT {limit}
@@ -381,7 +382,7 @@ class SalesforceClient:
             self._ensure_connection()
             self._rate_limit()
 
-            # Query for organization sample
+            # Query for organization sample - include fields needed for relationship validation
             query = f"SELECT Id, Name, Type, BillingCity, BillingState, Phone, Website FROM Account WHERE Type NOT IN ('Household', 'School District', 'School') LIMIT {limit}"
             result = self.sf.query(query)
             records = result["records"]

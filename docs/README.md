@@ -8,29 +8,27 @@ tags: [documentation, index, navigation]
 
 Welcome to the comprehensive documentation for the Volunteer Management System (VMS). This documentation is designed to help developers, administrators, and users understand, deploy, and maintain the VMS application.
 
-## 📚 Documentation Structure
+## 📚 **Documentation Index**
 
-### Core Documentation
+### **Core Documentation**
+- [**Overview**](01-overview.md) - System overview and high-level architecture
+- [**Architecture**](02-architecture.md) - Technical architecture and design patterns
+- [**Data Model**](03-data-model.md) - Database schema and data relationships
+- [**API Specification**](04-api-spec.md) - REST API endpoints and data formats
+- [**Development Guide**](05-dev-guide.md) - Setup, development, and contribution guidelines
+- [**Operations Guide**](06-ops-guide.md) - Deployment, monitoring, and maintenance
+- [**Testing Guide**](07-test-guide.md) - Testing strategies and procedures
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| [01-overview.md](01-overview.md) | System overview and purpose | All users |
-| [02-architecture.md](02-architecture.md) | Technical architecture and design | Developers |
-| [03-data-model.md](03-data-model.md) | Database schema and relationships | Developers |
-| [04-api-spec.md](04-api-spec.md) | API endpoints and specifications | Developers |
-| [05-dev-guide.md](05-dev-guide.md) | Development setup and guidelines | Developers |
-| [06-ops-guide.md](06-ops-guide.md) | Deployment and operations | DevOps/Admins |
-| [07-test-guide.md](07-test-guide.md) | Testing strategies and practices | Developers |
-| [09-faq.md](09-faq.md) | Frequently asked questions | All users |
+### **Specialized Documentation**
+- [**Release Notes**](08-release-notes/) - Version history and release information
+- [**FAQ**](09-faq.md) - Frequently asked questions and troubleshooting
+- [**Validation System**](VALIDATION_SYSTEM_README.md) - Salesforce data validation framework
+- [**Data Quality Report**](DATA_QUALITY_REPORT_2024.md) - **NEW** - Comprehensive data quality assessment and recommendations
 
-### Additional Resources
-
-| Resource | Purpose | Audience |
-|----------|---------|----------|
-| [FEATURE_MATRIX.md](FEATURE_MATRIX.md) | Feature tracking and status | Project managers |
-| [08-release-notes/](08-release-notes/) | Release history and changes | All users |
-| [PLANNING.md](PLANNING.md) | Roadmap index and phase links | Maintainers |
-| [planning/](planning/) | Detailed phased plans, checklists, tooling | Maintainers |
+### **Planning and Development**
+- [**Planning Overview**](PLANNING.md) - Project planning and roadmap
+- [**Feature Matrix**](FEATURE_MATRIX.md) - Feature status and implementation tracking
+- [**Planning Documents**](planning/) - Detailed planning and implementation guides
 
 ## 🎯 Quick Start Guide
 

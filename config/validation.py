@@ -208,6 +208,310 @@ VALIDATION_FIELD_COMPLETENESS_RULES = {
     "min_completeness_threshold": VALIDATION_THRESHOLDS["field_completeness_threshold"],
 }
 
+# Data type validation rules
+VALIDATION_DATA_TYPE_RULES = {
+    "format_validation": {
+        "volunteer": {
+            "Email": {
+                "type": "email",
+                "pattern": r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+                "required": False,
+                "severity": "warning",
+            },
+            "Phone": {
+                "type": "phone",
+                "pattern": r"^[\+]?[1-9][\d]{0,15}$",
+                "required": False,
+                "severity": "info",
+            },
+            "FirstName": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "LastName": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+        },
+        "organization": {
+            "Name": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 255,
+                "required": True,
+                "severity": "error",
+            },
+            "Phone": {
+                "type": "phone",
+                "pattern": r"^[\+]?[1-9][\d]{0,15}$",
+                "required": False,
+                "severity": "info",
+            },
+            "Website": {
+                "type": "url",
+                "pattern": r"^https?://.*",
+                "required": False,
+                "severity": "warning",
+            },
+            "BillingCity": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "BillingState": {
+                "type": "string",
+                "min_length": 2,
+                "max_length": 2,
+                "required": True,
+                "severity": "error",
+            },
+        },
+        "event": {
+            "Subject": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 255,
+                "required": True,
+                "severity": "error",
+            },
+            "StartDateTime": {
+                "type": "datetime",
+                "format": "ISO8601",
+                "required": True,
+                "severity": "error",
+            },
+            "EndDateTime": {
+                "type": "datetime",
+                "format": "ISO8601",
+                "required": True,
+                "severity": "error",
+            },
+        },
+        "student": {
+            "FirstName": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "LastName": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "Contact_Type__c": {
+                "type": "enum",
+                "allowed_values": ["Student", "Student - Active", "Student - Inactive"],
+                "required": True,
+                "severity": "error",
+            },
+        },
+        "teacher": {
+            "FirstName": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "LastName": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "Title": {
+                "type": "string",
+                "min_length": 1,
+                "max_length": 100,
+                "required": True,
+                "severity": "error",
+            },
+            "Contact_Type__c": {
+                "type": "enum",
+                "allowed_values": ["Teacher", "Teacher - Active", "Teacher - Inactive"],
+                "required": True,
+                "severity": "error",
+            },
+        },
+    },
+    "type_consistency": {
+        "enforce_strict_types": True,
+        "allow_type_conversion": False,
+        "null_handling": "strict",
+    },
+    "validation_thresholds": {
+        "format_accuracy": 99.0,
+        "type_consistency": 99.5,
+        "overall_accuracy": 99.0,
+    },
+}
+
+# Relationship integrity validation rules
+VALIDATION_RELATIONSHIP_RULES = {
+    "entity_relationships": {
+        "volunteer": {
+            "required_relationships": {
+                "Contact_Type__c": {
+                    "type": "picklist",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Contact type must be specified",
+                }
+            },
+            "optional_relationships": {
+                "AccountId": {
+                    "type": "lookup",
+                    "target_object": "Account",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Organization association is optional",
+                },
+                "npsp__Primary_Affiliation__c": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Primary affiliation is optional",
+                },
+            },
+        },
+        "organization": {
+            "required_relationships": {
+                "Type": {
+                    "type": "picklist",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Organization type must be specified",
+                }
+            },
+            "optional_relationships": {
+                "BillingCity": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "warning",
+                    "description": "Billing city should be specified",
+                },
+                "BillingState": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "warning",
+                    "description": "Billing state should be specified",
+                },
+            },
+        },
+        "event": {
+            "required_relationships": {
+                "Subject": {
+                    "type": "string",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Event subject is required",
+                },
+                "StartDateTime": {
+                    "type": "datetime",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Start date/time is required",
+                },
+            },
+            "optional_relationships": {
+                "Location": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Event location is optional",
+                }
+            },
+        },
+        "student": {
+            "required_relationships": {
+                "Contact_Type__c": {
+                    "type": "picklist",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Student contact type must be specified",
+                },
+                "FirstName": {
+                    "type": "string",
+                    "required": True,
+                    "severity": "error",
+                    "description": "First name is required",
+                },
+                "LastName": {
+                    "type": "string",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Last name is required",
+                },
+            },
+            "optional_relationships": {
+                "AccountId": {
+                    "type": "lookup",
+                    "target_object": "Account",
+                    "required": False,
+                    "severity": "info",
+                    "description": "School/organization association is optional",
+                }
+            },
+        },
+        "teacher": {
+            "required_relationships": {
+                "Contact_Type__c": {
+                    "type": "picklist",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Teacher contact type must be specified",
+                },
+                "Title": {
+                    "type": "string",
+                    "required": False,  # Changed to False since not all teachers have titles
+                    "severity": "warning",
+                    "description": "Job title should be specified",
+                },
+            },
+            "optional_relationships": {
+                "AccountId": {
+                    "type": "lookup",
+                    "target_object": "Account",
+                    "required": False,
+                    "severity": "info",
+                    "description": "School/organization association is optional",
+                }
+            },
+        },
+    },
+    "relationship_validation": {
+        "orphaned_record_detection": True,
+        "circular_reference_detection": True,
+        "foreign_key_validation": True,
+        "relationship_completeness_checks": True,
+        "max_relationship_depth": 3,
+        "validation_thresholds": {
+            "relationship_completeness": 80.0,  # Lowered threshold since some relationships are optional
+            "orphaned_records": 20.0,  # Increased threshold since not all volunteers need organizations
+            "circular_references": 0.0,
+        },
+    },
+    "business_rules": {
+        "volunteer_organization_rule": "Volunteers may be associated with organizations but it's not required",
+        "event_volunteer_rule": "Events can have multiple volunteer registrations",
+        "student_teacher_rule": "Students can be assigned to teachers, teachers can have multiple students",
+        "organization_type_rule": "Organizations should have valid types and addresses when possible",
+    },
+}
+
 # Business rule definitions
 BUSINESS_RULES = {
     "volunteer": {
@@ -305,6 +609,8 @@ VALIDATION_CONFIG = {
     "business_rules": BUSINESS_RULES,
     "validation_rules": VALIDATION_RULES,
     "field_completeness_rules": VALIDATION_FIELD_COMPLETENESS_RULES,
+    "data_type_rules": VALIDATION_DATA_TYPE_RULES,
+    "relationship_rules": VALIDATION_RELATIONSHIP_RULES,
     "logging": LOGGING_CONFIG,
 }
 

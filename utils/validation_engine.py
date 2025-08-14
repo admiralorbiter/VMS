@@ -16,7 +16,9 @@ from models.validation.result import ValidationResult
 from models.validation.run import ValidationRun
 from utils.validation_base import DataValidator, ValidationContext
 from utils.validators.count_validator import CountValidator
+from utils.validators.data_type_validator import DataTypeValidator
 from utils.validators.field_completeness_validator import FieldCompletenessValidator
+from utils.validators.relationship_validator import RelationshipValidator
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +136,10 @@ class ValidationEngine:
             validators = [
                 CountValidator(run_id=run.id, entity_type="all"),
                 FieldCompletenessValidator(run_id=run.id, entity_type="all"),
+                DataTypeValidator(run_id=run.id, entity_type="all"),
+                RelationshipValidator(run_id=run.id, entity_type="all"),
                 # Add more validators as they're implemented
-                # DataTypeValidator(run_id=run.id),
-                # RelationshipValidator(run_id=run.id),
+                # BusinessRuleValidator(run_id=run.id),
             ]
 
             # Execute validations
