@@ -8,9 +8,9 @@ tags: [documentation, index, navigation]
 
 A comprehensive data validation and quality monitoring system for Volunteer Management System (VMS) Salesforce integration.
 
-## 🚀 **Current Status: Phase 3.3 Complete**
+## 🚀 **Current Status: Phase 3.4 Complete**
 
-**Latest Achievement**: **Business Rule Validation System** - Comprehensive business logic validation across all entities with advanced features including data quality scoring, trend analysis, and performance optimization.
+**Latest Achievement**: **Data Quality Scoring & Trends System** - Comprehensive quality scoring with historical tracking, trend analysis, anomaly detection, and enhanced web-based dashboard with advanced filtering, export capabilities, and real-time configuration management.
 
 **System Capabilities**:
 - ✅ **Record Count Validation** - Fast validation of data synchronization
@@ -19,6 +19,10 @@ A comprehensive data validation and quality monitoring system for Volunteer Mana
 - ✅ **Relationship Integrity Validation** - Orphaned record detection
 - ✅ **Business Rule Validation** - Business logic and workflow compliance
 - 🚀 **Data Quality Scoring & Trends** - Advanced quality metrics and monitoring
+- 🌐 **Web Dashboard** - Enhanced quality scoring dashboard with real-time updates
+- 📊 **Export Capabilities** - JSON and CSV export for data analysis
+- 🔍 **Advanced Filtering** - Validation type, severity level, and threshold filtering
+- ⚙️ **Settings Management** - Real-time configuration of weights and thresholds
 
 ---
 
@@ -48,6 +52,14 @@ The VMS Salesforce Data Validation System provides automated validation across m
 - **Data Quality Scoring**: Weighted penalty system
 - **Trend Analysis**: Quality monitoring over time
 - **Performance Optimization**: Smart sampling and caching
+
+### **Web Dashboard Features**
+- **Quality Scoring Dashboard**: Real-time quality metrics and visualization
+- **Advanced Filtering**: Filter by validation type, severity, and time period
+- **Export Capabilities**: Download data in JSON or CSV format
+- **Settings Management**: Configure weights and thresholds in real-time
+- **Tabbed Interface**: Organized views for overview, details, performance, and trends
+- **Responsive Design**: Mobile and desktop optimized interface
 
 ---
 
@@ -105,6 +117,12 @@ python scripts/validation/run_validation.py data-types --entity-type volunteer
 ```bash
 python scripts/validation/run_validation.py relationships --entity-type volunteer
 ```
+
+### **Web Dashboard Access**
+Access the enhanced quality scoring dashboard at:
+- **URL**: `/quality_dashboard`
+- **Navigation**: Admin → More → Data Quality
+- **Features**: Real-time quality scoring, advanced filtering, export capabilities
 
 ---
 
