@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMS Quality Scoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --dark-color: #343a40;
+            --light-color: #f8f9fa;
+        }
+
+        body {
+            background-color: var(--light-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: bold;
+        }
+
+        .quality-score {
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .quality-excellent { color: var(--success-color); }
+        .quality-good { color: var(--info-color); }
+        .quality-fair { color: var(--warning-color); }
+        .quality-poor { color: var(--danger-color); }
+
+        .metric-card {
+            background: white;
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+
+        .progress {
+            height: 25px;
+            border-radius: 12px;
+            background-color: #e9ecef;
+        }
+
+        .progress-bar {
+            border-radius: 12px;
+            font-weight: bold;
+            line-height: 25px;
+        }
+
+        .trend-indicator {
+            font-size: 1.2rem;
+            margin-left: 0.5rem;
+        }
+
+        .trend-up { color: var(--success-color); }
+        .trend-down { color: var(--danger-color); }
+        .trend-stable { color: var(--info-color); }
+
+        .entity-selector {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .advanced-filters {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-custom {
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .tab-content {
+            padding: 1rem 0;
+        }
+
+        .nav-tabs .nav-link {
+            border-radius: 10px 10px 0 0;
+            border: none;
+            color: var(--dark-color);
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .validation-result-item {
+            border-left: 4px solid var(--info-color);
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .validation-result-item.critical { border-left-color: var(--danger-color); }
+        .validation-result-item.error { border-left-color: var(--warning-color); }
+        .validation-result-item.warning { border-left-color: var(--warning-color); }
+        .validation-result-item.info { border-left-color: var(--info-color); }
+
+        .anomaly-indicator {
+            background: linear-gradient(45deg, var(--warning-color), var(--danger-color));
+            color: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .performance-metric {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--success-color);
+        }
+
+        @media (max-width: 768px) {
+            .quality-score {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                VMS Quality Scoring Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text">
+                    <i class="fas fa-clock me-1"></i>
+                    <span id="current-time"></span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Entity Selector -->
+        <div class="entity-selector">
+            <div class="row align-items-center">
+                <div class="col-md-3">
+                    <label for="entityType" class="form-label fw-bold">Select Entity Type:</label>
+                    <select class="form-select" id="entityType">
+                        <option value="volunteer">Volunteer</option>
+                        <option value="organization">Organization</option>
+                        <option value="event">Event</option>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="all">All Entities</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="timePeriod" class="form-label fw-bold">Time Period:</label>
+                    <select class="form-select" id="timePeriod">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="includeTrends" class="form-label fw-bold">Include Trends:</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="includeTrends" checked>
+                        <label class="form-check-label" for="includeTrends">Show trend analysis</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary btn-custom w-100" onclick="calculateQualityScore()">
+                        <i class="fas fa-calculator me-1"></i>
+                        Calculate
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" onclick="exportReport('json')">
+                            <i class="fas fa-download me-1"></i>JSON
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="exportReport('csv')">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="toggleAdvancedFilters()">
+                            <i class="fas fa-filter me-1"></i>Advanced
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="showAdvancedSettings()">
+                            <i class="fas fa-cog me-1"></i>Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filters (Collapsible) -->
+        <div class="advanced-filters" id="advancedFilters" style="display: none;">
+            <h5><i class="fas fa-filter me-2"></i>Advanced Filters</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="validationType" class="form-label">Validation Type:</label>
+                    <select class="form-select" id="validationType">
+                        <option value="">All Types</option>
+                        <option value="field_completeness">Field Completeness</option>
+                        <option value="data_types">Data Types</option>
+                        <option value="business_rules">Business Rules</option>
+                        <option value="relationships">Relationships</option>
+                        <option value="count">Count Validation</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="severityLevel" class="form-label">Severity Level:</label>
+                    <select class="form-select" id="severityLevel">
+                        <option value="">All Levels</option>
+                        <option value="critical">Critical</option>
+                        <option value="error">Error</option>
+                        <option value="warning">Warning</option>
+                        <option value="info">Info</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="qualityThreshold" class="form-label">Quality Threshold:</label>
+                    <input type="range" class="form-range" id="qualityThreshold" min="0" max="100" value="80">
+                    <small class="text-muted">Threshold: <span id="thresholdValue">80</span>%</small>
+                </div>
+                <div class="col-md-3">
+                    <label for="includeAnomalies" class="form-label">Include Anomalies:</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="includeAnomalies" checked>
+                        <label class="form-check-label" for="includeAnomalies">Show anomaly detection</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Calculating quality scores...</p>
+        </div>
+
+        <!-- Quality Score Display -->
+        <div id="qualityScoreDisplay" style="display: none;">
+            <!-- Overall Quality Score -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="mb-0">
+                                <i class="fas fa-star me-2"></i>
+                                Overall Quality Score
+                            </h4>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="quality-score" id="overallScore">--</div>
+                            <div class="quality-status" id="qualityStatus">--</div>
+                            <div class="quality-description" id="qualityDescription">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Tabs -->
+            <ul class="nav nav-tabs" id="qualityTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                        <i class="fas fa-chart-pie me-1"></i>Overview
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab">
+                        <i class="fas fa-list me-1"></i>Detailed Results
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="performance-tab" data-bs-toggle="tab" data-bs-target="#performance" type="button" role="tab">
+                        <i class="fas fa-tachometer-alt me-1"></i>Performance
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
+                        <i class="fas fa-chart-line me-1"></i>Trends & Anomalies
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="fas fa-cog me-1"></i>Settings
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="qualityTabContent">
+                <!-- Overview Tab -->
+                <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                    <!-- Dimension Scores -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-layer-group me-2"></i>
+                                        Dimension Scores
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="dimensionScores">
+                                        <!-- Dimension scores will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Grid -->
+                    <div class="stats-grid" id="statsGrid">
+                        <!-- Statistics will be populated here -->
+                    </div>
+
+                    <!-- Improvement Opportunities -->
+                    <div class="row mb-4" id="improvementOpportunities" style="display: none;">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-lightbulb me-2"></i>
+                                        Improvement Opportunities
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="opportunitiesList">
+                                        <!-- Opportunities will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results Tab -->
+                <div class="tab-pane fade" id="details" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-search me-2"></i>
+                                        Validation Results Details
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="validationResultsDetails">
+                                        <!-- Detailed validation results will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Tab -->
+                <div class="tab-pane fade" id="performance" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-tachometer-alt me-2"></i>
+                                        Performance Metrics
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="performanceMetrics">
+                                        <!-- Performance metrics will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trends & Anomalies Tab -->
+                <div class="tab-pane fade" id="trends" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-chart-line me-2"></i>
+                                        Trend Analysis & Anomaly Detection
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="trendAnalysis">
+                                        <!-- Trend analysis will be populated here -->
+                                    </div>
+                                    <div id="anomalyDetection">
+                                        <!-- Anomaly detection will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-cog me-2"></i>
+                                        Quality Scoring Settings
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="qualitySettings">
+                                        <!-- Quality settings will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="errorDisplay" style="display: none;">
+            <div class="alert alert-danger alert-custom">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>Error</h5>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Settings Modal -->
+    <div class="modal fade" id="advancedSettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Advanced Quality Scoring Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Entity Weights</h6>
+                            <div id="entityWeights">
+                                <!-- Entity weights will be populated here -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Validation Type Weights</h6>
+                            <div id="validationTypeWeights">
+                                <!-- Validation type weights will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Quality Thresholds</h6>
+                            <div id="qualityThresholds">
+                                <!-- Quality thresholds will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAdvancedSettings()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let currentData = null;
+        let currentSettings = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+
+            // Set up event listeners
+            document.getElementById('thresholdValue').textContent = document.getElementById('qualityThreshold').value;
+            document.getElementById('qualityThreshold').addEventListener('input', function() {
+                document.getElementById('thresholdValue').textContent = this.value;
+            });
+
+            // Load initial data
+            calculateQualityScore();
+        });
+
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+        }
+
+        // Toggle advanced filters
+        function toggleAdvancedFilters() {
+            const filters = document.getElementById('advancedFilters');
+            filters.style.display = filters.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Show advanced settings modal
+        function showAdvancedSettings() {
+            loadAdvancedSettings();
+            new bootstrap.Modal(document.getElementById('advancedSettingsModal')).show();
+        }
+
+        // Load advanced settings
+        function loadAdvancedSettings() {
+            fetch('/api/quality-settings', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(settings => {
+                currentSettings = settings;
+                displaySettings(settings);
+            })
+            .catch(error => {
+                console.error('Error loading settings:', error);
+                // Fallback to default settings
+                displayDefaultSettings();
+            });
+        }
+
+        // Display settings in the modal
+        function displaySettings(settings) {
+            // Display entity weights
+            let entityWeightsHtml = '';
+            if (settings.default_weights) {
+                Object.entries(settings.default_weights).forEach(([entity, weights]) => {
+                    if (entity !== 'default') {
+                        entityWeightsHtml += `<h6>${formatEntityName(entity)} Weights</h6>`;
+                        Object.entries(weights).forEach(([type, weight]) => {
+                            entityWeightsHtml += `
+                                <div class="mb-2">
+                                    <div class="input-group">
+                                        <input type="number" class="form-control"
+                                               value="${weight}" step="0.01" min="0" max="1"
+                                               data-entity="${entity}" data-type="${type}">
+                                        <span class="input-group-text">${formatDimensionName(type)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            }
+            document.getElementById('entityWeights').innerHTML = entityWeightsHtml;
+
+            // Display quality thresholds
+            let thresholdsHtml = '';
+            if (settings.default_thresholds) {
+                Object.entries(settings.default_thresholds).forEach(([entity, threshold]) => {
+                    if (entity !== 'default') {
+                        thresholdsHtml += `
+                            <div class="mb-2">
+                                <label class="form-label">${formatEntityName(entity)} Threshold</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control"
+                                           value="${threshold}" min="0" max="100"
+                                           data-entity="${entity}">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            document.getElementById('qualityThresholds').innerHTML = thresholdsHtml;
+        }
+
+        // Display default settings if loading fails
+        function displayDefaultSettings() {
+            document.getElementById('entityWeights').innerHTML = `
+                <div class="mb-2">
+                    <label class="form-label">Volunteer Weights</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" value="0.30" step="0.01" min="0" max="1">
+                        <span class="input-group-text">Field Completeness</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('qualityThresholds').innerHTML = `
+                <div class="mb-2">
+                    <label class="form-label">Volunteer Threshold</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" value="80" min="0" max="100">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Save advanced settings
+        function saveAdvancedSettings() {
+            // Collect all the settings from the form
+            const settings = {
+                weights: {},
+                thresholds: {}
+            };
+
+            // Collect entity weights
+            const weightInputs = document.querySelectorAll('#entityWeights input[data-entity]');
+            weightInputs.forEach(input => {
+                const entity = input.dataset.entity;
+                const type = input.dataset.type;
+                const weight = parseFloat(input.value);
+
+                if (!settings.weights[entity]) {
+                    settings.weights[entity] = {};
+                }
+                settings.weights[entity][type] = weight;
+            });
+
+            // Collect thresholds
+            const thresholdInputs = document.querySelectorAll('#qualityThresholds input[data-entity]');
+            thresholdInputs.forEach(input => {
+                const entity = input.dataset.entity;
+                const threshold = parseFloat(input.value);
+                settings.thresholds[entity] = threshold;
+            });
+
+            // Save settings to backend
+            fetch('/api/quality-settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    alert('Error saving settings: ' + result.error);
+                } else {
+                    alert('Settings saved successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('advancedSettingsModal')).hide();
+                    // Refresh the current data with new settings
+                    calculateQualityScore();
+                }
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+                alert('Error saving settings. Please try again.');
+            });
+        }
+
+        // Export report
+        function exportReport(format) {
+            if (!currentData) {
+                alert('No data to export. Please calculate quality scores first.');
+                return;
+            }
+
+            let content, filename;
+            if (format === 'json') {
+                content = JSON.stringify(currentData, null, 2);
+                filename = `quality_report_${new Date().toISOString().split('T')[0]}.json`;
+            } else if (format === 'csv') {
+                content = convertToCSV(currentData);
+                filename = `quality_report_${new Date().toISOString().split('T')[0]}.csv`;
+            }
+
+            downloadFile(content, filename, format === 'json' ? 'application/json' : 'text/csv');
+        }
+
+        // Convert data to CSV
+        function convertToCSV(data) {
+            // Simple CSV conversion - can be enhanced
+            let csv = 'Entity Type,Quality Score,Status,Total Checks,Passed Checks,Failed Checks\n';
+            if (data.entity_scores) {
+                Object.entries(data.entity_scores).forEach(([entity, score]) => {
+                    csv += `${entity},${score.quality_score || 0},${score.quality_status || 'unknown'},${score.total_checks || 0},${score.passed_checks || 0},${score.failed_checks || 0}\n`;
+                });
+            }
+            return csv;
+        }
+
+        // Download file
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Calculate quality score
+        function calculateQualityScore() {
+            const entityType = document.getElementById('entityType').value;
+            const timePeriod = document.getElementById('timePeriod').value;
+            const includeTrends = document.getElementById('includeTrends').checked;
+            const validationType = document.getElementById('validationType').value;
+            const severityLevel = document.getElementById('severityLevel').value;
+            const qualityThreshold = document.getElementById('qualityThreshold').value;
+            const includeAnomalies = document.getElementById('includeAnomalies').checked;
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('qualityScoreDisplay').style.display = 'none';
+            document.getElementById('errorDisplay').style.display = 'none';
+
+            // Prepare request data
+            const requestData = {
+                entity_type: entityType,
+                days: parseInt(timePeriod),
+                include_trends: includeTrends,
+                validation_type: validationType || null,
+                severity_level: severityLevel || null,
+                quality_threshold: parseInt(qualityThreshold),
+                include_anomalies: includeAnomalies
+            };
+
+            // Make API call
+            fetch('/api/quality-score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                currentData = data;
+                displayQualityScore(data);
+                document.getElementById('loading').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('errorDisplay').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+
+        // Display quality score
+        function displayQualityScore(data) {
+            if (data.error) {
+                document.getElementById('errorMessage').textContent = data.error;
+                document.getElementById('errorDisplay').style.display = 'block';
+                return;
+            }
+
+            // Overall score
+            if (data.quality_score !== undefined) {
+                document.getElementById('overallScore').textContent = data.quality_score.toFixed(1);
+                document.getElementById('overallScore').className = `quality-score ${getQualityClass(data.quality_score)}`;
+                document.getElementById('qualityStatus').textContent = data.quality_status || 'Unknown';
+                document.getElementById('qualityDescription').textContent = getQualityDescription(data.quality_score);
+            }
+
+            // Dimension scores
+            if (data.dimension_scores) {
+                displayDimensionScores(data.dimension_scores);
+            } else if (data.entity_scores) {
+                displayEntityScores(data.entity_scores);
+            }
+
+            // Statistics
+            if (data.total_checks !== undefined) {
+                displayEntityStatistics(data);
+            } else if (data.overall_summary) {
+                displayStatistics(data.overall_summary);
+            }
+
+            // Trends
+            if (data.trend) {
+                displayEntityTrend(data.trend);
+            }
+
+            // Detailed results
+            if (data.validation_results) {
+                displayValidationResults(data.validation_results);
+            }
+
+            // Performance metrics
+            if (data.performance_metrics) {
+                displayPerformanceMetrics(data.performance_metrics);
+            }
+
+            // Anomalies
+            if (data.anomalies) {
+                displayAnomalies(data.anomalies);
+            }
+
+            // Show display
+            document.getElementById('qualityScoreDisplay').style.display = 'block';
+        }
+
+        // Display dimension scores
+        function displayDimensionScores(dimensionScores) {
+            const container = document.getElementById('dimensionScores');
+            container.innerHTML = '';
+
+            Object.entries(dimensionScores).forEach(([dimension, score]) => {
+                const scoreElement = document.createElement('div');
+                scoreElement.className = 'metric-card';
+                scoreElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">${formatDimensionName(dimension)}</h6>
+                        <span class="badge bg-primary">${score.toFixed(1)}%</span>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar ${getProgressBarClass(score)}"
+                             style="width: ${score}%"
+                             role="progressbar">
+                            ${score.toFixed(1)}%
+                        </div>
+                    </div>
+                `;
+                container.appendChild(scoreElement);
+            });
+        }
+
+        // Display entity scores grid
+        function displayEntityScores(entityScores) {
+            const container = document.getElementById('dimensionScores');
+            container.innerHTML = '';
+
+            Object.entries(entityScores).forEach(([entity, data]) => {
+                const scoreElement = document.createElement('div');
+                scoreElement.className = 'metric-card';
+                scoreElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">${formatEntityName(entity)}</h6>
+                        <span class="badge ${getBadgeClass(data.quality_score)}">${data.quality_score.toFixed(1)}%</span>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar ${getProgressBarClass(data.quality_score)}"
+                             style="width: ${data.quality_score}%"
+                             role="progressbar">
+                            ${data.quality_score.toFixed(1)}%
+                        </div>
+                    </div>
+                    <small class="text-muted">${data.total_checks} checks, ${data.passed_checks} passed</small>
+                `;
+                container.appendChild(scoreElement);
+            });
+        }
+
+        // Display validation results
+        function displayValidationResults(results) {
+            const container = document.getElementById('validationResultsDetails');
+            container.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                container.innerHTML = '<p class="text-muted">No validation results found.</p>';
+                return;
+            }
+
+            results.forEach(result => {
+                const resultElement = document.createElement('div');
+                resultElement.className = `validation-result-item ${result.severity}`;
+                resultElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>${result.field_name || 'N/A'}</strong>
+                            <span class="badge bg-${getSeverityColor(result.severity)} ms-2">${result.severity}</span>
+                        </div>
+                        <small class="text-muted">${result.validation_type}</small>
+                    </div>
+                    <p class="mb-1">${result.message}</p>
+                    <small class="text-muted">
+                        Expected: ${result.expected_value || 'N/A'} |
+                        Actual: ${result.actual_value || 'N/A'}
+                    </small>
+                `;
+                container.appendChild(resultElement);
+            });
+        }
+
+        // Display performance metrics
+        function displayPerformanceMetrics(metrics) {
+            const container = document.getElementById('performanceMetrics');
+            container.innerHTML = '';
+
+            const performanceItems = [
+                { label: 'Execution Time', value: `${metrics.execution_time_seconds || 0}s`, icon: 'fas fa-clock', color: 'primary' },
+                { label: 'Memory Usage', value: `${metrics.memory_usage_mb || 0} MB`, icon: 'fas fa-memory', color: 'info' },
+                { label: 'CPU Usage', value: `${metrics.cpu_usage_percent || 0}%`, icon: 'fas fa-microchip', color: 'warning' },
+                { label: 'Records Processed', value: metrics.records_processed || 0, icon: 'fas fa-database', color: 'success' }
+            ];
+
+            performanceItems.forEach(item => {
+                const metricElement = document.createElement('div');
+                metricElement.className = 'performance-metric';
+                metricElement.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="${item.icon} fa-2x text-${item.color} me-3"></i>
+                        <div>
+                            <h6 class="mb-0">${item.label}</h6>
+                            <h4 class="mb-0">${item.value}</h4>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(metricElement);
+            });
+        }
+
+        // Display anomalies
+        function displayAnomalies(anomalies) {
+            const container = document.getElementById('anomalyDetection');
+            container.innerHTML = '';
+
+            if (!anomalies || anomalies.length === 0) {
+                container.innerHTML = '<p class="text-muted">No anomalies detected.</p>';
+                return;
+            }
+
+            anomalies.forEach(anomaly => {
+                const anomalyElement = document.createElement('div');
+                anomalyElement.className = 'anomaly-indicator';
+                anomalyElement.innerHTML = `
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Anomaly Detected</h6>
+                    <p class="mb-1"><strong>Type:</strong> ${anomaly.anomaly_type || 'Unknown'}</p>
+                    <p class="mb-1"><strong>Score:</strong> ${anomaly.anomaly_score || 'N/A'}</p>
+                    <p class="mb-0"><strong>Description:</strong> ${anomaly.description || 'Statistical anomaly detected'}</p>
+                `;
+                container.appendChild(anomalyElement);
+            });
+        }
+
+        // Display statistics
+        function displayStatistics(summary) {
+            const container = document.getElementById('statsGrid');
+            container.innerHTML = '';
+
+            const stats = [
+                { label: 'Total Entities', value: summary.total_entities, icon: 'fas fa-database', color: 'primary' },
+                { label: 'Quality Distribution', value: formatQualityDistribution(summary.quality_distribution), icon: 'fas fa-chart-pie', color: 'info' },
+                { label: 'Top Performers', value: formatTopPerformers(summary.top_performers), icon: 'fas fa-trophy', color: 'success' },
+                { label: 'Improvement Opportunities', value: summary.improvement_opportunities.length, icon: 'fas fa-exclamation-triangle', color: 'warning' }
+            ];
+
+            stats.forEach(stat => {
+                const statElement = document.createElement('div');
+                statElement.className = 'card';
+                statElement.innerHTML = `
+                    <div class="card-body text-center">
+                        <i class="fas ${stat.icon} fa-2x text-${stat.color} mb-2"></i>
+                        <h5 class="card-title">${stat.label}</h5>
+                        <p class="card-text">${stat.value}</p>
+                    </div>
+                `;
+                container.appendChild(statElement);
+            });
+        }
+
+        // Display entity statistics
+        function displayEntityStatistics(data) {
+            const container = document.getElementById('statsGrid');
+            container.innerHTML = '';
+
+            const stats = [
+                { label: 'Total Checks', value: data.total_checks, icon: 'fas fa-clipboard-check', color: 'primary' },
+                { label: 'Passed Checks', value: data.passed_checks, icon: 'fas fa-check-circle', color: 'success' },
+                { label: 'Failed Checks', value: data.failed_checks, icon: 'fas fa-times-circle', color: 'danger' },
+                { label: 'Threshold', value: data.threshold + '%', icon: 'fas fa-bullseye', color: 'info' }
+            ];
+
+            stats.forEach(stat => {
+                const statElement = document.createElement('div');
+                statElement.className = 'card';
+                statElement.innerHTML = `
+                    <div class="card-body text-center">
+                        <i class="fas ${stat.icon} fa-2x text-${stat.color} mb-2"></i>
+                        <h5 class="card-title">${stat.label}</h5>
+                        <p class="card-text">${stat.value}</p>
+                    </div>
+                `;
+                container.appendChild(statElement);
+            });
+        }
+
+        // Display entity trend
+        function displayEntityTrend(trend) {
+            const container = document.getElementById('trendAnalysis');
+            container.innerHTML = '';
+
+            if (!trend || trend.trend === 'insufficient_data') {
+                container.innerHTML = '<p class="text-muted">Insufficient data for trend analysis.</p>';
+                return;
+            }
+
+            const trendElement = document.createElement('div');
+            trendElement.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Trend Direction</h6>
+                        <p class="mb-2">
+                            <span class="trend-indicator ${getTrendClass(trend.trend)}">
+                                <i class="fas fa-arrow-${trend.trend === 'improving' ? 'up' : trend.trend === 'declining' ? 'down' : 'right'}"></i>
+                                ${trend.trend}
+                            </span>
+                        </p>
+                        <p><strong>Data Points:</strong> ${trend.data_points}</p>
+                        <p><strong>Average Score:</strong> ${trend.average_score}%</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Score Range</h6>
+                        <p><strong>Minimum:</strong> ${trend.score_range?.min || 'N/A'}%</p>
+                        <p><strong>Maximum:</strong> ${trend.score_range?.max || 'N/A'}%</p>
+                        <p><strong>Variance:</strong> ${trend.score_variance || 'N/A'}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(trendElement);
+        }
+
+        // Helper functions
+        function formatDimensionName(dimension) {
+            return dimension.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function formatEntityName(entity) {
+            return entity.charAt(0).toUpperCase() + entity.slice(1);
+        }
+
+        function getQualityClass(score) {
+            if (score >= 90) return 'quality-excellent';
+            if (score >= 80) return 'quality-good';
+            if (score >= 70) return 'quality-fair';
+            return 'quality-poor';
+        }
+
+        function getProgressBarClass(score) {
+            if (score >= 90) return 'bg-success';
+            if (score >= 80) return 'bg-info';
+            if (score >= 70) return 'bg-warning';
+            return 'bg-danger';
+        }
+
+        function getBadgeClass(score) {
+            if (score >= 90) return 'bg-success';
+            if (score >= 80) return 'bg-info';
+            if (score >= 70) return 'bg-warning';
+            return 'bg-danger';
+        }
+
+        function getSeverityColor(severity) {
+            switch (severity) {
+                case 'critical': return 'danger';
+                case 'error': return 'warning';
+                case 'warning': return 'warning';
+                case 'info': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        function getTrendClass(trend) {
+            switch (trend) {
+                case 'improving': return 'trend-up';
+                case 'declining': return 'trend-down';
+                default: return 'trend-stable';
+            }
+        }
+
+        function getQualityDescription(score) {
+            if (score >= 90) return 'Excellent data quality';
+            if (score >= 80) return 'Good data quality';
+            if (score >= 70) return 'Fair data quality - needs attention';
+            return 'Poor data quality - immediate action required';
+        }
+
+        function formatQualityDistribution(distribution) {
+            if (!distribution) return 'N/A';
+            return Object.entries(distribution)
+                .map(([status, count]) => `${status}: ${count}`)
+                .join(', ');
+        }
+
+        function formatTopPerformers(performers) {
+            if (!performers || performers.length === 0) return 'None';
+            return performers.map(p => `${p.entity_type}: ${p.quality_score}%`).join(', ');
+        }
+    </script>
+</body>
+</html>
