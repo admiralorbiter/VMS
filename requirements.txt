@@ -17,3 +17,7 @@ xlsxwriter
 simple_salesforce
 openpyxl
 cryptography
+redis
+schedule
+psutil
+requests

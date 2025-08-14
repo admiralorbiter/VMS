@@ -22,7 +22,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Load configuration based on the environment
-if os.environ.get("FLASK_ENV") == "production":
+flask_env = os.environ.get("FLASK_ENV", "development")
+
+if flask_env == "production":
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(DevelopmentConfig)
