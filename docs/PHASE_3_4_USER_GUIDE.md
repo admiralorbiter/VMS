@@ -16,6 +16,9 @@
 - **Advanced Metrics**: Trend analysis and aggregation capabilities
 - **Data Aggregation Engine**: Rolling averages, pattern detection, and optimization
 - **Enhanced Reporting**: Period-based summaries and trend analysis
+- **Local Entity Support**: School and District entities with comprehensive validation
+- **Enhanced Business Rules**: Advanced validation including field format, data quality, and naming conventions
+- **Auto-Refresh Dashboard**: Real-time updates when switching entity types or time periods
 
 ## 📊 **Getting Started with Historical Data**
 
@@ -51,6 +54,45 @@ Test the new aggregation capabilities:
 # Test all aggregation features
 python scripts/validation/test_aggregation_service.py
 ```
+
+### **Step 4: Validate Local Entities**
+Test the new School and District entity validation:
+
+```bash
+# Run comprehensive validation for School entity
+python scripts/validation/run_validation.py comprehensive --entity-type school
+
+# Run comprehensive validation for District entity
+python scripts/validation/run_validation.py comprehensive --entity-type district
+
+# Run all validations for all entities (including School and District)
+python scripts/validation/run_validation.py comprehensive --entity-type all
+```
+
+## 🏫 **School & District Entity Validation**
+
+### **Local Entity Support**
+Phase 3.4 introduces comprehensive validation for School and District entities, which are local VMS entities (not imported from Salesforce).
+
+#### **School Entity Validation**
+- **Required Fields**: ID (Salesforce format), Name
+- **Optional Fields**: Level, School Code, District ID
+- **Business Rules**: Field format validation, data quality validation, level validation, naming conventions
+- **Count Validation**: Expects 0% discrepancy with Salesforce (local-only entity)
+
+#### **District Entity Validation**
+- **Required Fields**: ID (auto-increment), Name
+- **Optional Fields**: District Code, Salesforce ID
+- **Business Rules**: Field format validation, data quality validation, code validation
+- **Count Validation**: Expects 0% discrepancy with Salesforce (local-only entity)
+
+### **Enhanced Business Rules**
+The business rule validator now supports advanced validation features:
+
+- **Field Format Validation**: Length constraints, pattern matching, enumeration validation
+- **Data Quality Validation**: Whitespace checks, pattern validation, format requirements
+- **Naming Convention Validation**: School naming rules, district code format validation
+- **Relationship Validation**: District-School associations and integrity checks
 
 ## 🔍 **Using the Historical Data Service**
 

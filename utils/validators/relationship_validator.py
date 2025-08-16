@@ -470,6 +470,10 @@ class RelationshipValidator(DataValidator):
                 return self.salesforce_client.get_student_sample(limit)
             elif entity_type == "teacher":
                 return self.salesforce_client.get_teacher_sample(limit)
+            elif entity_type == "school":
+                return self.salesforce_client.get_school_sample(limit)
+            elif entity_type == "district":
+                return self.salesforce_client.get_district_sample(limit)
             else:
                 logger.warning(f"Unknown entity type for sampling: {entity_type}")
                 return []

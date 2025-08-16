@@ -743,6 +743,40 @@ The `config/validation.py` file contains **auto-generated placeholder business r
 
 **Result:** Event entity data type validation rules are already perfectly aligned with actual business logic.
 
+#### 2.3.6 School Entity - COMPLETED ✅
+**Data Type Rules Enhanced:**
+- **id**: String validation, Salesforce ID format (15-18 chars, required)
+- **name**: String validation (2-255 chars, required, no whitespace only)
+- **level**: Enum validation (Elementary, Middle, High, Other, optional)
+- **school_code**: String validation (max 50 chars, optional)
+- **district_id**: Integer validation (optional)
+- **Thresholds**: 99.0% accuracy threshold is appropriate for data type validation
+
+**Enhanced Business Rules Implemented:**
+- **Field Format Validation**: Length constraints, pattern matching, enumeration validation
+- **Data Quality Validation**: Whitespace checks, pattern validation, format requirements
+- **Naming Convention Validation**: School naming rules to avoid generic terms
+- **Level Validation**: Enumeration validation for school levels
+- **Relationship Validation**: District-School associations and integrity checks
+
+**Result:** School entity now has comprehensive validation including enhanced business rules with field format, data quality, and naming convention validation.
+
+#### 2.3.7 District Entity - COMPLETED ✅
+**Data Type Rules Enhanced:**
+- **id**: Integer validation, auto-incrementing primary key (required)
+- **name**: String validation (2-255 chars, required, no whitespace only)
+- **district_code**: String validation (max 20 chars, optional)
+- **salesforce_id**: String validation, Salesforce ID format (15-18 chars, optional)
+- **Thresholds**: 99.0% accuracy threshold is appropriate for data type validation
+
+**Enhanced Business Rules Implemented:**
+- **Field Format Validation**: Length constraints, pattern matching, format requirements
+- **Data Quality Validation**: Whitespace checks, pattern validation, format requirements
+- **Code Validation**: District code format validation with pattern matching
+- **Relationship Validation**: Primary key validation and reverse foreign key checks
+
+**Result:** District entity now has comprehensive validation including enhanced business rules with field format, data quality, and code validation.
+
 ## Phase 3: Implement Real Business Rules
 
 ### 3.1 Required Field Validation

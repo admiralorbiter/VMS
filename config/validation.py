@@ -359,17 +359,41 @@ VALIDATION_DATA_TYPE_RULES = {
         "school": {
             "id": {
                 "type": "string",
-                "min_length": 1,
-                "max_length": 255,
+                "min_length": 15,
+                "max_length": 18,
                 "required": True,
                 "severity": "error",
+                "pattern": r"^[a-zA-Z0-9]{15,18}$",  # Salesforce ID format
+                "description": "School Salesforce ID must be 15-18 alphanumeric characters",
             },
             "name": {
                 "type": "string",
-                "min_length": 1,
+                "min_length": 2,
                 "max_length": 255,
                 "required": True,
                 "severity": "error",
+                "no_whitespace_only": True,
+                "description": "School name must be 2-255 characters and not whitespace only",
+            },
+            "level": {
+                "type": "enum",
+                "allowed_values": ["Elementary", "Middle", "High", "Other"],
+                "required": False,
+                "severity": "info",
+                "description": "School level must be one of the allowed values",
+            },
+            "school_code": {
+                "type": "string",
+                "max_length": 50,
+                "required": False,
+                "severity": "info",
+                "description": "School code must be 50 characters or less",
+            },
+            "district_id": {
+                "type": "integer",
+                "required": False,
+                "severity": "info",
+                "description": "District ID must be a valid integer",
             },
         },
         "district": {
@@ -377,13 +401,33 @@ VALIDATION_DATA_TYPE_RULES = {
                 "type": "integer",
                 "required": True,
                 "severity": "error",
+                "auto_increment": True,
+                "description": "District ID must be an auto-incrementing integer",
             },
             "name": {
                 "type": "string",
-                "min_length": 1,
+                "min_length": 2,
                 "max_length": 255,
                 "required": True,
                 "severity": "error",
+                "no_whitespace_only": True,
+                "description": "District name must be 2-255 characters and not whitespace only",
+            },
+            "district_code": {
+                "type": "string",
+                "max_length": 20,
+                "required": False,
+                "severity": "info",
+                "description": "District code must be 20 characters or less",
+            },
+            "salesforce_id": {
+                "type": "string",
+                "min_length": 15,
+                "max_length": 18,
+                "required": False,
+                "severity": "info",
+                "pattern": r"^[a-zA-Z0-9]{15,18}$",  # Salesforce ID format
+                "description": "District Salesforce ID must be 15-18 alphanumeric characters",
             },
         },
     },
@@ -533,14 +577,38 @@ VALIDATION_RELATIONSHIP_RULES = {
                     "severity": "error",
                     "description": "School name is required",
                 },
+                "id": {
+                    "type": "string",
+                    "required": True,
+                    "severity": "error",
+                    "description": "School Salesforce ID is required",
+                },
             },
             "optional_relationships": {
                 "district_id": {
-                    "type": "lookup",
+                    "type": "foreign_key",
                     "target_object": "District",
+                    "target_field": "id",
                     "required": False,
                     "severity": "info",
-                    "description": "District association is optional",
+                    "description": "District association is optional but must be valid if present",
+                },
+                "level": {
+                    "type": "enum",
+                    "allowed_values": ["Elementary", "Middle", "High", "Other"],
+                    "required": False,
+                    "severity": "info",
+                    "description": "School level categorization is optional",
+                },
+            },
+            "relationship_integrity": {
+                "district_reference": {
+                    "type": "foreign_key_check",
+                    "source_field": "district_id",
+                    "target_table": "district",
+                    "target_field": "id",
+                    "severity": "warning",
+                    "description": "School district_id must reference valid district.id",
                 }
             },
         },
@@ -552,6 +620,12 @@ VALIDATION_RELATIONSHIP_RULES = {
                     "severity": "error",
                     "description": "District name is required",
                 },
+                "id": {
+                    "type": "integer",
+                    "required": True,
+                    "severity": "error",
+                    "description": "District internal ID is required",
+                },
             },
             "optional_relationships": {
                 "salesforce_id": {
@@ -559,6 +633,22 @@ VALIDATION_RELATIONSHIP_RULES = {
                     "required": False,
                     "severity": "info",
                     "description": "Salesforce ID is optional",
+                },
+                "district_code": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "info",
+                    "description": "District code is optional",
+                },
+            },
+            "relationship_integrity": {
+                "schools_reference": {
+                    "type": "reverse_foreign_key_check",
+                    "source_table": "school",
+                    "source_field": "district_id",
+                    "target_field": "id",
+                    "severity": "info",
+                    "description": "District can have multiple schools referencing it",
                 }
             },
         },
@@ -620,6 +710,48 @@ BUSINESS_RULES = {
         "capacity_validation": {
             "min_capacity": 1,
             "max_capacity": 1000,
+        },
+    },
+    "school": {
+        "required_fields": ["id", "name"],
+        "unique_fields": ["id"],
+        "field_validation": {
+            "level": {
+                "allowed_values": ["Elementary", "Middle", "High", "Other"],
+                "required": False,
+            },
+            "school_code": {
+                "max_length": 50,
+                "required": False,
+            },
+        },
+        "relationship_validation": {
+            "district_id": {
+                "target_table": "district",
+                "required": False,
+                "cascade_delete": False,
+            }
+        },
+    },
+    "district": {
+        "required_fields": ["id", "name"],
+        "unique_fields": ["id", "salesforce_id"],
+        "field_validation": {
+            "district_code": {
+                "max_length": 20,
+                "required": False,
+            },
+            "salesforce_id": {
+                "format": "salesforce_id",
+                "required": False,
+            },
+        },
+        "relationship_validation": {
+            "schools": {
+                "target_table": "school",
+                "relationship_type": "one_to_many",
+                "cascade_delete": True,
+            }
         },
     },
 }
@@ -730,7 +862,81 @@ VALIDATION_BUSINESS_RULES = {
                 "required": True,
                 "severity": "error",
                 "description": "School ID and name are required fields",
-            }
+            },
+            "field_format_validation": {
+                "type": "business_constraint",
+                "fields": ["id", "name", "level", "school_code"],
+                "rules": {
+                    "id": {
+                        "format": "salesforce_id",
+                        "min_length": 15,
+                        "max_length": 18,
+                    },
+                    "name": {
+                        "min_length": 2,
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                    },
+                    "level": {
+                        "allowed_values": ["Elementary", "Middle", "High", "Other"],
+                        "required": False,
+                    },
+                    "school_code": {"max_length": 50, "required": False},
+                },
+                "severity": "warning",
+                "description": "School field format validation",
+            },
+            "data_quality_validation": {
+                "type": "business_constraint",
+                "fields": ["name"],
+                "rules": {
+                    "name": {
+                        "min_length": 2,
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "pattern": r"^[A-Za-z0-9\s\-\.']+$",
+                    }
+                },
+                "severity": "warning",
+                "description": "School name quality validation",
+            },
+            "level_validation": {
+                "type": "business_constraint",
+                "fields": ["level"],
+                "rules": {
+                    "level": {
+                        "allowed_values": ["Elementary", "Middle", "High", "Other"],
+                        "required": False,
+                    }
+                },
+                "severity": "info",
+                "description": "School level validation",
+            },
+            "naming_convention_validation": {
+                "type": "business_constraint",
+                "fields": ["name"],
+                "rules": {
+                    "name": {
+                        "pattern": r"^(?!.*\b(?:School|Elementary|Middle|High|Academy|Institute)\b).*$",
+                        "required": False,
+                    }
+                },
+                "severity": "warning",
+                "description": "School name should not contain generic terms like 'School', 'Elementary', etc.",
+            },
+            "relationship_validation": {
+                "type": "business_constraint",
+                "fields": ["district_id"],
+                "rules": {
+                    "district_id": {
+                        "type": "foreign_key",
+                        "target": "district.id",
+                        "required": False,
+                    }
+                },
+                "severity": "info",
+                "description": "School district relationship validation",
+            },
         },
         "district": {
             "required_fields_validation": {
@@ -739,7 +945,61 @@ VALIDATION_BUSINESS_RULES = {
                 "required": True,
                 "severity": "error",
                 "description": "District ID and name are required fields",
-            }
+            },
+            "field_format_validation": {
+                "type": "business_constraint",
+                "fields": ["name", "district_code", "salesforce_id"],
+                "rules": {
+                    "name": {
+                        "min_length": 2,
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                    },
+                    "district_code": {"max_length": 20, "required": False},
+                    "salesforce_id": {
+                        "format": "salesforce_id",
+                        "min_length": 15,
+                        "max_length": 18,
+                        "required": False,
+                    },
+                },
+                "severity": "warning",
+                "description": "District field format validation",
+            },
+            "data_quality_validation": {
+                "type": "business_constraint",
+                "fields": ["name"],
+                "rules": {
+                    "name": {
+                        "min_length": 2,
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "pattern": r"^[A-Za-z0-9\s\-\.']+$",
+                    }
+                },
+                "severity": "warning",
+                "description": "District name quality validation",
+            },
+            "code_validation": {
+                "type": "business_constraint",
+                "fields": ["district_code"],
+                "rules": {
+                    "district_code": {
+                        "max_length": 20,
+                        "pattern": r"^[A-Z0-9\-_]*$",
+                        "required": False,
+                    }
+                },
+                "severity": "info",
+                "description": "District code format validation",
+            },
+            "relationship_validation": {
+                "type": "business_constraint",
+                "fields": ["id"],
+                "rules": {"id": {"type": "primary_key", "auto_increment": True}},
+                "severity": "info",
+                "description": "District primary key validation",
+            },
         },
     },
 }

@@ -611,7 +611,12 @@ class BusinessRuleValidator(DataValidator):
         # Handle new format with multiple fields
         if fields and not field_name:
             logger.debug(f"Processing multiple fields validation: {fields}")
+            # Get field-specific rules if available
+            field_rules = rule_config.get("rules", {})
+
             for field in fields:
+                # Get field-specific configuration
+                field_config = field_rules.get(field, {})
                 field_results = self._validate_single_field_constraint(
                     entity_type,
                     rule_name,
@@ -621,6 +626,7 @@ class BusinessRuleValidator(DataValidator):
                     min_value,
                     max_value,
                     sample_data,
+                    field_config,
                 )
                 results.extend(field_results)
         # Handle old format with single field
@@ -654,6 +660,7 @@ class BusinessRuleValidator(DataValidator):
         min_value: Optional[int],
         max_value: Optional[int],
         sample_data: List[Dict[str, Any]],
+        field_rules: Optional[Dict[str, Any]] = None,
     ) -> List[ValidationResult]:
         """Validate a single field constraint."""
         results = []
@@ -761,6 +768,93 @@ class BusinessRuleValidator(DataValidator):
                                 },
                             )
                         )
+
+                    # Enhanced validation using field_rules
+                    if field_rules:
+                        # Check min_length if provided in field_rules
+                        if "min_length" in field_rules:
+                            min_length = field_rules["min_length"]
+                            if string_length < min_length:
+                                results.append(
+                                    ValidationResult(
+                                        run_id=self.run_id,
+                                        entity_type=entity_type,
+                                        validation_type="business_rules",
+                                        field_name=field_name,
+                                        severity="warning",
+                                        message=f"Field '{field_name}' too short: {string_length} characters (minimum: {min_length})",
+                                        expected_value=f"≥{min_length} characters",
+                                        actual_value=f"{string_length} characters",
+                                        metadata={
+                                            "rule_name": rule_name,
+                                            "record_id": record.get("Id"),
+                                        },
+                                    )
+                                )
+
+                        # Check max_length if provided in field_rules
+                        if "max_length" in field_rules:
+                            max_length = field_rules["max_length"]
+                            if string_length > max_length:
+                                results.append(
+                                    ValidationResult(
+                                        run_id=self.run_id,
+                                        entity_type=entity_type,
+                                        validation_type="business_rules",
+                                        field_name=field_name,
+                                        severity="warning",
+                                        message=f"Field '{field_name}' too long: {string_length} characters (maximum: {max_length})",
+                                        expected_value=f"≤{max_length} characters",
+                                        actual_value=f"{string_length} characters",
+                                        metadata={
+                                            "rule_name": rule_name,
+                                            "record_id": record.get("Id"),
+                                        },
+                                    )
+                                )
+
+                        # Check pattern validation if provided in field_rules
+                        if "pattern" in field_rules:
+                            import re
+
+                            pattern = field_rules["pattern"]
+                            if not re.match(pattern, field_value):
+                                results.append(
+                                    ValidationResult(
+                                        run_id=self.run_id,
+                                        entity_type=entity_type,
+                                        validation_type="business_rules",
+                                        field_name=field_name,
+                                        severity="warning",
+                                        message=f"Field '{field_name}' doesn't match required pattern",
+                                        expected_value=f"Pattern: {pattern}",
+                                        actual_value=field_value,
+                                        metadata={
+                                            "rule_name": rule_name,
+                                            "record_id": record.get("Id"),
+                                        },
+                                    )
+                                )
+
+                        # Check no_whitespace_only if specified
+                        if field_rules.get("no_whitespace_only", False):
+                            if field_value.strip() == "":
+                                results.append(
+                                    ValidationResult(
+                                        run_id=self.run_id,
+                                        entity_type=entity_type,
+                                        validation_type="business_rules",
+                                        field_name=field_name,
+                                        severity="warning",
+                                        message=f"Field '{field_name}' contains only whitespace",
+                                        expected_value="Non-empty content",
+                                        actual_value="Whitespace only",
+                                        metadata={
+                                            "rule_name": rule_name,
+                                            "record_id": record.get("Id"),
+                                        },
+                                    )
+                                )
 
                 # Check numeric constraints
                 elif isinstance(field_value, (int, float)):

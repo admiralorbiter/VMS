@@ -69,6 +69,8 @@ The VMS Salesforce Data Validation System is a comprehensive data quality monito
 - **Student**: 15 checks across all 5 validation types
 - **Teacher**: 325 checks across all 5 validation types
 - **Organization**: 49 checks across all 5 validation types
+- **School**: 28 checks across all 5 validation types (Local Entity)
+- **District**: 21 checks across all 5 validation types (Local Entity)
 
 #### **Validation Types Running** ✅
 1. **Count Validation** - Record synchronization with context-aware scoring
@@ -89,6 +91,12 @@ The VMS Salesforce Data Validation System is a comprehensive data quality monito
 - Expected discrepancies marked as quality successes (100%)
 - Business logic context applied to count validation
 - Realistic thresholds for real-world data quality
+
+#### **Local Entity Validation**
+- **School & District Entities**: Local VMS entities with comprehensive validation
+- **Count Validation**: Expects 0% discrepancy with Salesforce (local-only entities)
+- **Business Rules**: Enhanced validation including field format, data quality, and naming conventions
+- **Relationship Validation**: District-School associations and integrity checks
 
 ### **Dashboard Enhancements**
 - **Auto-refresh** when switching entity types

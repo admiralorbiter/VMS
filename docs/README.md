@@ -26,6 +26,7 @@ A comprehensive data validation and quality monitoring system for Volunteer Mana
 - 🔍 **Advanced Filtering** - Validation type, severity level, and threshold filtering
 - ⚙️ **Settings Management** - Real-time configuration of weights and thresholds
 - 📚 **Educational Interface** - Self-explanatory dashboard teaching data quality concepts
+- 🏫 **Local Entity Support** - School and District validation with enhanced business rules
 
 ---
 
@@ -34,10 +35,11 @@ A comprehensive data validation and quality monitoring system for Volunteer Mana
 The VMS Salesforce Data Validation System provides comprehensive data quality monitoring and validation capabilities for your volunteer management system. It ensures data integrity between VMS and Salesforce through automated validation, quality scoring, and trend analysis.
 
 ### **Core Features**
-- **Multi-Entity Validation**: Volunteer, Organization, Event, Student, and Teacher data validation
+- **Multi-Entity Validation**: Volunteer, Organization, Event, Student, Teacher, School, and District data validation
 - **Comprehensive Coverage**: All 5 validation types run for all entities automatically
 - **Quality Scoring Engine**: Weighted scoring algorithms with graduated severity thresholds
 - **Context-Aware Validation**: Business logic understanding and expected discrepancy handling
+- **Local Entity Support**: Enhanced validation for School and District entities with comprehensive business rules
 - **Trend Analysis**: Quality monitoring over time with historical tracking
 - **Performance Optimization**: Smart sampling and caching
 - **Real-time Monitoring**: Live quality score updates with auto-refresh dashboard

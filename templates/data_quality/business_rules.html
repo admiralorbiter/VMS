@@ -519,7 +519,7 @@
                 <div class="rule-description">Core fields that must be populated for all school records</div>
                 <div class="rule-details">
                     <ul class="field-list">
-                        <li><span class="required-field">id</span> - School identifier (required)</li>
+                        <li><span class="required-field">id</span> - School Salesforce ID (required)</li>
                         <li><span class="required-field">name</span> - School name (required)</li>
                     </ul>
                     <div class="mt-2">
@@ -530,12 +530,26 @@
             </div>
 
             <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS school count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 0% discrepancy tolerance (local entity)</p>
+                    <p><strong>Context Analysis:</strong> Schools are local entities, so Salesforce count should be 0</p>
+                    <p><strong>Scoring:</strong> Expects 100% match with local database</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Local entity validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
                 <div class="rule-type">Field Completeness</div>
                 <div class="rule-description">Validation of required field population rates</div>
                 <div class="rule-details">
                     <p><strong>Required Fields:</strong></p>
                     <ul>
-                        <li>id - School identifier (required)</li>
+                        <li>id - School Salesforce ID (required)</li>
                         <li>name - School name (required)</li>
                     </ul>
                     <div class="mt-2">
@@ -551,8 +565,11 @@
                 <div class="rule-details">
                     <p><strong>Validation:</strong></p>
                     <ul>
-                        <li>id - Integer validation (required)</li>
-                        <li>name - String validation (required)</li>
+                        <li>id - String validation, Salesforce ID format (15-18 chars, required)</li>
+                        <li>name - String validation (2-255 chars, required, no whitespace only)</li>
+                        <li>level - Enum validation (Elementary, Middle, High, Other, optional)</li>
+                        <li>school_code - String validation (max 50 chars, optional)</li>
+                        <li>district_id - Integer validation (optional)</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
@@ -562,17 +579,92 @@
             </div>
 
             <div class="rule-card">
-                <div class="rule-type">Relationship Validation</div>
-                <div class="rule-description">Validation of required relationship field population</div>
+                <div class="rule-type">Field Format Validation</div>
+                <div class="rule-description">Validation of field formats and constraints</div>
                 <div class="rule-details">
-                    <p><strong>Required Relationships:</strong></p>
+                    <p><strong>Format Rules:</strong></p>
                     <ul>
-                        <li>id - School identifier (required)</li>
-                        <li>name - School name (required)</li>
+                        <li>id - Must be 15-18 alphanumeric characters (Salesforce ID format)</li>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>level - Must be one of: Elementary, Middle, High, Other</li>
+                        <li>school_code - Maximum 50 characters</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
-                        <small class="text-muted">Relationship completeness validation</small>
+                        <small class="text-muted">Format and constraint validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Quality Validation</div>
+                <div class="rule-description">Validation of data quality standards</div>
+                <div class="rule-details">
+                    <p><strong>Quality Rules:</strong></p>
+                    <ul>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>name - Must match pattern: alphanumeric, spaces, hyphens, dots, apostrophes only</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Data quality standards enforcement</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Level Validation</div>
+                <div class="rule-description">Validation of school level categorization</div>
+                <div class="rule-details">
+                    <p><strong>Level Rules:</strong></p>
+                    <ul>
+                        <li>level - Must be one of: Elementary, Middle, High, Other</li>
+                        <li>level - Optional field but must be valid if present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Enumeration validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Naming Convention Validation</div>
+                <div class="rule-description">Validation of school naming conventions</div>
+                <div class="rule-details">
+                    <p><strong>Naming Rules:</strong></p>
+                    <ul>
+                        <li>name - Should not contain generic terms like 'School', 'Elementary', 'Middle', 'High', 'Academy', 'Institute'</li>
+                        <li>name - Should be descriptive and specific to the institution</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Naming convention enforcement</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Relationship Validation</div>
+                <div class="rule-description">Validation of relationship field population and integrity</div>
+                <div class="rule-details">
+                    <p><strong>Required Relationships:</strong></p>
+                    <ul>
+                        <li>name - School name (required)</li>
+                        <li>id - School Salesforce ID (required)</li>
+                    </ul>
+                    <p><strong>Optional Relationships:</strong></p>
+                    <ul>
+                        <li>district_id - District association (optional, must reference valid district.id if present)</li>
+                        <li>level - School level categorization (optional)</li>
+                    </ul>
+                    <p><strong>Integrity Checks:</strong></p>
+                    <ul>
+                        <li>district_id must reference valid district.id if present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Relationship completeness and integrity validation</small>
                     </div>
                 </div>
             </div>
@@ -590,7 +682,7 @@
                 <div class="rule-description">Core fields that must be populated for all district records</div>
                 <div class="rule-details">
                     <ul class="field-list">
-                        <li><span class="required-field">id</span> - District identifier (required)</li>
+                        <li><span class="required-field">id</span> - District internal ID (required)</li>
                         <li><span class="required-field">name</span> - District name (required)</li>
                     </ul>
                     <div class="mt-2">
@@ -601,12 +693,26 @@
             </div>
 
             <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS district count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 0% discrepancy tolerance (local entity)</p>
+                    <p><strong>Context Analysis:</strong> Districts are local entities, so Salesforce count should be 0</p>
+                    <p><strong>Scoring:</strong> Expects 100% match with local database</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Local entity validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
                 <div class="rule-type">Field Completeness</div>
                 <div class="rule-description">Validation of required field population rates</div>
                 <div class="rule-details">
                     <p><strong>Required Fields:</strong></p>
                     <ul>
-                        <li>id - District identifier (required)</li>
+                        <li>id - District internal ID (required)</li>
                         <li>name - District name (required)</li>
                     </ul>
                     <div class="mt-2">
@@ -622,8 +728,10 @@
                 <div class="rule-details">
                     <p><strong>Validation:</strong></p>
                     <ul>
-                        <li>id - Integer validation (required)</li>
-                        <li>name - String validation (required)</li>
+                        <li>id - Integer validation, auto-incrementing primary key (required)</li>
+                        <li>name - String validation (2-255 chars, required, no whitespace only)</li>
+                        <li>district_code - String validation (max 20 chars, optional)</li>
+                        <li>salesforce_id - String validation, Salesforce ID format (15-18 chars, optional)</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
@@ -633,17 +741,77 @@
             </div>
 
             <div class="rule-card">
-                <div class="rule-type">Relationship Validation</div>
-                <div class="rule-description">Validation of required relationship field population</div>
+                <div class="rule-type">Field Format Validation</div>
+                <div class="rule-description">Validation of field formats and constraints</div>
                 <div class="rule-details">
-                    <p><strong>Required Relationships:</strong></p>
+                    <p><strong>Format Rules:</strong></p>
                     <ul>
-                        <li>id - District identifier (required)</li>
-                        <li>name - District name (required)</li>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>district_code - Maximum 20 characters</li>
+                        <li>salesforce_id - Must be 15-18 alphanumeric characters (Salesforce ID format)</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
-                        <small class="text-muted">Relationship completeness validation</small>
+                        <small class="text-muted">Format and constraint validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Quality Validation</div>
+                <div class="rule-description">Validation of data quality standards</div>
+                <div class="rule-details">
+                    <p><strong>Quality Rules:</strong></p>
+                    <ul>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>name - Must match pattern: alphanumeric, spaces, hyphens, dots, apostrophes only</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Data quality standards enforcement</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Code Validation</div>
+                <div class="rule-description">Validation of district code format</div>
+                <div class="rule-details">
+                    <p><strong>Code Rules:</strong></p>
+                    <ul>
+                        <li>district_code - Maximum 20 characters</li>
+                        <li>district_code - Must match pattern: uppercase letters, numbers, hyphens, underscores only</li>
+                        <li>district_code - Optional field but must be valid if present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Code format validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Relationship Validation</div>
+                <div class="rule-description">Validation of relationship field population and integrity</div>
+                <div class="rule-details">
+                    <p><strong>Required Relationships:</strong></p>
+                    <ul>
+                        <li>name - District name (required)</li>
+                        <li>id - District internal ID (required)</li>
+                    </ul>
+                    <p><strong>Optional Relationships:</strong></p>
+                    <ul>
+                        <li>salesforce_id - Salesforce ID (optional)</li>
+                        <li>district_code - District code (optional)</li>
+                    </ul>
+                    <p><strong>Integrity Checks:</strong></p>
+                    <ul>
+                        <li>id must be auto-incrementing primary key</li>
+                        <li>Multiple schools can reference this district</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Relationship completeness and integrity validation</small>
                     </div>
                 </div>
             </div>
