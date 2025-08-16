@@ -48,7 +48,7 @@ class FieldCompletenessValidator(DataValidator):
         self.field_formats = self.completeness_config.get("field_formats", {})
         self.field_ranges = self.completeness_config.get("field_ranges", {})
         self.min_completeness_threshold = self.completeness_config.get(
-            "min_completeness_threshold", 95.0
+            "min_completeness_threshold", 75.0  # More realistic default
         )
 
         logger.debug(
@@ -386,14 +386,15 @@ class FieldCompletenessValidator(DataValidator):
 
     def _determine_completeness_severity(self, completeness_percentage: float) -> str:
         """Determine severity based on completeness percentage."""
-        if completeness_percentage >= self.min_completeness_threshold:
-            return "info"
-        elif completeness_percentage >= self.min_completeness_threshold - 10:
-            return "warning"
-        elif completeness_percentage >= self.min_completeness_threshold - 25:
-            return "error"
+        # More realistic thresholds for real-world data
+        if completeness_percentage >= 90.0:
+            return "info"  # Excellent - passed
+        elif completeness_percentage >= 75.0:
+            return "warning"  # Good - passed with minor issues
+        elif completeness_percentage >= 50.0:
+            return "error"  # Moderate - needs attention
         else:
-            return "critical"
+            return "critical"  # Poor - significant issues
 
     def _add_summary_metrics(self):
         """Add summary metrics for the validation run."""

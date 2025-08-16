@@ -161,6 +161,144 @@ def api_quality_score():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/clear-validation-data", methods=["POST"])
+def api_clear_validation_data():
+    """API endpoint for clearing old validation data."""
+    try:
+        data = request.get_json()
+        entity_type = data.get("entity_type")
+        older_than_days = data.get("older_than_days", 1)
+        user_id = data.get("user_id")  # Optional user ID filter
+
+        # Log the request for debugging
+        app.logger.info(
+            f"Clear validation data request: entity_type={entity_type}, older_than_days={older_than_days}, user_id={user_id}"
+        )
+
+        # Import required modules
+        from datetime import datetime, timedelta
+
+        from app import db
+        from models.validation import (
+            ValidationHistory,
+            ValidationMetric,
+            ValidationResult,
+            ValidationRun,
+        )
+
+        # Build query filters for ValidationRun (only by date and user)
+        run_filters = []
+
+        # If older_than_days is 0, clear ALL data regardless of age
+        if older_than_days > 0:
+            cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+            run_filters.append(ValidationRun.started_at < cutoff_date)
+            app.logger.info(
+                f"Filtering by date: older than {older_than_days} days (before {cutoff_date})"
+            )
+        else:
+            app.logger.info("Clearing ALL validation data regardless of age")
+
+        if user_id:
+            run_filters.append(ValidationRun.created_by == user_id)
+
+        # Get run IDs that match the basic filters
+        base_run_ids = [
+            run.id for run in ValidationRun.query.filter(*run_filters).all()
+        ]
+
+        # If entity_type is specified, filter by ValidationResult.entity_type
+        if entity_type and entity_type != "all":
+            # Get run IDs that have results for the specified entity_type
+            entity_run_ids = [
+                result.run_id
+                for result in ValidationResult.query.filter_by(
+                    entity_type=entity_type
+                ).all()
+                if result.run_id in base_run_ids
+            ]
+            run_ids = entity_run_ids
+        else:
+            run_ids = base_run_ids
+
+        # Count records to be deleted
+        runs_to_delete = len(run_ids)
+
+        if run_ids:
+            results_to_delete = ValidationResult.query.filter(
+                ValidationResult.run_id.in_(run_ids)
+            ).count()
+            history_to_delete = ValidationHistory.query.filter(
+                ValidationHistory.run_id.in_(run_ids)
+            ).count()
+            metrics_to_delete = ValidationMetric.query.filter(
+                ValidationMetric.run_id.in_(run_ids)
+            ).count()
+        else:
+            results_to_delete = 0
+            history_to_delete = 0
+            metrics_to_delete = 0
+
+        total_records = (
+            runs_to_delete + results_to_delete + history_to_delete + metrics_to_delete
+        )
+
+        if total_records == 0:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "No old validation data found to clear",
+                    "records_deleted": 0,
+                }
+            )
+
+        # Delete in correct order (respecting foreign keys)
+        if results_to_delete > 0:
+            ValidationResult.query.filter(ValidationResult.run_id.in_(run_ids)).delete(
+                synchronize_session=False
+            )
+
+        if history_to_delete > 0:
+            ValidationHistory.query.filter(
+                ValidationHistory.run_id.in_(run_ids)
+            ).delete(synchronize_session=False)
+
+        if metrics_to_delete > 0:
+            ValidationMetric.query.filter(ValidationMetric.run_id.in_(run_ids)).delete(
+                synchronize_session=False
+            )
+
+        if runs_to_delete > 0:
+            ValidationRun.query.filter(ValidationRun.id.in_(run_ids)).delete(
+                synchronize_session=False
+            )
+
+        # Commit the changes
+        db.session.commit()
+
+        app.logger.info(
+            f"Cleared {total_records} old validation records (older than {older_than_days} days)"
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully cleared {total_records} old validation records",
+                "records_deleted": total_records,
+                "details": {
+                    "validation_runs": runs_to_delete,
+                    "validation_results": results_to_delete,
+                    "validation_history": history_to_delete,
+                    "validation_metrics": metrics_to_delete,
+                },
+            }
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error clearing validation data: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 def get_filtered_validation_results(
     entity_type, days, validation_type=None, severity_level=None
 ):
@@ -259,6 +397,186 @@ def get_anomalies(entity_type, days):
     except Exception as e:
         app.logger.error(f"Error getting anomalies: {e}")
         return []
+
+
+@app.route("/api/run-validation", methods=["POST"])
+def api_run_validation():
+    """API endpoint for running validation checks to generate data."""
+    try:
+        data = request.get_json()
+        entity_type = data.get("entity_type", "volunteer")
+        validation_type = data.get("validation_type", "comprehensive")
+
+        app.logger.info(
+            f"Running validation: entity_type={entity_type}, validation_type={validation_type}"
+        )
+
+        # Import validation engine
+        from utils.validation_engine import get_validation_engine
+
+        with app.app_context():
+            # Run comprehensive validation (all validation types)
+            engine = get_validation_engine()
+            run = engine.run_comprehensive_validation(
+                entity_type=entity_type,
+                run_type="comprehensive",
+                name=f"Comprehensive Validation - {entity_type.title()}",
+                user_id=None,
+            )
+
+            app.logger.info(f"Comprehensive validation completed: Run ID {run.id}")
+
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Comprehensive validation completed successfully",
+                    "run_id": run.id,
+                    "status": run.status,
+                    "total_checks": run.total_checks,
+                }
+            )
+
+    except Exception as e:
+        app.logger.error(f"Error running validation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/run-multiple-validations", methods=["POST"])
+def api_run_multiple_validations():
+    """API endpoint for running validation checks for multiple entity types."""
+    try:
+        data = request.get_json()
+        entity_types = data.get(
+            "entity_types", ["volunteer", "organization", "event", "student", "teacher"]
+        )
+        validation_type = data.get("validation_type", "comprehensive")
+
+        app.logger.info(
+            f"Running multiple comprehensive validations: entity_types={entity_types}"
+        )
+
+        # Import validation engine
+        from utils.validation_engine import get_validation_engine
+
+        results = []
+
+        with app.app_context():
+            engine = get_validation_engine()
+
+            for entity_type in entity_types:
+                try:
+                    # Run comprehensive validation for this entity type
+                    run = engine.run_comprehensive_validation(
+                        entity_type=entity_type,
+                        run_type="comprehensive",
+                        name=f"Comprehensive Validation - {entity_type.title()}",
+                        user_id=None,
+                    )
+
+                    results.append(
+                        {
+                            "entity_type": entity_type,
+                            "success": True,
+                            "run_id": run.id,
+                            "status": run.status,
+                            "total_checks": run.total_checks,
+                        }
+                    )
+
+                    app.logger.info(
+                        f"Comprehensive validation completed for {entity_type}: Run ID {run.id}"
+                    )
+
+                except Exception as e:
+                    app.logger.error(
+                        f"Error running comprehensive validation for {entity_type}: {e}"
+                    )
+                    results.append(
+                        {"entity_type": entity_type, "success": False, "error": str(e)}
+                    )
+
+        # Count successful runs
+        successful_runs = sum(1 for r in results if r["success"])
+        total_runs = len(results)
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Multiple comprehensive validations completed: {successful_runs}/{total_runs} successful",
+                "total_runs": total_runs,
+                "successful_runs": successful_runs,
+                "results": results,
+            }
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error running multiple validations: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug-validation-data", methods=["GET"])
+def api_debug_validation_data():
+    """Debug endpoint to show current validation data in database."""
+    try:
+        from models.validation import (
+            ValidationHistory,
+            ValidationMetric,
+            ValidationResult,
+            ValidationRun,
+        )
+
+        # Get counts of all validation data
+        total_runs = ValidationRun.query.count()
+        total_results = ValidationResult.query.count()
+        total_history = ValidationHistory.query.count()
+        total_metrics = ValidationMetric.query.count()
+
+        # Get recent runs
+        recent_runs = (
+            ValidationRun.query.order_by(ValidationRun.started_at.desc()).limit(5).all()
+        )
+        recent_runs_data = []
+        for run in recent_runs:
+            recent_runs_data.append(
+                {
+                    "id": run.id,
+                    "name": run.name,
+                    "started_at": (
+                        run.started_at.isoformat() if run.started_at else None
+                    ),
+                    "status": run.status,
+                    "total_checks": run.total_checks,
+                }
+            )
+
+        # Get entity type breakdown
+        entity_breakdown = (
+            db.session.query(
+                ValidationResult.entity_type, db.func.count(ValidationResult.id)
+            )
+            .group_by(ValidationResult.entity_type)
+            .all()
+        )
+
+        entity_counts = {entity: count for entity, count in entity_breakdown}
+
+        return jsonify(
+            {
+                "success": True,
+                "total_counts": {
+                    "validation_runs": total_runs,
+                    "validation_results": total_results,
+                    "validation_history": total_history,
+                    "validation_metrics": total_metrics,
+                },
+                "recent_runs": recent_runs_data,
+                "entity_breakdown": entity_counts,
+            }
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error in debug validation data API: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/quality-settings", methods=["GET", "POST"])

@@ -305,6 +305,30 @@
                         Calculate
                     </button>
                 </div>
+                <div class="col-md-2">
+                    <button class="btn btn-warning btn-custom w-100" onclick="clearValidationData()">
+                        <i class="fas fa-trash me-1"></i>
+                        Clear Data
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-success btn-custom w-100" onclick="runValidation()">
+                        <i class="fas fa-play me-1"></i>
+                        Run Validation
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary btn-custom w-100" onclick="runAllValidations()">
+                        <i class="fas fa-rocket me-1"></i>
+                        Run All Validations
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-info btn-custom w-100" onclick="debugValidationData()">
+                        <i class="fas fa-bug me-1"></i>
+                        Debug Data
+                    </button>
+                </div>
                 <div class="col-md-3">
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-success btn-sm" onclick="exportReport('json')">
@@ -945,6 +969,20 @@
                 document.getElementById('thresholdValue').textContent = this.value;
             });
 
+            // Auto-refresh when entity type changes
+            document.getElementById('entityType').addEventListener('change', function() {
+                console.log('Entity type changed to:', this.value);
+                // Automatically refresh the quality data for the new entity
+                calculateQualityScore();
+            });
+
+            // Auto-refresh when time period changes
+            document.getElementById('timePeriod').addEventListener('change', function() {
+                console.log('Time period changed to:', this.value);
+                // Automatically refresh the quality data for the new time period
+                calculateQualityScore();
+            });
+
             // Load initial data
             calculateQualityScore();
         });
@@ -1197,6 +1235,205 @@
                 document.getElementById('errorMessage').textContent = error.message;
                 document.getElementById('errorDisplay').style.display = 'block';
                 document.getElementById('loading').style.display = 'none';
+            });
+        }
+
+        // Clear validation data
+        function clearValidationData() {
+            if (!confirm('Are you sure you want to clear ALL validation data? This will remove all validation results and scores.')) {
+                return;
+            }
+
+            // Show loading indicator
+            const clearButton = document.querySelector('button[onclick="clearValidationData()"]');
+            const originalText = clearButton.textContent;
+            clearButton.textContent = 'Clearing...';
+            clearButton.disabled = true;
+
+            // Clear data with more aggressive settings
+            fetch('/api/clear-validation-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    entity_type: 'all',  // Clear all entity types
+                    older_than_days: 0,  // Clear data from any age (including today)
+                    user_id: null         // Clear data from all users
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Clear Data Result:\n${data.message}\n\nRecords deleted: ${data.records_deleted}\n\nDetails:\n- Validation Runs: ${data.details.validation_runs}\n- Validation Results: ${data.details.validation_results}\n- Validation History: ${data.details.validation_history}\n- Validation Metrics: ${data.details.validation_metrics}`);
+
+                    // Refresh the page to show cleared state
+                    location.reload();
+                } else {
+                    alert('Error clearing validation data: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error clearing validation data: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button
+                clearButton.textContent = originalText;
+                clearButton.disabled = false;
+            });
+        }
+
+        function runValidation() {
+            // Show loading indicator
+            const runButton = document.querySelector('button[onclick="runValidation()"]');
+            const originalText = runButton.textContent;
+            runButton.textContent = 'Running...';
+            runButton.disabled = true;
+
+            const entityType = document.getElementById('entityType').value;
+
+            fetch('/api/run-validation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    entity_type: entityType,
+                    validation_type: 'count'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Validation completed successfully!\n\nRun ID: ${data.run_id}\nStatus: ${data.status}\nTotal Checks: ${data.total_checks}\n\nNow you can click Calculate to see quality scores.`);
+
+                    // Refresh debug data to show new records
+                    setTimeout(() => {
+                        debugValidationData();
+                    }, 1000);
+                } else {
+                    alert('Error running validation: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error running validation: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button
+                runButton.textContent = originalText;
+                runButton.disabled = false;
+            });
+        }
+
+        function runAllValidations() {
+            // Show loading indicator
+            const runAllButton = document.querySelector('button[onclick="runAllValidations()"]');
+            const originalText = runAllButton.textContent;
+            runAllButton.textContent = 'Running All...';
+            runAllButton.disabled = true;
+
+            // Show progress message
+            alert('Running validations for all entity types...\n\nThis will validate: Volunteer, Organization, Event, Student, and Teacher data.\n\nPlease wait for completion.');
+
+            // Use the more efficient multiple validation endpoint
+            fetch('/api/run-multiple-validations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    entity_types: ['volunteer', 'organization', 'event', 'student', 'teacher'],
+                    validation_type: 'count'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show final results
+                    let resultMessage = `All validations completed!\n\n`;
+                    resultMessage += `Total Runs: ${data.total_runs}\n`;
+                    resultMessage += `Successful: ${data.successful_runs}\n`;
+                    resultMessage += `Failed: ${data.total_runs - data.successful_runs}\n\n`;
+                    resultMessage += `Results:\n`;
+
+                    data.results.forEach(result => {
+                        if (result.success) {
+                            resultMessage += `✅ ${result.entity_type}: Run ID ${result.run_id}, ${result.total_checks} checks\n`;
+                        } else {
+                            resultMessage += `❌ ${result.entity_type}: ${result.error}\n`;
+                        }
+                    });
+
+                    resultMessage += `\nNow you can click Calculate to see quality scores for all entities.`;
+                    alert(resultMessage);
+
+                    // Refresh debug data to show new records
+                    setTimeout(() => {
+                        debugValidationData();
+                    }, 1000);
+                } else {
+                    alert('Error running multiple validations: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error running multiple validations: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button
+                runAllButton.textContent = originalText;
+                runAllButton.disabled = false;
+            });
+        }
+
+        function debugValidationData() {
+            // Show loading indicator
+            const debugButton = document.querySelector('button[onclick="debugValidationData()"]');
+            const originalText = debugButton.textContent;
+            debugButton.textContent = 'Loading...';
+            debugButton.disabled = true;
+
+            fetch('/api/debug-validation-data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let message = 'Current Validation Data in Database:\n\n';
+                    message += `Total Records:\n`;
+                    message += `- Validation Runs: ${data.total_counts.validation_runs}\n`;
+                    message += `- Validation Results: ${data.total_counts.validation_results}\n`;
+                    message += `- Validation History: ${data.total_counts.validation_history}\n`;
+                    message += `- Validation Metrics: ${data.total_counts.validation_metrics}\n\n`;
+
+                    if (data.entity_breakdown && Object.keys(data.entity_breakdown).length > 0) {
+                        message += `Entity Type Breakdown:\n`;
+                        for (const [entity, count] of Object.entries(data.entity_breakdown)) {
+                            message += `- ${entity}: ${count} results\n`;
+                        }
+                        message += '\n';
+                    }
+
+                    if (data.recent_runs && data.recent_runs.length > 0) {
+                        message += `Recent Validation Runs:\n`;
+                        data.recent_runs.forEach(run => {
+                            message += `- Run ${run.id}: ${run.name} (${run.status}) - ${run.total_checks} checks\n`;
+                        });
+                    }
+
+                    alert(message);
+                } else {
+                    alert('Error getting debug data: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error getting debug data: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button
+                debugButton.textContent = originalText;
+                debugButton.disabled = false;
             });
         }
 

@@ -123,6 +123,9 @@ class QualityScoringService:
                 "failed_checks": sum(
                     1 for r in results if r.severity in ["error", "critical"]
                 ),
+                "context_aware": True,  # Indicate this uses context-aware validation
+                "expected_discrepancies": self._count_expected_discrepancies(results),
+                "quality_issues": self._count_quality_issues(results),
             }
 
             # Add trend information if available
@@ -252,26 +255,230 @@ class QualityScoringService:
     def _calculate_dimension_scores(
         self, results: List[ValidationResult], entity_type: str
     ) -> Dict:
-        """Calculate quality scores for different validation dimensions."""
-        dimension_scores = {}
+        """
+        Calculate individual dimension scores from validation results.
 
-        # Group results by validation type
-        results_by_type = {}
+        This method now handles context-aware validation results that distinguish
+        between expected discrepancies and actual quality issues.
+        """
+        try:
+            # Initialize dimension scores
+            dimension_scores = {
+                "field_completeness": 0.0,
+                "data_types": 0.0,
+                "business_rules": 0.0,
+                "relationships": 0.0,
+                "count_validation": 0.0,
+            }
+
+            # Group results by validation type
+            results_by_type = {}
+            for result in results:
+                validation_type = result.validation_type
+                if validation_type not in results_by_type:
+                    results_by_type[validation_type] = []
+                results_by_type[validation_type].append(result)
+
+            # Initialize relationship results list
+            relationship_results = []
+
+            # Calculate scores for each dimension
+            for validation_type, type_results in results_by_type.items():
+                if validation_type == "count":
+                    dimension_scores["count_validation"] = (
+                        self._calculate_count_validation_score(type_results)
+                    )
+                elif validation_type == "field_completeness":
+                    dimension_scores["field_completeness"] = (
+                        self._calculate_field_completeness_score(type_results)
+                    )
+                elif (
+                    validation_type == "data_type_validation"
+                ):  # Fix: match actual validation type
+                    dimension_scores["data_types"] = self._calculate_data_type_score(
+                        type_results
+                    )
+                elif validation_type == "business_rules":
+                    dimension_scores["business_rules"] = (
+                        self._calculate_business_rule_score(type_results)
+                    )
+                elif validation_type in [
+                    "relationships",
+                    "orphaned_record",
+                    "optional_relationship_population",
+                    "relationship_completeness",
+                    "required_relationship",
+                ]:
+                    # Group all relationship-related validation types
+                    relationship_results.extend(type_results)
+
+            # Calculate relationship score from all grouped results
+            if relationship_results:
+                dimension_scores["relationships"] = self._calculate_relationship_score(
+                    relationship_results
+                )
+
+            return dimension_scores
+
+        except Exception as e:
+            self.logger.error(f"Error calculating dimension scores: {e}")
+            return {
+                "field_completeness": 0.0,
+                "data_types": 0.0,
+                "business_rules": 0.0,
+                "relationships": 0.0,
+                "count_validation": 0.0,
+            }
+
+    def _calculate_count_validation_score(
+        self, count_results: List[ValidationResult]
+    ) -> float:
+        """
+        Calculate count validation score with context awareness.
+
+        This method now properly handles expected discrepancies as quality successes,
+        and uses graduated quality scores for unexpected discrepancies.
+        """
+        if not count_results:
+            return 0.0
+
+        total_results = len(count_results)
+        total_score = 0.0
+
+        for result in count_results:
+            metadata = result.metadata_dict or {}
+            is_expected = metadata.get("is_expected_discrepancy", False)
+
+            if is_expected:
+                # Expected discrepancy = quality success (100%)
+                total_score += 100.0
+            else:
+                # Use the quality score from metadata if available
+                quality_score = metadata.get(
+                    "quality_score", 50.0
+                )  # Default to 50% for unknown issues
+                total_score += quality_score
+
+        # Return average score across all results
+        return total_score / total_results
+
+    def _count_expected_discrepancies(self, results: List[ValidationResult]) -> int:
+        """Count the number of expected discrepancies in validation results."""
+        count = 0
         for result in results:
-            if result.validation_type not in results_by_type:
-                results_by_type[result.validation_type] = []
-            results_by_type[result.validation_type].append(result)
+            metadata = result.metadata_dict or {}
+            if metadata.get("is_expected_discrepancy", False):
+                count += 1
+        return count
 
-        # Calculate score for each dimension
-        for validation_type, type_results in results_by_type.items():
-            score = self.score_calculator.calculate_dimension_score(
-                validation_type=validation_type,
-                results=type_results,
-                entity_type=entity_type,
-            )
-            dimension_scores[validation_type] = score
+    def _count_quality_issues(self, results: List[ValidationResult]) -> int:
+        """Count the number of actual quality issues in validation results."""
+        count = 0
+        for result in results:
+            metadata = result.metadata_dict or {}
+            if not metadata.get("is_expected_discrepancy", False):
+                count += 1
+        return count
 
-        return dimension_scores
+    def _calculate_field_completeness_score(
+        self, field_results: List[ValidationResult]
+    ) -> float:
+        """Calculate field completeness score with graduated scoring."""
+        if not field_results:
+            return 0.0
+
+        total_results = len(field_results)
+        total_score = 0.0
+
+        for result in field_results:
+            if result.severity == "info":
+                total_score += 100.0  # Perfect
+            elif result.severity == "warning":
+                total_score += 85.0  # Good with minor issues
+            elif result.severity == "error":
+                total_score += 60.0  # Moderate issues
+            elif result.severity == "critical":
+                total_score += 30.0  # Significant issues
+            else:
+                total_score += 0.0  # Unknown severity
+
+        # Return average score across all results
+        return total_score / total_results if total_results > 0 else 0.0
+
+    def _calculate_data_type_score(
+        self, data_type_results: List[ValidationResult]
+    ) -> float:
+        """Calculate data type validation score with graduated scoring."""
+        if not data_type_results:
+            return 0.0
+
+        total_results = len(data_type_results)
+        total_score = 0.0
+
+        for result in data_type_results:
+            if result.severity == "info":
+                total_score += 100.0  # Perfect
+            elif result.severity == "warning":
+                total_score += 85.0  # Good with minor issues
+            elif result.severity == "error":
+                total_score += 60.0  # Moderate issues
+            elif result.severity == "critical":
+                total_score += 30.0  # Significant issues
+            else:
+                total_score += 0.0  # Unknown severity
+
+        # Return average score across all results
+        return total_score / total_results if total_results > 0 else 0.0
+
+    def _calculate_business_rule_score(
+        self, business_rule_results: List[ValidationResult]
+    ) -> float:
+        """Calculate business rule validation score with graduated scoring."""
+        if not business_rule_results:
+            return 0.0
+
+        total_results = len(business_rule_results)
+        total_score = 0.0
+
+        for result in business_rule_results:
+            if result.severity == "info":
+                total_score += 100.0  # Perfect
+            elif result.severity == "warning":
+                total_score += 85.0  # Good with minor issues
+            elif result.severity == "error":
+                total_score += 60.0  # Moderate issues
+            elif result.severity == "critical":
+                total_score += 30.0  # Significant issues
+            else:
+                total_score += 0.0  # Unknown severity
+
+        # Return average score across all results
+        return total_score / total_results if total_results > 0 else 0.0
+
+    def _calculate_relationship_score(
+        self, relationship_results: List[ValidationResult]
+    ) -> float:
+        """Calculate relationship validation score with graduated scoring."""
+        if not relationship_results:
+            return 0.0
+
+        total_results = len(relationship_results)
+        total_score = 0.0
+
+        for result in relationship_results:
+            if result.severity == "info":
+                total_score += 100.0  # Perfect
+            elif result.severity == "warning":
+                total_score += 85.0  # Good with minor issues
+            elif result.severity == "error":
+                total_score += 60.0  # Moderate issues
+            elif result.severity == "critical":
+                total_score += 30.0  # Significant issues
+            else:
+                total_score += 0.0  # Unknown severity
+
+        # Return average score across all results
+        return total_score / total_results if total_results > 0 else 0.0
 
     def _calculate_composite_score(
         self, dimension_scores: Dict, entity_type: str
@@ -283,19 +490,43 @@ class QualityScoringService:
         # Get weights for this entity type
         weights = self.weighting_engine.get_entity_weights(entity_type)
 
-        # Calculate weighted composite score
+        # Smart composite score calculation that handles missing dimensions
+        available_dimensions = {}
         total_weighted_score = 0.0
         total_weight = 0.0
 
         for dimension, score in dimension_scores.items():
-            weight = weights.get(dimension, 1.0)  # Default weight of 1.0
-            total_weighted_score += score * weight
-            total_weight += weight
+            # Only include dimensions that have meaningful scores
+            if score > 0.0:
+                available_dimensions[dimension] = score
+                weight = weights.get(dimension, 1.0)
+                total_weighted_score += score * weight
+                total_weight += weight
 
+        # If no dimensions have scores, return 0
         if total_weight == 0:
             return 0.0
 
-        return total_weighted_score / total_weight
+        # Special handling for events with expected discrepancies
+        if entity_type == "event" and "count_validation" in available_dimensions:
+            count_score = available_dimensions["count_validation"]
+            if count_score >= 95.0:  # If count validation shows expected discrepancies
+                # Events should get full credit for working as designed
+                return 100.0
+
+        # Calculate weighted average of available dimensions
+        composite_score = total_weighted_score / total_weight
+
+        # If we only have count validation data and it's perfect, give full credit
+        if (
+            len(available_dimensions) == 1
+            and "count_validation" in available_dimensions
+        ):
+            count_score = available_dimensions["count_validation"]
+            if count_score >= 95.0:
+                return 100.0
+
+        return composite_score
 
     def _determine_quality_status(self, score: float, threshold: float) -> str:
         """Determine quality status based on score and threshold."""

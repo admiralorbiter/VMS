@@ -215,23 +215,30 @@ class SalesforceClient:
         cached_count = self._get_from_cache(cache_key)
 
         if cached_count is not None:
+            logger.debug(f"Returning cached volunteer count: {cached_count}")
             return cached_count
 
         try:
             self._ensure_connection()
             self._rate_limit()
 
-            # Query for volunteer count
-            result = self.sf.query(
-                "SELECT COUNT() FROM Contact WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''"
-            )
+            # Query for volunteer count - using Contact_Type__c field, NOT RecordType.Name
+            # RecordType.Name is not a valid relationship in Salesforce Contact object
+            query = "SELECT COUNT() FROM Contact WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''"
+            logger.debug(f"Executing volunteer count query: {query}")
+
+            result = self.sf.query(query)
             count = result["totalSize"]
 
+            logger.info(f"Volunteer count query successful: {count} volunteers found")
             self._set_cache(cache_key, count)
             return count
 
         except Exception as e:
             logger.error(f"Failed to get volunteer count: {e}")
+            logger.error(
+                f"Query that failed: SELECT COUNT() FROM Contact WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''"
+            )
             raise SalesforceClientError(f"Failed to get volunteer count: {e}")
 
     def get_organization_count(self) -> int:

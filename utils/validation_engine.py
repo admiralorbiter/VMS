@@ -191,6 +191,90 @@ class ValidationEngine:
             self._finalize_run(run)
             raise
 
+    def run_comprehensive_validation(
+        self,
+        entity_type: str = "all",
+        run_type: str = "comprehensive",
+        name: str = None,
+        user_id: Optional[int] = None,
+    ) -> ValidationRun:
+        """
+        Run comprehensive validation for all validation types on specified entity.
+
+        Args:
+            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher')
+            run_type: Type of validation run
+            name: Name for the validation run
+            user_id: ID of the user initiating the validation
+
+        Returns:
+            ValidationRun instance
+        """
+        # Create all validators for the entity type
+        validators = self._create_comprehensive_validators(entity_type)
+
+        run_name = name or f"Comprehensive {entity_type.title()} Validation"
+        run = self.create_validation_run(run_type, name=run_name, user_id=user_id)
+
+        try:
+            # Set run_id for all validators
+            for validator in validators:
+                validator.run_id = run.id
+
+            # Execute validations
+            self._execute_validations(run, validators)
+
+            return run
+
+        except Exception as e:
+            logger.error(f"Comprehensive validation failed: {e}")
+            run.mark_failed(str(e))
+            self._finalize_run(run)
+            raise
+
+    def _create_comprehensive_validators(self, entity_type: str) -> List[DataValidator]:
+        """
+        Create all available validators for comprehensive validation.
+
+        Args:
+            entity_type: Type of entity to validate
+
+        Returns:
+            List of configured validators
+        """
+        validators = []
+
+        # Count validation (always included)
+        count_validator = CountValidator(run_id=None, entity_type=entity_type)
+        validators.append(count_validator)
+
+        # Field completeness validation
+        field_validator = FieldCompletenessValidator(
+            run_id=None, entity_type=entity_type
+        )
+        validators.append(field_validator)
+
+        # Data type validation
+        data_type_validator = DataTypeValidator(run_id=None, entity_type=entity_type)
+        validators.append(data_type_validator)
+
+        # Business rule validation
+        business_rule_validator = BusinessRuleValidator(
+            run_id=None, entity_type=entity_type
+        )
+        validators.append(business_rule_validator)
+
+        # Relationship validation
+        relationship_validator = RelationshipValidator(
+            run_id=None, entity_type=entity_type
+        )
+        validators.append(relationship_validator)
+
+        logger.info(
+            f"Created {len(validators)} validators for comprehensive {entity_type} validation"
+        )
+        return validators
+
     def _execute_validations(self, run: ValidationRun, validators: List[DataValidator]):
         """
         Execute a list of validators and collect results.
@@ -202,9 +286,6 @@ class ValidationEngine:
         try:
             total_validators = len(validators)
             completed_validators = 0
-
-            # Update run with total count
-            run.total_checks = total_validators
 
             # Execute validators (can be parallel in the future)
             all_results = []
@@ -258,7 +339,8 @@ class ValidationEngine:
             # Save all results and metrics
             self._save_validation_data(run, all_results, all_metrics)
 
-            # Update run statistics
+            # Update run statistics with actual result counts
+            run.total_checks = len(all_results)
             self._update_run_statistics(run, all_results)
 
             # Mark run as completed

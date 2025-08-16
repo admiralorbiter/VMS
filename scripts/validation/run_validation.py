@@ -263,6 +263,38 @@ def run_business_rule_validation(entity_type: str = "all", user_id: int = None):
         raise
 
 
+def run_comprehensive_validation(entity_type: str = "all", user_id: int = None):
+    """Run comprehensive validation for all validation types on specified entity."""
+    try:
+        # Import and set up Flask app context
+        from app import app
+        from utils.validation_engine import get_validation_engine
+
+        logger.info(f"Starting comprehensive validation for {entity_type}...")
+
+        with app.app_context():
+            # Run comprehensive validation (all validation types)
+            engine = get_validation_engine()
+            run = engine.run_comprehensive_validation(
+                entity_type=entity_type,
+                run_type="comprehensive",
+                name=f"Comprehensive Validation - {entity_type.title()}",
+                user_id=user_id,
+            )
+
+            logger.info(f"Comprehensive validation completed successfully!")
+            logger.info(f"Run ID: {run.id}")
+            logger.info(f"Status: {run.status}")
+            logger.info(f"Results: {run.total_checks} total checks")
+            logger.info(f"Execution time: {run.execution_time_seconds}s")
+
+            return run
+
+    except Exception as e:
+        logger.error(f"Comprehensive validation failed: {e}")
+        raise
+
+
 def show_run_status(run_id: int):
     """Show status of a validation run."""
     try:
@@ -374,6 +406,123 @@ def show_run_results(run_id: int, severity: str = None, entity_type: str = None)
 
     except Exception as e:
         logger.error(f"Failed to get run results: {e}")
+
+
+def clear_validation_data(
+    older_than_days: int = None, entity_type: str = None, user_id: int = None
+):
+    """Clear old validation data from the database."""
+    try:
+        # Import and set up Flask app context
+        from datetime import datetime, timedelta
+
+        from app import app, db
+        from models.validation.history import ValidationHistory
+        from models.validation.metric import ValidationMetric
+        from models.validation.result import ValidationResult
+        from models.validation.run import ValidationRun
+
+        logger.info("Starting validation data cleanup...")
+
+        with app.app_context():
+            # Build query filters for ValidationRun (only by date and user)
+            run_filters = []
+
+            if older_than_days:
+                cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+                run_filters.append(ValidationRun.started_at < cutoff_date)
+                logger.info(
+                    f"Clearing data older than {older_than_days} days (before {cutoff_date})"
+                )
+
+            if user_id:
+                run_filters.append(ValidationRun.created_by == user_id)
+                logger.info(f"Clearing data for user ID: {user_id}")
+
+            # Get run IDs that match the basic filters
+            base_run_ids = [
+                run.id for run in ValidationRun.query.filter(*run_filters).all()
+            ]
+
+            # If entity_type is specified, filter by ValidationResult.entity_type
+            if entity_type and entity_type != "all":
+                # Get run IDs that have results for the specified entity_type
+                entity_run_ids = [
+                    result.run_id
+                    for result in ValidationResult.query.filter_by(
+                        entity_type=entity_type
+                    ).all()
+                    if result.run_id in base_run_ids
+                ]
+                run_ids = entity_run_ids
+                logger.info(f"Clearing data for entity type: {entity_type}")
+            else:
+                run_ids = base_run_ids
+
+            # Count records to be deleted
+            runs_to_delete = len(run_ids)
+
+            if run_ids:
+                results_to_delete = ValidationResult.query.filter(
+                    ValidationResult.run_id.in_(run_ids)
+                ).count()
+                history_to_delete = ValidationHistory.query.filter(
+                    ValidationHistory.run_id.in_(run_ids)
+                ).count()
+                metrics_to_delete = ValidationMetric.query.filter(
+                    ValidationMetric.run_id.in_(run_ids)
+                ).count()
+            else:
+                results_to_delete = 0
+                history_to_delete = 0
+                metrics_to_delete = 0
+
+            logger.info(f"Records to be deleted:")
+            logger.info(f"  - Validation Runs: {runs_to_delete}")
+            logger.info(f"  - Validation Results: {results_to_delete}")
+            logger.info(f"  - Validation History: {history_to_delete}")
+            logger.info(f"  - Validation Metrics: {metrics_to_delete}")
+
+            if runs_to_delete == 0:
+                logger.info("No old validation data found to clear.")
+                return
+
+            # Delete in correct order (respecting foreign keys)
+            if results_to_delete > 0:
+                ValidationResult.query.filter(
+                    ValidationResult.run_id.in_(run_ids)
+                ).delete(synchronize_session=False)
+                logger.info(f"Deleted {results_to_delete} validation results")
+
+            if history_to_delete > 0:
+                ValidationHistory.query.filter(
+                    ValidationHistory.run_id.in_(run_ids)
+                ).delete(synchronize_session=False)
+                logger.info(f"Deleted {history_to_delete} validation history records")
+
+            if metrics_to_delete > 0:
+                ValidationMetric.query.filter(
+                    ValidationMetric.run_id.in_(run_ids)
+                ).delete(synchronize_session=False)
+                logger.info(f"Deleted {metrics_to_delete} validation metrics")
+
+            if runs_to_delete > 0:
+                ValidationRun.query.filter(ValidationRun.id.in_(run_ids)).delete(
+                    synchronize_session=False
+                )
+                logger.info(f"Deleted {runs_to_delete} validation runs")
+
+            # Commit the changes
+            db.session.commit()
+
+            logger.info("Validation data cleanup completed successfully!")
+            logger.info(
+                f"Total records deleted: {runs_to_delete + results_to_delete + history_to_delete + metrics_to_delete}"
+            )
+
+    except Exception as e:
+        logger.error(f"Validation data cleanup failed: {e}")
+        raise
 
 
 def main():
@@ -491,6 +640,20 @@ Examples:
         "--user-id", type=int, help="User ID for the validation run"
     )
 
+    # Comprehensive validation command
+    comprehensive_parser = subparsers.add_parser(
+        "comprehensive", help="Run comprehensive validation (all validation types)"
+    )
+    comprehensive_parser.add_argument(
+        "--entity-type",
+        default="all",
+        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        help="Entity type to validate (default: all)",
+    )
+    comprehensive_parser.add_argument(
+        "--user-id", type=int, help="User ID for the validation run"
+    )
+
     # Status command
     status_parser = subparsers.add_parser("status", help="Show validation run status")
     status_parser.add_argument(
@@ -522,6 +685,20 @@ Examples:
     )
     results_parser.add_argument("--entity-type", help="Filter by entity type")
 
+    # Clear command
+    clear_parser = subparsers.add_parser("clear", help="Clear old validation data")
+    clear_parser.add_argument(
+        "--older-than-days", type=int, help="Number of days ago to keep data"
+    )
+    clear_parser.add_argument(
+        "--entity-type",
+        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        help="Entity type to filter by (optional)",
+    )
+    clear_parser.add_argument(
+        "--user-id", type=int, help="User ID to filter by (optional)"
+    )
+
     args = parser.parse_args()
 
     # Help command
@@ -537,8 +714,10 @@ Examples:
         print("  data-type     - Run data type validation")
         print("  relationships - Run relationship integrity validation")
         print("  business-rules - Run business rule validation")
+        print("  comprehensive - Run comprehensive validation (all types)")
         print("  status        - Show validation run status")
         print("  results       - Show validation results")
+        print("  clear         - Clear old validation data")
         print("  help          - Show this help message")
         print()
         print("Examples:")
@@ -551,8 +730,11 @@ Examples:
         print("  python run_validation.py data-type --entity-type student")
         print("  python run_validation.py relationships --entity-type volunteer")
         print("  python run_validation.py business-rules --entity-type volunteer")
+        print("  python run_validation.py comprehensive --entity-type volunteer")
         print("  python run_validation.py status --run-id 123")
         print("  python run_validation.py results --run-id 123")
+        print("  python run_validation.py clear --older-than-days 30")
+        print("  python run_validation.py clear --entity-type volunteer")
         print()
         print("For detailed help on a specific command:")
         print("  python run_validation.py <command> --help")
@@ -573,12 +755,16 @@ Examples:
             run_relationship_validation(args.entity_type, args.user_id)
         elif args.command == "business-rules":
             run_business_rule_validation(args.entity_type, args.user_id)
+        elif args.command == "comprehensive":
+            run_comprehensive_validation(args.entity_type, args.user_id)
         elif args.command == "status":
             show_run_status(args.run_id)
         elif args.command == "recent":
             show_recent_runs(args.limit, args.run_type)
         elif args.command == "results":
             show_run_results(args.run_id, args.severity, args.entity_type)
+        elif args.command == "clear":
+            clear_validation_data(args.older_than_days, args.entity_type, args.user_id)
         else:
             logger.error(f"Unknown command: {args.command}")
             sys.exit(1)
