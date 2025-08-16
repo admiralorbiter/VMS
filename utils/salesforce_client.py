@@ -339,6 +339,109 @@ class SalesforceClient:
             logger.error(f"Failed to get teacher count: {e}")
             raise SalesforceClientError(f"Failed to get teacher count: {e}")
 
+    def get_school_count(self) -> int:
+        """
+        Get the count of schools from the local database.
+
+        Returns:
+            int: Number of schools in the local database
+        """
+        try:
+            from models.school_model import School
+
+            count = School.query.count()
+            logger.info(f"Found {count} schools in local database")
+            return count
+        except Exception as e:
+            logger.error(f"Failed to get school count: {e}")
+            raise SalesforceClientError(f"Failed to get school count: {e}")
+
+    def get_district_count(self) -> int:
+        """
+        Get the count of districts from the local database.
+
+        Returns:
+            int: Number of districts in the local database
+        """
+        try:
+            from models.district_model import District
+
+            count = District.query.count()
+            logger.info(f"Found {count} districts in local database")
+            return count
+        except Exception as e:
+            logger.error(f"Failed to get district count: {e}")
+            raise SalesforceClientError(f"Failed to get district count: {e}")
+
+    def get_school_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get a sample of school records from the local database.
+
+        Args:
+            limit: Maximum number of records to return
+
+        Returns:
+            List of school records
+        """
+        try:
+            from models.school_model import School
+
+            schools = School.query.limit(limit).all()
+
+            # Convert to dictionary format
+            records = []
+            for school in schools:
+                record = {
+                    "id": school.id,
+                    "name": school.name,
+                    "district_id": school.district_id,
+                    "salesforce_district_id": school.salesforce_district_id,
+                    "normalized_name": school.normalized_name,
+                    "school_code": school.school_code,
+                    "level": school.level,
+                }
+                records.append(record)
+
+            logger.info(f"Retrieved {len(records)} school records from local database")
+            return records
+        except Exception as e:
+            logger.error(f"Failed to get school sample: {e}")
+            raise SalesforceClientError(f"Failed to get school sample: {e}")
+
+    def get_district_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get a sample of district records from the local database.
+
+        Args:
+            limit: Maximum number of records to return
+
+        Returns:
+            List of district records
+        """
+        try:
+            from models.district_model import District
+
+            districts = District.query.limit(limit).all()
+
+            # Convert to dictionary format
+            records = []
+            for district in districts:
+                record = {
+                    "id": district.id,
+                    "name": district.name,
+                    "salesforce_id": district.salesforce_id,
+                    "district_code": district.district_code,
+                }
+                records.append(record)
+
+            logger.info(
+                f"Retrieved {len(records)} district records from local database"
+            )
+            return records
+        except Exception as e:
+            logger.error(f"Failed to get district sample: {e}")
+            raise SalesforceClientError(f"Failed to get district sample: {e}")
+
     def get_volunteer_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get a sample of volunteer records from Salesforce."""
         cache_key = self._get_cache_key("volunteer_sample", limit=limit)
@@ -583,6 +686,8 @@ def get_entity_count(entity_type: str) -> int:
         "event": client.get_event_count,
         "student": client.get_student_count,
         "teacher": client.get_teacher_count,
+        "school": client.get_school_count,
+        "district": client.get_district_count,
     }
 
     if entity_type not in count_methods:

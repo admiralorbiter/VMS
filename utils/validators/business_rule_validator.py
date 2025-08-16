@@ -65,7 +65,15 @@ class BusinessRuleValidator(DataValidator):
             entity_types = (
                 [self.entity_type]
                 if self.entity_type != "all"
-                else ["volunteer", "organization", "event", "student", "teacher"]
+                else [
+                    "volunteer",
+                    "organization",
+                    "event",
+                    "student",
+                    "teacher",
+                    "school",
+                    "district",
+                ]
             )
 
             for entity_type in entity_types:
@@ -1454,6 +1462,10 @@ class BusinessRuleValidator(DataValidator):
                 return self.salesforce_client.get_student_sample(limit)
             elif entity_type == "teacher":
                 return self.salesforce_client.get_teacher_sample(limit)
+            elif entity_type == "school":
+                return self.salesforce_client.get_school_sample(limit)
+            elif entity_type == "district":
+                return self.salesforce_client.get_district_sample(limit)
             else:
                 logger.warning(f"Unknown entity type: {entity_type}")
                 return []

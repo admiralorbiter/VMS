@@ -202,7 +202,7 @@ class ValidationEngine:
         Run comprehensive validation for all validation types on specified entity.
 
         Args:
-            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher')
+            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher', 'school', 'district')
             run_type: Type of validation run
             name: Name for the validation run
             user_id: ID of the user initiating the validation

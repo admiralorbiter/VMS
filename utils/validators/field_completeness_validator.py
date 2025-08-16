@@ -36,7 +36,7 @@ class FieldCompletenessValidator(DataValidator):
 
         Args:
             run_id: ID of the validation run
-            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher')
+            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher', 'school', 'district')
         """
         super().__init__(run_id=run_id)
         self.entity_type = entity_type
@@ -78,6 +78,8 @@ class FieldCompletenessValidator(DataValidator):
                     "event",
                     "student",
                     "teacher",
+                    "school",
+                    "district",
                 ]
             else:
                 entities_to_validate = [self.entity_type]
@@ -196,6 +198,10 @@ class FieldCompletenessValidator(DataValidator):
                 return self.salesforce_client.get_student_sample(limit=limit)
             elif entity_type == "teacher":
                 return self.salesforce_client.get_teacher_sample(limit=limit)
+            elif entity_type == "school":
+                return self.salesforce_client.get_school_sample(limit=limit)
+            elif entity_type == "district":
+                return self.salesforce_client.get_district_sample(limit=limit)
             else:
                 logger.warning(f"Unknown entity type for sampling: {entity_type}")
                 return []

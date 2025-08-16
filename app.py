@@ -134,7 +134,15 @@ def api_quality_score():
 
             # Add validation results for all entities
             all_validation_results = []
-            for entity in ["volunteer", "organization", "event", "student", "teacher"]:
+            for entity in [
+                "volunteer",
+                "organization",
+                "event",
+                "student",
+                "teacher",
+                "school",
+                "district",
+            ]:
                 entity_results = get_filtered_validation_results(
                     entity, days, validation_type, severity_level
                 )
@@ -466,7 +474,16 @@ def api_run_multiple_validations():
     try:
         data = request.get_json()
         entity_types = data.get(
-            "entity_types", ["volunteer", "organization", "event", "student", "teacher"]
+            "entity_types",
+            [
+                "volunteer",
+                "organization",
+                "event",
+                "student",
+                "teacher",
+                "school",
+                "district",
+            ],
         )
         validation_type = data.get("validation_type", "comprehensive")
 

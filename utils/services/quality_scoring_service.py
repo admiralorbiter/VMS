@@ -50,6 +50,8 @@ class QualityScoringService:
             "event",
             "student",
             "teacher",
+            "school",
+            "district",
         ]
         self.default_validation_types = [
             "field_completeness",

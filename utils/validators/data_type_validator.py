@@ -37,7 +37,7 @@ class DataTypeValidator(DataValidator):
 
         Args:
             run_id: ID of the validation run
-            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher')
+            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher', 'school', 'district')
         """
         super().__init__(run_id=run_id)
         self.entity_type = entity_type
@@ -76,6 +76,8 @@ class DataTypeValidator(DataValidator):
                     "event",
                     "student",
                     "teacher",
+                    "school",
+                    "district",
                 ]
             else:
                 entities_to_validate = [self.entity_type]

@@ -78,7 +78,15 @@ def create_test_validation_runs():
 def create_test_results(run_id, run_date):
     """Create test validation results."""
 
-    entity_types = ["volunteer", "organization", "event", "student", "teacher"]
+    entity_types = [
+        "volunteer",
+        "organization",
+        "event",
+        "student",
+        "teacher",
+        "school",
+        "district",
+    ]
     validation_types = ["business_rules", "field_completeness", "data_types"]
     severities = ["info", "warning", "error", "critical"]
 
@@ -115,7 +123,16 @@ def create_test_metrics(run_id, run_date):
         "memory_usage",
     ]
 
-    entity_types = ["volunteer", "organization", "event", "student", "teacher", "all"]
+    entity_types = [
+        "volunteer",
+        "organization",
+        "event",
+        "student",
+        "teacher",
+        "school",
+        "district",
+        "all",
+    ]
 
     for metric_name in metric_names:
         for entity_type in entity_types:

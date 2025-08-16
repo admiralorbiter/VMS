@@ -723,6 +723,24 @@ VALIDATION_BUSINESS_RULES = {
                 "description": "Event title and start date are required",
             }
         },
+        "school": {
+            "required_fields_validation": {
+                "type": "business_constraint",
+                "fields": ["id", "name"],
+                "required": True,
+                "severity": "error",
+                "description": "School ID and name are required fields",
+            }
+        },
+        "district": {
+            "required_fields_validation": {
+                "type": "business_constraint",
+                "fields": ["id", "name"],
+                "required": True,
+                "severity": "error",
+                "description": "District ID and name are required fields",
+            }
+        },
     },
 }
 

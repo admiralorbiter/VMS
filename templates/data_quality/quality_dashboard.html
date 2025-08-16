@@ -533,6 +533,8 @@
                         <option value="event">Event</option>
                         <option value="student">Student</option>
                         <option value="teacher">Teacher</option>
+                        <option value="school">School</option>
+                        <option value="district">District</option>
                         <option value="all">All Entities</option>
                     </select>
                 </div>
@@ -1591,7 +1593,7 @@
             runAllButton.disabled = true;
 
             // Show progress message
-            alert('Running validations for all entity types...\n\nThis will validate: Volunteer, Organization, Event, Student, and Teacher data.\n\nPlease wait for completion.');
+            alert('Running validations for all entity types...\n\nThis will validate: Volunteer, Organization, Event, Student, Teacher, School, and District data.\n\nPlease wait for completion.');
 
             // Use the more efficient multiple validation endpoint
             fetch('/api/run-multiple-validations', {
@@ -1600,8 +1602,8 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    entity_types: ['volunteer', 'organization', 'event', 'student', 'teacher'],
-                    validation_type: 'count'
+                    entity_types: ['volunteer', 'organization', 'event', 'student', 'teacher', 'school', 'district'],
+                    validation_type: 'comprehensive'
                 })
             })
             .then(response => response.json())

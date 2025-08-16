@@ -576,7 +576,16 @@ Examples:
     count_parser = subparsers.add_parser("count", help="Run count validation")
     count_parser.add_argument(
         "--entity-type",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         default="all",
         help="Entity type to validate",
     )
@@ -590,7 +599,16 @@ Examples:
     )
     field_completeness_parser.add_argument(
         "--entity-type",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         default="all",
         help="Entity type to validate",
     )
@@ -604,7 +622,16 @@ Examples:
     )
     data_type_parser.add_argument(
         "--entity-type",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         default="all",
         help="Entity type to validate",
     )
@@ -619,7 +646,16 @@ Examples:
     relationship_parser.add_argument(
         "--entity-type",
         default="all",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         help="Entity type to validate (default: all)",
     )
     relationship_parser.add_argument(
@@ -633,7 +669,16 @@ Examples:
     business_rules_parser.add_argument(
         "--entity-type",
         default="all",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         help="Entity type to validate (default: all)",
     )
     business_rules_parser.add_argument(
@@ -647,7 +692,16 @@ Examples:
     comprehensive_parser.add_argument(
         "--entity-type",
         default="all",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         help="Entity type to validate (default: all)",
     )
     comprehensive_parser.add_argument(
@@ -692,7 +746,16 @@ Examples:
     )
     clear_parser.add_argument(
         "--entity-type",
-        choices=["all", "volunteer", "organization", "event", "student", "teacher"],
+        choices=[
+            "all",
+            "volunteer",
+            "organization",
+            "event",
+            "student",
+            "teacher",
+            "school",
+            "district",
+        ],
         help="Entity type to filter by (optional)",
     )
     clear_parser.add_argument(

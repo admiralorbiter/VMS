@@ -29,7 +29,7 @@ class CountValidator(DataValidator):
 
         Args:
             run_id: ID of the validation run
-            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher')
+            entity_type: Type of entity to validate ('all', 'volunteer', 'organization', 'event', 'student', 'teacher', 'school', 'district')
         """
         super().__init__(run_id=run_id)
         self.entity_type = entity_type
@@ -261,6 +261,14 @@ class CountValidator(DataValidator):
             return self._analyze_teacher_count_context(
                 vms_count, sf_count, difference, percentage_diff
             )
+        elif entity_type == "school":
+            return self._analyze_school_count_context(
+                vms_count, sf_count, difference, percentage_diff
+            )
+        elif entity_type == "district":
+            return self._analyze_district_count_context(
+                vms_count, sf_count, difference, percentage_diff
+            )
         else:
             # Default analysis for unknown entity types
             return self._analyze_default_count_context(
@@ -447,6 +455,64 @@ class CountValidator(DataValidator):
                 "quality_score": 50.0,
             }
 
+    def _analyze_school_count_context(
+        self, vms_count: int, sf_count: int, difference: int, percentage_diff: float
+    ) -> Dict:
+        """
+        Analyze school count context.
+
+        Schools are local entities, so they should have 0 Salesforce count.
+        """
+        # Schools are local entities, so Salesforce count should be 0
+        if sf_count == 0:
+            return {
+                "is_expected_discrepancy": True,
+                "difference": vms_count,
+                "percentage_diff": 100.0,
+                "business_context": "local_entity",
+                "explanation": "Schools are local entities managed in VMS, not imported from Salesforce",
+                "quality_score": 100.0,
+            }
+        else:
+            # If Salesforce has schools, this might indicate a configuration issue
+            return {
+                "is_expected_discrepancy": False,
+                "difference": difference,
+                "percentage_diff": percentage_diff,
+                "business_context": "configuration_issue",
+                "explanation": "Schools found in Salesforce when they should be local entities only",
+                "quality_score": 30.0,
+            }
+
+    def _analyze_district_count_context(
+        self, vms_count: int, sf_count: int, difference: int, percentage_diff: float
+    ) -> Dict:
+        """
+        Analyze district count context.
+
+        Districts are local entities, so they should have 0 Salesforce count.
+        """
+        # Districts are local entities, so Salesforce count should be 0
+        if sf_count == 0:
+            return {
+                "is_expected_discrepancy": True,
+                "difference": vms_count,
+                "percentage_diff": 100.0,
+                "business_context": "local_entity",
+                "explanation": "Districts are local entities managed in VMS, not imported from Salesforce",
+                "quality_score": 100.0,
+            }
+        else:
+            # If Salesforce has districts, this might indicate a configuration issue
+            return {
+                "is_expected_discrepancy": False,
+                "difference": difference,
+                "percentage_diff": percentage_diff,
+                "business_context": "configuration_issue",
+                "explanation": "Districts found in Salesforce when they should be local entities only",
+                "quality_score": 30.0,
+            }
+
     def _analyze_default_count_context(
         self, vms_count: int, sf_count: int, difference: int, percentage_diff: float
     ) -> Dict:
@@ -499,6 +565,14 @@ class CountValidator(DataValidator):
                 from models.teacher import Teacher
 
                 count = Teacher.query.count()
+            elif entity_type == "school":
+                from models.school_model import School
+
+                count = School.query.count()
+            elif entity_type == "district":
+                from models.district_model import District
+
+                count = District.query.count()
             else:
                 raise ValueError(f"Unknown entity type: {entity_type}")
 
@@ -524,6 +598,10 @@ class CountValidator(DataValidator):
                 return self.salesforce_client.get_student_count()
             elif entity_type == "teacher":
                 return self.salesforce_client.get_teacher_count()
+            elif entity_type == "school":
+                return self.salesforce_client.get_school_count()
+            elif entity_type == "district":
+                return self.salesforce_client.get_district_count()
             else:
                 raise ValueError(f"Unknown entity type: {entity_type}")
 
