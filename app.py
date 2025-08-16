@@ -91,6 +91,12 @@ def quality_dashboard():
     return render_template("data_quality/quality_dashboard.html")
 
 
+@app.route("/business_rules")
+def business_rules():
+    """Business rules documentation page."""
+    return render_template("data_quality/business_rules.html")
+
+
 @app.route("/api/quality-score", methods=["POST"])
 def api_quality_score():
     """API endpoint for calculating quality scores."""
@@ -136,14 +142,19 @@ def api_quality_score():
             result["validation_results"] = all_validation_results
         else:
             # Calculate score for specific entity
+            app.logger.info(
+                f"Calculating quality score for entity: {entity_type}, days: {days}"
+            )
             result = quality_service.calculate_entity_quality_score(
                 entity_type=entity_type, days=days, include_details=True
             )
+            app.logger.info(f"Quality service result: {result}")
 
             # Add detailed validation results (always include for dashboard)
             validation_results = get_filtered_validation_results(
                 entity_type, days, validation_type, severity_level
             )
+            app.logger.info(f"Validation results count: {len(validation_results)}")
             result["validation_results"] = validation_results
 
             # Add performance metrics
@@ -309,6 +320,9 @@ def get_filtered_validation_results(
         from models.validation import ValidationResult, ValidationRun
 
         cutoff_date = datetime.utcnow() - timedelta(days=days)
+        app.logger.info(
+            f"Looking for validation results for {entity_type} in last {days} days (cutoff: {cutoff_date})"
+        )
 
         # Get recent validation runs
         recent_runs = ValidationRun.query.filter(
@@ -317,8 +331,12 @@ def get_filtered_validation_results(
         ).all()
 
         run_ids = [run.id for run in recent_runs]
+        app.logger.info(f"Found {len(run_ids)} completed validation runs: {run_ids}")
 
         if not run_ids:
+            app.logger.warning(
+                f"No completed validation runs found in last {days} days"
+            )
             return []
 
         # Build query
@@ -335,6 +353,7 @@ def get_filtered_validation_results(
 
         # Limit results for performance
         results = query.limit(100).all()
+        app.logger.info(f"Found {len(results)} validation results for {entity_type}")
 
         return [result.to_dict() for result in results]
 

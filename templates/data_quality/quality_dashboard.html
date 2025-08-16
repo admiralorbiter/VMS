@@ -154,17 +154,39 @@
         }
 
         .validation-result-item {
-            border-left: 4px solid var(--info-color);
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
             background: white;
-            border-radius: 0 8px 8px 0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
         }
 
-        .validation-result-item.critical { border-left-color: var(--danger-color); }
-        .validation-result-item.error { border-left-color: var(--warning-color); }
-        .validation-result-item.warning { border-left-color: var(--warning-color); }
-        .validation-result-item.info { border-left-color: var(--info-color); }
+        .validation-result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .validation-result-item.critical {
+            border-left-color: var(--danger-color);
+            background: linear-gradient(135deg, #fff5f5, #fed7d7);
+        }
+
+        .validation-result-item.error {
+            border-left-color: var(--danger-color);
+            background: linear-gradient(135deg, #fff5f5, #fed7d7);
+        }
+
+        .validation-result-item.warning {
+            border-left-color: var(--warning-color);
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        }
+
+        .validation-result-item.info {
+            border-left-color: var(--info-color);
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        }
 
         .anomaly-indicator {
             background: linear-gradient(45deg, var(--warning-color), var(--danger-color));
@@ -249,6 +271,237 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Enhanced Business Rule Validation Styling */
+        .statistics-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+            border-left: 4px solid var(--info-color);
+            border-radius: 8px;
+        }
+
+        .statistics-section h6 {
+            color: var(--dark-color);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .field-requirements-section {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;
+            border-left: 4px solid var(--info-color);
+            border-radius: 8px;
+        }
+
+        .field-requirements-section h6 {
+            color: var(--dark-color);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .requirement-level-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .business-rule-insights {
+            margin-top: 1rem;
+        }
+
+        .business-rule-insights .card {
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .business-rule-insights .card-header {
+            background: linear-gradient(135deg, var(--info-color), var(--primary-color)) !important;
+        }
+
+        .business-rule-insights .card-body {
+            padding: 1.5rem;
+        }
+
+        .business-rule-insights .card-title {
+            color: white;
+            margin-bottom: 0;
+        }
+
+        /* Entity Breakdown Styling */
+        .entity-breakdown {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .entity-breakdown .card-header {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .entity-breakdown .table {
+            margin-bottom: 0;
+        }
+
+        .entity-breakdown .table th {
+            background: #f8f9fa;
+            border-top: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+
+        .entity-breakdown .table td {
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+
+        .entity-breakdown .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dimension-header {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--info-color);
+        }
+
+        .dimension-header h5 {
+            color: var(--dark-color);
+            margin: 0;
+        }
+
+        .dimension-header .btn {
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* Badge enhancements */
+        .badge {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.6rem;
+        }
+
+        .badge.bg-success {
+            background-color: #28a745 !important;
+        }
+
+        .badge.bg-warning {
+            background-color: #ffc107 !important;
+            color: #212529 !important;
+        }
+
+        .badge.bg-danger {
+            background-color: #dc3545 !important;
+        }
+
+        .badge.bg-info {
+            background-color: #17a2b8 !important;
+        }
+
+        .badge.bg-secondary {
+            background-color: #6c757d !important;
+        }
+
+        /* Loading states */
+        .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        /* Responsive table */
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Alert styling */
+        .alert-info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+
+        .alert-info .fas {
+            color: #17a2b8;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+
+        .alert-warning .fas {
+            color: #ffc107;
+        }
+
+        .result-header h6 {
+            color: var(--dark-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-content {
+            color: var(--dark-color);
+        }
+
+        .result-content strong {
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+
+        .result-details .text-success {
+            color: var(--success-color) !important;
+            font-weight: 500;
+        }
+
+        .result-details .text-danger {
+            color: var(--danger-color) !important;
+            font-weight: 500;
+        }
+
+        .impact-section {
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 6px;
+            border-left: 3px solid var(--warning-color);
+        }
+
+        .action-items ul {
+            padding-left: 1.5rem;
+        }
+
+        .action-items li {
+            margin-bottom: 0.5rem;
+            color: var(--dark-color);
+        }
+
+        /* Percentage display styling */
+        .percentage-display {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .percentage-high {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .percentage-medium {
+            background: var(--warning-color);
+            color: var(--dark-color);
+        }
+
+        .percentage-low {
+            background: var(--danger-color);
+            color: white;
+        }
+
+
     </style>
 </head>
 <body>
@@ -343,6 +596,9 @@
                         <button class="btn btn-outline-warning btn-sm" onclick="showAdvancedSettings()">
                             <i class="fas fa-cog me-1"></i>Settings
                         </button>
+                        <a href="/business_rules" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-book me-1"></i>Rules
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1491,14 +1747,30 @@
             document.getElementById('qualityScoreDisplay').style.display = 'block';
         }
 
-        // Display dimension scores
+        // Display dimension scores with entity breakdown
         function displayDimensionScores(dimensionScores) {
             const container = document.getElementById('dimensionScores');
             container.innerHTML = '';
 
+            // Add header for entity breakdown
+            const headerElement = document.createElement('div');
+            headerElement.className = 'dimension-header mb-3';
+            headerElement.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Overall Dimension Scores
+                    </h5>
+                    <button class="btn btn-sm btn-outline-info" onclick="toggleEntityBreakdown()">
+                        <i class="fas fa-list me-1"></i>Show Entity Breakdown
+                    </button>
+                </div>
+            `;
+            container.appendChild(headerElement);
+
+            // Display overall dimension scores
             Object.entries(dimensionScores).forEach(([dimension, score]) => {
                 const scoreElement = document.createElement('div');
-                scoreElement.className = 'metric-card';
+                scoreElement.className = 'metric-card mb-3';
                 scoreElement.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">${formatDimensionName(dimension)}</h6>
@@ -1514,6 +1786,274 @@
                 `;
                 container.appendChild(scoreElement);
             });
+
+            // Add entity breakdown section (initially hidden)
+            const breakdownElement = document.createElement('div');
+            breakdownElement.id = 'entityBreakdown';
+            breakdownElement.className = 'entity-breakdown mt-4';
+            breakdownElement.style.display = 'none';
+            breakdownElement.innerHTML = `
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-sitemap me-2"></i>Entity-by-Entity Breakdown
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="entityBreakdownContent">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Loading entity breakdown...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(breakdownElement);
+
+            // Load entity breakdown data
+            loadEntityBreakdown();
+        }
+
+        // Toggle entity breakdown visibility
+        function toggleEntityBreakdown() {
+            const breakdown = document.getElementById('entityBreakdown');
+            const button = document.querySelector('button[onclick="toggleEntityBreakdown()"]');
+
+            if (breakdown.style.display === 'none') {
+                breakdown.style.display = 'block';
+                button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Entity Breakdown';
+            } else {
+                breakdown.style.display = 'none';
+                button.innerHTML = '<i class="fas fa-list me-1"></i>Show Entity Breakdown';
+            }
+        }
+
+        // Load entity breakdown data
+        function loadEntityBreakdown() {
+            const entityTypes = ['volunteer', 'organization', 'event', 'student', 'teacher', 'school', 'district'];
+            const breakdownContent = document.getElementById('entityBreakdownContent');
+
+            // Create entity breakdown table
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Entity Type</th>
+                                <th>Business Rules</th>
+                                <th>Count Validation</th>
+                                <th>Field Completeness</th>
+                                <th>Data Types</th>
+                                <th>Relationships</th>
+                                <th>Overall Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Add rows for each entity type
+            entityTypes.forEach(entityType => {
+                tableHTML += `
+                    <tr>
+                        <td>
+                            <strong>${formatEntityName(entityType)}</strong>
+                            <br><small class="text-muted">${getEntityDescription(entityType)}</small>
+                        </td>
+                        <td id="br-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                        <td id="count-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                        <td id="fc-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                        <td id="dt-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                        <td id="rel-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                        <td id="overall-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                        <td id="status-${entityType}">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Legend:</strong>
+                        <span class="badge bg-success">Available</span> = Validation implemented and running,
+                        <span class="badge bg-warning">Limited</span> = Some validations available,
+                        <span class="badge bg-danger">Missing</span> = No validations implemented,
+                        <span class="badge bg-secondary">N/A</span> = Not applicable for this entity
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Next Steps:</strong> Business Rules validation is currently limited to required field validation.
+                        Consider implementing more complex business logic rules for better data quality assessment.
+                    </div>
+                </div>
+            `;
+
+            breakdownContent.innerHTML = tableHTML;
+
+            // Load individual entity scores
+            entityTypes.forEach(entityType => {
+                loadEntityScore(entityType);
+            });
+        }
+
+        // Load individual entity score
+        function loadEntityScore(entityType) {
+            fetch('/api/quality-score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    entity_type: entityType,
+                    days: 7
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(`Received data for ${entityType}:`, data);
+                    if (data.error) {
+                        console.error(`Error in response for ${entityType}:`, data.error);
+                        updateEntityBreakdownRow(entityType, { error: true });
+                    } else {
+                        updateEntityBreakdownRow(entityType, data);
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error loading ${entityType} score:`, error);
+                    updateEntityBreakdownRow(entityType, { error: true });
+                });
+        }
+
+        // Update entity breakdown row
+        function updateEntityBreakdownRow(entityType, data) {
+            if (data.error) {
+                // Show error state
+                document.getElementById(`br-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                document.getElementById(`count-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                document.getElementById(`fc-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                document.getElementById(`dt-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                document.getElementById(`rel-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                document.getElementById(`overall-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                document.getElementById(`status-${entityType}`).innerHTML = '<span class="badge bg-danger">Error</span>';
+                return;
+            }
+
+            const dimensionScores = data.dimension_scores || {};
+            const overallScore = data.quality_score || 0;
+
+            // Update each dimension
+            updateDimensionBadge(`br-${entityType}`, dimensionScores.business_rules, 'Business Rules');
+            updateDimensionBadge(`count-${entityType}`, dimensionScores.count_validation, 'Count Validation');
+            updateDimensionBadge(`fc-${entityType}`, dimensionScores.field_completeness, 'Field Completeness');
+            updateDimensionBadge(`dt-${entityType}`, dimensionScores.data_types, 'Data Types');
+            updateDimensionBadge(`rel-${entityType}`, dimensionScores.relationships, 'Relationships');
+
+            // Update overall score
+            document.getElementById(`overall-${entityType}`).innerHTML =
+                `<span class="badge ${getBadgeClass(overallScore)}">${overallScore.toFixed(1)}%</span>`;
+
+            // Update status
+            document.getElementById(`status-${entityType}`).innerHTML =
+                `<span class="badge ${getStatusBadgeClass(overallScore)}">${getQualityStatus(overallScore)}</span>`;
+        }
+
+        // Get entity description
+        function getEntityDescription(entityType) {
+            const descriptions = {
+                'volunteer': 'Contact records with volunteer activities',
+                'organization': 'Companies, schools, and institutions',
+                'event': 'Volunteer events and activities',
+                'student': 'Contact records for students',
+                'teacher': 'Contact records for teachers',
+                'school': 'Educational institutions',
+                'district': 'School districts'
+            };
+            return descriptions[entityType] || 'Data entity';
+        }
+
+        // Update dimension badge with availability indicator
+        function updateDimensionBadge(elementId, score, dimensionName) {
+            const element = document.getElementById(elementId);
+            if (score !== undefined && score !== null) {
+                // Score available - show the score
+                element.innerHTML = `<span class="badge ${getBadgeClass(score)}">${score.toFixed(1)}%</span>`;
+            } else {
+                // No score - check if this dimension should be available for this entity
+                const availability = getDimensionAvailability(dimensionName);
+                element.innerHTML = `<span class="badge ${availability.badge}">${availability.text}</span>`;
+            }
+        }
+
+        // Get dimension availability for different entity types
+        function getDimensionAvailability(dimensionName) {
+            // Enhanced availability based on actual configuration
+            const availability = {
+                'Business Rules': {
+                    badge: 'bg-warning',
+                    text: 'Limited',
+                    description: 'Basic required field validation implemented'
+                },
+                'Count Validation': {
+                    badge: 'bg-success',
+                    text: 'Available',
+                    description: 'Full count validation with context-aware scoring'
+                },
+                'Field Completeness': {
+                    badge: 'bg-success',
+                    text: 'Available',
+                    description: 'Complete field completeness validation'
+                },
+                'Data Types': {
+                    badge: 'bg-success',
+                    text: 'Available',
+                    description: 'Full data type validation with severity scoring'
+                },
+                'Relationships': {
+                    badge: 'bg-success',
+                    text: 'Available',
+                    description: 'Complete relationship validation including orphaned records'
+                }
+            };
+            return availability[dimensionName] || { badge: 'bg-secondary', text: 'N/A', description: 'Not implemented' };
+        }
+
+        // Get quality status text
+        function getQualityStatus(score) {
+            if (score >= 95) return 'Excellent';
+            if (score >= 85) return 'Good';
+            if (score >= 70) return 'Fair';
+            if (score >= 50) return 'Poor';
+            return 'Critical';
+        }
+
+        // Get status badge class
+        function getStatusBadgeClass(score) {
+            if (score >= 95) return 'bg-success';
+            if (score >= 85) return 'bg-info';
+            if (score >= 70) return 'bg-warning';
+            if (score >= 50) return 'bg-warning';
+            return 'bg-danger';
         }
 
         // Display entity scores grid
@@ -1576,10 +2116,23 @@
             document.getElementById('warningCount').textContent = counts.warning;
             document.getElementById('infoCount').textContent = counts.info;
 
+            // Display business rule insights if available
+            displayBusinessRuleInsights(results);
+
             // Display results with enhanced information
             results.forEach(result => {
                 const resultElement = document.createElement('div');
                 resultElement.className = `validation-result-item ${result.severity}`;
+
+                // Enhanced content for business rules with percentages and field requirements
+                let enhancedContent = '';
+
+                if (result.validation_type === 'business_rules' && result.metadata) {
+                    enhancedContent = getBusinessRuleEnhancedContent(result);
+                } else {
+                    enhancedContent = getStandardValidationContent(result);
+                }
+
                 resultElement.innerHTML = `
                     <div class="result-header mb-2">
                         <div class="d-flex justify-content-between align-items-start">
@@ -1598,34 +2151,262 @@
                     </div>
 
                     <div class="result-content">
-                        <p class="mb-2"><strong>Issue:</strong> ${result.message || 'No description available'}</p>
-
-                        <div class="result-details row mb-2">
-                            <div class="col-md-6">
-                                <strong>Expected:</strong>
-                                <span class="text-success">${result.expected_value || 'N/A'}</span>
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Actual:</strong>
-                                <span class="text-danger">${result.actual_value || 'N/A'}</span>
-                            </div>
-                        </div>
-
-                        <div class="impact-section mb-2">
-                            <strong>Impact:</strong>
-                            <span class="text-${getImpactColor(result.severity)}">${getImpactDescription(result.severity)}</span>
-                        </div>
-
-                        <div class="action-items">
-                            <strong>Recommended Actions:</strong>
-                            <ul class="mb-0 mt-1">
-                                ${getActionItems(result.validation_type, result.severity)}
-                            </ul>
-                        </div>
+                        ${enhancedContent}
                     </div>
                 `;
                 container.appendChild(resultElement);
             });
+        }
+
+        // Get enhanced content for business rule validations
+        function getBusinessRuleEnhancedContent(result) {
+            const metadata = result.metadata;
+            let content = '';
+
+            // Basic issue description
+            content += `<p class="mb-2"><strong>Issue:</strong> ${result.message || 'No description available'}</p>`;
+
+            // Show statistics if available (for cross-field validation)
+            if (metadata.statistics) {
+                const stats = metadata.statistics;
+                content += `
+                    <div class="statistics-section mb-3 p-3 bg-light rounded">
+                        <h6 class="mb-2"><i class="fas fa-chart-bar me-2"></i>Data Statistics</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Total Records:</strong> ${stats.total_records || 0}<br>
+                                <strong>Condition Met:</strong> ${stats.condition_met || 0}<br>
+                                <strong>Field Populated:</strong> ${stats.field_populated || 0}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Field Missing:</strong> ${stats.field_missing || 0}<br>
+                                <strong>Populated %:</strong> <span class="text-success">${(stats.populated_percentage || 0).toFixed(1)}%</span><br>
+                                <strong>Missing %:</strong> <span class="text-danger">${(stats.missing_percentage || 0).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show field requirement insights if available
+            if (metadata.field_requirements) {
+                const req = metadata.field_requirements;
+                content += `
+                    <div class="field-requirements-section mb-3 p-3 bg-info bg-opacity-10 rounded">
+                        <h6 class="mb-2"><i class="fas fa-info-circle me-2"></i>Field Requirement Analysis</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Requirement Level:</strong>
+                                <span class="badge bg-${getRequirementLevelColor(req.requirement_level)}">${req.requirement_level}</span><br>
+                                <strong>Business Rule Required:</strong> ${req.business_rule_required ? 'Yes' : 'No'}<br>
+                                <strong>Salesforce Required:</strong> ${req.salesforce_required ? 'Yes' : 'No'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Recommendation:</strong><br>
+                                <small class="text-muted">${req.recommendation || 'N/A'}</small>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong>Explanation:</strong><br>
+                            <small class="text-muted">${req.explanation || 'N/A'}</small>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Standard validation details
+            content += `
+                <div class="result-details row mb-2">
+                    <div class="col-md-6">
+                        <strong>Expected:</strong>
+                        <span class="text-success">${result.expected_value || 'N/A'}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Actual:</strong>
+                        <span class="text-danger">${result.actual_value || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <div class="impact-section mb-2">
+                    <strong>Impact:</strong>
+                    <span class="text-${getImpactColor(result.severity)}">${getImpactDescription(result.severity)}</span>
+                </div>
+
+                <div class="action-items">
+                    <strong>Recommended Actions:</strong>
+                    <ul class="mb-0 mt-1">
+                        ${getActionItems(result.validation_type, result.severity)}
+                    </ul>
+                </div>
+            `;
+
+            return content;
+        }
+
+        // Get standard validation content for non-business rule validations
+        function getStandardValidationContent(result) {
+            return `
+                <p class="mb-2"><strong>Issue:</strong> ${result.message || 'No description available'}</p>
+
+                <div class="result-details row mb-2">
+                    <div class="col-md-6">
+                        <strong>Expected:</strong>
+                        <span class="text-success">${result.expected_value || 'N/A'}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Actual:</strong>
+                        <span class="text-danger">${result.actual_value || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <div class="impact-section mb-2">
+                    <strong>Impact:</strong>
+                    <span class="text-${getImpactColor(result.severity)}">${getImpactDescription(result.severity)}</span>
+                </div>
+
+                <div class="action-items">
+                    <strong>Recommended Actions:</strong>
+                    <ul class="mb-0 mt-1">
+                        ${getActionItems(result.validation_type, result.severity)}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Display business rule validation insights
+        function displayBusinessRuleInsights(results) {
+            const businessRuleResults = results.filter(r => r.validation_type === 'business_rules');
+
+            if (businessRuleResults.length === 0) {
+                return;
+            }
+
+            // Create insights section if it doesn't exist
+            let insightsContainer = document.getElementById('businessRuleInsights');
+            if (!insightsContainer) {
+                const resultsSummary = document.getElementById('resultsSummary');
+                const insightsDiv = document.createElement('div');
+                insightsDiv.className = 'business-rule-insights mb-3';
+                insightsDiv.id = 'businessRuleInsights';
+                insightsDiv.innerHTML = `
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>
+                                Business Rule Validation Insights
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="businessRuleStats">
+                                <!-- Business rule statistics will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                `;
+                resultsSummary.parentNode.insertBefore(insightsDiv, resultsSummary.nextSibling);
+                insightsContainer = insightsDiv;
+            }
+
+            // Show business rule insights
+            insightsContainer.style.display = 'block';
+
+            const container = document.getElementById('businessRuleStats');
+            container.innerHTML = '';
+
+            // Extract cross-field validation statistics
+            const crossFieldStats = {};
+            businessRuleResults.forEach(result => {
+                if (result.metadata && result.metadata.statistics) {
+                    const stats = result.metadata.statistics;
+                    const fieldName = result.field_name.replace('_summary', '');
+
+                    if (!crossFieldStats[fieldName]) {
+                        crossFieldStats[fieldName] = {
+                            field_name: fieldName,
+                            total_records: stats.total_records || 0,
+                            condition_met: stats.condition_met || 0,
+                            field_populated: stats.field_populated || 0,
+                            field_missing: stats.field_missing || 0,
+                            populated_percentage: stats.populated_percentage || 0,
+                            missing_percentage: stats.missing_percentage || 0,
+                            field_required: stats.field_required || false
+                        };
+                    }
+                }
+            });
+
+            // Display cross-field validation insights
+            if (Object.keys(crossFieldStats).length > 0) {
+                Object.values(crossFieldStats).forEach(stats => {
+                    const insightElement = document.createElement('div');
+                    insightElement.className = 'col-md-6 mb-3';
+
+                    const severityClass = stats.missing_percentage >= 50 ? 'danger' :
+                                        stats.missing_percentage >= 25 ? 'warning' :
+                                        stats.missing_percentage >= 10 ? 'info' : 'success';
+
+                    insightElement.innerHTML = `
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title text-${severityClass}">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    ${stats.field_name}
+                                </h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">Total Records</small><br>
+                                        <strong>${stats.total_records}</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Condition Met</small><br>
+                                        <strong>${stats.condition_met}</strong>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-6">
+                                        <small class="text-muted">Populated</small><br>
+                                        <span class="text-success">${stats.field_populated} (${stats.populated_percentage.toFixed(1)}%)</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Missing</small><br>
+                                        <span class="text-${severityClass}">${stats.field_missing} (${stats.missing_percentage.toFixed(1)}%)</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Field Required:</small>
+                                    <span class="badge bg-${stats.field_required ? 'danger' : 'success'} ms-1">
+                                        ${stats.field_required ? 'Yes' : 'No'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(insightElement);
+                });
+            } else {
+                // Show general business rule summary
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Business rule validation completed with ${businessRuleResults.length} results.
+                            Check the detailed results below for specific insights.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Get color for requirement level badges
+        function getRequirementLevelColor(level) {
+            const colors = {
+                'strictly_required': 'danger',
+                'business_required': 'warning',
+                'salesforce_required': 'info',
+                'optional': 'success',
+                'unknown': 'secondary'
+            };
+            return colors[level] || 'secondary';
         }
 
         // Display performance metrics
@@ -1993,6 +2774,20 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
         });
+
+        // Get entity description
+        function getEntityDescription(entityType) {
+            const descriptions = {
+                'volunteer': 'Contact records with volunteer activities',
+                'organization': 'Companies, schools, and institutions',
+                'event': 'Volunteer events and activities',
+                'student': 'Contact records for students',
+                'teacher': 'Contact records for teachers',
+                'school': 'Educational institutions',
+                'district': 'School districts'
+            };
+            return descriptions[entityType] || 'Data entity';
+        }
     </script>
 </body>
 </html>

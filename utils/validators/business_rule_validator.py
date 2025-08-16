@@ -43,6 +43,14 @@ class BusinessRuleValidator(DataValidator):
         self.validation_settings = self.business_config.get("validation_settings", {})
         self.business_rules = self.business_config.get("business_rules", {})
 
+        # Debug logging to see what we're getting
+        logger.debug(
+            f"Business config keys: {list(self.business_config.keys()) if self.business_config else 'None'}"
+        )
+        logger.debug(
+            f"Business rules keys: {list(self.business_rules.keys()) if self.business_rules else 'None'}"
+        )
+
         logger.debug(
             f"Initialized BusinessRuleValidator for entity type: {entity_type}"
         )
@@ -583,20 +591,66 @@ class BusinessRuleValidator(DataValidator):
         """Validate business constraint rules."""
         results = []
 
-        # Get constraint configuration
+        # Get constraint configuration - support both old and new format
         constraint_type = rule_config.get("constraint_type")
-        field_name = rule_config.get("field_name")
+        field_name = rule_config.get("field_name")  # Old format: single field
+        fields = rule_config.get("fields", [])  # New format: multiple fields
         allowed_values = rule_config.get("allowed_values", [])
         min_value = rule_config.get("min_value")
         max_value = rule_config.get("max_value")
         required = rule_config.get("required", False)
 
-        if not field_name:
-            return results
+        # Handle new format with multiple fields
+        if fields and not field_name:
+            logger.debug(f"Processing multiple fields validation: {fields}")
+            for field in fields:
+                field_results = self._validate_single_field_constraint(
+                    entity_type,
+                    rule_name,
+                    field,
+                    required,
+                    allowed_values,
+                    min_value,
+                    max_value,
+                    sample_data,
+                )
+                results.extend(field_results)
+        # Handle old format with single field
+        elif field_name:
+            logger.debug(f"Processing single field validation: {field_name}")
+            field_results = self._validate_single_field_constraint(
+                entity_type,
+                rule_name,
+                field_name,
+                required,
+                allowed_values,
+                min_value,
+                max_value,
+                sample_data,
+            )
+            results.extend(field_results)
+        else:
+            logger.warning(
+                f"No field configuration found for business constraint rule: {rule_name}"
+            )
 
-        for i, record in enumerate(
-            sample_data[:3]
-        ):  # Only check first 3 records for debug
+        return results
+
+    def _validate_single_field_constraint(
+        self,
+        entity_type: str,
+        rule_name: str,
+        field_name: str,
+        required: bool,
+        allowed_values: List,
+        min_value: Optional[int],
+        max_value: Optional[int],
+        sample_data: List[Dict[str, Any]],
+    ) -> List[ValidationResult]:
+        """Validate a single field constraint."""
+        results = []
+
+        for i, record in enumerate(sample_data[:10]):  # Check first 10 records
             field_value = record.get(field_name)
 
             # Check if required field is missing
@@ -607,7 +661,7 @@ class BusinessRuleValidator(DataValidator):
                         entity_type=entity_type,
                         validation_type="business_rules",
                         field_name=field_name,
-                        severity="warning",
+                        severity="error",  # Use error for required field violations
                         message=f"Required field '{field_name}' is missing",
                         expected_value="Required field",
                         actual_value="Missing",
@@ -681,52 +735,64 @@ class BusinessRuleValidator(DataValidator):
                             )
                         )
 
-                # Check numeric range constraints (for numeric fields)
-                elif min_value is not None or max_value is not None:
-                    try:
-                        numeric_value = float(field_value)
-
-                        if min_value is not None and numeric_value < min_value:
-                            results.append(
-                                ValidationResult(
-                                    run_id=self.run_id,
-                                    entity_type=entity_type,
-                                    validation_type="business_rules",
-                                    field_name=field_name,
-                                    severity="warning",
-                                    message=f"Value {numeric_value} below minimum {min_value}",
-                                    expected_value=f"≥{min_value}",
-                                    actual_value=numeric_value,
-                                    metadata={
-                                        "rule_name": rule_name,
-                                        "record_id": record.get("Id"),
-                                    },
-                                )
+                    # Check for reasonable content (not just whitespace)
+                    if field_value.strip() == "":
+                        results.append(
+                            ValidationResult(
+                                run_id=self.run_id,
+                                entity_type=entity_type,
+                                validation_type="business_rules",
+                                field_name=field_name,
+                                severity="warning",
+                                message=f"Field '{field_name}' contains only whitespace",
+                                expected_value="Non-empty content",
+                                actual_value="Whitespace only",
+                                metadata={
+                                    "rule_name": rule_name,
+                                    "record_id": record.get("Id"),
+                                },
                             )
+                        )
 
-                        if max_value is not None and numeric_value > max_value:
-                            results.append(
-                                ValidationResult(
-                                    run_id=self.run_id,
-                                    entity_type=entity_type,
-                                    validation_type="business_rules",
-                                    field_name=field_name,
-                                    severity="warning",
-                                    message=f"Value {numeric_value} above maximum {max_value}",
-                                    expected_value=f"≤{max_value}",
-                                    actual_value=numeric_value,
-                                    metadata={
-                                        "rule_name": rule_name,
-                                        "record_id": record.get("Id"),
-                                    },
-                                )
+                # Check numeric constraints
+                elif isinstance(field_value, (int, float)):
+                    numeric_value = float(field_value)
+
+                    if min_value is not None and numeric_value < min_value:
+                        results.append(
+                            ValidationResult(
+                                run_id=self.run_id,
+                                entity_type=entity_type,
+                                validation_type="business_rules",
+                                field_name=field_name,
+                                severity="warning",
+                                message=f"Field '{field_name}' value too low: {numeric_value} (minimum: {min_value})",
+                                expected_value=f"≥{min_value}",
+                                actual_value=numeric_value,
+                                metadata={
+                                    "rule_name": rule_name,
+                                    "record_id": record.get("Id"),
+                                },
                             )
+                        )
 
-                    except (ValueError, TypeError):
-                        # Skip non-numeric values for range validation
-                        continue
-            else:
-                pass  # No debug print for None or empty field
+                    if max_value is not None and numeric_value > max_value:
+                        results.append(
+                            ValidationResult(
+                                run_id=self.run_id,
+                                entity_type=entity_type,
+                                validation_type="business_rules",
+                                field_name=field_name,
+                                severity="warning",
+                                message=f"Field '{field_name}' value too high: {numeric_value} (maximum: {max_value})",
+                                expected_value=f"≤{max_value}",
+                                actual_value=numeric_value,
+                                metadata={
+                                    "rule_name": rule_name,
+                                    "record_id": record.get("Id"),
+                                },
+                            )
+                        )
 
         return results
 
@@ -737,7 +803,7 @@ class BusinessRuleValidator(DataValidator):
         rule_config: Dict[str, Any],
         sample_data: List[Dict[str, Any]],
     ) -> List[ValidationResult]:
-        """Validate cross-field business rules."""
+        """Validate cross-field business rules with percentage calculations."""
         results = []
 
         # Get the field rules configuration
@@ -753,142 +819,187 @@ class BusinessRuleValidator(DataValidator):
             f"Validating {len(field_rules)} cross-field rules for {entity_type}"
         )
 
+        # Calculate statistics for each rule
+        rule_stats = {}
+
+        for rule in field_rules:
+            # Get rule configuration
+            if_field = rule.get("if_field")
+            if_value = rule.get("if_value")
+            then_field = rule.get("then_field")
+            then_required = rule.get("then_required", False)
+            then_min_value = rule.get("then_min_value")
+            then_max_value = rule.get("then_max_value")
+            message = rule.get("message", "Cross-field validation failed")
+
+            if not if_field or not then_field:
+                logger.warning(
+                    f"Cross-field rule missing required fields: if_field={if_field}, then_field={then_field}"
+                )
+                continue
+
+            # Initialize statistics for this rule
+            rule_key = f"{if_field}_{if_value}_{then_field}"
+            rule_stats[rule_key] = {
+                "total_records": 0,
+                "condition_met": 0,
+                "field_populated": 0,
+                "field_missing": 0,
+                "rule": rule,
+            }
+
+        # Analyze all records first to get statistics
         for record in sample_data:
             for rule in field_rules:
-                # Get rule configuration
                 if_field = rule.get("if_field")
                 if_value = rule.get("if_value")
                 then_field = rule.get("then_field")
-                then_required = rule.get("then_required", False)
-                then_min_value = rule.get("then_min_value")
-                then_max_value = rule.get("then_max_value")
-                message = rule.get("message", "Cross-field validation failed")
 
-                if not if_field or not then_field:
-                    logger.warning(
-                        f"Cross-field rule missing required fields: if_field={if_field}, then_field={then_field}"
-                    )
-                    continue
+                rule_key = f"{if_field}_{if_value}_{then_field}"
+                stats = rule_stats[rule_key]
 
-                # Check if the condition is met
+                # Count total records
+                stats["total_records"] += 1
+
+                # Check if condition is met
                 if_field_value = record.get(if_field)
                 condition_met = if_field_value == if_value
 
                 if condition_met:
-                    logger.debug(
-                        f"Condition met for {entity_type} record {record.get('Id')}: {if_field}={if_field_value}"
-                    )
+                    stats["condition_met"] += 1
 
-                    # Validate the dependent field based on the condition
+                    # Check if dependent field is populated
                     then_field_value = record.get(then_field)
+                    if then_field_value and then_field_value != "":
+                        stats["field_populated"] += 1
+                    else:
+                        stats["field_missing"] += 1
 
-                    # Check if required field is missing
-                    if then_required and (
-                        then_field_value is None or then_field_value == ""
-                    ):
-                        results.append(
-                            ValidationResult(
-                                run_id=self.run_id,
-                                entity_type=entity_type,
-                                validation_type="business_rules",
-                                field_name=then_field,
-                                severity="warning",
-                                message=message,
-                                expected_value="Required field (due to cross-field rule)",
-                                actual_value="Missing",
-                                metadata={
-                                    "rule_name": rule_name,
-                                    "cross_field_rule": rule,
-                                    "record_id": record.get("Id"),
-                                },
-                            )
-                        )
-                        continue
+        # Now validate and create results with statistics
+        for rule in field_rules:
+            if_field = rule.get("if_field")
+            if_value = rule.get("if_value")
+            then_field = rule.get("then_field")
+            then_required = rule.get("then_required", False)
+            then_min_value = rule.get("then_min_value")
+            then_max_value = rule.get("then_max_value")
+            message = rule.get("message", "Cross-field validation failed")
 
-                    # Check numeric range constraints if specified
-                    if (
-                        then_field_value is not None
-                        and then_field_value != ""
-                        and (then_min_value is not None or then_max_value is not None)
-                    ):
-                        try:
-                            numeric_value = float(then_field_value)
+            rule_key = f"{if_field}_{if_value}_{then_field}"
+            stats = rule_stats[rule_key]
 
-                            if (
-                                then_min_value is not None
-                                and numeric_value < then_min_value
-                            ):
-                                results.append(
-                                    ValidationResult(
-                                        run_id=self.run_id,
-                                        entity_type=entity_type,
-                                        validation_type="business_rules",
-                                        field_name=then_field,
-                                        severity="warning",
-                                        message=f"{message} - Value below minimum",
-                                        expected_value=f"≥{then_min_value}",
-                                        actual_value=numeric_value,
-                                        metadata={
-                                            "rule_name": rule_name,
-                                            "cross_field_rule": rule,
-                                            "record_id": record.get("Id"),
-                                        },
-                                    )
-                                )
+            # Calculate percentages
+            total_condition_records = stats["condition_met"]
+            if total_condition_records > 0:
+                populated_percentage = (
+                    stats["field_populated"] / total_condition_records
+                ) * 100
+                missing_percentage = (
+                    stats["field_missing"] / total_condition_records
+                ) * 100
+            else:
+                populated_percentage = 0.0
+                missing_percentage = 0.0
 
-                            if (
-                                then_max_value is not None
-                                and numeric_value > then_max_value
-                            ):
-                                results.append(
-                                    ValidationResult(
-                                        run_id=self.run_id,
-                                        entity_type=entity_type,
-                                        validation_type="business_rules",
-                                        field_name=then_field,
-                                        severity="warning",
-                                        message=f"{message} - Value above maximum",
-                                        expected_value=f"≤{then_max_value}",
-                                        actual_value=numeric_value,
-                                        metadata={
-                                            "rule_name": rule_name,
-                                            "cross_field_rule": rule,
-                                            "record_id": record.get("Id"),
-                                        },
-                                    )
-                                )
+            # Log statistics
+            logger.info(
+                f"Cross-field rule '{rule_key}' statistics: "
+                f"Total records: {stats['total_records']}, "
+                f"Condition met: {total_condition_records}, "
+                f"Field populated: {stats['field_populated']} ({populated_percentage:.1f}%), "
+                f"Field missing: {stats['field_missing']} ({missing_percentage:.1f}%)"
+            )
 
-                        except (ValueError, TypeError):
-                            # Skip non-numeric values for range validation
-                            logger.debug(
-                                f"Could not convert {then_field} value to numeric for range validation: {then_field_value}"
-                            )
-                            continue
+            # Create validation results with enhanced metadata
+            if total_condition_records > 0:
+                # Add summary result with statistics
+                summary_message = (
+                    f"{message} - {missing_percentage:.1f}% of {if_value} records missing {then_field} "
+                    f"({stats['field_missing']} out of {total_condition_records})"
+                )
 
-                    # If all validations pass, add a success result
-                    if then_field_value is not None and then_field_value != "":
-                        results.append(
-                            ValidationResult(
-                                run_id=self.run_id,
-                                entity_type=entity_type,
-                                validation_type="business_rules",
-                                field_name=f"{if_field}_{then_field}",
-                                severity="info",
-                                message=f"Cross-field rule passed: {if_field}={if_value} -> {then_field} is valid",
-                                expected_value=f"Valid {then_field} when {if_field}={if_value}",
-                                actual_value=f"{then_field}={then_field_value}",
-                                metadata={
-                                    "rule_name": rule_name,
-                                    "cross_field_rule": rule,
-                                    "record_id": record.get("Id"),
-                                },
-                            )
-                        )
+                # Determine severity based on percentage missing
+                if missing_percentage >= 50:
+                    severity = "critical"
+                elif missing_percentage >= 25:
+                    severity = "error"
+                elif missing_percentage >= 10:
+                    severity = "warning"
                 else:
-                    # Condition not met - this is fine, no validation needed
-                    logger.debug(
-                        f"Condition not met for {entity_type} record {record.get('Id')}: {if_field}={if_field_value} != {if_value}"
+                    severity = "info"
+
+                # Add summary result
+                results.append(
+                    ValidationResult(
+                        run_id=self.run_id,
+                        entity_type=entity_type,
+                        validation_type="business_rules",
+                        field_name=f"{then_field}_summary",
+                        severity=severity,
+                        message=summary_message,
+                        expected_value=f"All {if_value} records should have {then_field} populated",
+                        actual_value=f"{populated_percentage:.1f}% populated, {missing_percentage:.1f}% missing",
+                        metadata={
+                            "rule_name": rule_name,
+                            "cross_field_rule": rule,
+                            "statistics": {
+                                "total_records": stats["total_records"],
+                                "condition_met": total_condition_records,
+                                "field_populated": stats["field_populated"],
+                                "field_missing": stats["field_missing"],
+                                "populated_percentage": populated_percentage,
+                                "missing_percentage": missing_percentage,
+                                "field_required": then_required,
+                            },
+                            "rule_type": "cross_field_summary",
+                            "field_requirements": self._evaluate_field_requirements(
+                                entity_type, then_field
+                            ),
+                        },
                     )
+                )
+
+                # Add individual record results for missing fields (if any)
+                if stats["field_missing"] > 0:
+                    for record in sample_data:
+                        if_field_value = record.get(if_field)
+                        condition_met = if_field_value == if_value
+
+                        if condition_met:
+                            then_field_value = record.get(then_field)
+
+                            # Check if required field is missing
+                            if then_required and (
+                                then_field_value is None or then_field_value == ""
+                            ):
+                                results.append(
+                                    ValidationResult(
+                                        run_id=self.run_id,
+                                        entity_type=entity_type,
+                                        validation_type="business_rules",
+                                        field_name=then_field,
+                                        severity=severity,
+                                        message=f"{message} - Record {record.get('Id', 'Unknown')}",
+                                        expected_value="Required field (due to cross-field rule)",
+                                        actual_value="Missing",
+                                        metadata={
+                                            "rule_name": rule_name,
+                                            "cross_field_rule": rule,
+                                            "record_id": record.get("Id"),
+                                            "statistics": {
+                                                "total_records": stats["total_records"],
+                                                "condition_met": total_condition_records,
+                                                "field_populated": stats[
+                                                    "field_populated"
+                                                ],
+                                                "field_missing": stats["field_missing"],
+                                                "populated_percentage": populated_percentage,
+                                                "missing_percentage": missing_percentage,
+                                                "field_required": then_required,
+                                            },
+                                        },
+                                    )
+                                )
 
         return results
 
@@ -1018,7 +1129,7 @@ class BusinessRuleValidator(DataValidator):
         return results
 
     def _add_summary_metrics(self, results: List[ValidationResult]):
-        """Add summary metrics for the validation run."""
+        """Add summary metrics for the validation run with enhanced insights."""
         if not results:
             return
 
@@ -1031,6 +1142,20 @@ class BusinessRuleValidator(DataValidator):
 
         # Calculate data quality score
         quality_score = self._calculate_quality_score(results)
+
+        # Calculate percentages
+        if total_checks > 0:
+            passed_percentage = (passed_checks / total_checks) * 100
+            warning_percentage = (warnings / total_checks) * 100
+            error_percentage = (errors / total_checks) * 100
+            critical_percentage = (critical / total_checks) * 100
+        else:
+            passed_percentage = warning_percentage = error_percentage = (
+                critical_percentage
+            ) = 0.0
+
+        # Analyze cross-field validation statistics
+        cross_field_stats = self._analyze_cross_field_statistics(results)
 
         # Add overall metrics
         self.add_metric(
@@ -1054,8 +1179,26 @@ class BusinessRuleValidator(DataValidator):
         self.add_metric(
             ValidationMetric(
                 run_id=self.run_id,
+                metric_name="business_rule_passed_percentage",
+                metric_value=passed_percentage,
+                entity_type="all",
+            )
+        )
+
+        self.add_metric(
+            ValidationMetric(
+                run_id=self.run_id,
                 metric_name="business_rule_warnings",
                 metric_value=warnings,
+                entity_type="all",
+            )
+        )
+
+        self.add_metric(
+            ValidationMetric(
+                run_id=self.run_id,
+                metric_name="business_rule_warning_percentage",
+                metric_value=warning_percentage,
                 entity_type="all",
             )
         )
@@ -1072,8 +1215,26 @@ class BusinessRuleValidator(DataValidator):
         self.add_metric(
             ValidationMetric(
                 run_id=self.run_id,
+                metric_name="business_rule_error_percentage",
+                metric_value=error_percentage,
+                entity_type="all",
+            )
+        )
+
+        self.add_metric(
+            ValidationMetric(
+                run_id=self.run_id,
                 metric_name="business_rule_critical",
                 metric_value=critical,
+                entity_type="all",
+            )
+        )
+
+        self.add_metric(
+            ValidationMetric(
+                run_id=self.run_id,
+                metric_name="business_rule_critical_percentage",
+                metric_value=critical_percentage,
                 entity_type="all",
             )
         )
@@ -1090,6 +1251,26 @@ class BusinessRuleValidator(DataValidator):
                 )
             )
 
+        # Add cross-field validation statistics
+        for field_name, stats in cross_field_stats.items():
+            self.add_metric(
+                ValidationMetric(
+                    run_id=self.run_id,
+                    metric_name=f"cross_field_{field_name}_missing_percentage",
+                    metric_value=stats["missing_percentage"],
+                    entity_type="all",
+                )
+            )
+
+            self.add_metric(
+                ValidationMetric(
+                    run_id=self.run_id,
+                    metric_name=f"cross_field_{field_name}_populated_percentage",
+                    metric_value=stats["populated_percentage"],
+                    entity_type="all",
+                )
+            )
+
         # Add data quality score metric
         self.add_metric(
             ValidationMetric(
@@ -1100,9 +1281,58 @@ class BusinessRuleValidator(DataValidator):
             )
         )
 
+        # Log comprehensive summary
+        logger.info(
+            f"Business rule validation summary: "
+            f"Total: {total_checks}, "
+            f"Passed: {passed_checks} ({passed_percentage:.1f}%), "
+            f"Warnings: {warnings} ({warning_percentage:.1f}%), "
+            f"Errors: {errors} ({error_percentage:.1f}%), "
+            f"Critical: {critical} ({critical_percentage:.1f}%), "
+            f"Quality Score: {quality_score:.1f}%"
+        )
+
+        # Log cross-field validation insights
+        if cross_field_stats:
+            logger.info("Cross-field validation insights:")
+            for field_name, stats in cross_field_stats.items():
+                logger.info(
+                    f"  {field_name}: {stats['missing_percentage']:.1f}% missing "
+                    f"({stats['field_missing']} out of {stats['condition_met']} records)"
+                )
+
         # Add trend analysis metrics if enabled
         if self.validation_settings.get("enable_trend_analysis", False):
             self._add_trend_metrics(results, quality_score)
+
+    def _analyze_cross_field_statistics(
+        self, results: List[ValidationResult]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Analyze cross-field validation statistics from results."""
+        cross_field_stats = {}
+
+        for result in results:
+            if result.validation_type == "business_rules" and result.metadata:
+                metadata = result.metadata
+
+                # Check if this is a cross-field summary result
+                if metadata.get("rule_type") == "cross_field_summary":
+                    field_name = result.field_name.replace("_summary", "")
+                    if "statistics" in metadata:
+                        stats = metadata["statistics"]
+                        cross_field_stats[field_name] = {
+                            "total_records": stats.get("total_records", 0),
+                            "condition_met": stats.get("condition_met", 0),
+                            "field_populated": stats.get("field_populated", 0),
+                            "field_missing": stats.get("field_missing", 0),
+                            "populated_percentage": stats.get(
+                                "populated_percentage", 0.0
+                            ),
+                            "missing_percentage": stats.get("missing_percentage", 0.0),
+                            "field_required": stats.get("field_required", False),
+                        }
+
+        return cross_field_stats
 
     def _calculate_quality_score(self, results: List[ValidationResult]) -> float:
         """Calculate data quality score based on validation results."""
@@ -1287,3 +1517,156 @@ class BusinessRuleValidator(DataValidator):
         except Exception as e:
             logger.warning(f"Could not apply rule template: {e}")
             return rule_config
+
+    def _evaluate_field_requirements(
+        self, entity_type: str, field_name: str
+    ) -> Dict[str, Any]:
+        """Evaluate whether a field is truly required vs optional based on business context."""
+        try:
+            # Get field requirements from configuration
+            field_requirements = self._get_field_requirements(entity_type, field_name)
+
+            # Check if field exists in Salesforce schema
+            schema_info = self._get_salesforce_field_info(entity_type, field_name)
+
+            # Determine actual requirement level
+            requirement_level = self._determine_requirement_level(
+                field_requirements, schema_info, entity_type, field_name
+            )
+
+            return {
+                "field_name": field_name,
+                "entity_type": entity_type,
+                "requirement_level": requirement_level,
+                "business_rule_required": field_requirements.get("required", False),
+                "salesforce_required": schema_info.get("required", False),
+                "recommendation": self._get_requirement_recommendation(
+                    requirement_level
+                ),
+                "explanation": self._get_requirement_explanation(
+                    requirement_level, field_name
+                ),
+            }
+
+        except Exception as e:
+            logger.warning(
+                f"Could not evaluate field requirements for {field_name}: {e}"
+            )
+            return {
+                "field_name": field_name,
+                "entity_type": entity_type,
+                "requirement_level": "unknown",
+                "business_rule_required": False,
+                "salesforce_required": False,
+                "recommendation": "Investigate field requirements",
+                "explanation": f"Could not determine requirements due to error: {e}",
+            }
+
+    def _get_field_requirements(
+        self, entity_type: str, field_name: str
+    ) -> Dict[str, Any]:
+        """Get field requirements from configuration."""
+        try:
+            if entity_type in self.business_rules:
+                entity_rules = self.business_rules[entity_type]
+
+                # Check cross-field validation rules
+                if "cross_field_validation" in entity_rules:
+                    cross_field_rules = entity_rules["cross_field_validation"]
+                    field_rules = cross_field_rules.get("field_rules", [])
+
+                    for rule in field_rules:
+                        if rule.get("then_field") == field_name:
+                            return {
+                                "required": rule.get("then_required", False),
+                                "rule_type": "cross_field",
+                                "condition": f"{rule.get('if_field')} = {rule.get('if_value')}",
+                                "message": rule.get("message", ""),
+                            }
+
+                # Check other business rule types
+                for rule_name, rule_config in entity_rules.items():
+                    if rule_config.get("field_name") == field_name:
+                        return {
+                            "required": rule_config.get("required", False),
+                            "rule_type": rule_config.get("type", "unknown"),
+                            "severity": rule_config.get("severity", "info"),
+                            "description": rule_config.get("description", ""),
+                        }
+
+            return {"required": False, "rule_type": "none"}
+
+        except Exception as e:
+            logger.warning(f"Could not get field requirements for {field_name}: {e}")
+            return {"required": False, "rule_type": "error"}
+
+    def _get_salesforce_field_info(
+        self, entity_type: str, field_name: str
+    ) -> Dict[str, Any]:
+        """Get field information from Salesforce schema (placeholder for future enhancement)."""
+        # This would ideally query Salesforce metadata API
+        # For now, return basic info based on field name patterns
+        try:
+            # Common Salesforce field patterns
+            if field_name.endswith("__c"):
+                # Custom field - check if it's commonly required
+                if field_name in ["Contact_Type__c", "Status__c"]:
+                    return {"required": True, "field_type": "custom_picklist"}
+                else:
+                    return {"required": False, "field_type": "custom_field"}
+            elif field_name in ["FirstName", "LastName", "Email"]:
+                return {"required": True, "field_type": "standard_required"}
+            elif field_name in ["Phone", "Title", "Department"]:
+                return {"required": False, "field_type": "standard_optional"}
+            else:
+                return {"required": False, "field_type": "unknown"}
+
+        except Exception as e:
+            logger.warning(f"Could not get Salesforce field info for {field_name}: {e}")
+            return {"required": False, "field_type": "error"}
+
+    def _determine_requirement_level(
+        self,
+        field_requirements: Dict[str, Any],
+        schema_info: Dict[str, Any],
+        entity_type: str,
+        field_name: str,
+    ) -> str:
+        """Determine the actual requirement level for a field."""
+        business_required = field_requirements.get("required", False)
+        salesforce_required = schema_info.get("required", False)
+
+        if business_required and salesforce_required:
+            return "strictly_required"
+        elif business_required and not salesforce_required:
+            return "business_required"
+        elif not business_required and salesforce_required:
+            return "salesforce_required"
+        else:
+            return "optional"
+
+    def _get_requirement_recommendation(self, requirement_level: str) -> str:
+        """Get recommendation based on requirement level."""
+        recommendations = {
+            "strictly_required": "Field is required by both business rules and Salesforce - must be populated",
+            "business_required": "Field is required by business rules but not Salesforce - consider making it required in Salesforce",
+            "salesforce_required": "Field is required by Salesforce but not business rules - review business logic",
+            "optional": "Field is optional - populate if it adds value to your processes",
+            "unknown": "Field requirements unclear - investigate further",
+        }
+        return recommendations.get(requirement_level, "Investigate field requirements")
+
+    def _get_requirement_explanation(
+        self, requirement_level: str, field_name: str
+    ) -> str:
+        """Get detailed explanation of field requirements."""
+        explanations = {
+            "strictly_required": f"{field_name} is mandatory for data integrity and compliance",
+            "business_required": f"{field_name} is required by your business processes but not enforced by Salesforce",
+            "salesforce_required": f"{field_name} is required by Salesforce but may not be essential for your business",
+            "optional": f"{field_name} is optional and can be populated based on business needs",
+            "unknown": f"Unable to determine if {field_name} is required - needs investigation",
+        }
+        return explanations.get(
+            requirement_level, f"Field {field_name} requirements need investigation"
+        )

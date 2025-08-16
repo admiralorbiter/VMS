@@ -86,6 +86,25 @@ class QualityScoringService:
             else:
                 results = self._get_validation_results_by_entity(entity_type, days)
 
+                # If no results found in the specified time period, try to get the most recent validation run
+                if not results:
+                    self.logger.info(
+                        f"No validation results found for {entity_type} in last {days} days, checking most recent run"
+                    )
+                    latest_run = (
+                        ValidationRun.query.filter_by(status="completed")
+                        .order_by(ValidationRun.id.desc())
+                        .first()
+                    )
+
+                    if latest_run:
+                        results = self._get_validation_results_by_run(
+                            latest_run.id, entity_type
+                        )
+                        self.logger.info(
+                            f"Found {len(results)} results from most recent run {latest_run.id}"
+                        )
+
             if not results:
                 return {
                     "entity_type": entity_type,
@@ -97,6 +116,9 @@ class QualityScoringService:
 
             # Calculate individual dimension scores
             dimension_scores = self._calculate_dimension_scores(results, entity_type)
+
+            # Log the dimension scores for debugging
+            self.logger.info(f"Dimension scores for {entity_type}: {dimension_scores}")
 
             # Calculate composite quality score
             composite_score = self._calculate_composite_score(
@@ -211,6 +233,28 @@ class QualityScoringService:
                     ),
                 }
 
+            # Add dimension scores for comprehensive view
+            # Get the most recent validation run for all entities
+            latest_run = (
+                ValidationRun.query.filter_by(status="completed")
+                .order_by(ValidationRun.id.desc())
+                .first()
+            )
+
+            if latest_run:
+                # Calculate aggregate dimension scores across all entities
+                all_results = ValidationResult.query.filter_by(
+                    run_id=latest_run.id
+                ).all()
+
+                if all_results:
+                    report["dimension_scores"] = (
+                        self._calculate_aggregate_dimension_scores(all_results)
+                    )
+                    self.logger.info(
+                        f"Added dimension scores to comprehensive report: {report['dimension_scores']}"
+                    )
+
             # Add trend analysis if requested
             if include_trends:
                 report["trends"] = self._calculate_overall_trends(entity_types, days)
@@ -279,29 +323,44 @@ class QualityScoringService:
                     results_by_type[validation_type] = []
                 results_by_type[validation_type].append(result)
 
+            # Debug logging to see what validation types we found
+            self.logger.info(
+                f"Found validation types for {entity_type}: {list(results_by_type.keys())}"
+            )
+            self.logger.info(f"Total results for {entity_type}: {len(results)}")
+
+            for validation_type, type_results in results_by_type.items():
+                self.logger.info(
+                    f"Validation type '{validation_type}': {len(type_results)} results"
+                )
+
             # Initialize relationship results list
             relationship_results = []
 
             # Calculate scores for each dimension
             for validation_type, type_results in results_by_type.items():
+                self.logger.info(
+                    f"Processing validation type '{validation_type}' with {len(type_results)} results"
+                )
+
                 if validation_type == "count":
-                    dimension_scores["count_validation"] = (
-                        self._calculate_count_validation_score(type_results)
-                    )
+                    score = self._calculate_count_validation_score(type_results)
+                    dimension_scores["count_validation"] = score
+                    self.logger.info(f"Count validation score: {score}")
                 elif validation_type == "field_completeness":
-                    dimension_scores["field_completeness"] = (
-                        self._calculate_field_completeness_score(type_results)
-                    )
+                    score = self._calculate_field_completeness_score(type_results)
+                    dimension_scores["field_completeness"] = score
+                    self.logger.info(f"Field completeness score: {score}")
                 elif (
                     validation_type == "data_type_validation"
                 ):  # Fix: match actual validation type
-                    dimension_scores["data_types"] = self._calculate_data_type_score(
-                        type_results
-                    )
+                    score = self._calculate_data_type_score(type_results)
+                    dimension_scores["data_types"] = score
+                    self.logger.info(f"Data type score: {score}")
                 elif validation_type == "business_rules":
-                    dimension_scores["business_rules"] = (
-                        self._calculate_business_rule_score(type_results)
-                    )
+                    score = self._calculate_business_rule_score(type_results)
+                    dimension_scores["business_rules"] = score
+                    self.logger.info(f"Business rules score: {score}")
                 elif validation_type in [
                     "relationships",
                     "orphaned_record",
@@ -311,13 +370,23 @@ class QualityScoringService:
                 ]:
                     # Group all relationship-related validation types
                     relationship_results.extend(type_results)
+                    self.logger.info(
+                        f"Added {len(type_results)} results to relationship validation"
+                    )
+                else:
+                    self.logger.warning(
+                        f"Unknown validation type: '{validation_type}' - skipping"
+                    )
 
             # Calculate relationship score from all grouped results
             if relationship_results:
-                dimension_scores["relationships"] = self._calculate_relationship_score(
-                    relationship_results
-                )
+                score = self._calculate_relationship_score(relationship_results)
+                dimension_scores["relationships"] = score
+                self.logger.info(f"Relationship score: {score}")
 
+            self.logger.info(
+                f"Final dimension scores for {entity_type}: {dimension_scores}"
+            )
             return dimension_scores
 
         except Exception as e:
@@ -527,6 +596,85 @@ class QualityScoringService:
                 return 100.0
 
         return composite_score
+
+    def _calculate_aggregate_dimension_scores(
+        self, all_results: List[ValidationResult]
+    ) -> Dict:
+        """
+        Calculate aggregate dimension scores across all entities.
+
+        This method aggregates validation results from all entities to provide
+        overall dimension scores for the comprehensive report.
+        """
+        try:
+            # Initialize dimension scores
+            dimension_scores = {
+                "field_completeness": 0.0,
+                "data_types": 0.0,
+                "business_rules": 0.0,
+                "relationships": 0.0,
+                "count_validation": 0.0,
+            }
+
+            # Group results by validation type
+            results_by_type = {}
+            for result in all_results:
+                validation_type = result.validation_type
+                if validation_type not in results_by_type:
+                    results_by_type[validation_type] = []
+                results_by_type[validation_type].append(result)
+
+            # Initialize relationship results list
+            relationship_results = []
+
+            # Calculate scores for each dimension
+            for validation_type, type_results in results_by_type.items():
+                if validation_type == "count":
+                    dimension_scores["count_validation"] = (
+                        self._calculate_count_validation_score(type_results)
+                    )
+                elif validation_type == "field_completeness":
+                    dimension_scores["field_completeness"] = (
+                        self._calculate_field_completeness_score(type_results)
+                    )
+                elif validation_type == "data_type_validation":
+                    dimension_scores["data_types"] = self._calculate_data_type_score(
+                        type_results
+                    )
+                elif validation_type == "business_rules":
+                    dimension_scores["business_rules"] = (
+                        self._calculate_business_rule_score(type_results)
+                    )
+                elif validation_type in [
+                    "relationships",
+                    "orphaned_record",
+                    "optional_relationship_population",
+                    "relationship_completeness",
+                    "required_relationship",
+                ]:
+                    # Group all relationship-related validation types
+                    relationship_results.extend(type_results)
+
+            # Calculate relationship score from all grouped results
+            if relationship_results:
+                dimension_scores["relationships"] = self._calculate_relationship_score(
+                    relationship_results
+                )
+
+            self.logger.info(
+                f"Aggregate dimension scores calculated: {dimension_scores}"
+            )
+            return dimension_scores
+
+        except Exception as e:
+            self.logger.error(f"Error calculating aggregate dimension scores: {e}")
+            return {
+                "field_completeness": 0.0,
+                "data_types": 0.0,
+                "business_rules": 0.0,
+                "relationships": 0.0,
+                "count_validation": 0.0,
+            }
 
     def _determine_quality_status(self, score: float, threshold: float) -> str:
         """Determine quality status based on score and threshold."""
