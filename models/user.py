@@ -163,14 +163,14 @@ class User(db.Model, UserMixin):
     api_token = db.Column(db.String(64), unique=True, index=True)
     token_expiry = db.Column(db.DateTime)
 
-    # Audit timestamps - timezone-aware with DB-side defaults
+    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), nullable=False
+        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        server_default=db.func.now(),
-        onupdate=db.func.now(),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False,
     )
 

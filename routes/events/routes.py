@@ -108,7 +108,7 @@ def safe_parse_delivery_hours(value):
 events_bp = Blueprint("events", __name__)
 
 
-def process_event_row(row, success_count, error_count, errors):
+def process_event_row(row, success_count, error_count, errors, skipped_count):
     """
     Process a single event row from Salesforce data
 
@@ -121,24 +121,25 @@ def process_event_row(row, success_count, error_count, errors):
         success_count (int): Running count of successful operations
         error_count (int): Running count of failed operations
         errors (list): List to collect error messages
+        skipped_count (int): Running count of skipped events (already exist)
 
     Returns:
-        tuple: Updated (success_count, error_count)
+        tuple: Updated (success_count, error_count, skipped_count)
     """
     try:
         # Get initial data to check
         parent_account = row.get("Parent_Account__c")
         district_name = row.get("District__c")
         school_id = row.get("School__c")
+        event_name = row.get("Name", "").strip()
 
-        # Skip events missing all three identifiers
-        if not any([parent_account, district_name, school_id]):
+        # Only skip events that are completely unusable
+        if not event_name:
             event_id = row.get("Id", "unknown")
-            event_name = row.get("Name", "unknown")
             errors.append(
-                f"Skipping event {event_id} ({event_name}): Missing all required identifiers (Parent_Account__c, District__c, and School__c)"
+                f"Skipping event {event_id}: Missing event name/title (required field)"
             )
-            return success_count, error_count + 1
+            return success_count, error_count + 1, skipped_count
 
         # Get or create event
         event_id = row.get("Id")
@@ -146,19 +147,18 @@ def process_event_row(row, success_count, error_count, errors):
         is_new = event is None
 
         if not event:
-            # Ensure required fields for new events
-            if not row.get("Name"):  # Title is required by validation
-                raise ValueError("Event name/title is required")
-
             event = Event(
-                title=row.get("Name", "").strip(),  # Ensure title is not empty
+                title=event_name,
                 salesforce_id=event_id,
             )
             db.session.add(event)
+        else:
+            # Event already exists - this is expected behavior
+            print(f"  Event already exists: {event_name} (ID: {event_id})")
+            return success_count, error_count, skipped_count + 1
 
         # Update event fields
-        if row.get("Name"):  # Only update if name exists
-            event.title = row.get("Name").strip()
+        event.title = event_name
 
         # Update basic event fields
         event.type = map_session_type(row.get("Session_Type__c", ""))
@@ -204,25 +204,51 @@ def process_event_row(row, success_count, error_count, errors):
             if school:
                 event.school = school_id  # Store the Salesforce ID
                 school_district = school.district
+                print(
+                    f"  Linked event to school: {school.name} (district: {school_district.name if school_district else 'None'})"
+                )
+            else:
+                print(
+                    f"  Warning: School with Salesforce ID {school_id} not found in database"
+                )
 
         # Handle District relationship
         # If District__c is empty, use Parent_Account__c instead
         if not district_name and parent_account:
             district_name = parent_account
+            print(f"  Using Parent_Account__c as district: {district_name}")
 
         # Try to get the district
         district = None
         if district_name and district_name in DISTRICT_MAPPINGS:
             mapped_name = DISTRICT_MAPPINGS[district_name]
             district = District.query.filter_by(name=mapped_name).first()
+            if district:
+                print(
+                    f"  Mapped district '{district_name}' to '{mapped_name}' (ID: {district.id})"
+                )
+            else:
+                print(
+                    f"  Warning: Mapped district '{mapped_name}' not found in database"
+                )
+        elif district_name:
+            print(
+                f"  Warning: District '{district_name}' not found in DISTRICT_MAPPINGS"
+            )
 
         # Clear and reassign districts if we have a valid district to assign
         if district or school_district:
             event.districts = []  # Clear existing districts
             if school_district:
                 event.districts.append(school_district)
+                print(f"  Added school district: {school_district.name}")
             if district and district not in event.districts:
                 event.districts.append(district)
+                print(f"  Added mapped district: {district.name}")
+        else:
+            print(
+                f"  Warning: No valid district found for event (District__c: {district_name}, Parent_Account__c: {parent_account})"
+            )
 
         # Store original district name for reference
         event.district_partner = district_name if district_name else None
@@ -251,12 +277,12 @@ def process_event_row(row, success_count, error_count, errors):
                 event.skills.append(skill)
 
         db.session.flush()  # Flush to catch validation errors early
-        return success_count + (1 if is_new else 0), error_count
+        return success_count + (1 if is_new else 0), error_count, skipped_count
 
     except Exception as e:
         db.session.rollback()
         errors.append(f"Error processing event {row.get('Id', 'unknown')}: {str(e)}")
-        return success_count, error_count + 1
+        return success_count, error_count + 1, skipped_count
 
 
 def process_participation_row(row, success_count, error_count, errors):
@@ -1056,6 +1082,7 @@ def import_events_from_salesforce():
         success_count = 0
         error_count = 0
         errors = []
+        skipped_count = 0
 
         # Connect to Salesforce
         sf = Salesforce(
@@ -1089,8 +1116,8 @@ def import_events_from_salesforce():
         for row in events_rows:
             status = row.get("Session_Status__c", "Unknown")
             status_counts[status] = status_counts.get(status, 0) + 1
-            success_count, error_count = process_event_row(
-                row, success_count, error_count, errors
+            success_count, error_count, skipped_count = process_event_row(
+                row, success_count, error_count, errors, skipped_count
             )
 
         print("\nEvents by status:")
@@ -1130,27 +1157,44 @@ def import_events_from_salesforce():
 
         # Print summary and errors
         print(
-            f"\nSuccessfully processed {success_count} events and {participant_success} participants with {error_count + participant_error} total errors"
+            f"\nSuccessfully processed {success_count} events and {participant_success} participants"
         )
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors[:50]:  # Only print first 50 errors
-                print(f"- {error}")
 
-        # Truncate errors list to 50 items
-        truncated_errors = errors[:50]
-        if len(errors) > 50:
-            truncated_errors.append(f"... and {len(errors) - 50} more errors")
+        if skipped_count > 0:
+            print(f"Skipped {skipped_count} events (already exist in system)")
+
+        # Separate actual errors from expected skips
+        actual_errors = [e for e in errors if "Error processing" in e]
+        skipped_events = [e for e in errors if "Skipping event" in e]
+
+        if skipped_events:
+            print(f"\nSkipped {len(skipped_events)} events (missing required data):")
+            for skip in skipped_events[:20]:  # Show first 20 skips
+                print(f"  - {skip}")
+            if len(skipped_events) > 20:
+                print(f"  ... and {len(skipped_events) - 20} more skipped events")
+
+        if actual_errors:
+            print(f"\nActual errors encountered: {len(actual_errors)}")
+            for error in actual_errors[:10]:  # Show first 10 errors
+                print(f"  - {error}")
+            if len(actual_errors) > 10:
+                print(f"  ... and {len(actual_errors) - 10} more errors")
+
+        print(f"\nTotal events from Salesforce: {len(events_rows)}")
+        print(f"Total participants from Salesforce: {len(participant_rows)}")
 
         return jsonify(
             {
                 "success": True,
-                "message": (
-                    f"Successfully processed {success_count} events and "
-                    f"{participant_success} participants with "
-                    f"{error_count + participant_error} total errors"
-                ),
-                "errors": truncated_errors,
+                "message": f"Import completed successfully",
+                "events_processed": success_count,
+                "events_skipped": skipped_count,
+                "participants_processed": participant_success,
+                "total_events_from_salesforce": len(events_rows),
+                "total_participants_from_salesforce": len(participant_rows),
+                "errors": actual_errors[:50],  # Limit errors in response
+                "skipped_events": skipped_events[:50],  # Limit skips in response
             }
         )
 

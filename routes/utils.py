@@ -85,6 +85,20 @@ DISTRICT_MAPPINGS = {
     "DE SOTO": "DE SOTO",
     "INDEPENDENT": "INDEPENDENT",
     "CENTER 58 SCHOOL DISTRICT": "CENTER 58 SCHOOL DISTRICT",
+    # Add missing districts from your database
+    "Kansas City Kansas Public Schools": "Kansas City Kansas Public Schools",
+    "Hickman Mills School District": "Hickman Mills School District",
+    "Grandview School District": "Grandview School District",
+    "Center School District": "Center School District",
+    "Kansas City Public Schools (MO)": "Kansas City Public Schools (MO)",
+    "Allen Village - District": "Allen Village - District",
+    # Add common variations and aliases
+    "KCKPS": "Kansas City Kansas Public Schools",
+    "KCPS": "Kansas City Public Schools (MO)",
+    "Hickman Mills": "Hickman Mills School District",
+    "Grandview": "Grandview School District",
+    "Center": "Center School District",
+    "Allen Village": "Allen Village - District",
 }
 
 

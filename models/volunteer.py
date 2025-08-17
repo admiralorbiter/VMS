@@ -170,14 +170,14 @@ class ConnectorData(db.Model):
     last_login_datetime = db.Column(String(50))  # Last time they logged in
     last_update_date = db.Column(Date)  # Last time their record was updated
 
-    # Automatic timestamp tracking (timezone-aware, DB-side defaults)
+    # Automatic timestamp tracking (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        DateTime(timezone=True), server_default=db.func.now(), nullable=True
+        DateTime(timezone=True), default=datetime.utcnow, nullable=True
     )
     updated_at = db.Column(
         DateTime(timezone=True),
-        server_default=db.func.now(),
-        onupdate=db.func.now(),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=True,
     )
 

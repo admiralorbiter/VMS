@@ -5,6 +5,11 @@ Configuration package for VMS.
 
 import os
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 class Config:
     """Base configuration class."""
@@ -25,6 +30,12 @@ class Config:
     WTF_CSRF_SECRET_KEY = (
         os.environ.get("WTF_CSRF_SECRET_KEY") or "csrf-secret-key-change-in-production"
     )
+
+    # Salesforce configuration
+    SF_USERNAME = os.environ.get("SF_USERNAME")
+    SF_PASSWORD = os.environ.get("SF_PASSWORD")
+    SF_SECURITY_TOKEN = os.environ.get("SF_SECURITY_TOKEN")
+    SF_DOMAIN = os.environ.get("SF_DOMAIN", "login")
 
 
 class DevelopmentConfig(Config):

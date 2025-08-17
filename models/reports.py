@@ -111,7 +111,7 @@ class DistrictYearEndReport(db.Model):
     report_data = db.Column(db.JSON, nullable=False)
     events_data = db.Column(db.JSON, nullable=True)
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     district = db.relationship("District", backref="year_end_reports")
@@ -179,7 +179,7 @@ class DistrictEngagementReport(db.Model):
     breakdown_data = db.Column(db.JSON, nullable=True)
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     district = db.relationship("District", backref="engagement_reports")
@@ -245,7 +245,7 @@ class OrganizationReport(db.Model):
     volunteers_data = db.Column(db.JSON, nullable=True)
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     organization = db.relationship("Organization", backref="cached_reports")
@@ -292,7 +292,7 @@ class OrganizationSummaryCache(db.Model):
     school_year = db.Column(db.String(4), nullable=False, index=True)  # e.g., '2425'
     organizations_data = db.Column(db.JSON)  # Cached organization summary data
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     def __repr__(self):
@@ -348,7 +348,7 @@ class OrganizationDetailCache(db.Model):
     summary_stats = db.Column(db.JSON)  # Summary statistics
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Unique constraint to prevent duplicates
@@ -372,7 +372,7 @@ class FirstTimeVolunteerReportCache(db.Model):
     school_year = db.Column(db.String(4), nullable=False, index=True)
     report_data = db.Column(db.JSON, nullable=False)
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
     __table_args__ = (
         db.UniqueConstraint("school_year", name="uq_first_time_volunteer_report_cache"),
@@ -428,7 +428,7 @@ class VirtualSessionReportCache(db.Model):
     filter_options = db.Column(db.JSON, nullable=True)  # Available filter options
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     __table_args__ = (

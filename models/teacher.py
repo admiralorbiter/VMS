@@ -207,10 +207,10 @@ class Teacher(Contact):
         String(18), nullable=True
     )  # Remove ForeignKey constraint
 
-    # Metadata (timezone-aware, DB-side defaults)
-    created_at = db.Column(DateTime(timezone=True), server_default=db.func.now())
+    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
+    created_at = db.Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = db.Column(
-        DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # Enhanced event tracking

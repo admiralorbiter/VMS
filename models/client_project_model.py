@@ -163,9 +163,10 @@ class ClientProject(db.Model):
     project_dates = db.Column(db.String(100))
     number_of_students = db.Column(db.Integer)
 
-    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
     updated_at = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), onupdate=db.func.now()
+        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     def to_dict(self):

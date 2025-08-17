@@ -146,15 +146,15 @@ class Organization(db.Model):
     billing_postal_code = db.Column(String(255), nullable=True)
     billing_country = db.Column(String(255), nullable=True)
 
-    # Automatic timestamp fields for audit trail (timezone-aware, DB-side defaults)
+    # Automatic timestamp fields for audit trail (timezone-aware, Python-side defaults)
     # last_activity_date: Manually set to track business-level activity
     created_at = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), nullable=False
+        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        server_default=db.func.now(),
-        onupdate=db.func.now(),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False,
     )
     last_activity_date = db.Column(db.DateTime, nullable=True)
@@ -295,14 +295,14 @@ class VolunteerOrganization(db.Model):
         String(50), default="Current"
     )  # e.g., 'Current', 'Past', 'Pending'
 
-    # Automatic timestamps for audit trail (timezone-aware, DB-side defaults)
+    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now(), nullable=False
+        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        server_default=db.func.now(),
-        onupdate=db.func.now(),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False,
     )
 

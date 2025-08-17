@@ -505,16 +505,16 @@ class Event(db.Model):
     professionals = db.Column(db.Text)  # Consider normalizing this data
     professional_ids = db.Column(db.Text)  # Consider normalizing this data
 
-    # Timestamps for auditing (timezone-aware, DB-side defaults)
+    # Timestamps for auditing (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True),
-        server_default=db.func.now(),
+        default=datetime.utcnow,
         nullable=False,
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        server_default=db.func.now(),
-        onupdate=db.func.now(),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False,
     )
 

@@ -165,5 +165,6 @@ class BugReport(db.Model):
     )
     resolution_notes = db.Column(db.Text)
 
-    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
     resolved_at = db.Column(db.DateTime)
