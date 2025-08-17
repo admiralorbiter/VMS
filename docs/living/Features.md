@@ -85,6 +85,12 @@ canonical: "/docs/living/Features.md"
   - [ ] Implement validation performance monitoring
   - [ ] Add import operation performance tracking
 
+- [ ] **Import Performance Investigation** 🔍 **Identified**
+  - [ ] Investigate student participation import for affiliations performance
+  - [ ] Add comprehensive logging to import operations
+  - [ ] Analyze import bottlenecks and optimization opportunities
+  - [ ] Implement performance monitoring for import operations
+
 #### **Performance Optimization** (Secondary Focus)
 - [ ] **Smart Sampling Implementation**
   - [ ] Develop intelligent sampling algorithms for large datasets

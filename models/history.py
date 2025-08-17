@@ -171,9 +171,9 @@ class History(db.Model):
 
     # Foreign Keys - Define relationships with other models
     event_id = db.Column(db.Integer, db.ForeignKey("event.id"))
-    # CASCADE ensures that when a volunteer is deleted, all related history records are also deleted
-    volunteer_id = db.Column(
-        db.Integer, db.ForeignKey("volunteer.id"), nullable=False, index=True
+    # Contact ID - can be volunteer, teacher, or other contact types
+    contact_id = db.Column(
+        db.Integer, db.ForeignKey("contact.id"), nullable=False, index=True
     )
 
     # Core Activity Fields
@@ -194,9 +194,7 @@ class History(db.Model):
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    # Note: updated_at column removed to match current database schema
 
     # Status and Integration Fields
     is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete flag
@@ -229,8 +227,8 @@ class History(db.Model):
         foreign_keys=[event_id],  # Explicitly specify foreign key
     )
 
-    volunteer = db.relationship(
-        "Volunteer",
+    contact = db.relationship(
+        "Contact",
         backref=db.backref("histories", lazy="dynamic", cascade="all, delete-orphan"),
         passive_deletes=True,  # Works with ondelete="CASCADE" for better performance
     )
@@ -241,7 +239,7 @@ class History(db.Model):
     __table_args__ = (
         # Composite index for common queries
         db.Index(
-            "idx_volunteer_activity_date", "volunteer_id", "activity_date", "is_deleted"
+            "idx_contact_activity_date", "contact_id", "activity_date", "is_deleted"
         ),
     )
 
@@ -282,7 +280,7 @@ class History(db.Model):
         Soft delete the history record.
 
         Marks the record as deleted without actually removing it from the database.
-        Updates the updated_by_id and timestamp.
+        Updates the updated_by_id.
 
         Args:
             user_id: ID of user performing the deletion
@@ -291,7 +289,6 @@ class History(db.Model):
             self: For method chaining
         """
         self.is_deleted = True
-        self.updated_at = datetime.now(timezone.utc)
         self.updated_by_id = user_id
         return self
 
@@ -299,7 +296,7 @@ class History(db.Model):
         """
         Restore a soft-deleted history record.
 
-        Unmarks the record as deleted and updates the updated_by_id and timestamp.
+        Unmarks the record as deleted and updates the updated_by_id.
 
         Args:
             user_id: ID of user performing the restoration
@@ -308,9 +305,34 @@ class History(db.Model):
             self: For method chaining
         """
         self.is_deleted = False
-        self.updated_at = datetime.now(timezone.utc)
         self.updated_by_id = user_id
         return self
+
+    @property
+    def volunteer_id(self):
+        """
+        Backward compatibility property for volunteer_id.
+        Returns contact_id if the contact is a volunteer, None otherwise.
+        """
+        if hasattr(self.contact, "type") and self.contact.type == "volunteer":
+            return self.contact.id
+        return None
+
+    @property
+    def teacher_id(self):
+        """
+        Returns contact_id if the contact is a teacher, None otherwise.
+        """
+        if hasattr(self.contact, "type") and self.contact.type == "teacher":
+            return self.contact.id
+        return None
+
+    @property
+    def contact_type(self):
+        """
+        Returns the type of contact (volunteer, teacher, etc.)
+        """
+        return getattr(self.contact, "type", None) if self.contact else None
 
     @property
     def is_recent(self):
@@ -333,7 +355,10 @@ class History(db.Model):
         """
         return {
             "id": self.id,
-            "volunteer_id": self.volunteer_id,
+            "contact_id": self.contact_id,
+            "volunteer_id": self.volunteer_id,  # Backward compatibility
+            "teacher_id": self.teacher_id,  # New field
+            "contact_type": self.contact_type,  # New field
             "activity_date": (
                 self.activity_date.isoformat() if self.activity_date else None
             ),
@@ -341,9 +366,7 @@ class History(db.Model):
             "history_type": self.history_type,
             "is_deleted": self.is_deleted,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": (
-                self.last_modified_at.isoformat() if self.last_modified_at else None
-            ),
+            "updated_at": None,  # Column removed from database schema
             "created_by": (
                 self.created_by.username
                 if self.created_by and self.created_by.username

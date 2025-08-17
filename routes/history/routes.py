@@ -73,12 +73,13 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, flash, jsonify, render_template, request
 from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
 from config import Config
 from models import db
 from models.event import Event
 from models.history import History
+from models.teacher import Teacher
 from models.volunteer import Volunteer
 from routes.utils import parse_date
 
@@ -408,6 +409,26 @@ def import_history_from_salesforce():
         result = sf.query_all(task_query)
         task_rows = result.get("records", [])
         print(f"Found {len(task_rows)} Task records in Salesforce")
+        print(f"Total records to process: {len(task_rows)}")
+
+        # Sample the first few records to see data structure
+        if task_rows:
+            print("\n=== SAMPLE SALESFORCE DATA ===")
+            for i, row in enumerate(task_rows[:3]):
+                print(f"Record {i+1}:")
+                print(f"  ID: {row.get('Id', 'None')}")
+                print(f"  Subject: {row.get('Subject', 'None')}")
+                print(f"  WhoId: {row.get('WhoId', 'None')}")
+                print(f"  Type: {row.get('Type', 'None')}")
+                print(f"  Status: {row.get('Status', 'None')}")
+                print(f"  ActivityDate: {row.get('ActivityDate', 'None')}")
+                print(f"  WhatId: {row.get('WhatId', 'None')}")
+                print("  ---")
+
+        # Initialize counters for better tracking
+        already_exists_count = 0
+        no_contact_count = 0
+        other_skip_reasons = 0
 
         # Use no_autoflush to prevent premature flushing
         with db.session.no_autoflush:
@@ -418,32 +439,57 @@ def import_history_from_salesforce():
                         skipped_count += 1
                         continue
 
-                    volunteer = Volunteer.query.filter_by(
+                    # Search across all contact types (volunteers, teachers, etc.) except students
+                    # First try to find a volunteer
+                    contact = Volunteer.query.filter_by(
                         salesforce_individual_id=row["WhoId"]
                     ).first()
 
-                    if not volunteer:
+                    # If no volunteer found, try to find a teacher
+                    if not contact:
+                        contact = Teacher.query.filter_by(
+                            salesforce_individual_id=row["WhoId"]
+                        ).first()
+
+                    # If still no contact found, skip this record
+                    if not contact:
+                        no_contact_count += 1
                         skipped_count += 1
-                        errors.append(
-                            f"Skipped Task record {row.get('Subject', 'Unknown')}: No matching volunteer found"
-                        )
+                        error_msg = f"Skipped Task record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): No matching contact found for WhoId: {row.get('WhoId', 'None')}"
+                        print(f"NO_CONTACT: {error_msg}")
+                        errors.append(error_msg)
                         continue
 
-                    # Check if history exists
-                    history = History.query.filter_by(salesforce_id=row["Id"]).first()
+                    # Use the found contact (could be volunteer or teacher)
+                    volunteer = contact
+
+                    # Check if history exists - use raw SQL to avoid schema issues
+                    history_result = db.session.execute(
+                        text(
+                            "SELECT id FROM history WHERE salesforce_id = :salesforce_id AND is_deleted = 0"
+                        ),
+                        {"salesforce_id": row["Id"]},
+                    ).fetchone()
+                    history = history_result is not None
 
                     # Handle activity date before creating new record
                     activity_date = parse_date(row.get("ActivityDate")) or datetime.now(
                         timezone.utc
                     )
 
-                    if not history:
-                        history = History(
-                            volunteer_id=volunteer.id,
-                            activity_date=activity_date,
-                            history_type="note",  # Default type
-                        )
-                        db.session.add(history)
+                    if history:
+                        # Record already exists in system
+                        already_exists_count += 1
+                        skipped_count += 1
+                        continue
+
+                    # Create new history record
+                    history = History(
+                        contact_id=volunteer.id,  # Use contact_id for any contact type
+                        activity_date=activity_date,
+                        history_type="note",  # Default type
+                    )
+                    db.session.add(history)
 
                     # Update history fields with proper type conversion
                     history.salesforce_id = row["Id"]
@@ -495,14 +541,22 @@ def import_history_from_salesforce():
 
                 except Exception as e:
                     error_count += 1
-                    errors.append(
-                        f"Error processing Task record {row.get('Subject', 'Unknown')}: {str(e)}"
-                    )
+                    other_skip_reasons += 1
+                    # Add more detailed error logging
+                    error_msg = f"Error processing Task record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): {str(e)}"
+                    print(f"ERROR: {error_msg}")
+                    errors.append(error_msg)
                     continue
 
             # Final commit
             try:
                 db.session.commit()
+                print(f"Import completed successfully!")
+                print(f"  - New records created: {success_count}")
+                print(f"  - Records already exist: {already_exists_count}")
+                print(f"  - No matching contact: {no_contact_count}")
+                print(f"  - Other errors: {other_skip_reasons}")
+                print(f"  - Total skipped: {skipped_count}")
             except Exception as e:
                 db.session.rollback()
                 return (
@@ -525,6 +579,11 @@ def import_history_from_salesforce():
                     "success": success_count,
                     "errors": error_count,
                     "skipped": skipped_count,
+                    "skipped_details": {
+                        "already_exists": already_exists_count,
+                        "no_contact": no_contact_count,
+                        "other_reasons": other_skip_reasons,
+                    },
                 },
                 "errors": errors[:100],
             }
