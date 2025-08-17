@@ -396,6 +396,79 @@ Last Updated: 2024
             </div>
         </div>
 
+        {# Connector Information - Moved next to Skills & Activity Summary #}
+        {% if volunteer.connector %}
+        <div class="profile-card connector-info">
+            <div class="card-header">
+                <i class="fa-solid fa-plug"></i>
+                <h2>Connector Information</h2>
+            </div>
+            <div class="card-content">
+                <div class="demographics-row">
+                    {% if volunteer.connector.active_subscription %}
+                    <div class="info-group">
+                        <label>Status</label>
+                        <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
+                            {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if volunteer.connector.role %}
+                    <div class="info-group">
+                        <label>Role</label>
+                        <span class="role-badge">{{ volunteer.connector.role }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# Connector Dates and ID #}
+                <div class="demographics-row">
+                    {% if volunteer.connector.joining_date %}
+                    <div class="info-group">
+                        <label>Joined</label>
+                        <p>{{ volunteer.connector.joining_date }}</p>
+                    </div>
+                    {% endif %}
+                    {% if volunteer.connector.last_update_date %}
+                    <div class="info-group">
+                        <label>Last Update</label>
+                        <p>{{ volunteer.connector.last_update_date.strftime('%m/%d/%y') if volunteer.connector.last_update_date else 'N/A' }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if volunteer.connector.user_auth_id %}
+                <div class="info-group">
+                    <label>Connector User ID</label>
+                    <p class="connector-user-id">{{ volunteer.connector.user_auth_id }}</p>
+                </div>
+                {% endif %}
+
+                {# Connector Profile Link #}
+                {% if volunteer.connector.user_auth_id %}
+                <div class="info-group">
+                    <label>Connector Profile</label>
+                    <div class="connector-profile-link">
+                        <a href="https://prepkc.nepris.com/app/user/{{ volunteer.connector.user_auth_id }}"
+                           target="_blank"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fa-solid fa-external-link-alt"></i>
+                            View Profile
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if volunteer.connector.last_login_datetime %}
+                <div class="info-group">
+                    <label>Last Login</label>
+                    <p>{{ volunteer.connector.last_login_datetime }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {# Event Participation History - Compact #}
         <div class="profile-card participation-card">
             <div class="card-header">
@@ -491,50 +564,6 @@ Last Updated: 2024
                 {% endfor %}
             </div>
         </div>
-
-        {# Connector Information - Conditional #}
-        {% if volunteer.connector %}
-        <div class="profile-card connector-info">
-            <div class="card-header">
-                <i class="fa-solid fa-plug"></i>
-                <h2>Connector Information</h2>
-            </div>
-            <div class="card-content">
-                <div class="demographics-row">
-                    {% if volunteer.connector.active_subscription %}
-                    <div class="info-group">
-                        <label>Status</label>
-                        <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
-                            {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription }}
-                        </span>
-                    </div>
-                    {% endif %}
-                    {% if volunteer.connector.role %}
-                    <div class="info-group">
-                        <label>Role</label>
-                        <span class="role-badge">{{ volunteer.connector.role }}</span>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if volunteer.connector.last_login_datetime or volunteer.connector.joining_date %}
-                <div class="demographics-row">
-                    {% if volunteer.connector.joining_date %}
-                    <div class="info-group">
-                        <label>Joined</label>
-                        <p>{{ volunteer.connector.joining_date }}</p>
-                    </div>
-                    {% endif %}
-                    {% if volunteer.connector.last_login_datetime %}
-                    <div class="info-group">
-                        <label>Last Login</label>
-                        <p>{{ volunteer.connector.last_login_datetime }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
 
         {# History Section - Collapsible #}
         {% if histories %}

@@ -2335,6 +2335,37 @@ main {
     color: var(--secondary-text);
 }
 
+/* Connector User ID styling */
+.connector-user-id {
+    font-family: 'Courier New', monospace;
+    background-color: var(--surface-3);
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--text-1);
+}
+
+/* Connector Profile Link styling */
+.connector-profile-link {
+    margin-top: 0.5rem;
+}
+
+.connector-profile-link .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.connector-profile-link .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 .profile-link {
     display: inline-flex;
     align-items: center;
