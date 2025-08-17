@@ -3,26 +3,18 @@ Google Sheet Models Module
 =========================
 
 This module defines the GoogleSheet model for managing Google Sheets integration
-in the VMS system. It provides secure storage and encryption for Google Sheet IDs
-with academic year and purpose-based organization.
+in the VMS system. It provides simple storage for Google Sheet IDs with academic
+year and purpose-based organization.
 
 Key Features:
-- Secure encryption of Google Sheet IDs
+- Simple storage of Google Sheet IDs (plain text)
 - Academic year and purpose-based organization
 - User tracking for sheet creation
 - Automatic timestamp tracking
-- Environment-based encryption key management
 - API-friendly dictionary conversion
 
 Database Table:
-- google_sheets: Stores encrypted Google Sheet configurations
-
-Security Features:
-- Fernet encryption for sheet IDs
-- Environment variable key management
-- Base64 encoding for storage
-- Automatic key generation fallback
-- Secure decryption methods
+- google_sheets: Stores Google Sheet configurations
 
 Academic Year Management:
 - Academic year organization (e.g., "2023-2024")
@@ -39,7 +31,7 @@ User Tracking:
 
 Integration Features:
 - Google Sheets API integration support
-- Encrypted credential storage
+- Simple credential storage
 - Academic year alignment
 - User permission tracking
 
@@ -62,7 +54,7 @@ Usage Examples:
         created_by=user.id
     )
 
-    # Get decrypted sheet ID
+    # Get sheet ID
     sheet_id = sheet.decrypted_sheet_id
 
     # Update sheet ID
@@ -72,12 +64,8 @@ Usage Examples:
     sheet_dict = sheet.to_dict()
 """
 
-import base64
-import os
 from datetime import datetime, timezone
 
-from cryptography.fernet import Fernet
-from flask import current_app
 from sqlalchemy import Column, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 
@@ -88,27 +76,19 @@ class GoogleSheet(db.Model):
     """
     Model for managing Google Sheets integration.
 
-    This model provides secure storage and management of Google Sheet IDs
-    with encryption for data security. It organizes sheets by academic year
+    This model provides simple storage and management of Google Sheet IDs
+    with academic year and purpose organization. It organizes sheets by academic year
     and purpose, allowing multiple sheets per academic year for different uses.
 
     Database Table:
-        google_sheets - Stores encrypted Google Sheet configurations
+        google_sheets - Stores Google Sheet configurations
 
     Key Features:
-        - Secure encryption of Google Sheet IDs using Fernet
+        - Simple storage of Google Sheet IDs (plain text)
         - Academic year and purpose-based organization
         - User tracking for sheet creation and management
         - Automatic timestamp tracking for audit trails
-        - Environment-based encryption key management
         - API-friendly dictionary conversion
-
-    Security Features:
-        - Fernet encryption for sensitive sheet IDs
-        - Environment variable key management
-        - Base64 encoding for database storage
-        - Automatic key generation fallback
-        - Secure decryption methods with error handling
 
     Academic Year Management:
         - Academic year organization (e.g., "2023-2024")
@@ -125,16 +105,15 @@ class GoogleSheet(db.Model):
 
     Integration Features:
         - Google Sheets API integration support
-        - Encrypted credential storage
+        - Simple credential storage
         - Academic year alignment
         - User permission tracking
 
     Data Management:
-        - Encrypted sheet ID storage
+        - Plain text sheet ID storage
         - Academic year and purpose organization
         - User creation tracking
         - Timestamp tracking for changes
-        - Error handling for decryption failures
     """
 
     __tablename__ = "google_sheets"
@@ -174,109 +153,35 @@ class GoogleSheet(db.Model):
 
         Args:
             academic_year: Academic year (e.g., "2023-2024")
-            sheet_id: Google Sheet ID to encrypt and store
+            sheet_id: Google Sheet ID to store (plain text)
             created_by: User ID who created this configuration
             purpose: Purpose of the sheet (e.g., "district_reports", "virtual_sessions")
             sheet_name: Display name for the sheet
         """
         self.academic_year = academic_year
         self.purpose = purpose
-        # Store the encryption key to ensure consistency between encrypt/decrypt
-        self._encryption_key = self._get_encryption_key()
-        self.sheet_id = self._encrypt_sheet_id(sheet_id)
+        self.sheet_id = sheet_id  # Store as plain text
         self.sheet_name = sheet_name
         self.created_by = created_by
-
-    def _get_encryption_key(self):
-        """
-        Get or create encryption key from environment variable.
-
-        Attempts to get the encryption key from Flask config first,
-        then falls back to environment variables. If no key exists,
-        generates a new one with a warning.
-
-        Returns:
-            bytes: Encryption key for Fernet cipher
-        """
-        # Try to get from Flask config first, then environment
-        try:
-            key = current_app.config.get("ENCRYPTION_KEY")
-        except RuntimeError:
-            # If we're outside application context, fall back to os.getenv
-            key = os.getenv("ENCRYPTION_KEY")
-
-        if not key:
-            # Generate a new key if none exists
-            key = Fernet.generate_key()
-            print(
-                f"WARNING: No ENCRYPTION_KEY found in environment. Generated new key: {key.decode()}"
-            )
-            print(
-                "Please add this key to your environment variables for production use."
-            )
-        elif isinstance(key, str):
-            key = key.encode()
-        return key
-
-    def _encrypt_sheet_id(self, sheet_id):
-        """
-        Encrypt the Google Sheet ID using Fernet encryption.
-
-        Args:
-            sheet_id: Plain text Google Sheet ID to encrypt
-
-        Returns:
-            str: Base64-encoded encrypted sheet ID, or None if input is None
-        """
-        if not sheet_id:
-            return None
-
-        key = self._encryption_key
-        f = Fernet(key)
-        encrypted_data = f.encrypt(sheet_id.encode())
-        return base64.b64encode(encrypted_data).decode()
-
-    def _decrypt_sheet_id(self, encrypted_sheet_id):
-        """
-        Decrypt the Google Sheet ID using Fernet decryption.
-
-        Args:
-            encrypted_sheet_id: Base64-encoded encrypted sheet ID
-
-        Returns:
-            str: Decrypted Google Sheet ID, or None if decryption fails
-        """
-        if not encrypted_sheet_id:
-            return None
-
-        try:
-            key = self._encryption_key
-            f = Fernet(key)
-            encrypted_data = base64.b64decode(encrypted_sheet_id.encode())
-            decrypted_data = f.decrypt(encrypted_data)
-            return decrypted_data.decode()
-        except Exception as e:
-            print(f"Error decrypting sheet ID: {e}")
-            return None
 
     @property
     def decrypted_sheet_id(self):
         """
-        Get the decrypted Google Sheet ID.
+        Get the Google Sheet ID (plain text).
 
         Returns:
-            str: Decrypted Google Sheet ID, or None if decryption fails
+            str: Google Sheet ID, or None if not set
         """
-        return self._decrypt_sheet_id(self.sheet_id)
+        return self.sheet_id
 
     def update_sheet_id(self, new_sheet_id):
         """
-        Update the encrypted sheet ID.
+        Update the sheet ID.
 
         Args:
-            new_sheet_id: New Google Sheet ID to encrypt and store
+            new_sheet_id: New Google Sheet ID to store
         """
-        self.sheet_id = self._encrypt_sheet_id(new_sheet_id)
+        self.sheet_id = new_sheet_id
 
     def to_dict(self):
         """

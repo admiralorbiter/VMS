@@ -388,6 +388,9 @@ class EventStatus(str, Enum):
             "technical difficulties": cls.NO_SHOW,
             "local professional no-show": cls.NO_SHOW,
             "pathful professional no-show": cls.NO_SHOW,
+            # Additional mappings for virtual sessions
+            "teacher requested": cls.REQUESTED,
+            "industry chat": cls.CONFIRMED,
         }
 
         return status_mapping.get(status_str, cls.DRAFT)

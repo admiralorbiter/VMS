@@ -805,36 +805,40 @@ def parse_datetime(date_str, time_str):
         date_str = str(date_str).strip()
         if "/" in date_str:
             parts = date_str.split("/")
-            if len(parts) >= 2:
+            if len(parts) >= 3:  # MM/DD/YYYY format
                 month = int(parts[0])
                 day = int(parts[1])
-
+                year = int(parts[2])
+            elif len(parts) >= 2:  # MM/DD format (fallback to old logic)
+                month = int(parts[0])
+                day = int(parts[1])
                 # For virtual sessions (July 1st to July 1st):
                 # - If month is July (7) or later, use current year
                 # - If month is before July, use next year
-                current_year = 2024 if month >= 7 else 2025  # Changed from >= 6 to >= 7
+                current_year = 2024 if month >= 7 else 2025
+                year = current_year
+            else:
+                return None
 
-                # Parse time
-                time_obj = (
-                    clean_time_string(time_str)
-                    if time_str and not pd.isna(time_str) and str(time_str).strip()
-                    else None
-                )
+            # Parse time
+            time_obj = (
+                clean_time_string(time_str)
+                if time_str and not pd.isna(time_str) and str(time_str).strip()
+                else None
+            )
 
-                if time_obj:
-                    # We have both date and time
-                    try:
-                        return datetime(
-                            current_year, month, day, time_obj.hour, time_obj.minute
-                        )
-                    except ValueError:
-                        current_app.logger.warning(
-                            f"Invalid date components: {month}/{day}/{current_year}"
-                        )
-                        return None
-                else:
-                    # We only have date, return None - the calling code will handle finding the event
+            if time_obj:
+                # We have both date and time
+                try:
+                    return datetime(year, month, day, time_obj.hour, time_obj.minute)
+                except ValueError:
+                    current_app.logger.warning(
+                        f"Invalid date components: {month}/{day}/{year}"
+                    )
                     return None
+            else:
+                # We only have date, return None - the calling code will handle finding the event
+                return None
 
         return None
     except Exception as e:
@@ -951,23 +955,183 @@ def map_people_of_color(value):
     return value_str == "yes"
 
 
-def map_status(status_str):
-    """Enhanced status mapping"""
-    status_str = safe_str(status_str).strip().lower()
+def validate_csv_row(row_data, row_index):
+    """
+    Validate CSV row data and return validation results.
 
-    # Add mappings for additional status values
-    status_mapping = {
-        "simulcast": EventStatus.SIMULCAST,
-        "technical difficulties": EventStatus.NO_SHOW,
-        "count": EventStatus.COUNT,
-        "local professional no-show": EventStatus.NO_SHOW,
-        "pathful professional no-show": EventStatus.NO_SHOW,
-        "teacher no-show": EventStatus.NO_SHOW,
-        "teacher cancelation": EventStatus.CANCELLED,
-        "successfully completed": EventStatus.COMPLETED,
-    }
+    Args:
+        row_data: Dictionary containing CSV row data
+        row_index: Row index for error reporting
 
-    return status_mapping.get(status_str, EventStatus.DRAFT)
+    Returns:
+        tuple: (is_valid, errors, warnings)
+    """
+    errors = []
+    warnings = []
+
+    # Check required fields
+    title = row_data.get("Session Title")
+    if not title or pd.isna(title):
+        errors.append(f"Row {row_index + 1}: Missing Session Title")
+
+    date_str = row_data.get("Date")
+    if not date_str or pd.isna(date_str):
+        errors.append(f"Row {row_index + 1}: Missing Date")
+
+    # Check for potentially problematic data
+    time_str = row_data.get("Time")
+    if not time_str or pd.isna(time_str):
+        warnings.append(
+            f"Row {row_index + 1}: No Time specified - will use default 9:00 AM"
+        )
+
+    teacher_name = row_data.get("Teacher Name")
+    if not teacher_name or pd.isna(teacher_name):
+        warnings.append(f"Row {row_index + 1}: No Teacher Name specified")
+
+    school_name = row_data.get("School Name")
+    if not school_name or pd.isna(school_name):
+        warnings.append(f"Row {row_index + 1}: No School Name specified")
+
+    district = row_data.get("District")
+    if not district or pd.isna(district):
+        warnings.append(f"Row {row_index + 1}: No District specified")
+
+    is_valid = len(errors) == 0
+    return is_valid, errors, warnings
+
+
+def clean_time_string(time_str):
+    """Clean and validate time string - handles multiple formats"""
+    if not time_str or pd.isna(time_str):
+        return None
+
+    time_str = str(time_str).strip()
+    if not time_str:
+        return None
+
+    # Remove duplicate AM/PM
+    time_str = time_str.replace(" PM PM", " PM").replace(" AM AM", " AM")
+
+    # Try different time formats
+    time_formats = [
+        "%I:%M %p",  # 11:00 AM, 2:30 PM
+        "%H:%M",  # 14:30, 09:30 (24-hour format)
+        "%I:%M",  # 11:00, 2:30 (12-hour without AM/PM)
+        "%H:%M:%S",  # 14:30:00
+        "%I:%M:%S %p",  # 11:00:00 AM
+        "%I %p",  # 11 AM
+        "%H",  # 14 (just hour)
+    ]
+
+    for fmt in time_formats:
+        try:
+            parsed_time = datetime.strptime(time_str, fmt)
+            # If it's a format without AM/PM and hour is <= 12, assume AM for morning times
+            if fmt in ["%I:%M", "%H:%M"] and parsed_time.hour <= 12:
+                # For times like "9:30", assume it's AM if <= 12
+                return parsed_time
+            elif fmt in ["%I:%M", "%H:%M"] and parsed_time.hour > 12:
+                # For times > 12 without AM/PM, treat as 24-hour format
+                return parsed_time
+            else:
+                return parsed_time
+        except ValueError:
+            continue
+
+    # If all formats fail, log warning and return None
+    current_app.logger.warning(f"Invalid time format: {time_str}")
+    return None
+
+
+def generate_school_id(name):
+    """Generate a unique ID for virtual schools that matches Salesforce length"""
+    if pd.isna(name) or not name:
+        name = "Unknown School"
+
+    # Ensure name is a string
+    name = str(name).strip()
+
+    timestamp = datetime.now(timezone.utc).strftime("%y%m%d")
+    name_hash = hashlib.sha256(name.lower().encode()).hexdigest()[:8]
+    base_id = f"VRT{timestamp}{name_hash}"
+
+    # Ensure exactly 18 characters
+    base_id = base_id[:18].ljust(18, "0")
+
+    # Check if ID exists and append counter if needed
+    counter = 1
+    new_id = base_id
+    while School.query.filter_by(id=new_id).first():
+        counter_str = str(counter).zfill(2)
+        new_id = base_id[:-2] + counter_str
+        counter += 1
+
+    return new_id
+
+
+def get_or_create_school(name, district=None):
+    """Get or create school by name with improved district handling"""
+    try:
+        if pd.isna(name) or not name:
+            return None
+
+        # Clean and standardize the school name
+        name = str(name).strip()
+        if not name:
+            return None
+
+        # Try to find existing school
+        school = School.query.filter(
+            func.lower(School.name) == func.lower(name)
+        ).first()
+
+        if not school:
+            try:
+                school = School(
+                    id=generate_school_id(name),
+                    name=name,
+                    district_id=district.id if district else None,
+                    normalized_name=name.lower(),
+                    salesforce_district_id=(
+                        district.salesforce_id
+                        if district and district.salesforce_id
+                        else None
+                    ),
+                )
+                db.session.add(school)
+                db.session.flush()
+            except Exception as e:
+                current_app.logger.error(f"Error creating school {name}: {str(e)}")
+                return None
+
+        return school
+
+    except Exception as e:
+        current_app.logger.error(f"Error in get_or_create_school for {name}: {str(e)}")
+        return None
+
+
+def extract_session_id(session_link):
+    """Safely extract session ID from link with type checking"""
+    try:
+        if pd.isna(session_link) or session_link is None:
+            return None
+
+        # Convert float to string if needed
+        if isinstance(session_link, (int, float)):
+            return str(int(session_link))
+
+        # If it's a URL, extract the last part
+        link_str = str(session_link).strip()
+        if "/" in link_str:
+            return link_str.split("/")[-1]
+        return link_str
+    except Exception as e:
+        current_app.logger.warning(
+            f"Error extracting session ID: {e} from {session_link}"
+        )
+        return None
 
 
 @virtual_bp.route("/import-sheet", methods=["POST"])
@@ -1075,6 +1239,21 @@ def import_sheet():
         for row_index, row_data in enumerate(all_rows_for_lookup):
             event_processed_in_this_row = False  # Flag to track if event logic ran
             try:
+                # Validate CSV row data first
+                is_valid, row_errors, row_warnings = validate_csv_row(
+                    row_data, row_index
+                )
+                if not is_valid:
+                    for error in row_errors:
+                        errors.append(error)
+                        error_count += 1
+                    continue
+
+                # Log warnings for informational purposes
+                for warning in row_warnings:
+                    print(f"WARNING - {warning}")
+                    warning_count += 1
+
                 # Extract key fields safely
                 status_str = safe_str(row_data.get("Status", "")).lower().strip()
                 is_simulcast = status_str == "simulcast"
@@ -1104,8 +1283,15 @@ def import_sheet():
                             try:
                                 month = int(date_parts[0])
                                 day = int(date_parts[1])
-                                current_year = 2024 if month >= 7 else 2025
-                                target_date = datetime(current_year, month, day).date()
+                                # Try to extract year from date string first
+                                if len(date_parts) >= 3:
+                                    year = int(date_parts[2])
+                                else:
+                                    # Fallback to old logic for MM/DD format
+                                    current_year = 2024 if month >= 7 else 2025
+                                    year = current_year
+
+                                target_date = datetime(year, month, day).date()
 
                                 # Find existing event for this title and date
                                 existing_event = Event.query.filter(
@@ -1119,6 +1305,13 @@ def import_sheet():
                                     # Use the existing event's datetime
                                     current_datetime = existing_event.start_date
                                     # REMOVED: Success log
+                                else:
+                                    # No existing event found, create a default datetime with 9:00 AM
+                                    # This allows us to process rows with missing time
+                                    current_datetime = datetime(year, month, day, 9, 0)
+                                    print(
+                                        f"INFO - Row {row_index + 1} ('{title}'): No time specified, using default 9:00 AM"
+                                    )
 
                             except (ValueError, IndexError):
                                 pass
@@ -1193,7 +1386,9 @@ def import_sheet():
                             "count",
                         ]
 
-                        is_primary_row_status = status_str not in ["simulcast", ""]
+                        # Treat empty status as primary row (main event data)
+                        # Only simulcast is truly secondary
+                        is_primary_row_status = status_str not in ["simulcast"]
                         can_create_incomplete_event = (
                             status_str in can_create_event_statuses
                         )
@@ -1307,7 +1502,21 @@ def import_sheet():
                                 date_str_cleaned_pc = str(lookup_date_str_pc).strip()
                                 if "/" in date_str_cleaned_pc:
                                     parts_pc = date_str_cleaned_pc.split("/")
-                                    if len(parts_pc) >= 2:
+                                    if len(parts_pc) >= 3:  # MM/DD/YYYY format
+                                        month_str_pc, day_str_pc, year_str_pc = (
+                                            parts_pc[0],
+                                            parts_pc[1],
+                                            parts_pc[2],
+                                        )
+                                        if (
+                                            month_str_pc.isdigit()
+                                            and day_str_pc.isdigit()
+                                            and year_str_pc.isdigit()
+                                        ):
+                                            month_pc = int(month_str_pc)
+                                            day_pc = int(day_str_pc)
+                                            year_pc = int(year_str_pc)
+                                    elif len(parts_pc) >= 2:  # MM/DD format (fallback)
                                         month_str_pc, day_str_pc = (
                                             parts_pc[0],
                                             parts_pc[1],
@@ -1318,37 +1527,35 @@ def import_sheet():
                                         ):
                                             month_pc = int(month_str_pc)
                                             day_pc = int(day_str_pc)
-                                            if (
-                                                1 <= month_pc <= 12
-                                                and 1 <= day_pc <= 31
-                                            ):
-                                                # Determine virtual session year (July 1st to July 1st)
-                                                current_dt_utc_pc = datetime.now(
-                                                    timezone.utc
+                                            # Use same year logic as main parsing
+                                            current_dt_utc_pc = datetime.now(
+                                                timezone.utc
+                                            )
+                                            if current_dt_utc_pc.month >= 7:
+                                                year_pc = (
+                                                    current_dt_utc_pc.year
+                                                    if month_pc >= 7
+                                                    else current_dt_utc_pc.year + 1
                                                 )
-                                                if (
-                                                    current_dt_utc_pc.month >= 7
-                                                ):  # Changed from >= 6 to >= 7
-                                                    year_pc = (
-                                                        current_dt_utc_pc.year
-                                                        if month_pc >= 7
-                                                        else current_dt_utc_pc.year + 1
-                                                    )  # Changed from >= 6 to >= 7
-                                                else:
-                                                    year_pc = (
-                                                        current_dt_utc_pc.year - 1
-                                                        if month_pc >= 7
-                                                        else current_dt_utc_pc.year
-                                                    )  # Changed from >= 6 to >= 7
-                                                try:
-                                                    date_obj_only_pc = datetime(
-                                                        year_pc, month_pc, day_pc
-                                                    ).date()
-                                                    lookup_date_key_pc = (
-                                                        date_obj_only_pc.isoformat()
-                                                    )
-                                                except ValueError:
-                                                    pass  # Invalid date components
+                                            else:
+                                                year_pc = (
+                                                    current_dt_utc_pc.year - 1
+                                                    if month_pc >= 7
+                                                    else current_dt_utc_pc.year
+                                                )
+                                    else:
+                                        continue
+
+                                    if 1 <= month_pc <= 12 and 1 <= day_pc <= 31:
+                                        try:
+                                            date_obj_only_pc = datetime(
+                                                year_pc, month_pc, day_pc
+                                            ).date()
+                                            lookup_date_key_pc = (
+                                                date_obj_only_pc.isoformat()
+                                            )
+                                        except ValueError:
+                                            pass  # Invalid date components
                             except Exception as e_pc:
                                 # REMOVED: Date parsing error log (too verbose)
                                 lookup_date_key_pc = None
@@ -1540,136 +1747,3 @@ def import_sheet():
         error_msg = f"Overall import failed: {str(e)}"
         print(f"CRITICAL ERROR: {error_msg}")
         return jsonify({"success": False, "error": error_msg}), 400
-
-
-def clean_time_string(time_str):
-    """Clean and validate time string - handles multiple formats"""
-    if not time_str or pd.isna(time_str):
-        return None
-
-    time_str = str(time_str).strip()
-    if not time_str:
-        return None
-
-    # Remove duplicate AM/PM
-    time_str = time_str.replace(" PM PM", " PM").replace(" AM AM", " AM")
-
-    # Try different time formats
-    time_formats = [
-        "%I:%M %p",  # 11:00 AM, 2:30 PM
-        "%H:%M",  # 14:30, 09:30 (24-hour format)
-        "%I:%M",  # 11:00, 2:30 (12-hour without AM/PM)
-        "%H:%M:%S",  # 14:30:00
-        "%I:%M:%S %p",  # 11:00:00 AM
-        "%I %p",  # 11 AM
-        "%H",  # 14 (just hour)
-    ]
-
-    for fmt in time_formats:
-        try:
-            parsed_time = datetime.strptime(time_str, fmt)
-            # If it's a format without AM/PM and hour is <= 12, assume AM for morning times
-            if fmt in ["%I:%M", "%H:%M"] and parsed_time.hour <= 12:
-                # For times like "9:30", assume it's AM if <= 12
-                return parsed_time
-            elif fmt in ["%I:%M", "%H:%M"] and parsed_time.hour > 12:
-                # For times > 12 without AM/PM, treat as 24-hour format
-                return parsed_time
-            else:
-                return parsed_time
-        except ValueError:
-            continue
-
-    # If all formats fail, log warning and return None
-    current_app.logger.warning(f"Invalid time format: {time_str}")
-    return None
-
-
-def generate_school_id(name):
-    """Generate a unique ID for virtual schools that matches Salesforce length"""
-    if pd.isna(name) or not name:
-        name = "Unknown School"
-
-    # Ensure name is a string
-    name = str(name).strip()
-
-    timestamp = datetime.now(timezone.utc).strftime("%y%m%d")
-    name_hash = hashlib.sha256(name.lower().encode()).hexdigest()[:8]
-    base_id = f"VRT{timestamp}{name_hash}"
-
-    # Ensure exactly 18 characters
-    base_id = base_id[:18].ljust(18, "0")
-
-    # Check if ID exists and append counter if needed
-    counter = 1
-    new_id = base_id
-    while School.query.filter_by(id=new_id).first():
-        counter_str = str(counter).zfill(2)
-        new_id = base_id[:-2] + counter_str
-        counter += 1
-
-    return new_id
-
-
-def get_or_create_school(name, district=None):
-    """Get or create school by name with improved district handling"""
-    try:
-        if pd.isna(name) or not name:
-            return None
-
-        # Clean and standardize the school name
-        name = str(name).strip()
-        if not name:
-            return None
-
-        # Try to find existing school
-        school = School.query.filter(
-            func.lower(School.name) == func.lower(name)
-        ).first()
-
-        if not school:
-            try:
-                school = School(
-                    id=generate_school_id(name),
-                    name=name,
-                    district_id=district.id if district else None,
-                    normalized_name=name.lower(),
-                    salesforce_district_id=(
-                        district.salesforce_id
-                        if district and district.salesforce_id
-                        else None
-                    ),
-                )
-                db.session.add(school)
-                db.session.flush()
-            except Exception as e:
-                current_app.logger.error(f"Error creating school {name}: {str(e)}")
-                return None
-
-        return school
-
-    except Exception as e:
-        current_app.logger.error(f"Error in get_or_create_school for {name}: {str(e)}")
-        return None
-
-
-def extract_session_id(session_link):
-    """Safely extract session ID from link with type checking"""
-    try:
-        if pd.isna(session_link) or session_link is None:
-            return None
-
-        # Convert float to string if needed
-        if isinstance(session_link, (int, float)):
-            return str(int(session_link))
-
-        # If it's a URL, extract the last part
-        link_str = str(session_link).strip()
-        if "/" in link_str:
-            return link_str.split("/")[-1]
-        return link_str
-    except Exception as e:
-        current_app.logger.warning(
-            f"Error extracting session ID: {e} from {session_link}"
-        )
-        return None
