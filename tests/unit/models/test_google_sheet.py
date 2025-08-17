@@ -27,16 +27,12 @@ def test_user(app):
 
 
 @pytest.fixture
-def encryption_key():
+def encryption_key(app):
     """Provide a test encryption key"""
     key = Fernet.generate_key()
-    old_key = os.environ.get("ENCRYPTION_KEY")
-    os.environ["ENCRYPTION_KEY"] = key.decode()
-    yield key
-    if old_key:
-        os.environ["ENCRYPTION_KEY"] = old_key
-    else:
-        del os.environ["ENCRYPTION_KEY"]
+    with app.app_context():
+        app.config['ENCRYPTION_KEY'] = key.decode()
+        yield key
 
 
 def test_create_google_sheet(app, test_user, encryption_key):
@@ -183,8 +179,12 @@ def test_to_dict_method(app, test_user, encryption_key):
 
 def test_missing_encryption_key(app):
     with app.app_context():
-        # Remove encryption key from environment
-        old_key = os.environ.get("ENCRYPTION_KEY")
+        # Remove encryption key from both Flask config and environment
+        old_config_key = app.config.get("ENCRYPTION_KEY")
+        old_env_key = os.environ.get("ENCRYPTION_KEY")
+        
+        if "ENCRYPTION_KEY" in app.config:
+            del app.config["ENCRYPTION_KEY"]
         if "ENCRYPTION_KEY" in os.environ:
             del os.environ["ENCRYPTION_KEY"]
 
@@ -200,9 +200,11 @@ def test_missing_encryption_key(app):
             db.session.delete(sheet)
             db.session.commit()
         finally:
-            # Restore original key
-            if old_key:
-                os.environ["ENCRYPTION_KEY"] = old_key
+            # Restore original keys
+            if old_config_key:
+                app.config["ENCRYPTION_KEY"] = old_config_key
+            if old_env_key:
+                os.environ["ENCRYPTION_KEY"] = old_env_key
 
 
 def test_sheet_id_validation(app, encryption_key):

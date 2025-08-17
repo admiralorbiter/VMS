@@ -36,6 +36,7 @@ Available Models:
 - ClientProject: Client project management
 - Pathways: Educational pathway data
 - Reports: Report configuration and data
+- Validation: Data validation and quality monitoring
 
 Usage:
     from models import db, User, Volunteer, Event
@@ -47,15 +48,63 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+from .attendance import EventAttendanceDetail
 from .audit_log import AuditLog
+from .bug_report import BugReport
+from .class_model import Class
+from .client_project_model import ClientProject
+from .contact import Contact
+from .district_model import District
+from .event import Event
 from .google_sheet import GoogleSheet
+from .history import History
+from .organization import Organization
+from .pathways import Pathway
+from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
+from .school_model import School
+from .student import Student
+from .teacher import Teacher
 
 # Import your models after db initialization
 from .user import User
+
+# Import validation models
+from .validation import (
+    ValidationHistory,
+    ValidationMetric,
+    ValidationResult,
+    ValidationRun,
+)
 from .volunteer import Volunteer
 
 # Export the things you want to make available when importing from models
-__all__ = ["db", "User", "Volunteer", "GoogleSheet", "AuditLog"]
+__all__ = [
+    "db",
+    "User",
+    "Volunteer",
+    "GoogleSheet",
+    "AuditLog",
+    "Event",
+    "Organization",
+    "Contact",
+    "District",
+    "School",
+    "Teacher",
+    "Student",
+    "History",
+    "EventAttendanceDetail",
+    "BugReport",
+    "Class",
+    "ClientProject",
+    "Pathway",
+    "DistrictYearEndReport",
+    "DistrictEngagementReport",
+    "OrganizationReport",
+    "ValidationRun",
+    "ValidationResult",
+    "ValidationMetric",
+    "ValidationHistory",
+]
 
 # Eager-loading helper options
 from sqlalchemy.orm import joinedload, selectinload

@@ -226,6 +226,8 @@ class History(db.Model):
             lazy="dynamic",  # Lazy loading for better performance
             cascade="all, delete-orphan",  # Automatically handle related records
         ),
+        post_update=True,  # Avoid circular dependency issues
+        foreign_keys=[event_id],  # Explicitly specify foreign key
     )
 
     volunteer = db.relationship(

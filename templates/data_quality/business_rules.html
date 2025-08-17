@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Rules Documentation - VMS Data Quality</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .entity-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            background-color: #f8f9fa;
+        }
+
+        .entity-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .rule-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .rule-type {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-description {
+            color: #6c757d;
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-details {
+            background-color: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            border-left: 4px solid #007bff;
+        }
+
+        .field-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .field-list li {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .field-list li:last-child {
+            border-bottom: none;
+        }
+
+        .required-field {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .optional-field {
+            color: #6c757d;
+        }
+
+        .nav-back {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .nav-back:hover {
+            color: white;
+            text-decoration: none;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+
+        .status-implemented {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-not-implemented {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Navigation Back to Dashboard -->
+        <a href="/quality_dashboard" class="nav-back">
+            <i class="fas fa-arrow-left"></i> Back to Quality Dashboard
+        </a>
+
+        <h1 class="mb-4">
+            <i class="fas fa-book"></i> Business Rules Documentation
+        </h1>
+        <p class="lead mb-4">Complete documentation of all business rules and validation logic for each entity type in the VMS system.</p>
+
+        <!-- Volunteer Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-user-friends"></i> Volunteer Entity</h2>
+                <p class="mb-0">Contact records with volunteer activities and skills</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all volunteer records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">first_name</span> - First name of the volunteer (required)</li>
+                        <li><span class="required-field">last_name</span> - Last name of the volunteer (required)</li>
+                        <li><span class="required-field">email</span> - Email address for communication (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS volunteer count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 5.0% discrepancy tolerance</p>
+                    <p><strong>Context Analysis:</strong> Considers seasonal variations, recent events, and data import timing</p>
+                    <p><strong>Scoring:</strong> Graduated scoring based on business context</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Full context-aware validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Thresholds:</strong></p>
+                    <ul>
+                        <li>Info: ≥90% population</li>
+                        <li>Warning: ≥75% population</li>
+                        <li>Error: ≥50% population</li>
+                        <li>Critical: <50% population</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>Email format validation</li>
+                        <li>String length validation</li>
+                        <li>Date format validation</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Relationship Validation</div>
+                <div class="rule-description">Validation of optional relationship field population</div>
+                <div class="rule-details">
+                    <p><strong>Optional Relationships:</strong></p>
+                    <ul>
+                        <li>AccountId - Organization association</li>
+                        <li>npsp__Primary_Affiliation__c - Primary affiliation</li>
+                    </ul>
+                    <p><strong>Validation:</strong> Reports population rates for optional fields</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Population rate analysis</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Organization Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-building"></i> Organization Entity</h2>
+                <p class="mb-0">Companies, schools, and institutions</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all organization records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">name</span> - Organization name (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS organization count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 10.0% discrepancy tolerance</p>
+                    <p><strong>Context Analysis:</strong> Higher tolerance due to organizational complexity and data import patterns</p>
+                    <p><strong>Scoring:</strong> Graduated scoring based on business context</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Full context-aware validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Required Fields:</strong></p>
+                    <ul>
+                        <li>Name - Organization name (required)</li>
+                    </ul>
+                    <p><strong>Optional Fields:</strong></p>
+                    <ul>
+                        <li>Type - Organization type (optional)</li>
+                        <li>BillingCity - Billing city (optional)</li>
+                        <li>BillingState - Billing state (optional)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>Name - String validation (required)</li>
+                        <li>Type - String validation (optional, info severity)</li>
+                        <li>BillingCity - String validation (optional, info severity)</li>
+                        <li>BillingState - String validation (optional, info severity)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teacher Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-chalkboard-teacher"></i> Teacher Entity</h2>
+                <p class="mb-0">Contact records for teachers and educators</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all teacher records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">first_name</span> - First name of the teacher (required)</li>
+                        <li><span class="required-field">last_name</span> - Last name of the teacher (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS teacher count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 5.0% discrepancy tolerance</p>
+                    <p><strong>Context Analysis:</strong> Considers academic calendar, hiring cycles, and data import timing</p>
+                    <p><strong>Scoring:</strong> Graduated scoring based on business context</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Full context-aware validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Required Fields:</strong></p>
+                    <ul>
+                        <li>FirstName - Teacher's first name (required)</li>
+                        <li>LastName - Teacher's last name (required)</li>
+                        <li>Contact_Type__c - Contact type (required)</li>
+                    </ul>
+                    <p><strong>Optional Fields:</strong></p>
+                    <ul>
+                        <li>Title - Job title (optional)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>FirstName - String validation (required)</li>
+                        <li>LastName - String validation (required)</li>
+                        <li>Contact_Type__c - String validation (required)</li>
+                        <li>Title - String validation (optional, info severity)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-user-graduate"></i> Student Entity</h2>
+                <p class="mb-0">Contact records for students</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all student records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">first_name</span> - First name of the student (required)</li>
+                        <li><span class="required-field">last_name</span> - Last name of the student (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS student count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 5.0% discrepancy tolerance</p>
+                    <p><strong>Context Analysis:</strong> Considers enrollment periods, academic calendar, and data import timing</p>
+                    <p><strong>Scoring:</strong> Graduated scoring based on business context</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Full context-aware validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Required Fields:</strong></p>
+                    <ul>
+                        <li>FirstName - Student's first name (required)</li>
+                        <li>LastName - Student's last name (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>FirstName - String validation (required)</li>
+                        <li>LastName - String validation (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-calendar-alt"></i> Event Entity</h2>
+                <p class="mb-0">Volunteer events and activities</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all event records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">title</span> - Event title/name (required)</li>
+                        <li><span class="required-field">start_date</span> - Event start date and time (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS event count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 5.0% discrepancy tolerance</p>
+                    <p><strong>Context Analysis:</strong> Considers event scheduling patterns, seasonal variations, and data import timing</p>
+                    <p><strong>Scoring:</strong> Graduated scoring based on business context</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Full context-aware validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Required Fields:</strong></p>
+                    <ul>
+                        <li>title - Event title (required)</li>
+                        <li>start_date - Event start date (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>title - String validation (required)</li>
+                        <li>start_date - Datetime validation (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- School Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-school"></i> School Entity</h2>
+                <p class="mb-0">Educational institutions</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all school records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">id</span> - School Salesforce ID (required)</li>
+                        <li><span class="required-field">name</span> - School name (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS school count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 0% discrepancy tolerance (local entity)</p>
+                    <p><strong>Context Analysis:</strong> Schools are local entities, so Salesforce count should be 0</p>
+                    <p><strong>Scoring:</strong> Expects 100% match with local database</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Local entity validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Required Fields:</strong></p>
+                    <ul>
+                        <li>id - School Salesforce ID (required)</li>
+                        <li>name - School name (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>id - String validation, Salesforce ID format (15-18 chars, required)</li>
+                        <li>name - String validation (2-255 chars, required, no whitespace only)</li>
+                        <li>level - Enum validation (Elementary, Middle, High, Other, optional)</li>
+                        <li>school_code - String validation (max 50 chars, optional)</li>
+                        <li>district_id - Integer validation (optional)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Format Validation</div>
+                <div class="rule-description">Validation of field formats and constraints</div>
+                <div class="rule-details">
+                    <p><strong>Format Rules:</strong></p>
+                    <ul>
+                        <li>id - Must be 15-18 alphanumeric characters (Salesforce ID format)</li>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>level - Must be one of: Elementary, Middle, High, Other</li>
+                        <li>school_code - Maximum 50 characters</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Format and constraint validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Quality Validation</div>
+                <div class="rule-description">Validation of data quality standards</div>
+                <div class="rule-details">
+                    <p><strong>Quality Rules:</strong></p>
+                    <ul>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>name - Must match pattern: alphanumeric, spaces, hyphens, dots, apostrophes only</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Data quality standards enforcement</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Level Validation</div>
+                <div class="rule-description">Validation of school level categorization</div>
+                <div class="rule-details">
+                    <p><strong>Level Rules:</strong></p>
+                    <ul>
+                        <li>level - Must be one of: Elementary, Middle, High, Other</li>
+                        <li>level - Optional field but must be valid if present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Enumeration validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Naming Convention Validation</div>
+                <div class="rule-description">Validation of school naming conventions</div>
+                <div class="rule-details">
+                    <p><strong>Naming Rules:</strong></p>
+                    <ul>
+                        <li>name - Should not contain generic terms like 'School', 'Elementary', 'Middle', 'High', 'Academy', 'Institute'</li>
+                        <li>name - Should be descriptive and specific to the institution</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Naming convention enforcement</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Relationship Validation</div>
+                <div class="rule-description">Validation of relationship field population and integrity</div>
+                <div class="rule-details">
+                    <p><strong>Required Relationships:</strong></p>
+                    <ul>
+                        <li>name - School name (required)</li>
+                        <li>id - School Salesforce ID (required)</li>
+                    </ul>
+                    <p><strong>Optional Relationships:</strong></p>
+                    <ul>
+                        <li>district_id - District association (optional, must reference valid district.id if present)</li>
+                        <li>level - School level categorization (optional)</li>
+                    </ul>
+                    <p><strong>Integrity Checks:</strong></p>
+                    <ul>
+                        <li>district_id must reference valid district.id if present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Relationship completeness and integrity validation</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- District Entity -->
+        <div class="entity-section">
+            <div class="entity-header">
+                <h2><i class="fas fa-map"></i> District Entity</h2>
+                <p class="mb-0">School districts</p>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Required Fields Validation</div>
+                <div class="rule-description">Core fields that must be populated for all district records</div>
+                <div class="rule-details">
+                    <ul class="field-list">
+                        <li><span class="required-field">id</span> - District internal ID (required)</li>
+                        <li><span class="required-field">name</span> - District name (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Business rule validation with error severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Count Validation</div>
+                <div class="rule-description">Context-aware validation comparing VMS district count with Salesforce</div>
+                <div class="rule-details">
+                    <p><strong>Expected Threshold:</strong> 0% discrepancy tolerance (local entity)</p>
+                    <p><strong>Context Analysis:</strong> Districts are local entities, so Salesforce count should be 0</p>
+                    <p><strong>Scoring:</strong> Expects 100% match with local database</p>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Local entity validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Completeness</div>
+                <div class="rule-description">Validation of required field population rates</div>
+                <div class="rule-details">
+                    <p><strong>Required Fields:</strong></p>
+                    <ul>
+                        <li>id - District internal ID (required)</li>
+                        <li>name - District name (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Configurable severity thresholds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Type Validation</div>
+                <div class="rule-description">Ensuring data types match expected formats</div>
+                <div class="rule-details">
+                    <p><strong>Validation:</strong></p>
+                    <ul>
+                        <li>id - Integer validation, auto-incrementing primary key (required)</li>
+                        <li>name - String validation (2-255 chars, required, no whitespace only)</li>
+                        <li>district_code - String validation (max 20 chars, optional)</li>
+                        <li>salesforce_id - String validation, Salesforce ID format (15-18 chars, optional)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Field Format Validation</div>
+                <div class="rule-description">Validation of field formats and constraints</div>
+                <div class="rule-details">
+                    <p><strong>Format Rules:</strong></p>
+                    <ul>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>district_code - Maximum 20 characters</li>
+                        <li>salesforce_id - Must be 15-18 alphanumeric characters (Salesforce ID format)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Format and constraint validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Data Quality Validation</div>
+                <div class="rule-description">Validation of data quality standards</div>
+                <div class="rule-details">
+                    <p><strong>Quality Rules:</strong></p>
+                    <ul>
+                        <li>name - Must be 2-255 characters, no whitespace only</li>
+                        <li>name - Must match pattern: alphanumeric, spaces, hyphens, dots, apostrophes only</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Data quality standards enforcement</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Code Validation</div>
+                <div class="rule-description">Validation of district code format</div>
+                <div class="rule-details">
+                    <p><strong>Code Rules:</strong></p>
+                    <ul>
+                        <li>district_code - Maximum 20 characters</li>
+                        <li>district_code - Must match pattern: uppercase letters, numbers, hyphens, underscores only</li>
+                        <li>district_code - Optional field but must be valid if present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Code format validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Relationship Validation</div>
+                <div class="rule-description">Validation of relationship field population and integrity</div>
+                <div class="rule-details">
+                    <p><strong>Required Relationships:</strong></p>
+                    <ul>
+                        <li>name - District name (required)</li>
+                        <li>id - District internal ID (required)</li>
+                    </ul>
+                    <p><strong>Optional Relationships:</strong></p>
+                    <ul>
+                        <li>salesforce_id - Salesforce ID (optional)</li>
+                        <li>district_code - District code (optional)</li>
+                    </ul>
+                    <p><strong>Integrity Checks:</strong></p>
+                    <ul>
+                        <li>id must be auto-incrementing primary key</li>
+                        <li>Multiple schools can reference this district</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Relationship completeness and integrity validation</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-5 pt-4 border-top">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Validation Coverage Summary</h5>
+                    <ul class="list-unstyled">
+                        <li><span class="status-badge status-implemented">Implemented</span> - Fully implemented and tested</li>
+                        <li><span class="status-badge status-pending">Pending</span> - Planned but not yet implemented</li>
+                        <li><span class="status-badge status-not-implemented">Not Implemented</span> - Not currently planned</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5>Next Steps</h5>
+                    <ul class="list-unstyled">
+                        <li>• Monitor validation results for accuracy</li>
+                        <li>• Adjust thresholds based on business needs</li>
+                        <li>• Add new business rules as requirements evolve</li>
+                        <li>• Implement additional validation types as needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

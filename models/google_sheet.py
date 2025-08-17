@@ -181,6 +181,8 @@ class GoogleSheet(db.Model):
         """
         self.academic_year = academic_year
         self.purpose = purpose
+        # Store the encryption key to ensure consistency between encrypt/decrypt
+        self._encryption_key = self._get_encryption_key()
         self.sheet_id = self._encrypt_sheet_id(sheet_id)
         self.sheet_name = sheet_name
         self.created_by = created_by
@@ -229,7 +231,7 @@ class GoogleSheet(db.Model):
         if not sheet_id:
             return None
 
-        key = self._get_encryption_key()
+        key = self._encryption_key
         f = Fernet(key)
         encrypted_data = f.encrypt(sheet_id.encode())
         return base64.b64encode(encrypted_data).decode()
@@ -248,7 +250,7 @@ class GoogleSheet(db.Model):
             return None
 
         try:
-            key = self._get_encryption_key()
+            key = self._encryption_key
             f = Fernet(key)
             encrypted_data = base64.b64decode(encrypted_sheet_id.encode())
             decrypted_data = f.decrypt(encrypted_data)

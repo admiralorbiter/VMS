@@ -411,6 +411,7 @@ def process_student_participation_row(row, success_count, error_count, errors):
                     salesforce_id=participation_sf_id,  # Store the unique SF participation ID
                 )
                 db.session.add(new_participation)
+                db.session.commit()  # Commit the new participation record
                 return success_count + 1, error_count
 
     except Exception as e:

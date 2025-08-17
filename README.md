@@ -60,6 +60,13 @@ Currently implemented:
    - Date range filtering
    - Event details on click
 
+8. **Salesforce Data Validation System** ✅ **NEW - OPERATIONAL**
+   - Comprehensive data integrity validation between VMS and Salesforce
+   - Count validation, field completeness, and data type checking
+   - CLI interface for validation operations
+   - Performance monitoring and trend analysis
+   - Extensible validation framework for custom business rules
+
 ## 4. Setup & Installation
 
 1. **Clone the Repository**
@@ -98,6 +105,43 @@ Currently implemented:
    python3 app.py
    ```
    The application will be available at `http://localhost:5000`
+
+6. **Salesforce Data Validation System Setup** ✅ **COMPLETED**
+   ```bash
+   # Install validation dependencies
+   pip install -r requirements.txt
+
+   # Run database migrations
+   alembic upgrade head
+
+   # Test the validation system
+   python scripts/validation/test_validation_basic.py
+
+   # Run validation operations
+   python scripts/validation/run_validation.py --help
+   python scripts/validation/run_validation.py fast
+   ```
+
+   **Environment Variables for Validation**:
+   ```
+   SF_USERNAME=your-salesforce-username
+   SF_PASSWORD=your-salesforce-password
+   SF_SECURITY_TOKEN=your-salesforce-security-token
+   VALIDATION_REDIS_HOST=localhost  # Optional: for caching
+   VALIDATION_REDIS_PORT=6379       # Optional: for caching
+   ```
+
+           **Current Status**: ✅ **Phase 3.2 Complete - Relationship Integrity Validation Operational**
+    - Fast validation: ✅ Working
+    - Slow validation: ✅ Working
+    - Count validation: ✅ Working
+    - Field completeness validation: ✅ Working (all entity types)
+    - Data type validation: ✅ Working (all entity types)
+    - Relationship integrity validation: ✅ Working (all entity types)
+    - Business rule validation: 🔄 In Development (Phase 3.3)
+    - Salesforce schema: ✅ Correctly configured
+    - Database integration: ✅ Operational
+    - Multi-entity support: ✅ Working (volunteer, organization, event, student, teacher)
 
 6. **Create Admin User**
    ```bash

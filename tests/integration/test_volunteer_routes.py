@@ -95,19 +95,19 @@ def test_edit_volunteer(client, auth_headers, test_volunteer, app):
             "last_name": "Name",
             "organization_name": "New Org",
             "title": "Senior Developer",
-            "gender": GenderEnum.other.value,
-            "local_status": LocalStatusEnum.local.value,
-            "race_ethnicity": RaceEthnicityEnum.white.value,
-            "education": EducationEnum.BACHELORS_DEGREE.value,  # Fixed enum usage
+            "gender": "other",  # Use enum name, not value
+            "local_status": "local",  # Use enum name, not value
+            "race_ethnicity": "white",  # Use enum name, not value
+            "education": "BACHELORS_DEGREE",  # Use enum name, not value
             "phone": "987-654-3210",
             "phone_type": "personal",
             "email": "updated@example.com",
             "email_type": "personal",
         }
 
-        response = safe_route_test(
-            client, f"/volunteers/edit/{volunteer.id}", data=data, headers=auth_headers
-        )
+        response = client.post(
+                f"/volunteers/edit/{volunteer.id}", data=data, headers=auth_headers
+            )
 
         # Accept template errors or successful responses
         assert_route_response(response, expected_statuses=[200, 302, 404, 500])
