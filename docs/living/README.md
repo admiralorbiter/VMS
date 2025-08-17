@@ -14,7 +14,7 @@ canonical: "/docs/living/README.md"
 
 ## 🎯 **Welcome to VMS Living Docs**
 
-This directory contains the **10 core living documents** that serve as your daily working reference for the VMS system.
+This directory contains the **11 core living documents** that serve as your daily working reference for the VMS system.
 
 These documents are always current, actively maintained, and designed for both human clarity and AI effectiveness.
 
@@ -28,6 +28,7 @@ These documents are always current, actively maintained, and designed for both h
 - **[Roadmap.md](Roadmap.md)** - Current phase status and future planning
 - **[Features.md](Features.md)** - Feature matrix and development backlog
 - **[Bugs.md](Bugs.md)** - Issue tracking and bug management
+- **[CurrentPlan.md](CurrentPlan.md)** - Active development plan and task breakdowns
 
 ### **🔧 Technical Reference**
 - **[TechStack.md](TechStack.md)** - Technology choices and dependencies
@@ -54,6 +55,7 @@ These documents are always current, actively maintained, and designed for both h
 - **Roadmap.md** - See current phase and next steps
 - **DecisionLog.md** - Understand why technical choices were made
 - **Features.md** - Track development progress
+- **CurrentPlan.md** - Active development tasks and implementation details
 
 ## 🔄 **Document Lifecycle**
 
@@ -99,6 +101,7 @@ See [Philosophy.md](../Philosophy.md) for complete details.
 | **How do I start developing?** | [Onboarding.md](Onboarding.md) |
 | **What phase are we in?** | [Roadmap.md](Roadmap.md) |
 | **What features are planned?** | [Features.md](Features.md) |
+| **What are we working on now?** | [CurrentPlan.md](CurrentPlan.md) |
 | **Are there any bugs?** | [Bugs.md](Bugs.md) |
 | **What technologies are used?** | [TechStack.md](TechStack.md) |
 | **Why was this decision made?** | [DecisionLog.md](DecisionLog.md) |
@@ -127,6 +130,7 @@ See [Philosophy.md](../Philosophy.md) for complete details.
 | Onboarding.md | ✅ Active | 2025-01-27 | @jlane |
 | Commands.md | ✅ Active | 2025-01-27 | @jlane |
 | Testing.md | ✅ Active | 2025-01-27 | @jlane |
+| CurrentPlan.md | ✅ Active | 2025-01-27 | @jlane |
 
 ---
 

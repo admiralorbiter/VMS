@@ -74,7 +74,7 @@ canonical: "/docs/living/Status.md"
 - **Documentation Updates**: API documentation and user guides
 
 ### **Long-term Roadmap**
-- **Phase 3.5**: Performance & Scalability (January 2025)
+- **Phase 3.5**: Performance & Scalability (January 2025 - March 2025) - See [CurrentPlan.md](CurrentPlan.md)
 - **Phase 4**: Advanced Analytics & ML (March 2025)
 - **Phase 5**: Enterprise Integration (June 2025)
 
@@ -159,6 +159,7 @@ canonical: "/docs/living/Status.md"
 - **System Overview**: `/docs/living/Overview.md`
 - **Project Roadmap**: `/docs/living/Roadmap.md`
 - **Feature Matrix**: `/docs/living/Features.md`
+- **Current Development Plan**: `/docs/living/CurrentPlan.md`
 - **Technology Stack**: `/docs/living/TechStack.md`
 
 ## 📝 **Ask me (examples)**
