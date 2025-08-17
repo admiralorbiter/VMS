@@ -260,6 +260,13 @@ Last Updated: 2024
                                 <i class="fa-solid fa-cloud"></i>
                             </a>
                             {% endif %}
+
+                            {# Connector profile link if available #}
+                            {% if volunteer.volunteer.connector and volunteer.volunteer.connector.connector_profile_url %}
+                            <a href="{{ volunteer.volunteer.connector.connector_profile_url }}" class="btn btn-sm action-btn connector-btn" target="_blank" title="Connector Profile">
+                                <i class="fa-solid fa-plug"></i>
+                            </a>
+                            {% endif %}
                             <!-- {% if volunteer.volunteer.salesforce_account_url %}
                             <a href="{{ volunteer.volunteer.salesforce_account_url }}" class="btn btn-sm action-btn salesforce-btn" target="_blank" title="Salesforce Account">
                                 <i class="fa-solid fa-building-user"></i>

@@ -99,51 +99,23 @@ class ConnectorSubscriptionEnum(FormEnum):
 
 class ConnectorData(db.Model):
     """
-    Model representing additional data for volunteers who are connectors.
-
-    Stores subscription status, role information, and activity tracking details.
-    Has a one-to-one relationship with the Volunteer model.
-
-    Connectors are a specialized subset of volunteers who participate in a specific
-    program with additional requirements and tracking mechanisms.
-
-    Database Table:
-        connector_data - Stores connector-specific information
-
-    Key Features:
-        - Subscription status tracking
-        - Role management (current and signup roles)
-        - Professional information storage
-        - Activity tracking with timestamps
-        - External profile integration
-        - Authentication ID management
-
-    Relationships:
-        - One-to-one with Volunteer model
-        - Unique constraints on user_auth_id and volunteer_id
-
-    Attributes:
-        volunteer_id: Foreign key to the volunteer
-        active_subscription: Current subscription status in connector program
-        active_subscription_name: Human-readable subscription name
-        role: Current role in connector program
-        signup_role: Original role when they signed up
-        profile_link: URL to external profile
-        affiliations: Organizations/groups they're affiliated with
-        industry: Professional industry
-        user_auth_id: Unique identifier for authentication
-        joining_date: When they joined as a connector
-        last_login_datetime: Last time they logged in
-        last_update_date: Last time their record was updated
-        created_at: Record creation timestamp
-        updated_at: Record update timestamp
+    Model for storing connector-specific data for volunteers.
+    Connectors are volunteers who have additional responsibilities and access.
     """
 
     __tablename__ = "connector_data"
 
-    # Database columns for identifying and linking to volunteer
     id = db.Column(Integer, primary_key=True)
-    volunteer_id = db.Column(Integer, ForeignKey("volunteer.id"), nullable=False)
+    volunteer_id = db.Column(Integer, db.ForeignKey("volunteer.id"), nullable=False)
+
+    # Authentication and identification
+    user_auth_id = db.Column(
+        String(7), unique=True
+    )  # Unique identifier for authentication
+    # Tracking important dates
+    joining_date = db.Column(String(50))  # When they joined as a connector
+    last_login_datetime = db.Column(String(50))  # Last time they logged in
+    last_update_date = db.Column(Date)  # Last time their record was updated
 
     # Tracks whether the connector is currently participating in the program
     active_subscription = db.Column(
@@ -161,14 +133,6 @@ class ConnectorData(db.Model):
     profile_link = db.Column(String(1300))  # URL to connector's external profile
     affiliations = db.Column(Text)  # Organizations/groups they're affiliated with
     industry = db.Column(String(255))  # Their professional industry
-    user_auth_id = db.Column(
-        String(7), unique=True
-    )  # Unique identifier for authentication
-
-    # Tracking important dates
-    joining_date = db.Column(String(50))  # When they joined as a connector
-    last_login_datetime = db.Column(String(50))  # Last time they logged in
-    last_update_date = db.Column(Date)  # Last time their record was updated
 
     # Automatic timestamp tracking (timezone-aware, Python-side defaults)
     created_at = db.Column(
@@ -190,6 +154,13 @@ class ConnectorData(db.Model):
         db.UniqueConstraint("user_auth_id", name="uix_connector_user_auth_id"),
         db.UniqueConstraint("volunteer_id", name="uix_connector_volunteer_id"),
     )
+
+    @property
+    def connector_profile_url(self):
+        """Generate the connector profile URL if user_auth_id exists."""
+        if self.user_auth_id:
+            return f"https://prepkc.nepris.com/app/user/{self.user_auth_id}"
+        return None
 
 
 class VolunteerStatus(FormEnum):
