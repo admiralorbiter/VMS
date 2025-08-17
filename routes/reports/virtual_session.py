@@ -442,6 +442,11 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
     # Include all districts that have data
     # Note: We don't filter districts here anymore - show all districts with data
 
+    print(
+        f"DEBUG: calculate_summaries_from_sessions called with {len(session_data)} sessions"
+    )
+    print(f"DEBUG: show_all_districts = {show_all_districts}")
+
     district_summaries = {}
     overall_stats = {
         "teacher_count": set(),  # Changed to set for unique counting
@@ -457,13 +462,11 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         "school_count": set(),
     }
 
+    # First pass: initialize all districts that have any sessions
+    districts_found = set()
     for session in session_data:
-        # Only count sessions with completed status (case-insensitive)
-        session_status = session.get("status", "").strip().lower()
-        if session_status not in ["completed", "simulcast", "successfully completed"]:
-            continue
-
         if session["district"]:
+            districts_found.add(session["district"])
             if session["district"] not in district_summaries:
                 district_summaries[session["district"]] = {
                     "teachers": set(),
@@ -476,6 +479,22 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                     "professionals_of_color": set(),
                     "local_professionals": set(),
                 }
+
+    print(f"DEBUG: Districts found in session_data: {sorted(list(districts_found))}")
+    print(
+        f"DEBUG: district_summaries initialized with keys: {sorted(list(district_summaries.keys()))}"
+    )
+
+    # Second pass: process only completed sessions for counting
+    completed_sessions = 0
+    for session in session_data:
+        # Only count sessions with completed status (case-insensitive)
+        session_status = session.get("status", "").strip().lower()
+        if session_status not in ["completed", "simulcast", "successfully completed"]:
+            continue
+
+        completed_sessions += 1
+        if session["district"]:
             district_summary = district_summaries[session["district"]]
 
             # Count unique teachers (only from completed sessions)
@@ -651,9 +670,16 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
             "Grandview School District",
             "Kansas City Kansas Public Schools",
         }
-        district_summaries = {
+        # Show main districts first, then other districts with data
+        main_district_summaries = {
             k: v for k, v in district_summaries.items() if k in main_districts
         }
+        other_district_summaries = {
+            k: v for k, v in district_summaries.items() if k not in main_districts
+        }
+
+        # Combine main districts first, then others
+        district_summaries = {**main_district_summaries, **other_district_summaries}
 
     # Calculate overall student count as unique teachers × 25
     unique_teacher_count = len(overall_stats["teacher_count"])
@@ -689,6 +715,9 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         else 0
     )
 
+    print(
+        f"DEBUG: calculate_summaries_from_sessions returning {len(district_summaries)} districts: {sorted(list(district_summaries.keys()))}"
+    )
     return district_summaries, overall_summary
 
 
@@ -868,12 +897,38 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     # Get all events
     events = base_query.order_by(Event.start_date.desc()).all()
 
-    # Build session data
-    session_data = []
+    # First pass: collect all districts, schools, career clusters, and statuses from raw events
     all_districts = set()
     all_schools = set()
     all_career_clusters = set()
     all_statuses = set()
+
+    for event in events:
+        # Collect districts from events
+        if event.districts:
+            all_districts.add(event.districts[0].name)
+        elif event.district_partner:
+            all_districts.add(event.district_partner)
+
+        # Collect career clusters and statuses
+        if event.series:
+            all_career_clusters.add(event.series)
+        if event.status:
+            all_statuses.add(event.status.value)
+
+        # Collect schools and their districts from teacher registrations
+        for teacher_reg in event.teacher_registrations:
+            teacher = teacher_reg.teacher
+            if teacher and teacher.school_id:
+                school = School.query.get(teacher.school_id)
+                if school:
+                    all_schools.add(school.name)
+                    # Also add the school's district if available
+                    if hasattr(school, "district") and school.district:
+                        all_districts.add(school.district.name)
+
+    # Build session data
+    session_data = []
 
     for event in events:
         # Get all teacher registrations for this event
@@ -989,16 +1044,6 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                     }
                 )
 
-                # Collect filter options
-                if district_name:
-                    all_districts.add(district_name)
-                if school_name:
-                    all_schools.add(school_name)
-                if event.series:
-                    all_career_clusters.add(event.series)
-                if teacher_reg.status:
-                    all_statuses.add(teacher_reg.status)
-
         else:
             # Event with no teacher registrations - show the event itself
             district_name = None
@@ -1068,19 +1113,32 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 }
             )
 
-            # Collect filter options
-            if district_name:
-                all_districts.add(district_name)
-            if event.series:
-                all_career_clusters.add(event.series)
-            if event.status:
-                all_statuses.add(event.status.value)
-
     # Calculate summaries
     show_all_districts = filters.get("show_all_districts", False)
     district_summaries, overall_summary = calculate_summaries_from_sessions(
         session_data, show_all_districts
     )
+
+    # Ensure all districts with data are included in summaries
+    # If a district has data but no summary was created, create an empty summary
+
+    for district_name in all_districts:
+        if district_name not in district_summaries:
+            district_summaries[district_name] = {
+                "teacher_count": 0,
+                "total_students": 0,
+                "session_count": 0,
+                "total_experiences": 0,
+                "organization_count": 0,
+                "professional_count": 0,
+                "professional_of_color_count": 0,
+                "local_professional_count": 0,
+                "school_count": 0,
+                "local_session_count": 0,
+                "poc_session_count": 0,
+                "local_session_percent": 0,
+                "poc_session_percent": 0,
+            }
 
     # Show all districts that have data, but prioritize the main districts
     main_districts = {
@@ -1762,12 +1820,13 @@ def load_routes(bp):
 
         # If refresh is requested, invalidate cache for this virtual year
         if refresh_requested and is_full_year:
+            print(f"DEBUG: Refresh requested for {selected_virtual_year}")
             invalidate_virtual_session_caches(selected_virtual_year)
             print(
                 f"Cache invalidated for virtual session report {selected_virtual_year}"
             )
 
-        # Try to get cached data for full year queries
+        # Try to get cached data for full year queries (but not if refresh was requested)
         cached_data = None
         is_cached = False
         last_refreshed = None
@@ -1840,14 +1899,32 @@ def load_routes(bp):
                         current_filters["status"],
                     ]
                 ):
+                    # Store original unfiltered data for district summaries
+                    unfiltered_session_data = session_data.copy()
                     session_data = apply_runtime_filters(session_data, current_filters)
-                    # Recalculate summaries based on filtered data
+                    # Recalculate summaries based on UNFILTERED data to show all districts
                     district_summaries, overall_summary = (
                         calculate_summaries_from_sessions(
-                            session_data,
+                            unfiltered_session_data,
                             current_filters.get("show_all_districts", False),
                         )
                     )
+
+                    # Filter district summaries to only show the three specified districts
+                    allowed_districts = [
+                        "Kansas City Kansas Public Schools",
+                        "Hickman Mills School District",
+                        "Kansas City Public Schools (MO)",
+                    ]
+
+                    # Create filtered district summaries
+                    filtered_district_summaries = {}
+                    for district_name, summary in district_summaries.items():
+                        if district_name in allowed_districts:
+                            filtered_district_summaries[district_name] = summary
+
+                    # Replace the original district_summaries with the filtered version
+                    district_summaries = filtered_district_summaries
 
                 # Apply sorting and pagination as before
                 session_data = apply_sorting_and_pagination(
@@ -1871,10 +1948,80 @@ def load_routes(bp):
         print(
             f"Computing fresh data for virtual session report {selected_virtual_year}"
         )
+
+        # Compute data with filters, but ensure district summaries show all districts
         session_data, district_summaries, overall_summary, filter_options = (
             compute_virtual_session_data(
                 selected_virtual_year, date_from, date_to, current_filters
             )
+        )
+
+        # Debug output
+        print(
+            f"DEBUG: Initial district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
+        )
+
+        # Ensure all districts for the year are included in summaries, even if filtered out
+        # We need to get the complete district list for the year
+        if any(
+            [
+                current_filters["career_cluster"],
+                current_filters["school"],
+                current_filters["district"],
+                current_filters["status"],
+            ]
+        ):
+            print("DEBUG: Filters applied, getting unfiltered district data...")
+            # Get unfiltered data just for district collection
+            _, all_district_summaries, _, _ = compute_virtual_session_data(
+                selected_virtual_year, date_from, date_to, {}
+            )
+            print(
+                f"DEBUG: Unfiltered district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
+            )
+            # Merge the unfiltered district data with our filtered summaries
+            for district_name, unfiltered_summary in all_district_summaries.items():
+                if district_name not in district_summaries:
+                    print(f"DEBUG: Adding missing district: {district_name}")
+                    # Add district with zero counts if it wasn't in filtered data
+                    district_summaries[district_name] = {
+                        "teacher_count": 0,
+                        "total_students": 0,
+                        "session_count": 0,
+                        "total_experiences": 0,
+                        "organization_count": 0,
+                        "professional_count": 0,
+                        "professional_of_color_count": 0,
+                        "local_professional_count": 0,
+                        "school_count": 0,
+                        "local_session_count": 0,
+                        "poc_session_count": 0,
+                        "local_session_percent": 0,
+                        "poc_session_percent": 0,
+                    }
+
+        print(
+            f"DEBUG: Final district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
+        )
+
+        # Filter district summaries to only show the three specified districts
+        allowed_districts = [
+            "Kansas City Kansas Public Schools",
+            "Hickman Mills School District",
+            "Kansas City Public Schools (MO)",
+        ]
+
+        # Create filtered district summaries
+        filtered_district_summaries = {}
+        for district_name, summary in district_summaries.items():
+            if district_name in allowed_districts:
+                filtered_district_summaries[district_name] = summary
+
+        # Replace the original district_summaries with the filtered version
+        district_summaries = filtered_district_summaries
+
+        print(
+            f"DEBUG: After filtering, district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
         )
 
         # Cache the data if it's a full year query

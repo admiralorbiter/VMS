@@ -325,7 +325,7 @@
             <button type="submit" class="filter-btn">Apply Filters</button>
             <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
             {% if session_data %}
-            <a href="{{ url_for('report.virtual_usage', refresh=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
+            <a href="{{ url_for('report.virtual_usage', refresh=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
                class="export-btn" title="Refresh Data" style="background: #28a745;">
                 🔄 Refresh
             </a>
@@ -348,7 +348,7 @@
                     🏠 Main Districts
                 </a>
                 {% else %}
-                <a href="{{ url_for('report.virtual_usage', show_all_districts=1) }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
+                <a href="{{ url_for('report.virtual_usage', show_all_districts=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
                    class="export-btn" title="Show All Districts" style="background: #6c757d;">
                     🌐 All Districts
                 </a>
@@ -431,8 +431,8 @@
             </div>
         </div>
 
-        <!-- District Summaries -->
-        {% if district_summaries %}
+                       <!-- District Summaries -->
+               {% if district_summaries %}
         <div class="district-summaries">
             <h2>District Breakdown</h2>
             <div class="district-grid">
