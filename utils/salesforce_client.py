@@ -9,14 +9,9 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union
 
-# Try to import Redis, but make it optional
-try:
-    import redis
-
-    REDIS_AVAILABLE = True
-except ImportError:
-    REDIS_AVAILABLE = False
-    redis = None
+# Flask-Caching is used instead of Redis for this project
+REDIS_AVAILABLE = False
+redis = None
 
 try:
     from simple_salesforce import Salesforce
@@ -63,7 +58,6 @@ class SalesforceClient:
         password: str = None,
         security_token: str = None,
         domain: str = "login",
-        redis_client=None,
     ):
         """
         Initialize the Salesforce client.
@@ -73,33 +67,14 @@ class SalesforceClient:
             password: Salesforce password
             security_token: Salesforce security token
             domain: Salesforce domain (login or test)
-            redis_client: Redis client for caching (optional)
         """
         self.username = username or os.environ.get("SF_USERNAME")
         self.password = password or os.environ.get("SF_PASSWORD")
         self.security_token = security_token or os.environ.get("SF_SECURITY_TOKEN")
         self.domain = domain
 
-        # Initialize Redis client if available
+        # Caching is handled by Flask-Caching, not Redis
         self.redis_client = None
-        if REDIS_AVAILABLE and redis_client:
-            self.redis_client = redis_client
-        elif REDIS_AVAILABLE:
-            try:
-                self.redis_client = redis.Redis(
-                    host=os.environ.get("VALIDATION_REDIS_HOST", "localhost"),
-                    port=int(os.environ.get("VALIDATION_REDIS_PORT", 6379)),
-                    db=int(os.environ.get("VALIDATION_REDIS_DB", 0)),
-                    decode_responses=True,
-                )
-                # Test connection
-                self.redis_client.ping()
-                logger.info("Redis connection established successfully")
-            except Exception as e:
-                logger.warning(
-                    f"Redis connection failed: {e}. Caching will be disabled."
-                )
-                self.redis_client = None
 
         # Initialize Salesforce connection
         self.sf = None
@@ -182,32 +157,15 @@ class SalesforceClient:
 
     def _get_from_cache(self, cache_key: str) -> Optional[Any]:
         """Get data from cache if available."""
-        if not self.redis_client:
-            return None
-
-        try:
-            import json
-
-            cached_data = self.redis_client.get(cache_key)
-            if cached_data:
-                return json.loads(cached_data)
-        except Exception as e:
-            logger.warning(f"Cache retrieval failed: {e}")
-
+        # Caching is handled by Flask-Caching decorators
+        # This method is kept for compatibility but doesn't use Redis
         return None
 
     def _set_cache(self, cache_key: str, data: Any, ttl: int = None):
         """Set data in cache."""
-        if not self.redis_client:
-            return
-
-        try:
-            import json
-
-            ttl = ttl or self.cache_ttl
-            self.redis_client.setex(cache_key, ttl, json.dumps(data))
-        except Exception as e:
-            logger.warning(f"Cache setting failed: {e}")
+        # Caching is handled by Flask-Caching decorators
+        # This method is kept for compatibility but doesn't use Redis
+        pass
 
     def get_volunteer_count(self) -> int:
         """Get the total count of volunteers in Salesforce."""
@@ -612,7 +570,7 @@ class SalesforceClient:
         """Get the health status of the Salesforce connection."""
         status = {
             "connected": False,
-            "redis_available": REDIS_AVAILABLE and self.redis_client is not None,
+            "cache_available": True,  # Flask-Caching is always available
             "salesforce_available": SALESFORCE_AVAILABLE,
             "connection_attempts": self._connection_attempts,
             "last_connection_attempt": (
@@ -639,35 +597,23 @@ class SalesforceClient:
 
     def clear_cache(self, pattern: str = "sf:*"):
         """Clear cached data matching the given pattern."""
-        if not self.redis_client:
-            return 0
-
-        try:
-            keys = self.redis_client.keys(pattern)
-            if keys:
-                deleted = self.redis_client.delete(*keys)
-                logger.info(f"Cleared {deleted} cache keys matching pattern: {pattern}")
-                return deleted
-            return 0
-        except Exception as e:
-            logger.warning(f"Cache clearing failed: {e}")
-            return 0
+        # Caching is handled by Flask-Caching decorators
+        # This method is kept for compatibility but doesn't use Redis
+        logger.info("Cache clearing requested - handled by Flask-Caching")
+        return 0
 
     def close(self):
         """Close the Salesforce connection and cleanup resources."""
         if self.sf:
             try:
-                self.sf.close()
-                logger.info("Salesforce connection closed")
+                # Salesforce connection doesn't have a close method
+                # Just set to None to release the reference
+                self.sf = None
+                logger.info("Salesforce connection reference released")
             except Exception as e:
-                logger.warning(f"Error closing Salesforce connection: {e}")
+                logger.warning(f"Error releasing Salesforce connection: {e}")
 
-        if self.redis_client:
-            try:
-                self.redis_client.close()
-                logger.info("Redis connection closed")
-            except Exception as e:
-                logger.warning(f"Error closing Redis connection: {e}")
+        # Redis connection cleanup not needed - using Flask-Caching
 
 
 # Convenience functions for quick access

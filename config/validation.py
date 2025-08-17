@@ -43,14 +43,12 @@ SALESFORCE_CONFIG = {
     "batch_size": int(os.environ.get("VALIDATION_SF_BATCH_SIZE", 200)),
 }
 
-# Redis settings for caching
-REDIS_CONFIG = {
-    "host": os.environ.get("VALIDATION_REDIS_HOST", "localhost"),
-    "port": int(os.environ.get("VALIDATION_REDIS_PORT", 6379)),
-    "db": int(os.environ.get("VALIDATION_REDIS_DB", 0)),
-    "password": os.environ.get("VALIDATION_REDIS_PASSWORD"),
-    "cache_ttl": int(os.environ.get("VALIDATION_CACHE_TTL", 3600)),  # 1 hour default
-    "max_cache_size": int(os.environ.get("VALIDATION_MAX_CACHE_SIZE", 100)),  # MB
+# Flask-Caching settings (Redis not used in this project)
+CACHE_CONFIG = {
+    "cache_type": "simple",  # Use simple memory cache
+    "cache_default_timeout": int(
+        os.environ.get("VALIDATION_CACHE_TTL", 3600)
+    ),  # 1 hour default
 }
 
 # Validation schedules
@@ -1008,7 +1006,7 @@ VALIDATION_BUSINESS_RULES = {
 VALIDATION_CONFIG = {
     "thresholds": VALIDATION_THRESHOLDS,
     "salesforce": SALESFORCE_CONFIG,
-    "redis": REDIS_CONFIG,
+    "cache": CACHE_CONFIG,
     "schedules": VALIDATION_SCHEDULES,
     "alerts": ALERT_CONFIG,
     "reporting": REPORTING_CONFIG,
@@ -1056,9 +1054,7 @@ def validate_config() -> List[str]:
             "VALIDATION_FIELD_COMPLETENESS_THRESHOLD must be between 0 and 100"
         )
 
-    # Check Redis configuration
-    if REDIS_CONFIG["port"] < 1 or REDIS_CONFIG["port"] > 65535:
-        errors.append("VALIDATION_REDIS_PORT must be between 1 and 65535")
+    # Cache configuration validation not needed for Flask-Caching
 
     # Check schedule intervals
     if VALIDATION_SCHEDULES["fast_validation_interval"] < 60:

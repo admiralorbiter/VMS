@@ -197,7 +197,7 @@ canonical: "/docs/living/TechStack.md"
 
 ### **Future Enhancements**
 - **Database**: Migration to PostgreSQL for production scale
-- **Caching**: Redis integration for performance
+- **Caching**: Flask-Caching for validation results and performance
 - **Load Balancing**: Multiple application instances
 - **Microservices**: Service decomposition for large scale
 

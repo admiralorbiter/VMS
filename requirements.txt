@@ -17,7 +17,7 @@ xlsxwriter
 simple_salesforce
 openpyxl
 cryptography
-redis
+Flask-Caching
 schedule
 psutil
 requests

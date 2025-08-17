@@ -127,8 +127,7 @@ Currently implemented:
    SF_USERNAME=your-salesforce-username
    SF_PASSWORD=your-salesforce-password
    SF_SECURITY_TOKEN=your-salesforce-security-token
-   VALIDATION_REDIS_HOST=localhost  # Optional: for caching
-   VALIDATION_REDIS_PORT=6379       # Optional: for caching
+   # Redis not used - Flask-Caching handles caching
    ```
 
            **Current Status**: ✅ **Phase 3.2 Complete - Relationship Integrity Validation Operational**
