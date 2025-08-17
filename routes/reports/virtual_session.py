@@ -1949,56 +1949,22 @@ def load_routes(bp):
             f"Computing fresh data for virtual session report {selected_virtual_year}"
         )
 
-        # Compute data with filters, but ensure district summaries show all districts
-        session_data, district_summaries, overall_summary, filter_options = (
-            compute_virtual_session_data(
-                selected_virtual_year, date_from, date_to, current_filters
-            )
+        # Get unfiltered data first to ensure we have all districts for summaries
+        print("DEBUG: Getting unfiltered data for district summaries...")
+        _, all_district_summaries, _, filter_options = compute_virtual_session_data(
+            selected_virtual_year, date_from, date_to, {}
         )
-
-        # Debug output
         print(
-            f"DEBUG: Initial district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
+            f"DEBUG: Unfiltered district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
         )
 
-        # Ensure all districts for the year are included in summaries, even if filtered out
-        # We need to get the complete district list for the year
-        if any(
-            [
-                current_filters["career_cluster"],
-                current_filters["school"],
-                current_filters["district"],
-                current_filters["status"],
-            ]
-        ):
-            print("DEBUG: Filters applied, getting unfiltered district data...")
-            # Get unfiltered data just for district collection
-            _, all_district_summaries, _, _ = compute_virtual_session_data(
-                selected_virtual_year, date_from, date_to, {}
-            )
-            print(
-                f"DEBUG: Unfiltered district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
-            )
-            # Merge the unfiltered district data with our filtered summaries
-            for district_name, unfiltered_summary in all_district_summaries.items():
-                if district_name not in district_summaries:
-                    print(f"DEBUG: Adding missing district: {district_name}")
-                    # Add district with zero counts if it wasn't in filtered data
-                    district_summaries[district_name] = {
-                        "teacher_count": 0,
-                        "total_students": 0,
-                        "session_count": 0,
-                        "total_experiences": 0,
-                        "organization_count": 0,
-                        "professional_count": 0,
-                        "professional_of_color_count": 0,
-                        "local_professional_count": 0,
-                        "school_count": 0,
-                        "local_session_count": 0,
-                        "poc_session_count": 0,
-                        "local_session_percent": 0,
-                        "poc_session_percent": 0,
-                    }
+        # Now get filtered data for the session table
+        session_data, _, overall_summary, _ = compute_virtual_session_data(
+            selected_virtual_year, date_from, date_to, current_filters
+        )
+
+        # Use the unfiltered district summaries as our base
+        district_summaries = all_district_summaries
 
         print(
             f"DEBUG: Final district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
@@ -3946,7 +3912,7 @@ def load_routes(bp):
 def compute_teacher_school_breakdown(district_name, virtual_year, date_from, date_to):
     """
     Compute teacher breakdown grouped by school for a specific district.
-    Only includes teachers who have completed at least one virtual session.
+    Includes both completed sessions and no-show sessions for each teacher.
 
     Args:
         district_name: Name of the district
@@ -3987,40 +3953,8 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
         if event_district != district_name:
             continue
 
-        # Only count completed sessions and simulcast sessions
-        # Check both mapped status and original status string
-        should_skip = False
-        if event.status and event.status.value not in ["Completed", "Simulcast"]:
-            should_skip = True
-        elif (
-            event.original_status_string
-            and "no-show" in event.original_status_string.lower()
-        ):
-            should_skip = True
-
-        if should_skip:
-            continue
-
-        # Process each teacher registration for completed sessions
+        # Process each teacher registration for both completed and no-show sessions
         for teacher_reg in event.teacher_registrations:
-            # Only count teachers who actually attended
-            # Check if attendance was confirmed (this is more reliable than status)
-            if teacher_reg.attendance_confirmed_at is None:
-                continue
-
-            # Also check status as backup
-            no_show_statuses = [
-                "no_show",
-                "cancelled",
-                "No Show",
-                "Teacher No-Show",
-                "Did Not Attend",
-                "teacher no-show",
-                "unfilled",
-            ]
-            if teacher_reg.status in no_show_statuses:
-                continue
-
             teacher = teacher_reg.teacher
             if not teacher:
                 continue
@@ -4048,10 +3982,34 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                     "id": teacher_id,
                     "name": teacher_name,
                     "sessions": 0,
+                    "no_shows": 0,
                 }
 
-            # Increment session count
-            school_teacher_data[school_name][teacher_id]["sessions"] += 1
+            # Determine if this is a no-show or completed session
+            is_no_show = False
+
+            # Check if attendance was confirmed (this is more reliable than status)
+            if teacher_reg.attendance_confirmed_at is None:
+                is_no_show = True
+            else:
+                # Also check status as backup
+                no_show_statuses = [
+                    "no_show",
+                    "cancelled",
+                    "No Show",
+                    "Teacher No-Show",
+                    "Did Not Attend",
+                    "teacher no-show",
+                    "unfilled",
+                ]
+                if teacher_reg.status in no_show_statuses:
+                    is_no_show = True
+
+            # Increment appropriate count
+            if is_no_show:
+                school_teacher_data[school_name][teacher_id]["no_shows"] += 1
+            else:
+                school_teacher_data[school_name][teacher_id]["sessions"] += 1
 
     # Convert to sorted structure for template
     school_breakdown = {}
@@ -4060,31 +4018,36 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
         teachers_list = sorted(
             teachers_dict.values(),
             key=lambda x: (
-                -x["sessions"],
+                -(
+                    x["sessions"] + x["no_shows"]
+                ),  # Sort by total sessions (completed + no-shows) desc
                 x["name"],
-            ),  # Sort by session count desc, then name asc
+            ),  # Then by name asc
         )
 
-        # Only include teachers with at least 1 completed session
-        teachers_with_sessions = [t for t in teachers_list if t["sessions"] > 0]
+        # Include teachers with at least 1 session (completed or no-show)
+        teachers_with_activity = [
+            t for t in teachers_list if t["sessions"] > 0 or t["no_shows"] > 0
+        ]
 
         if (
-            teachers_with_sessions
-        ):  # Only include schools that have teachers with sessions
+            teachers_with_activity
+        ):  # Only include schools that have teachers with activity
             school_breakdown[school_name] = {
-                "teachers": teachers_with_sessions,
-                "total_teachers": len(teachers_with_sessions),
-                "total_sessions": sum(t["sessions"] for t in teachers_with_sessions),
+                "teachers": teachers_with_activity,
+                "total_teachers": len(teachers_with_activity),
+                "total_sessions": sum(t["sessions"] for t in teachers_with_activity),
+                "total_no_shows": sum(t["no_shows"] for t in teachers_with_activity),
             }
 
-    # Sort schools by total sessions (descending)
+    # Sort schools by total activity (sessions + no-shows) (descending)
     sorted_schools = dict(
         sorted(
             school_breakdown.items(),
             key=lambda x: (
-                -x[1]["total_sessions"],
+                -(x[1]["total_sessions"] + x[1]["total_no_shows"]),
                 x[0],
-            ),  # Sort by total sessions desc, then school name asc
+            ),  # Sort by total activity desc, then school name asc
         )
     )
 

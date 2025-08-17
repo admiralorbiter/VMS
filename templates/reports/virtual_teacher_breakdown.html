@@ -230,6 +230,13 @@
     color: #dc3545;
 }
 
+.no-show-count {
+    font-size: 0.85em;
+    color: #dc3545;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
 .no-data {
     text-align: center;
     padding: 60px 20px;
@@ -314,7 +321,7 @@
                         <th class="school-header">
                             {{ school_name }}
                             <div class="school-stats">
-                                {{ school_data.total_teachers }} teachers, {{ school_data.total_sessions }} sessions
+                                {{ school_data.total_teachers }} teachers, {{ school_data.total_sessions }} sessions, {{ school_data.total_no_shows }} no-shows
                             </div>
                         </th>
                         {% endfor %}
@@ -338,6 +345,11 @@
                                 <div class="session-count {% if teacher.sessions >= 5 %}high{% elif teacher.sessions >= 3 %}medium{% else %}low{% endif %}">
                                     {{ teacher.sessions }} sessions
                                 </div>
+                                {% if teacher.no_shows > 0 %}
+                                <div class="no-show-count">
+                                    {{ teacher.no_shows }} no-show{{ 's' if teacher.no_shows != 1 else '' }}
+                                </div>
+                                {% endif %}
                             {% endif %}
                         </td>
                         {% endfor %}
@@ -371,6 +383,14 @@
                 </span>
                 <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
                     Total Sessions
+                </span>
+            </div>
+            <div class="stat-card" style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); text-align: center; border-left: 4px solid #dc3545;">
+                <span class="stat-value" style="display: block; font-size: 2.5em; font-weight: 700; color: #dc3545; margin-bottom: 5px;">
+                    {{ teacher_school_breakdown.values() | map(attribute='total_no_shows') | sum }}
+                </span>
+                <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Total No-Shows
                 </span>
             </div>
         </div>
