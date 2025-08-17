@@ -209,3 +209,49 @@ summary: "<one paragraph what/why>"
 - "What are the current decisions about data integration?"
 - "Are there any deprecated decisions that need updating?"
 - "What's the process for creating a new ADR?"
+
+# Decision Log
+
+This document tracks significant architectural and implementation decisions made during the VMS development process.
+
+## 2025-08-17: Removed Salesforce Pathway Import System
+
+**Decision**: Remove the complex Salesforce pathway import system and replace it with a simpler event affiliation approach using `pathway_events.py`.
+
+**Context**:
+- The original pathways system included complex many-to-many relationships between pathways, contacts, and events
+- Salesforce pathway data (`Pathway__c`, `Pathway_Participant__c`, `Pathway_Session__c`) was not fully fleshed out
+- The system was creating unnecessary complexity for data that wasn't being actively used
+
+**What Was Removed**:
+- `models/pathways.py` - Complex Pathway model with many-to-many relationships
+- `routes/pathways/` - Entire pathways blueprint and routes
+- `routes/reports/pathways.py` - Pathway-specific reports
+- `templates/reports/pathways.html` - Pathway report templates
+- Database tables: `pathway_contacts`, `pathway_events`
+
+**What Was Kept**:
+- `routes/events/pathway_events.py` - Blueprint for syncing unaffiliated events
+- Simple `pathway` field in `EventAttendanceDetail` (string field for basic categorization)
+- Pathway event types (`PATHWAY_CAMPUS_VISITS`, `PATHWAY_WORKPLACE_VISITS`)
+
+**New Approach**:
+Instead of importing complex pathway hierarchies from Salesforce, we now:
+1. Use the `pathway_events.py` blueprint to sync unaffiliated events
+2. Associate events with districts based on student participation data
+3. Store simple pathway categorization as strings in attendance records
+4. Build pathway functionality on top of this simpler foundation
+
+**Benefits**:
+- Simpler, more maintainable codebase
+- Focus on actual data relationships rather than theoretical ones
+- Easier to extend and customize pathway functionality
+- Reduced database complexity
+
+**Migration**:
+- Created Alembic migration `2e3f476a022a_remove_pathway_tables.py` to document the removal
+- All pathway-related code references have been cleaned up
+- System continues to function with existing pathway categorization
+
+**Future Development**:
+Pathway functionality can now be built incrementally on top of the simplified event affiliation system, allowing for more flexible and customized implementations based on actual business needs rather than Salesforce schema limitations.

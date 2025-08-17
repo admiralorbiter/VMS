@@ -4,11 +4,13 @@ status: active
 doc_type: planning
 project: "vms-performance-analysis"
 owner: "@jlane"
-updated: 2025-01-27
+updated: 2025-08-17
 tags: ["performance", "analysis", "planning", "vms", "phase-3.5"]
 summary: "Comprehensive plan for implementing a performance analysis system for the VMS validation framework. Includes detailed task breakdowns, checklists, and coverage analysis for models and routes."
 canonical: "/docs/living/CurrentPlan.md"
 ---
+
+> **Recent Update (2025-08-17)**: Completed pathway system cleanup - removed complex Salesforce pathway imports and simplified to use `pathway_events.py` for event affiliation. This reduces system complexity and provides a cleaner foundation for future pathway functionality.
 
 # Current Plan: Performance Analysis System
 
@@ -22,7 +24,7 @@ This document outlines the detailed implementation plan for creating a performan
 
 **Objective**: Create a comprehensive performance analysis system that provides real-time monitoring, historical analysis, and optimization insights for the VMS validation framework.
 
-**Scope**: 
+**Scope**:
 - Performance monitoring dashboard (separate from admin.html)
 - Comprehensive coverage analysis of all models and routes
 - Performance query management interface
@@ -56,7 +58,7 @@ This document outlines the detailed implementation plan for creating a performan
 
 ## 🚀 **Phase 1: Foundation & Planning (Week 1-2)**
 
-### **1.1 System Requirements & Design** 
+### **1.1 System Requirements & Design**
 - [ ] **Performance Requirements Analysis**
   - [ ] Define performance baselines for current system
   - [ ] Establish target performance metrics

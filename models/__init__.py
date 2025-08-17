@@ -34,7 +34,7 @@ Available Models:
 - BugReport: Bug report management
 - Class: Class data and school associations
 - ClientProject: Client project management
-- Pathways: Educational pathway data
+
 - Reports: Report configuration and data
 - Validation: Data validation and quality monitoring
 
@@ -59,7 +59,6 @@ from .event import Event
 from .google_sheet import GoogleSheet
 from .history import History
 from .organization import Organization
-from .pathways import Pathway
 from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
 from .school_model import School
 from .student import Student
@@ -96,7 +95,6 @@ __all__ = [
     "BugReport",
     "Class",
     "ClientProject",
-    "Pathway",
     "DistrictYearEndReport",
     "DistrictEngagementReport",
     "OrganizationReport",

@@ -9,7 +9,6 @@ from models.contact import Contact
 from models.district_model import District
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization
-from models.pathways import Pathway
 from models.school_model import School
 from models.volunteer import Volunteer
 from tests.conftest import assert_route_response, safe_route_test
@@ -118,18 +117,6 @@ def test_contact_report(client, auth_headers):
 def test_contact_report_detail(client, auth_headers):
     """Test contact report detail"""
     response = safe_route_test(client, "/reports/contact-detail", headers=auth_headers)
-    assert_route_response(response, expected_statuses=[200, 404, 500])
-
-
-def test_pathways_report(client, auth_headers):
-    """Test pathways report"""
-    response = safe_route_test(client, "/reports/pathways", headers=auth_headers)
-    assert_route_response(response, expected_statuses=[200, 404, 500])
-
-
-def test_pathway_detail_report(client, auth_headers):
-    """Test pathway detail report"""
-    response = safe_route_test(client, "/reports/pathway-detail", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 

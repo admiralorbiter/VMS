@@ -55,7 +55,6 @@ from routes.events.routes import events_bp
 from routes.history.routes import history_bp
 from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
-from routes.pathways.routes_pathways import pathways_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
@@ -86,7 +85,7 @@ def init_routes(app):
         - calendar_bp: Calendar functionality routes (/calendar/*)
         - bug_reports_bp: Bug reporting routes (/bug_reports/*)
         - client_projects_bp: Client project routes (/client_projects/*)
-        - pathways_bp: Educational pathways routes (/pathways/*)
+
         - pathway_events_bp: Pathway event routes (/pathway_events/*)
         - api_bp: API endpoints (/api/v1/*)
     """
@@ -103,7 +102,7 @@ def init_routes(app):
     app.register_blueprint(calendar_bp)
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
-    app.register_blueprint(pathways_bp)
+
     app.register_blueprint(pathway_events_bp)
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)

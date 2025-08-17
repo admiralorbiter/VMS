@@ -371,7 +371,7 @@ class Volunteer(Contact):
             list: List of History objects ordered by activity_date descending
         """
         return (
-            History.query.filter_by(volunteer_id=self.id, is_deleted=False)
+            History.query.filter_by(contact_id=self.id, is_deleted=False)
             .order_by(History.activity_date.desc())
             .all()
         )

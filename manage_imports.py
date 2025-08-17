@@ -103,7 +103,7 @@ SEQUENCE: List[ImportStep] = [
     ImportStep("affiliations", "/organizations/import-affiliations-from-salesforce"),
     ImportStep("events", "/events/import-from-salesforce"),
     ImportStep("history", "/history/import-from-salesforce"),
-    # Replace legacy pathways import with unaffiliated events sync
+    # Sync unaffiliated events
     ImportStep("pathway_events_sync", "/pathway-events/sync-unaffiliated-events"),
 ]
 

@@ -3,8 +3,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from models import db
+from models.contact import Contact
 from models.event import Event
 from models.history import History, HistoryType
+from models.teacher import Teacher
 from models.volunteer import Volunteer
 
 
@@ -20,7 +22,7 @@ def test_new_history(app, test_event, test_volunteer):
         try:
             history = History(
                 event_id=event.id,
-                volunteer_id=volunteer.id,
+                contact_id=volunteer.id,
                 action="test_action",
                 summary="Test summary",
                 description="Test description",
@@ -38,7 +40,11 @@ def test_new_history(app, test_event, test_volunteer):
             # Basic assertions
             assert history.id is not None
             assert history.event_id == event.id
-            assert history.volunteer_id == volunteer.id
+            assert history.contact_id == volunteer.id
+            assert (
+                history.volunteer_id == volunteer.id
+            )  # Backward compatibility property
+            assert history.contact_type == "volunteer"  # New property
             assert history.action == "test_action"
             assert history.summary == "Test summary"
             assert history.description == "Test description"
@@ -48,7 +54,6 @@ def test_new_history(app, test_event, test_volunteer):
             assert history.salesforce_id == "a005f000003XNa7AAG"
             assert history.is_deleted is False
             assert isinstance(history.created_at, datetime)
-            assert isinstance(history.last_modified_at, datetime)
             assert history.additional_metadata == {"test_key": "test_value"}
             assert history.history_type == "note"
 
@@ -64,7 +69,7 @@ def test_history_type_enum_conversion(app, test_volunteer):
     """Test HistoryType enum conversion"""
     with app.app_context():
         history = History(
-            volunteer_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
+            contact_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
         )
 
         # Test setting via enum
@@ -88,12 +93,12 @@ def test_history_validation(app, test_volunteer):
         # Test empty notes validation
         with pytest.raises(ValueError):
             history = History(
-                volunteer_id=test_volunteer.id,
+                contact_id=test_volunteer.id,
                 activity_date=datetime.now(timezone.utc),
                 notes="",  # Should raise error
             )
 
-        # Test missing volunteer_id
+        # Test missing contact_id
         with pytest.raises(Exception):
             history = History(activity_date=datetime.now(timezone.utc))
             db.session.add(history)
@@ -105,13 +110,13 @@ def test_is_recent_property(app, test_volunteer):
     with app.app_context():
         # Test recent history
         recent_history = History(
-            volunteer_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
+            contact_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
         )
         assert recent_history.is_recent is True
 
         # Test old history
         old_history = History(
-            volunteer_id=test_volunteer.id,
+            contact_id=test_volunteer.id,
             activity_date=datetime.now(timezone.utc) - timedelta(days=31),
         )
         assert old_history.is_recent is False
@@ -121,7 +126,7 @@ def test_to_dict_method(app, test_volunteer, test_user):
     """Test to_dict method with various field combinations"""
     with app.app_context():
         history = History(
-            volunteer_id=test_volunteer.id,
+            contact_id=test_volunteer.id,
             activity_date=datetime.now(timezone.utc),
             notes="Test notes",
             history_type="note",
@@ -134,7 +139,9 @@ def test_to_dict_method(app, test_volunteer, test_user):
         db.session.flush()
 
         dict_repr = history.to_dict()
-        assert dict_repr["volunteer_id"] == test_volunteer.id
+        assert dict_repr["contact_id"] == test_volunteer.id
+        assert dict_repr["volunteer_id"] == test_volunteer.id  # Backward compatibility
+        assert dict_repr["contact_type"] == "volunteer"  # New property
         assert dict_repr["notes"] == "Test notes"
         assert dict_repr["history_type"] == "note"
         assert dict_repr["metadata"] == {"key": "value"}
@@ -145,7 +152,7 @@ def test_soft_delete_and_restore(app, test_volunteer, test_user):
     """Test soft delete and restore functionality with user tracking"""
     with app.app_context():
         history = History(
-            volunteer_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
+            contact_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
         )
 
         # Test soft delete
@@ -166,7 +173,7 @@ def test_history_with_null_optional_fields(app, test_volunteer):
     """Test creating history with minimal required fields"""
     with app.app_context():
         history = History(
-            volunteer_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
+            contact_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
         )
         db.session.add(history)
         db.session.flush()
@@ -181,7 +188,7 @@ def test_history_type_case_sensitivity(app, test_volunteer):
     """Test history_type case sensitivity handling"""
     with app.app_context():
         history = History(
-            volunteer_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
+            contact_id=test_volunteer.id, activity_date=datetime.now(timezone.utc)
         )
 
         # Test different case variations
@@ -205,7 +212,7 @@ def test_history_relationships(app, test_event, test_volunteer):
         try:
             history = History(
                 event_id=event.id,
-                volunteer_id=volunteer.id,
+                contact_id=volunteer.id,
                 action="test_relationship",
                 summary="Test relationship summary",
             )
@@ -217,7 +224,8 @@ def test_history_relationships(app, test_event, test_volunteer):
             assert history in event.histories.all()
 
             # Test relationship with Volunteer
-            assert history.volunteer_id == volunteer.id
+            assert history.contact_id == volunteer.id
+            assert history.volunteer_id == volunteer.id  # Backward compatibility
             assert history in volunteer.histories.all()
 
             db.session.commit()
@@ -241,7 +249,7 @@ def test_history_cascade_delete(app, test_event, test_volunteer):
         try:
             history = History(
                 event_id=event.id,
-                volunteer_id=volunteer.id,
+                contact_id=volunteer.id,
                 action="test_cascade",
                 summary="Test cascade summary",
             )
@@ -280,7 +288,7 @@ def test_history_soft_delete(app, test_event, test_volunteer):
         try:
             history = History(
                 event_id=event.id,
-                volunteer_id=volunteer.id,
+                contact_id=volunteer.id,
                 action="test_soft_delete",
                 summary="Test soft delete summary",
             )
@@ -315,31 +323,143 @@ def test_history_timestamps(app, test_event, test_volunteer):
         try:
             history = History(
                 event_id=event.id,
-                volunteer_id=volunteer.id,
+                contact_id=volunteer.id,
                 action="test_timestamps",
                 summary="Test timestamps summary",
             )
             db.session.add(history)
             db.session.commit()
 
-            # Store initial timestamps
+            # Store initial timestamp
             created_at = history.created_at
-            last_modified = history.last_modified_at
 
             # Update the record
             history.summary = "Updated summary"
             db.session.commit()
 
-            # Verify timestamps
+            # Verify timestamp
             assert history.created_at == created_at  # Should not change
-            # Add a small delay to ensure timestamp difference
-            import time
-
-            time.sleep(0.001)
-            assert history.last_modified_at >= last_modified  # Should be updated
+            # Note: updated_at column was removed from schema
 
         except:
             db.session.rollback()
             raise
         finally:
             db.session.close()
+
+
+# New tests for enhanced contact functionality
+
+
+def test_history_with_teacher_contact(app, test_event):
+    """Test creating history with a teacher contact"""
+    with app.app_context():
+        # Create a test teacher
+        teacher = Teacher(
+            first_name="Test", last_name="Teacher", salesforce_individual_id="T001"
+        )
+        db.session.add(teacher)
+        db.session.flush()
+
+        try:
+            history = History(
+                event_id=test_event.id,
+                contact_id=teacher.id,
+                action="teacher_activity",
+                summary="Teacher participated in event",
+                activity_date=datetime.now(timezone.utc),
+                history_type="activity",
+            )
+            db.session.add(history)
+            db.session.flush()
+
+            # Test the new properties
+            assert history.contact_id == teacher.id
+            # Properties work after the object is saved and relationships are loaded
+            db.session.flush()
+            assert history.teacher_id == teacher.id  # Should return teacher ID
+            assert history.volunteer_id is None  # Should be None for teachers
+            assert history.contact_type == "teacher"
+
+            # Test to_dict output
+            dict_repr = history.to_dict()
+            assert dict_repr["contact_id"] == teacher.id
+            assert dict_repr["teacher_id"] == teacher.id
+            assert dict_repr["volunteer_id"] is None
+            assert dict_repr["contact_type"] == "teacher"
+
+            db.session.commit()
+        except:
+            db.session.rollback()
+            raise
+        finally:
+            db.session.delete(teacher)
+            db.session.commit()
+
+
+def test_history_contact_type_properties(app, test_volunteer):
+    """Test contact type properties for different contact types"""
+    with app.app_context():
+        # Test with volunteer
+        volunteer_history = History(
+            contact_id=test_volunteer.id,
+            activity_date=datetime.now(timezone.utc),
+            summary="Volunteer activity",
+        )
+
+        # Save to database so properties can access relationships
+        db.session.add(volunteer_history)
+        db.session.flush()
+
+        assert volunteer_history.contact_type == "volunteer"
+        assert volunteer_history.volunteer_id == test_volunteer.id
+        assert volunteer_history.teacher_id is None
+
+        # Test with teacher
+        teacher = Teacher(
+            first_name="Test", last_name="Teacher", salesforce_individual_id="T002"
+        )
+        db.session.add(teacher)
+        db.session.flush()
+
+        try:
+            teacher_history = History(
+                contact_id=teacher.id,
+                activity_date=datetime.now(timezone.utc),
+                summary="Teacher activity",
+            )
+
+            # Save to database so properties can access relationships
+            db.session.add(teacher_history)
+            db.session.flush()
+
+            assert teacher_history.contact_type == "teacher"
+            assert teacher_history.teacher_id == teacher.id
+            assert teacher_history.volunteer_id is None
+
+            db.session.delete(teacher)
+            db.session.commit()
+        except:
+            db.session.rollback()
+            raise
+
+
+def test_history_backward_compatibility(app, test_volunteer):
+    """Test that old volunteer_id property still works for backward compatibility"""
+    with app.app_context():
+        history = History(
+            contact_id=test_volunteer.id,
+            activity_date=datetime.now(timezone.utc),
+            summary="Backward compatibility test",
+        )
+
+        # Save to database so properties can access relationships
+        db.session.add(history)
+        db.session.flush()
+
+        # The volunteer_id property should still work
+        assert history.volunteer_id == test_volunteer.id
+
+        # But we can't set it directly (it's read-only)
+        with pytest.raises(AttributeError):
+            history.volunteer_id = 999  # This should fail

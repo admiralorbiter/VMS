@@ -60,7 +60,6 @@ from models.event import (
     EventTeacher,
     EventType,
 )
-from models.pathways import pathway_events
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher
@@ -970,9 +969,6 @@ def purge_events():
 
         # Delete event-teacher associations
         EventTeacher.query.delete()
-
-        # Delete pathway-event associations
-        db.session.execute(pathway_events.delete())
 
         # Delete event-district associations
         db.session.execute(db.text("DELETE FROM event_districts"))

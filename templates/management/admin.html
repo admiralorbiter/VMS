@@ -363,29 +363,7 @@
                     </div>
                 </div>
 
-                {# Pathways import #}
-                <div class="import-item">
-                    <button onclick="importPathways()" class="btn admin-btn-import" id="importPathwaysBtn">
-                        <i class="fas fa-road"></i>
-                        <span>9. Import Pathways</span>
-                    </button>
-                    <div class="import-status" id="importPathwaysStatus"></div>
-                    <div class="import-progress" id="importPathwaysProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
 
-                {# Pathway Participants import #}
-                <div class="import-item">
-                    <button onclick="importPathwayParticipants()" class="btn admin-btn-import" id="importPathwayParticipantsBtn">
-                        <i class="fas fa-users"></i>
-                        <span>9a. Import Pathway Participants</span>
-                    </button>
-                    <div class="import-status" id="importPathwayParticipantsStatus"></div>
-                    <div class="import-progress" id="importPathwayParticipantsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
 
                 {# Virtual Events import #}
                 <div class="import-item">
@@ -1068,7 +1046,7 @@ async function importAllSequentially() {
         { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
         { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
         { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' },
-        { route: '/pathways/import-from-salesforce', name: 'Pathways', btnId: 'importPathwaysBtn' }
+
     ];
 
     // Disable all import buttons
@@ -1278,91 +1256,7 @@ async function dedupeStudentParticipations() {
     }
 }
 
-function importPathways() {
-    // Disable the button and show loading state
-    const button = document.getElementById('importPathwaysBtn');
-    const status = document.getElementById('importPathwaysStatus');
-    const progress = document.getElementById('importPathwaysProgress');
 
-    button.disabled = true;
-    status.textContent = 'Importing pathways...';
-    progress.style.display = 'block';
-
-    // Make the API call
-    fetch('/pathways/import-from-salesforce', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            status.textContent = data.message;
-            status.style.color = 'green';
-        } else {
-            status.textContent = data.message || 'Import failed';
-            status.style.color = 'red';
-        }
-
-        // Show errors if any
-        if (data.errors && data.errors.length > 0) {
-            console.log('Import errors:', data.errors);
-        }
-    })
-    .catch(error => {
-        status.textContent = 'Import failed: ' + error.message;
-        status.style.color = 'red';
-        console.error('Import error:', error);
-    })
-    .finally(() => {
-        button.disabled = false;
-        progress.style.display = 'none';
-    });
-}
-
-function importPathwayParticipants() {
-    // Disable the button and show loading state
-    const button = document.getElementById('importPathwayParticipantsBtn');
-    const status = document.getElementById('importPathwayParticipantsStatus');
-    const progress = document.getElementById('importPathwayParticipantsProgress');
-
-    button.disabled = true;
-    status.textContent = 'Importing pathway participants...';
-    progress.style.display = 'block';
-
-    // Make the API call
-    fetch('/pathways/import-participants-from-salesforce', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            status.textContent = data.message;
-            status.style.color = 'green';
-        } else {
-            status.textContent = data.message || 'Import failed';
-            status.style.color = 'red';
-        }
-
-        // Show errors if any
-        if (data.errors && data.errors.length > 0) {
-            console.log('Import errors:', data.errors);
-        }
-    })
-    .catch(error => {
-        status.textContent = 'Import failed: ' + error.message;
-        status.style.color = 'red';
-        console.error('Import error:', error);
-    })
-    .finally(() => {
-        button.disabled = false;
-        progress.style.display = 'none';
-    });
-}
 
 function importStudentParticipants() {
     if (!confirm('Are you sure you want to import student participation data from Salesforce? This will link existing students to events based on Salesforce records.')) {

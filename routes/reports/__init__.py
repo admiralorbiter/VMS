@@ -15,7 +15,6 @@ from routes.reports.index import load_routes
 from routes.reports.organization_report import (
     load_routes as load_organization_report_routes,
 )
-from routes.reports.pathways import load_routes as load_pathways_routes
 from routes.reports.recent_volunteers import (
     load_routes as load_recent_volunteers_routes,
 )
@@ -35,7 +34,7 @@ load_district_routes(report_bp)
 
 load_recruitment_routes(report_bp)
 load_contact_routes(report_bp)
-load_pathways_routes(report_bp)
+
 load_attendance_routes(report_bp)
 load_first_time_volunteer_routes(report_bp)
 load_volunteers_by_event_routes(report_bp)

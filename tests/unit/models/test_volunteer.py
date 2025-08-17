@@ -157,13 +157,13 @@ def test_active_histories(app, test_volunteer):
 
         # Create some histories
         active_history = History(
-            volunteer_id=test_volunteer.id,
+            contact_id=test_volunteer.id,
             activity_date=datetime.now(),
             activity_type="Test Activity",
             is_deleted=False,
         )
         deleted_history = History(
-            volunteer_id=test_volunteer.id,
+            contact_id=test_volunteer.id,
             activity_date=datetime.now(),
             activity_type="Deleted Activity",
             is_deleted=True,
