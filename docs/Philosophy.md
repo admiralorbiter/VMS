@@ -4,7 +4,7 @@ status: active
 doc_type: overview
 project: "global"
 owner: "@jlane"
-updated: 2025-08-16
+updated: 2025-01-27
 tags: ["docs-as-code","governance","ai","rag","adr"]
 summary: "How we structure, maintain, and retrieve knowledge so humans stay clear and AI stays effective."
 canonical: "/docs/living/Philosophy.md"
@@ -20,21 +20,26 @@ This document defines how we create, evolve, and retrieve knowledge with minimal
 
 ## TL;DR (Policy on One Page)
 
-- Keep **a tiny set of living docs** (Overview, Roadmap, DecisionLog, Onboarding, essential Runbooks).
-- Everything else lives under **/projects/** while active, then moves to **/archive/YYYY/MM/** with a stub left behind.
-- Every doc has **front matter** (owner, status, updated, summary, canonical). No owner → no doc.
-- **Lifecycle:** `draft → active (living) → deprecated → archived`. Auto-review if untouched for 60 days.
+- Keep **10 living docs** (Overview, Roadmap, DecisionLog, Onboarding, Bugs, Features, Status, TechStack, Commands, Testing).
+- **Bugs.md** tracks issues by priority (Critical, High, Medium, Low).
+- **Features.md** separates high-level features from low-level tasks.
+- **Status.md** shows current system health and recent changes.
+- **TechStack.md** documents your technology choices and dependencies.
+- **Commands.md** provides quick reference for CLI commands and operations.
+- **Testing.md** covers test setup, patterns, and quality assurance.
+- Everything else lives under **/projects/** while active, then moves to **/archive/YYYY/MM/**.
+- Every doc has **front matter** (owner, status, updated, summary, canonical).
+- **Lifecycle:** `draft → active (living) → deprecated → archived`.
 - Write for retrieval: short sections, stable headings, 5–8 line summaries, one sentence per line.
 - Decisions are immutable **ADRs**. Never edit history; supersede.
-- RAG/search ranks `status: active` first; archived appears with a warning banner.
 
 ---
 
 ## Goals
 
-1. **Human clarity:** quick orientation, consistent navigation, and “what changed?” signals.
+1. **Human clarity:** quick orientation, consistent navigation, and "what changed?" signals.
 2. **AI effectiveness:** stable anchors, rich metadata, chunkable structure, and predictable lifecycles.
-3. **Low maintenance:** guardrails via templates, CI checks, and light ownership.
+3. **Low maintenance:** simple templates and light ownership for solo development.
 
 ---
 
@@ -47,25 +52,68 @@ This document defines how we create, evolve, and retrieve knowledge with minimal
     Roadmap.md
     DecisionLog.md
     Onboarding.md
-    /Runbooks/
-      deploy.md
-      incident_response.md
-  /projects/{project_slug}/
-    Spec_{short}.md
-    /ADR/
-    /Runbooks/
-    /Notes/
-  /archive/YYYY/MM/
-  /templates/
-    template_adr.md
-    template_runbook.md
-    template_spec.md
+    Bugs.md
+    Features.md
+    Status.md
+    TechStack.md
+    Commands.md
+    Testing.md
+  /archive/
 ```
 
-- **Living** is small and always current.
+- **Living** is small and always current - your daily working docs.
+- **Bugs.md** is your issue tracker with simple priority categories.
+- **Features.md** separates big picture from implementation details.
+- **Status.md** shows system health and recent changes.
+- **TechStack.md** documents your technology choices and dependencies.
+- **Commands.md** provides quick CLI reference for operations.
+- **Testing.md** covers test setup, patterns, and quality assurance.
 - **Projects** contain working materials and ADRs while active.
 - **Archive** is write-once: closed projects and superseded material.
-- **Templates** keep style and metadata consistent.
+
+---
+
+## Living Docs Structure
+
+### Bugs.md - Issue Tracking
+Simple priority-based categories:
+- **Critical:** System down, data loss, security issues
+- **High:** Core functionality broken, user blocking
+- **Medium:** Important but not blocking
+- **Low:** Nice to have, cosmetic issues
+
+### Features.md - Development Planning
+Two-tier structure:
+- **High-level features:** Major capabilities, user stories, business goals
+- **Low-level tasks:** Implementation details, technical debt, refactoring
+
+### Status.md - System Health
+Quick overview of:
+- **Current status:** All systems operational, partial outage, etc.
+- **Recent changes:** What deployed in last 24-48 hours
+- **Known issues:** Quick reference to active bugs
+- **Next deployments:** What's coming up
+
+### TechStack.md - Technology Documentation
+Essential for AI understanding:
+- **Core technologies:** Python, Flask, PostgreSQL, etc.
+- **Key dependencies:** Major libraries and versions
+- **Infrastructure:** Hosting, deployment, monitoring
+- **Data sources:** APIs, databases, external systems
+
+### Commands.md - CLI Reference
+Quick access to common operations:
+- **Development commands:** Setup, testing, code quality
+- **Database operations:** Migrations, backups, queries
+- **System operations:** Deployment, monitoring, troubleshooting
+- **Validation commands:** Running data quality checks
+
+### **Testing.md - Quality Assurance**
+Comprehensive testing coverage:
+- **Test setup** and environment configuration
+- **Test patterns** and best practices
+- **Data management** and fixtures
+- **CI/CD integration** and automation
 
 ---
 
@@ -73,14 +121,13 @@ This document defines how we create, evolve, and retrieve knowledge with minimal
 
 **States:** `draft → active → deprecated → archived`
 
-- **Promote to active (living)** when a doc becomes a source of truth (e.g., a runbook used in prod).
-- **Auto-stale check:** if an active doc isn't updated in **60 days**, open a review PR.
-- **Deprecate** when a better source exists; **Archive** when a project closes or a doc is superseded.
+- **Promote to active (living)** when a doc becomes a source of truth.
+- **Deprecate** when a better source exists; **Archive** when a project closes.
 - **Stub rule:** when archiving, leave a 1-paragraph stub at the old path that links to the new canonical source.
 
 **Ownership**
-- Each doc lists an **owner** in front matter; CODEOWNERS gate PRs to `/docs/living/`.
-- If ownership changes, update the front matter immediately.
+- Each doc lists an **owner** in front matter.
+- Update ownership immediately when it changes.
 
 ---
 
@@ -108,8 +155,8 @@ canonical: "/absolute/repo/path/to/this/doc.md"
 
 ## Writing Rules (Human- & AI-Friendly)
 
-- **Top-load context:** start with `summary`, then “Key decisions / Risks / Next actions” bullets.
-- **One sentence per line** in prose; it’s diff-friendly and chunk-friendly.
+- **Top-load context:** start with `summary`, then "Key decisions / Risks / Next actions" bullets.
+- **One sentence per line** in prose; it's diff-friendly and chunk-friendly.
 - **Headings every ~300–500 tokens**; keep sections self-contained.
 - **Line length:** soft wrap around ~100 chars for prose; let language formatters handle code.
 - **Code fences** for commands/logs; small examples; link to larger samples.
@@ -145,27 +192,14 @@ summary: "<one paragraph what/why>"
 
 ---
 
-## Scaling Horizontally & Vertically
-
-- **Hierarchy:** `org → initiative → project → component` and mirror that in `/projects/`.
-- Each level has a lightweight `INDEX.md` with one-line summaries and links.
-- Use **tags** for cross-cutting topics (e.g., `security`, `data-pipeline`) instead of deep nesting.
-
----
-
 ## Change Management & Sync
 
-- **PR template requires:**
-  - `updated` date, accurate `summary`, correct `status`.
-  - Link updates in any relevant `INDEX.md` and `DecisionLog.md`.
-- **CI gates:**
-  - markdownlint + broken link check.
-  - Stale-doc job to open a review after 60 days of inactivity for `active`.
-  - Redirect map validates `canonical` paths for moved docs.
-- **Release notes:** append notable doc updates under “What changed” in `Overview.md`.
+- **Update living docs** when you make changes to Bugs.md or Features.md.
+- **Keep front matter current:** especially `updated` date and `summary`.
+- **Link updates:** update any relevant `INDEX.md` and `DecisionLog.md`.
+- **Simple validation:** markdownlint + broken link check.
 
-PR checklist snippet:
-
+Basic checklist:
 ```md
 - [ ] Front matter updated (`updated`, `summary`, `status`, `canonical`).
 - [ ] Links added/updated in `INDEX.md` / `DecisionLog.md`.
@@ -183,10 +217,10 @@ PR checklist snippet:
 4. Push to the vector store (namespace = repo).
 
 **Retrieval rules:**
-- Rank `status: active` first; if returning `archived`, prepend a “This is archived” note.
+- Rank `status: active` first; if returning `archived`, prepend a "This is archived" note.
 - Prefer chunks with recent `updated` and exact `project`/`doc_type` matches.
 
-**Gold paths:** each living doc ends with “Ask me” examples to improve retrieval:
+**Gold paths:** each living doc ends with "Ask me" examples to improve retrieval:
 
 ```md
 ### Ask me (examples)
@@ -203,7 +237,12 @@ PR checklist snippet:
 - **Roadmap.md:** next-quarter themes and top 5 initiatives.
 - **DecisionLog.md:** ADR index; pointers to per-project ADRs.
 - **Onboarding.md:** 90-minute path to first PR (env setup, tests, access).
-- **Runbooks/**: deploy, rollback, paging, incident response.
+- **Bugs.md:** your issue tracker with priority categories.
+- **Features.md:** high-level features and low-level tasks.
+- **Status.md:** system health and recent changes.
+- **TechStack.md:** technology choices and dependencies.
+- **Commands.md:** CLI commands and operational procedures.
+- **Testing.md:** test setup, patterns, and quality assurance.
 
 ---
 
@@ -212,7 +251,7 @@ PR checklist snippet:
 - On archive, move the file to `/archive/YYYY/MM/`.
 - Leave a stub at the old path with:
   - 1-paragraph summary,
-  - “Superseded by” link to the new canonical doc,
+  - "Superseded by" link to the new canonical doc,
   - The old `canonical` retained for redirects.
 - Archived docs remain ingestible but rank lower in retrieval.
 
@@ -236,20 +275,24 @@ This document is archived. See **/docs/projects/data-streaming/Spec_streaming.md
 - **Formatters:** prose uses one-sentence-per-line; code uses language formatters.
 - **Soft wraps:** aim for ~100 chars in prose.
 - **Heading cadence:** new heading every 300–500 tokens.
-- **Status reviews:** 60-day auto-review for all `active` docs.
+- **Simple validation:** markdownlint + link check.
 
 ---
 
 ## Quick Start
 
-1. Create `/docs/living/` with the five living docs above.
+1. Create `/docs/living/` with the ten living docs above.
 2. Add `/docs/templates/` with `template_adr.md`, `template_runbook.md`, `template_spec.md`.
-3. Add the PR checklist to your repo template.
-4. Set up CI for markdownlint, link check, stale-doc review, and canonical redirects.
-5. Hook your RAG pipeline to ingest on merge and filter by `status: active`.
+3. Set up simple validation (markdownlint + link check).
+4. Use Bugs.md and Features.md as your primary tracking tools.
+5. Update Status.md daily/weekly for system health.
+6. Keep TechStack.md current when you change dependencies.
+7. Maintain Commands.md with frequently used CLI operations.
+8. Use Testing.md for test setup and quality assurance.
 
 ---
 
 ## Change Log
 
+- **2025-01-27:** Updated for solo development focus, added Bugs.md and Features.md structure.
 - **2025-08-16:** Initial version.
