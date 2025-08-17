@@ -431,28 +431,35 @@ def test_management_admin_required(client):
     assert response.status_code in [302, 401, 403]  # Should redirect to login
 
 
-def test_google_sheets_encryption(client, auth_headers):
+def test_google_sheets_encryption(client, auth_headers, app):
     """Test Google Sheets encryption functionality"""
-    # Create test user with unique email
-    user = User()
-    user.username = "testuser_encrypt"
-    user.email = "test_encrypt@example.com"
-    user.password_hash = "hashed_password"  # Required field
-    user.is_admin = False
-    db.session.add(user)
-    db.session.commit()
+    from cryptography.fernet import Fernet
+    
+    with app.app_context():
+        # Set a fixed encryption key in Flask config for testing
+        test_key = Fernet.generate_key()
+        app.config['ENCRYPTION_KEY'] = test_key.decode()
+        
+        # Create test user with unique email
+        user = User()
+        user.username = "testuser_encrypt"
+        user.email = "test_encrypt@example.com"
+        user.password_hash = "hashed_password"  # Required field
+        user.is_admin = False
+        db.session.add(user)
+        db.session.commit()
 
-    # Create Google Sheet with correct constructor parameters
-    google_sheet = GoogleSheet(
-        academic_year="2023-2024",  # Required parameter
-        sheet_id="test_sheet_id",  # Required parameter
-        created_by=user.id,
-    )
-    db.session.add(google_sheet)
-    db.session.commit()
+        # Create Google Sheet with correct constructor parameters
+        google_sheet = GoogleSheet(
+            academic_year="2023-2024",  # Required parameter
+            sheet_id="test_sheet_id",  # Required parameter
+            created_by=user.id,
+        )
+        db.session.add(google_sheet)
+        db.session.commit()
 
-    # Test encryption/decryption
-    assert google_sheet.decrypted_sheet_id == "test_sheet_id"
+        # Test encryption/decryption
+        assert google_sheet.decrypted_sheet_id == "test_sheet_id"
 
 
 def test_bug_report_workflow(client, auth_headers):

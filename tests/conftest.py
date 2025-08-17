@@ -169,7 +169,7 @@ def mock_template_rendering(app):
 @pytest.fixture
 def app():
     # Create a fresh Flask app instance for testing
-    test_app = Flask(__name__)
+    test_app = Flask(__name__, template_folder='../templates')
     test_app.config.from_object(TestingConfig)
 
     # Initialize extensions

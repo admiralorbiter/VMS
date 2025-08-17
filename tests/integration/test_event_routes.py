@@ -205,7 +205,8 @@ def test_event_reports(client, auth_headers):
 
 def test_student_participation_import_guard(client, auth_headers, test_event, app):
     """Import guard should not create duplicate (event_id, student_id) pairs."""
-    from models.event import EventStudentParticipation
+    from datetime import datetime, timedelta, timezone
+    from models.event import EventStudentParticipation, Event, EventType, EventStatus, EventFormat
     from models.student import Student
 
     with app.app_context():
@@ -236,21 +237,36 @@ def test_student_participation_import_guard(client, auth_headers, test_event, ap
             "Age_Group__c": None,
         }
 
-        # Ensure event has a salesforce_id for the import logic to match
-        if not test_event.salesforce_id:
-            test_event.salesforce_id = row1["Session__c"]
-            db.session.commit()
+        # Use a fixed salesforce_id for the test
+        event_sf_id = "EVT_SF_1"
+        row1["Session__c"] = event_sf_id
+        row2["Session__c"] = event_sf_id
+        
+        # Create a test event with the salesforce_id
+        from models.event import Event, EventType, EventStatus, EventFormat
+        test_event_with_sf = Event(
+            title="Test Event with SF ID",
+            type=EventType.IN_PERSON,
+            start_date=datetime.now(timezone.utc),
+            end_date=datetime.now(timezone.utc) + timedelta(hours=2),
+            status=EventStatus.DRAFT,
+            format=EventFormat.IN_PERSON,
+            salesforce_id=event_sf_id,
+        )
+        db.session.add(test_event_with_sf)
+        db.session.commit()
 
         from routes.events.routes import process_student_participation_row
 
         success, errors = 0, 0
-        success, errors = process_student_participation_row(row1, success, errors, [])
-        success, errors = process_student_participation_row(row2, success, errors, [])
+        error_list = []
+        success, errors = process_student_participation_row(row1, success, errors, error_list)
+        success, errors = process_student_participation_row(row2, success, errors, error_list)
         db.session.commit()
 
         # Assert only one DB row exists for this event/student
         count = EventStudentParticipation.query.filter_by(
-            event_id=test_event.id, student_id=student.id
+            event_id=test_event_with_sf.id, student_id=student.id
         ).count()
         assert count == 1
 
