@@ -522,6 +522,18 @@
                 <div class="legend-color unfilled"></div>
                 <span><strong>Unfilled Sessions:</strong> Sessions with no available professionals</span>
             </div>
+            <div class="legend-item">
+                <div class="legend-color simulcast"></div>
+                <span><strong>Local Volunteers:</strong> Count and percentage of local (KS/MO) professionals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color simulcast"></div>
+                <span><strong>POC Volunteers:</strong> Count and percentage of People of Color professionals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color simulcast"></div>
+                <span><strong>Experience Volunteer Breakdown:</strong> Percentage of experience sessions with local and POC volunteers</span>
+            </div>
         </div>
     </div>
 
@@ -539,6 +551,9 @@
                         <th class="category-header">Pathful Prof. Issues</th>
                         <th class="category-header">Local Prof. Issues</th>
                         <th class="category-header">Unfilled Sessions</th>
+                        <th class="category-header">Local Volunteers</th>
+                        <th class="category-header">POC Volunteers</th>
+                        <th class="category-header">Experience Volunteer Breakdown</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -568,6 +583,21 @@
                             <td class="{% if month_data.get('unfilled_sessions', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
                                 {{ month_data.get('unfilled_sessions', 0) }}
                             </td>
+                            <td class="{% if month_data.get('local_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('local_volunteer_count', 0) }}
+                                {% if month_data.get('local_volunteer_percentage', 0) > 0 %}
+                                    <br><small>({{ month_data.get('local_volunteer_percentage', 0) }}%)</small>
+                                {% endif %}
+                            </td>
+                            <td class="{% if month_data.get('poc_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('poc_volunteer_count', 0) }}
+                                {% if month_data.get('poc_volunteer_percentage', 0) > 0 %}
+                                    <br><small>({{ month_data.get('poc_volunteer_percentage', 0) }}%)</small>
+                                {% endif %}
+                            </td>
+                            <td class="{% if month_data.get('local_volunteer_percentage_in_experience', 0) > 0 or month_data.get('poc_volunteer_percentage_in_experience', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('local_volunteer_percentage_in_experience', 0) }}% Local, {{ month_data.get('poc_volunteer_percentage_in_experience', 0) }}% POC
+                            </td>
                         </tr>
                     {% endfor %}
 
@@ -594,6 +624,21 @@
                         </td>
                         <td class="{% if ytd_totals.get('unfilled_sessions', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
                             {{ ytd_totals.get('unfilled_sessions', 0) }}
+                        </td>
+                        <td class="{% if ytd_totals.get('local_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('local_volunteer_count', 0) }}
+                            {% if ytd_totals.get('local_volunteer_percentage', 0) > 0 %}
+                                <br><small>({{ ytd_totals.get('local_volunteer_percentage', 0) }}%)</small>
+                            {% endif %}
+                        </td>
+                        <td class="{% if ytd_totals.get('poc_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('poc_volunteer_count', 0) }}
+                            {% if ytd_totals.get('poc_volunteer_percentage', 0) > 0 %}
+                                <br><small>({{ ytd_totals.get('poc_volunteer_percentage', 0) }}%)</small>
+                            {% endif %}
+                        </td>
+                        <td class="{% if ytd_totals.get('local_volunteer_percentage_in_experience', 0) > 0 or ytd_totals.get('poc_volunteer_percentage_in_experience', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('local_volunteer_percentage_in_experience', 0) }}% Local, {{ ytd_totals.get('poc_volunteer_percentage_in_experience', 0) }}% POC
                         </td>
                     </tr>
                 </tbody>
