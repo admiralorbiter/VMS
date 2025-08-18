@@ -131,6 +131,7 @@ def process_event_row(row, success_count, error_count, errors, skipped_count):
         district_name = row.get("District__c")
         school_id = row.get("School__c")
         event_name = row.get("Name", "").strip()
+        session_type = row.get("Session_Type__c", "")
 
         # Only skip events that are completely unusable
         if not event_name:
@@ -152,15 +153,14 @@ def process_event_row(row, success_count, error_count, errors, skipped_count):
             )
             db.session.add(event)
         else:
-            # Event already exists - this is expected behavior
-            print(f"  Event already exists: {event_name} (ID: {event_id})")
-            return success_count, error_count, skipped_count + 1
+            # Event already exists - update it instead of skipping
+            pass
 
-        # Update event fields
+        # Update event fields (handles both new and existing events)
         event.title = event_name
 
         # Update basic event fields
-        event.type = map_session_type(row.get("Session_Type__c", ""))
+        event.type = map_session_type(session_type)
         event.format = map_event_format(row.get("Format__c", ""))
         event.start_date = parse_date(row.get("Start_Date_and_Time__c")) or datetime(
             2000, 1, 1
@@ -182,12 +182,14 @@ def process_event_row(row, success_count, error_count, errors, skipped_count):
         event.additional_information = row.get("Additional_Information__c", "")
         event.session_host = row.get("Session_Host__c", "")
 
-        # Handle numeric fields
+        # Handle numeric fields - FIX for negative available_slots
         def safe_convert_to_int(value, default=0):
             if value is None:
                 return default
             try:
-                return int(float(value))
+                converted = int(float(value))
+                # Convert negative values to 0 to avoid constraint violations
+                return max(0, converted)
             except (ValueError, TypeError):
                 return default
 
@@ -203,51 +205,25 @@ def process_event_row(row, success_count, error_count, errors, skipped_count):
             if school:
                 event.school = school_id  # Store the Salesforce ID
                 school_district = school.district
-                print(
-                    f"  Linked event to school: {school.name} (district: {school_district.name if school_district else 'None'})"
-                )
-            else:
-                print(
-                    f"  Warning: School with Salesforce ID {school_id} not found in database"
-                )
 
         # Handle District relationship
         # If District__c is empty, use Parent_Account__c instead
         if not district_name and parent_account:
             district_name = parent_account
-            print(f"  Using Parent_Account__c as district: {district_name}")
 
         # Try to get the district
         district = None
         if district_name and district_name in DISTRICT_MAPPINGS:
             mapped_name = DISTRICT_MAPPINGS[district_name]
             district = District.query.filter_by(name=mapped_name).first()
-            if district:
-                print(
-                    f"  Mapped district '{district_name}' to '{mapped_name}' (ID: {district.id})"
-                )
-            else:
-                print(
-                    f"  Warning: Mapped district '{mapped_name}' not found in database"
-                )
-        elif district_name:
-            print(
-                f"  Warning: District '{district_name}' not found in DISTRICT_MAPPINGS"
-            )
 
         # Clear and reassign districts if we have a valid district to assign
         if district or school_district:
             event.districts = []  # Clear existing districts
             if school_district:
                 event.districts.append(school_district)
-                print(f"  Added school district: {school_district.name}")
             if district and district not in event.districts:
                 event.districts.append(district)
-                print(f"  Added mapped district: {district.name}")
-        else:
-            print(
-                f"  Warning: No valid district found for event (District__c: {district_name}, Parent_Account__c: {parent_account})"
-            )
 
         # Store original district name for reference
         event.district_partner = district_name if district_name else None
@@ -276,7 +252,9 @@ def process_event_row(row, success_count, error_count, errors, skipped_count):
                 event.skills.append(skill)
 
         db.session.flush()  # Flush to catch validation errors early
-        return success_count + (1 if is_new else 0), error_count, skipped_count
+
+        # Count as processed (both new and existing)
+        return success_count + 1, error_count, skipped_count
 
     except Exception as e:
         db.session.rollback()
@@ -1105,20 +1083,68 @@ def import_events_from_salesforce():
         # Execute events query
         events_result = sf.query_all(events_query)
         events_rows = events_result.get("records", [])
+        total_events = len(events_rows)
+
+        print(f"Found {total_events} events in Salesforce")
+        print(
+            f"Query filter: Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'"
+        )
 
         status_counts = {}
+        type_counts = {}
 
         # Process events
-        for row in events_rows:
+        for i, row in enumerate(events_rows):
+            # Progress indicator every 500 events
+            if i > 0 and i % 500 == 0:
+                print(f"Progress: {i}/{total_events} events processed")
+
             status = row.get("Session_Status__c", "Unknown")
+            session_type = row.get("Session_Type__c", "Unknown")
             status_counts[status] = status_counts.get(status, 0) + 1
+            type_counts[session_type] = type_counts.get(session_type, 0) + 1
+
             success_count, error_count, skipped_count = process_event_row(
                 row, success_count, error_count, errors, skipped_count
             )
 
-        print("\nEvents by status:")
-        for status, count in status_counts.items():
-            print(f"{status}: {count}")
+        # Compact status summary
+        print(f"\n{'='*60}")
+        print(f"EVENTS IMPORT SUMMARY")
+        print(f"{'='*60}")
+        print(f"Total from Salesforce: {total_events}")
+        print(f"Successfully processed: {success_count}")
+        print(f"Errors: {error_count}")
+        print(f"Skipped (invalid): {skipped_count}")
+
+        if success_count + error_count + skipped_count != total_events:
+            print(
+                f"⚠️  COUNT MISMATCH: {success_count} + {error_count} + {skipped_count} != {total_events}"
+            )
+            print(
+                f"Missing: {total_events - (success_count + error_count + skipped_count)} events"
+            )
+
+        print(f"\nStatus breakdown:")
+        for status, count in sorted(status_counts.items()):
+            print(f"  {status}: {count}")
+
+        print(f"\nSession type breakdown:")
+        for session_type, count in sorted(type_counts.items()):
+            print(f"  {session_type}: {count}")
+
+        # Quick validation check
+        if (
+            type_counts.get("DIA", 0) + type_counts.get("DIA - Classroom Speaker", 0)
+            > 0
+        ):
+            dia_events_in_db = Event.query.filter(
+                Event.type.in_([EventType.DIA, EventType.DIA_CLASSROOM_SPEAKER])
+            ).count()
+            if dia_events_in_db == 0:
+                print(
+                    f"⚠️  WARNING: {type_counts.get('DIA', 0) + type_counts.get('DIA - Classroom Speaker', 0)} DIA events in Salesforce but 0 in database"
+                )
 
         # Second query: Get participants
         participants_query = """
@@ -1151,34 +1177,34 @@ def import_events_from_salesforce():
         # Commit all changes
         db.session.commit()
 
-        # Print summary and errors
+        # Final summary
+        print(f"\n{'='*60}")
+        print(f"FINAL IMPORT SUMMARY")
+        print(f"{'='*60}")
+        print(f"Events: {success_count}/{total_events} processed successfully")
         print(
-            f"\nSuccessfully processed {success_count} events and {participant_success} participants"
+            f"Participants: {participant_success}/{len(participant_rows)} processed successfully"
         )
-
-        if skipped_count > 0:
-            print(f"Skipped {skipped_count} events (already exist in system)")
+        print(f"Total errors: {error_count + participant_error}")
+        print(f"{'='*60}")
 
         # Separate actual errors from expected skips
         actual_errors = [e for e in errors if "Error processing" in e]
         skipped_events = [e for e in errors if "Skipping event" in e]
 
         if skipped_events:
-            print(f"\nSkipped {len(skipped_events)} events (missing required data):")
-            for skip in skipped_events[:20]:  # Show first 20 skips
+            print(f"\nSkipped events (missing required data): {len(skipped_events)}")
+            for skip in skipped_events[:5]:  # Show first 5 skips
                 print(f"  - {skip}")
-            if len(skipped_events) > 20:
-                print(f"  ... and {len(skipped_events) - 20} more skipped events")
+            if len(skipped_events) > 5:
+                print(f"  ... and {len(skipped_events) - 5} more skipped events")
 
         if actual_errors:
-            print(f"\nActual errors encountered: {len(actual_errors)}")
-            for error in actual_errors[:10]:  # Show first 10 errors
+            print(f"\nProcessing errors: {len(actual_errors)}")
+            for error in actual_errors[:5]:  # Show first 5 errors
                 print(f"  - {error}")
-            if len(actual_errors) > 10:
-                print(f"  ... and {len(actual_errors) - 10} more errors")
-
-        print(f"\nTotal events from Salesforce: {len(events_rows)}")
-        print(f"Total participants from Salesforce: {len(participant_rows)}")
+            if len(actual_errors) > 5:
+                print(f"  ... and {len(actual_errors) - 5} more errors")
 
         return jsonify(
             {
@@ -1187,7 +1213,7 @@ def import_events_from_salesforce():
                 "events_processed": success_count,
                 "events_skipped": skipped_count,
                 "participants_processed": participant_success,
-                "total_events_from_salesforce": len(events_rows),
+                "total_events_from_salesforce": total_events,
                 "total_participants_from_salesforce": len(participant_rows),
                 "errors": actual_errors[:50],  # Limit errors in response
                 "skipped_events": skipped_events[:50],  # Limit skips in response
@@ -1274,8 +1300,10 @@ def sync_student_participants():
         )
         if errors:
             print("\nErrors encountered:")
-            for error in errors[:50]:  # Only print first 50 errors
+            for error in errors[:10]:  # Only print first 10 errors
                 print(f"- {error}")
+            if len(errors) > 10:
+                print(f"... and {len(errors) - 10} more errors")
 
         return jsonify(
             {
@@ -1416,3 +1444,109 @@ def export_event_excel(id):
         download_name=filename,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@events_bp.route("/events/debug-counts", methods=["GET"])
+@login_required
+@admin_required
+def debug_event_counts():
+    """
+    Debug route to check event counts and identify missing events
+    """
+    try:
+        from simple_salesforce import Salesforce
+
+        from config import Config
+
+        # Database counts
+        db_total = Event.query.count()
+        db_by_status = {}
+        db_by_type = {}
+
+        for event in Event.query.all():
+            status = event.status or "Unknown"
+            event_type = event.type.value if event.type else "Unknown"
+            db_by_status[status] = db_by_status.get(status, 0) + 1
+            db_by_type[event_type] = db_by_type.get(event_type, 0) + 1
+
+        # Salesforce counts (without importing)
+        try:
+            sf = Salesforce(
+                username=Config.SF_USERNAME,
+                password=Config.SF_PASSWORD,
+                security_token=Config.SF_SECURITY_TOKEN,
+                domain="login",
+            )
+
+            # Count total events
+            total_query = "SELECT COUNT() FROM Session__c"
+            total_result = sf.query(total_query)
+            sf_total = total_result["totalSize"]
+
+            # Count by status
+            status_query = """
+            SELECT Session_Status__c, COUNT(Id) total
+            FROM Session__c
+            GROUP BY Session_Status__c
+            """
+            status_result = sf.query(status_query)
+            sf_by_status = {
+                record["Session_Status__c"]: record["total"]
+                for record in status_result["records"]
+            }
+
+            # Count by session type
+            type_query = """
+            SELECT Session_Type__c, COUNT(Id) total
+            FROM Session__c
+            GROUP BY Session_Type__c
+            """
+            type_result = sf.query(type_query)
+            sf_by_type = {
+                record["Session_Type__c"]: record["total"]
+                for record in type_result["records"]
+            }
+
+            # Count filtered events (what we actually import)
+            filtered_query = """
+            SELECT COUNT()
+            FROM Session__c
+            WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
+            """
+            filtered_result = sf.query(filtered_query)
+            sf_filtered = filtered_result["totalSize"]
+
+        except Exception as e:
+            sf_total = f"Error: {str(e)}"
+            sf_by_status = {}
+            sf_by_type = {}
+            sf_filtered = "Error"
+
+        return jsonify(
+            {
+                "database": {
+                    "total": db_total,
+                    "by_status": db_by_status,
+                    "by_type": db_by_type,
+                },
+                "salesforce": {
+                    "total": sf_total,
+                    "filtered": sf_filtered,
+                    "by_status": sf_by_status,
+                    "by_type": sf_by_type,
+                },
+                "analysis": {
+                    "missing_total": (
+                        sf_total - db_total if isinstance(sf_total, int) else "Unknown"
+                    ),
+                    "missing_filtered": (
+                        sf_filtered - db_total
+                        if isinstance(sf_filtered, int)
+                        else "Unknown"
+                    ),
+                },
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

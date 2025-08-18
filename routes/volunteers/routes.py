@@ -1072,12 +1072,19 @@ def import_from_salesforce():
         # Execute the query
         result = sf.query_all(salesforce_query)
         sf_rows = result.get("records", [])
+        total_records = len(sf_rows)
+
+        print(f"Found {total_records} records to process")
 
         success_count = 0
         error_count = 0
         created_count = 0
         updated_count = 0
         errors = []
+
+        # Progress tracking
+        progress_interval = max(1, total_records // 20)  # Show progress every 5%
+        last_progress = 0
 
         # Add comprehensive education mapping
         education_mapping = {
@@ -1114,8 +1121,16 @@ def import_from_salesforce():
         }
 
         # Process each row from Salesforce
-        for row in sf_rows:
+        for i, row in enumerate(sf_rows):
             try:
+                # Progress indicator
+                if i >= last_progress + progress_interval:
+                    progress = (i / total_records) * 100
+                    print(
+                        f"Progress: {progress:.1f}% ({i}/{total_records}) - Created: {created_count}, Updated: {updated_count}, Errors: {error_count}"
+                    )
+                    last_progress = i
+
                 # Check if volunteer exists
                 volunteer = Volunteer.query.filter_by(
                     salesforce_individual_id=row["Id"]
@@ -1128,32 +1143,32 @@ def import_from_salesforce():
                     volunteer.salesforce_individual_id = row["Id"]
                     db.session.add(volunteer)
                     is_new = True
-                    updates.append("Created new volunteer")
+                    updates.append("new")
 
                 # Update volunteer fields only if they've changed
                 if volunteer.salesforce_account_id != row["AccountId"]:
                     volunteer.salesforce_account_id = row["AccountId"]
-                    updates.append("account_id")
+                    updates.append("acc")
 
                 new_first_name = (row.get("FirstName") or "").strip()
                 if volunteer.first_name != new_first_name:
                     volunteer.first_name = new_first_name
-                    updates.append("first_name")
+                    updates.append("fn")
 
                 new_last_name = (row.get("LastName") or "").strip()
                 if volunteer.last_name != new_last_name:
                     volunteer.last_name = new_last_name
-                    updates.append("last_name")
+                    updates.append("ln")
 
                 new_middle_name = (row.get("MiddleName") or "").strip()
                 if volunteer.middle_name != new_middle_name:
                     volunteer.middle_name = new_middle_name
-                    updates.append("middle_name")
+                    updates.append("mn")
 
                 new_org_name = (row.get("npsp__Primary_Affiliation__c") or "").strip()
                 if volunteer.organization_name != new_org_name:
                     volunteer.organization_name = new_org_name
-                    updates.append("organization")
+                    updates.append("org")
 
                 new_title = (row.get("Title") or "").strip()
                 if volunteer.title != new_title:
@@ -1163,7 +1178,7 @@ def import_from_salesforce():
                 new_department = (row.get("Department") or "").strip()
                 if volunteer.department != new_department:
                     volunteer.department = new_department
-                    updates.append("department")
+                    updates.append("dept")
 
                 # Handle gender enum
                 gender_str = (
@@ -1172,7 +1187,7 @@ def import_from_salesforce():
                 if gender_str and gender_str in [e.name for e in GenderEnum]:
                     if not volunteer.gender or volunteer.gender.name != gender_str:
                         volunteer.gender = GenderEnum[gender_str]
-                        updates.append("gender")
+                        updates.append("gen")
 
                 # Handle race/ethnicity
                 race_ethnicity_map = {
@@ -1212,7 +1227,7 @@ def import_from_salesforce():
                             or volunteer.race_ethnicity.name != enum_value
                         ):
                             volunteer.race_ethnicity = RaceEthnicityEnum[enum_value]
-                            updates.append("race_ethnicity")
+                            updates.append("race")
                     else:
                         # Try default mapping if primary fails
                         default_value = default_mapping.get(cleaned_str)
@@ -1226,43 +1241,43 @@ def import_from_salesforce():
                                 volunteer.race_ethnicity = RaceEthnicityEnum[
                                     default_value
                                 ]
-                                updates.append("race_ethnicity")
+                                updates.append("race")
                 elif volunteer.race_ethnicity != RaceEthnicityEnum.unknown:
                     volunteer.race_ethnicity = RaceEthnicityEnum.unknown
-                    updates.append("race_ethnicity")
+                    updates.append("race")
 
                 # Handle dates
                 new_birthdate = parse_date(row.get("Birthdate"))
                 if volunteer.birthdate != new_birthdate:
                     volunteer.birthdate = new_birthdate
-                    updates.append("birthdate")
+                    updates.append("bd")
 
                 new_first_volunteer_date = parse_date(
                     row.get("First_Volunteer_Date__c")
                 )
                 if volunteer.first_volunteer_date != new_first_volunteer_date:
                     volunteer.first_volunteer_date = new_first_volunteer_date
-                    updates.append("first_volunteer_date")
+                    updates.append("fvd")
 
                 new_mailchimp_date = parse_date(row.get("Last_Mailchimp_Email_Date__c"))
                 if volunteer.last_mailchimp_activity_date != new_mailchimp_date:
                     volunteer.last_mailchimp_activity_date = new_mailchimp_date
-                    updates.append("mailchimp_date")
+                    updates.append("mcd")
 
                 new_volunteer_date = parse_date(row.get("Last_Volunteer_Date__c"))
                 if volunteer.last_volunteer_date != new_volunteer_date:
                     volunteer.last_volunteer_date = new_volunteer_date
-                    updates.append("volunteer_date")
+                    updates.append("lvd")
 
                 new_activity_date = parse_date(row.get("Last_Activity_Date__c"))
                 if volunteer.last_activity_date != new_activity_date:
                     volunteer.last_activity_date = new_activity_date
-                    updates.append("activity_date")
+                    updates.append("lad")
 
                 new_email_date = parse_date(row.get("Last_Email_Message__c"))
                 if volunteer.last_email_date != new_email_date:
                     volunteer.last_email_date = new_email_date
-                    updates.append("email_date")
+                    updates.append("led")
 
                 new_non_internal_email_date = parse_date(
                     row.get("Last_Non_Internal_Email_Activity__c")
@@ -1272,7 +1287,7 @@ def import_from_salesforce():
                     != new_non_internal_email_date
                 ):
                     volunteer.last_non_internal_email_date = new_non_internal_email_date
-                    updates.append("non_internal_email_date")
+                    updates.append("nied")
 
                 new_notes = (row.get("Volunteer_Recruitment_Notes__c") or "").strip()
                 if volunteer.notes != new_notes:
@@ -1283,7 +1298,7 @@ def import_from_salesforce():
                 new_description = (row.get("Description") or "").strip()
                 if volunteer.description != new_description:
                     volunteer.description = new_description
-                    updates.append("description")
+                    updates.append("desc")
 
                 # Handle education level with robust mapping
                 education_str = (
@@ -1305,21 +1320,16 @@ def import_from_salesforce():
                                 or volunteer.education.name != enum_value
                             ):
                                 volunteer.education = EducationEnum[enum_value]
-                                updates.append("education")
+                                updates.append("edu")
                         else:
                             # Log unmatched values for future mapping updates
-                            print(f"Unmatched education value: {education_str}")
-                            # Set to UNKNOWN for unmatched values
                             volunteer.education = EducationEnum.UNKNOWN
-                            updates.append("education")
+                            updates.append("edu")
 
                     except (ValueError, KeyError) as e:
-                        print(
-                            f"Error mapping education value '{education_str}': {str(e)}"
-                        )
                         # Set to UNKNOWN if mapping fails
                         volunteer.education = EducationEnum.UNKNOWN
-                        updates.append("education")
+                        updates.append("edu")
 
                 # Handle age group
                 age_str = (row.get("Age_Group__c") or "").strip()
@@ -1337,7 +1347,7 @@ def import_from_salesforce():
                     new_age_group = age_map.get(age_str, AgeGroupEnum.UNKNOWN)
                     if volunteer.age_group != new_age_group:
                         volunteer.age_group = new_age_group
-                        updates.append("age_group")
+                        updates.append("age")
 
                 # Handle interests
                 interests_str = row.get("Volunteer_Interests__c")
@@ -1347,7 +1357,7 @@ def import_from_salesforce():
                     interests_str = interests_str.strip()
                     if volunteer.interests != interests_str:
                         volunteer.interests = interests_str
-                        updates.append("interests")
+                        updates.append("int")
 
                 # Handle skills - only update if there are changes
                 if row.get("Volunteer_Skills__c") or row.get(
@@ -1379,33 +1389,33 @@ def import_from_salesforce():
                         )
                         if volunteer.times_volunteered != new_times:
                             volunteer.times_volunteered = new_times
-                            updates.append("times_volunteered")
+                            updates.append("tv")
                     except (ValueError, TypeError):
                         if volunteer.times_volunteered != 0:
                             volunteer.times_volunteered = 0
-                            updates.append("times_volunteered")
+                            updates.append("tv")
 
                 # Handle contact preferences
                 new_do_not_call = bool(row.get("DoNotCall"))
                 if volunteer.do_not_call != new_do_not_call:
                     volunteer.do_not_call = new_do_not_call
-                    updates.append("do_not_call")
+                    updates.append("dnc")
 
                 new_do_not_contact = bool(row.get("npsp__Do_Not_Contact__c"))
                 if volunteer.do_not_contact != new_do_not_contact:
                     volunteer.do_not_contact = new_do_not_contact
-                    updates.append("do_not_contact")
+                    updates.append("dnt")
 
                 new_email_opt_out = bool(row.get("HasOptedOutOfEmail"))
                 if volunteer.email_opt_out != new_email_opt_out:
                     volunteer.email_opt_out = new_email_opt_out
-                    updates.append("email_opt_out")
+                    updates.append("eoo")
 
                 # Handle email bounce date
                 new_bounce_date = parse_date(row.get("EmailBouncedDate"))
                 if volunteer.email_bounced_date != new_bounce_date:
                     volunteer.email_bounced_date = new_bounce_date
-                    updates.append("email_bounced_date")
+                    updates.append("ebd")
 
                 # Handle emails
                 email_fields = {
@@ -1567,24 +1577,24 @@ def import_from_salesforce():
                             primary=True,
                         )
                         volunteer.addresses.append(mailing)
-                        updates.append("mailing_address_created")
+                        updates.append("ma")
 
                     # Update mailing address fields
                     if mailing.address_line1 != mailing_address.get("street", ""):
                         mailing.address_line1 = mailing_address.get("street", "")
-                        updates.append("mailing_street")
+                        updates.append("ms")
                     if mailing.city != mailing_address.get("city", ""):
                         mailing.city = mailing_address.get("city", "")
-                        updates.append("mailing_city")
+                        updates.append("mc")
                     if mailing.state != mailing_address.get("state", ""):
                         mailing.state = mailing_address.get("state", "")
-                        updates.append("mailing_state")
+                        updates.append("mst")
                     if mailing.zip_code != mailing_address.get("postalCode", ""):
                         mailing.zip_code = mailing_address.get("postalCode", "")
-                        updates.append("mailing_zip")
+                        updates.append("mz")
                     if mailing.country != mailing_address.get("country", ""):
                         mailing.country = mailing_address.get("country", "")
-                        updates.append("mailing_country")
+                        updates.append("mco")
 
                 # Handle work address if present
                 work_address = row.get("npe01__Work_Address__c", "")
@@ -1602,7 +1612,7 @@ def import_from_salesforce():
                             contact_id=volunteer.id, type=ContactTypeEnum.professional
                         )
                         volunteer.addresses.append(work)
-                        updates.append("work_address_created")
+                        updates.append("wa")
 
                     # Parse work address string
                     try:
@@ -1617,7 +1627,7 @@ def import_from_salesforce():
                                 work.state = state_zip[0]
                             if len(state_zip) >= 2:
                                 work.zip_code = state_zip[1]
-                        updates.append("work_address_updated")
+                        updates.append("wu")
                     except Exception as e:
                         print(
                             f"Error parsing work address for {volunteer.first_name} {volunteer.last_name}: {str(e)}"
@@ -1678,7 +1688,7 @@ def import_from_salesforce():
                 # Create or update connector data
                 if not volunteer.connector:
                     volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
-                    updates.append("connector_created")
+                    updates.append("con")
 
                 # Update connector fields if they exist in Salesforce data
                 if connector_data["active_subscription"] in [
@@ -1695,7 +1705,7 @@ def import_from_salesforce():
                                 connector_data["active_subscription"]
                             ]
                         )
-                        updates.append("connector_subscription")
+                        updates.append("cs")
 
                 for field, value in connector_data.items():
                     if (
@@ -1704,13 +1714,24 @@ def import_from_salesforce():
                         current_value = getattr(volunteer.connector, field)
                         if current_value != value:
                             setattr(volunteer.connector, field, value)
-                            updates.append(f"connector_{field}")
+                            updates.append(f"c{field[:2]}")
 
                 success_count += 1
                 created_count = created_count + 1 if is_new else created_count
                 updated_count = (
                     updated_count + 1 if not is_new and updates else updated_count
                 )
+
+                # Compact status output for each record
+                if i < 10 or i % 100 == 0:  # Show first 10 and every 100th
+                    status = (
+                        "NEW"
+                        if is_new
+                        else f"UPD({','.join(updates)})" if updates else "OK"
+                    )
+                    print(
+                        f"[{i+1:4d}] {status}: {volunteer.first_name} {volunteer.last_name}"
+                    )
 
             except Exception as e:
                 error_count += 1
@@ -1720,21 +1741,31 @@ def import_from_salesforce():
                     "error": str(e),
                 }
                 errors.append(error_detail)
+                print(f"[{i+1:4d}] ERROR: {error_detail['name']} - {str(e)[:100]}")
                 db.session.rollback()
+
+        # Final summary
+        print(f"\n{'='*60}")
+        print(f"IMPORT COMPLETE")
+        print(f"{'='*60}")
+        print(f"Total Records: {total_records}")
+        print(f"Successful:    {success_count}")
+        print(f"Created:       {created_count}")
+        print(f"Updated:       {updated_count}")
+        print(f"Errors:        {error_count}")
+        print(f"{'='*60}")
+
+        if errors:
+            print(f"\nERROR SUMMARY (showing first 10):")
+            for i, error in enumerate(errors[:10]):
+                print(f"  {i+1:2d}. {error['name']} (ID: {error['salesforce_id']})")
+                print(f"      {error['error'][:80]}...")
+            if len(errors) > 10:
+                print(f"  ... and {len(errors) - 10} more errors")
 
         # Commit all successful changes
         try:
             db.session.commit()
-            print(
-                f"\nImport complete - Created: {created_count}, Updated: {updated_count}, Errors: {error_count}"
-            )
-            if errors:
-                print(f"\nErrors encountered: {len(errors)}")
-                for error in errors[:5]:  # Show only first 5 errors
-                    print(f"- {error['name']}: {error['error']}")
-                if len(errors) > 5:
-                    print(f"... and {len(errors) - 5} more errors")
-
             return jsonify(
                 {
                     "success": True,
@@ -1804,19 +1835,49 @@ def update_local_statuses():
 
         # Get all volunteers
         volunteers = Volunteer.query.all()
+        total_volunteers = len(volunteers)
+        print(f"Found {total_volunteers} volunteers to process")
 
-        for volunteer in volunteers:
+        # Progress tracking
+        progress_interval = max(1, total_volunteers // 20)  # Show progress every 5%
+        last_progress = 0
+
+        for i, volunteer in enumerate(volunteers):
             try:
+                # Progress indicator
+                if i >= last_progress + progress_interval:
+                    progress = (i / total_volunteers) * 100
+                    print(
+                        f"Progress: {progress:.1f}% ({i}/{total_volunteers}) - Updated: {updated_count}, Errors: {error_count}"
+                    )
+                    last_progress = i
+
                 new_status = volunteer.calculate_local_status()
                 if volunteer.local_status != new_status:
                     volunteer.local_status = new_status
                     volunteer.local_status_last_updated = datetime.utcnow()
                     updated_count += 1
+
+                    # Show status changes for first 10 and every 100th
+                    if updated_count <= 10 or updated_count % 100 == 0:
+                        print(
+                            f"[{i+1:4d}] STATUS: {volunteer.first_name} {volunteer.last_name} -> {new_status.name}"
+                        )
+
             except Exception as e:
                 error_count += 1
                 print(
-                    f"Error updating local status for {volunteer.first_name} {volunteer.last_name}: {str(e)}"
+                    f"[{i+1:4d}] ERROR: {volunteer.first_name} {volunteer.last_name} - {str(e)[:80]}"
                 )
+
+        # Final summary
+        print(f"\n{'='*50}")
+        print(f"LOCAL STATUS UPDATE COMPLETE")
+        print(f"{'='*50}")
+        print(f"Total Volunteers: {total_volunteers}")
+        print(f"Updated:         {updated_count}")
+        print(f"Errors:          {error_count}")
+        print(f"{'='*50}")
 
         db.session.commit()
         return jsonify(
