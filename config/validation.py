@@ -160,13 +160,18 @@ FIELD_MAPPINGS = {
     },
     "event": {
         "salesforce_id": "salesforce_id",
-        "name": "name",
+        "title": "title",
         "start_date": "start_date",
         "end_date": "end_date",
         "school": "school",
         "status": "status",
         "type": "type",
-        "capacity": "capacity",
+        "format": "format",
+        "location": "location",
+        "description": "description",
+        "duration": "duration",
+        "participant_count": "participant_count",
+        "volunteers_needed": "volunteers_needed",
     },
     "student": {
         "salesforce_individual_id": "salesforce_individual_id",
@@ -186,13 +191,20 @@ VALIDATION_FIELD_COMPLETENESS_RULES = {
         "organization": ["Name"],  # Type, BillingCity, BillingState are optional
         "event": [
             "title",
+            "type",
+            "format",
             "start_date",
-        ],  # Subject, StartDateTime, EndDateTime fields don't exist in actual code
+            "end_date",
+            "status",
+        ],  # All required fields from EventForm
         "student": [
-            "FirstName",
-            "LastName",
-        ],  # Contact_Type__c is not required in database
-        "teacher": ["FirstName", "LastName", "Contact_Type__c"],  # Title is optional
+            "first_name",
+            "last_name",
+        ],  # Only first_name and last_name are required
+        "teacher": [
+            "first_name",
+            "last_name",
+        ],  # Only first_name and last_name are required
         "school": ["id", "name"],  # Only id and name are required
         "district": ["id", "name"],  # Only id and name are required
     },
@@ -203,8 +215,37 @@ VALIDATION_FIELD_COMPLETENESS_RULES = {
             "Website": {"regex": r"^https?://.*"},
         },
         "event": {
-            "start_date": {"type": "datetime"}
-        },  # StartDateTime and EndDateTime fields don't exist in actual code
+            "title": {"type": "string", "min_length": 1, "max_length": 255},
+            "type": {
+                "type": "enum",
+                "values": [
+                    "IN_PERSON",
+                    "VIRTUAL_SESSION",
+                    "CONNECTOR_SESSION",
+                    "CAREER_FAIR",
+                    "CLASSROOM_SPEAKER",
+                    "MENTORING",
+                    "INTERNSHIP",
+                ],
+            },
+            "format": {"type": "enum", "values": ["IN_PERSON", "VIRTUAL"]},
+            "start_date": {"type": "datetime"},
+            "end_date": {"type": "datetime"},
+            "status": {
+                "type": "enum",
+                "values": [
+                    "Draft",
+                    "Requested",
+                    "Confirmed",
+                    "Published",
+                    "Completed",
+                    "Cancelled",
+                    "No Show",
+                    "Simulcast",
+                    "Count",
+                ],
+            },
+        },  # All required fields with proper validation
     },
     "field_ranges": {
         "volunteer": {
@@ -304,54 +345,66 @@ VALIDATION_DATA_TYPE_RULES = {
             },
         },
         "student": {
-            "FirstName": {
+            "first_name": {
                 "type": "string",
                 "min_length": 1,
                 "max_length": 100,
                 "required": True,
                 "severity": "error",
             },
-            "LastName": {
+            "last_name": {
                 "type": "string",
                 "min_length": 1,
                 "max_length": 100,
                 "required": True,
                 "severity": "error",
             },
-            "Contact_Type__c": {
-                "type": "enum",
-                "allowed_values": ["Student", "Student - Active", "Student - Inactive"],
-                "required": True,
-                "severity": "error",
+            "current_grade": {
+                "type": "integer",
+                "min_value": 0,
+                "max_value": 12,
+                "required": False,
+                "severity": "info",
+            },
+            "student_id": {
+                "type": "string",
+                "max_length": 50,
+                "required": False,
+                "severity": "info",
             },
         },
         "teacher": {
-            "FirstName": {
+            "first_name": {
                 "type": "string",
                 "min_length": 1,
                 "max_length": 100,
                 "required": True,
                 "severity": "error",
             },
-            "LastName": {
+            "last_name": {
                 "type": "string",
                 "min_length": 1,
                 "max_length": 100,
                 "required": True,
                 "severity": "error",
             },
-            "Title": {
+            "status": {
+                "type": "enum",
+                "allowed_values": ["active", "inactive", "on_leave", "retired"],
+                "required": False,
+                "severity": "warning",
+            },
+            "department": {
                 "type": "string",
-                "min_length": 1,
-                "max_length": 100,
-                "required": False,  # Title is optional for teachers
+                "max_length": 50,
+                "required": False,
                 "severity": "info",
             },
-            "Contact_Type__c": {
-                "type": "enum",
-                "allowed_values": ["Teacher", "Teacher - Active", "Teacher - Inactive"],
-                "required": True,
-                "severity": "error",
+            "connector_role": {
+                "type": "string",
+                "max_length": 50,
+                "required": False,
+                "severity": "info",
             },
         },
         "school": {
@@ -519,13 +572,13 @@ VALIDATION_RELATIONSHIP_RULES = {
         },
         "student": {
             "required_relationships": {
-                "FirstName": {
+                "first_name": {
                     "type": "string",
                     "required": True,
                     "severity": "error",
                     "description": "First name is required",
                 },
-                "LastName": {
+                "last_name": {
                     "type": "string",
                     "required": True,
                     "severity": "error",
@@ -533,38 +586,64 @@ VALIDATION_RELATIONSHIP_RULES = {
                 },
             },
             "optional_relationships": {
-                "AccountId": {
+                "school_id": {
                     "type": "lookup",
-                    "target_object": "Account",
+                    "target_object": "School",
                     "required": False,
                     "severity": "info",
-                    "description": "School/organization association is optional",
-                }
+                    "description": "School association is optional",
+                },
+                "teacher_id": {
+                    "type": "lookup",
+                    "target_object": "Teacher",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Teacher assignment is optional",
+                },
+                "class_salesforce_id": {
+                    "type": "lookup",
+                    "target_object": "Class",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Class assignment is optional",
+                },
             },
         },
         "teacher": {
             "required_relationships": {
-                "Contact_Type__c": {
-                    "type": "picklist",
+                "first_name": {
+                    "type": "string",
                     "required": True,
                     "severity": "error",
-                    "description": "Teacher contact type must be specified",
+                    "description": "First name is required",
                 },
-                "Title": {
+                "last_name": {
                     "type": "string",
-                    "required": False,  # Changed to False since not all teachers have titles
-                    "severity": "warning",
-                    "description": "Job title should be specified",
+                    "required": True,
+                    "severity": "error",
+                    "description": "Last name is required",
                 },
             },
             "optional_relationships": {
-                "AccountId": {
+                "school_id": {
                     "type": "lookup",
-                    "target_object": "Account",
+                    "target_object": "School",
                     "required": False,
                     "severity": "info",
-                    "description": "School/organization association is optional",
-                }
+                    "description": "School association is optional",
+                },
+                "department": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Department assignment is optional",
+                },
+                "connector_role": {
+                    "type": "string",
+                    "required": False,
+                    "severity": "info",
+                    "description": "Connector program role is optional",
+                },
             },
         },
         "school": {
@@ -674,8 +753,9 @@ VALIDATION_RELATIONSHIP_RULES = {
 # Business rule definitions
 BUSINESS_RULES = {
     "volunteer": {
-        "required_fields": ["first_name", "last_name", "salesforce_individual_id"],
-        "unique_fields": ["salesforce_individual_id", "email"],
+        "required_fields": ["first_name", "last_name"],
+        "form_required_fields": ["first_name", "last_name", "email"],
+        "unique_fields": ["salesforce_individual_id"],
         "status_transitions": {
             "active": ["inactive", "suspended"],
             "inactive": ["active"],
@@ -689,16 +769,36 @@ BUSINESS_RULES = {
         },
     },
     "organization": {
-        "required_fields": ["name", "salesforce_id"],
+        "required_fields": ["name"],
         "unique_fields": ["salesforce_id"],
-        "status_transitions": {
-            "active": ["inactive", "suspended"],
-            "inactive": ["active"],
-            "suspended": ["active", "inactive"],
+        "type_validation": {
+            "allowed_types": [
+                "School",
+                "Business",
+                "Non-profit",
+                "Government",
+                "Other",
+            ],
+            "description": "Organization type must be one of the predefined values",
+        },
+        "address_validation": {
+            "city_state_consistency": True,
+            "postal_code_format": True,
+            "country_validation": True,
+        },
+        "volunteer_relationship_validation": {
+            "max_volunteers_per_org": 1000,
+            "primary_organization_limit": 1,
+            "relationship_status_required": True,
+        },
+        "salesforce_integration": {
+            "import_strategy": "selective",
+            "exclude_types": ["Draft", "Test"],
+            "required_fields_on_import": ["name", "type"],
         },
     },
     "event": {
-        "required_fields": ["name", "start_date", "school"],
+        "required_fields": ["title", "start_date", "format", "status"],
         "unique_fields": ["salesforce_id"],
         "date_validation": {
             "start_date_future": True,
@@ -824,7 +924,58 @@ VALIDATION_BUSINESS_RULES = {
                 "required": True,
                 "severity": "error",
                 "description": "Organization name is required",
-            }
+            },
+            "organization_type_validation": {
+                "type": "business_constraint",
+                "fields": ["type"],
+                "allowed_values": [
+                    "School",
+                    "Business",
+                    "Non-profit",
+                    "Government",
+                    "Other",
+                ],
+                "severity": "warning",
+                "description": "Organization type should be one of the predefined values",
+            },
+            "address_consistency_validation": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "billing_city",
+                        "then_field": "billing_state",
+                        "validation": "both_or_neither",
+                        "message": "If city is provided, state should also be provided",
+                        "severity": "warning",
+                    },
+                    {
+                        "if_field": "billing_state",
+                        "then_field": "billing_postal_code",
+                        "validation": "state_requires_postal",
+                        "message": "State requires postal code for proper addressing",
+                        "severity": "info",
+                    },
+                ],
+                "severity": "info",
+                "description": "Address field consistency validation",
+            },
+            "volunteer_relationship_validation": {
+                "type": "business_constraint",
+                "fields": ["volunteer_organizations"],
+                "rules": {"max_volunteers": 1000, "primary_org_limit": 1},
+                "severity": "warning",
+                "description": "Volunteer-organization relationship validation",
+            },
+            "salesforce_import_validation": {
+                "type": "business_constraint",
+                "fields": ["salesforce_id"],
+                "rules": {
+                    "import_required_fields": ["name", "type"],
+                    "exclude_patterns": ["Draft", "Test", "Sample"],
+                },
+                "severity": "info",
+                "description": "Salesforce import strategy validation",
+            },
         },
         "teacher": {
             "required_fields_validation": {
@@ -833,7 +984,79 @@ VALIDATION_BUSINESS_RULES = {
                 "required": True,
                 "severity": "error",
                 "description": "First name and last name are required for teachers",
-            }
+            },
+            "teacher_status_workflow": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "basic_info",
+                        "required_fields": ["first_name", "last_name"],
+                        "description": "Basic teacher information required",
+                    },
+                    {
+                        "step": "status_assignment",
+                        "required_fields": ["status"],
+                        "description": "Teacher status assignment",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "school_assignment",
+                        "required_fields": [],
+                        "description": "School assignment is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "department_assignment",
+                        "required_fields": [],
+                        "description": "Department assignment is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                ],
+                "severity": "info",
+                "description": "Teacher onboarding workflow validation",
+            },
+            "teacher_status_validation": {
+                "type": "business_constraint",
+                "fields": ["status"],
+                "rules": {
+                    "allowed_values": ["active", "inactive", "on_leave", "retired"],
+                    "status_transitions": {
+                        "active": ["inactive", "on_leave", "retired"],
+                        "inactive": ["active", "retired"],
+                        "on_leave": ["active", "inactive", "retired"],
+                        "retired": [],
+                    },
+                },
+                "severity": "warning",
+                "description": "Teacher status must be valid and follow transition rules",
+            },
+            "connector_program_validation": {
+                "type": "business_constraint",
+                "fields": [
+                    "connector_role",
+                    "connector_active",
+                    "connector_start_date",
+                    "connector_end_date",
+                ],
+                "rules": {
+                    "role_capitalization": True,
+                    "date_range_validation": True,
+                    "active_status_consistency": True,
+                },
+                "severity": "warning",
+                "description": "Connector program participation validation",
+            },
+            "school_relationship_validation": {
+                "type": "business_constraint",
+                "fields": ["school_id"],
+                "rules": {
+                    "school_id_format": "salesforce_id",
+                    "relationship_optional": True,
+                    "cascade_delete": False,
+                },
+                "severity": "info",
+                "description": "Teacher-school relationship validation",
+            },
         },
         "student": {
             "required_fields_validation": {
@@ -842,7 +1065,66 @@ VALIDATION_BUSINESS_RULES = {
                 "required": True,
                 "severity": "error",
                 "description": "First name and last name are required for students",
-            }
+            },
+            "student_enrollment_workflow": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "basic_info",
+                        "required_fields": ["first_name", "last_name"],
+                        "description": "Basic student information required",
+                    },
+                    {
+                        "step": "academic_info",
+                        "required_fields": [],
+                        "description": "Academic information is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "school_assignment",
+                        "required_fields": [],
+                        "description": "School assignment is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "demographic_info",
+                        "required_fields": [],
+                        "description": "Demographic information is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                ],
+                "severity": "info",
+                "description": "Student enrollment workflow validation",
+            },
+            "grade_level_validation": {
+                "type": "business_constraint",
+                "fields": ["current_grade"],
+                "rules": {
+                    "min_grade": 0,
+                    "max_grade": 12,
+                    "grade_progression": "sequential",
+                },
+                "severity": "warning",
+                "description": "Grade level must be between 0-12",
+            },
+            "student_id_uniqueness": {
+                "type": "business_constraint",
+                "fields": ["student_id"],
+                "rules": {"unique_per_school": True, "format": "alphanumeric"},
+                "severity": "warning",
+                "description": "Student ID should be unique within school",
+            },
+            "academic_relationship_validation": {
+                "type": "business_constraint",
+                "fields": ["school_id", "teacher_id", "class_salesforce_id"],
+                "rules": {
+                    "school_required_for_grade": False,
+                    "teacher_required_for_class": False,
+                    "class_required_for_attendance": False,
+                },
+                "severity": "info",
+                "description": "Academic relationships are optional but should be consistent",
+            },
         },
         "event": {
             "required_fields_validation": {
@@ -997,6 +1279,660 @@ VALIDATION_BUSINESS_RULES = {
                 "rules": {"id": {"type": "primary_key", "auto_increment": True}},
                 "severity": "info",
                 "description": "District primary key validation",
+            },
+        },
+        "event": {
+            "event_status_transitions": {
+                "type": "status_transition",
+                "status_field": "status",
+                "allowed_transitions": {
+                    "Draft": ["Requested", "Cancelled"],
+                    "Requested": ["Confirmed", "Cancelled"],
+                    "Confirmed": ["Published", "Cancelled"],
+                    "Published": ["Completed", "Cancelled"],
+                    "Completed": ["Cancelled"],
+                    "Cancelled": [],
+                    "No Show": ["Cancelled"],
+                    "Simulcast": ["Completed", "Cancelled"],
+                },
+                "invalid_transitions": {
+                    "Completed": ["Draft", "Requested", "Confirmed", "Published"],
+                    "Cancelled": [
+                        "Draft",
+                        "Requested",
+                        "Confirmed",
+                        "Published",
+                        "Completed",
+                    ],
+                },
+                "severity": "error",
+                "description": "VMS Event status transition validation",
+            },
+            "event_data_consistency": {
+                "type": "cross_field",
+                "field_rules": [
+                    {
+                        "if_field": "start_date",
+                        "then_field": "end_date",
+                        "validation": "end_date_after_start",
+                        "message": "End date must be after start date",
+                        "severity": "error",
+                    },
+                    {
+                        "if_field": "registered_count",
+                        "then_field": "attended_count",
+                        "validation": "attended_less_than_registered",
+                        "message": "Attended count cannot exceed registered count",
+                        "severity": "error",
+                    },
+                ],
+                "severity": "error",
+                "description": "VMS Event data consistency validation",
+            },
+            "event_field_format_validation": {
+                "type": "business_constraint",
+                "fields": [
+                    "title",
+                    "start_date",
+                    "end_date",
+                    "location",
+                    "description",
+                ],
+                "rules": {
+                    "title": {
+                        "min_length": 2,
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "pattern": r"^[A-Za-z0-9\s\-\.'&()]+$",
+                    },
+                    "start_date": {
+                        "format": "datetime",
+                        "timezone_aware": True,
+                        "future_date_allowed": True,
+                    },
+                    "end_date": {
+                        "format": "datetime",
+                        "timezone_aware": True,
+                        "after_start_date": True,
+                    },
+                    "location": {
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "pattern": r"^[A-Za-z0-9\s\-\.',&()]+$",
+                    },
+                    "description": {
+                        "max_length": 10000,
+                        "no_whitespace_only": True,
+                    },
+                },
+                "severity": "warning",
+                "description": "VMS Event field format validation",
+            },
+            "event_data_quality_validation": {
+                "type": "business_constraint",
+                "fields": ["title", "location", "description"],
+                "rules": {
+                    "title": {
+                        "min_length": 2,
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "descriptive_required": True,
+                    },
+                    "location": {
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "address_format": True,
+                    },
+                    "description": {
+                        "max_length": 10000,
+                        "no_whitespace_only": True,
+                        "content_quality": True,
+                    },
+                },
+                "severity": "warning",
+                "description": "VMS Event data quality validation",
+            },
+            "event_capacity_validation": {
+                "type": "business_constraint",
+                "fields": [
+                    "volunteers_needed",
+                    "participant_count",
+                    "registered_count",
+                    "attended_count",
+                    "available_slots",
+                ],
+                "rules": {
+                    "volunteers_needed": {
+                        "min_value": 0,
+                        "max_value": 1000,
+                        "non_negative": True,
+                    },
+                    "participant_count": {
+                        "min_value": 0,
+                        "max_value": 10000,
+                        "non_negative": True,
+                    },
+                    "registered_count": {
+                        "min_value": 0,
+                        "max_value": 10000,
+                        "non_negative": True,
+                    },
+                    "attended_count": {
+                        "min_value": 0,
+                        "max_value": 10000,
+                        "non_negative": True,
+                        "less_than_registered": True,
+                    },
+                    "available_slots": {
+                        "min_value": 0,
+                        "max_value": 10000,
+                        "non_negative": True,
+                    },
+                },
+                "severity": "warning",
+                "description": "VMS Event capacity and participant validation",
+            },
+            "event_workflow_validation": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "basic_info",
+                        "required_fields": ["title", "start_date", "format", "status"],
+                        "description": "Basic event information required",
+                    },
+                    {
+                        "step": "timing_details",
+                        "required_fields": [],
+                        "description": "End date and duration are optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "location_info",
+                        "required_fields": [],
+                        "description": "Location and school assignment are optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "capacity_planning",
+                        "required_fields": [],
+                        "description": "Volunteer and participant capacity planning",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "skills_assignment",
+                        "required_fields": [],
+                        "description": "Skills and requirements assignment",
+                        "depends_on": ["basic_info"],
+                    },
+                ],
+                "severity": "info",
+                "description": "VMS Event creation and management workflow validation",
+            },
+            "event_skills_validation": {
+                "type": "business_constraint",
+                "fields": ["skills"],
+                "rules": {
+                    "skills": {
+                        "max_skills_per_event": 20,
+                        "skill_name_format": "alphanumeric_with_spaces",
+                        "duplicate_prevention": True,
+                    }
+                },
+                "severity": "info",
+                "description": "VMS Event skills validation",
+            },
+            "event_location_validation": {
+                "type": "business_constraint",
+                "fields": ["location", "school"],
+                "rules": {
+                    "location": {
+                        "format": "address",
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                    },
+                    "school": {
+                        "format": "salesforce_id",
+                        "valid_reference": True,
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Event location and school validation",
+            },
+            "event_duration_validation": {
+                "type": "business_constraint",
+                "fields": ["start_date", "end_date", "duration"],
+                "rules": {
+                    "duration": {
+                        "min_minutes": 15,
+                        "max_days": 30,
+                        "calculated_from_dates": True,
+                    },
+                    "date_range": {
+                        "start_before_end": True,
+                        "max_future_months": 24,
+                        "min_notice_hours": 1,
+                    },
+                },
+                "severity": "warning",
+                "description": "VMS Event duration and timing validation",
+            },
+            "event_participant_validation": {
+                "type": "business_constraint",
+                "fields": ["participant_count", "registered_count", "attended_count"],
+                "rules": {
+                    "count_consistency": {
+                        "attended_less_than_registered": True,
+                        "registered_less_than_capacity": True,
+                        "participant_count_accurate": True,
+                    },
+                    "count_ranges": {
+                        "min_participants": 0,
+                        "max_participants": 10000,
+                        "reasonable_attendance_rate": True,
+                    },
+                },
+                "severity": "warning",
+                "description": "VMS Event participant count validation",
+            },
+            "event_volunteer_validation": {
+                "type": "business_constraint",
+                "fields": ["volunteers_needed", "volunteers"],
+                "rules": {
+                    "volunteer_requirements": {
+                        "min_volunteers": 0,
+                        "max_volunteers": 1000,
+                        "reasonable_ratio": True,
+                    },
+                    "volunteer_assignment": {
+                        "max_volunteers_per_event": 1000,
+                        "volunteer_availability": True,
+                        "skill_matching": True,
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Event volunteer validation",
+            },
+            "event_school_validation": {
+                "type": "business_constraint",
+                "fields": ["school"],
+                "rules": {
+                    "school": {
+                        "format": "salesforce_id",
+                        "valid_reference": True,
+                        "district_consistency": True,
+                    }
+                },
+                "severity": "info",
+                "description": "VMS Event school assignment validation",
+            },
+            "event_district_validation": {
+                "type": "business_constraint",
+                "fields": ["districts"],
+                "rules": {
+                    "districts": {
+                        "max_districts_per_event": 10,
+                        "district_consistency": True,
+                        "school_district_alignment": True,
+                    }
+                },
+                "severity": "info",
+                "description": "VMS Event district relationship validation",
+            },
+            "event_series_validation": {
+                "type": "business_constraint",
+                "fields": ["series"],
+                "rules": {
+                    "series": {
+                        "max_length": 255,
+                        "no_whitespace_only": True,
+                        "series_consistency": True,
+                    }
+                },
+                "severity": "info",
+                "description": "VMS Event series validation",
+            },
+            "event_session_validation": {
+                "type": "business_constraint",
+                "fields": ["session_id", "session_host"],
+                "rules": {
+                    "session_id": {
+                        "max_length": 255,
+                        "unique_per_host": True,
+                        "format": "alphanumeric_with_dashes",
+                    },
+                    "session_host": {
+                        "max_length": 255,
+                        "allowed_hosts": ["PREPKC", "Other"],
+                        "default_value": "PREPKC",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Event session validation",
+            },
+            "event_registration_validation": {
+                "type": "business_constraint",
+                "fields": ["registration_link"],
+                "rules": {
+                    "registration_link": {
+                        "max_length": 1300,
+                        "url_format": True,
+                        "secure_protocol": True,
+                    }
+                },
+                "severity": "warning",
+                "description": "VMS Event registration validation",
+            },
+            "event_cancellation_validation": {
+                "type": "business_constraint",
+                "fields": ["cancellation_reason"],
+                "rules": {
+                    "cancellation_reason": {
+                        "required_when_cancelled": True,
+                        "allowed_reasons": [
+                            "weather",
+                            "low_enrollment",
+                            "instructor_unavailable",
+                            "facility_issue",
+                            "other",
+                        ],
+                        "reason_description": True,
+                    }
+                },
+                "severity": "warning",
+                "description": "VMS Event cancellation validation",
+            },
+            "event_attendance_validation": {
+                "type": "business_constraint",
+                "fields": ["attendance"],
+                "rules": {
+                    "attendance": {
+                        "status_tracking": True,
+                        "count_accuracy": True,
+                        "timestamp_validation": True,
+                    }
+                },
+                "severity": "info",
+                "description": "VMS Event attendance tracking validation",
+            },
+            "event_comment_validation": {
+                "type": "business_constraint",
+                "fields": ["comments"],
+                "rules": {
+                    "comments": {
+                        "max_length": 10000,
+                        "no_whitespace_only": True,
+                        "timestamp_tracking": True,
+                    }
+                },
+                "severity": "info",
+                "description": "VMS Event comment validation",
+            },
+            "event_metadata_validation": {
+                "type": "business_constraint",
+                "fields": [
+                    "additional_information",
+                    "educators",
+                    "educator_ids",
+                    "professionals",
+                    "professional_ids",
+                ],
+                "rules": {
+                    "additional_information": {
+                        "max_length": 10000,
+                        "no_whitespace_only": True,
+                    },
+                    "educators": {
+                        "max_length": 1000,
+                        "semicolon_separated": True,
+                        "no_whitespace_only": True,
+                    },
+                    "educator_ids": {
+                        "max_length": 1000,
+                        "semicolon_separated": True,
+                        "no_whitespace_only": True,
+                    },
+                    "professionals": {
+                        "max_length": 1000,
+                        "semicolon_separated": True,
+                        "no_whitespace_only": True,
+                    },
+                    "professional_ids": {
+                        "max_length": 1000,
+                        "semicolon_separated": True,
+                        "no_whitespace_only": True,
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Event metadata validation",
+            },
+            "event_timing_validation": {
+                "type": "business_constraint",
+                "fields": ["start_date", "end_date", "created_at", "updated_at"],
+                "rules": {
+                    "timing": {
+                        "start_date_future_allowed": True,
+                        "end_date_after_start": True,
+                        "created_before_start": True,
+                        "updated_after_created": True,
+                    },
+                    "timezone": {
+                        "timezone_aware": True,
+                        "consistent_timezone": True,
+                    },
+                },
+                "severity": "warning",
+                "description": "VMS Event timing validation",
+            },
+        },
+        "volunteer": {
+            "volunteer_registration_workflow": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "basic_info",
+                        "required_fields": ["first_name", "last_name"],
+                        "description": "Basic contact information required",
+                    },
+                    {
+                        "step": "contact_methods",
+                        "required_fields": ["email"],
+                        "description": "Email required for communication",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "professional_info",
+                        "required_fields": [],
+                        "description": "Professional information is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "skills_assessment",
+                        "required_fields": [],
+                        "description": "Skills assessment is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                ],
+                "severity": "info",
+                "description": "VMS Volunteer registration workflow validation",
+            }
+        },
+        "organization": {
+            "organization_creation_workflow": {
+                "type": "workflow",
+                "workflow_steps": [
+                    {
+                        "step": "basic_info",
+                        "required_fields": ["name"],
+                        "description": "Organization name is required",
+                    },
+                    {
+                        "step": "classification",
+                        "required_fields": ["type"],
+                        "description": "Organization type classification",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "address_info",
+                        "required_fields": [],
+                        "description": "Address information is optional",
+                        "depends_on": ["basic_info"],
+                    },
+                    {
+                        "step": "volunteer_associations",
+                        "required_fields": [],
+                        "description": "Volunteer associations created separately",
+                        "depends_on": ["basic_info"],
+                    },
+                ],
+                "severity": "info",
+                "description": "VMS Organization creation workflow validation",
+            },
+            "organization_volunteer_relationships": {
+                "type": "business_constraint",
+                "rules": {
+                    "max_volunteers_per_org": 1000,
+                    "primary_organization_limit": 1,
+                    "relationship_status_required": True,
+                    "cascade_delete_volunteer_orgs": True,
+                },
+                "severity": "warning",
+                "description": "VMS Organization-volunteer relationship validation",
+            },
+        },
+        "import_strategy_awareness": {
+            "event_import_strategy": {
+                "type": "business_constraint",
+                "description": "Event import strategy intentionally filters certain types",
+                "expected_discrepancies": {
+                    "draft_events": {
+                        "reason": "Intentionally excluded from Salesforce import",
+                        "expected_count": "70 events",
+                        "severity": "info",
+                    },
+                    "connector_sessions": {
+                        "reason": "Intentionally excluded from Salesforce import",
+                        "expected_count": "966 events",
+                        "severity": "info",
+                    },
+                    "virtual_sessions": {
+                        "reason": "Created locally, not in Salesforce",
+                        "expected_count": "367 events",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Event import strategy awareness",
+            },
+            "volunteer_import_strategy": {
+                "type": "business_constraint",
+                "description": "Volunteers can exist without Salesforce IDs",
+                "expected_scenarios": {
+                    "local_creation": {
+                        "reason": "Created through web interface or local processes",
+                        "severity": "info",
+                    },
+                    "virtual_session_volunteers": {
+                        "reason": "Volunteers for virtual sessions",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Volunteer import strategy awareness",
+            },
+            "organization_import_strategy": {
+                "type": "business_constraint",
+                "description": "Organizations imported from Salesforce with selective filtering",
+                "expected_scenarios": {
+                    "salesforce_import": {
+                        "reason": "Primary source from Salesforce Account records",
+                        "required_fields": ["name", "type"],
+                        "severity": "info",
+                    },
+                    "local_creation": {
+                        "reason": "Created through web interface for local organizations",
+                        "severity": "info",
+                    },
+                    "excluded_types": {
+                        "reason": "Draft, Test, and Sample organizations excluded",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Organization import strategy awareness",
+            },
+            "student_import_strategy": {
+                "type": "business_constraint",
+                "description": "Students can exist without Salesforce IDs",
+                "expected_scenarios": {
+                    "local_creation": {
+                        "reason": "Created through web interface or local processes",
+                        "severity": "info",
+                    },
+                    "salesforce_import": {
+                        "reason": "Imported from Salesforce with Contact_Type__c = 'Student'",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Student import strategy awareness",
+            },
+            "teacher_import_strategy": {
+                "type": "business_constraint",
+                "description": "Teachers can exist without Salesforce IDs",
+                "expected_scenarios": {
+                    "local_creation": {
+                        "reason": "Created through web interface or local processes",
+                        "severity": "info",
+                    },
+                    "salesforce_import": {
+                        "reason": "Imported from Salesforce with Contact_Type__c = 'Teacher'",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS Teacher import strategy awareness",
+            },
+            "school_import_strategy": {
+                "type": "business_constraint",
+                "description": "Schools imported from Salesforce with district relationships",
+                "expected_scenarios": {
+                    "salesforce_import": {
+                        "reason": "Primary source from Salesforce Account records",
+                        "required_fields": ["id", "name"],
+                        "severity": "info",
+                    },
+                    "local_creation": {
+                        "reason": "Created through web interface for local schools",
+                        "severity": "info",
+                    },
+                    "virtual_session_schools": {
+                        "reason": "Schools created for virtual sessions",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS School import strategy awareness",
+            },
+            "district_import_strategy": {
+                "type": "business_constraint",
+                "description": "Districts imported from Salesforce with school relationships",
+                "expected_scenarios": {
+                    "salesforce_import": {
+                        "reason": "Primary source from Salesforce Account records",
+                        "required_fields": ["id", "name"],
+                        "severity": "info",
+                    },
+                    "local_creation": {
+                        "reason": "Created through web interface for local districts",
+                        "severity": "info",
+                    },
+                    "school_district_association": {
+                        "reason": "Districts created when schools are imported",
+                        "severity": "info",
+                    },
+                },
+                "severity": "info",
+                "description": "VMS District import strategy awareness",
             },
         },
     },

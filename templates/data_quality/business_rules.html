@@ -240,6 +240,96 @@
             </div>
 
             <div class="rule-card">
+                <div class="rule-type">Organization Type Validation</div>
+                <div class="rule-description">Validation of organization type classification</div>
+                <div class="rule-details">
+                    <p><strong>Allowed Types:</strong></p>
+                    <ul>
+                        <li>School - Educational institutions</li>
+                        <li>Business - For-profit companies</li>
+                        <li>Non-profit - Charitable organizations</li>
+                        <li>Government - Public sector entities</li>
+                        <li>Other - Miscellaneous organizations</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Type validation with warning severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Address Consistency Validation</div>
+                <div class="rule-description">Cross-field validation for address information consistency</div>
+                <div class="rule-details">
+                    <p><strong>Validation Rules:</strong></p>
+                    <ul>
+                        <li>If city is provided, state should also be provided</li>
+                        <li>If state is provided, postal code should also be provided</li>
+                        <li>Address fields are optional but should be consistent when present</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Cross-field validation with warning/info severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Volunteer Relationship Validation</div>
+                <div class="rule-description">Validation of volunteer-organization relationships</div>
+                <div class="rule-details">
+                    <p><strong>Relationship Rules:</strong></p>
+                    <ul>
+                        <li>Maximum 1000 volunteers per organization</li>
+                        <li>Primary organization limit: 1 per volunteer</li>
+                        <li>Relationship status tracking required</li>
+                        <li>Cascade delete volunteer-organization records</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Relationship validation with warning severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Salesforce Import Strategy</div>
+                <div class="rule-description">Understanding of intentional data filtering during import</div>
+                <div class="rule-details">
+                    <p><strong>Import Strategy:</strong></p>
+                    <ul>
+                        <li>Primary source: Salesforce Account records</li>
+                        <li>Required fields on import: name, type</li>
+                        <li>Excluded types: Draft, Test, Sample organizations</li>
+                        <li>Local creation supported for web interface</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Import strategy awareness with info severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Organization Creation Workflow</div>
+                <div class="rule-description">Step-by-step validation of organization creation process</div>
+                <div class="rule-details">
+                    <p><strong>Workflow Steps:</strong></p>
+                    <ul>
+                        <li>Basic Info: Organization name (required)</li>
+                        <li>Classification: Organization type (depends on basic info)</li>
+                        <li>Address Info: Billing information (optional, depends on basic info)</li>
+                        <li>Volunteer Associations: Created separately (depends on basic info)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Workflow validation with info severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
                 <div class="rule-type">Count Validation</div>
                 <div class="rule-description">Context-aware validation comparing VMS organization count with Salesforce</div>
                 <div class="rule-details">
@@ -411,8 +501,16 @@
                 <div class="rule-details">
                     <p><strong>Required Fields:</strong></p>
                     <ul>
-                        <li>FirstName - Student's first name (required)</li>
-                        <li>LastName - Student's last name (required)</li>
+                        <li>first_name - Student's first name (required)</li>
+                        <li>last_name - Student's last name (required)</li>
+                    </ul>
+                    <p><strong>Optional Fields:</strong></p>
+                    <ul>
+                        <li>current_grade - Grade level (optional)</li>
+                        <li>student_id - School-specific identifier (optional)</li>
+                        <li>school_id - School association (optional)</li>
+                        <li>teacher_id - Teacher assignment (optional)</li>
+                        <li>racial_ethnic - Racial/ethnic background (optional)</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
@@ -427,12 +525,102 @@
                 <div class="rule-details">
                     <p><strong>Validation:</strong></p>
                     <ul>
-                        <li>FirstName - String validation (required)</li>
-                        <li>LastName - String validation (required)</li>
+                        <li>first_name - String validation (required)</li>
+                        <li>last_name - String validation (required)</li>
+                        <li>current_grade - Integer validation (0-12, optional)</li>
+                        <li>student_id - String validation (max 50 chars, optional)</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
                         <small class="text-muted">Type checking with severity-based scoring</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Student Enrollment Workflow</div>
+                <div class="rule-description">Step-by-step validation of student enrollment process</div>
+                <div class="rule-details">
+                    <p><strong>Workflow Steps:</strong></p>
+                    <ul>
+                        <li>Basic Info: First name and last name (required)</li>
+                        <li>Academic Info: Grade level, student ID (optional, depends on basic info)</li>
+                        <li>School Assignment: School association (optional, depends on basic info)</li>
+                        <li>Demographic Info: Racial/ethnic background (optional, depends on basic info)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Workflow validation with info severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Grade Level Validation</div>
+                <div class="rule-description">Validation of grade level constraints and progression</div>
+                <div class="rule-details">
+                    <p><strong>Grade Rules:</strong></p>
+                    <ul>
+                        <li>Grade range: 0-12 (Kindergarten through 12th grade)</li>
+                        <li>Grade progression: Sequential advancement expected</li>
+                        <li>Optional field: Grade not required for student creation</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Grade validation with warning severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Student ID Uniqueness</div>
+                <div class="rule-description">Validation of student identifier uniqueness and format</div>
+                <div class="rule-details">
+                    <p><strong>ID Rules:</strong></p>
+                    <ul>
+                        <li>Unique per school: Student ID should be unique within each school</li>
+                        <li>Format: Alphanumeric characters only</li>
+                        <li>Optional field: Student ID not required for student creation</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">ID validation with warning severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Academic Relationship Validation</div>
+                <div class="rule-description">Validation of student academic relationships and associations</div>
+                <div class="rule-details">
+                    <p><strong>Relationship Rules:</strong></p>
+                    <ul>
+                        <li>School association: Optional but should be consistent when present</li>
+                        <li>Teacher assignment: Optional but should be consistent when present</li>
+                        <li>Class assignment: Optional but should be consistent when present</li>
+                        <li>No cross-field dependencies: Relationships are independent</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Relationship validation with info severity</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Salesforce Import Strategy</div>
+                <div class="rule-description">Understanding of intentional data filtering during import</div>
+                <div class="rule-details">
+                    <p><strong>Import Strategy:</strong></p>
+                    <ul>
+                        <li>Primary source: Salesforce Contact records with Contact_Type__c = 'Student'</li>
+                        <li>Required fields on import: Id, FirstName, LastName</li>
+                        <li>Excluded types: Draft, Test, Sample students</li>
+                        <li>Local creation supported for web interface</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Import strategy awareness with info severity</small>
                     </div>
                 </div>
             </div>
@@ -451,11 +639,15 @@
                 <div class="rule-details">
                     <ul class="field-list">
                         <li><span class="required-field">title</span> - Event title/name (required)</li>
+                        <li><span class="required-field">type</span> - Event type (required)</li>
+                        <li><span class="required-field">format</span> - Event format (required)</li>
                         <li><span class="required-field">start_date</span> - Event start date and time (required)</li>
+                        <li><span class="required-field">end_date</span> - Event end date and time (required)</li>
+                        <li><span class="required-field">status</span> - Event status (required)</li>
                     </ul>
                     <div class="mt-2">
-                        <span class="status-badge status-implemented">Implemented</span>
-                        <small class="text-muted">Business rule validation with error severity</small>
+                        <span class="status-badge status-implemented">Enhanced</span>
+                        <small class="text-muted">Updated to match EventForm requirements</small>
                     </div>
                 </div>
             </div>
@@ -481,11 +673,15 @@
                     <p><strong>Required Fields:</strong></p>
                     <ul>
                         <li>title - Event title (required)</li>
+                        <li>type - Event type (required)</li>
+                        <li>format - Event format (required)</li>
                         <li>start_date - Event start date (required)</li>
+                        <li>end_date - Event end date (required)</li>
+                        <li>status - Event status (required)</li>
                     </ul>
                     <div class="mt-2">
-                        <span class="status-badge status-implemented">Implemented</span>
-                        <small class="text-muted">Configurable severity thresholds</small>
+                        <span class="status-badge status-implemented">Enhanced</span>
+                        <small class="text-muted">Updated to match EventForm requirements</small>
                     </div>
                 </div>
             </div>
@@ -496,12 +692,63 @@
                 <div class="rule-details">
                     <p><strong>Validation:</strong></p>
                     <ul>
-                        <li>title - String validation (required)</li>
-                        <li>start_date - Datetime validation (required)</li>
+                        <li>title - String validation, 1-255 chars (required)</li>
+                        <li>type - Enum validation (IN_PERSON, VIRTUAL_SESSION, etc.) (required)</li>
+                        <li>format - Enum validation (IN_PERSON, VIRTUAL) (required)</li>
+                        <li>start_date - Datetime validation, timezone-aware (required)</li>
+                        <li>end_date - Datetime validation, timezone-aware (required)</li>
+                        <li>status - Enum validation (Draft, Requested, Confirmed, etc.) (required)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Enhanced</span>
+                        <small class="text-muted">Comprehensive validation for all required fields</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Business Rules Validation</div>
+                <div class="rule-description">Comprehensive business logic validation for events</div>
+                <div class="rule-details">
+                    <p><strong>Status Transitions:</strong></p>
+                    <ul>
+                        <li>Draft → Requested → Confirmed → Published → Completed</li>
+                        <li>Any status can transition to Cancelled</li>
+                        <li>Invalid transitions are blocked (e.g., Completed cannot go back to Draft)</li>
+                    </ul>
+                    <p><strong>Data Consistency:</strong></p>
+                    <ul>
+                        <li>End date must be after start date</li>
+                        <li>Attended count cannot exceed registered count</li>
+                        <li>Participant counts must be non-negative</li>
+                    </ul>
+                    <p><strong>Workflow Validation:</strong></p>
+                    <ul>
+                        <li>Event creation workflow with required field progression</li>
+                        <li>Capacity planning and volunteer assignment validation</li>
+                        <li>Skills and requirements management</li>
                     </ul>
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
-                        <small class="text-muted">Type checking with severity-based scoring</small>
+                        <small class="text-muted">Comprehensive business rules with status transitions and data consistency</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Import Strategy Awareness</div>
+                <div class="rule-description">Understanding of intentional data filtering during import</div>
+                <div class="rule-details">
+                    <p><strong>Import Strategy:</strong></p>
+                    <ul>
+                        <li>Primary source: Salesforce Session__c records</li>
+                        <li>Required fields: title, start_date, status</li>
+                        <li>Intentionally excluded: Draft events, Connector Sessions</li>
+                        <li>Virtual sessions: Created locally via Google Sheets</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Import strategy awareness with intentional filtering</small>
                     </div>
                 </div>
             </div>
@@ -668,6 +915,25 @@
                     </div>
                 </div>
             </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Import Strategy Awareness</div>
+                <div class="rule-description">Understanding of intentional data filtering during import</div>
+                <div class="rule-details">
+                    <p><strong>Import Strategy:</strong></p>
+                    <ul>
+                        <li>Primary source: Salesforce Account records with Type = 'School'</li>
+                        <li>Required fields on import: Id, Name</li>
+                        <li>District relationships: Created when schools are imported</li>
+                        <li>Local creation supported for web interface</li>
+                        <li>Virtual session schools: Created locally for virtual sessions</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Import strategy awareness with info severity</small>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- District Entity -->
@@ -812,6 +1078,25 @@
                     <div class="mt-2">
                         <span class="status-badge status-implemented">Implemented</span>
                         <small class="text-muted">Relationship completeness and integrity validation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <div class="rule-type">Import Strategy Awareness</div>
+                <div class="rule-description">Understanding of intentional data filtering during import</div>
+                <div class="rule-details">
+                    <p><strong>Import Strategy:</strong></p>
+                    <ul>
+                        <li>Primary source: Salesforce Account records with Type = 'School District'</li>
+                        <li>Required fields on import: Id, Name</li>
+                        <li>School associations: Created when schools are imported</li>
+                        <li>Local creation supported for web interface</li>
+                        <li>District codes: External reference codes for identification</li>
+                    </ul>
+                    <div class="mt-2">
+                        <span class="status-badge status-implemented">Implemented</span>
+                        <small class="text-muted">Import strategy awareness with info severity</small>
                     </div>
                 </div>
             </div>
