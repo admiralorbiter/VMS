@@ -41,7 +41,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
 
-    DEBUG = False
+    DEBUG = True
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get("DATABASE_URL") or f"sqlite:///{Config.DEFAULT_DB_PATH}"
     )
