@@ -214,21 +214,13 @@
 
 .session-count {
     font-size: 0.9em;
-    color: #666;
+    color: #28a745;
     font-weight: 600;
 }
 
-.session-count.high {
-    color: #28a745;
-}
-
-.session-count.medium {
-    color: #ffc107;
-}
-
-.session-count.low {
-    color: #dc3545;
-}
+.session-count.high {}
+.session-count.medium {}
+.session-count.low {}
 
 .no-show-count {
     font-size: 0.85em;
@@ -342,8 +334,8 @@
                                         {{ teacher.name }}
                                     </a>
                                 </div>
-                                <div class="session-count {% if teacher.sessions >= 5 %}high{% elif teacher.sessions >= 3 %}medium{% else %}low{% endif %}">
-                                    {{ teacher.sessions }} sessions
+                                <div class="session-count">
+                                    {{ teacher.sessions }} completed
                                 </div>
                                 {% if teacher.no_shows > 0 %}
                                 <div class="no-show-count">

@@ -1355,13 +1355,15 @@ def compute_virtual_session_district_data(
             continue
 
         # Only count completed sessions for teacher breakdown and totals
-        # Check both mapped status and original status string
+        # Treat "moved to in-person session" as successful/completed
         should_skip = False
-        if event.status and event.status.value not in ["Completed", "Simulcast"]:
-            should_skip = True
-        elif (
-            event.original_status_string
-            and "no-show" in event.original_status_string.lower()
+        _orig_status = (getattr(event, "original_status_string", "") or "").lower()
+        moved_to_in_person = "moved to in-person" in _orig_status
+        # Don't skip events with no-show status - we need to count those for teacher breakdown
+        if (
+            event.status
+            and event.status.value not in ["Completed", "Simulcast"]
+            and not moved_to_in_person
         ):
             should_skip = True
 
@@ -1370,23 +1372,21 @@ def compute_virtual_session_district_data(
 
         # Process teacher registrations to get proper IDs
         for teacher_reg in event.teacher_registrations:
-            # Only count teachers who actually attended
-            # Check if attendance was confirmed (this is more reliable than status)
-            if teacher_reg.attendance_confirmed_at is None:
-                continue
-
-            # Also check status as backup
-            no_show_statuses = [
-                "no_show",
-                "cancelled",
-                "No Show",
-                "Teacher No-Show",
-                "Did Not Attend",
-                "teacher no-show",
-                "unfilled",
-            ]
-            if teacher_reg.status in no_show_statuses:
-                continue
+            # Only count teachers who actually attended OR were part of events
+            # moved to in-person (counted as successful)
+            tr_status_norm = (getattr(teacher_reg, "status", "") or "").lower()
+            is_no_show = (
+                "no-show" in tr_status_norm
+                or "no show" in tr_status_norm
+                or "did not attend" in tr_status_norm
+            )
+            is_cancel = "cancel" in tr_status_norm or "withdraw" in tr_status_norm
+            if not moved_to_in_person:
+                # For regular virtual events, require confirmed attendance and not a no-show/cancel
+                if teacher_reg.attendance_confirmed_at is None:
+                    continue
+                if is_no_show or is_cancel:
+                    continue
 
             teacher = teacher_reg.teacher
             if teacher:
@@ -2969,80 +2969,120 @@ def load_routes(bp):
                 if event_id:
                     has_local_volunteer = False
                     has_poc_volunteer = False
-                    
+
                     for volunteer in event.volunteers or []:
                         # Check if volunteer is local
                         try:
                             from models.contact import LocalStatusEnum
-                            if getattr(volunteer, "local_status", None) == LocalStatusEnum.local:
+
+                            if (
+                                getattr(volunteer, "local_status", None)
+                                == LocalStatusEnum.local
+                            ):
                                 has_local_volunteer = True
                         except Exception:
                             try:
-                                if str(getattr(volunteer, "local_status", "")).lower().endswith("local"):
+                                if (
+                                    str(getattr(volunteer, "local_status", ""))
+                                    .lower()
+                                    .endswith("local")
+                                ):
                                     has_local_volunteer = True
                             except Exception:
                                 pass
-                        
+
                         # Check if volunteer is People of Color
                         if getattr(volunteer, "is_people_of_color", False):
                             has_poc_volunteer = True
-                    
+
                     # Track for completed sessions (sessions only)
                     if has_local_volunteer:
-                        monthly_breakdown[month_key]["_sessions_with_local_volunteers"].add(event_id)
+                        monthly_breakdown[month_key][
+                            "_sessions_with_local_volunteers"
+                        ].add(event_id)
                     if has_poc_volunteer:
-                        monthly_breakdown[month_key]["_sessions_with_poc_volunteers"].add(event_id)
-                    
+                        monthly_breakdown[month_key][
+                            "_sessions_with_poc_volunteers"
+                        ].add(event_id)
+
                     # Also track for sessions + simulcast (if this is a simulcast session)
                     if "simulcast" in original_status or (
                         not original_status and event.status == EventStatus.SIMULCAST
                     ):
                         if has_local_volunteer:
-                            monthly_breakdown[month_key]["_simulcast_sessions_with_local_volunteers"].add(event_id)
+                            monthly_breakdown[month_key][
+                                "_simulcast_sessions_with_local_volunteers"
+                            ].add(event_id)
                         if has_poc_volunteer:
-                            monthly_breakdown[month_key]["_simulcast_sessions_with_poc_volunteers"].add(event_id)
+                            monthly_breakdown[month_key][
+                                "_simulcast_sessions_with_poc_volunteers"
+                            ].add(event_id)
 
         # Calculate final monthly volunteer counts and percentages from unique sets
         for month_key, month_data in monthly_breakdown.items():
             # Calculate session-based metrics for both scenarios
-            
+
             # 1. Sessions Only (completed sessions)
-            month_data["local_volunteer_count_sessions_only"] = len(month_data["_sessions_with_local_volunteers"])
-            month_data["poc_volunteer_count_sessions_only"] = len(month_data["_sessions_with_poc_volunteers"])
-            
+            month_data["local_volunteer_count_sessions_only"] = len(
+                month_data["_sessions_with_local_volunteers"]
+            )
+            month_data["poc_volunteer_count_sessions_only"] = len(
+                month_data["_sessions_with_poc_volunteers"]
+            )
+
             # 2. Sessions + Simulcast (completed + simulcast sessions)
-            month_data["local_volunteer_count_sessions_simulcast"] = (
-                len(month_data["_sessions_with_local_volunteers"]) + 
-                len(month_data["_simulcast_sessions_with_local_volunteers"])
-            )
-            month_data["poc_volunteer_count_sessions_simulcast"] = (
-                len(month_data["_sessions_with_poc_volunteers"]) + 
-                len(month_data["_simulcast_sessions_with_poc_volunteers"])
-            )
-            
+            month_data["local_volunteer_count_sessions_simulcast"] = len(
+                month_data["_sessions_with_local_volunteers"]
+            ) + len(month_data["_simulcast_sessions_with_local_volunteers"])
+            month_data["poc_volunteer_count_sessions_simulcast"] = len(
+                month_data["_sessions_with_poc_volunteers"]
+            ) + len(month_data["_simulcast_sessions_with_poc_volunteers"])
+
             # Calculate total sessions for percentage calculations
             total_completed_sessions = month_data["successfully_completed"]
-            total_sessions_simulcast = month_data["successfully_completed"] + month_data["simulcast_sessions"]
-            
+            total_sessions_simulcast = (
+                month_data["successfully_completed"] + month_data["simulcast_sessions"]
+            )
+
             # Calculate percentages for Sessions Only
             if total_completed_sessions > 0:
                 month_data["local_volunteer_percentage_sessions_only"] = round(
-                    (month_data["local_volunteer_count_sessions_only"] / total_completed_sessions) * 100, 1
+                    (
+                        month_data["local_volunteer_count_sessions_only"]
+                        / total_completed_sessions
+                    )
+                    * 100,
+                    1,
                 )
                 month_data["poc_volunteer_percentage_sessions_only"] = round(
-                    (month_data["poc_volunteer_count_sessions_only"] / total_completed_sessions) * 100, 1
+                    (
+                        month_data["poc_volunteer_count_sessions_only"]
+                        / total_completed_sessions
+                    )
+                    * 100,
+                    1,
                 )
             else:
                 month_data["local_volunteer_percentage_sessions_only"] = 0.0
                 month_data["poc_volunteer_percentage_sessions_only"] = 0.0
-            
+
             # Calculate percentages for Sessions + Simulcast
             if total_sessions_simulcast > 0:
                 month_data["local_volunteer_percentage_sessions_simulcast"] = round(
-                    (month_data["local_volunteer_count_sessions_simulcast"] / total_sessions_simulcast) * 100, 1
+                    (
+                        month_data["local_volunteer_count_sessions_simulcast"]
+                        / total_sessions_simulcast
+                    )
+                    * 100,
+                    1,
                 )
                 month_data["poc_volunteer_percentage_sessions_simulcast"] = round(
-                    (month_data["poc_volunteer_count_sessions_simulcast"] / total_sessions_simulcast) * 100, 1
+                    (
+                        month_data["poc_volunteer_count_sessions_simulcast"]
+                        / total_sessions_simulcast
+                    )
+                    * 100,
+                    1,
                 )
             else:
                 month_data["local_volunteer_percentage_sessions_simulcast"] = 0.0
@@ -3109,30 +3149,38 @@ def load_routes(bp):
                 if event_id:
                     has_local_volunteer = False
                     has_poc_volunteer = False
-                    
+
                     for volunteer in event.volunteers or []:
                         # Check if volunteer is local
                         try:
                             from models.contact import LocalStatusEnum
-                            if getattr(volunteer, "local_status", None) == LocalStatusEnum.local:
+
+                            if (
+                                getattr(volunteer, "local_status", None)
+                                == LocalStatusEnum.local
+                            ):
                                 has_local_volunteer = True
                         except Exception:
                             try:
-                                if str(getattr(volunteer, "local_status", "")).lower().endswith("local"):
+                                if (
+                                    str(getattr(volunteer, "local_status", ""))
+                                    .lower()
+                                    .endswith("local")
+                                ):
                                     has_local_volunteer = True
                             except Exception:
                                 pass
-                        
+
                         # Check if volunteer is People of Color
                         if getattr(volunteer, "is_people_of_color", False):
                             has_poc_volunteer = True
-                    
+
                     # Track for completed sessions (sessions only)
                     if has_local_volunteer:
                         all_ytd_sessions_with_local.add(event_id)
                     if has_poc_volunteer:
                         all_ytd_sessions_with_poc.add(event_id)
-                    
+
                     # Also track for sessions + simulcast (if this is a simulcast session)
                     if "simulcast" in original_status or (
                         not original_status and event.status == EventStatus.SIMULCAST
@@ -3143,41 +3191,64 @@ def load_routes(bp):
                             all_ytd_simulcast_with_poc.add(event_id)
 
         # Calculate YTD totals from session counts
-        ytd_totals["local_volunteer_count_sessions_only"] = len(all_ytd_sessions_with_local)
+        ytd_totals["local_volunteer_count_sessions_only"] = len(
+            all_ytd_sessions_with_local
+        )
         ytd_totals["poc_volunteer_count_sessions_only"] = len(all_ytd_sessions_with_poc)
-        
-        ytd_totals["local_volunteer_count_sessions_simulcast"] = len(all_ytd_sessions_with_local) + len(all_ytd_simulcast_with_local)
-        ytd_totals["poc_volunteer_count_sessions_simulcast"] = len(all_ytd_sessions_with_poc) + len(all_ytd_simulcast_with_poc)
-        
+
+        ytd_totals["local_volunteer_count_sessions_simulcast"] = len(
+            all_ytd_sessions_with_local
+        ) + len(all_ytd_simulcast_with_local)
+        ytd_totals["poc_volunteer_count_sessions_simulcast"] = len(
+            all_ytd_sessions_with_poc
+        ) + len(all_ytd_simulcast_with_poc)
+
         # Calculate total YTD sessions for percentage calculation
         total_ytd_completed = ytd_totals["successfully_completed"]
-        total_ytd_sessions_simulcast = ytd_totals["successfully_completed"] + ytd_totals["simulcast_sessions"]
-        
+        total_ytd_sessions_simulcast = (
+            ytd_totals["successfully_completed"] + ytd_totals["simulcast_sessions"]
+        )
+
         # Calculate YTD percentages for Sessions Only
         if total_ytd_completed > 0:
             ytd_totals["local_volunteer_percentage_sessions_only"] = round(
-                (ytd_totals["local_volunteer_count_sessions_only"] / total_ytd_completed) * 100, 1
+                (
+                    ytd_totals["local_volunteer_count_sessions_only"]
+                    / total_ytd_completed
+                )
+                * 100,
+                1,
             )
             ytd_totals["poc_volunteer_percentage_sessions_only"] = round(
-                (ytd_totals["poc_volunteer_count_sessions_only"] / total_ytd_completed) * 100, 1
+                (ytd_totals["poc_volunteer_count_sessions_only"] / total_ytd_completed)
+                * 100,
+                1,
             )
         else:
             ytd_totals["local_volunteer_percentage_sessions_only"] = 0.0
             ytd_totals["poc_volunteer_percentage_sessions_only"] = 0.0
-        
+
         # Calculate YTD percentages for Sessions + Simulcast
         if total_ytd_sessions_simulcast > 0:
             ytd_totals["local_volunteer_percentage_sessions_simulcast"] = round(
-                (ytd_totals["local_volunteer_count_sessions_simulcast"] / total_ytd_sessions_simulcast) * 100, 1
+                (
+                    ytd_totals["local_volunteer_count_sessions_simulcast"]
+                    / total_ytd_sessions_simulcast
+                )
+                * 100,
+                1,
             )
             ytd_totals["poc_volunteer_percentage_sessions_simulcast"] = round(
-                (ytd_totals["poc_volunteer_count_sessions_simulcast"] / total_ytd_sessions_simulcast) * 100, 1
+                (
+                    ytd_totals["poc_volunteer_count_sessions_simulcast"]
+                    / total_ytd_sessions_simulcast
+                )
+                * 100,
+                1,
             )
         else:
             ytd_totals["local_volunteer_percentage_sessions_simulcast"] = 0.0
             ytd_totals["poc_volunteer_percentage_sessions_simulcast"] = 0.0
-
-
 
         # COMPREHENSIVE ANALYTICS SECTIONS
 
@@ -3812,18 +3883,6 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
     school_teacher_data = {}
 
     for event in events:
-        # Determine if this event belongs to our district
-        event_district = None
-        if event.districts:
-            event_district = event.districts[0].name
-        elif event.district_partner:
-            event_district = event.district_partner
-        else:
-            event_district = "Unknown District"
-
-        if event_district != district_name:
-            continue
-
         # Process each teacher registration for both completed and no-show sessions
         for teacher_reg in event.teacher_registrations:
             teacher = teacher_reg.teacher
@@ -3834,14 +3893,24 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
             teacher_name = f"{teacher.first_name} {teacher.last_name}"
             teacher_id = teacher.id
 
-            # Get school info
+            # Determine teacher's school and district (use teacher's school for accuracy)
             school_name = "Unknown School"
+            teacher_district_name = None
             if hasattr(teacher, "school_obj") and teacher.school_obj:
-                school_name = teacher.school_obj.name
+                school_obj = teacher.school_obj
+                school_name = school_obj.name
+                if hasattr(school_obj, "district") and school_obj.district:
+                    teacher_district_name = school_obj.district.name
             elif teacher.school_id:
                 school_obj = School.query.get(teacher.school_id)
                 if school_obj:
                     school_name = school_obj.name
+                    if hasattr(school_obj, "district") and school_obj.district:
+                        teacher_district_name = school_obj.district.name
+
+            # Only include registrations for teachers in the requested district
+            if teacher_district_name != district_name:
+                continue
 
             # Initialize school if not exists
             if school_name not in school_teacher_data:
@@ -3856,31 +3925,62 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                     "no_shows": 0,
                 }
 
-            # Determine if this is a no-show or completed session
-            is_no_show = False
+            # Determine classification for this registration
+            def _norm(x):
+                return (x or "").strip().lower()
 
-            # Check if attendance was confirmed (this is more reliable than status)
-            if teacher_reg.attendance_confirmed_at is None:
-                is_no_show = True
-            else:
-                # Also check status as backup
-                no_show_statuses = [
-                    "no_show",
-                    "cancelled",
-                    "No Show",
-                    "Teacher No-Show",
-                    "Did Not Attend",
-                    "teacher no-show",
-                    "unfilled",
-                ]
-                if teacher_reg.status in no_show_statuses:
-                    is_no_show = True
+            def _sanitize(text: str) -> str:
+                t = (text or "").lower().strip()
+                for ch in ["_", "-", "/", "\\", ",", ".", "  "]:
+                    t = t.replace(ch, " ")
+                while "  " in t:
+                    t = t.replace("  ", " ")
+                return t
 
-            # Increment appropriate count
-            if is_no_show:
+            original_status = _sanitize(getattr(event, "original_status_string", None))
+            moved_to_in_person = "moved to in-person" in original_status
+            # Consider common variations for teacher no-show at the event level
+            event_teacher_no_show = ("teacher no show" in original_status) or (
+                "teacher did not attend" in original_status
+            )
+            tr_status = _sanitize(getattr(teacher_reg, "status", None))
+
+            is_teacher_no_show = (
+                "teacher no show" in tr_status
+                or "no show" in tr_status
+                or "did not attend" in tr_status
+            )
+            is_teacher_cancel = (
+                "cancel" in tr_status
+                or "withdraw" in tr_status
+                or "inclement weather" in tr_status
+                or "technical" in tr_status
+            )
+            completed_by_status = ("attended" in tr_status) or (
+                "completed" in tr_status
+            )
+
+            counted_completed = False
+            counted_no_show = False
+
+            # Prioritize explicit no-show status over attendance_confirmed_at
+            if is_teacher_no_show or (event_teacher_no_show and not moved_to_in_person):
                 school_teacher_data[school_name][teacher_id]["no_shows"] += 1
-            else:
+                counted_no_show = True
+            elif (
+                moved_to_in_person
+                or completed_by_status
+                or teacher_reg.attendance_confirmed_at
+            ):
                 school_teacher_data[school_name][teacher_id]["sessions"] += 1
+                counted_completed = True
+            else:
+                # Ignore cancellations and indeterminate statuses (do not count as no-show)
+                if not is_teacher_cancel:
+                    # If truly indeterminate and attendance not confirmed, do nothing
+                    pass
+                else:
+                    pass
 
     # Convert to sorted structure for template
     school_breakdown = {}
