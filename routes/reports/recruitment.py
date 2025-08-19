@@ -12,7 +12,13 @@ from models.contact import LocalStatusEnum
 from models.event import Event, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.reports import RecruitmentCandidatesCache
-from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
+from models.volunteer import (
+    ConnectorData,
+    EventParticipation,
+    Skill,
+    Volunteer,
+    VolunteerSkill,
+)
 
 # Create blueprint
 recruitment_bp = Blueprint("recruitment", __name__)
@@ -203,6 +209,9 @@ def load_routes(bp):
         sort_by = request.args.get("sort", "name")
         order = request.args.get("order", "asc")
         search_mode = request.args.get("search_mode", "wide")  # Default to wide search
+        connector_only = request.args.get(
+            "connector_only", type=bool
+        )  # Filter for connector profiles only
 
         # Base query joining necessary tables
         query = (
@@ -248,6 +257,12 @@ def load_routes(bp):
                             Event.title.ilike(f"%{term}%"),
                         )
                     )
+
+        # Apply connector filter if requested
+        if connector_only:
+            query = query.filter(
+                Volunteer.connector.has(ConnectorData.user_auth_id.isnot(None))
+            )
 
         # Apply sorting
         if sort_by == "name":
@@ -303,6 +318,7 @@ def load_routes(bp):
             sort_by=sort_by,
             order=order,
             search_mode=search_mode,  # Pass the search mode to the template
+            connector_only=connector_only,  # Pass the connector filter state
         )
 
     @bp.route("/reports/recruitment/candidates")

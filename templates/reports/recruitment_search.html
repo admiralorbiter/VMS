@@ -13,6 +13,9 @@
     <!-- Search Form -->
     <div class="search-container">
         <form method="get" action="{{ url_for('report.recruitment_search') }}" class="search-form">
+            {% if connector_only %}
+            <input type="hidden" name="connector_only" value="1">
+            {% endif %}
             <div class="row">
                 <div class="col-md-8">
                     <div class="form-group">
@@ -50,6 +53,9 @@
                                        {% if search_mode == 'narrow' %}checked{% endif %}>
                                 Narrow Search
                             </label>
+                            {% if connector_only %}
+                            <input type="hidden" name="connector_only" value="1">
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -58,6 +64,20 @@
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">Search</button>
                     <a href="{{ url_for('report.recruitment_search') }}" class="btn btn-secondary ml-2">Clear</a>
+                    {% if request.args.get('connector_only') %}
+                    <a href="{{ url_for('report.recruitment_search',
+                                        search=search_query,
+                                        search_mode=search_mode,
+                                        sort=sort_by,
+                                        order=order) }}"
+                       class="btn connector-filter-btn active ml-2" title="Remove connector filter">
+                        <i class="fa-solid fa-plug"></i> Show All Volunteers
+                    </a>
+                    {% else %}
+                    <button type="submit" name="connector_only" value="1" class="btn connector-filter-btn ml-2" title="Show only volunteers with connector profiles">
+                        <i class="fa-solid fa-plug"></i> Connector Only
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </form>
@@ -65,6 +85,18 @@
 
     <!-- Results Table -->
     <div class="recruitment-table-container">
+        {% if connector_only %}
+        <div class="connector-filter-info">
+            <i class="fa-solid fa-plug"></i>
+            <span>Showing only volunteers with connector profiles</span>
+            <a href="{{ url_for('report.recruitment_search',
+                                search=search_query,
+                                search_mode=search_mode,
+                                sort=sort_by,
+                                order=order) }}"
+               class="remove-filter-link">Remove filter</a>
+        </div>
+        {% endif %}
         <table class="table recruitment-table">
             <thead>
                 <tr>
@@ -72,7 +104,9 @@
                         <a href="{{ url_for('report.recruitment_search',
                                            search=search_query,
                                            sort='name',
-                                           order='desc' if sort_by == 'name' and order == 'asc' else 'asc') }}"
+                                           order='desc' if sort_by == 'name' and order == 'asc' else 'asc',
+                                           search_mode=search_mode,
+                                           connector_only=connector_only) }}"
                                                class="text-dark">
                             Name
                             {% if sort_by == 'name' %}
@@ -84,7 +118,9 @@
                         <a href="{{ url_for('report.recruitment_search',
                                            search=search_query,
                                            sort='organization',
-                                           order='desc' if sort_by == 'organization' and order == 'asc' else 'asc') }}"
+                                           order='desc' if sort_by == 'organization' and order == 'asc' else 'asc',
+                                           search_mode=search_mode,
+                                           connector_only=connector_only) }}"
                                                class="text-dark">
                             Organization/Affiliation
                             {% if sort_by == 'organization' %}
@@ -97,7 +133,9 @@
                         <a href="{{ url_for('report.recruitment_search',
                                            search=search_query,
                                            sort='last_email',
-                                           order='desc' if sort_by == 'last_email' and order == 'asc' else 'asc') }}"
+                                           order='desc' if sort_by == 'last_email' and order == 'asc' else 'asc',
+                                           search_mode=search_mode,
+                                           connector_only=connector_only) }}"
                                                class="text-dark">
                             Last Non-Internal Email
                             {% if sort_by == 'last_email' %}
@@ -109,7 +147,9 @@
                         <a href="{{ url_for('report.recruitment_search',
                                            search=search_query,
                                            sort='last_volunteer',
-                                           order='desc' if sort_by == 'last_volunteer' and order == 'asc' else 'asc') }}"
+                                           order='desc' if sort_by == 'last_volunteer' and order == 'asc' else 'asc',
+                                           search_mode=search_mode,
+                                           connector_only=connector_only) }}"
                                                class="text-dark">
                             Last Volunteer Date
                             {% if sort_by == 'last_volunteer' %}
@@ -121,7 +161,9 @@
                         <a href="{{ url_for('report.recruitment_search',
                                            search=search_query,
                                            sort='times_volunteered',
-                                           order='desc' if sort_by == 'times_volunteered' and order == 'asc' else 'asc') }}"
+                                           order='desc' if sort_by == 'times_volunteered' and order == 'asc' else 'asc',
+                                           search_mode=search_mode,
+                                           connector_only=connector_only) }}"
                                                class="text-dark">
                             # of Times Volunteered
                             {% if sort_by == 'times_volunteered' %}
@@ -144,6 +186,14 @@
                            target="_blank"
                            title="Salesforce Contact">
                             <i class="fa-solid fa-cloud"></i>
+                        </a>
+                        {% endif %}
+                        {% if volunteer.connector and volunteer.connector.connector_profile_url %}
+                        <a href="{{ volunteer.connector.connector_profile_url }}"
+                           class="btn btn-sm action-btn connector-btn"
+                           target="_blank"
+                           title="Connector Profile">
+                            <i class="fa-solid fa-plug"></i>
                         </a>
                         {% endif %}
                         {% if volunteer.title %}
@@ -183,7 +233,8 @@
                                         search=search_query,
                                         sort=sort_by,
                                         order=order,
-                                        search_mode=search_mode) }}">
+                                        search_mode=search_mode,
+                                        connector_only=connector_only) }}">
                         &laquo; Previous
                     </a>
                 </li>
@@ -198,7 +249,8 @@
                                                 search=search_query,
                                                 sort=sort_by,
                                                 order=order,
-                                                search_mode=search_mode) }}">
+                                                search_mode=search_mode,
+                                                connector_only=connector_only) }}">
                                 {{ page_num }}
                             </a>
                         </li>
@@ -217,7 +269,8 @@
                                         search=search_query,
                                         sort=sort_by,
                                         order=order,
-                                        search_mode=search_mode) }}">
+                                        search_mode=search_mode,
+                                        connector_only=connector_only) }}">
                         Next &raquo;
                     </a>
                 </li>

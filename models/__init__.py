@@ -138,4 +138,5 @@ def eagerload_volunteer_bundle(query):
         selectinload(Volunteer.organizations),
         selectinload(Volunteer.skills),
         selectinload(Volunteer.volunteer_organizations),
+        selectinload(Volunteer.connector),
     )
