@@ -2816,21 +2816,22 @@ def load_routes(bp):
                 "pathful_professional_canceled_no_shows": 0,
                 "local_professional_canceled_no_shows": 0,
                 "unfilled_sessions": 0,
-                # New fields for volunteer diversity metrics
-                "local_volunteer_count": 0,
-                "local_volunteer_percentage": 0.0,
-                "poc_volunteer_count": 0,
-                "poc_volunteer_percentage": 0.0,
-                # New field for experience count (successfully completed + simulcast)
-                "experience_count": 0,
-                "experience_percentage": 0.0,
-                # New fields for volunteer breakdown within experience sessions
-                "local_volunteer_percentage_in_experience": 0.0,
-                "poc_volunteer_percentage_in_experience": 0.0,
-                # Track unique volunteers per month for accurate percentage calculation
-                "_unique_volunteers": set(),
-                "_unique_local_volunteers": set(),
-                "_unique_poc_volunteers": set(),
+                # New fields for volunteer diversity metrics - 4-column structure
+                # Sessions Only (completed sessions)
+                "local_volunteer_count_sessions_only": 0,
+                "local_volunteer_percentage_sessions_only": 0.0,
+                "poc_volunteer_count_sessions_only": 0,
+                "poc_volunteer_percentage_sessions_only": 0.0,
+                # Sessions + Simulcast (completed + simulcast sessions)
+                "local_volunteer_count_sessions_simulcast": 0,
+                "local_volunteer_percentage_sessions_simulcast": 0.0,
+                "poc_volunteer_count_sessions_simulcast": 0,
+                "poc_volunteer_percentage_sessions_simulcast": 0.0,
+                # Track sessions filled by local/POC volunteers
+                "_sessions_with_local_volunteers": set(),
+                "_sessions_with_poc_volunteers": set(),
+                "_simulcast_sessions_with_local_volunteers": set(),
+                "_simulcast_sessions_with_poc_volunteers": set(),
             }
 
         # Debug: Collect unique status strings to understand what we're working with
@@ -2873,13 +2874,9 @@ def load_routes(bp):
             # Categorize based on original status string (primary source of truth)
             if "successfully completed" in original_status:
                 monthly_breakdown[month_key]["successfully_completed"] += 1
-                # Experience count includes successfully completed sessions
-                monthly_breakdown[month_key]["experience_count"] += 1
 
             elif "simulcast" in original_status:
                 monthly_breakdown[month_key]["simulcast_sessions"] += 1
-                # Experience count includes simulcast sessions
-                monthly_breakdown[month_key]["experience_count"] += 1
 
             elif "teacher" in original_status and (
                 "cancelation" in original_status or "cancellation" in original_status
@@ -2915,12 +2912,8 @@ def load_routes(bp):
 
                 if event_status == EventStatus.COMPLETED:
                     monthly_breakdown[month_key]["successfully_completed"] += 1
-                    # Experience count includes completed sessions
-                    monthly_breakdown[month_key]["experience_count"] += 1
                 elif event_status == EventStatus.SIMULCAST:
                     monthly_breakdown[month_key]["simulcast_sessions"] += 1
-                    # Experience count includes simulcast sessions
-                    monthly_breakdown[month_key]["experience_count"] += 1
                 elif event_status == EventStatus.NO_SHOW and not event.volunteers:
                     monthly_breakdown[month_key]["unfilled_sessions"] += 1
                 elif event_status == EventStatus.CANCELLED and not event.volunteers:
@@ -2971,160 +2964,95 @@ def load_routes(bp):
                 not original_status and event.status == EventStatus.COMPLETED
             ):
 
-                # Track unique volunteers for this month (not per event)
-                for volunteer in event.volunteers or []:
-                    volunteer_id = (
-                        volunteer.id or f"{volunteer.first_name} {volunteer.last_name}"
-                    )
-                    monthly_breakdown[month_key]["_unique_volunteers"].add(volunteer_id)
-
-                    # Check if volunteer is local (based on local_status field)
-                    try:
-                        from models.contact import LocalStatusEnum
-
-                        if (
-                            getattr(volunteer, "local_status", None)
-                            == LocalStatusEnum.local
-                        ):
-                            monthly_breakdown[month_key][
-                                "_unique_local_volunteers"
-                            ].add(volunteer_id)
-                    except Exception:
-                        # Fallback string check if enum import not available at runtime
+                # Track sessions filled by local and POC volunteers
+                event_id = event.id or event.title
+                if event_id:
+                    has_local_volunteer = False
+                    has_poc_volunteer = False
+                    
+                    for volunteer in event.volunteers or []:
+                        # Check if volunteer is local
                         try:
-                            if (
-                                str(getattr(volunteer, "local_status", ""))
-                                .lower()
-                                .endswith("local")
-                            ):
-                                monthly_breakdown[month_key][
-                                    "_unique_local_volunteers"
-                                ].add(volunteer_id)
+                            from models.contact import LocalStatusEnum
+                            if getattr(volunteer, "local_status", None) == LocalStatusEnum.local:
+                                has_local_volunteer = True
                         except Exception:
-                            pass
-
-                    # Check if volunteer is People of Color
-                    if getattr(volunteer, "is_people_of_color", False):
-                        monthly_breakdown[month_key]["_unique_poc_volunteers"].add(
-                            volunteer_id
-                        )
+                            try:
+                                if str(getattr(volunteer, "local_status", "")).lower().endswith("local"):
+                                    has_local_volunteer = True
+                            except Exception:
+                                pass
+                        
+                        # Check if volunteer is People of Color
+                        if getattr(volunteer, "is_people_of_color", False):
+                            has_poc_volunteer = True
+                    
+                    # Track for completed sessions (sessions only)
+                    if has_local_volunteer:
+                        monthly_breakdown[month_key]["_sessions_with_local_volunteers"].add(event_id)
+                    if has_poc_volunteer:
+                        monthly_breakdown[month_key]["_sessions_with_poc_volunteers"].add(event_id)
+                    
+                    # Also track for sessions + simulcast (if this is a simulcast session)
+                    if "simulcast" in original_status or (
+                        not original_status and event.status == EventStatus.SIMULCAST
+                    ):
+                        if has_local_volunteer:
+                            monthly_breakdown[month_key]["_simulcast_sessions_with_local_volunteers"].add(event_id)
+                        if has_poc_volunteer:
+                            monthly_breakdown[month_key]["_simulcast_sessions_with_poc_volunteers"].add(event_id)
 
         # Calculate final monthly volunteer counts and percentages from unique sets
         for month_key, month_data in monthly_breakdown.items():
-            # Convert unique volunteer sets to final counts
-            month_data["local_volunteer_count"] = len(
-                month_data["_unique_local_volunteers"]
+            # Calculate session-based metrics for both scenarios
+            
+            # 1. Sessions Only (completed sessions)
+            month_data["local_volunteer_count_sessions_only"] = len(month_data["_sessions_with_local_volunteers"])
+            month_data["poc_volunteer_count_sessions_only"] = len(month_data["_sessions_with_poc_volunteers"])
+            
+            # 2. Sessions + Simulcast (completed + simulcast sessions)
+            month_data["local_volunteer_count_sessions_simulcast"] = (
+                len(month_data["_sessions_with_local_volunteers"]) + 
+                len(month_data["_simulcast_sessions_with_local_volunteers"])
             )
-            month_data["poc_volunteer_count"] = len(
-                month_data["_unique_poc_volunteers"]
+            month_data["poc_volunteer_count_sessions_simulcast"] = (
+                len(month_data["_sessions_with_poc_volunteers"]) + 
+                len(month_data["_simulcast_sessions_with_poc_volunteers"])
             )
-            total_volunteers = len(month_data["_unique_volunteers"])
-
-            # Calculate percentages based on total unique volunteers for the month
-            if total_volunteers > 0:
-                month_data["local_volunteer_percentage"] = round(
-                    (month_data["local_volunteer_count"] / total_volunteers) * 100, 1
+            
+            # Calculate total sessions for percentage calculations
+            total_completed_sessions = month_data["successfully_completed"]
+            total_sessions_simulcast = month_data["successfully_completed"] + month_data["simulcast_sessions"]
+            
+            # Calculate percentages for Sessions Only
+            if total_completed_sessions > 0:
+                month_data["local_volunteer_percentage_sessions_only"] = round(
+                    (month_data["local_volunteer_count_sessions_only"] / total_completed_sessions) * 100, 1
                 )
-                month_data["poc_volunteer_percentage"] = round(
-                    (month_data["poc_volunteer_count"] / total_volunteers) * 100, 1
+                month_data["poc_volunteer_percentage_sessions_only"] = round(
+                    (month_data["poc_volunteer_count_sessions_only"] / total_completed_sessions) * 100, 1
                 )
             else:
-                month_data["local_volunteer_percentage"] = 0.0
-                month_data["poc_volunteer_percentage"] = 0.0
-
-            # Calculate experience percentage based on total events for the month
-            total_month_events = sum(
-                [
-                    month_data["successfully_completed"],
-                    month_data["simulcast_sessions"],
-                    month_data["teacher_canceled"],
-                    month_data["teacher_no_shows"],
-                    month_data["pathful_professional_canceled_no_shows"],
-                    month_data["local_professional_canceled_no_shows"],
-                    month_data["unfilled_sessions"],
-                ]
-            )
-
-            if total_month_events > 0:
-                month_data["experience_percentage"] = round(
-                    (month_data["experience_count"] / total_month_events) * 100, 1
+                month_data["local_volunteer_percentage_sessions_only"] = 0.0
+                month_data["poc_volunteer_percentage_sessions_only"] = 0.0
+            
+            # Calculate percentages for Sessions + Simulcast
+            if total_sessions_simulcast > 0:
+                month_data["local_volunteer_percentage_sessions_simulcast"] = round(
+                    (month_data["local_volunteer_count_sessions_simulcast"] / total_sessions_simulcast) * 100, 1
+                )
+                month_data["poc_volunteer_percentage_sessions_simulcast"] = round(
+                    (month_data["poc_volunteer_count_sessions_simulcast"] / total_sessions_simulcast) * 100, 1
                 )
             else:
-                month_data["experience_percentage"] = 0.0
-
-            # Calculate volunteer breakdown percentages within experience sessions
-            if month_data["experience_count"] > 0:
-                # Count how many experience sessions had local volunteers
-                local_in_experience = 0
-                poc_in_experience = 0
-
-                # Re-process events for this month to count experience sessions with local/POC volunteers
-                for event in events:
-                    if not event.start_date:
-                        continue
-
-                    event_month_key = (
-                        f"{event.start_date.year}-{event.start_date.month:02d}"
-                    )
-                    if event_month_key != month_key:
-                        continue
-
-                    # Check if this is an experience session
-                    original_status_raw = getattr(event, "original_status_string", None)
-                    original_status = (original_status_raw or "").lower().strip()
-
-                    if "successfully completed" in original_status or (
-                        not original_status and event.status == EventStatus.COMPLETED
-                    ):
-
-                        has_local = False
-                        has_poc = False
-
-                        for volunteer in event.volunteers or []:
-                            # Check if volunteer is local
-                            try:
-                                from models.contact import LocalStatusEnum
-
-                                if (
-                                    getattr(volunteer, "local_status", None)
-                                    == LocalStatusEnum.local
-                                ):
-                                    has_local = True
-                            except Exception:
-                                try:
-                                    if (
-                                        str(getattr(volunteer, "local_status", ""))
-                                        .lower()
-                                        .endswith("local")
-                                    ):
-                                        has_local = True
-                                except Exception:
-                                    pass
-
-                            # Check if volunteer is People of Color
-                            if getattr(volunteer, "is_people_of_color", False):
-                                has_poc = True
-
-                        if has_local:
-                            local_in_experience += 1
-                        if has_poc:
-                            poc_in_experience += 1
-
-                # Calculate percentages
-                month_data["local_volunteer_percentage_in_experience"] = round(
-                    (local_in_experience / month_data["experience_count"]) * 100, 1
-                )
-                month_data["poc_volunteer_percentage_in_experience"] = round(
-                    (poc_in_experience / month_data["experience_count"]) * 100, 1
-                )
-            else:
-                month_data["local_volunteer_percentage_in_experience"] = 0.0
-                month_data["poc_volunteer_percentage_in_experience"] = 0.0
+                month_data["local_volunteer_percentage_sessions_simulcast"] = 0.0
+                month_data["poc_volunteer_percentage_sessions_simulcast"] = 0.0
 
             # Clean up tracking sets
-            del month_data["_unique_volunteers"]
-            del month_data["_unique_local_volunteers"]
-            del month_data["_unique_poc_volunteers"]
+            del month_data["_sessions_with_local_volunteers"]
+            del month_data["_sessions_with_poc_volunteers"]
+            del month_data["_simulcast_sessions_with_local_volunteers"]
+            del month_data["_simulcast_sessions_with_poc_volunteers"]
 
         # Calculate year-to-date totals
         ytd_totals = {
@@ -3135,30 +3063,32 @@ def load_routes(bp):
             "pathful_professional_canceled_no_shows": 0,
             "local_professional_canceled_no_shows": 0,
             "unfilled_sessions": 0,
-            # New fields for volunteer diversity metrics
-            "local_volunteer_count": 0,
-            "poc_volunteer_count": 0,
-            "local_volunteer_percentage": 0.0,
-            "poc_volunteer_percentage": 0.0,
-            # New field for experience count
-            "experience_count": 0,
-            "experience_percentage": 0.0,
-            # New fields for volunteer breakdown within experience sessions
-            "local_volunteer_percentage_in_experience": 0.0,
-            "poc_volunteer_percentage_in_experience": 0.0,
+            # New fields for volunteer diversity metrics - 4-column structure
+            # Sessions Only (completed sessions)
+            "local_volunteer_count_sessions_only": 0,
+            "local_volunteer_percentage_sessions_only": 0.0,
+            "poc_volunteer_count_sessions_only": 0,
+            "poc_volunteer_percentage_sessions_only": 0.0,
+            # Sessions + Simulcast (completed + simulcast sessions)
+            "local_volunteer_count_sessions_simulcast": 0,
+            "local_volunteer_percentage_sessions_simulcast": 0.0,
+            "poc_volunteer_count_sessions_simulcast": 0,
+            "poc_volunteer_percentage_sessions_simulcast": 0.0,
         }
 
         for month_data in monthly_breakdown.values():
             for key in ytd_totals:
-                ytd_totals[key] += month_data[key]
+                if key in month_data:
+                    ytd_totals[key] += month_data[key]
 
         # Calculate YTD percentages for volunteer diversity metrics
-        # Track unique volunteers across all months for accurate YTD calculation
-        all_ytd_volunteers = set()
-        all_ytd_local_volunteers = set()
-        all_ytd_poc_volunteers = set()
+        # Track sessions filled by local and POC volunteers across all months
+        all_ytd_sessions_with_local = set()
+        all_ytd_sessions_with_poc = set()
+        all_ytd_simulcast_with_local = set()
+        all_ytd_simulcast_with_poc = set()
 
-        # Re-process events to collect YTD unique volunteers
+        # Re-process events to collect YTD session data
         for event in events:
             if not event.start_date:
                 continue
@@ -3168,145 +3098,86 @@ def load_routes(bp):
             if month_key not in monthly_breakdown:
                 continue
 
-            # Only count volunteers from successfully completed sessions
-            # (which includes simulcast sessions - same volunteer talking to multiple classes)
+            # Only count successfully completed sessions
             original_status_raw = getattr(event, "original_status_string", None)
             original_status = (original_status_raw or "").lower().strip()
 
             if "successfully completed" in original_status or (
                 not original_status and event.status == EventStatus.COMPLETED
             ):
-
-                for volunteer in event.volunteers or []:
-                    volunteer_id = (
-                        volunteer.id or f"{volunteer.first_name} {volunteer.last_name}"
-                    )
-                    all_ytd_volunteers.add(volunteer_id)
-
-                    # Check if volunteer is local
-                    try:
-                        from models.contact import LocalStatusEnum
-
-                        if (
-                            getattr(volunteer, "local_status", None)
-                            == LocalStatusEnum.local
-                        ):
-                            all_ytd_local_volunteers.add(volunteer_id)
-                    except Exception:
-                        try:
-                            if (
-                                str(getattr(volunteer, "local_status", ""))
-                                .lower()
-                                .endswith("local")
-                            ):
-                                all_ytd_local_volunteers.add(volunteer_id)
-                        except Exception:
-                            pass
-
-                    # Check if volunteer is People of Color
-                    if getattr(volunteer, "is_people_of_color", False):
-                        all_ytd_poc_volunteers.add(volunteer_id)
-
-        # Calculate YTD percentages based on unique volunteers across all months
-        total_ytd_volunteers = len(all_ytd_volunteers)
-        if total_ytd_volunteers > 0:
-            ytd_totals["local_volunteer_percentage"] = round(
-                (len(all_ytd_local_volunteers) / total_ytd_volunteers) * 100, 1
-            )
-            ytd_totals["poc_volunteer_percentage"] = round(
-                (len(all_ytd_poc_volunteers) / total_ytd_volunteers) * 100, 1
-            )
-        else:
-            ytd_totals["local_volunteer_percentage"] = 0.0
-            ytd_totals["poc_volunteer_percentage"] = 0.0
-
-        # Calculate YTD experience percentage based on total events across all months
-        total_ytd_events = sum(
-            [
-                ytd_totals["successfully_completed"],
-                ytd_totals["simulcast_sessions"],
-                ytd_totals["teacher_canceled"],
-                ytd_totals["teacher_no_shows"],
-                ytd_totals["pathful_professional_canceled_no_shows"],
-                ytd_totals["local_professional_canceled_no_shows"],
-                ytd_totals["unfilled_sessions"],
-            ]
-        )
-
-        if total_ytd_events > 0:
-            ytd_totals["experience_percentage"] = round(
-                (ytd_totals["experience_count"] / total_ytd_events) * 100, 1
-            )
-        else:
-            ytd_totals["experience_percentage"] = 0.0
-
-        # Calculate YTD volunteer breakdown percentages within experience sessions
-        if ytd_totals["experience_count"] > 0:
-            # Count how many YTD experience sessions had local volunteers
-            ytd_local_in_experience = 0
-            ytd_poc_in_experience = 0
-
-            # Re-process events for YTD to count experience sessions with local/POC volunteers
-            for event in events:
-                if not event.start_date:
-                    continue
-
-                # Only include events in our breakdown range
-                month_key = f"{event.start_date.year}-{event.start_date.month:02d}"
-                if month_key not in monthly_breakdown:
-                    continue
-
-                # Check if this is an experience session
-                original_status_raw = getattr(event, "original_status_string", None)
-                original_status = (original_status_raw or "").lower().strip()
-
-                if "successfully completed" in original_status or (
-                    not original_status and event.status == EventStatus.COMPLETED
-                ):
-
-                    has_local = False
-                    has_poc = False
-
+                event_id = event.id or event.title
+                if event_id:
+                    has_local_volunteer = False
+                    has_poc_volunteer = False
+                    
                     for volunteer in event.volunteers or []:
                         # Check if volunteer is local
                         try:
                             from models.contact import LocalStatusEnum
-
-                            if (
-                                getattr(volunteer, "local_status", None)
-                                == LocalStatusEnum.local
-                            ):
-                                has_local = True
+                            if getattr(volunteer, "local_status", None) == LocalStatusEnum.local:
+                                has_local_volunteer = True
                         except Exception:
                             try:
-                                if (
-                                    str(getattr(volunteer, "local_status", ""))
-                                    .lower()
-                                    .endswith("local")
-                                ):
-                                    has_local = True
+                                if str(getattr(volunteer, "local_status", "")).lower().endswith("local"):
+                                    has_local_volunteer = True
                             except Exception:
                                 pass
-
+                        
                         # Check if volunteer is People of Color
                         if getattr(volunteer, "is_people_of_color", False):
-                            has_poc = True
+                            has_poc_volunteer = True
+                    
+                    # Track for completed sessions (sessions only)
+                    if has_local_volunteer:
+                        all_ytd_sessions_with_local.add(event_id)
+                    if has_poc_volunteer:
+                        all_ytd_sessions_with_poc.add(event_id)
+                    
+                    # Also track for sessions + simulcast (if this is a simulcast session)
+                    if "simulcast" in original_status or (
+                        not original_status and event.status == EventStatus.SIMULCAST
+                    ):
+                        if has_local_volunteer:
+                            all_ytd_simulcast_with_local.add(event_id)
+                        if has_poc_volunteer:
+                            all_ytd_simulcast_with_poc.add(event_id)
 
-                    if has_local:
-                        ytd_local_in_experience += 1
-                    if has_poc:
-                        ytd_poc_in_experience += 1
-
-            # Calculate YTD percentages
-            ytd_totals["local_volunteer_percentage_in_experience"] = round(
-                (ytd_local_in_experience / ytd_totals["experience_count"]) * 100, 1
+        # Calculate YTD totals from session counts
+        ytd_totals["local_volunteer_count_sessions_only"] = len(all_ytd_sessions_with_local)
+        ytd_totals["poc_volunteer_count_sessions_only"] = len(all_ytd_sessions_with_poc)
+        
+        ytd_totals["local_volunteer_count_sessions_simulcast"] = len(all_ytd_sessions_with_local) + len(all_ytd_simulcast_with_local)
+        ytd_totals["poc_volunteer_count_sessions_simulcast"] = len(all_ytd_sessions_with_poc) + len(all_ytd_simulcast_with_poc)
+        
+        # Calculate total YTD sessions for percentage calculation
+        total_ytd_completed = ytd_totals["successfully_completed"]
+        total_ytd_sessions_simulcast = ytd_totals["successfully_completed"] + ytd_totals["simulcast_sessions"]
+        
+        # Calculate YTD percentages for Sessions Only
+        if total_ytd_completed > 0:
+            ytd_totals["local_volunteer_percentage_sessions_only"] = round(
+                (ytd_totals["local_volunteer_count_sessions_only"] / total_ytd_completed) * 100, 1
             )
-            ytd_totals["poc_volunteer_percentage_in_experience"] = round(
-                (ytd_poc_in_experience / ytd_totals["experience_count"]) * 100, 1
+            ytd_totals["poc_volunteer_percentage_sessions_only"] = round(
+                (ytd_totals["poc_volunteer_count_sessions_only"] / total_ytd_completed) * 100, 1
             )
         else:
-            ytd_totals["local_volunteer_percentage_in_experience"] = 0.0
-            ytd_totals["poc_volunteer_percentage_in_experience"] = 0.0
+            ytd_totals["local_volunteer_percentage_sessions_only"] = 0.0
+            ytd_totals["poc_volunteer_percentage_sessions_only"] = 0.0
+        
+        # Calculate YTD percentages for Sessions + Simulcast
+        if total_ytd_sessions_simulcast > 0:
+            ytd_totals["local_volunteer_percentage_sessions_simulcast"] = round(
+                (ytd_totals["local_volunteer_count_sessions_simulcast"] / total_ytd_sessions_simulcast) * 100, 1
+            )
+            ytd_totals["poc_volunteer_percentage_sessions_simulcast"] = round(
+                (ytd_totals["poc_volunteer_count_sessions_simulcast"] / total_ytd_sessions_simulcast) * 100, 1
+            )
+        else:
+            ytd_totals["local_volunteer_percentage_sessions_simulcast"] = 0.0
+            ytd_totals["poc_volunteer_percentage_sessions_simulcast"] = 0.0
+
+
 
         # COMPREHENSIVE ANALYTICS SECTIONS
 

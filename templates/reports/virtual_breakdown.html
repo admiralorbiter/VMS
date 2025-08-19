@@ -6,152 +6,280 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
 <style>
-.breakdown-container {
-    max-width: 98vw;
-    margin: 0 auto;
-    padding: 8px 8px 20px 8px;
+/* Modern Design System */
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary: #f8fafc;
+    --accent: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
+/* Base Styles */
+.breakdown-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    background: var(--secondary);
+    min-height: 100vh;
+}
+
+/* Modern Header */
 .breakdown-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: white;
-    padding: 30px;
-    border-radius: 10px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 3rem 2rem;
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.breakdown-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.3;
 }
 
 .back-link {
-    color: white;
+    color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
     font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 1;
 }
 
 .back-link:hover {
-    color: #f0f0f0;
-    text-decoration: underline;
+    color: white;
+    transform: translateX(-2px);
 }
 
 .breakdown-title {
-    margin: 0 0 10px 0;
-    font-size: 2.5em;
-    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    font-size: 2.75rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    position: relative;
+    z-index: 1;
 }
 
 .breakdown-subtitle {
-    margin: 0;
+    margin: 0.25rem 0;
     opacity: 0.9;
-    font-size: 1.1em;
+    font-size: 1.1rem;
+    font-weight: 400;
+    position: relative;
+    z-index: 1;
 }
 
+/* Modern Filters */
 .filters-section {
     background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 30px;
+    padding: 2rem;
+    margin: 2rem;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
 }
 
 .filters-form {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
     align-items: end;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
 }
 
 .filter-group label {
     font-weight: 600;
-    color: #333;
-    font-size: 0.9em;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
 }
 
 .filter-group select,
 .filter-group input {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .filter-actions {
     display: flex;
-    gap: 10px;
+    gap: 1rem;
     align-items: center;
     grid-column: 1 / -1;
-    margin-top: 15px;
+    margin-top: 1.5rem;
 }
 
 .filter-btn, .reset-btn {
-    padding: 10px 20px;
+    padding: 0.75rem 1.5rem;
     border: none;
-    border-radius: 5px;
+    border-radius: 0.75rem;
     cursor: pointer;
     font-weight: 600;
     text-decoration: none;
-    display: inline-block;
-    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
 }
 
 .filter-btn {
-    background: #007bff;
+    background: var(--primary);
     color: white;
 }
 
 .filter-btn:hover {
-    background: #0056b3;
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
 }
 
 .reset-btn {
-    background: #6c757d;
+    background: var(--text-muted);
     color: white;
 }
 
 .reset-btn:hover {
-    background: #545b62;
+    background: var(--text-secondary);
+    transform: translateY(-1px);
 }
 
+/* Modern Legend */
+.legend {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    margin: 0 2rem 2rem 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-light);
+}
+
+.legend h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.legend h3::before {
+    content: '📊';
+    font-size: 1.25rem;
+}
+
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.25rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: var(--border-light);
+    transition: all 0.2s ease;
+}
+
+.legend-item:hover {
+    background: var(--border);
+    transform: translateX(4px);
+}
+
+.legend-color {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    flex-shrink: 0;
+}
+
+.legend-color.completed { background: var(--success); }
+.legend-color.simulcast { background: var(--accent); }
+.legend-color.teacher-canceled { background: var(--warning); }
+.legend-color.teacher-no-show { background: #f97316; }
+.legend-color.pathful-canceled { background: var(--error); }
+.legend-color.local-canceled { background: #ec4899; }
+.legend-color.unfilled { background: var(--text-muted); }
+
+/* Modern Table */
 .breakdown-table-container {
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
-    margin-bottom: 30px;
+    margin: 0 2rem 2rem 2rem;
+    border: 1px solid var(--border-light);
+}
+
+.breakdown-table thead {
+    height: auto;
 }
 
 .breakdown-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85em;
-    border: 1px solid #dee2e6;
+    font-size: 0.9rem;
 }
 
 .breakdown-table th,
 .breakdown-table td {
-    padding: 8px 6px;
+    padding: 1rem 0.75rem;
     text-align: center;
-    border-bottom: 1px solid #dee2e6;
-    border-right: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
     white-space: nowrap;
-    font-size: 0.9em;
+    font-size: 0.95rem;
+}
+
+.breakdown-table th:not(.month-column) {
+    white-space: normal;
 }
 
 .breakdown-table th {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: #495057;
-    font-size: 0.8em;
+    background: var(--secondary);
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -159,31 +287,38 @@
 
 .breakdown-table .month-column {
     text-align: left;
-    font-weight: 600;
-    background: #f8f9fa;
+    font-weight: 700;
+    background: var(--secondary);
     position: sticky;
     left: 0;
     z-index: 5;
-    min-width: 100px;
-    padding: 12px 16px;
+    min-width: 120px;
+    padding: 1rem 1.5rem;
+    color: var(--text-primary);
 }
 
 .breakdown-table .ytd-row {
-    background: #e9ecef;
+    background: var(--primary);
     font-weight: 700;
+    color: white;
 }
 
 .breakdown-table .ytd-row td {
-    border-top: 2px solid #007bff;
-    font-size: 1.1em;
+    border-top: 2px solid var(--primary-dark);
+    font-size: 1.1rem;
+}
+
+.breakdown-table .ytd-row .month-column {
+    background: var(--primary);
+    color: white;
 }
 
 .breakdown-table tbody tr:hover {
-    background: #f8f9fa;
+    background: var(--border-light);
 }
 
 .breakdown-table tbody tr:hover .month-column {
-    background: #e9ecef;
+    background: var(--border);
 }
 
 .category-header {
@@ -191,149 +326,114 @@
     text-orientation: mixed;
     min-width: 120px;
     max-width: 140px;
+    min-height: auto;
     word-wrap: break-word;
     text-align: center;
     vertical-align: middle;
-    font-size: 0.75em;
+    font-size: 0.75rem;
     line-height: 1.2;
-    padding: 8px 4px;
+    padding: 1rem 0.5rem;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    font-weight: 600;
 }
 
+.category-header[title] {
+    cursor: help;
+}
+
+/* Modern Cell Styles */
 .number-cell {
-    font-weight: 600;
-    color: #007bff;
+    font-weight: 700;
+    color: var(--primary);
 }
 
 .zero-cell {
-    color: #6c757d;
-    font-weight: normal;
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
 .positive-cell {
-    color: #28a745;
-    font-weight: 600;
+    color: var(--success);
+    font-weight: 700;
 }
 
 .negative-cell {
-    color: #dc3545;
-    font-weight: 600;
+    color: var(--error);
+    font-weight: 700;
 }
 
 .table-scroll {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 1rem;
 }
 
-.legend {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.legend h3 {
-    margin: 0 0 15px 0;
-    font-size: 1.2em;
-    color: #333;
-}
-
-.legend-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 15px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.legend-color {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-}
-
-.legend-color.completed { background: #28a745; }
-.legend-color.simulcast { background: #17a2b8; }
-.legend-color.teacher-canceled { background: #ffc107; }
-.legend-color.teacher-no-show { background: #fd7e14; }
-.legend-color.pathful-canceled { background: #dc3545; }
-.legend-color.local-canceled { background: #e83e8c; }
-.legend-color.unfilled { background: #6c757d; }
-
-@media (max-width: 768px) {
-    .filters-form {
-        grid-template-columns: 1fr;
-    }
-
-    .breakdown-table {
-        font-size: 0.7em;
-    }
-
-    .breakdown-table th,
-    .breakdown-table td {
-        padding: 6px 3px;
-    }
-
-    .category-header {
-        min-width: 80px;
-        max-width: 100px;
-        font-size: 0.65em;
-    }
-
-    .breakdown-table .month-column {
-        min-width: 80px;
-        padding: 6px 8px;
-    }
-
-    .legend-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
+/* Modern Analytics */
 .analytics-sections {
-    margin-top: 40px;
-    padding: 20px;
+    margin: 0 2rem 2rem 2rem;
+    padding: 0;
 }
 
 .analytics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 30px;
-    margin-top: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 2rem;
+    margin-top: 0;
 }
 
 .analytics-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 24px;
-    border: 1px solid #e9ecef;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+}
+
+.analytics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .analytics-card h3 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 1.3em;
-    font-weight: 600;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #007bff;
+    margin: 0 0 1.5rem 0;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+    font-weight: 700;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.analytics-card h3::before {
+    content: '📈';
+    font-size: 1.25rem;
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 1rem;
 }
 
 .stat-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+}
+
+.stat-item:hover {
+    background: var(--border-light);
+    margin: 0 -1rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
 }
 
 .stat-item:last-child {
@@ -341,44 +441,46 @@
 }
 
 .stat-item.total-row {
-    border-top: 2px solid #007bff;
-    font-weight: 600;
-    background: #f8f9fa;
-    padding: 12px 0;
-    margin-top: 10px;
+    border-top: 2px solid var(--primary);
+    font-weight: 700;
+    background: var(--secondary);
+    padding: 1.25rem 0;
+    margin-top: 1rem;
+    border-radius: 0.5rem;
 }
 
 .stat-label {
-    color: #666;
+    color: var(--text-secondary);
     font-weight: 500;
     flex: 1;
 }
 
 .stat-value {
-    color: #007bff;
-    font-weight: 600;
-    font-size: 1.1em;
-    min-width: 50px;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 1.1rem;
+    min-width: 60px;
     text-align: right;
 }
 
 .comparison-grid {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
-    gap: 10px;
+    gap: 1rem;
 }
 
 .comparison-header {
     display: contents;
-    font-weight: 600;
-    color: #333;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .comparison-header > span {
-    padding: 12px 8px;
-    background: #f8f9fa;
-    border-bottom: 2px solid #007bff;
+    padding: 1rem 0.75rem;
+    background: var(--secondary);
+    border-bottom: 2px solid var(--primary);
     text-align: center;
+    border-radius: 0.5rem 0.5rem 0 0;
 }
 
 .comparison-header > span:first-child {
@@ -390,43 +492,89 @@
 }
 
 .comparison-row > span {
-    padding: 10px 8px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-light);
     display: flex;
     align-items: center;
 }
 
 .comparison-label {
-    color: #666;
+    color: var(--text-secondary);
     font-weight: 500;
     justify-content: flex-start;
 }
 
 .comparison-value {
-    color: #007bff;
-    font-weight: 600;
+    color: var(--primary);
+    font-weight: 700;
     justify-content: center;
     text-align: center;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
+    .breakdown-header {
+        padding: 2rem 1rem;
+    }
+    
+    .breakdown-title {
+        font-size: 2rem;
+    }
+    
+    .filters-section,
+    .legend,
+    .breakdown-table-container,
+    .analytics-sections {
+        margin: 1rem;
+    }
+    
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+
+    .breakdown-table {
+        font-size: 0.8rem;
+    }
+
+    .breakdown-table th,
+    .breakdown-table td {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .category-header {
+        min-width: 80px;
+        max-width: 100px;
+        min-height: auto;
+        font-size: 0.7rem;
+        padding: 0.75rem 0.25rem;
+    }
+
+    .breakdown-table .month-column {
+        min-width: 80px;
+        padding: 0.75rem 1rem;
+    }
+
+    .legend-grid {
+        grid-template-columns: 1fr;
+    }
+    
     .analytics-grid {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 1.5rem;
     }
 
     .analytics-card {
-        padding: 16px;
+        padding: 1.5rem;
     }
 
     .comparison-grid {
         grid-template-columns: 1fr;
-        gap: 5px;
+        gap: 0.5rem;
     }
 
     .comparison-header > span,
     .comparison-row > span {
-        padding: 8px;
+        padding: 0.75rem;
     }
 
     .comparison-header {
@@ -436,12 +584,36 @@
     .comparison-row {
         display: grid;
         grid-template-columns: 2fr 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 8px;
-        background: #f8f9fa;
-        border-radius: 6px;
-        padding: 8px;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: var(--secondary);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
     }
+}
+
+/* Smooth Scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+.table-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 4px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 4px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 </style>
 {% endblock %}
@@ -524,15 +696,19 @@
             </div>
             <div class="legend-item">
                 <div class="legend-color simulcast"></div>
-                <span><strong>Local Volunteers:</strong> Count and percentage of local (KS/MO) professionals</span>
+                <span><strong>Local Volunteer Fill % (Sessions Only):</strong> Percentage of completed sessions filled by local volunteers</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color simulcast"></div>
-                <span><strong>POC Volunteers:</strong> Count and percentage of People of Color professionals</span>
+                <span><strong>Local Volunteer Fill % (Sessions + Simulcast):</strong> Percentage of completed + simulcast sessions filled by local volunteers</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color simulcast"></div>
-                <span><strong>Experience Volunteer Breakdown:</strong> Percentage of experience sessions with local and POC volunteers</span>
+                <span><strong>POC Volunteer Fill % (Sessions Only):</strong> Percentage of completed sessions filled by volunteers of color</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color simulcast"></div>
+                <span><strong>POC Volunteer Fill % (Sessions + Simulcast):</strong> Percentage of completed + simulcast sessions filled by volunteers of color</span>
             </div>
         </div>
     </div>
@@ -544,16 +720,17 @@
                 <thead>
                     <tr>
                         <th class="month-column">Month</th>
-                        <th class="category-header">Successfully Completed</th>
-                        <th class="category-header">Simulcast Sessions</th>
-                        <th class="category-header">Teacher Canceled</th>
-                        <th class="category-header">Teacher No-Shows</th>
-                        <th class="category-header">Pathful Prof. Issues</th>
-                        <th class="category-header">Local Prof. Issues</th>
-                        <th class="category-header">Unfilled Sessions</th>
-                        <th class="category-header">Local Volunteers</th>
-                        <th class="category-header">POC Volunteers</th>
-                        <th class="category-header">Experience Volunteer Breakdown</th>
+                        <th class="category-header" title="Sessions marked as completed">Completed</th>
+                        <th class="category-header" title="Sessions broadcast to multiple locations">Simulcast</th>
+                        <th class="category-header" title="Sessions canceled by participating teachers">Teacher Canceled</th>
+                        <th class="category-header" title="Registered teachers who didn't attend">Teacher No-Shows</th>
+                        <th class="category-header" title="All Pathful professional cancellations and no-shows">Pathful Issues</th>
+                        <th class="category-header" title="All local professional cancellations and no-shows">Local Issues</th>
+                        <th class="category-header" title="Sessions with no available professionals">Unfilled</th>
+                        <th class="category-header" title="Percentage of completed sessions filled by local volunteers (KS/MO). Raw session count shown in cell as smaller text.">Local % (Sessions)</th>
+                        <th class="category-header" title="Percentage of completed + simulcast sessions filled by local volunteers. Raw session count shown in cell as smaller text.">Local % (Sessions + Simulcast)</th>
+                        <th class="category-header" title="Percentage of completed sessions filled by volunteers of color (POC). Raw session count shown in cell as smaller text.">POC % (Sessions)</th>
+                        <th class="category-header" title="Percentage of completed + simulcast sessions filled by volunteers of color (POC). Raw session count shown in cell as smaller text.">POC % (Sessions + Simulcast)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -583,20 +760,29 @@
                             <td class="{% if month_data.get('unfilled_sessions', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
                                 {{ month_data.get('unfilled_sessions', 0) }}
                             </td>
-                            <td class="{% if month_data.get('local_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
-                                {{ month_data.get('local_volunteer_count', 0) }}
-                                {% if month_data.get('local_volunteer_percentage', 0) > 0 %}
-                                    <br><small>({{ month_data.get('local_volunteer_percentage', 0) }}%)</small>
+                            <td class="{% if month_data.get('local_volunteer_percentage_sessions_only', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('local_volunteer_percentage_sessions_only', 0) }}%
+                                {% if month_data.get('local_volunteer_count_sessions_only', 0) > 0 %}
+                                    <br><small>({{ month_data.get('local_volunteer_count_sessions_only', 0) }} sessions)</small>
                                 {% endif %}
                             </td>
-                            <td class="{% if month_data.get('poc_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
-                                {{ month_data.get('poc_volunteer_count', 0) }}
-                                {% if month_data.get('poc_volunteer_percentage', 0) > 0 %}
-                                    <br><small>({{ month_data.get('poc_volunteer_percentage', 0) }}%)</small>
+                            <td class="{% if month_data.get('local_volunteer_percentage_sessions_simulcast', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('local_volunteer_percentage_sessions_simulcast', 0) }}%
+                                {% if month_data.get('local_volunteer_count_sessions_simulcast', 0) > 0 %}
+                                    <br><small>({{ month_data.get('local_volunteer_count_sessions_simulcast', 0) }} sessions)</small>
                                 {% endif %}
                             </td>
-                            <td class="{% if month_data.get('local_volunteer_percentage_in_experience', 0) > 0 or month_data.get('poc_volunteer_percentage_in_experience', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
-                                {{ month_data.get('local_volunteer_percentage_in_experience', 0) }}% Local, {{ month_data.get('poc_volunteer_percentage_in_experience', 0) }}% POC
+                            <td class="{% if month_data.get('poc_volunteer_percentage_sessions_only', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('poc_volunteer_percentage_sessions_only', 0) }}%
+                                {% if month_data.get('poc_volunteer_count_sessions_only', 0) > 0 %}
+                                    <br><small>({{ month_data.get('poc_volunteer_count_sessions_only', 0) }} sessions)</small>
+                                {% endif %}
+                            </td>
+                            <td class="{% if month_data.get('poc_volunteer_percentage_sessions_simulcast', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                                {{ month_data.get('poc_volunteer_percentage_sessions_simulcast', 0) }}%
+                                {% if month_data.get('poc_volunteer_count_sessions_simulcast', 0) > 0 %}
+                                    <br><small>({{ month_data.get('poc_volunteer_count_sessions_simulcast', 0) }} sessions)</small>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
@@ -625,20 +811,29 @@
                         <td class="{% if ytd_totals.get('unfilled_sessions', 0) > 0 %}negative-cell{% else %}zero-cell{% endif %}">
                             {{ ytd_totals.get('unfilled_sessions', 0) }}
                         </td>
-                        <td class="{% if ytd_totals.get('local_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
-                            {{ ytd_totals.get('local_volunteer_count', 0) }}
-                            {% if ytd_totals.get('local_volunteer_percentage', 0) > 0 %}
-                                <br><small>({{ ytd_totals.get('local_volunteer_percentage', 0) }}%)</small>
+                        <td class="{% if ytd_totals.get('local_volunteer_percentage_sessions_only', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('local_volunteer_percentage_sessions_only', 0) }}%
+                            {% if ytd_totals.get('local_volunteer_count_sessions_only', 0) > 0 %}
+                                <br><small>({{ ytd_totals.get('local_volunteer_count_sessions_only', 0) }} sessions)</small>
                             {% endif %}
                         </td>
-                        <td class="{% if ytd_totals.get('poc_volunteer_count', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
-                            {{ ytd_totals.get('poc_volunteer_count', 0) }}
-                            {% if ytd_totals.get('poc_volunteer_percentage', 0) > 0 %}
-                                <br><small>({{ ytd_totals.get('poc_volunteer_percentage', 0) }}%)</small>
+                        <td class="{% if ytd_totals.get('local_volunteer_percentage_sessions_simulcast', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('local_volunteer_percentage_sessions_simulcast', 0) }}%
+                            {% if ytd_totals.get('local_volunteer_count_sessions_simulcast', 0) > 0 %}
+                                <br><small>({{ ytd_totals.get('local_volunteer_count_sessions_simulcast', 0) }} sessions)</small>
                             {% endif %}
                         </td>
-                        <td class="{% if ytd_totals.get('local_volunteer_percentage_in_experience', 0) > 0 or ytd_totals.get('poc_volunteer_percentage_in_experience', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
-                            {{ ytd_totals.get('local_volunteer_percentage_in_experience', 0) }}% Local, {{ ytd_totals.get('poc_volunteer_percentage_in_experience', 0) }}% POC
+                        <td class="{% if ytd_totals.get('poc_volunteer_percentage_sessions_only', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('poc_volunteer_percentage_sessions_only', 0) }}%
+                            {% if ytd_totals.get('poc_volunteer_count_sessions_only', 0) > 0 %}
+                                <br><small>({{ ytd_totals.get('poc_volunteer_count_sessions_only', 0) }} sessions)</small>
+                            {% endif %}
+                        </td>
+                        <td class="{% if ytd_totals.get('poc_volunteer_percentage_sessions_simulcast', 0) > 0 %}number-cell{% else %}zero-cell{% endif %}">
+                            {{ ytd_totals.get('poc_volunteer_percentage_sessions_simulcast', 0) }}%
+                            {% if ytd_totals.get('poc_volunteer_count_sessions_simulcast', 0) > 0 %}
+                                <br><small>({{ ytd_totals.get('poc_volunteer_count_sessions_simulcast', 0) }} sessions)</small>
+                            {% endif %}
                         </td>
                     </tr>
                 </tbody>
