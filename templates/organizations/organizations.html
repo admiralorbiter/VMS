@@ -97,7 +97,7 @@
                     <th class="sortable" data-sort="volunteer_count">
                         # Volunteers <i class="fa-solid fa-sort"></i>
                     </th>
-                    <th>Actions</th>
+                    <th title="View details, reports, and external links">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -110,11 +110,14 @@
                     <td>{{ org.volunteer_count }}</td>
                     <td>
                         <div class="org-action-buttons">
-                            <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-action-btn org-view-btn">
+                            <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-action-btn org-view-btn" title="View Organization Details">
                                 <i class="fa-solid fa-eye"></i>
                             </a>
+                            <a href="{{ url_for('report.organization_report_detail', org_id=org.id, school_year='all_time') }}" class="org-action-btn org-report-btn" title="View Detailed Engagement Report">
+                                <i class="fa-solid fa-chart-bar"></i>
+                            </a>
                             {% if org.salesforce_url %}
-                            <a href="{{ org.salesforce_url }}" target="_blank" class="org-action-btn org-salesforce-btn">
+                            <a href="{{ org.salesforce_url }}" target="_blank" class="org-action-btn org-salesforce-btn" title="View in Salesforce">
                                 <i class="fa-solid fa-cloud"></i>
                             </a>
                             {% endif %}

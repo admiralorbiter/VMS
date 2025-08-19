@@ -781,9 +781,57 @@ main {
     color: white;
 }
 
+.org-action-btn.org-report-btn {
+    background-color: var(--mint-green);
+    color: var(--delft-blue);
+    position: relative;
+}
+
+.org-action-btn.org-report-btn::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    bottom: -2px;
+    left: -2px;
+    background: linear-gradient(45deg, var(--mint-green), var(--ucla-blue));
+    border-radius: 8px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.org-action-btn.org-report-btn:hover::after {
+    opacity: 0.3;
+}
+
+/* Subtle pulse animation for the report button to draw attention */
+@keyframes subtle-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.org-action-btn.org-report-btn {
+    animation: subtle-pulse 2s ease-in-out 1s 2;
+}
+
+/* Improve spacing and visual hierarchy for action buttons */
+.org-action-buttons {
+    gap: 0.75rem;
+}
+
+.org-action-btn {
+    min-width: 2.5rem;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.15);
+}
+
 .org-action-btn:hover {
     background-color: var(--delft-blue);
     color: var(--mint-green);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.25);
 }
 
 /* Responsive Table Scroll */
@@ -793,6 +841,41 @@ main {
     }
     .orgs-table {
         min-width: 700px;
+    }
+}
+
+/* Mobile-friendly action buttons */
+@media (max-width: 768px) {
+    .org-action-buttons {
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .org-action-btn {
+        min-width: 2.2rem;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .org-action-btn[title] {
+        position: relative;
+    }
+
+    .org-action-btn[title]:hover::before {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--delft-blue);
+        color: var(--mint-green);
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        z-index: 1000;
+        margin-bottom: 0.5rem;
     }
 }
 
