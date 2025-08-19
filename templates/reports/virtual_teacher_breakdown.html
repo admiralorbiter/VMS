@@ -229,6 +229,13 @@
     margin-top: 2px;
 }
 
+.upcoming-session-count {
+    font-size: 0.85em;
+    color: #6f42c1;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
 .no-data {
     text-align: center;
     padding: 60px 20px;
@@ -313,7 +320,7 @@
                         <th class="school-header">
                             {{ school_name }}
                             <div class="school-stats">
-                                {{ school_data.total_teachers }} teachers, {{ school_data.total_sessions }} sessions, {{ school_data.total_no_shows }} no-shows
+                                {{ school_data.total_teachers }} teachers, {{ school_data.total_sessions }} sessions, {{ school_data.total_no_shows }} no-shows, {{ school_data.total_upcoming_sessions }} upcoming
                             </div>
                         </th>
                         {% endfor %}
@@ -340,6 +347,11 @@
                                 {% if teacher.no_shows > 0 %}
                                 <div class="no-show-count">
                                     {{ teacher.no_shows }} no-show{{ 's' if teacher.no_shows != 1 else '' }}
+                                </div>
+                                {% endif %}
+                                {% if teacher.upcoming_sessions > 0 %}
+                                <div class="upcoming-session-count">
+                                    {{ teacher.upcoming_sessions }} upcoming
                                 </div>
                                 {% endif %}
                             {% endif %}
@@ -383,6 +395,14 @@
                 </span>
                 <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
                     Total No-Shows
+                </span>
+            </div>
+            <div class="stat-card" style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); text-align: center; border-left: 4px solid #6f42c1;">
+                <span class="stat-value" style="display: block; font-size: 2.5em; font-weight: 700; color: #6f42c1; margin-bottom: 5px;">
+                    {{ teacher_school_breakdown.values() | map(attribute='total_upcoming_sessions') | sum }}
+                </span>
+                <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Total Upcoming
                 </span>
             </div>
         </div>

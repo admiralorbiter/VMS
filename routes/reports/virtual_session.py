@@ -3854,7 +3854,7 @@ def load_routes(bp):
 def compute_teacher_school_breakdown(district_name, virtual_year, date_from, date_to):
     """
     Compute teacher breakdown grouped by school for a specific district.
-    Includes both completed sessions and no-show sessions for each teacher.
+    Includes both completed sessions, no-show sessions, and upcoming sessions for each teacher.
 
     Args:
         district_name: Name of the district
@@ -3865,6 +3865,9 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
     Returns:
         Dictionary with schools as keys and teacher data as values
     """
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
     # Base query for virtual session events
     base_query = Event.query.options(
         joinedload(Event.districts),
@@ -3923,6 +3926,7 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                     "name": teacher_name,
                     "sessions": 0,
                     "no_shows": 0,
+                    "upcoming_sessions": 0,
                 }
 
             # Determine classification for this registration
@@ -3963,8 +3967,48 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
             counted_completed = False
             counted_no_show = False
 
+            # Check for upcoming sessions (Teacher requested or Industry chat + Draft status)
+            # Only count upcoming sessions that are actually in the future
+            session_type = getattr(event, "additional_information", "")
+            event_status = getattr(event, "status", "")
+            teacher_reg_status = getattr(teacher_reg, "status", "")
+
+            # Handle enum status values
+            event_status_str = (
+                str(event_status.value)
+                if hasattr(event_status, "value")
+                else str(event_status)
+            )
+            teacher_reg_status_str = (
+                str(teacher_reg_status) if teacher_reg_status else ""
+            )
+
+            # Check if this is an upcoming session AND it's actually in the future
+            # Ensure both datetimes are timezone-aware for comparison
+            event_start_date = event.start_date
+            if event_start_date and event_start_date.tzinfo is None:
+                # If event.start_date is timezone-naive, assume it's in UTC
+                event_start_date = event_start_date.replace(tzinfo=timezone.utc)
+
+            is_upcoming_session = (
+                (
+                    "teacher requested" in (session_type or "").lower()
+                    or "industry chat" in (session_type or "").lower()
+                )
+                and (
+                    "draft" in event_status_str.lower()
+                    or "draft" in teacher_reg_status_str.lower()
+                )
+                and event_start_date
+                and event_start_date > now  # Only future sessions
+            )
+
+            if is_upcoming_session:
+                school_teacher_data[school_name][teacher_id]["upcoming_sessions"] += 1
             # Prioritize explicit no-show status over attendance_confirmed_at
-            if is_teacher_no_show or (event_teacher_no_show and not moved_to_in_person):
+            elif is_teacher_no_show or (
+                event_teacher_no_show and not moved_to_in_person
+            ):
                 school_teacher_data[school_name][teacher_id]["no_shows"] += 1
                 counted_no_show = True
             elif (
@@ -3990,15 +4034,17 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
             teachers_dict.values(),
             key=lambda x: (
                 -(
-                    x["sessions"] + x["no_shows"]
-                ),  # Sort by total sessions (completed + no-shows) desc
+                    x["sessions"] + x["no_shows"] + x["upcoming_sessions"]
+                ),  # Sort by total sessions (completed + no-shows + upcoming) desc
                 x["name"],
             ),  # Then by name asc
         )
 
-        # Include teachers with at least 1 session (completed or no-show)
+        # Include teachers with at least 1 session (completed, no-show, or upcoming)
         teachers_with_activity = [
-            t for t in teachers_list if t["sessions"] > 0 or t["no_shows"] > 0
+            t
+            for t in teachers_list
+            if t["sessions"] > 0 or t["no_shows"] > 0 or t["upcoming_sessions"] > 0
         ]
 
         if (
@@ -4009,14 +4055,21 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                 "total_teachers": len(teachers_with_activity),
                 "total_sessions": sum(t["sessions"] for t in teachers_with_activity),
                 "total_no_shows": sum(t["no_shows"] for t in teachers_with_activity),
+                "total_upcoming_sessions": sum(
+                    t["upcoming_sessions"] for t in teachers_with_activity
+                ),
             }
 
-    # Sort schools by total activity (sessions + no-shows) (descending)
+    # Sort schools by total activity (sessions + no-shows + upcoming_sessions) (descending)
     sorted_schools = dict(
         sorted(
             school_breakdown.items(),
             key=lambda x: (
-                -(x[1]["total_sessions"] + x[1]["total_no_shows"]),
+                -(
+                    x[1]["total_sessions"]
+                    + x[1]["total_no_shows"]
+                    + x[1]["total_upcoming_sessions"]
+                ),
                 x[0],
             ),  # Sort by total activity desc, then school name asc
         )
