@@ -123,6 +123,41 @@
             </div>
         </div>
 
+        {# Engagement Summary Card #}
+        <div class="org-card engagement-summary">
+            <div class="card-header">
+                <i class="fa-solid fa-chart-line"></i>
+                <h2>Engagement Summary (All-Time)</h2>
+            </div>
+            <div class="card-content">
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ summary_stats.total_sessions }}</span>
+                        <span class="stat-label">Total Sessions</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ summary_stats.total_hours }}</span>
+                        <span class="stat-label">Total Hours</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ summary_stats.unique_volunteers }}</span>
+                        <span class="stat-label">Active Volunteers</span>
+                    </div>
+                </div>
+                <div class="view-details-action">
+                    <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year='all_time') }}"
+                       class="btn btn-primary btn-lg">
+                        <i class="fa-solid fa-chart-bar"></i>
+                        View Detailed Engagement Report
+                    </a>
+                    <p class="action-description">
+                        Get comprehensive insights into volunteer participation, event breakdowns,
+                        and detailed metrics across all school years.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         {# Associated Volunteers Card - Modern Grid #}
         <div class="org-card volunteers-info">
             <div class="card-header">
@@ -168,6 +203,84 @@
         </div>
     </div>
 </div>
+<style>
+/* Engagement Summary Card Styling */
+.engagement-summary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid #007bff;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.view-details-action {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.view-details-action .btn {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.action-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .summary-stats {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .stat-item {
+        padding: 0.75rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+}
+</style>
+
 <script>
 function filterVolunteers(query) {
     query = query.toLowerCase();

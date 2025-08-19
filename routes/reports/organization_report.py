@@ -230,124 +230,23 @@ def load_routes(bp):
         sort_evt = request.args.get("sort_evt", "date")
         order_evt = request.args.get("order_evt", "asc")
 
-        # Check cache first (unless refresh requested)
-        if not refresh_requested:
-            cache = OrganizationDetailCache.query.filter_by(
-                organization_id=org_id, school_year=school_year
-            ).first()
-            if cache:
-                # Use cached data
-                organization = Organization.query.get_or_404(org_id)
-                summary_stats = cache.summary_stats or {}
-                volunteers_data = cache.volunteers_data or []
-                in_person_events_data = cache.in_person_events or []
-                virtual_events_data = cache.virtual_events or []
-                cancelled_events_data = cache.cancelled_events or []
+        # Use the shared organization service
+        from utils.services.organization_service import OrganizationService
 
-                # Derive totals from summary if present, else compute quickly
-                total_inperson_sessions = summary_stats.get(
-                    "total_inperson_sessions", len(in_person_events_data)
-                )
-                total_virtual_sessions = summary_stats.get(
-                    "total_virtual_sessions", len(virtual_events_data)
-                )
-                total_sessions = summary_stats.get(
-                    "total_sessions", total_inperson_sessions + total_virtual_sessions
-                )
-                total_hours = summary_stats.get(
-                    "total_hours", sum(vol.get("hours", 0) for vol in volunteers_data)
-                )
-                total_volunteers = summary_stats.get(
-                    "total_volunteers", len(volunteers_data)
-                )
-                total_cancelled = summary_stats.get(
-                    "total_cancelled", len(cancelled_events_data)
-                )
-                total_students_reached = summary_stats.get(
-                    "total_students_reached",
-                    sum(evt.get("students", 0) for evt in in_person_events_data),
-                )
-                total_classrooms_reached = summary_stats.get(
-                    "total_classrooms_reached",
-                    sum(evt.get("classrooms", 0) for evt in virtual_events_data),
-                )
+        service = OrganizationService()
 
-                # Generate list of school years
-                current_year = int(get_current_school_year()[:2])
-                school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
-                school_years.reverse()
+        # Get comprehensive organization data
+        org_data = service.get_organization_detail(org_id, school_year)
 
-                return render_template(
-                    "reports/organization_report_detail.html",
-                    organization=organization,
-                    volunteers=volunteers_data,
-                    in_person_events=in_person_events_data,
-                    virtual_events=virtual_events_data,
-                    cancelled_events=cancelled_events_data,
-                    school_year=school_year,
-                    school_years=school_years,
-                    now=datetime.now(),
-                    sort_vol=sort_vol,
-                    order_vol=order_vol,
-                    sort_evt=sort_evt,
-                    order_evt=order_evt,
-                    total_sessions=total_sessions,
-                    total_hours=total_hours,
-                    total_volunteers=total_volunteers,
-                    total_cancelled=total_cancelled,
-                    total_students_reached=total_students_reached,
-                    total_classrooms_reached=total_classrooms_reached,
-                    total_inperson_sessions=total_inperson_sessions,
-                    total_virtual_sessions=total_virtual_sessions,
-                    is_cached=True,
-                    last_refreshed=cache.last_updated,
-                )
+        # Extract data from service response
+        organization = org_data["organization"]
+        volunteers_data = org_data["volunteers"]
+        in_person_events_data = org_data["in_person_events"]
+        virtual_events_data = org_data["virtual_events"]
+        cancelled_events_data = org_data["cancelled_events"]
+        summary_stats = org_data["summary_stats"]
 
-        # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
-
-        # Get organization details
-        organization = Organization.query.get_or_404(org_id)
-
-        # Query volunteers and their participation for this organization
-        volunteer_stats = (
-            db.session.query(
-                Volunteer,
-                db.func.count(db.distinct(Event.id)).label("event_count"),
-                db.func.sum(EventParticipation.delivery_hours).label("total_hours"),
-            )
-            .join(
-                VolunteerOrganization,
-                Volunteer.id == VolunteerOrganization.volunteer_id,
-            )
-            .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
-            .join(Event, EventParticipation.event_id == Event.id)
-            .filter(
-                VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed"]
-                ),
-                Volunteer.exclude_from_reports == False,
-            )
-            .group_by(Volunteer.id)
-            .all()
-        )
-
-        # Format volunteer data
-        volunteers_data = [
-            {
-                "id": v.id,
-                "name": f"{v.first_name} {v.last_name}",
-                "email": v.primary_email,
-                "events": events,
-                "hours": round(hours or 0, 2),
-            }
-            for v, events, hours in volunteer_stats
-        ]
-
-        # Sort volunteers in Python
+        # Apply sorting to volunteers
         def get_vol_sort_key(vol):
             if sort_vol == "name":
                 return vol["name"].lower() if vol["name"] else ""
@@ -359,137 +258,7 @@ def load_routes(bp):
 
         volunteers_data.sort(key=get_vol_sort_key, reverse=(order_vol == "desc"))
 
-        # Get in-person events with student counts and volunteer details
-        in_person_events = (
-            db.session.query(
-                Event,
-                db.func.count(db.distinct(EventParticipation.volunteer_id)).label(
-                    "volunteer_count"
-                ),
-                db.func.sum(EventParticipation.delivery_hours).label("total_hours"),
-            )
-            .join(EventParticipation, Event.id == EventParticipation.event_id)
-            .join(Volunteer, EventParticipation.volunteer_id == Volunteer.id)
-            .join(
-                VolunteerOrganization,
-                Volunteer.id == VolunteerOrganization.volunteer_id,
-            )
-            .filter(
-                VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                Event.type != EventType.VIRTUAL_SESSION,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed"]
-                ),
-                Volunteer.exclude_from_reports == False,
-            )
-            .group_by(Event.id)
-            .all()
-        )
-
-        # Get detailed in-person events with volunteer names
-        detailed_inperson_events = (
-            db.session.query(
-                Event,
-                Volunteer,
-                EventParticipation.status,
-                EventParticipation.delivery_hours,
-            )
-            .join(EventParticipation, Event.id == EventParticipation.event_id)
-            .join(Volunteer, EventParticipation.volunteer_id == Volunteer.id)
-            .join(
-                VolunteerOrganization,
-                Volunteer.id == VolunteerOrganization.volunteer_id,
-            )
-            .filter(
-                VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                Event.type != EventType.VIRTUAL_SESSION,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed"]
-                ),
-                Volunteer.exclude_from_reports == False,
-            )
-            .order_by(
-                Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
-            )
-            .all()
-        )
-
-        # Group in-person events by event with volunteer names
-        inperson_events_by_event = {}
-        for event, volunteer, status, hours in detailed_inperson_events:
-            event_key = f"{event.id}_{event.title}"
-            if event_key not in inperson_events_by_event:
-                inperson_events_by_event[event_key] = {
-                    "event": event,
-                    "volunteers": [],
-                    "total_hours": 0,
-                }
-            inperson_events_by_event[event_key]["volunteers"].append(
-                {
-                    "name": f"{volunteer.first_name} {volunteer.last_name}",
-                    "status": status,
-                    "hours": hours or 0,
-                }
-            )
-            inperson_events_by_event[event_key]["total_hours"] += hours or 0
-
-        # Format in-person events data with volunteer names
-        in_person_events_data = []
-        for event_key, event_data in inperson_events_by_event.items():
-            event = event_data["event"]
-            volunteer_names = [v["name"] for v in event_data["volunteers"]]
-
-            # Get attendance detail for this event
-            attendance_detail = event.attendance_detail
-            student_count = event.participant_count or 0
-            students_per_volunteer = None
-            is_calculated = False
-
-            # Calculate students per volunteer if attendance detail exists
-            if (
-                attendance_detail
-                and attendance_detail.total_students
-                and attendance_detail.num_classrooms
-                and attendance_detail.rotations
-            ):
-                try:
-                    total_students = int(attendance_detail.total_students)
-                    num_classrooms = int(attendance_detail.num_classrooms)
-                    rotations = int(attendance_detail.rotations)
-
-                    if num_classrooms > 0 and rotations > 0:
-                        students_per_volunteer = math.floor(
-                            (total_students / num_classrooms) * rotations
-                        )
-                        student_count = (
-                            total_students  # Use the attendance detail total
-                        )
-                        is_calculated = True
-                except (ValueError, TypeError):
-                    # If conversion fails, use fallback values
-                    pass
-
-            in_person_events_data.append(
-                {
-                    "id": event.id,
-                    "date": event.start_date.strftime("%m/%d/%y"),
-                    "date_sort": event.start_date,
-                    "title": event.title,
-                    "type": event.type.value if event.type else "Unknown",
-                    "volunteers": volunteer_names,
-                    "volunteer_count": len(volunteer_names),
-                    "hours": round(event_data["total_hours"], 2),
-                    "students": student_count,
-                    "students_per_volunteer": students_per_volunteer,
-                    "is_calculated": is_calculated,
-                }
-            )
-
-        # Sort in-person events in Python
+        # Apply sorting to in-person events
         def get_inperson_sort_key(evt):
             if sort_evt == "date":
                 return evt["date_sort"]
@@ -498,11 +267,10 @@ def load_routes(bp):
             elif sort_evt == "type":
                 return evt["type"].lower() if evt["type"] else ""
             elif sort_evt == "volunteers":
-                return evt["volunteers"]
+                return evt["volunteer_count"]
             elif sort_evt == "hours":
                 return evt["hours"]
             elif sort_evt == "students":
-                # Use students_per_volunteer if available, otherwise use students count
                 return evt["students_per_volunteer"] or evt["students"]
             return evt["date_sort"]
 
@@ -510,172 +278,7 @@ def load_routes(bp):
             key=get_inperson_sort_key, reverse=(order_evt == "desc")
         )
 
-        # Get virtual events with classroom counts
-        virtual_events = (
-            db.session.query(
-                Event,
-                db.func.count(db.distinct(EventParticipation.volunteer_id)).label(
-                    "volunteer_count"
-                ),
-                db.func.count(db.distinct(EventTeacher.teacher_id)).label(
-                    "classroom_count"
-                ),
-            )
-            .join(EventParticipation, Event.id == EventParticipation.event_id)
-            .join(Volunteer, EventParticipation.volunteer_id == Volunteer.id)
-            .join(
-                VolunteerOrganization,
-                Volunteer.id == VolunteerOrganization.volunteer_id,
-            )
-            .outerjoin(EventTeacher, Event.id == EventTeacher.event_id)
-            .filter(
-                VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                Event.type == EventType.VIRTUAL_SESSION,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
-                ),
-                Volunteer.exclude_from_reports == False,
-            )
-            .group_by(Event.id)
-            .all()
-        )
-
-        # Get detailed virtual events with volunteer names and teacher details
-        TeacherAlias = aliased(Teacher, flat=True)
-        SchoolAlias = aliased(School, flat=True)
-        DistrictAlias = aliased(District, flat=True)
-
-        detailed_virtual_events = (
-            db.session.query(
-                Event,
-                Volunteer,
-                EventParticipation.status,
-                EventTeacher,
-                TeacherAlias,
-                SchoolAlias,
-                DistrictAlias,
-            )
-            .join(EventParticipation, Event.id == EventParticipation.event_id)
-            .join(Volunteer, EventParticipation.volunteer_id == Volunteer.id)
-            .join(
-                VolunteerOrganization,
-                Volunteer.id == VolunteerOrganization.volunteer_id,
-            )
-            .outerjoin(EventTeacher, Event.id == EventTeacher.event_id)
-            .outerjoin(TeacherAlias, EventTeacher.teacher_id == TeacherAlias.id)
-            .outerjoin(SchoolAlias, TeacherAlias.salesforce_school_id == SchoolAlias.id)
-            .outerjoin(DistrictAlias, SchoolAlias.district_id == DistrictAlias.id)
-            .filter(
-                VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                Event.type == EventType.VIRTUAL_SESSION,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
-                ),
-                Volunteer.exclude_from_reports == False,
-                db.or_(
-                    TeacherAlias.id == None,  # No teacher associated with event
-                    TeacherAlias.exclude_from_reports
-                    == False,  # Teacher is not excluded
-                ),
-            )
-            .order_by(
-                Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
-            )
-            .all()
-        )
-
-        # Group virtual events by event with volunteer names and teacher details
-        virtual_events_by_event = {}
-        for (
-            event,
-            volunteer,
-            status,
-            event_teacher,
-            teacher,
-            school,
-            district,
-        ) in detailed_virtual_events:
-            event_key = f"{event.id}_{event.title}"
-            if event_key not in virtual_events_by_event:
-                virtual_events_by_event[event_key] = {
-                    "event": event,
-                    "volunteers": [],
-                    "classrooms": [],
-                    "unique_classroom_count": 0,
-                }
-            virtual_events_by_event[event_key]["volunteers"].append(
-                {
-                    "name": f"{volunteer.first_name} {volunteer.last_name}",
-                    "status": status,
-                }
-            )
-
-            # Add teacher/classroom information if available
-            if (
-                teacher
-                and event_teacher
-                and event_teacher.status in ["simulcast", "successfully completed"]
-            ):
-                classroom_info = {
-                    "teacher_id": teacher.id,
-                    "teacher_name": f"{teacher.first_name} {teacher.last_name}",
-                    "school_name": school.name if school else "Unknown School",
-                    "district_name": district.name if district else "Unknown District",
-                    "status": event_teacher.status,
-                }
-                virtual_events_by_event[event_key]["classrooms"].append(classroom_info)
-
-        # Calculate unique classroom count for each event
-        for event_key, event_data in virtual_events_by_event.items():
-            # Get unique teachers for this event
-            unique_teachers = set()
-            for classroom in event_data["classrooms"]:
-                unique_teachers.add(classroom["teacher_name"])
-            event_data["unique_classroom_count"] = len(unique_teachers)
-
-        # Format virtual events with volunteer names, time, and classroom details
-        virtual_events_data = []
-        for event_key, event_data in virtual_events_by_event.items():
-            event = event_data["event"]
-            # Get unique volunteer names (remove duplicates)
-            unique_volunteer_names = list(
-                set([v["name"] for v in event_data["volunteers"]])
-            )
-            virtual_events_data.append(
-                {
-                    "id": event.id,
-                    "date": event.start_date.strftime("%m/%d/%y"),
-                    "time": (
-                        event.start_date.strftime("%I:%M %p")
-                        if event.start_date
-                        else ""
-                    ),
-                    "date_sort": event.start_date,
-                    "title": event.title,
-                    "type": event.type.value if event.type else "Unknown",
-                    "volunteers": unique_volunteer_names,
-                    "volunteer_count": len(unique_volunteer_names),
-                    "classrooms": event_data["unique_classroom_count"],
-                    "classroom_details": event_data["classrooms"],
-                }
-            )
-
-        # Calculate total unique classrooms across all virtual events and track session counts
-        teacher_session_counts = {}
-        for event_data in virtual_events_by_event.values():
-            for classroom in event_data["classrooms"]:
-                teacher_name = classroom["teacher_name"]
-                if teacher_name not in teacher_session_counts:
-                    teacher_session_counts[teacher_name] = 0
-                teacher_session_counts[teacher_name] += 1
-
-        total_unique_classrooms = len(teacher_session_counts)
-
-        # Sort virtual events in Python
+        # Apply sorting to virtual events
         def get_virtual_sort_key(evt):
             if sort_evt == "date":
                 return evt["date_sort"]
@@ -693,110 +296,18 @@ def load_routes(bp):
             key=get_virtual_sort_key, reverse=(order_evt == "desc")
         )
 
-        # Get cancelled events - include both event-level cancellations and volunteer participation cancellations
-        cancelled_events = (
-            db.session.query(
-                Event,
-                db.func.count(db.distinct(EventParticipation.volunteer_id)).label(
-                    "volunteer_count"
-                ),
-            )
-            .join(EventParticipation, Event.id == EventParticipation.event_id)
-            .join(Volunteer, EventParticipation.volunteer_id == Volunteer.id)
-            .join(
-                VolunteerOrganization,
-                Volunteer.id == VolunteerOrganization.volunteer_id,
-            )
-            .filter(
-                VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                db.or_(
-                    # Event-level cancellation
-                    Event.status == EventStatus.CANCELLED,
-                    # Volunteer participation cancellation statuses
-                    EventParticipation.status.in_(
-                        [
-                            "Cancelled",
-                            "No Show",
-                            "Did Not Attend",
-                            "Teacher No-Show",
-                            "Volunteer canceling due to snow",
-                            "Weather Cancellation",
-                            "School Closure",
-                            "Emergency Cancellation",
-                        ]
-                    ),
-                ),
-                Volunteer.exclude_from_reports == False,
-            )
-            .group_by(Event.id)
-            .all()
-        )
+        # Extract summary statistics
+        total_inperson_sessions = summary_stats["total_inperson_sessions"]
+        total_virtual_sessions = summary_stats["total_virtual_sessions"]
+        total_sessions = summary_stats["total_sessions"]
+        total_hours = summary_stats["total_hours"]
+        total_volunteers = summary_stats["total_volunteers"]
+        total_cancelled = summary_stats["total_cancelled"]
+        total_students_reached = summary_stats["total_students_reached"]
+        total_classrooms_reached = summary_stats["total_classrooms_reached"]
 
-        cancelled_events_data = [
-            {
-                "date": event.start_date.strftime("%m/%d/%y"),
-                "title": event.title,
-                "type": event.type.value if event.type else "Unknown",
-                "volunteers": vol_count,
-                "status": "Cancelled/No Show",
-            }
-            for event, vol_count in cancelled_events
-        ]
-
-        # Calculate summary statistics
-        total_inperson_sessions = len(in_person_events_data)
-        total_virtual_sessions = len(virtual_events_data)
-        total_sessions = total_inperson_sessions + total_virtual_sessions
-        total_hours = sum(vol["hours"] for vol in volunteers_data)
-        total_volunteers = len(volunteers_data)
-        total_cancelled = len(cancelled_events_data)
-        total_students_reached = sum(evt["students"] for evt in in_person_events_data)
-        total_classrooms_reached = total_unique_classrooms
-
-        # Generate list of school years (from 2020-21 to current+1)
-        current_year = int(get_current_school_year()[:2])
-        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
-        school_years.reverse()  # Most recent first
-
-        # Persist to OrganizationDetailCache
-        try:
-            detail_cache = OrganizationDetailCache.query.filter_by(
-                organization_id=org_id, school_year=school_year
-            ).first()
-            summary_stats = {
-                "total_inperson_sessions": total_inperson_sessions,
-                "total_virtual_sessions": total_virtual_sessions,
-                "total_sessions": total_sessions,
-                "total_hours": total_hours,
-                "total_volunteers": total_volunteers,
-                "total_cancelled": total_cancelled,
-                "total_students_reached": total_students_reached,
-                "total_classrooms_reached": total_classrooms_reached,
-            }
-            if not detail_cache:
-                detail_cache = OrganizationDetailCache(
-                    organization_id=org_id,
-                    school_year=school_year,
-                    organization_name=organization.name,
-                    in_person_events=in_person_events_data,
-                    virtual_events=virtual_events_data,
-                    cancelled_events=cancelled_events_data,
-                    volunteers_data=volunteers_data,
-                    summary_stats=summary_stats,
-                )
-                db.session.add(detail_cache)
-            else:
-                detail_cache.organization_name = organization.name
-                detail_cache.in_person_events = in_person_events_data
-                detail_cache.virtual_events = virtual_events_data
-                detail_cache.cancelled_events = cancelled_events_data
-                detail_cache.volunteers_data = volunteers_data
-                detail_cache.summary_stats = summary_stats
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        # Get list of school years
+        school_years = service.get_school_years()
 
         return render_template(
             "reports/organization_report_detail.html",
@@ -820,6 +331,8 @@ def load_routes(bp):
             total_classrooms_reached=total_classrooms_reached,
             total_inperson_sessions=total_inperson_sessions,
             total_virtual_sessions=total_virtual_sessions,
+            is_cached=org_data.get("is_cached", False),
+            last_refreshed=org_data.get("last_refreshed"),
         )
 
     @bp.route("/reports/organization/report/excel")

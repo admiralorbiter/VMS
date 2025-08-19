@@ -241,6 +241,8 @@ def view_organization(id):
         - Associated volunteers list with roles and dates
         - Salesforce integration links
         - Recent activity tracking
+        - Summary engagement metrics (all-time)
+        - Link to comprehensive detailed report
 
     Args:
         id (int): Organization ID to view
@@ -255,7 +257,10 @@ def view_organization(id):
         organization: Organization object with all details
         volunteer_organizations: List of volunteer-organization relationships
         recent_activities: List of recent volunteer activities
+        summary_stats: All-time engagement summary statistics
     """
+    from utils.services.organization_service import OrganizationService
+
     # Get the organization or return 404 if not found
     organization = eagerload_organization_bundle(Organization.query).get_or_404(id)
 
@@ -284,12 +289,17 @@ def view_organization(id):
     # Sort activities by event date (most recent first)
     recent_activities.sort(key=lambda x: x.event.start_date, reverse=True)
 
+    # Get all-time summary statistics using the service
+    service = OrganizationService()
+    summary_data = service.get_organization_summary(id)
+
     # Render the view template with organization and related data
     return render_template(
         "organizations/view.html",
         organization=organization,
         volunteer_organizations=volunteer_organizations,
         recent_activities=recent_activities[:10],  # Limit to 10 most recent
+        summary_stats=summary_data,
     )
 
 
