@@ -78,9 +78,62 @@
                         <i class="fa-solid fa-plug"></i> Connector Only
                     </button>
                     {% endif %}
+                    <button type="button" id="toggleSearchFields" class="btn btn-outline-info ml-2" title="Show/hide search field explanations">
+                        <i class="fas fa-info-circle"></i> Search Help
+                    </button>
                 </div>
             </div>
         </form>
+    </div>
+
+    <!-- Search Fields Explanation -->
+    <div class="search-fields-info" id="searchFieldsInfo">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-search"></i>
+                    Search Fields & Capabilities
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user"></i> Volunteer Information</h6>
+                        <ul class="search-fields-list">
+                            <li><strong>First Name</strong> - Exact or partial matches</li>
+                            <li><strong>Last Name</strong> - Exact or partial matches</li>
+                            <li><strong>Title/Position</strong> - Job title or role</li>
+                        </ul>
+
+                        <h6><i class="fas fa-building"></i> Organization & Affiliation</h6>
+                        <ul class="search-fields-list">
+                            <li><strong>Organization Name</strong> - Company, school, or institution</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-tools"></i> Skills & Expertise</h6>
+                        <ul class="search-fields-list">
+                            <li><strong>Skill Names</strong> - Programming, teaching, mentoring, etc.</li>
+                        </ul>
+
+                        <h6><i class="fas fa-calendar"></i> Event Participation</h6>
+                        <ul class="search-fields-list">
+                            <li><strong>Event Titles</strong> - Past events the volunteer participated in</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="search-tips mt-3">
+                    <h6><i class="fas fa-lightbulb"></i> Search Tips</h6>
+                    <ul class="search-fields-list">
+                        <li><strong>Wide Search:</strong> "tech edu" finds volunteers in technology OR education</li>
+                        <li><strong>Narrow Search:</strong> "tech edu" finds volunteers in BOTH technology AND education</li>
+                        <li><strong>Partial Matches:</strong> "prog" will find "programming", "programmer", etc.</li>
+                        <li><strong>Multiple Terms:</strong> Use spaces to separate different search concepts</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Results Table -->
@@ -284,4 +337,41 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButton = document.getElementById('toggleSearchFields');
+    const searchFieldsInfo = document.getElementById('searchFieldsInfo');
+
+    // Initially hide the section
+    searchFieldsInfo.classList.add('d-none');
+
+    toggleButton.addEventListener('click', function() {
+        if (searchFieldsInfo.classList.contains('d-none')) {
+            // Show the section
+            searchFieldsInfo.classList.remove('d-none');
+            // Add a small delay to ensure the element is visible before adding the show class
+            setTimeout(() => {
+                searchFieldsInfo.classList.add('show');
+            }, 10);
+
+            toggleButton.innerHTML = '<i class="fas fa-times-circle"></i> Hide Help';
+            toggleButton.classList.remove('btn-outline-info');
+            toggleButton.classList.add('btn-info');
+        } else {
+            // Hide the section
+            searchFieldsInfo.classList.remove('show');
+            // Wait for the transition to complete before hiding
+            setTimeout(() => {
+                searchFieldsInfo.classList.add('d-none');
+            }, 300);
+
+            toggleButton.innerHTML = '<i class="fas fa-info-circle"></i> Search Help';
+            toggleButton.classList.remove('btn-info');
+            toggleButton.classList.add('btn-outline-info');
+        }
+    });
+});
+</script>
+
 {% endblock %}

@@ -710,3 +710,138 @@ main {
     color: white;
     text-decoration: underline;
 }
+
+/* Search fields explanation section */
+.search-fields-info {
+    margin: 2rem 0;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.search-fields-info.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.search-fields-info .card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.search-fields-info .card-header {
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    color: white;
+    border-bottom: none;
+    border-radius: 0.75rem 0.75rem 0 0;
+    padding: 1rem 1.25rem;
+}
+
+.search-fields-info .card-header h5 {
+    font-weight: 600;
+    margin: 0;
+}
+
+.search-fields-info .card-header i {
+    margin-right: 0.5rem;
+    color: #f8f9fc;
+}
+
+.search-fields-info .card-body {
+    padding: 1.5rem;
+}
+
+.search-fields-info h6 {
+    color: #4e73df;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    border-bottom: 2px solid #e3e6f0;
+    padding-bottom: 0.25rem;
+}
+
+.search-fields-info h6 i {
+    margin-right: 0.5rem;
+    color: #858796;
+}
+
+.search-fields-list {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 1.5rem;
+}
+
+.search-fields-list li {
+    padding: 0.25rem 0;
+    color: #5a5c69;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.search-fields-list li strong {
+    color: #3a3b45;
+    font-weight: 600;
+}
+
+.search-tips {
+    background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border-left: 4px solid #36b9cc;
+}
+
+.search-tips h6 {
+    color: #36b9cc;
+    border-bottom: 2px solid #b8daff;
+    margin-bottom: 0.75rem;
+}
+
+.search-tips .search-fields-list li {
+    color: #495057;
+}
+
+.search-fields-info .card:hover {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.25);
+    transition: box-shadow 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .search-fields-info .card-body {
+        padding: 1rem;
+    }
+
+    .search-fields-info h6 {
+        font-size: 0.9rem;
+    }
+
+    .search-fields-list li {
+        font-size: 0.85rem;
+    }
+}
+
+/* Toggle button styling */
+#toggleSearchFields {
+    transition: all 0.2s ease;
+    border-width: 2px;
+}
+
+#toggleSearchFields:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+#toggleSearchFields.btn-info {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+#toggleSearchFields.btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+    color: white;
+}
+
+/* Search fields explanation section */
