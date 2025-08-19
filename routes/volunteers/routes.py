@@ -278,6 +278,7 @@ def volunteers():
         "email_search": request.args.get("email_search", "").strip(),
         "skill_search": request.args.get("skill_search", "").strip(),
         "local_status": request.args.get("local_status", ""),
+        "connector_only": request.args.get("connector_only", type=bool),
         "per_page": per_page,
     }
 
@@ -385,6 +386,11 @@ def volunteers():
 
     if current_filters.get("local_status"):
         query = query.filter(Volunteer.local_status == current_filters["local_status"])
+
+    if current_filters.get("connector_only"):
+        query = query.filter(
+            Volunteer.connector.has(ConnectorData.user_auth_id.isnot(None))
+        )
 
     # Apply sorting based on parameters
     if sort_by:
@@ -1741,7 +1747,9 @@ def import_from_salesforce():
                     "error": str(e),
                 }
                 errors.append(error_detail)
-                print(f"[{i+1:4d}] ERROR: {error_detail['name']} - {str(e)[:100]}")
+                print(
+                    f"[{i+1:4d}] ERROR: {error_detail['name']} (ID: {error_detail['salesforce_id']}) - {str(e)[:100]}"
+                )
                 db.session.rollback()
 
         # Final summary

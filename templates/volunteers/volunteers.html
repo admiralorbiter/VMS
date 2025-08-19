@@ -42,6 +42,11 @@ Last Updated: 2024
     {# Filter panel with comprehensive search options #}
     <div class="filter-panel">
         <form method="GET" class="filter-form">
+            {# Hidden inputs to preserve connector filter state #}
+            {% if current_filters.connector_only %}
+            <input type="hidden" name="connector_only" value="1">
+            {% endif %}
+
             {# First row of filters: Name, Organization/Role, Local Status #}
             <div class="filter-row">
                 <div class="filter-group">
@@ -97,6 +102,18 @@ Last Updated: 2024
                            value="{{ current_filters.skill_search }}"
                            class="form-control"
                            placeholder="Search by skill...">
+                </div>
+
+                <div class="filter-group">
+                    <button type="button" class="btn filter-btn connector-filter-btn"
+                            onclick="toggleConnectorFilter()">
+                        <i class="fa-solid fa-plug"></i>
+                        {% if current_filters.connector_only %}
+                            <span class="filter-text">Show All</span>
+                        {% else %}
+                            <span class="filter-text">Connector Only</span>
+                        {% endif %}
+                    </button>
                 </div>
             </div>
 
@@ -494,5 +511,26 @@ document.addEventListener('keydown', function(e) {
         closeOrganizationsModal();
     }
 });
+
+// Function to toggle connector filter
+function toggleConnectorFilter() {
+    const connectorFilterBtn = document.querySelector('.connector-filter-btn');
+    const currentText = connectorFilterBtn.querySelector('.filter-text').textContent;
+
+    // Get current URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (currentText === 'Connector Only') {
+        // Apply connector filter
+        urlParams.set('connector_only', '1');
+    } else {
+        // Remove connector filter
+        urlParams.delete('connector_only');
+    }
+
+    // Redirect to apply the filter
+    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+    window.location.href = newUrl;
+}
 </script>
 {% endblock %}
