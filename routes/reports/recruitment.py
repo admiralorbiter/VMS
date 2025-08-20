@@ -330,12 +330,14 @@ def load_routes(bp):
             - event_id: int (optional). If missing, show an event selector.
             - limit: int (optional, default 100)
             - min_score: float (optional, default None)
+            - custom_keywords: str (optional, comma-separated custom keywords)
         """
         from sqlalchemy import and_, or_
 
         event_id = request.args.get("event_id", type=int)
         limit = request.args.get("limit", 100, type=int)
         min_score = request.args.get("min_score", type=float)
+        custom_keywords = request.args.get("custom_keywords", "").strip()
 
         # If no event chosen, show simple selector of upcoming/recent events
         if not event_id:
@@ -1186,15 +1188,34 @@ def load_routes(bp):
 
             return dynamic_keywords
 
-        def derive_keywords(e: Event) -> dict[str, dict]:
+        def derive_keywords(e: Event, custom_keywords: str = "") -> dict[str, dict]:
             """
             Enhanced keyword derivation that provides comprehensive matching criteria
             and clear explanations of how each keyword category was derived.
+
+            Args:
+                e: Event object
+                custom_keywords: Optional comma-separated custom keywords from user
 
             Returns a dict with keyword categories and their sources for transparency.
             """
             keywords = {}
             explanations = {}
+
+            # 0. Custom Keywords (HIGHEST PRIORITY - user-specified)
+            if custom_keywords:
+                # Parse and clean custom keywords
+                custom_kw_list = [
+                    kw.strip().lower()
+                    for kw in custom_keywords.split(",")
+                    if kw.strip()
+                ]
+                if custom_kw_list:
+                    keywords["custom"] = custom_kw_list
+                    explanations["custom"] = {
+                        "explanation": f"User-specified custom keywords: '{custom_keywords}'",
+                        "keywords": custom_kw_list,
+                    }
 
             # 1. Title/Description Text Analysis (HIGHEST PRIORITY - content matters most)
             text_keywords = derive_text_keywords(e.title, getattr(e, "description", ""))
@@ -1315,7 +1336,7 @@ def load_routes(bp):
             all_candidates = cached_row.candidates_data or []
             # For cached results, we need to reconstruct keywords for display
             try:
-                kw_data, kw_explanations = derive_keywords(event)
+                kw_data, kw_explanations = derive_keywords(event, custom_keywords)
                 for category, words in kw_data.items():
                     kw.update(words)
             except Exception as e:
@@ -1327,17 +1348,46 @@ def load_routes(bp):
                         else []
                     )
                 }
-                kw_explanations = {
-                    "type": {
-                        "explanation": f'Event type: {event.type.value.replace("_", " ").title()}',
-                        "keywords": kw_data["type"],
+                # Add custom keywords to fallback if present
+                if custom_keywords:
+                    custom_kw_list = [
+                        kw.strip().lower()
+                        for kw in custom_keywords.split(",")
+                        if kw.strip()
+                    ]
+                    if custom_kw_list:
+                        kw_data["custom"] = custom_kw_list
+                        kw_explanations = {
+                            "type": {
+                                "explanation": f'Event type: {event.type.value.replace("_", " ").title()}',
+                                "keywords": kw_data["type"],
+                            },
+                            "custom": {
+                                "explanation": f"User-specified custom keywords: '{custom_keywords}'",
+                                "keywords": custom_kw_list,
+                            },
+                        }
+                        kw = set(kw_data["type"] + custom_kw_list)
+                    else:
+                        kw_explanations = {
+                            "type": {
+                                "explanation": f'Event type: {event.type.value.replace("_", " ").title()}',
+                                "keywords": kw_data["type"],
+                            }
+                        }
+                        kw = set(kw_data["type"])
+                else:
+                    kw_explanations = {
+                        "type": {
+                            "explanation": f'Event type: {event.type.value.replace("_", " ").title()}',
+                            "keywords": kw_data["type"],
+                        }
                     }
-                }
-                kw = set(kw_data["type"])
+                    kw = set(kw_data["type"])
         else:
             # Build keyword set from event title/description and type
             # Get enhanced keywords and explanations
-            kw_data, kw_explanations = derive_keywords(event)
+            kw_data, kw_explanations = derive_keywords(event, custom_keywords)
 
             # Flatten keywords for the existing logic
             kw = set()
@@ -1616,6 +1666,7 @@ def load_routes(bp):
         event_id = request.args.get("event_id", type=int)
         limit = request.args.get("limit", 100, type=int)
         min_score = request.args.get("min_score", type=float)
+        custom_keywords = request.args.get("custom_keywords", "").strip()
 
         event = Event.query.get(event_id) if event_id else None
         if not event:
@@ -1671,7 +1722,16 @@ def load_routes(bp):
         writer.writerows(rows)
         csv_data = output.getvalue()
 
-        filename = f"event_{event.id}_candidates.csv"
+        # Create filename with custom keywords if present
+        if custom_keywords:
+            # Clean custom keywords for filename (remove special chars, limit length)
+            clean_keywords = "".join(
+                c for c in custom_keywords if c.isalnum() or c in " -_"
+            )[:30]
+            filename = f"event_{event.id}_custom_{clean_keywords}_candidates.csv"
+        else:
+            filename = f"event_{event.id}_candidates.csv"
+
         headers = {
             "Content-Type": "text/csv; charset=utf-8",
             "Content-Disposition": f"attachment; filename={filename}",

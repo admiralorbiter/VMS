@@ -9,6 +9,18 @@ The Volunteer Matching System is an intelligent, transparent algorithm that auto
 ### 1. Event Analysis & Keyword Derivation
 The system analyzes events through multiple lenses to generate comprehensive matching criteria:
 
+#### Custom Keywords (Highest Priority - User-Specified)
+Users can add their own comma-separated keywords to fine-tune volunteer matching:
+
+- **Input Format**: Comma-separated keywords (e.g., "python, data science, machine learning")
+- **Priority**: Highest priority - these keywords are processed first and given full weight in matching
+- **Use Cases**:
+  - Add specific technical skills not covered by automatic detection
+  - Include industry-specific terminology
+  - Specify preferred volunteer characteristics
+  - Add local or contextual terms relevant to the event
+- **Example**: For a "Data Science Workshop", users might add "python, pandas, numpy, jupyter" to find volunteers with specific technical expertise
+
 #### Event Type-Based Keywords (Most Reliable)
 Each event type has a curated set of relevant keywords:
 
@@ -129,6 +141,7 @@ The system examines multiple volunteer attributes:
    - Report exclusions
 
 2. **Keyword Pre-filtering**: When keywords exist, reduce candidate pool by matching against:
+   - **Custom Keywords** (user-specified, highest priority)
    - Volunteer title
    - Department
    - Industry
@@ -186,6 +199,7 @@ The system provides complete visibility into the matching process:
 - Shows how each keyword category was derived
 - Explains the source of each keyword set
 - Lists all keywords used for matching
+- **Custom Keywords**: Displayed with special user-edit icon (🔧) and clear explanation of user input
 
 #### Debug Information
 - Displays all flattened keywords used in matching
@@ -227,17 +241,29 @@ GET /reports/recruitment/candidates?event_id=123
 ```
 Analyzes event 123 and shows ranked volunteer candidates.
 
+#### Custom Keyword Matching
+```
+GET /reports/recruitment/candidates?event_id=123&custom_keywords=python,data%20science,machine%20learning
+```
+Analyzes event 123 with custom keywords "python, data science, machine learning" for enhanced matching.
+
 #### Filtered Results
 ```
-GET /reports/recruitment/candidates?event_id=123&min_score=1.5&limit=50
+GET /reports/recruitment/candidates?event_id=123&min_score=1.5&limit=50&custom_keywords=senior,tech
 ```
-Shows only candidates with scores ≥1.5, limited to 50 results.
+Shows only candidates with scores ≥1.5, limited to 50 results, including custom keywords "senior, tech".
 
 #### CSV Export
 ```
 GET /reports/recruitment/candidates.csv?event_id=123
 ```
 Exports candidate list as CSV for external analysis.
+
+#### CSV Export with Custom Keywords
+```
+GET /reports/recruitment/candidates.csv?event_id=123&custom_keywords=python,data
+```
+Exports candidate list as CSV with filename including custom keywords (e.g., "event_123_custom_pythondata_candidates.csv").
 
 ### 7. Configuration & Customization
 
@@ -271,18 +297,41 @@ Exports candidate list as CSV for external analysis.
 - New event types should be added to keyword mappings
 - Tool/technology lists should be kept current
 
-### 9. Troubleshooting
+### 9. Custom Keyword Best Practices
+
+#### Effective Custom Keywords
+- **Be Specific**: Use precise terms like "python" instead of "programming"
+- **Include Variations**: Add synonyms and related terms (e.g., "data analysis, analytics, bi")
+- **Consider Context**: Include industry-specific terminology relevant to the event
+- **Use Commas Properly**: Separate keywords with commas, avoid spaces within multi-word terms
+
+#### Common Use Cases
+- **Technical Skills**: "python, pandas, numpy, jupyter, sql, tableau"
+- **Industry Terms**: "healthcare, medical, clinical, patient care"
+- **Experience Levels**: "senior, executive, director, manager, lead"
+- **Geographic Terms**: "downtown, urban, suburban, rural, local"
+- **Professional Roles**: "consultant, analyst, engineer, designer, educator"
+
+#### Avoiding Common Mistakes
+- **Too Generic**: Avoid terms like "professional" or "experienced" that are too broad
+- **Over-Specific**: Don't use overly niche terms that few volunteers will have
+- **Mixed Categories**: Keep related keywords together (e.g., all technical skills in one set)
+- **Special Characters**: Avoid special characters that might cause parsing issues
+
+### 10. Troubleshooting
 
 #### Common Issues
 1. **Low Match Quality**: Check keyword derivation for event type
 2. **Slow Performance**: Verify caching is working properly
 3. **Missing Volunteers**: Check governance filter settings
 4. **Score Inconsistencies**: Verify keyword matching logic
+5. **Custom Keywords Not Working**: Verify comma separation and check for special characters
 
 #### Debug Tools
 - Debug keyword display shows all keywords used
 - Score breakdowns show individual component calculations
 - Cache status indicates if results are fresh or cached
+- Custom keywords are displayed with special user-edit icon for easy identification
 
 ## Conclusion
 
