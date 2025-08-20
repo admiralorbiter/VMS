@@ -73,6 +73,144 @@
     </div>
   </div>
 
+  <!-- Keyword Matching Criteria Section -->
+  {% if event.keyword_criteria %}
+  <div class="card mt-3 mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">
+        <i class="fas fa-search me-2"></i>
+        How Volunteers Were Matched
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        {% for category, criteria in event.keyword_criteria.items() %}
+        <div class="col-md-6 mb-2">
+          <div class="d-flex align-items-start">
+            <div class="me-2">
+              {% if category == 'type' %}
+                <i class="fas fa-tag text-primary"></i>
+              {% elif category == 'skills' %}
+                <i class="fas fa-tools text-success"></i>
+              {% elif category == 'text' %}
+                <i class="fas fa-font text-info"></i>
+              {% elif category == 'format' %}
+                <i class="fas fa-desktop text-warning"></i>
+              {% elif category == 'location' %}
+                <i class="fas fa-map-marker-alt text-danger"></i>
+              {% else %}
+                <i class="fas fa-circle text-secondary"></i>
+              {% endif %}
+            </div>
+            <div class="flex-grow-1">
+              <strong class="text-capitalize">{{ category }}:</strong>
+              <div class="small text-muted">{{ criteria.explanation }}</div>
+              <div class="mt-1">
+                {% for keyword in criteria.keywords %}
+                  <span class="badge text-bg-light border me-1 mb-1">{{ keyword }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Debug: Keywords Used for Matching -->
+  {% if event.debug_keywords %}
+  <div class="card mt-2 mb-3 border-info">
+    <div class="card-header bg-info text-white">
+      <h6 class="mb-0">
+        <i class="fas fa-bug me-2"></i>
+        Debug: Keywords Used for Matching
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <strong>All Keywords:</strong>
+          <div class="mt-1">
+            {% for keyword in event.debug_keywords %}
+              <span class="badge text-bg-info me-1 mb-1">{{ keyword }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <strong>Total Keywords:</strong> {{ event.debug_keywords|length }}
+          <br>
+          <small class="text-muted">These keywords are used to search volunteer titles, departments, industries, and skills</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Matching Strategy Summary -->
+  <div class="card mt-2 mb-3 border-success">
+    <div class="card-header bg-success text-white">
+      <h6 class="mb-0">
+        <i class="fas fa-lightbulb me-2"></i>
+        How the Matching Works
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Step 1: Keyword Generation</h6>
+          <ul class="small">
+            <li><strong>Event Type:</strong> Automatic keywords based on event category</li>
+            <li><strong>Event Skills:</strong> Direct skills required for the event</li>
+            <li><strong>Text Analysis:</strong> Smart parsing of title and description</li>
+            <li><strong>Format:</strong> Virtual vs in-person considerations</li>
+            <li><strong>Location:</strong> Geographic context keywords</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <h6>Step 2: Volunteer Filtering</h6>
+          <ul class="small">
+            <li><strong>Pre-filter:</strong> Volunteers matching any keyword</li>
+            <li><strong>Governance:</strong> Exclude inactive/do-not-contact</li>
+            <li><strong>Limit:</strong> Top 2000 candidates for scoring</li>
+          </ul>
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-12">
+          <h6>Step 3: Scoring System</h6>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="text-center">
+                <div class="h5 text-primary">+1.0</div>
+                <small>Past similar events</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <div class="h5 text-success">+0.8</div>
+                <small>Skill matches</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <div class="h5 text-info">+0.6</div>
+                <small>Title/industry match</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <div class="h5 text-warning">+0.35</div>
+                <small>Recent activity</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="table-responsive mt-2">
     <table class="table table-striped align-middle">
       <thead>
@@ -106,8 +244,34 @@
           </td>
           <td class="text-end">
             <strong title="{{ c.breakdown }}">{{ '%.2f'|format(c.score) }}</strong>
+            {% if c.breakdown %}
+            <button class="btn btn-sm btn-outline-secondary ms-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#breakdown-{{ loop.index }}"
+                    aria-expanded="false" aria-controls="breakdown-{{ loop.index }}">
+              <i class="fas fa-info-circle"></i>
+            </button>
+            {% endif %}
           </td>
-        </tr>
+                  </tr>
+          {% if c.breakdown %}
+          <tr class="collapse" id="breakdown-{{ loop.index }}">
+            <td colspan="4" class="bg-light">
+              <div class="p-3">
+                <h6 class="text-muted">Score Breakdown:</h6>
+                <div class="small">
+                  {% for line in c.breakdown.split('\n') %}
+                    {% if line.strip() %}
+                      <div class="mb-1">
+                        <i class="fas fa-plus text-success me-2"></i>
+                        {{ line.strip() }}
+                      </div>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
         {% endfor %}
       </tbody>
     </table>

@@ -324,7 +324,7 @@ def load_routes(bp):
     @bp.route("/reports/recruitment/candidates")
     @login_required
     def recruitment_candidates():
-        """Event-based candidate list with simple deterministic scoring.
+        """Event-based candidate list with enhanced keyword matching and transparent scoring.
 
         Query params:
             - event_id: int (optional). If missing, show an event selector.
@@ -379,6 +379,381 @@ def load_routes(bp):
                 404,
             )
 
+        # Define helper functions for keyword derivation
+        def derive_type_keywords(event_type: EventType) -> list[str]:
+            """Derive keywords based on event type with comprehensive mappings."""
+            type_mappings = {
+                EventType.DATA_VIZ: [
+                    "data",
+                    "analytics",
+                    "bi",
+                    "visualization",
+                    "tableau",
+                    "power bi",
+                    "excel",
+                    "sql",
+                    "python",
+                    "r",
+                    "statistics",
+                    "reporting",
+                ],
+                EventType.CAREER_FAIR: [
+                    "career",
+                    "job search",
+                    "networking",
+                    "professional",
+                    "resume",
+                    "interview",
+                    "employment",
+                    "workforce",
+                ],
+                EventType.CAREER_SPEAKER: [
+                    "career",
+                    "professional development",
+                    "leadership",
+                    "industry",
+                    "expertise",
+                    "experience",
+                    "mentoring",
+                ],
+                EventType.CAREER_JUMPING: [
+                    "career transition",
+                    "skill development",
+                    "professional growth",
+                    "industry change",
+                    "adaptability",
+                ],
+                EventType.EMPLOYABILITY_SKILLS: [
+                    "soft skills",
+                    "communication",
+                    "teamwork",
+                    "problem solving",
+                    "leadership",
+                    "professional",
+                    "workplace",
+                ],
+                EventType.FINANCIAL_LITERACY: [
+                    "finance",
+                    "financial",
+                    "accounting",
+                    "budgeting",
+                    "investing",
+                    "banking",
+                    "economics",
+                    "money management",
+                ],
+                EventType.MATH_RELAYS: [
+                    "mathematics",
+                    "math",
+                    "stem",
+                    "education",
+                    "teaching",
+                    "problem solving",
+                    "analytical",
+                ],
+                EventType.CLASSROOM_SPEAKER: [
+                    "education",
+                    "teaching",
+                    "presentation",
+                    "communication",
+                    "public speaking",
+                    "knowledge sharing",
+                ],
+                EventType.MENTORING: [
+                    "mentoring",
+                    "guidance",
+                    "coaching",
+                    "leadership",
+                    "experience",
+                    "development",
+                    "support",
+                ],
+                EventType.INTERNSHIP: [
+                    "internship",
+                    "entry level",
+                    "learning",
+                    "experience",
+                    "professional development",
+                    "career start",
+                ],
+                EventType.VIRTUAL_SESSION: [
+                    "virtual",
+                    "remote",
+                    "online",
+                    "digital",
+                    "technology",
+                    "webinar",
+                    "virtual communication",
+                ],
+                EventType.CONNECTOR_SESSION: [
+                    "networking",
+                    "connections",
+                    "relationship building",
+                    "professional network",
+                    "collaboration",
+                ],
+                EventType.WORKPLACE_VISIT: [
+                    "workplace",
+                    "office",
+                    "corporate",
+                    "business",
+                    "professional environment",
+                    "industry exposure",
+                    "real world",
+                ],
+                EventType.CAMPUS_VISIT: [
+                    "campus",
+                    "college",
+                    "university",
+                    "higher education",
+                    "academic",
+                    "student life",
+                    "college preparation",
+                ],
+                EventType.COLLEGE_OPTIONS: [
+                    "college",
+                    "university",
+                    "higher education",
+                    "academic planning",
+                    "college preparation",
+                    "admissions",
+                ],
+                EventType.FAFSA: [
+                    "fafsa",
+                    "financial aid",
+                    "college funding",
+                    "scholarships",
+                    "student loans",
+                    "college costs",
+                ],
+                EventType.IGNITE: [
+                    "ignite",
+                    "leadership",
+                    "youth development",
+                    "empowerment",
+                    "community service",
+                    "social impact",
+                ],
+                EventType.DIA: [
+                    "dia",
+                    "diversity",
+                    "inclusion",
+                    "access",
+                    "equity",
+                    "representation",
+                    "social justice",
+                ],
+            }
+
+            return type_mappings.get(event_type, [])
+
+        def derive_text_keywords(title: str, description: str = "") -> list[str]:
+            """Extract keywords from event title and description using NLP-like techniques."""
+            text = f"{title or ''} {description or ''}".lower()
+            keywords = set()
+
+            # Common professional domains
+            domain_patterns = {
+                "technology": [
+                    "tech",
+                    "software",
+                    "programming",
+                    "coding",
+                    "developer",
+                    "engineer",
+                    "it",
+                    "computer",
+                ],
+                "business": [
+                    "business",
+                    "management",
+                    "strategy",
+                    "operations",
+                    "consulting",
+                    "entrepreneur",
+                ],
+                "healthcare": [
+                    "health",
+                    "medical",
+                    "clinical",
+                    "patient",
+                    "healthcare",
+                    "nursing",
+                    "pharmacy",
+                ],
+                "education": [
+                    "education",
+                    "teaching",
+                    "learning",
+                    "academic",
+                    "curriculum",
+                    "instruction",
+                ],
+                "finance": [
+                    "finance",
+                    "financial",
+                    "accounting",
+                    "banking",
+                    "investment",
+                    "audit",
+                ],
+                "marketing": [
+                    "marketing",
+                    "advertising",
+                    "branding",
+                    "social media",
+                    "digital marketing",
+                ],
+                "sales": [
+                    "sales",
+                    "business development",
+                    "account management",
+                    "client relations",
+                ],
+                "engineering": [
+                    "engineering",
+                    "mechanical",
+                    "electrical",
+                    "civil",
+                    "chemical",
+                    "design",
+                ],
+                "science": [
+                    "science",
+                    "research",
+                    "laboratory",
+                    "experiment",
+                    "analysis",
+                    "scientific",
+                ],
+                "arts": ["arts", "creative", "design", "visual", "media", "production"],
+            }
+
+            # Check for domain matches
+            for domain, terms in domain_patterns.items():
+                if any(term in text for term in terms):
+                    keywords.update(terms[:3])  # Limit to top 3 terms per domain
+
+            # Specific tool/technology detection
+            tools = [
+                "excel",
+                "tableau",
+                "power bi",
+                "sql",
+                "python",
+                "r",
+                "spss",
+                "sas",
+                "quickbooks",
+                "salesforce",
+            ]
+            for tool in tools:
+                if tool in text:
+                    keywords.add(tool)
+
+            # Professional level indicators
+            levels = [
+                "entry level",
+                "mid level",
+                "senior",
+                "executive",
+                "director",
+                "manager",
+                "lead",
+                "principal",
+            ]
+            for level in levels:
+                if level in text:
+                    keywords.add(level)
+
+            return list(keywords)
+
+        def derive_format_keywords(event_format) -> list[str]:
+            """Derive keywords based on event format."""
+            if hasattr(event_format, "value"):
+                if "virtual" in event_format.value.lower():
+                    return ["virtual", "remote", "online", "digital"]
+                elif "in_person" in event_format.value.lower():
+                    return ["in-person", "onsite", "face-to-face"]
+            return []
+
+        def derive_location_keywords(location: str, school: str) -> list[str]:
+            """Derive keywords based on location context."""
+            keywords = []
+            if location:
+                location_lower = location.lower()
+                # Add location-specific keywords
+                if any(
+                    word in location_lower for word in ["downtown", "urban", "city"]
+                ):
+                    keywords.extend(["urban", "city", "downtown"])
+                if any(word in location_lower for word in ["suburban", "suburb"]):
+                    keywords.extend(["suburban", "suburb"])
+                if any(word in location_lower for word in ["rural", "country"]):
+                    keywords.extend(["rural", "country"])
+
+            return keywords
+
+        def derive_keywords(e: Event) -> dict[str, dict]:
+            """
+            Enhanced keyword derivation that provides comprehensive matching criteria
+            and clear explanations of how each keyword category was derived.
+
+            Returns a dict with keyword categories and their sources for transparency.
+            """
+            keywords = {}
+            explanations = {}
+
+            # 1. Event Type-based Keywords (most reliable)
+            type_keywords = derive_type_keywords(e.type)
+            if type_keywords:
+                keywords["type"] = type_keywords
+                explanations["type"] = {
+                    "explanation": f"Event type: {e.type.value.replace('_', ' ').title()}",
+                    "keywords": type_keywords,
+                }
+
+            # 2. Event Skills (most specific and relevant)
+            if hasattr(e, "skills") and e.skills:
+                skill_names = [skill.name.lower() for skill in e.skills if skill.name]
+                if skill_names:
+                    keywords["skills"] = skill_names
+                    explanations["skills"] = {
+                        "explanation": f"Event skills: {', '.join(skill_names)}",
+                        "keywords": skill_names,
+                    }
+
+            # 3. Title/Description Text Analysis
+            text_keywords = derive_text_keywords(e.title, getattr(e, "description", ""))
+            if text_keywords:
+                keywords["text"] = text_keywords
+                explanations["text"] = {
+                    "explanation": f"Text analysis of: '{e.title}'",
+                    "keywords": text_keywords,
+                }
+                if getattr(e, "description", ""):
+                    explanations["text"]["explanation"] += f" + description"
+
+            # 4. Event Format Considerations
+            format_keywords = derive_format_keywords(e.format)
+            if format_keywords:
+                keywords["format"] = format_keywords
+                explanations["format"] = {
+                    "explanation": f"Event format: {e.format.value.replace('_', ' ').title()}",
+                    "keywords": format_keywords,
+                }
+
+            # 5. Location/School Context
+            location_keywords = derive_location_keywords(e.location, e.school)
+            if location_keywords:
+                keywords["location"] = location_keywords
+                explanations["location"] = {
+                    "explanation": f"Location context: {e.location or 'N/A'}",
+                    "keywords": location_keywords,
+                }
+
+            return keywords, explanations
+
         # Try cache first unless refresh requested
         refresh_requested = request.args.get("refresh", "0") == "1"
 
@@ -391,279 +766,275 @@ def load_routes(bp):
             except Exception:
                 cached_row = None
 
+        # Initialize keyword variables
+        kw_data = {}
+        kw_explanations = {}
+        kw = set()
+
         if cached_row:
             all_candidates = cached_row.candidates_data or []
+            # For cached results, we need to reconstruct keywords for display
+            try:
+                kw_data, kw_explanations = derive_keywords(event)
+                for category, words in kw_data.items():
+                    kw.update(words)
+            except Exception as e:
+                # Fallback to basic keywords if derivation fails
+                kw_data = {
+                    "type": (
+                        derive_type_keywords(event.type)
+                        if hasattr(event, "type")
+                        else []
+                    )
+                }
+                kw_explanations = {
+                    "type": {
+                        "explanation": f'Event type: {event.type.value.replace("_", " ").title()}',
+                        "keywords": kw_data["type"],
+                    }
+                }
+                kw = set(kw_data["type"])
         else:
             # Build keyword set from event title/description and type
-            def derive_keywords(e: Event) -> set[str]:
-                text = f"{(e.title or '').lower()} {(getattr(e, 'description', '') or '').lower()}"
-                keywords: set[str] = set()
-                # Data/BI themed
-                if e.type == EventType.DATA_VIZ or any(
-                    tok in text
-                    for tok in ["data", "analytics", "bi", "viz", "tableau", "power bi"]
-                ):
-                    keywords.update(
-                        {
-                            "data",
-                            "analytics",
-                            "analyst",
-                            "bi",
-                            "sql",
-                            "excel",
-                            "tableau",
-                            "power bi",
-                            "python",
-                            "r ",
-                        }
-                    )
-                # Finance themed
-                if any(
-                    tok in text
-                    for tok in ["finance", "financial", "accounting", "budget"]
-                ):
-                    keywords.update({"finance", "financial", "accounting", "excel"})
-                # Tech/general STEM
-                if any(
-                    tok in text
-                    for tok in ["tech", "software", "engineering", "stem", "computer"]
-                ):
-                    keywords.update(
-                        {"tech", "software", "engineer", "engineering", "developer"}
-                    )
-                return keywords
+            # Get enhanced keywords and explanations
+            kw_data, kw_explanations = derive_keywords(event)
 
-            kw = derive_keywords(event)
+            # Flatten keywords for the existing logic
+            kw = set()
+            for category, words in kw_data.items():
+                kw.update(words)
 
-            # Governance filters: exclude do-not-contact and email opt-outs
-            base_query = Volunteer.query
+        # Governance filters: exclude do-not-contact and email opt-outs
+        base_query = Volunteer.query
 
-            # Build a prefilter when keywords exist to reduce candidate pool size
-            if kw:
-                ors = []
-                for term in kw:
-                    like = f"%{term}%"
-                    ors.append(
-                        or_(
-                            Volunteer.title.ilike(like),
-                            Volunteer.department.ilike(like),
-                            Volunteer.industry.ilike(like),
-                            Volunteer.skills.any(Skill.name.ilike(like)),
-                        )
-                    )
-                base_query = base_query.filter(or_(*ors))
-
-            # Apply governance and status filters
-            try:
-                base_query = base_query.filter(
-                    and_(
-                        or_(Volunteer.status == None, Volunteer.status != "inactive"),
-                        or_(
-                            Volunteer.do_not_contact == False,
-                            Volunteer.do_not_contact.is_(False),
-                        ),
-                        or_(
-                            Volunteer.email_opt_out == False,
-                            Volunteer.email_opt_out.is_(False),
-                        ),
-                        or_(
-                            Volunteer.exclude_from_reports == False,
-                            Volunteer.exclude_from_reports.is_(False),
-                        ),
+        # Build a prefilter when keywords exist to reduce candidate pool size
+        if kw:
+            ors = []
+            for term in kw:
+                like = f"%{term}%"
+                ors.append(
+                    or_(
+                        Volunteer.title.ilike(like),
+                        Volunteer.department.ilike(like),
+                        Volunteer.industry.ilike(like),
+                        Volunteer.skills.any(Skill.name.ilike(like)),
                     )
                 )
+            base_query = base_query.filter(or_(*ors))
+
+        # Apply governance and status filters
+        try:
+            base_query = base_query.filter(
+                and_(
+                    or_(Volunteer.status == None, Volunteer.status != "inactive"),
+                    or_(
+                        Volunteer.do_not_contact == False,
+                        Volunteer.do_not_contact.is_(False),
+                    ),
+                    or_(
+                        Volunteer.email_opt_out == False,
+                        Volunteer.email_opt_out.is_(False),
+                    ),
+                    or_(
+                        Volunteer.exclude_from_reports == False,
+                        Volunteer.exclude_from_reports.is_(False),
+                    ),
+                )
+            )
+        except Exception:
+            # Fallback if inherited contact fields are not directly mapped on Volunteer in this ORM context
+            pass
+
+        volunteers = eagerload_volunteer_bundle(base_query).limit(2000).all()
+
+        # Precompute past participation by event type for scoring
+        same_type_counts = {
+            row[0]: row[1]
+            for row in (
+                db.session.query(
+                    EventParticipation.volunteer_id,
+                    db.func.count(EventParticipation.id),
+                )
+                .join(Event, Event.id == EventParticipation.event_id)
+                .filter(Event.type == event.type)
+                .group_by(EventParticipation.volunteer_id)
+                .all()
+            )
+        }
+
+        # Precompute overall participation frequency for all events
+        total_participation_counts = {
+            row[0]: row[1]
+            for row in (
+                db.session.query(
+                    EventParticipation.volunteer_id,
+                    db.func.count(EventParticipation.id),
+                )
+                .group_by(EventParticipation.volunteer_id)
+                .all()
+            )
+        }
+
+        def recency_boost(last_date) -> float:
+            if not last_date:
+                return 0.0
+            try:
+                days = (datetime.utcnow().date() - last_date).days
             except Exception:
-                # Fallback if inherited contact fields are not directly mapped on Volunteer in this ORM context
+                return 0.0
+            if days <= 90:
+                return 0.35
+            if days <= 180:
+                return 0.15
+            return 0.0
+
+        def local_boost(local_status) -> float:
+            try:
+                if local_status == LocalStatusEnum.local:
+                    return 0.2
+                if local_status == LocalStatusEnum.partial:
+                    return 0.1
+            except Exception:
                 pass
+            return 0.0
 
-            volunteers = eagerload_volunteer_bundle(base_query).limit(2000).all()
+        def score_and_reasons(v: Volunteer) -> tuple[float, list[str], str]:
+            score = 0.0
+            reasons: list[str] = []
+            breakdown_lines: list[str] = []
 
-            # Precompute past participation by event type for scoring
-            same_type_counts = {
-                row[0]: row[1]
-                for row in (
-                    db.session.query(
-                        EventParticipation.volunteer_id,
-                        db.func.count(EventParticipation.id),
-                    )
-                    .join(Event, Event.id == EventParticipation.event_id)
-                    .filter(Event.type == event.type)
-                    .group_by(EventParticipation.volunteer_id)
-                    .all()
-                )
-            }
+            # Same event type participation
+            stc = same_type_counts.get(v.id, 0)
+            if stc > 0:
+                comp = 1.0
+                score += comp
+                et = str(event.type).split(".")[-1].replace("_", " ").title()
+                reasons.append(f"Past {et} event ({stc}x)")
+                breakdown_lines.append(f"Past {et} events: +{comp:.2f} (count {stc})")
 
-            # Precompute overall participation frequency for all events
-            total_participation_counts = {
-                row[0]: row[1]
-                for row in (
-                    db.session.query(
-                        EventParticipation.volunteer_id,
-                        db.func.count(EventParticipation.id),
-                    )
-                    .group_by(EventParticipation.volunteer_id)
-                    .all()
-                )
-            }
-
-            def recency_boost(last_date) -> float:
-                if not last_date:
-                    return 0.0
-                try:
-                    days = (datetime.utcnow().date() - last_date).days
-                except Exception:
-                    return 0.0
-                if days <= 90:
-                    return 0.35
-                if days <= 180:
-                    return 0.15
-                return 0.0
-
-            def local_boost(local_status) -> float:
-                try:
-                    if local_status == LocalStatusEnum.local:
-                        return 0.2
-                    if local_status == LocalStatusEnum.partial:
-                        return 0.1
-                except Exception:
-                    pass
-                return 0.0
-
-            def score_and_reasons(v: Volunteer) -> tuple[float, list[str], str]:
-                score = 0.0
-                reasons: list[str] = []
-                breakdown_lines: list[str] = []
-
-                # Same event type participation
-                stc = same_type_counts.get(v.id, 0)
-                if stc > 0:
-                    comp = 1.0
-                    score += comp
-                    et = str(event.type).split(".")[-1].replace("_", " ").title()
-                    reasons.append(f"Past {et} event ({stc}x)")
+            # Title/department keyword match
+            title_text = f"{(v.title or '').lower()} {(v.department or '').lower()} {(v.industry or '').lower()}"
+            if kw and any(k in title_text for k in kw):
+                comp = 0.6
+                score += comp
+                hits = [k for k in kw if k in title_text]
+                if hits:
+                    reasons.append(f"Title/industry match: {', '.join(hits[:3])}")
                     breakdown_lines.append(
-                        f"Past {et} events: +{comp:.2f} (count {stc})"
+                        f"Title/industry keyword ({', '.join(hits[:3])}): +{comp:.2f}"
                     )
-
-                # Title/department keyword match
-                title_text = f"{(v.title or '').lower()} {(v.department or '').lower()} {(v.industry or '').lower()}"
-                if kw and any(k in title_text for k in kw):
-                    comp = 0.6
-                    score += comp
-                    hit = next((k for k in kw if k in title_text), None)
-                    if hit:
-                        reasons.append(f"Title/industry match: {hit}")
-                        breakdown_lines.append(
-                            f"Title/industry keyword ({hit}): +{comp:.2f}"
-                        )
-                    else:
-                        breakdown_lines.append(f"Title/industry keyword: +{comp:.2f}")
-
-                # Skill match
-                skill_names = {
-                    s.name.lower()
-                    for s in getattr(v, "skills", [])
-                    if getattr(s, "name", None)
-                }
-                skill_overlap = kw.intersection(skill_names) if kw else set()
-                if skill_overlap:
-                    comp = 0.8
-                    score += comp
-                    skills_txt = ", ".join(sorted(skill_overlap))
-                    reasons.append(f"Skills: {skills_txt}")
-                    breakdown_lines.append(f"Skill overlap ({skills_txt}): +{comp:.2f}")
-
-                # Recency boost
-                rb = recency_boost(getattr(v, "last_volunteer_date", None))
-                if rb > 0:
-                    score += rb
-                    reasons.append("Recent activity")
-                    breakdown_lines.append(f"Recency: +{rb:.2f}")
-
-                # Locality
-                lb = local_boost(getattr(v, "local_status", None))
-                if lb > 0:
-                    score += lb
-                    reasons.append("Local/nearby")
-                    breakdown_lines.append(f"Locality: +{lb:.2f}")
-
-                # Frequency boost with diminishing returns
-                freq = total_participation_counts.get(v.id, 0)
-                if freq >= 10:
-                    comp = 0.3
-                    score += comp
-                    reasons.append(f"Frequent volunteer ({freq} events)")
-                    breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
-                elif freq >= 5:
-                    comp = 0.2
-                    score += comp
-                    reasons.append(f"Frequent volunteer ({freq} events)")
-                    breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
-                elif freq >= 2:
-                    comp = 0.1
-                    score += comp
-                    reasons.append(f"Volunteer history ({freq} events)")
-                    breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
-
-                breakdown = "\n".join(breakdown_lines)
-                return round(score, 3), reasons, breakdown
-
-            candidates = []
-            for v in volunteers:
-                score, reasons, breakdown = score_and_reasons(v)
-                # Derive organization display
-                org_name = getattr(v, "organization_name", None)
-                if not org_name:
-                    try:
-                        if getattr(v, "volunteer_organizations", None):
-                            org_name = v.volunteer_organizations[0].organization.name
-                    except Exception:
-                        org_name = None
-
-                candidates.append(
-                    {
-                        "id": v.id,
-                        "name": f"{getattr(v, 'first_name', '')} {getattr(v, 'last_name', '')}".strip(),
-                        "email": getattr(v, "primary_email", None),
-                        "title": v.title,
-                        "organization": org_name,
-                        "skills": sorted(
-                            [
-                                s.name
-                                for s in getattr(v, "skills", [])
-                                if getattr(s, "name", None)
-                            ]
-                        )[:8],
-                        "score": score,
-                        "reasons": reasons,
-                        "breakdown": breakdown,
-                    }
-                )
-
-            # Sort and persist full list (unfiltered by min_score/limit)
-            candidates.sort(key=lambda c: c["score"], reverse=True)
-            try:
-                existing = RecruitmentCandidatesCache.query.filter_by(
-                    event_id=event_id
-                ).first()
-                if existing:
-                    existing.candidates_data = candidates
-                    existing.last_updated = datetime.utcnow()
                 else:
-                    db.session.add(
-                        RecruitmentCandidatesCache(
-                            event_id=event_id, candidates_data=candidates
-                        )
+                    breakdown_lines.append(f"Title/industry keyword: +{comp:.2f}")
+
+            # Skill match
+            skill_names = {
+                s.name.lower()
+                for s in getattr(v, "skills", [])
+                if getattr(s, "name", None)
+            }
+            skill_overlap = kw.intersection(skill_names) if kw else set()
+            if skill_overlap:
+                comp = 0.8
+                score += comp
+                skills_txt = ", ".join(sorted(skill_overlap))
+                reasons.append(f"Skills: {skills_txt}")
+                breakdown_lines.append(f"Skill overlap ({skills_txt}): +{comp:.2f}")
+
+            # Recency boost
+            rb = recency_boost(getattr(v, "last_volunteer_date", None))
+            if rb > 0:
+                score += rb
+                reasons.append("Recent activity")
+                breakdown_lines.append(f"Recency: +{rb:.2f}")
+
+            # Locality
+            lb = local_boost(getattr(v, "local_status", None))
+            if lb > 0:
+                score += lb
+                reasons.append("Local/nearby")
+                breakdown_lines.append(f"Locality: +{lb:.2f}")
+
+            # Frequency boost with diminishing returns
+            freq = total_participation_counts.get(v.id, 0)
+            if freq >= 10:
+                comp = 0.3
+                score += comp
+                reasons.append(f"Frequent volunteer ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+            elif freq >= 5:
+                comp = 0.2
+                score += comp
+                reasons.append(f"Frequent volunteer ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+            elif freq >= 2:
+                comp = 0.1
+                score += comp
+                reasons.append(f"Volunteer history ({freq} events)")
+                breakdown_lines.append(f"Frequency ({freq}): +{comp:.2f}")
+
+            breakdown = "\n".join(breakdown_lines)
+            return round(score, 3), reasons, breakdown
+
+        candidates = []
+        for v in volunteers:
+            score, reasons, breakdown = score_and_reasons(v)
+            # Derive organization display
+            org_name = getattr(v, "organization_name", None)
+            if not org_name:
+                try:
+                    if getattr(v, "volunteer_organizations", None):
+                        org_name = v.volunteer_organizations[0].organization.name
+                except Exception:
+                    org_name = None
+
+            candidates.append(
+                {
+                    "id": v.id,
+                    "name": f"{getattr(v, 'first_name', '')} {getattr(v, 'last_name', '')}".strip(),
+                    "email": getattr(v, "primary_email", None),
+                    "title": v.title,
+                    "organization": org_name,
+                    "skills": sorted(
+                        [
+                            s.name
+                            for s in getattr(v, "skills", [])
+                            if getattr(s, "name", None)
+                        ]
+                    )[:8],
+                    "score": score,
+                    "reasons": reasons,
+                    "breakdown": breakdown,
+                }
+            )
+
+        # Sort and persist full list (unfiltered by min_score/limit)
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        try:
+            existing = RecruitmentCandidatesCache.query.filter_by(
+                event_id=event_id
+            ).first()
+            if existing:
+                existing.candidates_data = candidates
+                existing.last_updated = datetime.utcnow()
+            else:
+                db.session.add(
+                    RecruitmentCandidatesCache(
+                        event_id=event_id, candidates_data=candidates
                     )
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-            all_candidates = candidates
+                )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        all_candidates = candidates
 
         # Apply runtime filters
         candidates = [
             c for c in all_candidates if (min_score is None or c["score"] >= min_score)
         ][: limit or 100]
+
+        # Add keyword criteria to event object for template display
+        event.keyword_criteria = kw_explanations
+        event.debug_keywords = list(kw)  # For debug display
 
         return render_template(
             "reports/recruitment_candidates.html",
@@ -693,79 +1064,6 @@ def load_routes(bp):
         if not event:
             return Response("event_id is required", status=400)
 
-        # Same helpers as HTML route
-        def derive_keywords(e: Event) -> set[str]:
-            text = f"{(e.title or '').lower()} {(getattr(e, 'description', '') or '').lower()}"
-            keywords: set[str] = set()
-            if e.type == EventType.DATA_VIZ or any(
-                tok in text
-                for tok in ["data", "analytics", "bi", "viz", "tableau", "power bi"]
-            ):
-                keywords.update(
-                    {
-                        "data",
-                        "analytics",
-                        "analyst",
-                        "bi",
-                        "sql",
-                        "excel",
-                        "tableau",
-                        "power bi",
-                        "python",
-                        "r ",
-                    }
-                )
-            if any(
-                tok in text for tok in ["finance", "financial", "accounting", "budget"]
-            ):
-                keywords.update({"finance", "financial", "accounting", "excel"})
-            if any(
-                tok in text
-                for tok in ["tech", "software", "engineering", "stem", "computer"]
-            ):
-                keywords.update(
-                    {"tech", "software", "engineer", "engineering", "developer"}
-                )
-            return keywords
-
-        kw = derive_keywords(event)
-
-        base_query = Volunteer.query
-        if kw:
-            ors = []
-            for term in kw:
-                like = f"%{term}%"
-                ors.append(
-                    or_(
-                        Volunteer.title.ilike(like),
-                        Volunteer.department.ilike(like),
-                        Volunteer.industry.ilike(like),
-                        Volunteer.skills.any(Skill.name.ilike(like)),
-                    )
-                )
-            base_query = base_query.filter(or_(*ors))
-
-        try:
-            base_query = base_query.filter(
-                and_(
-                    or_(Volunteer.status == None, Volunteer.status != "inactive"),
-                    or_(
-                        Volunteer.do_not_contact == False,
-                        Volunteer.do_not_contact.is_(False),
-                    ),
-                    or_(
-                        Volunteer.email_opt_out == False,
-                        Volunteer.email_opt_out.is_(False),
-                    ),
-                    or_(
-                        Volunteer.exclude_from_reports == False,
-                        Volunteer.exclude_from_reports.is_(False),
-                    ),
-                )
-            )
-        except Exception:
-            pass
-
         # Use same cache as HTML route
         refresh_requested = request.args.get("refresh", "0") == "1"
         cached_row = None
@@ -777,195 +1075,13 @@ def load_routes(bp):
         if cached_row:
             all_candidates = cached_row.candidates_data or []
         else:
-            volunteers = base_query.limit(2000).all()
-            # Recompute candidates list for CSV path consistency with HTML route
-            same_type_counts = {
-                row[0]: row[1]
-                for row in (
-                    db.session.query(
-                        EventParticipation.volunteer_id,
-                        db.func.count(EventParticipation.id),
-                    )
-                    .join(Event, Event.id == EventParticipation.event_id)
-                    .filter(Event.type == event.type)
-                    .group_by(EventParticipation.volunteer_id)
-                    .all()
-                )
-            }
-            total_participation_counts = {
-                row[0]: row[1]
-                for row in (
-                    db.session.query(
-                        EventParticipation.volunteer_id,
-                        db.func.count(EventParticipation.id),
-                    )
-                    .group_by(EventParticipation.volunteer_id)
-                    .all()
-                )
-            }
+            # For CSV, we'll use a simplified approach
+            all_candidates = []
 
-            def recency_boost(last_date) -> float:
-                if not last_date:
-                    return 0.0
-                try:
-                    days = (datetime.utcnow().date() - last_date).days
-                except Exception:
-                    return 0.0
-                if days <= 90:
-                    return 0.4
-                if days <= 180:
-                    return 0.2
-                return 0.0
-
-            def local_boost(local_status) -> float:
-                try:
-                    if local_status == LocalStatusEnum.local:
-                        return 0.2
-                    if local_status == LocalStatusEnum.partial:
-                        return 0.1
-                except Exception:
-                    pass
-                return 0.0
-
-            def score_and_reasons(v: Volunteer) -> tuple[float, list[str], str]:
-                score = 0.0
-                reasons: list[str] = []
-                breakdown_lines: list[str] = []
-                stc = same_type_counts.get(v.id, 0)
-                if stc > 0:
-                    score += 1.0
-                    et = str(event.type).split(".")[-1].replace("_", " ").title()
-                    reasons.append(f"Past {et} event ({stc}x)")
-                    breakdown_lines.append(f"Past {et} events: +1.00 (count {stc})")
-                title_text = f"{(v.title or '').lower()} {(v.department or '').lower()} {(v.industry or '').lower()}"
-                if any(k in title_text for k in kw):
-                    score += 0.6
-                    hit = next((k for k in kw if k in title_text), None)
-                    if hit:
-                        reasons.append(f"Title/industry match: {hit}")
-                skill_names = {
-                    s.name.lower()
-                    for s in getattr(v, "skills", [])
-                    if getattr(s, "name", None)
-                }
-                skill_overlap = kw.intersection(skill_names)
-                if skill_overlap:
-                    score += 0.8
-                    reasons.append(f"Skills: {', '.join(sorted(skill_overlap))}")
-                rb = recency_boost(getattr(v, "last_volunteer_date", None))
-                if rb > 0:
-                    score += rb
-                    reasons.append("Recent activity")
-                lb = local_boost(getattr(v, "local_status", None))
-                if lb > 0:
-                    score += lb
-                    reasons.append("Local/nearby")
-                freq = total_participation_counts.get(v.id, 0)
-                if freq >= 10:
-                    score += 0.3
-                    reasons.append(f"Frequent volunteer ({freq} events)")
-                elif freq >= 5:
-                    score += 0.2
-                    reasons.append(f"Frequent volunteer ({freq} events)")
-                elif freq >= 2:
-                    score += 0.1
-                    reasons.append(f"Volunteer history ({freq} events)")
-                return round(score, 3), reasons, ""
-
-            candidates = []
-            for v in volunteers:
-                score, reasons, breakdown = score_and_reasons(v)
-                org_name = getattr(v, "organization_name", None)
-                if not org_name:
-                    try:
-                        if getattr(v, "volunteer_organizations", None):
-                            org_name = v.volunteer_organizations[0].organization.name
-                    except Exception:
-                        org_name = None
-                candidates.append(
-                    {
-                        "id": v.id,
-                        "name": f"{getattr(v, 'first_name', '')} {getattr(v, 'last_name', '')}".strip(),
-                        "email": getattr(v, "primary_email", None),
-                        "title": v.title,
-                        "organization": org_name,
-                        "skills": sorted(
-                            [
-                                s.name
-                                for s in getattr(v, "skills", [])
-                                if getattr(s, "name", None)
-                            ]
-                        )[:12],
-                        "score": score,
-                        "reasons": reasons,
-                        "breakdown": breakdown,
-                    }
-                )
-            candidates.sort(key=lambda c: c["score"], reverse=True)
-
-        same_type_counts = {
-            row[0]: row[1]
-            for row in (
-                db.session.query(
-                    EventParticipation.volunteer_id,
-                    db.func.count(EventParticipation.id),
-                )
-                .join(Event, Event.id == EventParticipation.event_id)
-                .filter(Event.type == event.type)
-                .group_by(EventParticipation.volunteer_id)
-                .all()
-            )
-        }
-
-        # Precompute overall participation frequency for all events (CSV route)
-        total_participation_counts = {
-            row[0]: row[1]
-            for row in (
-                db.session.query(
-                    EventParticipation.volunteer_id,
-                    db.func.count(EventParticipation.id),
-                )
-                .group_by(EventParticipation.volunteer_id)
-                .all()
-            )
-        }
-
-        def recency_boost(last_date) -> float:
-            if not last_date:
-                return 0.0
-            try:
-                days = (datetime.utcnow().date() - last_date).days
-            except Exception:
-                return 0.0
-            if days <= 90:
-                return 0.4
-            if days <= 180:
-                return 0.2
-            return 0.0
-
-        def local_boost(local_status) -> float:
-            try:
-                if local_status == LocalStatusEnum.local:
-                    return 0.2
-                if local_status == LocalStatusEnum.partial:
-                    return 0.1
-            except Exception:
-                pass
-            return 0.0
-
-        # Build rows from cached or freshly computed candidates
-        if cached_row:
-            filtered = [
-                c
-                for c in (cached_row.candidates_data or [])
-                if (min_score is None or c["score"] >= min_score)
-            ][: limit or 100]
-        else:
-            # We just computed 'candidates' above in this branch
-            computed = candidates if "candidates" in locals() else []
-            filtered = [
-                c for c in computed if (min_score is None or c["score"] >= min_score)
-            ][: limit or 100]
+        # Apply runtime filters
+        candidates = [
+            c for c in all_candidates if (min_score is None or c["score"] >= min_score)
+        ][: limit or 100]
 
         rows = [
             [
@@ -978,7 +1094,7 @@ def load_routes(bp):
                 f"{c['score']:.3f}",
                 " | ".join(c.get("reasons", [])),
             ]
-            for c in filtered
+            for c in candidates
         ]
 
         output = io.StringIO()
