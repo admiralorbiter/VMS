@@ -98,6 +98,14 @@
                 <i class="fas fa-desktop text-warning"></i>
               {% elif category == 'location' %}
                 <i class="fas fa-map-marker-alt text-danger"></i>
+              {% elif category == 'fallback_text' %}
+                <i class="fas fa-lightbulb text-warning"></i>
+              {% elif category == 'contextual' %}
+                <i class="fas fa-brain text-info"></i>
+              {% elif category == 'universal' %}
+                <i class="fas fa-users text-secondary"></i>
+              {% elif category.startswith('smart_') %}
+                <i class="fas fa-brain text-purple"></i>
               {% else %}
                 <i class="fas fa-circle text-secondary"></i>
               {% endif %}

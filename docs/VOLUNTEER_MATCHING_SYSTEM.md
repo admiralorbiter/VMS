@@ -44,7 +44,7 @@ The system analyzes event titles and descriptions to identify:
 - Sales: sales, business development, account management, client relations
 - Engineering: engineering, mechanical, electrical, civil, chemical, design
 - Science: science, research, laboratory, experiment, analysis, scientific
-- Arts: arts, creative, design, visual, media, production
+- Arts: arts, creative, design, visual, media, production, paint, painting, artistic, creativity, craft, drawing, sculpture, photography, music, dance, theater, performance, expression, imagination
 
 **Specific Tools & Technologies:**
 - excel, tableau, power bi, sql, python, r, spss, sas, quickbooks, salesforce
@@ -58,6 +58,50 @@ Based on how the event is conducted:
 - **In-Person**: in-person, onsite, face-to-face
 
 **Note**: For VIRTUAL_SESSION events, format keywords are intentionally excluded to focus matching on content relevance rather than delivery method.
+
+#### Hybrid Fallback System
+Ensures every event has meaningful matching criteria, even when primary keyword sources fail:
+
+**Fallback Text Analysis:**
+- Extracts meaningful words from event titles
+- Removes common stop words (the, a, an, and, or, etc.)
+- Focuses on content-relevant terms
+- Example: "Paint Outside the Lines" → ["paint", "outside", "lines"]
+
+**Contextual Keywords:**
+- Generates relevant keywords based on event type and title patterns
+- VIRTUAL_SESSION: presentation, interactive, engagement
+- CLASSROOM_SPEAKER: education, learning, presentation
+- CAREER_FAIR: professional, networking, opportunity
+- Title patterns: artistic events → ["artistic", "creativity", "expression"]
+
+**Universal Fallback:**
+- Ensures every event has at least basic matching criteria
+- Provides general volunteer matching when all else fails
+- Keywords: ["volunteer", "event", "participation"]
+
+#### Phase 2: Smart Enhancement System
+Advanced pattern recognition and semantic analysis for intelligent keyword generation:
+
+**Pattern Recognition:**
+- **Skill Development**: "How to...", "Learning to..." → tutorial, learning, skill building
+- **Industry Focus**: "Career in...", "Working in..." → career guidance, industry knowledge
+- **Project-Based**: "Building...", "Creating..." → hands-on, project work, creation
+- **Knowledge Discovery**: "Understanding...", "Exploring..." → research, exploration, investigation
+- **Relationship Building**: "Connecting...", "Networking..." → networking, collaboration, partnerships
+- **Preparation**: "Preparing for...", "Getting Ready for..." → planning, preparation, readiness
+
+**Semantic Context Analysis:**
+- **Emotional/Engagement**: inspiring, motivating → motivation, inspiration, empowerment
+- **Problem-Solving**: solving, addressing, challenges → problem solving, critical thinking, analytical
+- **Innovation/Creativity**: innovative, creative, groundbreaking → innovation, creativity, breakthrough
+- **Leadership/Management**: leading, managing, coordinating → leadership, management, supervision
+- **Community/Service**: community, service, volunteering → community service, helping others, social impact
+
+**Dynamic Characteristics:**
+- **Event Complexity**: Title length analysis for detailed vs. focused events
+- **Audience Level**: Beginner, intermediate, expert, or all levels detection
+- **Content Type**: Hands-on, theoretical, networking, or skill-building classification
 
 #### Location Context Keywords
 Geographic and environmental context:
