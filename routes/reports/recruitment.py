@@ -477,13 +477,8 @@ def load_routes(bp):
                     "career start",
                 ],
                 EventType.VIRTUAL_SESSION: [
-                    "virtual",
-                    "remote",
-                    "online",
-                    "digital",
-                    "technology",
-                    "webinar",
-                    "virtual communication",
+                    # No type keywords for virtual sessions - focus on content analysis instead
+                    # Keywords will come from title/description analysis
                 ],
                 EventType.CONNECTOR_SESSION: [
                     "networking",
@@ -588,6 +583,16 @@ def load_routes(bp):
                     "academic",
                     "curriculum",
                     "instruction",
+                    "classroom",
+                    "student",
+                    "elementary",
+                    "primary",
+                    "k-1",
+                    "k-2",
+                    "k-3",
+                    "k-4",
+                    "k-5",
+                    "early childhood",
                 ],
                 "finance": [
                     "finance",
@@ -627,6 +632,20 @@ def load_routes(bp):
                     "scientific",
                 ],
                 "arts": ["arts", "creative", "design", "visual", "media", "production"],
+                "civics": [
+                    "civics",
+                    "citizenship",
+                    "government",
+                    "democracy",
+                    "community",
+                    "social studies",
+                    "responsible",
+                    "citizen",
+                    "civic",
+                    "patriotism",
+                    "rights",
+                    "responsibilities",
+                ],
             }
 
             # Check for domain matches
@@ -704,14 +723,16 @@ def load_routes(bp):
             keywords = {}
             explanations = {}
 
-            # 1. Event Type-based Keywords (most reliable)
-            type_keywords = derive_type_keywords(e.type)
-            if type_keywords:
-                keywords["type"] = type_keywords
-                explanations["type"] = {
-                    "explanation": f"Event type: {e.type.value.replace('_', ' ').title()}",
-                    "keywords": type_keywords,
+            # 1. Title/Description Text Analysis (HIGHEST PRIORITY - content matters most)
+            text_keywords = derive_text_keywords(e.title, getattr(e, "description", ""))
+            if text_keywords:
+                keywords["text"] = text_keywords
+                explanations["text"] = {
+                    "explanation": f"Text analysis of: '{e.title}'",
+                    "keywords": text_keywords,
                 }
+                if getattr(e, "description", ""):
+                    explanations["text"]["explanation"] += f" + description"
 
             # 2. Event Skills (most specific and relevant)
             if hasattr(e, "skills") and e.skills:
@@ -723,25 +744,33 @@ def load_routes(bp):
                         "keywords": skill_names,
                     }
 
-            # 3. Title/Description Text Analysis
-            text_keywords = derive_text_keywords(e.title, getattr(e, "description", ""))
-            if text_keywords:
-                keywords["text"] = text_keywords
-                explanations["text"] = {
-                    "explanation": f"Text analysis of: '{e.title}'",
-                    "keywords": text_keywords,
-                }
-                if getattr(e, "description", ""):
-                    explanations["text"]["explanation"] += f" + description"
+            # 3. Event Type-based Keywords (contextual, not format-focused)
+            type_keywords = derive_type_keywords(e.type)
+            if type_keywords:
+                # For VIRTUAL_SESSION, skip type keywords entirely - focus on content
+                if e.type == EventType.VIRTUAL_SESSION:
+                    # No type keywords for virtual sessions - let content analysis drive matching
+                    pass
+                else:
+                    keywords["type"] = type_keywords
+                    explanations["type"] = {
+                        "explanation": f"Event type: {e.type.value.replace('_', ' ').title()}",
+                        "keywords": type_keywords,
+                    }
 
-            # 4. Event Format Considerations
+            # 4. Event Format Considerations (minimal weight for virtual sessions)
             format_keywords = derive_format_keywords(e.format)
             if format_keywords:
-                keywords["format"] = format_keywords
-                explanations["format"] = {
-                    "explanation": f"Event format: {e.format.value.replace('_', ' ').title()}",
-                    "keywords": format_keywords,
-                }
+                # For virtual sessions, skip format keywords entirely
+                if e.type == EventType.VIRTUAL_SESSION:
+                    # No format keywords for virtual sessions - focus on content
+                    pass
+                else:
+                    keywords["format"] = format_keywords
+                    explanations["format"] = {
+                        "explanation": f"Event format: {e.format.value.replace('_', ' ').title()}",
+                        "keywords": format_keywords,
+                    }
 
             # 5. Location/School Context
             location_keywords = derive_location_keywords(e.location, e.school)
@@ -940,6 +969,13 @@ def load_routes(bp):
                 reasons.append(f"Skills: {skills_txt}")
                 breakdown_lines.append(f"Skill overlap ({skills_txt}): +{comp:.2f}")
 
+            # Connector profile boost (for all events - connector profiles indicate established volunteers)
+            if hasattr(v, "connector") and v.connector and v.connector.user_auth_id:
+                comp = 0.4
+                score += comp
+                reasons.append("Has connector profile")
+                breakdown_lines.append(f"Connector profile: +{comp:.2f}")
+
             # Recency boost
             rb = recency_boost(getattr(v, "last_volunteer_date", None))
             if rb > 0:
@@ -1004,6 +1040,16 @@ def load_routes(bp):
                     "score": score,
                     "reasons": reasons,
                     "breakdown": breakdown,
+                    # Add connector profile information
+                    "connector_profile_url": (
+                        getattr(v.connector, "connector_profile_url", None)
+                        if hasattr(v, "connector") and v.connector
+                        else None
+                    ),
+                    "has_connector_profile": bool(
+                        getattr(v, "connector", None)
+                        and getattr(v.connector, "user_auth_id", None)
+                    ),
                 }
             )
 
