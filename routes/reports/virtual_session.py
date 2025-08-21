@@ -670,16 +670,10 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
             "Grandview School District",
             "Kansas City Kansas Public Schools",
         }
-        # Show main districts first, then other districts with data
-        main_district_summaries = {
+        # Only show main districts when show_all_districts=False
+        district_summaries = {
             k: v for k, v in district_summaries.items() if k in main_districts
         }
-        other_district_summaries = {
-            k: v for k, v in district_summaries.items() if k not in main_districts
-        }
-
-        # Combine main districts first, then others
-        district_summaries = {**main_district_summaries, **other_district_summaries}
 
     # Calculate overall student count as unique teachers × 25
     unique_teacher_count = len(overall_stats["teacher_count"])

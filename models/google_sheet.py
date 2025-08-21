@@ -7,7 +7,7 @@ in the VMS system. It provides simple storage for Google Sheet IDs with academic
 year and purpose-based organization.
 
 Key Features:
-- Simple storage of Google Sheet IDs (plain text)
+- Simple storage of Google Sheet IDs (plain text, no encryption)
 - Academic year and purpose-based organization
 - User tracking for sheet creation
 - Automatic timestamp tracking
@@ -54,7 +54,7 @@ Usage Examples:
         created_by=user.id
     )
 
-    # Get sheet ID
+    # Get sheet ID (plain text)
     sheet_id = sheet.decrypted_sheet_id
 
     # Update sheet ID
@@ -125,7 +125,7 @@ class GoogleSheet(db.Model):
     )  # e.g., "district_reports", "virtual_sessions"
     sheet_id = Column(
         Text, nullable=True
-    )  # Encrypted Google Sheet ID (nullable for test compatibility)
+    )  # Google Sheet ID (nullable for test compatibility)
     sheet_name = Column(String(255), nullable=True)  # Display name for the sheet
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -168,6 +168,9 @@ class GoogleSheet(db.Model):
     def decrypted_sheet_id(self):
         """
         Get the Google Sheet ID (plain text).
+
+        Note: This property name is kept for backward compatibility.
+        The sheet ID is now stored as plain text, not encrypted.
 
         Returns:
             str: Google Sheet ID, or None if not set

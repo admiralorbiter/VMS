@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from cryptography.fernet import Fernet
 
 from models import db
 from models.google_sheet import GoogleSheet
@@ -26,16 +25,7 @@ def test_user(app):
         db.session.commit()
 
 
-@pytest.fixture
-def encryption_key(app):
-    """Provide a test encryption key"""
-    key = Fernet.generate_key()
-    with app.app_context():
-        app.config['ENCRYPTION_KEY'] = key.decode()
-        yield key
-
-
-def test_create_google_sheet(app, test_user, encryption_key):
+def test_create_google_sheet(app, test_user):
     with app.app_context():
         sheet_id = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
         sheet = GoogleSheet(
@@ -46,8 +36,8 @@ def test_create_google_sheet(app, test_user, encryption_key):
 
         assert sheet.id is not None
         assert sheet.academic_year == "2023-2024"
-        assert sheet.sheet_id != sheet_id  # Should be encrypted
-        assert sheet.decrypted_sheet_id == sheet_id  # Should decrypt correctly
+        assert sheet.sheet_id == sheet_id  # Should be stored as plain text
+        assert sheet.decrypted_sheet_id == sheet_id  # Should return the same value
         assert sheet.created_by == test_user.id
         assert sheet.creator.username == "sheetuser"
         assert sheet.created_at is not None
@@ -58,18 +48,15 @@ def test_create_google_sheet(app, test_user, encryption_key):
         db.session.commit()
 
 
-def test_encryption_decryption(app, encryption_key):
+def test_sheet_id_storage_and_retrieval(app):
     with app.app_context():
         original_sheet_id = "test_sheet_id_12345"
         sheet = GoogleSheet(academic_year="2024-2025", sheet_id=original_sheet_id)
         db.session.add(sheet)
         db.session.commit()
 
-        # Test that sheet_id is encrypted
-        assert sheet.sheet_id != original_sheet_id
-        assert len(sheet.sheet_id) > len(original_sheet_id)
-
-        # Test decryption
+        # Test that sheet_id is stored as plain text
+        assert sheet.sheet_id == original_sheet_id
         assert sheet.decrypted_sheet_id == original_sheet_id
 
         # Test update_sheet_id method
@@ -77,12 +64,13 @@ def test_encryption_decryption(app, encryption_key):
         sheet.update_sheet_id(new_sheet_id)
         db.session.commit()
         assert sheet.decrypted_sheet_id == new_sheet_id
+        assert sheet.sheet_id == new_sheet_id
 
         db.session.delete(sheet)
         db.session.commit()
 
 
-def test_multiple_district_reports_allowed(app, encryption_key):
+def test_multiple_district_reports_allowed(app):
     """Test that multiple district_reports sheets can be created for the same academic year"""
     with app.app_context():
         # Test that multiple district_reports sheets can be created for same academic year
@@ -119,7 +107,7 @@ def test_multiple_district_reports_allowed(app, encryption_key):
         db.session.commit()
 
 
-def test_virtual_sessions_basic_functionality(app, encryption_key):
+def test_virtual_sessions_basic_functionality(app):
     """Test basic virtual sessions sheet functionality (constraint testing requires production DB)"""
     with app.app_context():
         # Test that virtual_sessions sheets can be created
@@ -138,7 +126,7 @@ def test_virtual_sessions_basic_functionality(app, encryption_key):
         db.session.commit()
 
 
-def test_user_relationship(app, test_user, encryption_key):
+def test_user_relationship(app, test_user):
     with app.app_context():
         sheet = GoogleSheet(
             academic_year="2023-2024", sheet_id="test_sheet", created_by=test_user.id
@@ -154,7 +142,7 @@ def test_user_relationship(app, test_user, encryption_key):
         db.session.commit()
 
 
-def test_to_dict_method(app, test_user, encryption_key):
+def test_to_dict_method(app, test_user):
     with app.app_context():
         sheet = GoogleSheet(
             academic_year="2023-2024",
@@ -167,7 +155,7 @@ def test_to_dict_method(app, test_user, encryption_key):
         sheet_dict = sheet.to_dict()
         assert sheet_dict["id"] == sheet.id
         assert sheet_dict["academic_year"] == "2023-2024"
-        assert sheet_dict["sheet_id"] == "test_sheet_for_dict"  # Should be decrypted
+        assert sheet_dict["sheet_id"] == "test_sheet_for_dict"  # Should be plain text
         assert sheet_dict["created_by"] == test_user.id
         assert sheet_dict["creator_name"] == "sheetuser"
         assert "created_at" in sheet_dict
@@ -177,37 +165,7 @@ def test_to_dict_method(app, test_user, encryption_key):
         db.session.commit()
 
 
-def test_missing_encryption_key(app):
-    with app.app_context():
-        # Remove encryption key from both Flask config and environment
-        old_config_key = app.config.get("ENCRYPTION_KEY")
-        old_env_key = os.environ.get("ENCRYPTION_KEY")
-        
-        if "ENCRYPTION_KEY" in app.config:
-            del app.config["ENCRYPTION_KEY"]
-        if "ENCRYPTION_KEY" in os.environ:
-            del os.environ["ENCRYPTION_KEY"]
-
-        try:
-            # Should still work (generates new key)
-            sheet = GoogleSheet(academic_year="2023-2024", sheet_id="test_sheet_no_key")
-            db.session.add(sheet)
-            db.session.commit()
-
-            # Should still be able to decrypt
-            assert sheet.decrypted_sheet_id == "test_sheet_no_key"
-
-            db.session.delete(sheet)
-            db.session.commit()
-        finally:
-            # Restore original keys
-            if old_config_key:
-                app.config["ENCRYPTION_KEY"] = old_config_key
-            if old_env_key:
-                os.environ["ENCRYPTION_KEY"] = old_env_key
-
-
-def test_sheet_id_validation(app, encryption_key):
+def test_sheet_id_validation(app):
     with app.app_context():
         # Test with None sheet_id
         sheet = GoogleSheet(academic_year="2023-2024", sheet_id=None)
@@ -220,15 +178,15 @@ def test_sheet_id_validation(app, encryption_key):
         sheet2 = GoogleSheet(academic_year="2024-2025", sheet_id="")
         db.session.add(sheet2)
         db.session.commit()
-        assert sheet2.sheet_id is None
-        assert sheet2.decrypted_sheet_id is None
+        assert sheet2.sheet_id == ""  # Empty string is stored as-is
+        assert sheet2.decrypted_sheet_id == ""  # Empty string is returned as-is
 
         db.session.delete(sheet)
         db.session.delete(sheet2)
         db.session.commit()
 
 
-def test_repr_method(app, encryption_key):
+def test_repr_method(app):
     with app.app_context():
         sheet = GoogleSheet(academic_year="2023-2024", sheet_id="test_sheet")
         db.session.add(sheet)
