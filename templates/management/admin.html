@@ -198,6 +198,27 @@
         margin-left: 8px;
         font-weight: 500;
     }
+
+    /* Dependency Styling */
+    .import-dependency {
+        margin-top: 4px;
+        padding: 4px 8px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        border-left: 3px solid #6c757d;
+    }
+
+    .import-dependency small {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .import-dependency i {
+        margin-right: 4px;
+        color: #007bff;
+    }
+
+
 </style>
 {% endblock %}
 {% block content %}
@@ -268,6 +289,8 @@
             <h5 class="card-title mb-0">Import Data from Salesforce</h5>
             <p class="text-muted mb-3">Select data to import from Salesforce into the system. Imports are organized by frequency.</p>
 
+
+
             {# Daily/Weekly Imports #}
             <div class="import-section mb-4">
                 <h6 class="text-primary mb-3">
@@ -292,6 +315,11 @@
                             <i class="fas fa-users"></i>
                             <span>Import Volunteers</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Organizations
+                            </small>
+                        </div>
                         <div class="import-status" id="importVolunteersStatus"></div>
                         <div class="import-progress" id="importVolunteersProgress">
                             <div class="import-progress-bar"></div>
@@ -304,6 +332,11 @@
                             <i class="fas fa-link"></i>
                             <span>Import Affiliations</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Organizations, Volunteers
+                            </small>
+                        </div>
                         <div class="import-status" id="importAffiliationsStatus"></div>
                         <div class="import-progress" id="importAffiliationsProgress">
                             <div class="import-progress-bar"></div>
@@ -316,6 +349,11 @@
                             <i class="fas fa-calendar"></i>
                             <span>Import Events</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Organizations, Schools, Teachers
+                            </small>
+                        </div>
                         <div class="import-status" id="importEventsStatus"></div>
                         <div class="import-progress" id="importEventsProgress">
                             <div class="import-progress-bar"></div>
@@ -328,6 +366,11 @@
                             <i class="fas fa-history"></i>
                             <span>Import History</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Events, Volunteers, Students
+                            </small>
+                        </div>
                         <div class="import-status" id="importHistoryStatus"></div>
                         <div class="import-progress" id="importHistoryProgress">
                             <div class="import-progress-bar"></div>
@@ -357,6 +400,11 @@
                             <i class="fas fa-school"></i>
                             <span>Import Schools</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Districts (auto-imported)
+                            </small>
+                        </div>
                         <div class="import-status" id="importSchoolsStatus"></div>
                         <div class="import-progress" id="importSchoolsProgress">
                             <div class="import-progress-bar"></div>
@@ -369,6 +417,11 @@
                             <i class="fas fa-file-import"></i>
                             <span>Import Classes</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Schools
+                            </small>
+                        </div>
                         <div class="import-status" id="importClassesStatus"></div>
                         <div class="import-progress" id="importClassesProgress">
                             <div class="import-progress-bar"></div>
@@ -381,6 +434,11 @@
                             <i class="fas fa-chalkboard-teacher"></i>
                             <span>Import Teachers</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Schools
+                            </small>
+                        </div>
                         <div class="import-status" id="importTeachersStatus"></div>
                         <div class="import-progress" id="importTeachersProgress">
                             <div class="import-progress-bar"></div>
@@ -393,6 +451,11 @@
                             <i class="fas fa-user-check"></i>
                             <span>Import Student Participations</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Students, Events
+                            </small>
+                        </div>
                         <div class="import-status" id="importStudentParticipantsStatus"></div>
                         <div class="import-progress" id="importStudentParticipantsProgress">
                             <div class="import-progress-bar"></div>
@@ -405,6 +468,11 @@
                             <i class="fas fa-sitemap"></i>
                             <span>Sync Unaffiliated Events (by Students)</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Students, Events
+                            </small>
+                        </div>
                         <div class="import-status" id="syncUnaffiliatedEventsStatus"></div>
                         <div class="import-progress" id="syncUnaffiliatedEventsProgress">
                             <div class="import-progress-bar"></div>
@@ -425,6 +493,11 @@
                             <i class="fas fa-user-graduate"></i>
                             <span>Import Students</span>
                         </button>
+                        <div class="import-dependency">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Requires: Schools, Classes, Teachers
+                            </small>
+                        </div>
                         <div class="import-status" id="importStudentsStatus"></div>
                         <div class="import-progress" id="importStudentsProgress">
                             <div class="import-progress-bar"></div>
