@@ -141,6 +141,63 @@
     .modal-container.show {
         display: block;
     }
+
+    /* Import Section Styling */
+    .import-section {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+
+    .import-section h6 {
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid;
+    }
+
+    .import-section h6.text-primary {
+        border-bottom-color: #007bff;
+    }
+
+    .import-section h6.text-warning {
+        border-bottom-color: #ffc107;
+    }
+
+    .import-section h6.text-success {
+        border-bottom-color: #28a745;
+    }
+
+    .import-section h6.text-info {
+        border-bottom-color: #17a2b8;
+    }
+
+    .import-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .import-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .import-item .btn {
+        justify-content: flex-start;
+        text-align: left;
+        padding: 12px 16px;
+        height: auto;
+        min-height: 50px;
+    }
+
+    .import-item .btn span {
+        margin-left: 8px;
+        font-weight: 500;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -209,183 +266,195 @@
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title mb-0">Import Data from Salesforce</h5>
-            <p class="text-muted mb-3">Select data to import from Salesforce into the system. For best results, import in the suggested order.</p>
+            <p class="text-muted mb-3">Select data to import from Salesforce into the system. Imports are organized by frequency.</p>
 
-            {# Import All button with progress tracking #}
-            <div class="mb-4">
-                <button onclick="importAllSequentially()" class="btn admin-btn-import" id="importAllBtn">
-                    <i class="fas fa-download"></i>
-                    <span>Import All Data Sequentially</span>
-                </button>
-                <div class="import-status" id="importAllStatus"></div>
-                <div class="import-progress" id="importAllProgress">
-                    <div class="import-progress-bar"></div>
+            {# Daily/Weekly Imports #}
+            <div class="import-section mb-4">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-calendar-day"></i> Daily/Weekly Imports
+                </h6>
+                <div class="import-grid">
+                    {# Organizations import #}
+                    <div class="import-item">
+                        <button onclick="importOrganizations()" class="btn admin-btn-import" id="importOrganizationsBtn">
+                            <i class="fas fa-building"></i>
+                            <span>Import Organizations</span>
+                        </button>
+                        <div class="import-status" id="importOrganizationsStatus"></div>
+                        <div class="import-progress" id="importOrganizationsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Volunteers import #}
+                    <div class="import-item">
+                        <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
+                            <i class="fas fa-users"></i>
+                            <span>Import Volunteers</span>
+                        </button>
+                        <div class="import-status" id="importVolunteersStatus"></div>
+                        <div class="import-progress" id="importVolunteersProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Volunteer-Organization Affiliations import #}
+                    <div class="import-item">
+                        <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
+                            <i class="fas fa-link"></i>
+                            <span>Import Affiliations</span>
+                        </button>
+                        <div class="import-status" id="importAffiliationsStatus"></div>
+                        <div class="import-progress" id="importAffiliationsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Events import #}
+                    <div class="import-item">
+                        <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
+                            <i class="fas fa-calendar"></i>
+                            <span>Import Events</span>
+                        </button>
+                        <div class="import-status" id="importEventsStatus"></div>
+                        <div class="import-progress" id="importEventsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# History import #}
+                    <div class="import-item">
+                        <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
+                            <i class="fas fa-history"></i>
+                            <span>Import History</span>
+                        </button>
+                        <div class="import-status" id="importHistoryStatus"></div>
+                        <div class="import-progress" id="importHistoryProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Virtual Events Google Sheets Management #}
+                    <div class="import-item">
+                        <a href="{{ url_for('management.google_sheets') }}" class="btn admin-btn-import" id="manageGoogleSheetsBtn" style="display: flex; align-items: center;">
+                            <i class="fas fa-file-spreadsheet"></i>
+                            <span>Manage Virtual Event Google Sheets</span>
+                        </a>
+                        <div class="import-status" id="importVirtualStatus"></div>
+                    </div>
                 </div>
             </div>
 
-            {# Individual import options grid #}
-            <div class="import-grid">
-                {# Organizations import #}
-                <div class="import-item">
-                    <button onclick="importOrganizations()" class="btn admin-btn-import" id="importOrganizationsBtn">
-                        <i class="fas fa-building"></i>
-                        <span>1. Import Organizations</span>
-                    </button>
-                    <div class="import-status" id="importOrganizationsStatus"></div>
-                    <div class="import-progress" id="importOrganizationsProgress">
-                        <div class="import-progress-bar"></div>
+            {# Quarterly Imports #}
+            <div class="import-section mb-4">
+                <h6 class="text-warning mb-3">
+                    <i class="fas fa-calendar-week"></i> Quarterly Imports
+                </h6>
+                <div class="import-grid">
+                    {# Schools import #}
+                    <div class="import-item">
+                        <button onclick="importSchools()" class="btn admin-btn-import" id="importSchoolsBtn">
+                            <i class="fas fa-school"></i>
+                            <span>Import Schools</span>
+                        </button>
+                        <div class="import-status" id="importSchoolsStatus"></div>
+                        <div class="import-progress" id="importSchoolsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Classes import #}
+                    <div class="import-item">
+                        <button onclick="importClasses()" class="btn admin-btn-import" id="importClassesBtn">
+                            <i class="fas fa-file-import"></i>
+                            <span>Import Classes</span>
+                        </button>
+                        <div class="import-status" id="importClassesStatus"></div>
+                        <div class="import-progress" id="importClassesProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Teachers import #}
+                    <div class="import-item">
+                        <button onclick="importTeachers()" class="btn admin-btn-import" id="importTeachersBtn">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <span>Import Teachers</span>
+                        </button>
+                        <div class="import-status" id="importTeachersStatus"></div>
+                        <div class="import-progress" id="importTeachersProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Student Participations import #}
+                    <div class="import-item">
+                        <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
+                            <i class="fas fa-user-check"></i>
+                            <span>Import Student Participations</span>
+                        </button>
+                        <div class="import-status" id="importStudentParticipantsStatus"></div>
+                        <div class="import-progress" id="importStudentParticipantsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    {# Sync Unaffiliated Events #}
+                    <div class="import-item">
+                        <button onclick="syncUnaffiliatedEvents()" class="btn admin-btn-import" id="syncUnaffiliatedEventsBtn">
+                            <i class="fas fa-sitemap"></i>
+                            <span>Sync Unaffiliated Events (by Students)</span>
+                        </button>
+                        <div class="import-status" id="syncUnaffiliatedEventsStatus"></div>
+                        <div class="import-progress" id="syncUnaffiliatedEventsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                {# Schools import #}
-                <div class="import-item">
-                    <button onclick="importSchools()" class="btn admin-btn-import" id="importSchoolsBtn">
-                        <i class="fas fa-school"></i>
-                        <span>2. Import Schools</span>
-                    </button>
-                    <div class="import-status" id="importSchoolsStatus"></div>
-                    <div class="import-progress" id="importSchoolsProgress">
-                        <div class="import-progress-bar"></div>
+            {# Yearly Imports #}
+            <div class="import-section mb-4">
+                <h6 class="text-success mb-3">
+                    <i class="fas fa-calendar-alt"></i> Yearly Imports
+                </h6>
+                <div class="import-grid">
+                    {# Students import #}
+                    <div class="import-item">
+                        <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
+                            <i class="fas fa-user-graduate"></i>
+                            <span>Import Students</span>
+                        </button>
+                        <div class="import-status" id="importStudentsStatus"></div>
+                        <div class="import-progress" id="importStudentsProgress">
+                            <div class="import-progress-bar"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                {# Classes import #}
-                <div class="import-item">
-                    <button onclick="importClasses()" class="btn admin-btn-import" id="importClassesBtn">
-                        <i class="fas fa-file-import"></i>
-                        <span>3. Import Classes</span>
-                    </button>
-                    <div class="import-status" id="importClassesStatus"></div>
-                    <div class="import-progress" id="importClassesProgress">
-                        <div class="import-progress-bar"></div>
+            {# Management Functions #}
+            <div class="import-section">
+                <h6 class="text-info mb-3">
+                    <i class="fas fa-tools"></i> Management Functions
+                </h6>
+                <div class="import-grid">
+                    {# Teachers Management #}
+                    <div class="import-item">
+                        <a href="{{ url_for('teachers.list_teachers') }}" class="btn admin-btn-import" id="manageTeachersBtn" style="display: flex; align-items: center;">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <span>Manage Teachers</span>
+                        </a>
+                        <div class="import-status" id="manageTeachersStatus"></div>
                     </div>
-                </div>
 
-                {# Teachers import #}
-                <div class="import-item">
-                    <button onclick="importTeachers()" class="btn admin-btn-import" id="importTeachersBtn">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        <span>4. Import Teachers</span>
-                    </button>
-                    <div class="import-status" id="importTeachersStatus"></div>
-                    <div class="import-progress" id="importTeachersProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Teachers Management #}
-                <div class="import-item">
-                    <a href="{{ url_for('teachers.list_teachers') }}" class="btn admin-btn-import" id="manageTeachersBtn" style="display: flex; align-items: center;">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        <span>Manage Teachers</span>
-                    </a>
-                    <div class="import-status" id="manageTeachersStatus"></div>
-                </div>
-
-                {# Students import #}
-                <div class="import-item">
-                    <button onclick="importStudents()" class="btn admin-btn-import" id="importStudentsBtn">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>5. Import Students</span>
-                    </button>
-                    <div class="import-status" id="importStudentsStatus"></div>
-                    <div class="import-progress" id="importStudentsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Students Management #}
-                <div class="import-item">
-                    <a href="{{ url_for('students.view_students') }}" class="btn admin-btn-import" id="manageStudentsBtn" style="display: flex; align-items: center;">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>Manage Students</span>
-                    </a>
-                    <div class="import-status" id="manageStudentsStatus"></div>
-                </div>
-
-                {# Volunteers import #}
-                <div class="import-item">
-                    <button onclick="importVolunteers()" class="btn admin-btn-import" id="importVolunteersBtn">
-                        <i class="fas fa-users"></i>
-                        <span>6. Import Volunteers</span>
-                    </button>
-                    <div class="import-status" id="importVolunteersStatus"></div>
-                    <div class="import-progress" id="importVolunteersProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Volunteer-Organization Affiliations import #}
-                <div class="import-item">
-                    <button onclick="importAffiliations()" class="btn admin-btn-import" id="importAffiliationsBtn">
-                        <i class="fas fa-link"></i>
-                        <span>6a. Import Affiliations</span>
-                    </button>
-                    <div class="import-status" id="importAffiliationsStatus"></div>
-                    <div class="import-progress" id="importAffiliationsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Events import #}
-                <div class="import-item">
-                    <button onclick="importEvents()" class="btn admin-btn-import" id="importEventsBtn">
-                        <i class="fas fa-calendar"></i>
-                        <span>7. Import Events</span>
-                    </button>
-                    <div class="import-status" id="importEventsStatus"></div>
-                    <div class="import-progress" id="importEventsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Student Participations (NEW) import #}
-                <div class="import-item">
-                    <button onclick="importStudentParticipants()" class="btn admin-btn-import" id="importStudentParticipantsBtn">
-                        <i class="fas fa-user-check"></i> <!-- Icon for student check/participation -->
-                        <span>7a. Import Student Participations</span>
-                    </button>
-                    <div class="import-status" id="importStudentParticipantsStatus"></div>
-                    <div class="import-progress" id="importStudentParticipantsProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# History import #}
-                <div class="import-item">
-                    <button onclick="importHistory()" class="btn admin-btn-import" id="importHistoryBtn">
-                        <i class="fas fa-history"></i>
-                        <span>8. Import History</span>
-                    </button>
-                    <div class="import-status" id="importHistoryStatus"></div>
-                    <div class="import-progress" id="importHistoryProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-
-
-                {# Virtual Events import #}
-                <div class="import-item">
-                    <a href="{{ url_for('management.google_sheets') }}" class="btn admin-btn-import" id="manageGoogleSheetsBtn" style="display: flex; align-items: center;">
-                        <i class="fas fa-file-spreadsheet"></i>
-                        <span>Manage Virtual Event Google Sheets</span>
-                    </a>
-                    <div class="import-status" id="importVirtualStatus"></div>
-                    <div class="import-progress" id="importVirtualProgress">
-                        <div class="import-progress-bar"></div>
-                    </div>
-                </div>
-
-                {# Sync Unaffiliated Events #}
-                <div class="import-item">
-                    <button onclick="syncUnaffiliatedEvents()" class="btn admin-btn-import" id="syncUnaffiliatedEventsBtn">
-                        <i class="fas fa-sitemap"></i> <!-- Icon suggesting relationship/mapping -->
-                        <span>Sync Unaffiliated Events (by Students)</span>
-                    </button>
-                    <div class="import-status" id="syncUnaffiliatedEventsStatus"></div>
-                    <div class="import-progress" id="syncUnaffiliatedEventsProgress">
-                        <div class="import-progress-bar"></div>
+                    {# Students Management #}
+                    <div class="import-item">
+                        <a href="{{ url_for('students.view_students') }}" class="btn admin-btn-import" id="manageStudentsBtn" style="display: flex; align-items: center;">
+                            <i class="fas fa-user-graduate"></i>
+                            <span>Manage Students</span>
+                        </a>
+                        <div class="import-status" id="manageStudentsStatus"></div>
                     </div>
                 </div>
             </div>
@@ -1029,93 +1098,7 @@ function purgeVirtualSessions() {
     });
 }
 
-async function importAllSequentially() {
-    const importAllBtn = document.getElementById('importAllBtn');
-    const importAllStatus = document.getElementById('importAllStatus');
-    const importAllProgress = document.getElementById('importAllProgress');
-    const progressBar = importAllProgress.querySelector('.import-progress-bar');
 
-    // Define the import sequence with routes and button IDs
-    const importSequence = [
-        { route: '/organizations/import-from-salesforce', name: 'Organizations', btnId: 'importOrganizationsBtn' },
-        { route: '/management/import-schools', name: 'Schools', btnId: 'importSchoolsBtn' },
-        { route: '/management/import-classes', name: 'Classes', btnId: 'importClassesBtn' },
-        { route: '/teachers/import-from-salesforce', name: 'Teachers', btnId: 'importTeachersBtn' },
-        { route: '/students/import-from-salesforce', name: 'Students', btnId: 'importStudentsBtn' },
-        { route: '/volunteers/import-from-salesforce', name: 'Volunteers', btnId: 'importVolunteersBtn' },
-        { route: '/organizations/import-affiliations-from-salesforce', name: 'Affiliations', btnId: 'importAffiliationsBtn' },
-        { route: '/events/import-from-salesforce', name: 'Events', btnId: 'importEventsBtn' },
-        { route: '/history/import-from-salesforce', name: 'History', btnId: 'importHistoryBtn' },
-
-    ];
-
-    // Disable all import buttons
-    importSequence.forEach(item => {
-        const btn = document.getElementById(item.btnId);
-        if (btn) btn.disabled = true;
-    });
-
-    // Disable the main import button
-    importAllBtn.disabled = true;
-    importAllProgress.classList.add('active');
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (let i = 0; i < importSequence.length; i++) {
-        const item = importSequence[i];
-        const progress = ((i) / importSequence.length) * 100;
-        progressBar.style.width = `${progress}%`;
-
-        importAllStatus.textContent = `Importing ${item.name}...`;
-
-        try {
-            const response = await fetch(item.route, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                successCount++;
-                const btn = document.getElementById(item.btnId);
-                if (btn) {
-                    btn.style.backgroundColor = 'var(--ucla-blue)';
-                    btn.style.opacity = '0.7';
-                }
-            } else {
-                errorCount++;
-                throw new Error(data.message || data.error || `Failed to import ${item.name}`);
-            }
-        } catch (error) {
-            console.error(`Error importing ${item.name}:`, error);
-            errorCount++;
-        }
-    }
-
-    // Complete the progress bar
-    progressBar.style.width = '100%';
-
-    // Update final status
-    importAllStatus.textContent = `Import complete: ${successCount} successful, ${errorCount} failed`;
-
-    // Re-enable all buttons
-    importSequence.forEach(item => {
-        const btn = document.getElementById(item.btnId);
-        if (btn) btn.disabled = false;
-    });
-    importAllBtn.disabled = false;
-
-    // Show completion toast
-    showToast(
-        errorCount === 0 ? 'Success' : 'Complete with Errors',
-        `Import sequence completed: ${successCount} successful, ${errorCount} failed`,
-        errorCount === 0 ? 'success' : 'error'
-    );
-}
 
 // Add this helper function if you don't already have it
 function showToast(title, message, type = 'success') {
