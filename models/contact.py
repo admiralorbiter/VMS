@@ -532,6 +532,172 @@ class Contact(db.Model):
             parts.append(addr.country)
         return "\n".join(parts)
 
+    def calculate_local_status(self):
+        """
+        Base local status calculation using multiple data sources.
+
+        This method determines if a contact is local, partially local, or non-local
+        based on multiple indicators. Child classes can override specific parts.
+
+        Returns:
+            LocalStatusEnum: The calculated status based on available data
+
+        Logic Priority:
+        1. Check for in-person event participation (strongest indicator)
+        2. Use address zip code analysis if available
+        3. Check virtual event presenter location hints
+        4. Use contact type specific assumptions
+        5. Return unknown if no indicators available
+        """
+        try:
+            # First, check if contact has participated in any in-person events
+            local_from_events = self._check_local_status_from_events()
+            if local_from_events is not None:
+                return local_from_events
+
+            # Second, use traditional zip code analysis
+            local_from_address = self._check_local_status_from_address()
+            if local_from_address is not None:
+                return local_from_address
+
+            # Third, check virtual event presenter location hints
+            local_from_virtual_hints = self._check_local_status_from_virtual_hints()
+            if local_from_virtual_hints is not None:
+                return local_from_virtual_hints
+
+            # Fourth, use contact type specific assumptions
+            local_from_assumptions = self._get_local_status_assumption()
+            if local_from_assumptions is not None:
+                return local_from_assumptions
+
+            # If we have a previously calculated local status that's not unknown, keep it
+            if (
+                hasattr(self, "local_status")
+                and self.local_status is not None
+                and self.local_status != LocalStatusEnum.unknown
+            ):
+                return self.local_status
+
+            return LocalStatusEnum.unknown
+
+        except Exception as e:
+            print(f"Error calculating local status for contact {self.id}: {str(e)}")
+            return LocalStatusEnum.unknown
+
+    def _check_local_status_from_events(self):
+        """
+        Check local status based on event participation.
+
+        If a contact has participated in any in-person events (non-virtual),
+        they are very likely local since they physically attended.
+
+        Returns:
+            LocalStatusEnum or None: Local status if determinable from events
+        """
+        try:
+            # This is a base implementation - child classes can override
+            # to provide more specific event checking logic
+            return None
+
+        except Exception as e:
+            print(
+                f"Error checking local status from events for contact {self.id}: {str(e)}"
+            )
+            return None
+
+    def _check_local_status_from_address(self):
+        """
+        Traditional zip code-based local status calculation.
+
+        Returns:
+            LocalStatusEnum or None: Local status if determinable from address
+        """
+        try:
+            # Define KC metro and regional zip code prefixes
+            kc_metro_prefixes = ("640", "641", "660", "661", "664", "665", "666")
+            region_prefixes = ("644", "645", "646", "670", "671", "672", "673", "674")
+
+            def check_address_status(address):
+                """Helper function to check status based on zip code prefix"""
+                if not address or not address.zip_code:
+                    return None
+
+                zip_prefix = address.zip_code[:3]
+                if zip_prefix in kc_metro_prefixes:
+                    return LocalStatusEnum.local
+                if zip_prefix in region_prefixes:
+                    return LocalStatusEnum.partial
+                return LocalStatusEnum.non_local
+
+            # First check if there's a primary address
+            primary_addr = next((addr for addr in self.addresses if addr.primary), None)
+            if primary_addr:
+                # If primary exists but has no zip, return partial
+                if not primary_addr.zip_code:
+                    return LocalStatusEnum.partial
+                # If primary has zip, use it
+                return check_address_status(primary_addr)
+
+            # If no primary address, try personal address
+            personal_addr = next(
+                (
+                    addr
+                    for addr in self.addresses
+                    if addr.type == ContactTypeEnum.personal
+                ),
+                None,
+            )
+            if personal_addr and personal_addr.zip_code:
+                return check_address_status(personal_addr)
+
+            return None
+
+        except Exception as e:
+            print(
+                f"Error checking local status from address for contact {self.id}: {str(e)}"
+            )
+            return None
+
+    def _check_local_status_from_virtual_hints(self):
+        """
+        Check local status from virtual event presenter location hints.
+
+        This uses the logic from the virtual import process where presenter
+        location is tagged as "local" or "non-local".
+
+        Returns:
+            LocalStatusEnum or None: Local status if determinable from virtual hints
+        """
+        try:
+            # Check if this contact has the _is_local_hint attribute
+            # This is set during virtual event imports
+            if hasattr(self, "_is_local_hint"):
+                if self._is_local_hint:
+                    return LocalStatusEnum.local
+                else:
+                    return LocalStatusEnum.non_local
+
+            return None
+
+        except Exception as e:
+            print(
+                f"Error checking local status from virtual hints for contact {self.id}: {str(e)}"
+            )
+            return None
+
+    def _get_local_status_assumption(self):
+        """
+        Get local status assumption based on contact type.
+
+        This method should be overridden by child classes to provide
+        type-specific assumptions (e.g., teachers assumed local).
+
+        Returns:
+            LocalStatusEnum or None: Local status assumption if applicable
+        """
+        # Base implementation returns None - child classes override this
+        return None
+
 
 # Base Contact Info Models
 class Phone(db.Model):

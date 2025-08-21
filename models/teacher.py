@@ -225,6 +225,26 @@ class Teacher(Contact):
         viewonly=True,  # Use event_registrations for modifications
     )
 
+    def _get_local_status_assumption(self):
+        """
+        Get local status assumption for teachers.
+
+        Teachers are generally assumed to be local since they work in the Kansas City
+        area school system. This can be overridden by address data if available.
+
+        Returns:
+            LocalStatusEnum: Local status assumption for teachers
+        """
+        try:
+            from models.contact import LocalStatusEnum
+
+            return LocalStatusEnum.local
+        except Exception as e:
+            print(
+                f"Error getting local status assumption for teacher {self.id}: {str(e)}"
+            )
+            return LocalStatusEnum.local
+
     school = relationship(
         "School",
         foreign_keys=[school_id],

@@ -297,6 +297,26 @@ class Student(Contact):
         """Get student's full name."""
         return f"{self.first_name} {self.last_name}"
 
+    def _get_local_status_assumption(self):
+        """
+        Get local status assumption for students.
+
+        Students are generally assumed to be local since they attend schools in the
+        Kansas City area. This can be overridden by address data if available.
+
+        Returns:
+            LocalStatusEnum: Local status assumption for students
+        """
+        try:
+            from models.contact import LocalStatusEnum
+
+            return LocalStatusEnum.local
+        except Exception as e:
+            print(
+                f"Error getting local status assumption for student {self.id}: {str(e)}"
+            )
+            return LocalStatusEnum.local
+
     @classmethod
     def import_from_salesforce(cls, sf_data, db_session):
         """

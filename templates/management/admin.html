@@ -79,68 +79,117 @@
         display: block;
     }
 
-    .modal-container {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-        z-index: 1010;
-        max-width: 500px;
-        width: 90%;
-        display: none;
-    }
-
+    /* Force modal styles with maximum specificity */
+    .modal-container,
+    div.modal-container,
     .modal-container.show {
-        display: block;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        background: #ffffff !important;
+        padding: 20px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
+        z-index: 1010 !important;
+        max-width: 500px !important;
+        width: 90% !important;
+        display: none !important;
+        border: 2px solid #dee2e6 !important;
     }
 
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
+    .modal-container.show,
+    div.modal-container.show {
+        display: block !important;
     }
 
-    .modal-close {
-        background: none;
-        border: none;
-        font-size: 20px;
-        cursor: pointer;
+    .modal-header,
+    .modal-container .modal-header,
+    div.modal-container .modal-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 15px !important;
+        border-bottom: 1px solid #eee !important;
+        padding-bottom: 10px !important;
+        background: #ffffff !important;
     }
 
-    .modal-form {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
+    .modal-close,
+    .modal-container .modal-close,
+    div.modal-container .modal-close {
+        background: none !important;
+        border: none !important;
+        font-size: 20px !important;
+        cursor: pointer !important;
+        color: #000 !important;
     }
 
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
+    .modal-form,
+    .modal-container .modal-form,
+    div.modal-container .modal-form {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
     }
 
-    .form-group label {
-        font-weight: bold;
+    .form-group,
+    .modal-container .form-group,
+    div.modal-container .form-group {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 5px !important;
     }
 
-    .modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 20px;
-        border-top: 1px solid #eee;
-        padding-top: 15px;
+    .form-group label,
+    .modal-container .form-group label,
+    div.modal-container .form-group label {
+        font-weight: bold !important;
     }
-    .modal-container.show {
-        display: block;
+
+    .modal-footer,
+    .modal-container .modal-footer,
+    div.modal-container .modal-footer {
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 10px !important;
+        margin-top: 20px !important;
+        border-top: 1px solid #eee !important;
+        padding-top: 15px !important;
+        background: #ffffff !important;
     }
+
+    .modal-body,
+    .modal-container .modal-body,
+    div.modal-container .modal-body {
+        background: #ffffff !important;
+        padding: 15px 0 !important;
+        border-radius: 4px !important;
+    }
+
+    .modal-body > div,
+    .modal-container .modal-body > div,
+    div.modal-container .modal-body > div {
+        background: #ffffff !important;
+        padding: 10px !important;
+        border-radius: 4px !important;
+    }
+
+    /* Override any conflicting styles from other CSS files */
+    .modal-container *,
+    div.modal-container * {
+        background-color: transparent !important;
+    }
+
+    .modal-container .modal-header *,
+    .modal-container .modal-footer *,
+    .modal-container .modal-body *,
+    div.modal-container .modal-header *,
+    div.modal-container .modal-footer *,
+    div.modal-container .modal-body * {
+        background-color: transparent !important;
+    }
+
 
     /* Import Section Styling */
     .import-section {
@@ -218,6 +267,114 @@
         color: #007bff;
     }
 
+    /* Volunteer Management Styling */
+    .volunteer-management-content {
+        padding: 10px 0;
+    }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .feature-description {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .description-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .description-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .description-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #17a2b8;
+        color: #495057;
+        font-size: 1.1rem;
+    }
+
+    .description-content {
+        color: #6c757d;
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .feature-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        font-size: 0.95rem;
+    }
+
+    .feature-list li:last-child {
+        border-bottom: none;
+    }
+
+    .feature-list li i {
+        font-size: 0.9rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    /* Compact Features Styling */
+    .compact-features {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .compact-features small {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .compact-features i {
+        font-size: 0.8rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .volunteer-management-content .d-flex {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .action-buttons {
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .feature-description {
+            min-width: auto;
+        }
+
+        .compact-features {
+            margin-top: 10px;
+            justify-content: center;
+        }
+    }
 
 </style>
 {% endblock %}
@@ -535,18 +692,28 @@
     </div>
 
     {# Volunteer Management Section #}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Volunteer Management</h5>
+    <div class="card admin-card mt-4">
+        <div class="card-header bg-primary text-white py-2">
+            <h6 class="mb-0">
+                <i class="fas fa-users me-2"></i>Volunteer Management
+            </h6>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="d-grid gap-2">
-                        <button id="updateLocalStatus" class="btn btn-primary">
-                            <i class="fa-solid fa-location-dot"></i> Update Volunteer Local Statuses
-                        </button>
-                    </div>
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center gap-3">
+                <button id="updateLocalStatus" class="btn btn-primary">
+                    <i class="fa-solid fa-location-dot me-2"></i>
+                    Update Local Statuses (All Contacts)
+                </button>
+                <button id="localStatusInfo" class="btn btn-outline-info btn-sm" title="Click for local status matching details">
+                    <i class="fas fa-info"></i>
+                </button>
+                <div class="compact-features">
+                    <small class="text-muted">
+                        <i class="fas fa-check text-success me-1"></i>Multi-source detection
+                        <i class="fas fa-check text-success me-1 ms-2"></i>Event participation
+                        <i class="fas fa-check text-success me-1 ms-2"></i>Zip code analysis
+                        <i class="fas fa-check text-success me-1 ms-2"></i>Smart assumptions
+                    </small>
                 </div>
             </div>
         </div>
@@ -731,9 +898,136 @@ document.getElementById('updateLocalStatus').addEventListener('click', function(
         })
         .finally(() => {
             this.disabled = false;
-            this.innerHTML = '<i class="fa-solid fa-location-dot"></i> Update Volunteer Local Statuses';
+            this.innerHTML = '<i class="fa-solid fa-location-dot"></i> Update Local Statuses (All Contacts)';
         });
     }
+});
+
+// Local Status Info Button
+document.getElementById('localStatusInfo').addEventListener('click', function() {
+    const infoContent = `
+🔍 <strong>Local Status Matching Logic</strong>
+
+The system uses a multi-source approach to determine local status with the following priority:
+
+<strong>1. In-Person Event Participation (Highest Priority)</strong>
+• If a volunteer attended any in-person event, they're marked as LOCAL
+• This is the strongest indicator of local status
+
+<strong>2. Address-Based Calculation (Zip Code Analysis)</strong>
+• LOCAL: KC Metro area (640, 641, 660, 661, 664, 665, 666)
+• PARTIAL: Regional driving distance (644, 645, 646, 670, 671, 672, 673, 674)
+• NON_LOCAL: Outside service area
+• UNKNOWN: No valid zip code
+
+<strong>3. Virtual Event Hints</strong>
+• Uses presenter location data from virtual event imports
+• Helps identify local vs. remote presenters
+
+<strong>4. Assumptions for Educational Contacts</strong>
+• Teachers: Assumed LOCAL (work in KC area schools)
+• Students: Assumed LOCAL (attend KC area schools)
+• These can be overridden by address data if available
+
+<strong>5. Historical Preservation</strong>
+• Maintains previously calculated status if no new data available
+• Prevents unnecessary status changes
+
+<strong>Status Definitions:</strong>
+• LOCAL: Within KC Metro area
+• PARTIAL: Within driving distance
+• NON_LOCAL: Outside service area
+• UNKNOWN: No geographic data available
+
+This enhanced logic provides more accurate local status detection while preserving existing data.
+    `;
+
+    // Create modal with inline styles to ensure opacity
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+    modal.innerHTML = `
+        <div style="
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        ">
+            <div style="
+                background: white;
+                padding: 20px;
+                border-bottom: 1px solid #dee2e6;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                <h5 style="margin: 0; color: #333;">
+                    <i class="fas fa-info-circle text-info"></i> Local Status Matching Details
+                </h5>
+                <button onclick="this.closest('div[style*=\\'position: fixed\\']').remove()"
+                        style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #666;
+                            padding: 0;
+                            width: 30px;
+                            height: 30px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">&times;</button>
+            </div>
+            <div style="
+                background: white;
+                padding: 20px;
+                max-height: 60vh;
+                overflow-y: auto;
+            ">
+                <div style="
+                    white-space: pre-line;
+                    line-height: 1.6;
+                    color: #333;
+                    background: white;
+                ">${infoContent}</div>
+            </div>
+            <div style="
+                background: white;
+                padding: 20px;
+                border-top: 1px solid #dee2e6;
+                display: flex;
+                justify-content: flex-end;
+            ">
+                <button onclick="this.closest('div[style*=\\'position: fixed\\']').remove()"
+                        class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close modal when clicking backdrop
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 });
 </script>
 <script>

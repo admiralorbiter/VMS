@@ -347,72 +347,87 @@ class Volunteer(Contact):
             .all()
         )
 
-    def calculate_local_status(self):
+    def _check_local_status_from_events(self):
         """
-        Determines if a volunteer is local, partially local, or non-local based on zip code.
+        Check local status based on event participation for volunteers.
 
-        This method analyzes the volunteer's address(es) to determine their geographic
-        relationship to the organization's service area. This is important for:
-        - Event planning and logistics
-        - Communication strategies
-        - Resource allocation
+        If a volunteer has participated in any in-person events (non-virtual),
+        they are very likely local since they physically attended.
 
         Returns:
-            LocalStatusEnum: The calculated status based on the volunteer's address(es)
-
-        Logic:
-        1. Checks primary address first
-        2. Falls back to personal address if no primary exists
-        3. Uses predefined KC metro and regional zip code prefixes
-        4. Returns 'unknown' if no valid address is found or on error
-
-        Zip Code Mapping:
-        - Local: 640, 641, 660, 661, 664, 665, 666 (KC Metro)
-        - Partial: 644, 645, 646, 670, 671, 672, 673, 674 (Regional)
-        - Non-local: All other zip codes
+            LocalStatusEnum or None: Local status if determinable from events
         """
         try:
-            # Define KC metro and regional zip code prefixes
-            kc_metro_prefixes = ("640", "641", "660", "661", "664", "665", "666")
-            region_prefixes = ("644", "645", "646", "670", "671", "672", "673", "674")
+            from models.event import Event, EventFormat, EventType
 
-            def check_address_status(address):
-                """Helper function to check status based on zip code prefix"""
-                if not address or not address.zip_code:
-                    return None
-
-                zip_prefix = address.zip_code[:3]
-                if zip_prefix in kc_metro_prefixes:
-                    return LocalStatusEnum.local
-                if zip_prefix in region_prefixes:
-                    return LocalStatusEnum.partial
-                return LocalStatusEnum.non_local
-
-            # First check if there's a primary address
-            primary_addr = next((addr for addr in self.addresses if addr.primary), None)
-            if primary_addr:
-                # If primary exists but has no zip, return partial
-                if not primary_addr.zip_code:
-                    return LocalStatusEnum.partial
-                # If primary has zip, use it
-                return check_address_status(primary_addr)
-
-            # If no primary address, try personal address
-            personal_addr = next(
-                (
-                    addr
-                    for addr in self.addresses
-                    if addr.type == ContactTypeEnum.personal
-                ),
-                None,
+            # Check for participation in non-virtual events with attended status
+            in_person_participation = (
+                EventParticipation.query.filter(
+                    EventParticipation.volunteer_id == self.id,
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed"]
+                    ),
+                )
+                .join(Event, EventParticipation.event_id == Event.id)
+                .filter(
+                    Event.type != EventType.VIRTUAL_SESSION,
+                    Event.format != EventFormat.VIRTUAL,
+                )
+                .first()
             )
-            if personal_addr and personal_addr.zip_code:
-                return check_address_status(personal_addr)
 
-            return LocalStatusEnum.unknown
+            if in_person_participation:
+                # Strong indicator they are local - they attended in-person
+                return LocalStatusEnum.local
+
+            return None
+
         except Exception as e:
-            print(f"Error calculating local status: {str(e)}")
-            return LocalStatusEnum.unknown
+            print(
+                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
+            )
+            return None
+
+    def _check_local_status_from_events(self):
+        """
+        Check local status based on event participation.
+
+        If a volunteer has participated in any in-person events (non-virtual),
+        they are very likely local since they physically attended.
+
+        Returns:
+            LocalStatusEnum or None: Local status if determinable from events
+        """
+        try:
+            from models.event import Event, EventFormat, EventType
+
+            # Check for participation in non-virtual events with attended status
+            in_person_participation = (
+                EventParticipation.query.filter(
+                    EventParticipation.volunteer_id == self.id,
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed"]
+                    ),
+                )
+                .join(Event, EventParticipation.event_id == Event.id)
+                .filter(
+                    Event.type != EventType.VIRTUAL_SESSION,
+                    Event.format != EventFormat.VIRTUAL,
+                )
+                .first()
+            )
+
+            if in_person_participation:
+                # Strong indicator they are local - they attended in-person
+                return LocalStatusEnum.local
+
+            return None
+
+        except Exception as e:
+            print(
+                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
+            )
+            return None
 
     @validates("first_volunteer_date", "last_volunteer_date", "last_activity_date")
     def validate_dates(self, key, value):

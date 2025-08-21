@@ -1837,61 +1837,151 @@ def update_local_statuses():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting local status update for all volunteers...")
-        updated_count = 0
-        error_count = 0
+        from models.student import Student
+        from models.teacher import Teacher
 
-        # Get all volunteers
+        print("Starting enhanced local status update for all contacts...")
+
+        # Track statistics for each contact type
+        stats = {
+            "volunteers": {"total": 0, "updated": 0, "errors": 0},
+            "teachers": {"total": 0, "updated": 0, "errors": 0},
+            "students": {"total": 0, "updated": 0, "errors": 0},
+        }
+
+        # Process Volunteers with enhanced logic
+        print("\n=== Processing Volunteers ===")
         volunteers = Volunteer.query.all()
-        total_volunteers = len(volunteers)
-        print(f"Found {total_volunteers} volunteers to process")
-
-        # Progress tracking
-        progress_interval = max(1, total_volunteers // 20)  # Show progress every 5%
-        last_progress = 0
+        stats["volunteers"]["total"] = len(volunteers)
+        print(f"Found {len(volunteers)} volunteers to process")
 
         for i, volunteer in enumerate(volunteers):
             try:
-                # Progress indicator
-                if i >= last_progress + progress_interval:
-                    progress = (i / total_volunteers) * 100
-                    print(
-                        f"Progress: {progress:.1f}% ({i}/{total_volunteers}) - Updated: {updated_count}, Errors: {error_count}"
-                    )
-                    last_progress = i
-
                 new_status = volunteer.calculate_local_status()
                 if volunteer.local_status != new_status:
+                    old_status = (
+                        volunteer.local_status.name
+                        if volunteer.local_status
+                        else "None"
+                    )
                     volunteer.local_status = new_status
                     volunteer.local_status_last_updated = datetime.utcnow()
-                    updated_count += 1
+                    stats["volunteers"]["updated"] += 1
 
                     # Show status changes for first 10 and every 100th
-                    if updated_count <= 10 or updated_count % 100 == 0:
+                    if (
+                        stats["volunteers"]["updated"] <= 10
+                        or stats["volunteers"]["updated"] % 100 == 0
+                    ):
                         print(
-                            f"[{i+1:4d}] STATUS: {volunteer.first_name} {volunteer.last_name} -> {new_status.name}"
+                            f"[{i+1:4d}] VOLUNTEER: {volunteer.first_name} {volunteer.last_name} -> {old_status} to {new_status.name}"
                         )
 
             except Exception as e:
-                error_count += 1
+                stats["volunteers"]["errors"] += 1
                 print(
-                    f"[{i+1:4d}] ERROR: {volunteer.first_name} {volunteer.last_name} - {str(e)[:80]}"
+                    f"[{i+1:4d}] ERROR (Volunteer): {volunteer.first_name} {volunteer.last_name} - {str(e)[:80]}"
                 )
 
+        # Process Teachers with local assumptions
+        print("\n=== Processing Teachers ===")
+        teachers = Teacher.query.all()
+        stats["teachers"]["total"] = len(teachers)
+        print(f"Found {len(teachers)} teachers to process")
+
+        for i, teacher in enumerate(teachers):
+            try:
+                new_status = teacher.calculate_local_status()
+                if (
+                    not hasattr(teacher, "local_status")
+                    or teacher.local_status != new_status
+                ):
+                    old_status = getattr(teacher, "local_status", None)
+                    old_status_name = old_status.name if old_status else "None"
+                    teacher.local_status = new_status
+                    teacher.local_status_last_updated = datetime.utcnow()
+                    stats["teachers"]["updated"] += 1
+
+                    # Show status changes for first 10 and every 100th
+                    if (
+                        stats["teachers"]["updated"] <= 10
+                        or stats["teachers"]["updated"] % 100 == 0
+                    ):
+                        print(
+                            f"[{i+1:4d}] TEACHER: {teacher.first_name} {teacher.last_name} -> {old_status_name} to {new_status.name}"
+                        )
+
+            except Exception as e:
+                stats["teachers"]["errors"] += 1
+                print(
+                    f"[{i+1:4d}] ERROR (Teacher): {teacher.first_name} {teacher.last_name} - {str(e)[:80]}"
+                )
+
+        # Process Students with local assumptions
+        print("\n=== Processing Students ===")
+        students = Student.query.all()
+        stats["students"]["total"] = len(students)
+        print(f"Found {len(students)} students to process")
+
+        for i, student in enumerate(students):
+            try:
+                new_status = student.calculate_local_status()
+                if (
+                    not hasattr(student, "local_status")
+                    or student.local_status != new_status
+                ):
+                    old_status = getattr(student, "local_status", None)
+                    old_status_name = old_status.name if old_status else "None"
+                    student.local_status = new_status
+                    student.local_status_last_updated = datetime.utcnow()
+                    stats["students"]["updated"] += 1
+
+                    # Show status changes for first 10 and every 100th
+                    if (
+                        stats["students"]["updated"] <= 10
+                        or stats["students"]["updated"] % 100 == 0
+                    ):
+                        print(
+                            f"[{i+1:4d}] STUDENT: {student.first_name} {student.last_name} -> {old_status_name} to {new_status.name}"
+                        )
+
+            except Exception as e:
+                stats["students"]["errors"] += 1
+                print(
+                    f"[{i+1:4d}] ERROR (Student): {student.first_name} {student.last_name} - {str(e)[:80]}"
+                )
+
+        # Calculate totals
+        total_contacts = sum(stat["total"] for stat in stats.values())
+        total_updated = sum(stat["updated"] for stat in stats.values())
+        total_errors = sum(stat["errors"] for stat in stats.values())
+
         # Final summary
-        print(f"\n{'='*50}")
-        print(f"LOCAL STATUS UPDATE COMPLETE")
-        print(f"{'='*50}")
-        print(f"Total Volunteers: {total_volunteers}")
-        print(f"Updated:         {updated_count}")
-        print(f"Errors:          {error_count}")
-        print(f"{'='*50}")
+        print(f"\n{'='*60}")
+        print(f"ENHANCED LOCAL STATUS UPDATE COMPLETE")
+        print(f"{'='*60}")
+        print(
+            f"Volunteers: {stats['volunteers']['total']:,} total, {stats['volunteers']['updated']:,} updated, {stats['volunteers']['errors']} errors"
+        )
+        print(
+            f"Teachers:   {stats['teachers']['total']:,} total, {stats['teachers']['updated']:,} updated, {stats['teachers']['errors']} errors"
+        )
+        print(
+            f"Students:   {stats['students']['total']:,} total, {stats['students']['updated']:,} updated, {stats['students']['errors']} errors"
+        )
+        print(f"{'='*60}")
+        print(
+            f"TOTALS:     {total_contacts:,} total, {total_updated:,} updated, {total_errors} errors"
+        )
+        print(f"{'='*60}")
 
         db.session.commit()
+
         return jsonify(
             {
                 "success": True,
-                "message": f"Updated {updated_count} volunteer statuses with {error_count} errors",
+                "message": f"Enhanced local status update complete: {total_updated:,} contacts updated ({stats['volunteers']['updated']:,} volunteers, {stats['teachers']['updated']:,} teachers, {stats['students']['updated']:,} students) with {total_errors} errors",
+                "stats": stats,
             }
         )
 
