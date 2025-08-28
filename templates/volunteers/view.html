@@ -32,11 +32,12 @@ Last Updated: 2024
 {% block title %}View Volunteer - {{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/volunteers.css') }}?v=1.1">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/communication-history.css') }}?v=1.0">
 {% endblock %}
 
 {% block content %}
-<div class="volunteers-container">
+<div class="volunteers-container communication-history">
     {# Header section with volunteer name and action buttons #}
     <div class="volunteers-header">
         <div class="header-left">
@@ -585,7 +586,7 @@ Last Updated: 2024
                         <div class="history-filters">
                             <div class="history-filter active" data-type="all">
                                 <i class="fa-solid fa-list"></i>
-                                <span>All</span>
+                                <span>All ({{ histories|length }})</span>
                             </div>
                             <div class="history-filter" data-type="Email">
                                 <i class="fa-solid fa-envelope"></i>
@@ -602,8 +603,9 @@ Last Updated: 2024
                         </div>
 
                         <div class="history-timeline" style="max-height: 400px; overflow-y: auto;">
-                            {% for history in histories[:10] %}  {# Show only first 10 history items #}
-                            <div class="history-item" data-type="{{ history.activity_type }}">
+                            {% for history in histories %}
+                            {% set inferred_type = history.activity_type or (history.summary.split(':')[0] if history.summary and ':' in history.summary else 'Other') %}
+                            <div class="history-item" data-type="{{ inferred_type }}">
                                 <div class="history-header">
                                     <span class="history-date">
                                         <i class="fa-regular fa-calendar"></i>
@@ -634,16 +636,16 @@ Last Updated: 2024
                                         {{ preview_text[:200] }}{% if preview_text|length > 200 %}...{% endif %}
                                     </div>
                                     {% if history.description|length > 200 %}
-                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="toggleEmailContent(this)">
+                                    <button class="email-toggle-btn" onclick="toggleEmailContent(this)">
                                         <i class="fa-solid fa-chevron-down"></i> Show Full Email
                                     </button>
                                     <div class="full-email-content" style="display: none;">
                                         <div class="email-body">
                                             {% for line in history.description.split('\n') %}
                                                 {% if line.strip().startswith('To:') or line.strip().startswith('CC:') or line.strip().startswith('BCC:') or line.strip().startswith('Attachment:') %}
-                                                    <div class="email-header">{{ line.strip() }}</div>
+                                                    <div class="email-header-line">{{ line.strip() }}</div>
                                                 {% elif line.strip().startswith('Subject:') %}
-                                                    <div class="email-subject">{{ line.strip() }}</div>
+                                                    <div class="email-subject-line">{{ line.strip() }}</div>
                                                 {% elif line.strip().startswith('Body:') %}
                                                     <div class="email-body-start">{{ line.strip() }}</div>
                                                 {% elif line.strip() %}
@@ -653,7 +655,7 @@ Last Updated: 2024
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
-                                        <button class="btn btn-sm btn-outline-secondary mt-2" onclick="toggleEmailContent(this)">
+                                        <button class="email-toggle-btn secondary" onclick="toggleEmailContent(this)">
                                             <i class="fa-solid fa-chevron-up"></i> Show Less
                                         </button>
                                     </div>
@@ -664,9 +666,6 @@ Last Updated: 2024
                                 {% endif %}
                             </div>
                             {% endfor %}
-                            {% if histories|length > 10 %}
-                            <p class="show-more">... and {{ histories|length - 10 }} more history records</p>
-                            {% endif %}
                         </div>
                     {% else %}
                         <div class="no-history-message">
@@ -742,14 +741,14 @@ function toggleEmailContent(button) {
         fullContent.style.display = 'block';
         preview.style.display = 'none';
         button.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Show Less';
-        button.classList.remove('btn-outline-primary');
-        button.classList.add('btn-outline-secondary');
+        button.classList.remove('email-toggle-btn');
+        button.classList.add('email-toggle-btn', 'secondary');
     } else {
         fullContent.style.display = 'none';
         preview.style.display = 'block';
         button.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Show Full Email';
-        button.classList.remove('btn-outline-secondary');
-        button.classList.add('btn-outline-primary');
+        button.classList.remove('email-toggle-btn', 'secondary');
+        button.classList.add('email-toggle-btn');
     }
 }
 
@@ -768,14 +767,70 @@ function toggleHistorySection() {
     }
 }
 
+function updateFilterCounts(activeFilter = 'all') {
+    console.log('updateFilterCounts called with filter:', activeFilter);
+    const historyItems = document.querySelectorAll('.history-item');
+    const filters = document.querySelectorAll('.history-filter');
+
+    console.log('Found history items:', historyItems.length);
+    console.log('Found filters:', filters.length);
+
+    // Count visible items for each type
+    const counts = {
+        'all': historyItems.length,
+        'Email': 0,
+        'Call': 0,
+        'Meeting': 0
+    };
+
+    historyItems.forEach(item => {
+        const type = item.dataset.type;
+        console.log('History item type:', type);
+        // Handle both exact matches and inferred types
+        if (counts.hasOwnProperty(type)) {
+            counts[type]++;
+        } else if (type && type.includes('Email')) {
+            counts['Email']++;
+        } else if (type && type.includes('Call')) {
+            counts['Call']++;
+        } else if (type && type.includes('Meeting')) {
+            counts['Meeting']++;
+        }
+    });
+
+    console.log('Counts:', counts);
+
+    // Update filter labels
+    filters.forEach(filter => {
+        const type = filter.dataset.type;
+        const count = counts[type] || 0;
+        const span = filter.querySelector('span');
+        if (span) {
+            if (type === 'all') {
+                span.textContent = `All (${count})`;
+            } else {
+                span.textContent = `${type} (${count})`;
+            }
+        }
+    });
+}
+
 // Initialize history filters when the page loads
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing filters...');
     const filters = document.querySelectorAll('.history-filter');
     const historyItems = document.querySelectorAll('.history-item');
+
+    console.log('Found filters:', filters.length);
+    console.log('Found history items:', historyItems.length);
+
+    // Initialize filter counts
+    updateFilterCounts();
 
     filters.forEach(filter => {
         filter.addEventListener('click', function() {
             const filterType = this.dataset.type;
+            console.log('Filter clicked:', filterType);
 
             // Update active filter
             filters.forEach(f => f.classList.remove('active'));
@@ -783,12 +838,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Filter history items
             historyItems.forEach(item => {
-                if (filterType === 'all' || item.dataset.type === filterType) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
+                const itemType = item.dataset.type;
+                let shouldShow = false;
+
+                if (filterType === 'all') {
+                    shouldShow = true;
+                } else if (filterType === 'Email' && (itemType === 'Email' || itemType.includes('Email'))) {
+                    shouldShow = true;
+                } else if (filterType === 'Call' && (itemType === 'Call' || itemType.includes('Call'))) {
+                    shouldShow = true;
+                } else if (filterType === 'Meeting' && (itemType === 'Meeting' || itemType.includes('Meeting'))) {
+                    shouldShow = true;
+                } else if (itemType === filterType) {
+                    shouldShow = true;
                 }
+
+                item.style.display = shouldShow ? 'block' : 'none';
             });
+
+            // Update filter counts
+            updateFilterCounts(filterType);
         });
     });
 });
