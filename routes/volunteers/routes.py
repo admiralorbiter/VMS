@@ -655,10 +655,17 @@ def view_volunteer(id):
 
     # Get history records for the volunteer
     histories = (
-        History.query.filter_by(volunteer_id=id, is_deleted=False)
+        History.query.filter_by(contact_id=id, is_deleted=False)
         .order_by(History.activity_date.desc())
         .all()
     )
+
+    # Debug: Print history count
+    print(f"Found {len(histories)} history records for volunteer {id}")
+    if histories:
+        print(
+            f"First history record: {histories[0].activity_type} - {histories[0].summary}"
+        )
 
     # Create a dictionary of organization relationships for easy access in template
     org_relationships = {}

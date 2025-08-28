@@ -4,6 +4,10 @@ import os
 from datetime import datetime, timezone  # Keep this as it might be used elsewhere
 
 from dotenv import load_dotenv
+
+# Load environment variables from .env file FIRST, before any other imports
+load_dotenv()
+
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS
 from flask_login import LoginManager
@@ -14,9 +18,6 @@ from models import User, db
 from models.user import SecurityLevel
 from routes.routes import init_routes
 from utils import format_event_type_for_badge, short_date
-
-# Load environment variables from .env file first
-load_dotenv()
 
 app = Flask(__name__)
 CORS(app)

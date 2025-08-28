@@ -3142,6 +3142,29 @@ main {
     font-style: italic;
 }
 
+/* No history message styling */
+.no-history-message {
+    padding: 2rem;
+    text-align: center;
+}
+
+.no-history-message .text-muted {
+    color: #6c757d !important;
+}
+
+.no-history-message .fa-inbox {
+    color: #dee2e6;
+    margin-bottom: 1rem;
+}
+
+.no-history-message p {
+    margin-bottom: 0.5rem;
+}
+
+.no-history-message .small {
+    font-size: 0.875rem;
+}
+
 /* Position and Organization Display Styles */
 .current-position {
     margin-bottom: 0.5rem;
