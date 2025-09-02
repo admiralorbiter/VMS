@@ -29,8 +29,12 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
-# Add the parent directory to the path so we can import from the VMS app
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the VMS root directory to the path so we can import from the VMS app
+script_dir = os.path.dirname(os.path.abspath(__file__))
+vms_root = os.path.dirname(
+    os.path.dirname(script_dir)
+)  # Go up two levels: scripts/daily_imports -> scripts -> VMS
+sys.path.insert(0, vms_root)
 
 # Load environment variables
 try:
