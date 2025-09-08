@@ -514,6 +514,10 @@ Last Updated: 2024
                                                 <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
                                             {% endif %}
                                         </span>
+                                        <!-- Debug: Show the actual status being used -->
+                                        <span class="debug-status" style="font-size: 0.7em; color: #666; margin-left: 0.5rem;">
+                                            ({{ status }})
+                                        </span>
                                     </div>
                                 </a>
                                 {% if event.delivery_hours %}
@@ -542,6 +546,10 @@ Last Updated: 2024
                                                 {% else %}
                                                     <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
                                                 {% endif %}
+                                            </span>
+                                            <!-- Debug: Show the actual status being used -->
+                                            <span class="debug-status" style="font-size: 0.7em; color: #666; margin-left: 0.5rem;">
+                                                ({{ status }})
                                             </span>
                                         </div>
                                     </a>

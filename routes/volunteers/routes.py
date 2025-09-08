@@ -597,8 +597,13 @@ def view_volunteer(id):
         "Completed": "Attended",
         "No-Show": "No-Show",
         "No Show": "No-Show",
+        "NoShow": "No-Show",
         "Cancelled": "Cancelled",
         "Canceled": "Cancelled",
+        "canceled": "Cancelled",  # Handle lowercase version
+        "cancelled": "Cancelled",  # Handle lowercase version
+        "CANCELLED": "Cancelled",  # Handle uppercase version
+        "CANCELED": "Cancelled",  # Handle uppercase version
         # Virtual-specific statuses
         "successfully completed": "Attended",
         "simulcast": "Attended",
@@ -607,7 +612,17 @@ def view_volunteer(id):
         "pathful professional no-show": "No-Show",
         "teacher no-show": "No-Show",
         "teacher cancelation": "Cancelled",
+        "teacher cancellation": "Cancelled",
         "Confirmed": "Attended",  # Could be pending or attended depending on your business logic
+        # Additional variations
+        "Present": "Attended",
+        "Absent": "No-Show",
+        "Did Not Attend": "No-Show",
+        "DID NOT ATTEND": "No-Show",
+        "Event Cancelled": "Cancelled",
+        "Event Canceled": "Cancelled",
+        "EVENT CANCELLED": "Cancelled",
+        "EVENT CANCELED": "Cancelled",
     }
 
     # Initialize participation stats with empty lists
@@ -618,16 +633,65 @@ def view_volunteer(id):
         # Get status from participation record, fall back to event status
         status = participation.status
 
+        # Debug: Print the original status for troubleshooting
+        print(
+            f"Processing participation: Event='{participation.event.title}', Status='{status}'"
+        )
+
         # If status isn't directly usable, try mapping it
         if status not in participation_stats:
-            # Try using the mapping, default to 'Attended' if not found
-            mapped_status = status_mapping.get(status, "Attended")
+            # Try using the mapping first
+            mapped_status = status_mapping.get(status, None)
 
-            # If still not valid, try lowercased version (handle case sensitivity)
-            if mapped_status not in participation_stats and status:
-                mapped_status = status_mapping.get(status.lower(), "Attended")
+            # If not found, try lowercased version (handle case sensitivity)
+            if mapped_status is None and status:
+                mapped_status = status_mapping.get(status.lower(), None)
+
+            # If still not found, try to infer from event title or other clues
+            if mapped_status is None:
+                event_title_lower = participation.event.title.lower()
+
+                # Check for cancelled/canceled in title (common pattern: "canceled - Event Name")
+                if any(
+                    word in event_title_lower
+                    for word in [
+                        "canceled -",
+                        "cancelled -",
+                        "cancel -",
+                        "cancelled:",
+                        "canceled:",
+                    ]
+                ):
+                    mapped_status = "Cancelled"
+                    print(
+                        f"Detected cancelled event from title: '{participation.event.title}'"
+                    )
+                elif any(
+                    word in event_title_lower
+                    for word in ["no-show", "no show", "noshow", "no-show:", "no show:"]
+                ):
+                    mapped_status = "No-Show"
+                    print(
+                        f"Detected no-show event from title: '{participation.event.title}'"
+                    )
+                elif any(
+                    word in event_title_lower
+                    for word in ["canceled", "cancelled", "cancel"]
+                ):
+                    mapped_status = "Cancelled"
+                    print(
+                        f"Detected cancelled event from title (partial match): '{participation.event.title}'"
+                    )
+                else:
+                    # Only default to Attended if we can't determine otherwise
+                    mapped_status = "Attended"
+                    print(
+                        f"WARNING: Unknown status '{status}' for event '{participation.event.title}' - defaulting to Attended"
+                    )
         else:
             mapped_status = status
+
+        print(f"Final mapped status: '{mapped_status}'")
 
         # Get the event date, handling virtual events that might store date differently
         event_date = None
