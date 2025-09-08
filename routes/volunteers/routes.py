@@ -1901,6 +1901,50 @@ def toggle_exclude_reports(id):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+@volunteers_bp.route("/volunteers/update-local-status/<int:id>", methods=["POST"])
+@login_required
+def update_local_status(id):
+    """Update the local status for a volunteer - Admin only"""
+    if not current_user.is_admin:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+
+    try:
+        volunteer = db.session.get(Volunteer, id)
+        if not volunteer:
+            return jsonify({"success": False, "message": "Volunteer not found"}), 404
+
+        # Get the new status from the request
+        data = request.get_json()
+        new_status = data.get("local_status", None)
+
+        # Validate the status
+        if new_status not in [e.name for e in LocalStatusEnum]:
+            return jsonify({"success": False, "message": "Invalid local status"}), 400
+
+        # Update the field
+        old_status = volunteer.local_status.name if volunteer.local_status else "None"
+        volunteer.local_status = LocalStatusEnum[new_status]
+        volunteer.local_status_last_updated = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Local status updated from {old_status} to {new_status}",
+                "new_status": new_status,
+                "new_status_display": (
+                    volunteer.local_status.value
+                    if volunteer.local_status
+                    else "Unknown"
+                ),
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 @volunteers_bp.route("/volunteers/update-local-statuses", methods=["POST"])
 @login_required
 def update_local_statuses():

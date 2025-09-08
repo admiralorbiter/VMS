@@ -3104,6 +3104,224 @@ main {
     color: white;
 }
 
+/* Local Status Toggle Styles */
+.local-status-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.local-status-select {
+    background: white;
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    color: var(--delft-blue);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+}
+
+.local-status-select:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 3px rgba(70, 117, 153, 0.1);
+}
+
+.local-status-select:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.local-status-display {
+    flex: 1;
+}
+
+.status-badge.loading {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    color: var(--ucla-blue);
+    border: 1px solid #90caf9;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Prominent Local Status Styles */
+.local-status-prominent {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8fbff, #e6f3ff);
+    border-radius: 8px;
+    border: 2px solid var(--non-photo-blue);
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.06);
+}
+
+.local-status-prominent label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+    margin-bottom: 0.75rem;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.local-status-container-prominent {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.local-status-display-prominent {
+    flex: 1;
+    min-width: 160px;
+}
+
+.status-badge-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.status-badge-large.local {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+    border: 2px solid #c3e6cb;
+}
+
+.status-badge-large.partial {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 2px solid #ffeaa7;
+}
+
+.status-badge-large.non_local {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+    border: 2px solid #f5c6cb;
+}
+
+.status-badge-large.unknown {
+    background: linear-gradient(135deg, #e2e3e5, #d6d8db);
+    color: #6c757d;
+    border: 2px solid #d6d8db;
+}
+
+.status-badge-large.loading {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    color: var(--ucla-blue);
+    border: 2px solid #90caf9;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-badge-large i {
+    font-size: 1rem;
+}
+
+.local-status-select-prominent {
+    background: white;
+    border: 2px solid var(--ucla-blue);
+    border-radius: 6px;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    color: var(--delft-blue);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+    font-weight: 500;
+}
+
+.local-status-select-prominent:focus {
+    outline: none;
+    border-color: var(--delft-blue);
+    box-shadow: 0 0 0 3px rgba(70, 117, 153, 0.15);
+    transform: translateY(-1px);
+}
+
+.local-status-select-prominent:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+}
+
+.local-status-select-prominent:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(70, 117, 153, 0.2);
+}
+
+/* Responsive design for local status */
+@media (max-width: 768px) {
+    .local-status-container-prominent {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .local-status-display-prominent {
+        min-width: auto;
+        text-align: center;
+    }
+
+    .status-badge-large {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .local-status-select-prominent {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .local-status-prominent {
+        margin: 0.75rem 0;
+        padding: 0.75rem;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Status message styles */
+.status-message {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
 /* Email content styling in history section */
 .history-email-content {
     margin-top: 10px;

@@ -128,6 +128,44 @@ Last Updated: 2024
                 </div>
                 {% endif %}
 
+                {# Local Status - Prominent Display #}
+                <div class="info-group local-status-prominent">
+                    <label>Local Status</label>
+                    <div class="local-status-container-prominent">
+                        <div class="local-status-display-prominent" id="local-status-display-prominent">
+                            <span class="status-badge-large {{ volunteer.local_status.name if volunteer.local_status else 'unknown' }}">
+                                {% if volunteer.local_status and volunteer.local_status.name == 'local' %}
+                                    <i class="fa-solid fa-check-circle"></i>
+                                    <span>Local</span>
+                                {% elif volunteer.local_status and volunteer.local_status.name == 'partial' %}
+                                    <i class="fa-solid fa-adjust"></i>
+                                    <span>Partial</span>
+                                {% elif volunteer.local_status and volunteer.local_status.name == 'non_local' %}
+                                    <i class="fa-solid fa-times-circle"></i>
+                                    <span>Non-Local</span>
+                                {% else %}
+                                    <i class="fa-solid fa-question-circle"></i>
+                                    <span>Unknown</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <select id="local-status-select-prominent" class="local-status-select-prominent" onchange="updateLocalStatus({{ volunteer.id }}, this.value)">
+                            <option value="local" {% if volunteer.local_status and volunteer.local_status.name == 'local' %}selected{% endif %}>
+                                Local
+                            </option>
+                            <option value="partial" {% if volunteer.local_status and volunteer.local_status.name == 'partial' %}selected{% endif %}>
+                                Partial
+                            </option>
+                            <option value="non_local" {% if volunteer.local_status and volunteer.local_status.name == 'non_local' %}selected{% endif %}>
+                                Non-Local
+                            </option>
+                            <option value="unknown" {% if not volunteer.local_status or volunteer.local_status.name == 'unknown' %}selected{% endif %}>
+                                Unknown
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
                 {# Demographics information with icons #}
                 <div class="demographics-row">
                     {% if volunteer.gender %}
@@ -166,25 +204,6 @@ Last Updated: 2024
                     </div>
                     {% endif %}
 
-                    {# Local status with visual indicators #}
-                    <div class="info-group">
-                        <label>Local Status</label>
-                        <span class="status-badge {{ volunteer.local_status }}">
-                            {% if volunteer.local_status == 'local' %}
-                                <i class="fa-solid fa-check-circle"></i>
-                                <span>Local</span>
-                            {% elif volunteer.local_status == 'partial' %}
-                                <i class="fa-solid fa-adjust"></i>
-                                <span>Partial</span>
-                            {% elif volunteer.local_status == 'non_local' %}
-                                <i class="fa-solid fa-times-circle"></i>
-                                <span>Non-Local</span>
-                            {% else %}
-                                <i class="fa-solid fa-question-circle"></i>
-                                <span>Unknown</span>
-                            {% endif %}
-                        </span>
-                    </div>
                 </div>
 
                 {# Contact information with privacy controls #}
@@ -732,6 +751,97 @@ function toggleExcludeFromReports(volunteerId, exclude) {
         console.error('Error:', error);
         alert('Error updating volunteer status');
     });
+}
+
+function updateLocalStatus(volunteerId, newStatus) {
+    // Show loading state
+    const select = document.getElementById('local-status-select-prominent');
+    const display = document.getElementById('local-status-display-prominent');
+    const originalValue = select.value;
+
+    // Disable select during update
+    select.disabled = true;
+    display.innerHTML = '<span class="status-badge-large loading"><i class="fa-solid fa-spinner fa-spin"></i> Updating...</span>';
+
+    fetch(`/volunteers/update-local-status/${volunteerId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            local_status: newStatus
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the display with new status
+            updateLocalStatusDisplay(newStatus);
+            // Show success message briefly
+            showStatusMessage('Local status updated successfully!', 'success');
+        } else {
+            // Revert select to original value
+            select.value = originalValue;
+            alert('Error updating local status: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Revert select to original value
+        select.value = originalValue;
+        alert('Error updating local status');
+    })
+    .finally(() => {
+        // Re-enable select
+        select.disabled = false;
+    });
+}
+
+function updateLocalStatusDisplay(status) {
+    const display = document.getElementById('local-status-display-prominent');
+    const statusMap = {
+        'local': { icon: 'fa-check-circle', text: 'Local', class: 'local' },
+        'partial': { icon: 'fa-adjust', text: 'Partial', class: 'partial' },
+        'non_local': { icon: 'fa-times-circle', text: 'Non-Local', class: 'non_local' },
+        'unknown': { icon: 'fa-question-circle', text: 'Unknown', class: 'unknown' }
+    };
+
+    const statusInfo = statusMap[status] || statusMap['unknown'];
+    display.innerHTML = `
+        <span class="status-badge-large ${statusInfo.class}">
+            <i class="fa-solid ${statusInfo.icon}"></i>
+            <span>${statusInfo.text}</span>
+        </span>
+    `;
+}
+
+function showStatusMessage(message, type) {
+    // Create a temporary message element
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `status-message ${type}`;
+    messageDiv.innerHTML = `<i class="fa-solid fa-check-circle"></i> ${message}`;
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#d4edda' : '#f8d7da'};
+        color: ${type === 'success' ? '#155724' : '#721c24'};
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        font-weight: 500;
+        border: 1px solid ${type === 'success' ? '#c3e6cb' : '#f5c6cb'};
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 3000);
 }
 
 function toggleExcludeControls() {
