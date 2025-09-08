@@ -182,14 +182,9 @@
                             {% if vo.status %}
                             <span class="volunteer-status {{ vo.status.lower() }}">{{ vo.status }}</span>
                             {% endif %}
-                            {% if vo.start_date or vo.end_date %}
-                            <div class="volunteer-dates">
-                                {% if vo.start_date %}
-                                <span class="date-label">Started:</span> {{ vo.start_date.strftime('%B %d, %Y') }}
-                                {% endif %}
-                                {% if vo.end_date %}
-                                <span class="date-label">Ended:</span> {{ vo.end_date.strftime('%B %d, %Y') }}
-                                {% endif %}
+                            {% if vo.volunteer.last_volunteer_date %}
+                            <div class="volunteer-last-activity">
+                                <span class="date-label">Last Volunteered:</span> {{ vo.volunteer.last_volunteer_date.strftime('%B %d, %Y') }}
                             </div>
                             {% endif %}
                         </div>
@@ -413,6 +408,18 @@
     font-size: 0.9rem;
     line-height: 1.4;
     margin: 0;
+}
+
+/* Volunteer Last Activity Styling */
+.volunteer-last-activity {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.volunteer-last-activity .date-label {
+    font-weight: 600;
+    color: var(--ucla-blue);
 }
 
 /* Volunteer List Show More Functionality */

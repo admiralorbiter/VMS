@@ -266,9 +266,13 @@ def view_organization(id):
 
     # Get volunteer-organization relationships with volunteer data loaded
     # This ensures we have access to both the relationship metadata and volunteer details
+    # Order by last volunteer date (most recent first) for better user experience
+    from sqlalchemy import desc
+
     volunteer_organizations = (
         VolunteerOrganization.query.filter_by(organization_id=id)
-        .join(VolunteerOrganization.volunteer)
+        .join(Volunteer, VolunteerOrganization.volunteer_id == Volunteer.id)
+        .order_by(desc(Volunteer.last_volunteer_date).nullslast())
         .all()
     )
 
