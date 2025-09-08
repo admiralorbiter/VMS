@@ -77,6 +77,7 @@ from sqlalchemy import or_, text
 
 from config import Config
 from models import db
+from models.contact import Email
 from models.event import Event
 from models.history import History
 from models.teacher import Teacher
@@ -398,7 +399,7 @@ def import_history_from_salesforce():
             domain="login",
         )
 
-        # Query Task records (activities, calls, meetings, emails)
+        # Query Task records (activities, calls, meetings)
         task_query = """
             SELECT Id, Subject, Description, Type, Status,
                    ActivityDate, WhoId, WhatId
@@ -406,23 +407,59 @@ def import_history_from_salesforce():
             WHERE WhoId != null
         """
 
-        result = sf.query_all(task_query)
-        task_rows = result.get("records", [])
+        # Query EmailMessage records (emails)
+        email_query = """
+            SELECT Id, Subject, TextBody, HtmlBody, MessageDate, FromAddress,
+                   ToAddress, CcAddress, BccAddress, RelatedToId, ParentId,
+                   Incoming, Status, CreatedDate, LastModifiedDate,
+                   MessageIdentifier, ThreadIdentifier
+            FROM EmailMessage
+            WHERE RelatedToId != null
+        """
+
+        # Process Task records
+        print("Processing Task records...")
+        task_result = sf.query_all(task_query)
+        task_rows = task_result.get("records", [])
         print(f"Found {len(task_rows)} Task records in Salesforce")
-        print(f"Total records to process: {len(task_rows)}")
+
+        # Process EmailMessage records
+        print("Processing EmailMessage records...")
+        email_result = sf.query_all(email_query)
+        email_rows = email_result.get("records", [])
+        print(f"Found {len(email_rows)} EmailMessage records in Salesforce")
+
+        # Combine both result sets
+        all_records = []
+        for row in task_rows:
+            row["record_type"] = "Task"
+            all_records.append(row)
+
+        for row in email_rows:
+            row["record_type"] = "EmailMessage"
+            all_records.append(row)
+
+        print(f"Total records to process: {len(all_records)}")
 
         # Sample the first few records to see data structure
-        if task_rows:
+        if all_records:
             print("\n=== SAMPLE SALESFORCE DATA ===")
-            for i, row in enumerate(task_rows[:3]):
-                print(f"Record {i+1}:")
+            for i, row in enumerate(all_records[:3]):
+                print(f"Record {i+1} ({row.get('record_type', 'Unknown')}):")
                 print(f"  ID: {row.get('Id', 'None')}")
                 print(f"  Subject: {row.get('Subject', 'None')}")
-                print(f"  WhoId: {row.get('WhoId', 'None')}")
-                print(f"  Type: {row.get('Type', 'None')}")
-                print(f"  Status: {row.get('Status', 'None')}")
-                print(f"  ActivityDate: {row.get('ActivityDate', 'None')}")
-                print(f"  WhatId: {row.get('WhatId', 'None')}")
+                if row.get("record_type") == "Task":
+                    print(f"  WhoId: {row.get('WhoId', 'None')}")
+                    print(f"  Type: {row.get('Type', 'None')}")
+                    print(f"  Status: {row.get('Status', 'None')}")
+                    print(f"  ActivityDate: {row.get('ActivityDate', 'None')}")
+                    print(f"  WhatId: {row.get('WhatId', 'None')}")
+                else:  # EmailMessage
+                    print(f"  RelatedToId: {row.get('RelatedToId', 'None')}")
+                    print(f"  FromAddress: {row.get('FromAddress', 'None')}")
+                    print(f"  ToAddress: {row.get('ToAddress', 'None')}")
+                    print(f"  MessageDate: {row.get('MessageDate', 'None')}")
+                    print(f"  Incoming: {row.get('Incoming', 'None')}")
                 print("  ---")
 
         # Initialize counters for better tracking
@@ -432,36 +469,207 @@ def import_history_from_salesforce():
 
         # Use no_autoflush to prevent premature flushing
         with db.session.no_autoflush:
-            for row in task_rows:
+            for row in all_records:
                 try:
-                    # First check if we have a valid volunteer
-                    if not row.get("WhoId"):
-                        skipped_count += 1
-                        continue
+                    record_type = row.get("record_type", "Task")
+                    contact = None
 
-                    # Search across all contact types (volunteers, teachers, etc.) except students
-                    # First try to find a volunteer
-                    contact = Volunteer.query.filter_by(
-                        salesforce_individual_id=row["WhoId"]
-                    ).first()
+                    if record_type == "Task":
+                        # Process Task record (existing logic)
+                        if not row.get("WhoId"):
+                            skipped_count += 1
+                            continue
 
-                    # If no volunteer found, try to find a teacher
-                    if not contact:
-                        contact = Teacher.query.filter_by(
+                        # Search across all contact types (volunteers, teachers, etc.)
+                        contact = Volunteer.query.filter_by(
                             salesforce_individual_id=row["WhoId"]
                         ).first()
 
-                    # If still no contact found, skip this record
-                    if not contact:
-                        no_contact_count += 1
-                        skipped_count += 1
-                        error_msg = f"Skipped Task record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): No matching contact found for WhoId: {row.get('WhoId', 'None')}"
-                        print(f"NO_CONTACT: {error_msg}")
-                        errors.append(error_msg)
-                        continue
+                        if not contact:
+                            contact = Teacher.query.filter_by(
+                                salesforce_individual_id=row["WhoId"]
+                            ).first()
 
-                    # Use the found contact (could be volunteer or teacher)
-                    volunteer = contact
+                        if not contact:
+                            no_contact_count += 1
+                            skipped_count += 1
+                            error_msg = f"Skipped Task record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): No matching contact found for WhoId: {row.get('WhoId', 'None')}"
+                            print(f"NO_CONTACT: {error_msg}")
+                            errors.append(error_msg)
+                            continue
+
+                    elif record_type == "EmailMessage":
+                        # Process EmailMessage record
+                        if not row.get("RelatedToId"):
+                            skipped_count += 1
+                            continue
+
+                        # EmailMessage RelatedToId can be Case, Account, or Contact
+                        # We need to find the associated contact through different methods
+                        contact = None
+                        related_to_id = row["RelatedToId"]
+
+                        # Method 1: Try to match by email address (most reliable for EmailMessage)
+                        to_address = row.get("ToAddress", "")
+                        from_address = row.get("FromAddress", "")
+
+                        # Try to find contact by email in ToAddress
+                        if to_address:
+                            # Extract email addresses from ToAddress (might be comma-separated)
+                            emails = [email.strip() for email in to_address.split(",")]
+                            for email in emails:
+                                # Clean email address
+                                email = email.strip().lower()
+                                if email:
+                                    # Search volunteers by email through the Email model (EFFICIENT)
+                                    contact = (
+                                        db.session.query(Volunteer)
+                                        .join(Email)
+                                        .filter(db.func.lower(Email.email) == email)
+                                        .first()
+                                    )
+
+                                    # Search teachers by email through the Email model (EFFICIENT)
+                                    if not contact:
+                                        contact = (
+                                            db.session.query(Teacher)
+                                            .join(Email)
+                                            .filter(db.func.lower(Email.email) == email)
+                                            .first()
+                                        )
+
+                                    if contact:
+                                        break
+
+                        # Try to find contact by email in FromAddress if still no match
+                        if not contact and from_address:
+                            from_email = from_address.strip().lower()
+                            if from_email:
+                                # Search volunteers by email through the Email model (EFFICIENT)
+                                contact = (
+                                    db.session.query(Volunteer)
+                                    .join(Email)
+                                    .filter(db.func.lower(Email.email) == from_email)
+                                    .first()
+                                )
+
+                                # Search teachers by email through the Email model (EFFICIENT)
+                                if not contact:
+                                    contact = (
+                                        db.session.query(Teacher)
+                                        .join(Email)
+                                        .filter(
+                                            db.func.lower(Email.email) == from_email
+                                        )
+                                        .first()
+                                    )
+
+                        # Method 2: Try direct contact match (unlikely but worth trying)
+                        if not contact:
+                            contact = Volunteer.query.filter_by(
+                                salesforce_individual_id=related_to_id
+                            ).first()
+
+                            if not contact:
+                                contact = Teacher.query.filter_by(
+                                    salesforce_individual_id=related_to_id
+                                ).first()
+
+                        # Method 2: If RelatedToId is a Case, find the contact through the case
+                        if not contact:
+                            # Query for cases with this RelatedToId and get the contact
+                            case_query = f"""
+                                SELECT ContactId, AccountId
+                                FROM Case
+                                WHERE Id = '{related_to_id}'
+                            """
+                            try:
+                                case_result = sf.query_all(case_query)
+                                if case_result.get("records"):
+                                    case_record = case_result["records"][0]
+                                    contact_id = case_record.get("ContactId")
+                                    if contact_id:
+                                        contact = Volunteer.query.filter_by(
+                                            salesforce_individual_id=contact_id
+                                        ).first()
+                                        if not contact:
+                                            contact = Teacher.query.filter_by(
+                                                salesforce_individual_id=contact_id
+                                            ).first()
+                            except Exception as e:
+                                print(
+                                    f"Error querying case for RelatedToId {related_to_id}: {e}"
+                                )
+
+                        # Method 3: If RelatedToId is an Account, find contacts through the account
+                        if not contact:
+                            # Query for contacts associated with this account
+                            account_query = f"""
+                                SELECT Id, FirstName, LastName, Email
+                                FROM Contact
+                                WHERE AccountId = '{related_to_id}'
+                                AND (Contact_Type__c = 'Volunteer' OR Contact_Type__c = '' OR Contact_Type__c = 'Teacher')
+                            """
+                            try:
+                                account_result = sf.query_all(account_query)
+                                if account_result.get("records"):
+                                    # Try to match by email address from the EmailMessage
+                                    to_address = row.get("ToAddress", "")
+                                    from_address = row.get("FromAddress", "")
+
+                                    for contact_record in account_result["records"]:
+                                        contact_email = contact_record.get("Email", "")
+                                        if contact_email in [to_address, from_address]:
+                                            # Found a match by email
+                                            contact = Volunteer.query.filter_by(
+                                                salesforce_individual_id=contact_record[
+                                                    "Id"
+                                                ]
+                                            ).first()
+                                            if not contact:
+                                                contact = Teacher.query.filter_by(
+                                                    salesforce_individual_id=contact_record[
+                                                        "Id"
+                                                    ]
+                                                ).first()
+                                            if contact:
+                                                break
+                            except Exception as e:
+                                print(
+                                    f"Error querying account for RelatedToId {related_to_id}: {e}"
+                                )
+
+                        # Method 4: Try to match by email address directly
+                        if not contact:
+                            to_address = row.get("ToAddress", "")
+                            from_address = row.get("FromAddress", "")
+
+                            # Search for volunteers with matching email addresses
+                            if to_address:
+                                email_match = Email.query.filter_by(
+                                    email=to_address
+                                ).first()
+                                if email_match:
+                                    contact = Volunteer.query.get(
+                                        email_match.contact_id
+                                    )
+
+                            if not contact and from_address:
+                                email_match = Email.query.filter_by(
+                                    email=from_address
+                                ).first()
+                                if email_match:
+                                    contact = Volunteer.query.get(
+                                        email_match.contact_id
+                                    )
+
+                        if not contact:
+                            no_contact_count += 1
+                            skipped_count += 1
+                            error_msg = f"Skipped EmailMessage record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): No matching contact found for RelatedToId: {row.get('RelatedToId', 'None')} (To: {row.get('ToAddress', 'None')}, From: {row.get('FromAddress', 'None')})"
+                            print(f"NO_CONTACT: {error_msg}")
+                            errors.append(error_msg)
+                            continue
 
                     # Check if history exists - use raw SQL to avoid schema issues
                     history_result = db.session.execute(
@@ -470,67 +678,110 @@ def import_history_from_salesforce():
                         ),
                         {"salesforce_id": row["Id"]},
                     ).fetchone()
-                    history = history_result is not None
+                    history_exists = history_result is not None
 
-                    # Handle activity date before creating new record
-                    activity_date = parse_date(row.get("ActivityDate")) or datetime.now(
-                        timezone.utc
-                    )
-
-                    if history:
+                    if history_exists:
                         # Record already exists in system
                         already_exists_count += 1
                         skipped_count += 1
                         continue
 
-                    # Create new history record
-                    history = History(
-                        contact_id=volunteer.id,  # Use contact_id for any contact type
-                        activity_date=activity_date,
-                        history_type="note",  # Default type
-                    )
-                    db.session.add(history)
+                    # Create new history record based on record type
+                    if record_type == "Task":
+                        # Handle activity date for Task records
+                        activity_date = parse_date(
+                            row.get("ActivityDate")
+                        ) or datetime.now(timezone.utc)
 
-                    # Update history fields with proper type conversion
-                    history.salesforce_id = row["Id"]
-                    history.summary = row.get("Subject", "")
-                    history.activity_type = row.get("Type", "")
-                    history.activity_status = row.get("Status", "")
-                    history.activity_date = activity_date
+                        history = History(
+                            contact_id=contact.id,
+                            activity_date=activity_date,
+                            history_type="activity",
+                            salesforce_id=row["Id"],
+                            summary=row.get("Subject", ""),
+                            activity_type=row.get("Type", ""),
+                            activity_status=row.get("Status", ""),
+                        )
+                        db.session.add(history)
 
-                    # Process description field - this contains email content for email tasks
-                    description = row.get("Description", "")
-                    if description:
-                        # Clean up the description content
-                        import re
+                        # Process description field for Task records
+                        description = row.get("Description", "")
+                        if description:
+                            import re
 
-                        # Remove HTML tags if present
-                        description = re.sub(r"<[^>]+>", "", description)
-                        # Clean up extra whitespace
-                        description = re.sub(r"\s+", " ", description).strip()
-                        history.description = description
+                            # Remove HTML tags if present
+                            description = re.sub(r"<[^>]+>", "", description)
+                            # Clean up extra whitespace
+                            description = re.sub(r"\s+", " ", description).strip()
+                            history.description = description
 
-                    # Map Salesforce type to history_type and handle email content
-                    sf_type = (row.get("Type", "") or "").lower()
-                    if sf_type == "email":
-                        history.history_type = "activity"
-                        history.activity_type = "Email"
-                        # Store email message ID for reference
-                        history.email_message_id = row["Id"]
-                    elif sf_type in ["call"]:
-                        history.history_type = "activity"
-                    elif sf_type in ["status_update"]:
-                        history.history_type = "status_change"
-                    else:
-                        history.history_type = "note"
+                        # Map Salesforce type to history_type
+                        sf_type = (row.get("Type", "") or "").lower()
+                        if sf_type == "email":
+                            history.history_type = "activity"
+                            history.activity_type = "Email"
+                            history.email_message_id = row["Id"]
+                        elif sf_type in ["call"]:
+                            history.history_type = "activity"
+                        elif sf_type in ["status_update"]:
+                            history.history_type = "status_change"
+                        else:
+                            history.history_type = "note"
 
-                    # Handle event relationship
-                    if row.get("WhatId"):
-                        event = Event.query.filter_by(
-                            salesforce_id=row["WhatId"]
-                        ).first()
-                        if event:
-                            history.event_id = event.id
+                        # Handle event relationship for Task records
+                        if row.get("WhatId"):
+                            event = Event.query.filter_by(
+                                salesforce_id=row["WhatId"]
+                            ).first()
+                            if event:
+                                history.event_id = event.id
+
+                    elif record_type == "EmailMessage":
+                        # Handle message date for EmailMessage records
+                        message_date = parse_date(
+                            row.get("MessageDate")
+                        ) or datetime.now(timezone.utc)
+
+                        # Create email content description
+                        email_content = []
+                        if row.get("FromAddress"):
+                            email_content.append(f"From: {row['FromAddress']}")
+                        if row.get("ToAddress"):
+                            email_content.append(f"To: {row['ToAddress']}")
+                        if row.get("CcAddress"):
+                            email_content.append(f"CC: {row['CcAddress']}")
+                        if row.get("BccAddress"):
+                            email_content.append(f"BCC: {row['BccAddress']}")
+                        email_content.append(f"Subject: {row.get('Subject', '')}")
+                        email_content.append("Body:")
+
+                        # Use TextBody if available, otherwise HtmlBody
+                        body_content = row.get("TextBody", "") or row.get(
+                            "HtmlBody", ""
+                        )
+                        if body_content:
+                            import re
+
+                            # Clean up HTML if present
+                            if row.get("HtmlBody"):
+                                body_content = re.sub(r"<[^>]+>", "", body_content)
+                            body_content = re.sub(r"\s+", " ", body_content).strip()
+                            email_content.append(body_content)
+
+                        history = History(
+                            contact_id=contact.id,
+                            activity_date=message_date,
+                            history_type="activity",
+                            salesforce_id=row["Id"],
+                            summary=row.get("Subject", ""),
+                            activity_type="Email",
+                            activity_status=(
+                                "Received" if row.get("Incoming", False) else "Sent"
+                            ),
+                            description="\n".join(email_content),
+                            email_message_id=row["Id"],
+                        )
+                        db.session.add(history)
 
                     success_count += 1
 
@@ -543,7 +794,7 @@ def import_history_from_salesforce():
                     error_count += 1
                     other_skip_reasons += 1
                     # Add more detailed error logging
-                    error_msg = f"Error processing Task record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): {str(e)}"
+                    error_msg = f"Error processing {record_type} record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): {str(e)}"
                     print(f"ERROR: {error_msg}")
                     errors.append(error_msg)
                     continue
