@@ -566,118 +566,130 @@ Last Updated: 2024
             </div>
         </div>
 
-        {# History Section - Always Visible #}
-        <div class="profile-card history-info">
-            <div class="card-header" style="cursor: pointer;" onclick="toggleHistorySection()">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-                <h2>Communication History ({{ histories|length if histories else 0 }})</h2>
-                <i class="fa-solid fa-chevron-down" id="history-toggle-icon" style="margin-left: auto;"></i>
-            </div>
+    </div>
+</div>
 
-            <!-- Debug info (remove in production) -->
-            {% if histories %}
-                <!-- Debug: Found {{ histories|length }} history records -->
-            {% else %}
-                <!-- Debug: No histories found -->
-            {% endif %}
-            <div class="card-content" id="history-content" style="display: none;">
-                <div class="history-container">
-                    {% if histories and histories|length > 0 %}
-                        <div class="history-filters">
-                            <div class="history-filter active" data-type="all">
-                                <i class="fa-solid fa-list"></i>
-                                <span>All ({{ histories|length }})</span>
-                            </div>
-                            <div class="history-filter" data-type="Email">
-                                <i class="fa-solid fa-envelope"></i>
-                                <span>Email</span>
-                            </div>
-                            <div class="history-filter" data-type="Call">
-                                <i class="fa-solid fa-phone"></i>
-                                <span>Call</span>
-                            </div>
-                            <div class="history-filter" data-type="Meeting">
-                                <i class="fa-solid fa-handshake"></i>
-                                <span>Meeting</span>
-                            </div>
+{# Communication History Section - Full Width #}
+<div class="communication-history-full-width">
+    <div class="history-section-header" onclick="toggleHistorySection()">
+        <div class="header-content">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <h2>Communication History ({{ histories|length if histories else 0 }})</h2>
+        </div>
+        <i class="fa-solid fa-chevron-down" id="history-toggle-icon"></i>
+    </div>
+
+    <div class="history-section-content" id="history-content" style="display: none;">
+        <div class="history-container">
+            {% if histories and histories|length > 0 %}
+                <div class="history-filters">
+                    <div class="history-filter active" data-type="all">
+                        <i class="fa-solid fa-list"></i>
+                        <span>All ({{ histories|length }})</span>
+                    </div>
+                    <div class="history-filter" data-type="Email">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span>Email</span>
+                    </div>
+                    <div class="history-filter" data-type="Call">
+                        <i class="fa-solid fa-phone"></i>
+                        <span>Call</span>
+                    </div>
+                    <div class="history-filter" data-type="Meeting">
+                        <i class="fa-solid fa-handshake"></i>
+                        <span>Meeting</span>
+                    </div>
+                </div>
+
+                <div class="history-timeline">
+                    {% for history in histories %}
+                    {% set inferred_type = history.activity_type or (history.summary.split(':')[0] if history.summary and ':' in history.summary else 'Other') %}
+                    <div class="history-item" data-type="{{ inferred_type }}">
+                        <div class="history-header">
+                            <span class="history-date">
+                                <i class="fa-regular fa-calendar"></i>
+                                {{ history.activity_date.strftime('%m/%d/%y') if history.activity_date else 'N/A' }}
+                            </span>
+                            <span class="history-status">
+                                {{ history.activity_status }}
+                            </span>
                         </div>
-
-                        <div class="history-timeline" style="max-height: 400px; overflow-y: auto;">
-                            {% for history in histories %}
-                            {% set inferred_type = history.activity_type or (history.summary.split(':')[0] if history.summary and ':' in history.summary else 'Other') %}
-                            <div class="history-item" data-type="{{ inferred_type }}">
-                                <div class="history-header">
-                                    <span class="history-date">
-                                        <i class="fa-regular fa-calendar"></i>
-                                        {{ history.activity_date.strftime('%m/%d/%y') if history.activity_date else 'N/A' }}
-                                    </span>
-                                    <span class="history-status">
-                                        {{ history.activity_status }}
-                                    </span>
-                                </div>
-                                {% if history.summary %}
-                                <div class="history-summary">{{ history.summary }}</div>
-                                {% endif %}
-                                {% if history.description and history.activity_type == 'Email' %}
-                                <div class="history-email-content">
-                                    <div class="email-preview">
+                        {% if history.summary %}
+                        <div class="history-summary">{{ history.summary }}</div>
+                        {% endif %}
+                        {% if history.description and history.activity_type == 'Email' %}
+                        <div class="history-email-content">
+                            <div class="email-preview" onclick="toggleEmailContent(this)">
+                                <div class="email-preview-header">
+                                    <div class="email-preview-icon">
+                                        <i class="fa-solid fa-envelope"></i>
+                                    </div>
+                                    <div class="email-preview-info">
                                         {% set email_lines = history.description.split('\n') %}
-                                        {% set body_started = false %}
-                                        {% set preview_lines = [] %}
-                                        {% for line in email_lines[:10] %}
-                                            {% if line.strip().startswith('Body:') %}
-                                                {% set body_started = true %}
-                                                {% set preview_lines = preview_lines + [line.strip()[6:]] %}
-                                                {% elif body_started and line.strip() %}
-                                                {% set preview_lines = preview_lines + [line.strip()] %}
+                                        {% set subject_line = '' %}
+                                        {% set to_line = '' %}
+                                        {% for line in email_lines[:5] %}
+                                            {% if line.strip().startswith('Subject:') %}
+                                                {% set subject_line = line.strip()[8:].strip() %}
+                                            {% elif line.strip().startswith('To:') %}
+                                                {% set to_line = line.strip()[3:].strip() %}
                                             {% endif %}
                                         {% endfor %}
-                                        {% set preview_text = ' '.join(preview_lines) %}
-                                        {{ preview_text[:200] }}{% if preview_text|length > 200 %}...{% endif %}
+                                        <h4 class="email-preview-subject">{{ subject_line or 'No Subject' }}</h4>
+                                        <p class="email-preview-meta">
+                                            <i class="fa-solid fa-user"></i> {{ to_line or 'Unknown Recipient' }}
+                                            <span style="margin-left: 1rem;">
+                                                <i class="fa-solid fa-clock"></i> {{ history.activity_date.strftime('%m/%d/%Y at %I:%M %p') if history.activity_date else 'Unknown Date' }}
+                                            </span>
+                                        </p>
                                     </div>
-                                    {% if history.description|length > 200 %}
-                                    <button class="email-toggle-btn" onclick="toggleEmailContent(this)">
-                                        <i class="fa-solid fa-chevron-down"></i> Show Full Email
-                                    </button>
-                                    <div class="full-email-content" style="display: none;">
-                                        <div class="email-body">
-                                            {% for line in history.description.split('\n') %}
-                                                {% if line.strip().startswith('To:') or line.strip().startswith('CC:') or line.strip().startswith('BCC:') or line.strip().startswith('Attachment:') %}
-                                                    <div class="email-header-line">{{ line.strip() }}</div>
-                                                {% elif line.strip().startswith('Subject:') %}
-                                                    <div class="email-subject-line">{{ line.strip() }}</div>
-                                                {% elif line.strip().startswith('Body:') %}
-                                                    <div class="email-body-start">{{ line.strip() }}</div>
-                                                {% elif line.strip() %}
-                                                    <div class="email-body-line">{{ line.strip() }}</div>
-                                                {% else %}
-                                                    <div class="email-body-line">&nbsp;</div>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                        <button class="email-toggle-btn secondary" onclick="toggleEmailContent(this)">
-                                            <i class="fa-solid fa-chevron-up"></i> Show Less
-                                        </button>
-                                    </div>
-                                    {% endif %}
                                 </div>
-                                {% elif history.description %}
-                                <div class="history-description">{{ history.description }}</div>
-                                {% endif %}
+                                <div class="email-preview-text">
+                                    {% set preview_text = history.description[:200] %}
+                                    {{ preview_text }}{% if history.description|length > 200 %}...{% endif %}
+                                </div>
                             </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="no-history-message">
-                            <div class="text-center py-4">
-                                <i class="fa-solid fa-inbox fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">No communication history found for this volunteer.</p>
-                                <p class="text-muted small">History records will appear here when communications are logged.</p>
+                            {% if history.description|length > 300 %}
+                            <button class="email-toggle-btn" onclick="toggleEmailContent(this)">
+                                <i class="fa-solid fa-chevron-down"></i> Show Full Email
+                            </button>
+                            <div class="full-email-content" style="display: none;">
+                                <div class="email-content-container">
+                                    <div class="email-body">
+                                        <div class="email-simple-content">
+                                            {{ history.description | replace('\n', '<br>') | safe }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="email-actions">
+                                    <button class="email-action-btn">
+                                        <i class="fa-solid fa-reply"></i> Reply
+                                    </button>
+                                    <button class="email-action-btn">
+                                        <i class="fa-solid fa-share"></i> Forward
+                                    </button>
+                                    <button class="email-toggle-btn secondary" onclick="toggleEmailContent(this)">
+                                        <i class="fa-solid fa-chevron-up"></i> Show Less
+                                    </button>
+                                </div>
                             </div>
+                            {% endif %}
                         </div>
-                    {% endif %}
+                        {% elif history.description %}
+                        <div class="history-description">{{ history.description }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-            </div>
+            {% else %}
+                <div class="no-history-message">
+                    <div class="text-center py-4">
+                        <i class="fa-solid fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No communication history found for this volunteer.</p>
+                        <p class="text-muted small">History records will appear here when communications are logged.</p>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -732,23 +744,41 @@ function toggleExcludeControls() {
     }
 }
 
-function toggleEmailContent(button) {
-    const historyItem = button.closest('.history-item');
+function toggleEmailContent(element) {
+    const historyItem = element.closest('.history-item');
     const fullContent = historyItem.querySelector('.full-email-content');
     const preview = historyItem.querySelector('.email-preview');
+    const toggleButton = historyItem.querySelector('.email-toggle-btn:not(.secondary)');
+    const showLessButton = historyItem.querySelector('.email-toggle-btn.secondary');
 
-    if (fullContent.style.display === 'none') {
+    if (fullContent && fullContent.style.display === 'none' || fullContent.style.display === '') {
+        // Show full content
         fullContent.style.display = 'block';
         preview.style.display = 'none';
-        button.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Show Less';
-        button.classList.remove('email-toggle-btn');
-        button.classList.add('email-toggle-btn', 'secondary');
+        if (toggleButton) toggleButton.style.display = 'none';
+        if (showLessButton) showLessButton.style.display = 'inline-flex';
+
+        // Add smooth animation
+        fullContent.style.opacity = '0';
+        fullContent.style.transform = 'translateY(-10px)';
+        setTimeout(() => {
+            fullContent.style.transition = 'all 0.3s ease';
+            fullContent.style.opacity = '1';
+            fullContent.style.transform = 'translateY(0)';
+        }, 10);
     } else {
-        fullContent.style.display = 'none';
-        preview.style.display = 'block';
-        button.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Show Full Email';
-        button.classList.remove('email-toggle-btn', 'secondary');
-        button.classList.add('email-toggle-btn');
+        // Hide full content
+        if (fullContent) {
+            fullContent.style.transition = 'all 0.3s ease';
+            fullContent.style.opacity = '0';
+            fullContent.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                fullContent.style.display = 'none';
+                preview.style.display = 'block';
+                if (toggleButton) toggleButton.style.display = 'inline-flex';
+                if (showLessButton) showLessButton.style.display = 'none';
+            }, 300);
+        }
     }
 }
 
