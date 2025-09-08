@@ -289,6 +289,33 @@ def view_organization(id):
     # Sort activities by event date (most recent first)
     recent_activities.sort(key=lambda x: x.event.start_date, reverse=True)
 
+    # Get communication history for all associated volunteers
+    # This provides a comprehensive view of all communications across the organization
+    from models.history import History
+
+    # Get all volunteer IDs associated with this organization
+    volunteer_ids = [vo.volunteer.id for vo in volunteer_organizations if vo.volunteer]
+
+    # Fetch all communication history for these volunteers
+    organization_histories = []
+    if volunteer_ids:
+        organization_histories = (
+            History.query.filter(
+                History.contact_id.in_(volunteer_ids), History.is_deleted == False
+            )
+            .order_by(History.activity_date.desc())
+            .all()
+        )
+
+    # Debug: Print history count
+    print(
+        f"Found {len(organization_histories)} communication history records for organization {id}"
+    )
+    if organization_histories:
+        print(
+            f"First history record: {organization_histories[0].activity_type} - {organization_histories[0].summary}"
+        )
+
     # Get all-time summary statistics using the service
     service = OrganizationService()
     summary_data = service.get_organization_summary(id)
@@ -300,6 +327,7 @@ def view_organization(id):
         volunteer_organizations=volunteer_organizations,
         recent_activities=recent_activities[:10],  # Limit to 10 most recent
         summary_stats=summary_data,
+        organization_histories=organization_histories,
     )
 
 

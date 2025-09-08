@@ -40,6 +40,7 @@
 {% block title %}{{ organization.name }}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/organizations.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/communication-history.css') }}?v=1.0">
 {% endblock %}
 {% block content %}
 <div class="org-profile-container">
@@ -172,7 +173,7 @@
                 <div class="participants-grid" id="volunteersGrid">
                     {% for vo in volunteer_organizations %}
                     {% if vo.volunteer %}
-                    <div class="participant-card volunteer">
+                    <div class="participant-card volunteer {% if loop.index > 4 %}volunteer-hidden{% endif %}">
                         <div class="participant-info">
                             <a href="{{ url_for('volunteers.view_volunteer', id=vo.volunteer.id) }}" class="participant-name">{{ vo.volunteer.first_name }} {{ vo.volunteer.last_name }}</a>
                             {% if vo.role %}
@@ -196,10 +197,160 @@
                     {% endif %}
                     {% endfor %}
                 </div>
+
+                {% if volunteer_organizations|length > 4 %}
+                <div class="show-more-volunteers-container">
+                    <button class="show-more-volunteers-btn" id="showMoreVolunteersBtn" onclick="toggleVolunteerExpansion()">
+                        <i class="fa-solid fa-chevron-down"></i>
+                        Show {{ volunteer_organizations|length - 4 }} more volunteers
+                    </button>
+                </div>
+                {% endif %}
                 {% else %}
                 <p class="no-data">No volunteers associated with this organization</p>
                 {% endif %}
             </div>
+        </div>
+    </div>
+</div>
+
+{# Organization Communication History Section - Full Width #}
+<div class="communication-history-full-width">
+    <div class="history-section-header" onclick="toggleOrgHistorySection()">
+        <div class="header-content">
+            <i class="fa-solid fa-comments"></i>
+            <h2>Organization Communication History ({{ organization_histories|length if organization_histories else 0 }})</h2>
+        </div>
+        <i class="fa-solid fa-chevron-down" id="org-history-toggle-icon"></i>
+    </div>
+
+    <div class="history-section-content" id="org-history-content" style="display: none;">
+        <div class="history-container">
+            {% if organization_histories and organization_histories|length > 0 %}
+                <div class="history-filters">
+                    <div class="history-filter active" data-type="all">
+                        <i class="fa-solid fa-list"></i>
+                        <span>All ({{ organization_histories|length }})</span>
+                    </div>
+                    <div class="history-filter" data-type="Email">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span>Email</span>
+                    </div>
+                    <div class="history-filter" data-type="Call">
+                        <i class="fa-solid fa-phone"></i>
+                        <span>Call</span>
+                    </div>
+                    <div class="history-filter" data-type="Meeting">
+                        <i class="fa-solid fa-handshake"></i>
+                        <span>Meeting</span>
+                    </div>
+                    <div class="history-filter" data-type="Note">
+                        <i class="fa-solid fa-sticky-note"></i>
+                        <span>Notes</span>
+                    </div>
+                </div>
+
+                <div class="history-timeline">
+                    {% for history in organization_histories %}
+                    {% set inferred_type = history.activity_type or (history.summary.split(':')[0] if history.summary and ':' in history.summary else 'Other') %}
+                    <div class="history-item" data-type="{{ inferred_type }}">
+                        <div class="history-header">
+                            <div class="history-header-left">
+                                <span class="history-date">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    {{ history.activity_date.strftime('%m/%d/%y') if history.activity_date else 'N/A' }}
+                                </span>
+                                <span class="history-volunteer">
+                                    <i class="fa-solid fa-user"></i>
+                                    {% if history.contact and history.contact.type == 'volunteer' %}
+                                        <a href="{{ url_for('volunteers.view_volunteer', id=history.contact.id) }}" class="volunteer-link">
+                                            {{ history.contact.first_name }} {{ history.contact.last_name }}
+                                        </a>
+                                    {% else %}
+                                        <span class="volunteer-name">Unknown Volunteer</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <span class="history-status">
+                                {{ history.activity_status or 'Completed' }}
+                            </span>
+                        </div>
+                        {% if history.summary %}
+                        <div class="history-summary">{{ history.summary }}</div>
+                        {% endif %}
+                        {% if history.description and history.activity_type == 'Email' %}
+                        <div class="history-email-content">
+                            <div class="email-preview" onclick="toggleEmailContent(this)">
+                                <div class="email-preview-header">
+                                    <div class="email-preview-icon">
+                                        <i class="fa-solid fa-envelope"></i>
+                                    </div>
+                                    <div class="email-preview-info">
+                                        {% set email_lines = history.description.split('\n') %}
+                                        {% set subject_line = '' %}
+                                        {% set to_line = '' %}
+                                        {% for line in email_lines[:5] %}
+                                            {% if line.strip().startswith('Subject:') %}
+                                                {% set subject_line = line.strip()[8:].strip() %}
+                                            {% elif line.strip().startswith('To:') %}
+                                                {% set to_line = line.strip()[3:].strip() %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        <h4 class="email-preview-subject">{{ subject_line or 'No Subject' }}</h4>
+                                        <p class="email-preview-meta">
+                                            <i class="fa-solid fa-user"></i> {{ to_line or 'Unknown Recipient' }}
+                                            <span style="margin-left: 1rem;">
+                                                <i class="fa-solid fa-clock"></i> {{ history.activity_date.strftime('%m/%d/%Y at %I:%M %p') if history.activity_date else 'Unknown Date' }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="email-preview-text">
+                                    {% set preview_text = history.description[:200] %}
+                                    {{ preview_text }}{% if history.description|length > 200 %}...{% endif %}
+                                </div>
+                            </div>
+                            {% if history.description|length > 300 %}
+                            <button class="email-toggle-btn" onclick="toggleEmailContent(this)">
+                                <i class="fa-solid fa-chevron-down"></i> Show Full Email
+                            </button>
+                            <div class="full-email-content" style="display: none;">
+                                <div class="email-content-container">
+                                    <div class="email-body">
+                                        <div class="email-simple-content">
+                                            {{ history.description | replace('\n', '<br>') | safe }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="email-actions">
+                                    <button class="email-action-btn">
+                                        <i class="fa-solid fa-reply"></i> Reply
+                                    </button>
+                                    <button class="email-action-btn">
+                                        <i class="fa-solid fa-share"></i> Forward
+                                    </button>
+                                    <button class="email-toggle-btn secondary" onclick="toggleEmailContent(this)">
+                                        <i class="fa-solid fa-chevron-up"></i> Show Less
+                                    </button>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% elif history.description %}
+                        <div class="history-description">{{ history.description }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-history-message">
+                    <div class="text-center py-4">
+                        <i class="fa-solid fa-comments fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No communication history found for this organization.</p>
+                        <p class="text-muted small">Communication records will appear here when volunteers are contacted or notes are added.</p>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -264,6 +415,194 @@
     margin: 0;
 }
 
+/* Volunteer List Show More Functionality */
+.volunteer-hidden {
+    display: none;
+}
+
+.show-more-volunteers-container {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+}
+
+.show-more-volunteers-btn {
+    background: linear-gradient(135deg, var(--ucla-blue), var(--delft-blue));
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.show-more-volunteers-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.show-more-volunteers-btn:hover::before {
+    left: 100%;
+}
+
+.show-more-volunteers-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(29, 51, 84, 0.3);
+}
+
+.show-more-volunteers-btn i {
+    transition: transform 0.3s ease;
+}
+
+.show-more-volunteers-btn.expanded i {
+    transform: rotate(180deg);
+}
+
+/* Organization Communication History Enhancements */
+.history-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.history-volunteer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ucla-blue);
+    font-weight: 500;
+}
+
+.history-volunteer i {
+    color: var(--delft-blue);
+    font-size: 1rem;
+}
+
+.volunteer-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.volunteer-link:hover {
+    color: var(--delft-blue);
+    text-decoration: underline;
+    transform: translateY(-1px);
+}
+
+.volunteer-name {
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* Enhanced timeline styling for organization view */
+.communication-history-full-width .history-item {
+    border-left: 4px solid var(--non-photo-blue);
+    transition: all 0.3s ease;
+}
+
+.communication-history-full-width .history-item:hover {
+    border-left-color: var(--ucla-blue);
+    transform: translateX(4px);
+}
+
+/* Activity type specific styling for organization view */
+.communication-history-full-width .history-item[data-type="Email"] {
+    border-left-color: var(--ucla-blue);
+    background: linear-gradient(145deg, #f8fbff, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Call"] {
+    border-left-color: var(--poppy);
+    background: linear-gradient(145deg, #fff8f8, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Meeting"] {
+    border-left-color: var(--delft-blue);
+    background: linear-gradient(145deg, #f0f8ff, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Note"] {
+    border-left-color: #10b981;
+    background: linear-gradient(145deg, #f0fdf4, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Other"] {
+    border-left-color: var(--non-photo-blue);
+    background: linear-gradient(145deg, #f8fafc, #ffffff);
+}
+
+/* Organization-specific header styling */
+.communication-history-full-width .history-section-header {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    position: relative;
+    overflow: hidden;
+}
+
+.communication-history-full-width .history-section-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.6s;
+}
+
+.communication-history-full-width .history-section-header:hover::before {
+    left: 100%;
+}
+
+.communication-history-full-width .header-content i {
+    color: #60a5fa;
+    font-size: 1.6rem;
+}
+
+.communication-history-full-width .header-content h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+/* Enhanced filter styling for organization view */
+.communication-history-full-width .history-filter {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: white;
+    border: 2px solid #1e40af;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.communication-history-full-width .history-filter:hover {
+    background: linear-gradient(135deg, #3b82f6, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+}
+
+.communication-history-full-width .history-filter.active {
+    background: linear-gradient(135deg, #1e40af, #1e3a8a);
+    color: #dbeafe;
+    border-color: #1e3a8a;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(30, 64, 175, 0.4);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .summary-stats {
@@ -278,6 +617,25 @@
     .stat-number {
         font-size: 1.5rem;
     }
+
+    .history-header-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .history-volunteer {
+        font-size: 0.9rem;
+    }
+
+    .communication-history-full-width .header-content h2 {
+        font-size: 1.3rem;
+    }
+
+    .show-more-volunteers-btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.85rem;
+    }
 }
 </style>
 
@@ -290,5 +648,220 @@ function filterVolunteers(query) {
         card.style.display = name.includes(query) ? '' : 'none';
     });
 }
+
+function toggleVolunteerExpansion() {
+    const allVolunteers = document.querySelectorAll('#volunteersGrid .participant-card.volunteer');
+    const showMoreBtn = document.querySelector('.show-more-volunteers-btn');
+    const isExpanded = showMoreBtn.classList.contains('expanded');
+
+    console.log('Toggle clicked. Total volunteers found:', allVolunteers.length);
+    console.log('Is expanded:', isExpanded);
+
+    if (isExpanded) {
+        // Collapse - hide all volunteers beyond the first 4
+        allVolunteers.forEach((volunteer, index) => {
+            if (index >= 4) {
+                volunteer.style.display = 'none';
+                volunteer.classList.add('volunteer-hidden');
+                console.log('Hiding volunteer:', index, volunteer);
+            }
+        });
+        showMoreBtn.classList.remove('expanded');
+        const hiddenCount = allVolunteers.length - 4;
+        showMoreBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Show ' + hiddenCount + ' more volunteers';
+    } else {
+        // Expand - show all volunteers
+        allVolunteers.forEach((volunteer, index) => {
+            if (index >= 4) {
+                volunteer.style.display = 'block';
+                volunteer.classList.remove('volunteer-hidden');
+                console.log('Showing volunteer:', index, volunteer);
+            }
+        });
+        showMoreBtn.classList.add('expanded');
+        showMoreBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Show Less';
+    }
+}
+
+// Organization Communication History Functions
+function toggleOrgHistorySection() {
+    const content = document.getElementById('org-history-content');
+    const icon = document.getElementById('org-history-toggle-icon');
+
+    if (content && icon) {
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.className = 'fa-solid fa-chevron-up';
+        } else {
+            content.style.display = 'none';
+            icon.className = 'fa-solid fa-chevron-down';
+        }
+    }
+}
+
+function toggleEmailContent(element) {
+    const historyItem = element.closest('.history-item');
+    const fullContent = historyItem.querySelector('.full-email-content');
+    const preview = historyItem.querySelector('.email-preview');
+    const toggleButton = historyItem.querySelector('.email-toggle-btn:not(.secondary)');
+    const showLessButton = historyItem.querySelector('.email-toggle-btn.secondary');
+
+    if (fullContent && fullContent.style.display === 'none' || fullContent.style.display === '') {
+        // Show full content
+        fullContent.style.display = 'block';
+        preview.style.display = 'none';
+        if (toggleButton) toggleButton.style.display = 'none';
+        if (showLessButton) showLessButton.style.display = 'inline-flex';
+
+        // Add smooth animation
+        fullContent.style.opacity = '0';
+        fullContent.style.transform = 'translateY(-10px)';
+        setTimeout(() => {
+            fullContent.style.transition = 'all 0.3s ease';
+            fullContent.style.opacity = '1';
+            fullContent.style.transform = 'translateY(0)';
+        }, 10);
+    } else {
+        // Hide full content
+        if (fullContent) {
+            fullContent.style.transition = 'all 0.3s ease';
+            fullContent.style.opacity = '0';
+            fullContent.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                fullContent.style.display = 'none';
+                preview.style.display = 'block';
+                if (toggleButton) toggleButton.style.display = 'inline-flex';
+                if (showLessButton) showLessButton.style.display = 'none';
+            }, 300);
+        }
+    }
+}
+
+function updateOrgFilterCounts(activeFilter = 'all') {
+    console.log('updateOrgFilterCounts called with filter:', activeFilter);
+    const historyItems = document.querySelectorAll('.history-item');
+    const filters = document.querySelectorAll('.history-filter');
+
+    console.log('Found history items:', historyItems.length);
+    console.log('Found filters:', filters.length);
+
+    // Count visible items for each type
+    const counts = {
+        'all': historyItems.length,
+        'Email': 0,
+        'Call': 0,
+        'Meeting': 0,
+        'Note': 0
+    };
+
+    historyItems.forEach(item => {
+        const type = item.dataset.type;
+        console.log('History item type:', type);
+        // Handle both exact matches and inferred types
+        if (counts.hasOwnProperty(type)) {
+            counts[type]++;
+        } else if (type && type.includes('Email')) {
+            counts['Email']++;
+        } else if (type && type.includes('Call')) {
+            counts['Call']++;
+        } else if (type && type.includes('Meeting')) {
+            counts['Meeting']++;
+        } else if (type && type.includes('Note')) {
+            counts['Note']++;
+        }
+    });
+
+    console.log('Counts:', counts);
+
+    // Update filter labels
+    filters.forEach(filter => {
+        const type = filter.dataset.type;
+        const count = counts[type] || 0;
+        const span = filter.querySelector('span');
+        if (span) {
+            if (type === 'all') {
+                span.textContent = `All (${count})`;
+            } else {
+                span.textContent = `${type} (${count})`;
+            }
+        }
+    });
+}
+
+// Initialize volunteer expansion state
+function initializeVolunteerExpansion() {
+    const allVolunteers = document.querySelectorAll('#volunteersGrid .participant-card.volunteer');
+    const showMoreBtn = document.getElementById('showMoreVolunteersBtn');
+
+    if (showMoreBtn && allVolunteers.length > 4) {
+        // Ensure initial state is collapsed (only first 4 visible)
+        allVolunteers.forEach((volunteer, index) => {
+            if (index >= 4) {
+                volunteer.style.display = 'none';
+                volunteer.classList.add('volunteer-hidden');
+            }
+        });
+
+        // Ensure button is in collapsed state
+        showMoreBtn.classList.remove('expanded');
+        const hiddenCount = allVolunteers.length - 4;
+        showMoreBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Show ' + hiddenCount + ' more volunteers';
+
+        console.log('Initialized volunteer expansion. Total volunteers:', allVolunteers.length, 'Hidden:', hiddenCount);
+    }
+}
+
+// Initialize organization history filters when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing organization history filters...');
+
+    // Initialize volunteer expansion first
+    initializeVolunteerExpansion();
+
+    const filters = document.querySelectorAll('.history-filter');
+    const historyItems = document.querySelectorAll('.history-item');
+
+    console.log('Found filters:', filters.length);
+    console.log('Found history items:', historyItems.length);
+
+    // Initialize filter counts
+    updateOrgFilterCounts();
+
+    filters.forEach(filter => {
+        filter.addEventListener('click', function() {
+            const filterType = this.dataset.type;
+            console.log('Filter clicked:', filterType);
+
+            // Update active filter
+            filters.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+
+            // Filter history items
+            historyItems.forEach(item => {
+                const itemType = item.dataset.type;
+                let shouldShow = false;
+
+                if (filterType === 'all') {
+                    shouldShow = true;
+                } else if (filterType === 'Email' && (itemType === 'Email' || itemType.includes('Email'))) {
+                    shouldShow = true;
+                } else if (filterType === 'Call' && (itemType === 'Call' || itemType.includes('Call'))) {
+                    shouldShow = true;
+                } else if (filterType === 'Meeting' && (itemType === 'Meeting' || itemType.includes('Meeting'))) {
+                    shouldShow = true;
+                } else if (filterType === 'Note' && (itemType === 'Note' || itemType.includes('Note'))) {
+                    shouldShow = true;
+                } else if (itemType === filterType) {
+                    shouldShow = true;
+                }
+
+                item.style.display = shouldShow ? 'block' : 'none';
+            });
+
+            // Update filter counts
+            updateOrgFilterCounts(filterType);
+        });
+    });
+});
 </script>
 {% endblock %}
