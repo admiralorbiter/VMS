@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
 <style>
+/* Updated: 2025-09-09 - Mustard yellow for in-progress status */
 .teacher-progress-container {
     max-width: 98vw;
     margin: 0 auto;
@@ -284,8 +285,15 @@
 }
 
 .goal-status.in-progress {
-    background: #fff3cd;
-    color: #856404;
+    background: #ffd700 !important;
+    color: #8b4513 !important;
+}
+
+/* More specific selector to override any conflicts */
+.teacher-progress-container .goal-status.in-progress {
+    background: #ffd700 !important;
+    color: #8b4513 !important;
+    border: 1px solid #b8860b !important;
 }
 
 .goal-status.not-started {
@@ -436,7 +444,10 @@
                                     </div>
                                     <div class="progress-text">{{ teacher.completed_sessions }}/{{ teacher.target_sessions }}</div>
                                 </div>
-                                <div class="goal-status {{ teacher.goal_status_class }}">
+                                <div class="goal-status {{ teacher.goal_status_class }}"
+                                     {% if teacher.goal_status_class == 'in_progress' %}
+                                     style="background: #ffd700 !important; color: #8b4513 !important; border: 1px solid #b8860b !important; font-weight: bold !important;"
+                                     {% endif %}>
                                     {{ teacher.goal_status_text }}
                                 </div>
                             {% endif %}
@@ -498,4 +509,17 @@
         </div>
     {% endif %}
 </div>
+
+<!-- Final CSS override to ensure mustard yellow shows -->
+<style>
+/* Final override - must be last */
+.goal-status.in-progress,
+.teacher-progress-container .goal-status.in-progress,
+div.goal-status.in-progress {
+    background: #ffd700 !important;
+    color: #8b4513 !important;
+    border: 1px solid #b8860b !important;
+    font-weight: bold !important;
+}
+</style>
 {% endblock %}
