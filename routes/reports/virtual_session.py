@@ -3844,6 +3844,388 @@ def load_routes(bp):
             virtual_year_options=virtual_year_options,
         )
 
+    @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress")
+    @login_required
+    def virtual_district_teacher_progress(district_name):
+        """
+        Show teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
+        This view tracks progress for a predefined set of teachers to ensure district goals are met.
+
+        Args:
+            district_name: Name of the district (restricted to Kansas City Kansas Public Schools)
+
+        Returns:
+            Rendered template with teacher progress data
+        """
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("report.virtual_usage"))
+
+        # Get filter parameters
+        default_virtual_year = get_current_virtual_year()
+        selected_virtual_year = request.args.get("year", default_virtual_year)
+
+        # Calculate default date range
+        default_date_from, default_date_to = get_virtual_year_dates(
+            selected_virtual_year
+        )
+
+        # Handle date parameters
+        date_from_str = request.args.get("date_from")
+        date_to_str = request.args.get("date_to")
+        date_from = default_date_from
+        date_to = default_date_to
+
+        if date_from_str:
+            try:
+                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
+                if (
+                    default_date_from.date()
+                    <= parsed_date_from.date()
+                    <= default_date_to.date()
+                ):
+                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
+                if (
+                    default_date_from.date()
+                    <= parsed_date_to.date()
+                    <= default_date_to.date()
+                ):
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                pass
+
+        if date_from > date_to:
+            date_from = default_date_from
+            date_to = default_date_to
+
+        current_filters = {
+            "year": selected_virtual_year,
+            "date_from": date_from,
+            "date_to": date_to,
+        }
+
+        # Get teacher progress tracking data
+        teacher_progress_data = compute_teacher_progress_tracking(
+            district_name, selected_virtual_year, date_from, date_to
+        )
+
+        virtual_year_options = generate_school_year_options()
+
+        return render_template(
+            "reports/virtual_teacher_progress.html",
+            district_name=district_name,
+            teacher_progress_data=teacher_progress_data,
+            current_filters=current_filters,
+            virtual_year_options=virtual_year_options,
+        )
+
+    @bp.route(
+        "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets"
+    )
+    @login_required
+    def virtual_teacher_progress_google_sheets(district_name):
+        """Manage Google Sheets for teacher progress tracking"""
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("report.virtual_usage"))
+
+        virtual_year = request.args.get("year", get_current_virtual_year())
+
+        # Get all Google Sheets for teacher progress tracking for this year
+        sheets = (
+            GoogleSheet.query.filter_by(
+                academic_year=virtual_year, purpose="teacher_progress_tracking"
+            )
+            .order_by(GoogleSheet.sheet_name)
+            .all()
+        )
+
+        return render_template(
+            "reports/virtual_teacher_progress_google_sheets.html",
+            sheets=sheets,
+            district_name=district_name,
+            virtual_year=virtual_year,
+            virtual_year_options=generate_school_year_options(),
+        )
+
+    @bp.route(
+        "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets/create",
+        methods=["POST"],
+    )
+    @login_required
+    def create_teacher_progress_google_sheet(district_name):
+        """Create a new Google Sheet for teacher progress tracking"""
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("report.virtual_usage"))
+
+        try:
+            virtual_year = request.form.get("virtual_year")
+            sheet_id = request.form.get("sheet_id")
+            sheet_name = request.form.get("sheet_name")
+
+            if not all([virtual_year, sheet_id, sheet_name]):
+                flash("All fields are required.", "error")
+                return redirect(
+                    url_for(
+                        "report.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=virtual_year,
+                    )
+                )
+
+            # Check if sheet already exists for this year
+            existing_sheet = GoogleSheet.query.filter_by(
+                academic_year=virtual_year,
+                purpose="teacher_progress_tracking",
+            ).first()
+
+            if existing_sheet:
+                flash(
+                    f"A Google Sheet already exists for teacher progress tracking in {virtual_year}.",
+                    "error",
+                )
+                return redirect(
+                    url_for(
+                        "report.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=virtual_year,
+                    )
+                )
+
+            # Create new Google Sheet record
+            new_sheet = GoogleSheet(
+                academic_year=virtual_year,
+                purpose="teacher_progress_tracking",
+                sheet_id=sheet_id,
+                sheet_name=sheet_name,
+                created_by=current_user.id,
+            )
+
+            db.session.add(new_sheet)
+            db.session.commit()
+
+            flash(
+                f'Google Sheet "{sheet_name}" created successfully for teacher progress tracking.',
+                "success",
+            )
+            return redirect(
+                url_for(
+                    "report.virtual_teacher_progress_google_sheets",
+                    district_name=district_name,
+                    year=virtual_year,
+                )
+            )
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating Google Sheet: {str(e)}", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_teacher_progress_google_sheets",
+                    district_name=district_name,
+                    year=virtual_year,
+                )
+            )
+
+    @bp.route(
+        "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets/<int:sheet_id>/import",
+        methods=["POST"],
+    )
+    @login_required
+    def import_teacher_progress_data(district_name, sheet_id):
+        """Import teacher progress data from Google Sheet"""
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("report.virtual_usage"))
+
+        try:
+            sheet = GoogleSheet.query.get_or_404(sheet_id)
+
+            if sheet.purpose != "teacher_progress_tracking":
+                flash("Invalid sheet type for teacher progress tracking.", "error")
+                return redirect(
+                    url_for(
+                        "report.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=sheet.academic_year,
+                    )
+                )
+
+            # Import teacher progress data from Google Sheet
+            import pandas as pd
+
+            # Get the sheet ID from the GoogleSheet record
+            sheet_id = sheet.sheet_id
+            if not sheet_id:
+                flash("No sheet ID found for this Google Sheet.", "error")
+                return redirect(
+                    url_for(
+                        "report.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=sheet.academic_year,
+                    )
+                )
+
+            # Create CSV URL for Google Sheets - use export format which works better
+            csv_url = (
+                f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+            )
+
+            try:
+                # Read data from Google Sheet
+                df = pd.read_csv(csv_url)
+            except Exception as e:
+                # Try alternative URL format if the first one fails
+                csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+                try:
+                    df = pd.read_csv(csv_url)
+                except Exception as e2:
+                    flash(f"Error reading Google Sheet: {str(e2)}", "error")
+                    return redirect(
+                        url_for(
+                            "report.virtual_teacher_progress_google_sheets",
+                            district_name=district_name,
+                            year=sheet.academic_year,
+                        )
+                    )
+
+            # Convert DataFrame to list of dictionaries
+            # Expected columns: Building, Name, Email, Grade
+            sample_teachers = []
+            for _, row in df.iterrows():
+                # Skip empty rows
+                if pd.isna(row.get("Building")) or pd.isna(row.get("Name")):
+                    continue
+
+                teacher_data = {
+                    "building": str(row.get("Building", "")).strip(),
+                    "name": str(row.get("Name", "")).strip(),
+                    "email": str(row.get("Email", "")).strip(),
+                    "grade": str(row.get("Grade", "")).strip(),
+                }
+
+                # Only add if we have required fields
+                if (
+                    teacher_data["building"]
+                    and teacher_data["name"]
+                    and teacher_data["email"]
+                ):
+                    sample_teachers.append(teacher_data)
+
+            # Clear existing data for this academic year
+            from models import TeacherProgress
+
+            TeacherProgress.query.filter_by(
+                academic_year=sheet.academic_year, virtual_year=sheet.academic_year
+            ).delete()
+
+            # Import new data
+            imported_count = 0
+            for teacher_data in sample_teachers:
+                teacher_progress = TeacherProgress(
+                    academic_year=sheet.academic_year,
+                    virtual_year=sheet.academic_year,
+                    building=teacher_data["building"],
+                    name=teacher_data["name"],
+                    email=teacher_data["email"],
+                    grade=teacher_data["grade"],
+                    target_sessions=1,  # Default target of 1 session
+                    created_by=current_user.id,
+                )
+                db.session.add(teacher_progress)
+                imported_count += 1
+
+            db.session.commit()
+
+            flash(
+                f"Successfully imported {imported_count} teachers from '{sheet.sheet_name}' for {sheet.academic_year}.",
+                "success",
+            )
+
+            return redirect(
+                url_for(
+                    "report.virtual_teacher_progress_google_sheets",
+                    district_name=district_name,
+                    year=sheet.academic_year,
+                )
+            )
+
+        except Exception as e:
+            flash(f"Error importing teacher progress data: {str(e)}", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_teacher_progress_google_sheets",
+                    district_name=district_name,
+                    year=sheet.academic_year,
+                )
+            )
+
+    @bp.route(
+        "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets/<int:sheet_id>/delete",
+        methods=["POST"],
+    )
+    @login_required
+    def delete_teacher_progress_google_sheet(district_name, sheet_id):
+        """Delete a Google Sheet for teacher progress tracking"""
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("report.virtual_usage"))
+
+        try:
+            sheet = GoogleSheet.query.get_or_404(sheet_id)
+            virtual_year = sheet.academic_year
+            sheet_name = sheet.sheet_name
+
+            db.session.delete(sheet)
+            db.session.commit()
+
+            flash(f'Google Sheet "{sheet_name}" deleted successfully.', "success")
+            return redirect(
+                url_for(
+                    "report.virtual_teacher_progress_google_sheets",
+                    district_name=district_name,
+                    year=virtual_year,
+                )
+            )
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error deleting Google Sheet: {str(e)}", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_teacher_progress_google_sheets",
+                    district_name=district_name,
+                    year=virtual_year,
+                )
+            )
+
 
 def compute_teacher_school_breakdown(district_name, virtual_year, date_from, date_to):
     """
@@ -4070,3 +4452,131 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
     )
 
     return sorted_schools
+
+
+def compute_teacher_progress_tracking(district_name, virtual_year, date_from, date_to):
+    """
+    Compute teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
+    This function will track progress for a predefined set of teachers imported from a spreadsheet.
+
+    Args:
+        district_name: Name of the district (should be "Kansas City Kansas Public Schools")
+        virtual_year: The virtual year
+        date_from: Start date
+        date_to: End date
+
+    Returns:
+        Dictionary with teacher progress data grouped by school
+    """
+    from datetime import datetime, timezone
+
+    from models import Event, EventTeacher, School, Teacher, TeacherProgress
+    from models.event import EventStatus, EventType
+
+    # Get all teachers from the progress tracking table for this virtual year
+    teachers = TeacherProgress.query.filter_by(virtual_year=virtual_year).all()
+
+    if not teachers:
+        return {}
+
+    # Get virtual session events for the date range
+    events = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.start_date >= date_from,
+        Event.start_date <= date_to,
+    ).all()
+
+    # Create a mapping of teacher names to their progress data
+    teacher_progress_map = {}
+    for teacher in teachers:
+        teacher_progress_map[teacher.name.lower()] = {
+            "teacher": teacher,
+            "completed_sessions": 0,
+            "planned_sessions": 0,
+        }
+
+    # Count completed and planned sessions for each teacher
+    for event in events:
+        for teacher_reg in event.teacher_registrations:
+            if teacher_reg.teacher:
+                teacher_name = (
+                    f"{teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name}"
+                )
+                teacher_key = teacher_name.lower()
+
+                if teacher_key in teacher_progress_map:
+                    # Check if this is a completed session
+                    if (
+                        event.status == EventStatus.COMPLETED
+                        or (event.status == EventStatus.SIMULCAST)
+                        or (getattr(event, "original_status_string", "") or "").lower()
+                        in ["completed", "successfully completed"]
+                    ):
+                        teacher_progress_map[teacher_key]["completed_sessions"] += 1
+                    # Check if this is a planned/upcoming session
+                    elif event.status == EventStatus.DRAFT or (
+                        getattr(event, "original_status_string", "") or ""
+                    ).lower() in ["draft", "registered"]:
+                        teacher_progress_map[teacher_key]["planned_sessions"] += 1
+
+    # Group teachers by building/school
+    school_data = {}
+    for teacher_key, progress_data in teacher_progress_map.items():
+        teacher = progress_data["teacher"]
+        building = teacher.building
+
+        if building not in school_data:
+            school_data[building] = {
+                "teachers": [],
+                "total_teachers": 0,
+                "goals_achieved": 0,
+                "goals_in_progress": 0,
+                "goals_not_started": 0,
+            }
+
+        # Calculate progress status
+        progress_status = teacher.get_progress_status(
+            progress_data["completed_sessions"], progress_data["planned_sessions"]
+        )
+
+        teacher_info = {
+            "id": teacher.id,
+            "name": teacher.name,
+            "email": teacher.email,
+            "grade": teacher.grade,
+            "target_sessions": teacher.target_sessions,
+            "completed_sessions": progress_data["completed_sessions"],
+            "planned_sessions": progress_data["planned_sessions"],
+            "needed_sessions": progress_status["needed_sessions"],
+            "progress_percentage": progress_status["progress_percentage"],
+            "goal_status_class": progress_status["status_class"],
+            "goal_status_text": progress_status["status_text"],
+            "progress_class": (
+                "danger"
+                if progress_status["progress_percentage"] < 50
+                else "warning" if progress_status["progress_percentage"] < 100 else ""
+            ),
+        }
+
+        school_data[building]["teachers"].append(teacher_info)
+        school_data[building]["total_teachers"] += 1
+
+        # Count goal statuses
+        if progress_status["status"] == "achieved":
+            school_data[building]["goals_achieved"] += 1
+        elif progress_status["status"] == "in_progress":
+            school_data[building]["goals_in_progress"] += 1
+        else:
+            school_data[building]["goals_not_started"] += 1
+
+    # Sort teachers within each school by progress (achieved first, then by name)
+    for building, data in school_data.items():
+        data["teachers"].sort(
+            key=lambda x: (
+                -x["completed_sessions"],  # Completed sessions first
+                -x["planned_sessions"],  # Then planned sessions
+                x["name"],  # Then alphabetically
+            )
+        )
+
+    return school_data

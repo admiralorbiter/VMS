@@ -55,7 +55,7 @@ from .class_model import Class
 from .client_project_model import ClientProject
 from .contact import Contact
 from .district_model import District
-from .event import Event
+from .event import Event, EventTeacher
 from .google_sheet import GoogleSheet
 from .history import History
 from .organization import Organization
@@ -63,6 +63,7 @@ from .reports import DistrictEngagementReport, DistrictYearEndReport, Organizati
 from .school_model import School
 from .student import Student
 from .teacher import Teacher
+from .teacher_progress import TeacherProgress
 
 # Import your models after db initialization
 from .user import User
@@ -84,11 +85,13 @@ __all__ = [
     "GoogleSheet",
     "AuditLog",
     "Event",
+    "EventTeacher",
     "Organization",
     "Contact",
     "District",
     "School",
     "Teacher",
+    "TeacherProgress",
     "Student",
     "History",
     "EventAttendanceDetail",

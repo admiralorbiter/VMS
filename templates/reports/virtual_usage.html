@@ -443,6 +443,11 @@
                         <div style="display: flex; gap: 8px;">
                             <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                                class="district-link">View Details</a>
+                            {% if district_name == "Kansas City Kansas Public Schools" %}
+                            <a href="{{ url_for('report.virtual_district_teacher_progress', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
+                               class="district-link" style="background: rgba(40, 167, 69, 0.3);" title="Teacher Progress Tracking">
+                               📈 Progress</a>
+                            {% endif %}
                             <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}"
                                class="district-link" style="background: rgba(255, 255, 255, 0.1);" title="View Google Sheet">
                                📊 Sheet</a>
