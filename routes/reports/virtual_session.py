@@ -3844,6 +3844,91 @@ def load_routes(bp):
             virtual_year_options=virtual_year_options,
         )
 
+    @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress")
+    @login_required
+    def virtual_district_teacher_progress(district_name):
+        """
+        Show teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
+        This view tracks progress for a predefined set of teachers to ensure district goals are met.
+
+        Args:
+            district_name: Name of the district (restricted to Kansas City Kansas Public Schools)
+
+        Returns:
+            Rendered template with teacher progress data
+        """
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("report.virtual_usage"))
+
+        # Get filter parameters
+        default_virtual_year = get_current_virtual_year()
+        selected_virtual_year = request.args.get("year", default_virtual_year)
+
+        # Calculate default date range
+        default_date_from, default_date_to = get_virtual_year_dates(
+            selected_virtual_year
+        )
+
+        # Handle date parameters
+        date_from_str = request.args.get("date_from")
+        date_to_str = request.args.get("date_to")
+        date_from = default_date_from
+        date_to = default_date_to
+
+        if date_from_str:
+            try:
+                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
+                if (
+                    default_date_from.date()
+                    <= parsed_date_from.date()
+                    <= default_date_to.date()
+                ):
+                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
+                if (
+                    default_date_from.date()
+                    <= parsed_date_to.date()
+                    <= default_date_to.date()
+                ):
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                pass
+
+        if date_from > date_to:
+            date_from = default_date_from
+            date_to = default_date_to
+
+        current_filters = {
+            "year": selected_virtual_year,
+            "date_from": date_from,
+            "date_to": date_to,
+        }
+
+        # Get teacher progress tracking data
+        teacher_progress_data = compute_teacher_progress_tracking(
+            district_name, selected_virtual_year, date_from, date_to
+        )
+
+        virtual_year_options = generate_school_year_options()
+
+        return render_template(
+            "reports/virtual_teacher_progress.html",
+            district_name=district_name,
+            teacher_progress_data=teacher_progress_data,
+            current_filters=current_filters,
+            virtual_year_options=virtual_year_options,
+        )
+
 
 def compute_teacher_school_breakdown(district_name, virtual_year, date_from, date_to):
     """
@@ -4070,3 +4155,31 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
     )
 
     return sorted_schools
+
+
+def compute_teacher_progress_tracking(district_name, virtual_year, date_from, date_to):
+    """
+    Compute teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
+    This function will track progress for a predefined set of teachers imported from a spreadsheet.
+
+    Args:
+        district_name: Name of the district (should be "Kansas City Kansas Public Schools")
+        virtual_year: The virtual year
+        date_from: Start date
+        date_to: End date
+
+    Returns:
+        Dictionary with teacher progress data grouped by school
+    """
+    from datetime import datetime, timezone
+
+    # TODO: This is a placeholder implementation
+    # In the future, this will:
+    # 1. Load a predefined list of teachers from a database table or spreadsheet
+    # 2. Set target session counts for each teacher (e.g., 2 sessions per semester)
+    # 3. Calculate actual completed sessions for each teacher
+    # 4. Determine progress status (achieved, in-progress, not-started)
+    # For now, return empty structure to show the setup message
+    # This allows the UI to be tested while we work on the data import functionality
+
+    return {}
