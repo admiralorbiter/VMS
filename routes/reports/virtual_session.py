@@ -4075,132 +4075,65 @@ def load_routes(bp):
                 )
 
             # Import teacher progress data from Google Sheet
-            # For now, we'll create sample data based on the provided structure
-            # TODO: Replace with actual Google Sheets API integration
+            import pandas as pd
 
-            # Sample data based on the provided structure
-            sample_teachers = [
-                {
-                    "building": "Banneker",
-                    "name": "Tahra Arnold",
-                    "email": "tahra.arnold@kckps.org",
-                    "grade": "K",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Ada Rivas Moreno",
-                    "email": "ada.rivasmoreno@kckps.org",
-                    "grade": "K",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Rachel Nolting-Gorman",
-                    "email": "rachel.nolting-gorman@kckps.org",
-                    "grade": "1",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Erica Burnett",
-                    "email": "erica.burnett@kckps.org",
-                    "grade": "1",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Ashley Cervantes",
-                    "email": "ashley.cervantes@kckps.org",
-                    "grade": "1",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Heather Long",
-                    "email": "heather.long@kckps.org",
-                    "grade": "2",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Marla Boswell",
-                    "email": "marla.garrett@kckps.org",
-                    "grade": "2",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Amanda Avila",
-                    "email": "amanda.cano-lozano@kckps.org",
-                    "grade": "3",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Isaia Wilcoxen",
-                    "email": "isaia.wilcoxen@kckps.org",
-                    "grade": "3",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Andre Smith",
-                    "email": "andre.smith@kckps.org",
-                    "grade": "4",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Twakisha Jones",
-                    "email": "twakisha.jones@kckps.org",
-                    "grade": "4",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Alex Hockett",
-                    "email": "alex.hockett@kckps.org",
-                    "grade": "5",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Kassia Stephenson",
-                    "email": "kassia.stephenson@kckps.org",
-                    "grade": "5",
-                },
-                {
-                    "building": "Banneker",
-                    "name": "Lindsay Ehrig",
-                    "email": "lindsay.ehrig@kckps.org",
-                    "grade": "Counselor",
-                },
-                {
-                    "building": "Caruthers",
-                    "name": "Kenley Childs",
-                    "email": "kenley.childs@kckps.org",
-                    "grade": "K",
-                },
-                {
-                    "building": "Caruthers",
-                    "name": "Tiffany Pattison",
-                    "email": "tiffany.pattison@kckps.org",
-                    "grade": "K",
-                },
-                {
-                    "building": "Caruthers",
-                    "name": "Tricia Martin",
-                    "email": "tricia.martin@kckps.org",
-                    "grade": "K",
-                },
-                {
-                    "building": "Caruthers",
-                    "name": "Emily Perry",
-                    "email": "emily.perry@kckps.org",
-                    "grade": "1",
-                },
-                {
-                    "building": "Caruthers",
-                    "name": "Udilza Vanderwark",
-                    "email": "udilza.vanderwark@kckps.org",
-                    "grade": "1",
-                },
-                {
-                    "building": "Caruthers",
-                    "name": "Katherine Reeves",
-                    "email": "katherine.reeves@kckps.org",
-                    "grade": "1",
-                },
-            ]
+            # Get the sheet ID from the GoogleSheet record
+            sheet_id = sheet.sheet_id
+            if not sheet_id:
+                flash("No sheet ID found for this Google Sheet.", "error")
+                return redirect(
+                    url_for(
+                        "report.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=sheet.academic_year,
+                    )
+                )
+
+            # Create CSV URL for Google Sheets - use export format which works better
+            csv_url = (
+                f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+            )
+
+            try:
+                # Read data from Google Sheet
+                df = pd.read_csv(csv_url)
+            except Exception as e:
+                # Try alternative URL format if the first one fails
+                csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+                try:
+                    df = pd.read_csv(csv_url)
+                except Exception as e2:
+                    flash(f"Error reading Google Sheet: {str(e2)}", "error")
+                    return redirect(
+                        url_for(
+                            "report.virtual_teacher_progress_google_sheets",
+                            district_name=district_name,
+                            year=sheet.academic_year,
+                        )
+                    )
+
+            # Convert DataFrame to list of dictionaries
+            # Expected columns: Building, Name, Email, Grade
+            sample_teachers = []
+            for _, row in df.iterrows():
+                # Skip empty rows
+                if pd.isna(row.get("Building")) or pd.isna(row.get("Name")):
+                    continue
+
+                teacher_data = {
+                    "building": str(row.get("Building", "")).strip(),
+                    "name": str(row.get("Name", "")).strip(),
+                    "email": str(row.get("Email", "")).strip(),
+                    "grade": str(row.get("Grade", "")).strip(),
+                }
+
+                # Only add if we have required fields
+                if (
+                    teacher_data["building"]
+                    and teacher_data["name"]
+                    and teacher_data["email"]
+                ):
+                    sample_teachers.append(teacher_data)
 
             # Clear existing data for this academic year
             from models import TeacherProgress
@@ -4228,8 +4161,7 @@ def load_routes(bp):
             db.session.commit()
 
             flash(
-                f"Successfully imported {imported_count} teachers from '{sheet.sheet_name}' for {sheet.academic_year}. "
-                f"Note: This used sample data. Google Sheets API integration needed for live data.",
+                f"Successfully imported {imported_count} teachers from '{sheet.sheet_name}' for {sheet.academic_year}.",
                 "success",
             )
 
