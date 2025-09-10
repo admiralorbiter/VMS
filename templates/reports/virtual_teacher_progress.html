@@ -437,7 +437,7 @@
                     {{ total_achieved }}
                 </span>
                 <span class="stat-percentage" style="display: block; font-size: 1.2em; font-weight: 600; color: #28a745; margin-bottom: 5px;">
-                    {{ "%.1f"|format((total_achieved / total_teachers * 100) if total_teachers > 0 else 0) }}%
+                    {{ "%.1f"|format((total_achieved / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{ total_achieved }}/{{ total_teachers }})
                 </span>
                 <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
                     Goals Achieved
@@ -448,7 +448,7 @@
                     {{ total_in_progress }}
                 </span>
                 <span class="stat-percentage" style="display: block; font-size: 1.2em; font-weight: 600; color: #ffd700; margin-bottom: 5px;">
-                    {{ "%.1f"|format((total_in_progress / total_teachers * 100) if total_teachers > 0 else 0) }}%
+                    {{ "%.1f"|format((total_in_progress / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{ total_in_progress }}/{{ total_teachers }})
                 </span>
                 <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
                     In Progress
@@ -459,7 +459,7 @@
                     {{ total_not_started }}
                 </span>
                 <span class="stat-percentage" style="display: block; font-size: 1.2em; font-weight: 600; color: #dc3545; margin-bottom: 5px;">
-                    {{ "%.1f"|format((total_not_started / total_teachers * 100) if total_teachers > 0 else 0) }}%
+                    {{ "%.1f"|format((total_not_started / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{ total_not_started }}/{{ total_teachers }})
                 </span>
                 <span class="stat-label" style="color: #666; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">
                     Not Started
@@ -486,7 +486,7 @@
                             <div class="progress-fill achieved" style="width: {{ (school_data.goals_achieved / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%"></div>
                         </div>
                         <div class="progress-info">
-                            <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_achieved / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}%</span>
+                            <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_achieved / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{ school_data.goals_achieved }}/{{ school_data.total_teachers }})</span>
                             <span class="progress-label">Completed</span>
                         </div>
                     </div>
@@ -496,7 +496,7 @@
                             <div class="progress-fill in-progress" style="width: {{ (school_data.goals_in_progress / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%"></div>
                         </div>
                         <div class="progress-info">
-                            <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_in_progress / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}%</span>
+                            <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_in_progress / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{ school_data.goals_in_progress }}/{{ school_data.total_teachers }})</span>
                             <span class="progress-label">In Progress</span>
                         </div>
                     </div>
@@ -506,7 +506,7 @@
                             <div class="progress-fill not-started" style="width: {{ (school_data.goals_not_started / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%"></div>
                         </div>
                         <div class="progress-info">
-                            <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_not_started / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}%</span>
+                            <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_not_started / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{ school_data.goals_not_started }}/{{ school_data.total_teachers }})</span>
                             <span class="progress-label">Not Started</span>
                         </div>
                     </div>

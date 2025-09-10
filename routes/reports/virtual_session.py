@@ -4489,11 +4489,25 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
     # Create a mapping of teacher names to their progress data
     teacher_progress_map = {}
     for teacher in teachers:
-        teacher_progress_map[teacher.name.lower()] = {
-            "teacher": teacher,
-            "completed_sessions": 0,
-            "planned_sessions": 0,
-        }
+        # Store multiple possible name variations for matching
+        name_variations = [
+            teacher.name.lower().strip(),
+            teacher.name.lower().replace(".", "").replace(",", "").strip(),
+            # Add first + last name variation if different from stored name
+            (
+                f"{teacher.name.split()[0]} {teacher.name.split()[-1]}".lower()
+                if len(teacher.name.split()) > 1
+                else teacher.name.lower()
+            ),
+        ]
+
+        for name_var in name_variations:
+            if name_var and name_var not in teacher_progress_map:
+                teacher_progress_map[name_var] = {
+                    "teacher": teacher,
+                    "completed_sessions": 0,
+                    "planned_sessions": 0,
+                }
 
     # Count completed and planned sessions for each teacher
     for event in events:
@@ -4502,9 +4516,22 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                 teacher_name = (
                     f"{teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name}"
                 )
-                teacher_key = teacher_name.lower()
+                teacher_key = teacher_name.lower().strip()
 
+                # Try exact match first
                 if teacher_key in teacher_progress_map:
+                    progress_data = teacher_progress_map[teacher_key]
+                else:
+                    # Try flexible matching - look for partial matches
+                    progress_data = None
+                    for name_key, data in teacher_progress_map.items():
+                        if (teacher_key in name_key or name_key in teacher_key) and len(
+                            teacher_key
+                        ) > 3:
+                            progress_data = data
+                            break
+
+                if progress_data:
                     # Check if this is a completed session
                     if (
                         event.status == EventStatus.COMPLETED
@@ -4512,12 +4539,12 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                         or (getattr(event, "original_status_string", "") or "").lower()
                         in ["completed", "successfully completed"]
                     ):
-                        teacher_progress_map[teacher_key]["completed_sessions"] += 1
+                        progress_data["completed_sessions"] += 1
                     # Check if this is a planned/upcoming session
                     elif event.status == EventStatus.DRAFT or (
                         getattr(event, "original_status_string", "") or ""
                     ).lower() in ["draft", "registered"]:
-                        teacher_progress_map[teacher_key]["planned_sessions"] += 1
+                        progress_data["planned_sessions"] += 1
 
     # Group teachers by building/school
     school_data = {}

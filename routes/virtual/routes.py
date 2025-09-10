@@ -1341,6 +1341,11 @@ def import_sheet():
                 event = None
                 event_id = processed_event_ids.get(event_key)
 
+                # Define is_primary_row_status here so it's always available
+                # Treat empty status as primary row (main event data)
+                # Only simulcast is truly secondary
+                is_primary_row_status = status_str not in ["simulcast"]
+
                 if event_id:
                     # Fetch fresh event object from session/DB using cached ID
                     event = db.session.get(Event, event_id)
@@ -1386,9 +1391,7 @@ def import_sheet():
                             "count",
                         ]
 
-                        # Treat empty status as primary row (main event data)
-                        # Only simulcast is truly secondary
-                        is_primary_row_status = status_str not in ["simulcast"]
+                        # can_create_incomplete_event logic for certain statuses
                         can_create_incomplete_event = (
                             status_str in can_create_event_statuses
                         )
