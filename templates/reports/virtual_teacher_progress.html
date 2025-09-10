@@ -368,6 +368,13 @@
     <div class="progress-description">
         <h3>Teacher Progress Tracking</h3>
         <p>This view tracks the progress of specific teachers in Kansas City Kansas Public Schools to ensure district goals are being met. Teachers are tracked by school and their completion status is monitored against predefined targets.</p>
+
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404; font-size: 0.9em;">
+            <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong> Teacher names in connector sessions must match the KCK teacher name spreadsheet.
+            <a href="{{ url_for('report.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
+               style="color: #856404; font-weight: 600; text-decoration: underline;">Update names here</a>.
+        </div>
+
         <p style="margin-top: 15px;">
             <a href="{{ url_for('report.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
                style="color: #155724; font-weight: 600; text-decoration: underline;">

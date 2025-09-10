@@ -4532,19 +4532,40 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                             break
 
                 if progress_data:
-                    # Check if this is a completed session
-                    if (
-                        event.status == EventStatus.COMPLETED
-                        or (event.status == EventStatus.SIMULCAST)
-                        or (getattr(event, "original_status_string", "") or "").lower()
-                        in ["completed", "successfully completed"]
-                    ):
-                        progress_data["completed_sessions"] += 1
-                    # Check if this is a planned/upcoming session
-                    elif event.status == EventStatus.DRAFT or (
-                        getattr(event, "original_status_string", "") or ""
-                    ).lower() in ["draft", "registered"]:
-                        progress_data["planned_sessions"] += 1
+                    # Check teacher's individual registration status first
+                    teacher_reg_status = (
+                        (getattr(teacher_reg, "status", "") or "").lower().strip()
+                    )
+                    is_teacher_no_show = (
+                        "teacher no-show" in teacher_reg_status
+                        or "teacher no show" in teacher_reg_status
+                        or "no-show" in teacher_reg_status
+                        or "no show" in teacher_reg_status
+                        or "did not attend" in teacher_reg_status
+                    )
+                    is_teacher_cancel = (
+                        "cancel" in teacher_reg_status
+                        or "withdraw" in teacher_reg_status
+                        or "cancelled" in teacher_reg_status
+                    )
+
+                    # Only count as completed if teacher actually attended (not no-show or cancelled)
+                    if not is_teacher_no_show and not is_teacher_cancel:
+                        # Check if this is a completed session
+                        if (
+                            event.status == EventStatus.COMPLETED
+                            or (event.status == EventStatus.SIMULCAST)
+                            or (
+                                getattr(event, "original_status_string", "") or ""
+                            ).lower()
+                            in ["completed", "successfully completed"]
+                        ):
+                            progress_data["completed_sessions"] += 1
+                        # Check if this is a planned/upcoming session
+                        elif event.status == EventStatus.DRAFT or (
+                            getattr(event, "original_status_string", "") or ""
+                        ).lower() in ["draft", "registered"]:
+                            progress_data["planned_sessions"] += 1
 
     # Group teachers by building/school
     school_data = {}
