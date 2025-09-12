@@ -184,6 +184,13 @@ def load_routes(bp):
                 "url": "/attendance/details",
                 "category": "Attendance",
             },
+            {
+                "title": "DIA Events Report",
+                "description": "View upcoming Data in Action events showing filled and unfilled positions with volunteer contact information.",
+                "icon": "fa-solid fa-chart-bar",
+                "url": "/reports/dia-events",
+                "category": "Event Management",
+            },
         ]
 
         return render_template("reports/reports.html", reports=available_reports)

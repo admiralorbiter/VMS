@@ -5,6 +5,7 @@ report_bp = Blueprint("report", __name__)
 
 from routes.reports.attendance import load_routes as load_attendance_routes
 from routes.reports.contact import load_routes as load_contact_routes
+from routes.reports.dia_events import load_routes as load_dia_events_routes
 from routes.reports.district_year_end import load_routes as load_district_routes
 from routes.reports.first_time_volunteer import (
     load_routes as load_first_time_volunteer_routes,
@@ -39,3 +40,4 @@ load_attendance_routes(report_bp)
 load_first_time_volunteer_routes(report_bp)
 load_volunteers_by_event_routes(report_bp)
 load_recent_volunteers_routes(report_bp)
+load_dia_events_routes(report_bp)
