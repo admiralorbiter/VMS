@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required
+from sqlalchemy import func
 
 from models import db, eagerload_volunteer_bundle
 from models.event import Event, EventStatus, EventType
@@ -134,6 +135,49 @@ def _query_volunteers(
     for volunteer, event, participation in rows:
         rec = aggregated.get(volunteer.id)
         if not rec:
+            # Get total volunteer count for this volunteer (all time)
+            total_volunteer_count = (
+                db.session.query(func.count(EventParticipation.id))
+                .join(Event, Event.id == EventParticipation.event_id)
+                .filter(
+                    EventParticipation.volunteer_id == volunteer.id,
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                    ),
+                    Event.status == EventStatus.COMPLETED,
+                )
+                .scalar()
+                or 0
+            )
+
+            # Get future event signups for this volunteer
+            future_events = (
+                db.session.query(Event)
+                .join(EventParticipation, Event.id == EventParticipation.event_id)
+                .filter(
+                    EventParticipation.volunteer_id == volunteer.id,
+                    Event.start_date > datetime.utcnow(),
+                    Event.status.in_([EventStatus.CONFIRMED, EventStatus.PUBLISHED]),
+                    EventParticipation.status.in_(
+                        ["Registered", "Confirmed", "Attending"]
+                    ),
+                )
+                .order_by(Event.start_date)
+                .all()
+            )
+
+            # Format future events for display
+            future_events_display = []
+            for future_event in future_events:
+                future_events_display.append(
+                    {
+                        "id": future_event.id,
+                        "title": future_event.title,
+                        "date": future_event.start_date,
+                        "type": future_event.type.value if future_event.type else None,
+                    }
+                )
+
             rec = {
                 "id": volunteer.id,
                 "name": f"{volunteer.first_name} {volunteer.last_name}",
@@ -151,6 +195,10 @@ def _query_volunteers(
                 "events": [],
                 "event_count": 0,
                 "last_event_date": None,
+                "last_non_internal_email_date": volunteer.last_non_internal_email_date,
+                "total_volunteer_count": total_volunteer_count,
+                "future_events": future_events_display,
+                "future_events_count": len(future_events_display),
             }
             aggregated[volunteer.id] = rec
 
@@ -206,16 +254,37 @@ def load_routes(bp: Blueprint):
 
         # For display: build concise events string per volunteer
         for v in volunteers:
-            titles = [e["title"] for e in v["events"]]
+            # Combine past and future events for display
+            all_events = v["events"] + v.get("future_events", [])
+
+            # Sort by date (past events first, then future)
+            all_events.sort(key=lambda x: x.get("date") or datetime.min)
+
+            titles = [e["title"] for e in all_events]
             unique_titles = []
             seen = set()
             for t in titles:
                 if t and t not in seen:
                     seen.add(t)
                     unique_titles.append(t)
-            v["events_display"] = "; ".join(unique_titles[:5]) + (
-                " …" if len(unique_titles) > 5 else ""
-            )
+
+            # Show past events first, then indicate future events
+            past_titles = [e["title"] for e in v["events"] if e.get("title")]
+            future_titles = [
+                e["title"] for e in v.get("future_events", []) if e.get("title")
+            ]
+
+            display_parts = []
+            if past_titles:
+                display_parts.append("; ".join(past_titles[:3]))
+            if future_titles:
+                future_display = " [Upcoming: " + "; ".join(future_titles[:2]) + "]"
+                display_parts.append(future_display)
+
+            v["events_display"] = "".join(display_parts)
+            if len(unique_titles) > 5:
+                v["events_display"] += " …"
+
             # Ensure organization and skills strings for UI
             v["organization"] = v.get("organization") or "None"
             v["skills"] = v.get("skills") or ""
@@ -284,7 +353,20 @@ def load_routes(bp: Blueprint):
                 if v["last_event_date"]
                 else ""
             )
-            titles = [e["title"] for e in v["events"] if e.get("title")]
+            last_email_date = (
+                v["last_non_internal_email_date"].strftime("%m/%d/%y")
+                if v["last_non_internal_email_date"]
+                else ""
+            )
+            # Combine past and future events for Excel
+            past_titles = [e["title"] for e in v["events"] if e.get("title")]
+            future_titles = [
+                e["title"] for e in v.get("future_events", []) if e.get("title")
+            ]
+
+            all_titles = past_titles + future_titles
+            future_count = v.get("future_events_count", 0)
+
             rows.append(
                 {
                     "Name": v["name"],
@@ -292,8 +374,11 @@ def load_routes(bp: Blueprint):
                     "Organization": v.get("organization") or "",
                     "Skills": v.get("skills") or "",
                     "Events (Count)": v["event_count"],
-                    "Last Event": last_date,
-                    "Event Titles": "; ".join(sorted(set(titles))),
+                    "Future Events": future_count,
+                    "Last Volunteered": last_date,
+                    "Last Email": last_email_date,
+                    "# Times": v.get("total_volunteer_count", 0),
+                    "Event Titles": "; ".join(sorted(set(all_titles))),
                 }
             )
 
@@ -302,13 +387,16 @@ def load_routes(bp: Blueprint):
             df = pd.DataFrame(rows)
             df.to_excel(writer, index=False, sheet_name="Volunteers")
             ws = writer.sheets["Volunteers"]
-            ws.set_column("A:A", 28)
-            ws.set_column("B:B", 36)
+            ws.set_column("A:A", 28)  # Name
+            ws.set_column("B:B", 36)  # Email
             ws.set_column("C:C", 26)  # Organization
             ws.set_column("D:D", 40)  # Skills
             ws.set_column("E:E", 14)  # Events (Count)
-            ws.set_column("F:F", 14)  # Last Event
-            ws.set_column("G:G", 60)  # Event Titles
+            ws.set_column("F:F", 12)  # Future Events
+            ws.set_column("G:G", 12)  # Last Volunteered
+            ws.set_column("H:H", 12)  # Last Email
+            ws.set_column("I:I", 10)  # # Times
+            ws.set_column("J:J", 60)  # Event Titles
 
         output.seek(0)
 
