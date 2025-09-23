@@ -101,6 +101,25 @@ def _get_primary_org_name(volunteer: Volunteer) -> str | None:
     return None
 
 
+def _get_primary_org_id(volunteer: Volunteer) -> int | None:
+    # Prefer explicit primary org from association table
+    if getattr(volunteer, "volunteer_organizations", None):
+        primary = next(
+            (vo for vo in volunteer.volunteer_organizations if vo.is_primary), None
+        )
+        if primary and primary.organization and primary.organization.id:
+            return primary.organization.id
+        # Fall back to first org if no primary
+        first = (
+            volunteer.volunteer_organizations[0].organization
+            if volunteer.volunteer_organizations
+            else None
+        )
+        if first and first.id:
+            return first.id
+    return None
+
+
 def _query_volunteers(
     start_date: datetime,
     end_date: datetime,
@@ -150,16 +169,41 @@ def _query_volunteers(
                 or 0
             )
 
+            # Get the actual last volunteer date (all time, not just filtered range)
+            last_volunteer_date = (
+                db.session.query(Event.start_date)
+                .join(EventParticipation, Event.id == EventParticipation.event_id)
+                .filter(
+                    EventParticipation.volunteer_id == volunteer.id,
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                    ),
+                    Event.status == EventStatus.COMPLETED,
+                )
+                .order_by(Event.start_date.desc())
+                .first()
+            )
+            last_volunteer_date = (
+                last_volunteer_date[0] if last_volunteer_date else None
+            )
+
             # Get future event signups for this volunteer
+            # Include all participation statuses that indicate they're signed up
             future_events = (
                 db.session.query(Event)
                 .join(EventParticipation, Event.id == EventParticipation.event_id)
                 .filter(
                     EventParticipation.volunteer_id == volunteer.id,
                     Event.start_date > datetime.utcnow(),
-                    Event.status.in_([EventStatus.CONFIRMED, EventStatus.PUBLISHED]),
-                    EventParticipation.status.in_(
-                        ["Registered", "Confirmed", "Attending"]
+                    Event.status.in_(
+                        [
+                            EventStatus.CONFIRMED,
+                            EventStatus.PUBLISHED,
+                            EventStatus.REQUESTED,
+                        ]
+                    ),
+                    EventParticipation.status.notin_(
+                        ["Cancelled", "No Show", "Declined", "Withdrawn"]
                     ),
                 )
                 .order_by(Event.start_date)
@@ -183,6 +227,7 @@ def _query_volunteers(
                 "name": f"{volunteer.first_name} {volunteer.last_name}",
                 "email": volunteer.primary_email,
                 "organization": _get_primary_org_name(volunteer),
+                "organization_id": _get_primary_org_id(volunteer),
                 "skills": ", ".join(
                     sorted(
                         {
@@ -194,8 +239,9 @@ def _query_volunteers(
                 ),
                 "events": [],
                 "event_count": 0,
-                "last_event_date": None,
-                "last_non_internal_email_date": volunteer.last_non_internal_email_date,
+                "last_event_date": last_volunteer_date,  # Use the all-time last volunteer date
+                "last_non_internal_email_date": volunteer.last_non_internal_email_date
+                or getattr(volunteer, "last_email_date", None),
                 "total_volunteer_count": total_volunteer_count,
                 "future_events": future_events_display,
                 "future_events_count": len(future_events_display),
@@ -211,10 +257,7 @@ def _query_volunteers(
             }
         )
         rec["event_count"] += 1
-        if not rec["last_event_date"] or (
-            event.start_date and event.start_date > rec["last_event_date"]
-        ):
-            rec["last_event_date"] = event.start_date
+        # Note: last_event_date is now set from all-time query above, not updated here
 
     # Convert to sorted list
     result = list(aggregated.values())
@@ -367,6 +410,11 @@ def load_routes(bp: Blueprint):
             all_titles = past_titles + future_titles
             future_count = v.get("future_events_count", 0)
 
+            # Combine last volunteered date with future events info
+            last_volunteered_display = last_date
+            if future_count > 0:
+                last_volunteered_display += f" ({future_count} upcoming)"
+
             rows.append(
                 {
                     "Name": v["name"],
@@ -374,8 +422,7 @@ def load_routes(bp: Blueprint):
                     "Organization": v.get("organization") or "",
                     "Skills": v.get("skills") or "",
                     "Events (Count)": v["event_count"],
-                    "Future Events": future_count,
-                    "Last Volunteered": last_date,
+                    "Last Volunteered Date": last_volunteered_display,
                     "Last Email": last_email_date,
                     "# Times": v.get("total_volunteer_count", 0),
                     "Event Titles": "; ".join(sorted(set(all_titles))),
@@ -392,11 +439,10 @@ def load_routes(bp: Blueprint):
             ws.set_column("C:C", 26)  # Organization
             ws.set_column("D:D", 40)  # Skills
             ws.set_column("E:E", 14)  # Events (Count)
-            ws.set_column("F:F", 12)  # Future Events
-            ws.set_column("G:G", 12)  # Last Volunteered
-            ws.set_column("H:H", 12)  # Last Email
-            ws.set_column("I:I", 10)  # # Times
-            ws.set_column("J:J", 60)  # Event Titles
+            ws.set_column("F:F", 20)  # Last Volunteered Date (with upcoming info)
+            ws.set_column("G:G", 12)  # Last Email
+            ws.set_column("H:H", 10)  # # Times
+            ws.set_column("I:I", 60)  # Event Titles
 
         output.seek(0)
 
