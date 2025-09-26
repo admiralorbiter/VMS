@@ -37,6 +37,10 @@ These documents are always current, actively maintained, and designed for both h
 - **[Commands.md](Commands.md)** - CLI commands and operational procedures
 - **[Testing.md](Testing.md)** - Test setup, patterns, and quality assurance
 
+### **🚀 Deployment & Operations**
+- **[PythonAnywhere_Deployment.md](PythonAnywhere_Deployment.md)** - Complete PythonAnywhere deployment guide
+- **[Cache_Management.md](Cache_Management.md)** - Automated cache refresh system and monitoring
+
 ## 🎯 **How to Use These Docs**
 
 ### **Daily Work**

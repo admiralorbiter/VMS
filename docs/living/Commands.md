@@ -267,6 +267,51 @@ python scripts/sync_script.py --force
 python scripts/sync_script.py --entity volunteer
 ```
 
+### **Cache Management (PythonAnywhere)**
+```bash
+# Refresh all caches (24-hour scheduled task)
+python scripts/pythonanywhere_cache_manager.py refresh
+
+# Force refresh all caches
+python scripts/pythonanywhere_cache_manager.py refresh --force
+
+# Refresh specific cache type
+python scripts/pythonanywhere_cache_manager.py refresh --type district
+python scripts/pythonanywhere_cache_manager.py refresh --type organization
+python scripts/pythonanywhere_cache_manager.py refresh --type virtual_session
+python scripts/pythonanywhere_cache_manager.py refresh --type volunteer
+python scripts/pythonanywhere_cache_manager.py refresh --type recruitment
+
+# Check cache status
+python scripts/pythonanywhere_cache_manager.py status
+
+# Perform health check
+python scripts/pythonanywhere_cache_manager.py health
+```
+
+### **Daily Imports (PythonAnywhere)**
+```bash
+# Run daily imports (scheduled task)
+python scripts/daily_imports/daily_imports.py --daily
+
+# Run full imports (all data)
+python scripts/daily_imports/daily_imports.py --full
+
+# Run specific imports only
+python scripts/daily_imports/daily_imports.py --only organizations
+python scripts/daily_imports/daily_imports.py --only volunteers
+python scripts/daily_imports/daily_imports.py --only events
+
+# Exclude specific imports
+python scripts/daily_imports/daily_imports.py --exclude students
+python scripts/daily_imports/daily_imports.py --exclude teachers
+
+# Testing and validation
+python scripts/daily_imports/daily_imports.py --dry-run
+python scripts/daily_imports/daily_imports.py --validate
+python scripts/daily_imports/daily_imports.py --daily --verbose
+```
+
 ### **Google Sheets Operations**
 ```bash
 # Copy Google Sheets data
@@ -300,6 +345,37 @@ touch /var/www/yourusername_pythonanywhere_com_wsgi.py
 
 # Check web app status
 pythonanywhere.com/webapps/
+```
+
+### **PythonAnywhere Scheduled Tasks**
+```bash
+# Set up 24-hour cache refresh (in PythonAnywhere Tasks tab)
+# Command: python /home/yourusername/VMS/scripts/pythonanywhere_cache_manager.py refresh
+# Hour: 2 (runs at 2 AM daily)
+# Minute: 0
+
+# Set up daily imports (in PythonAnywhere Tasks tab)
+# Command: python /home/yourusername/VMS/scripts/daily_imports/daily_imports.py --daily
+# Hour: 3 (runs at 3 AM daily, after cache refresh)
+# Minute: 0
+
+# Test cache refresh task manually
+python /home/yourusername/VMS/scripts/pythonanywhere_cache_manager.py refresh
+
+# Test daily imports task manually
+python /home/yourusername/VMS/scripts/daily_imports/daily_imports.py --daily
+
+# Check cache refresh logs
+tail -f /home/yourusername/VMS/logs/cache_manager.log
+
+# Check daily imports logs
+tail -f /home/yourusername/VMS/logs/daily_imports.log
+
+# Monitor cache refresh execution
+python /home/yourusername/VMS/scripts/pythonanywhere_cache_manager.py status
+
+# Validate daily imports configuration
+python /home/yourusername/VMS/scripts/daily_imports/daily_imports.py --validate
 ```
 
 ### **Logs & Monitoring**

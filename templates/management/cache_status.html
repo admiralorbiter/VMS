@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Cache Status - Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+    .status-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-running {
+        background-color: #28a745;
+    }
+    
+    .status-stopped {
+        background-color: #dc3545;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    
+    .action-buttons {
+        margin-top: 1rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2 mb-0">
+                    <i class="fas fa-database text-primary me-2"></i>
+                    Cache Management
+                </h1>
+                <div class="btn-group">
+                    <a href="{{ url_for('cache_management.cache_refresh') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Refresh Caches
+                    </a>
+                    <button id="refreshStatus" class="btn btn-outline-secondary">
+                        <i class="fas fa-sync me-1"></i>
+                        Refresh Status
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Overview -->
+            <div class="status-card">
+                <h3 class="h5 mb-3">
+                    <span class="status-indicator {% if status.is_running %}status-running{% else %}status-stopped{% endif %}"></span>
+                    Scheduler Status
+                </h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Status:</strong> 
+                            {% if status.is_running %}
+                                <span class="text-success">Running</span>
+                            {% else %}
+                                <span class="text-danger">Stopped</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Refresh Interval:</strong> {{ status.refresh_interval_hours }} hours</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Last Refresh:</strong> 
+                            {% if status.last_refresh %}
+                                {{ status.last_refresh }}
+                            {% else %}
+                                <span class="text-muted">Never</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Scheduler Controls -->
+                <div class="action-buttons">
+                    <div class="btn-group">
+                        {% if status.is_running %}
+                            <button id="stopScheduler" class="btn btn-danger">
+                                <i class="fas fa-stop me-1"></i>
+                                Stop Scheduler
+                            </button>
+                        {% else %}
+                            <button id="startScheduler" class="btn btn-success">
+                                <i class="fas fa-play me-1"></i>
+                                Start Scheduler
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="status-card">
+                <h3 class="h5 mb-3">
+                    <i class="fas fa-chart-bar text-primary me-2"></i>
+                    Refresh Statistics
+                </h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ status.stats.total_refreshes }}</div>
+                        <div class="stat-label">Total Refreshes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number text-success">{{ status.stats.successful_refreshes }}</div>
+                        <div class="stat-label">Successful</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number text-danger">{{ status.stats.failed_refreshes }}</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ status.refresh_interval_hours }}h</div>
+                        <div class="stat-label">Interval</div>
+                    </div>
+                </div>
+                
+                {% if status.stats.last_error %}
+                <div class="alert alert-warning mt-3">
+                    <strong>Last Error:</strong> {{ status.stats.last_error }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Cache Types Overview -->
+            <div class="status-card">
+                <h3 class="h5 mb-3">
+                    <i class="fas fa-list text-primary me-2"></i>
+                    Cache Types
+                </h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> District Reports</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Organization Reports</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Virtual Session Reports</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> Volunteer Reports</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Recruitment Reports</li>
+                            <li><i class="fas fa-check text-success me-2"></i> First Time Volunteer Reports</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Refresh status button
+    document.getElementById('refreshStatus').addEventListener('click', function() {
+        location.reload();
+    });
+    
+    // Start scheduler button
+    const startBtn = document.getElementById('startScheduler');
+    if (startBtn) {
+        startBtn.addEventListener('click', function() {
+            if (confirm('Start the cache refresh scheduler?')) {
+                fetch('{{ url_for("cache_management.start_scheduler") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                });
+            }
+        });
+    }
+    
+    // Stop scheduler button
+    const stopBtn = document.getElementById('stopScheduler');
+    if (stopBtn) {
+        stopBtn.addEventListener('click', function() {
+            if (confirm('Stop the cache refresh scheduler?')) {
+                fetch('{{ url_for("cache_management.stop_scheduler") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

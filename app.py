@@ -18,6 +18,7 @@ from models import User, db
 from models.user import SecurityLevel
 from routes.routes import init_routes
 from utils import format_event_type_for_badge, short_date
+from utils.cache_refresh_scheduler import start_cache_refresh_scheduler
 
 app = Flask(__name__)
 CORS(app)
@@ -659,6 +660,14 @@ def api_quality_settings():
 
 
 if __name__ == "__main__":
+    # Start cache refresh scheduler in production
+    if flask_env == "production":
+        try:
+            start_cache_refresh_scheduler()
+            app.logger.info("Cache refresh scheduler started")
+        except Exception as e:
+            app.logger.error(f"Failed to start cache refresh scheduler: {e}")
+    
     # Use production-ready server configuration
     port = int(os.environ.get("PORT", 5050))
     app.run(host="0.0.0.0", port=port)

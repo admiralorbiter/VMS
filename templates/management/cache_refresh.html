@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Refresh Caches - Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+    .refresh-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .cache-type-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .cache-type-card:hover {
+        border-color: #007bff;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 123, 255, 0.1);
+    }
+    
+    .cache-type-card.selected {
+        border-color: #007bff;
+        background-color: #f8f9ff;
+    }
+    
+    .cache-type-icon {
+        font-size: 2rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+    
+    .cache-type-card.selected .cache-type-icon {
+        color: #007bff;
+    }
+    
+    .cache-description {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    .refresh-button {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+    }
+    
+    .loading {
+        display: none;
+    }
+    
+    .loading.show {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2 mb-0">
+                    <i class="fas fa-sync-alt text-primary me-2"></i>
+                    Refresh Caches
+                </h1>
+                <a href="{{ url_for('cache_management.cache_status') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    Back to Status
+                </a>
+            </div>
+
+            <!-- Refresh Form -->
+            <div class="refresh-card">
+                <h3 class="h5 mb-4">Select Cache Type to Refresh</h3>
+                
+                <form id="refreshForm" method="POST">
+                    <div class="row">
+                        {% for value, label in cache_types %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="cache-type-card" data-value="{{ value }}">
+                                <input type="radio" name="cache_type" value="{{ value }}" id="cache_{{ value }}" 
+                                       class="d-none" {% if value == 'all' %}checked{% endif %}>
+                                
+                                <div class="text-center">
+                                    {% if value == 'all' %}
+                                        <i class="fas fa-database cache-type-icon"></i>
+                                    {% elif value == 'district' %}
+                                        <i class="fas fa-building cache-type-icon"></i>
+                                    {% elif value == 'organization' %}
+                                        <i class="fas fa-sitemap cache-type-icon"></i>
+                                    {% elif value == 'virtual_session' %}
+                                        <i class="fas fa-video cache-type-icon"></i>
+                                    {% elif value == 'volunteer' %}
+                                        <i class="fas fa-users cache-type-icon"></i>
+                                    {% elif value == 'recruitment' %}
+                                        <i class="fas fa-user-plus cache-type-icon"></i>
+                                    {% endif %}
+                                    
+                                    <h5 class="mb-2">{{ label }}</h5>
+                                    
+                                    {% if value == 'all' %}
+                                        <p class="cache-description">Refresh all cached reports and data</p>
+                                    {% elif value == 'district' %}
+                                        <p class="cache-description">District year-end and engagement reports</p>
+                                    {% elif value == 'organization' %}
+                                        <p class="cache-description">Organization reports and summary data</p>
+                                    {% elif value == 'virtual_session' %}
+                                        <p class="cache-description">Virtual session usage and breakdown reports</p>
+                                    {% elif value == 'volunteer' %}
+                                        <p class="cache-description">Recent volunteers and first-time volunteer reports</p>
+                                    {% elif value == 'recruitment' %}
+                                        <p class="cache-description">Recruitment candidate recommendations</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg refresh-button" id="refreshBtn">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            <span class="btn-text">Refresh Selected Caches</span>
+                            <span class="loading">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                Refreshing...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Information Card -->
+            <div class="refresh-card">
+                <h3 class="h5 mb-3">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    About Cache Refresh
+                </h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>What happens during refresh:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> Old cache data is cleared</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Fresh data is generated from database</li>
+                            <li><i class="fas fa-check text-success me-2"></i> New cache entries are created</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Reports will load faster</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Performance impact:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-info text-info me-2"></i> Refresh may take 1-5 minutes</li>
+                            <li><i class="fas fa-info text-info me-2"></i> Reports remain available during refresh</li>
+                            <li><i class="fas fa-info text-info me-2"></i> Database load may increase temporarily</li>
+                            <li><i class="fas fa-info text-info me-2"></i> Users won't be affected</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle cache type selection
+    const cacheCards = document.querySelectorAll('.cache-type-card');
+    const radioInputs = document.querySelectorAll('input[name="cache_type"]');
+    
+    cacheCards.forEach(card => {
+        card.addEventListener('click', function() {
+            // Remove selected class from all cards
+            cacheCards.forEach(c => c.classList.remove('selected'));
+            
+            // Add selected class to clicked card
+            this.classList.add('selected');
+            
+            // Check the corresponding radio input
+            const radio = this.querySelector('input[type="radio"]');
+            radio.checked = true;
+        });
+    });
+    
+    // Handle form submission
+    const form = document.getElementById('refreshForm');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const btnText = refreshBtn.querySelector('.btn-text');
+    const loading = refreshBtn.querySelector('.loading');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        btnText.style.display = 'none';
+        loading.classList.add('show');
+        refreshBtn.disabled = true;
+        
+        // Submit form
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.text();
+            }
+            throw new Error('Network response was not ok');
+        })
+        .then(html => {
+            // Redirect to status page on success
+            window.location.href = '{{ url_for("cache_management.cache_status") }}';
+        })
+        .catch(error => {
+            // Reset button state
+            btnText.style.display = 'inline';
+            loading.classList.remove('show');
+            refreshBtn.disabled = false;
+            
+            alert('Error refreshing caches: ' + error.message);
+        });
+    });
+    
+    // Initialize selected state
+    const checkedInput = document.querySelector('input[name="cache_type"]:checked');
+    if (checkedInput) {
+        checkedInput.closest('.cache-type-card').classList.add('selected');
+    }
+});
+</script>
+{% endblock %}

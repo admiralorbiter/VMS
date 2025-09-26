@@ -54,6 +54,7 @@ from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
 from routes.management.management import management_bp
+from routes.management.cache_management import cache_management_bp
 from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
@@ -99,6 +100,7 @@ def init_routes(app):
     app.register_blueprint(report_bp)
     app.register_blueprint(attendance)
     app.register_blueprint(management_bp)
+    app.register_blueprint(cache_management_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
