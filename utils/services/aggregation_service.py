@@ -503,7 +503,7 @@ class DataAggregationService:
                 "analysis_period_days": days,
                 "entity_type": entity_type,
                 "validation_type": validation_type,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(datetime.UTC).isoformat(),
                 "metrics_summary": {},
                 "trends_summary": {},
                 "patterns_summary": {},
@@ -560,7 +560,7 @@ class DataAggregationService:
             summary["performance_summary"] = {
                 "total_metrics_analyzed": len(metrics_by_name),
                 "total_data_points": len(all_metrics),
-                "analysis_completion_time": datetime.utcnow().isoformat(),
+                "analysis_completion_time": datetime.now(datetime.UTC).isoformat(),
             }
 
             return summary

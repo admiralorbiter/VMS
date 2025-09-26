@@ -37,12 +37,12 @@ def test_volunteer_count():
             print(f"✅ SUCCESS: Volunteer count = {count}")
             print("✅ The correct query (Contact_Type__c = 'Volunteer') is working!")
 
-            return True
+            assert True, "Volunteer count test passed"
 
     except Exception as e:
         print(f"❌ ERROR: {e}")
         print("❌ This indicates the query is still using RecordType.Name somewhere")
-        return False
+        assert False, f"Volunteer count test failed: {e}"
 
 
 def test_count_validator():
@@ -66,11 +66,11 @@ def test_count_validator():
                 "✅ The count validator is using the correct Salesforce client method!"
             )
 
-            return True
+            assert True, "Count validator test passed"
 
     except Exception as e:
         print(f"❌ ERROR in count validator: {e}")
-        return False
+        assert False, f"Count validator test failed: {e}"
 
 
 if __name__ == "__main__":

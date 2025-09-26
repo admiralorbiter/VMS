@@ -113,7 +113,7 @@ class QualityScoringService:
                     "run_id": run_id,
                     "quality_score": 0.0,
                     "message": "No validation results found",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(datetime.UTC).isoformat(),
                 }
 
             # Calculate individual dimension scores
@@ -138,7 +138,7 @@ class QualityScoringService:
                 "quality_score": round(composite_score, 2),
                 "quality_status": quality_status,
                 "threshold": threshold,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(datetime.UTC).isoformat(),
                 "dimension_scores": dimension_scores if include_details else None,
                 "total_checks": len(results),
                 "passed_checks": sum(
@@ -167,7 +167,7 @@ class QualityScoringService:
             return {
                 "entity_type": entity_type,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(datetime.UTC).isoformat(),
             }
 
     def calculate_comprehensive_quality_report(
@@ -196,7 +196,7 @@ class QualityScoringService:
             )
 
             report = {
-                "report_date": datetime.utcnow().isoformat(),
+                "report_date": datetime.now(datetime.UTC).isoformat(),
                 "analysis_period_days": days,
                 "entity_scores": {},
                 "overall_summary": {},
@@ -266,7 +266,7 @@ class QualityScoringService:
 
         except Exception as e:
             self.logger.error(f"Error generating comprehensive quality report: {e}")
-            return {"error": str(e), "report_date": datetime.utcnow().isoformat()}
+            return {"error": str(e), "report_date": datetime.now(datetime.UTC).isoformat()}
 
     def _get_validation_results_by_run(
         self, run_id: int, entity_type: str
@@ -280,7 +280,7 @@ class QualityScoringService:
         self, entity_type: str, days: int
     ) -> List[ValidationResult]:
         """Get validation results for an entity type over a time period."""
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
 
         # Get recent validation runs
         recent_runs = ValidationRun.query.filter(

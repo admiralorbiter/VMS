@@ -489,6 +489,10 @@ def test_local_status_edge_cases(app, test_volunteer):
     with app.app_context():
         # Ensure test_volunteer is attached to current session
         test_volunteer = db.session.merge(test_volunteer)
+        
+        # Clear the existing local_status to test the calculation logic
+        test_volunteer.local_status = LocalStatusEnum.unknown
+        db.session.commit()
 
         # Test with no addresses
         assert test_volunteer.calculate_local_status() == LocalStatusEnum.unknown

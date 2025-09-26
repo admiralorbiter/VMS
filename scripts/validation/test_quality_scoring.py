@@ -53,11 +53,11 @@ def test_score_weighting_engine():
         logger.info(f"   Weight summary: {len(summary)} items")
 
         logger.info("✅ Score Weighting Engine tests passed!")
-        return True
+        assert True, "Score Weighting Engine tests passed"
 
     except Exception as e:
         logger.error(f"❌ Score Weighting Engine test failed: {e}")
-        return False
+        assert False, f"Score Weighting Engine test failed: {e}"
 
 
 def test_threshold_manager():
@@ -86,11 +86,11 @@ def test_threshold_manager():
         logger.info(f"   Threshold summary: {len(summary)} items")
 
         logger.info("✅ Threshold Manager tests passed!")
-        return True
+        assert True, "Threshold Manager tests passed"
 
     except Exception as e:
         logger.error(f"❌ Threshold Manager test failed: {e}")
-        return False
+        assert False, f"Threshold Manager test failed: {e}"
 
 
 def test_score_calculator():
@@ -131,11 +131,11 @@ def test_score_calculator():
         logger.info(f"   Score breakdown: {breakdown['final_score']}")
 
         logger.info("✅ Score Calculator tests passed!")
-        return True
+        assert True, "Score Calculator tests passed"
 
     except Exception as e:
         logger.error(f"❌ Score Calculator test failed: {e}")
-        return False
+        assert False, f"Score Calculator test failed: {e}"
 
 
 def test_quality_scoring_service():
@@ -164,11 +164,11 @@ def test_quality_scoring_service():
         )
 
         logger.info("✅ Quality Scoring Service tests passed!")
-        return True
+        assert True, "Quality Scoring Service tests passed"
 
     except Exception as e:
         logger.error(f"❌ Quality Scoring Service test failed: {e}")
-        return False
+        assert False, f"Quality Scoring Service test failed: {e}"
 
 
 def test_integration():
@@ -197,11 +197,11 @@ def test_integration():
                 )
 
         logger.info("✅ Integration tests passed!")
-        return True
+        assert True, "Integration tests passed"
 
     except Exception as e:
         logger.error(f"❌ Integration test failed: {e}")
-        return False
+        assert False, f"Integration test failed: {e}"
 
 
 def main():

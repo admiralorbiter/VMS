@@ -20,7 +20,7 @@ def load_routes(bp):
 
         # Base query for future events that are confirmed
         query = Event.query.filter(
-            Event.start_date >= datetime.utcnow(),  # Only future events
+            Event.start_date >= datetime.now(datetime.UTC),  # Only future events
             Event.status == EventStatus.CONFIRMED,
         )
 

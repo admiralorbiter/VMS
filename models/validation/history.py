@@ -196,7 +196,7 @@ class ValidationHistory(db.Model):
         """Get the number of days since this validation was run."""
         if not self.validation_date:
             return 0
-        return (datetime.utcnow() - self.validation_date).days
+        return (datetime.now(datetime.UTC) - self.validation_date).days
 
     @property
     def trend_description(self) -> str:
@@ -341,7 +341,7 @@ class ValidationHistory(db.Model):
             metrics_summary=metrics_summary,
             validation_metadata=validation_metadata,
             notes=notes,
-            validation_date=datetime.utcnow(),
+            validation_date=datetime.now(datetime.UTC),
         )
 
     @classmethod
@@ -364,7 +364,7 @@ class ValidationHistory(db.Model):
         Returns:
             List of ValidationHistory records
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
         query = cls.query.filter(
             cls.entity_type == entity_type, cls.timestamp >= cutoff_date
         )
@@ -392,7 +392,7 @@ class ValidationHistory(db.Model):
         Returns:
             Dictionary containing trend analysis data
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
         query = cls.query.filter(
             cls.entity_type == entity_type, cls.timestamp >= cutoff_date
         )
@@ -482,7 +482,7 @@ class ValidationHistory(db.Model):
         Returns:
             List of ValidationHistory records marked as anomalies
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
         query = cls.query.filter(cls.timestamp >= cutoff_date, cls.is_anomaly == 1)
 
         if entity_type:
@@ -503,7 +503,7 @@ class ValidationHistory(db.Model):
         Returns:
             Number of records deleted
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
+        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=retention_days)
         old_records = cls.query.filter(cls.timestamp < cutoff_date).all()
 
         count = len(old_records)
@@ -531,7 +531,7 @@ class ValidationHistory(db.Model):
         Returns:
             Dictionary containing summary statistics
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
         query = cls.query.filter(cls.timestamp >= cutoff_date)
 
         if entity_type:

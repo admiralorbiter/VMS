@@ -41,11 +41,11 @@ def test_config_loading():
         else:
             logger.info("Configuration validation passed")
 
-        return True
+        assert True, "Configuration validation passed"
 
     except Exception as e:
         logger.error(f"Configuration loading failed: {e}")
-        return False
+        assert False, f"Configuration loading failed: {e}"
 
 
 def test_validation_base_classes():
@@ -64,11 +64,11 @@ def test_validation_base_classes():
         logger.info(f"Config section accessed: {config_section}")
 
         logger.info("Validation base classes tested successfully")
-        return True
+        assert True, "Validation base testing passed"
 
     except Exception as e:
         logger.error(f"Validation base testing failed: {e}")
-        return False
+        assert False, f"Validation base testing failed: {e}"
 
 
 def test_salesforce_client_import():
@@ -91,11 +91,11 @@ def test_salesforce_client_import():
         logger.info("Salesforce client class imported successfully")
 
         logger.info("Salesforce client import tested successfully")
-        return True
+        assert True, "Salesforce client import testing passed"
 
     except Exception as e:
         logger.error(f"Salesforce client import testing failed: {e}")
-        return False
+        assert False, f"Salesforce client import testing failed: {e}"
 
 
 def test_count_validator_import():
@@ -109,11 +109,11 @@ def test_count_validator_import():
         logger.info("Count validator class imported successfully")
 
         logger.info("Count validator import tested successfully")
-        return True
+        assert True, "Count validator import testing passed"
 
     except Exception as e:
         logger.error(f"Count validator import testing failed: {e}")
-        return False
+        assert False, f"Count validator import testing failed: {e}"
 
 
 def test_validation_engine_import():
@@ -127,11 +127,11 @@ def test_validation_engine_import():
         logger.info("Validation engine class imported successfully")
 
         logger.info("Validation engine import tested successfully")
-        return True
+        assert True, "Validation engine import testing passed"
 
     except Exception as e:
         logger.error(f"Validation engine import testing failed: {e}")
-        return False
+        assert False, f"Validation engine import testing failed: {e}"
 
 
 def run_all_tests():
@@ -178,12 +178,12 @@ def run_all_tests():
 
     if passed == total:
         logger.info("🎉 All minimal tests passed! The core system is working.")
-        return True
+        assert True, "All minimal tests passed"
     else:
         logger.error(
             f"❌ {total - passed} tests failed. Please check the errors above."
         )
-        return False
+        assert False, f"{total - passed} minimal tests failed"
 
 
 if __name__ == "__main__":

@@ -342,7 +342,7 @@ def load_routes(bp):
         # If no event chosen, show simple selector of upcoming/recent events
         if not event_id:
             # Upcoming (next 180 days) or recent past (last 30 days) for convenience
-            now = datetime.utcnow()
+            now = datetime.now(datetime.UTC)
             upcoming = (
                 Event.query.filter(Event.start_date >= now)
                 .order_by(Event.start_date.asc())
@@ -1469,7 +1469,7 @@ def load_routes(bp):
             if not last_date:
                 return 0.0
             try:
-                days = (datetime.utcnow().date() - last_date).days
+                days = (datetime.now(datetime.UTC).date() - last_date).days
             except Exception:
                 return 0.0
             if days <= 90:
@@ -1622,7 +1622,7 @@ def load_routes(bp):
             ).first()
             if existing:
                 existing.candidates_data = candidates
-                existing.last_updated = datetime.utcnow()
+                existing.last_updated = datetime.now(datetime.UTC)
             else:
                 db.session.add(
                     RecruitmentCandidatesCache(
@@ -1652,7 +1652,7 @@ def load_routes(bp):
             limit=limit,
             min_score=min_score,
             last_refreshed=(
-                cached_row.last_updated if cached_row else datetime.utcnow()
+                cached_row.last_updated if cached_row else datetime.now(datetime.UTC)
             ),
             is_cached=bool(cached_row),
         )

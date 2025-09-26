@@ -61,14 +61,18 @@ def test_rolling_averages():
             else:
                 logger.warning("⚠️ No rolling averages calculated - insufficient data")
 
-            return rolling_avg_result
+            # Assert that we got a valid result
+            assert rolling_avg_result is not None, "Rolling averages calculation failed"
+            assert "rolling_averages" in rolling_avg_result, "Missing rolling_averages in result"
+            assert "data_points" in rolling_avg_result, "Missing data_points in result"
+            assert "overall_average" in rolling_avg_result, "Missing overall_average in result"
 
         except Exception as e:
             logger.error(f"❌ Error testing rolling averages: {e}")
             import traceback
 
             traceback.print_exc()
-            return None
+            assert False, f"Rolling averages test failed: {e}"
 
 
 def test_moving_windows():
@@ -105,14 +109,17 @@ def test_moving_windows():
             else:
                 logger.warning("⚠️ No moving windows calculated - insufficient data")
 
-            return moving_windows_result
+            # Assert that we got a valid result
+            assert moving_windows_result is not None, "Moving windows calculation failed"
+            assert "windows" in moving_windows_result, "Missing windows in result"
+            assert "comparison" in moving_windows_result, "Missing comparison in result"
 
         except Exception as e:
             logger.error(f"❌ Error testing moving windows: {e}")
             import traceback
 
             traceback.print_exc()
-            return None
+            assert False, f"Moving windows test failed: {e}"
 
 
 def test_trend_patterns():
@@ -151,14 +158,16 @@ def test_trend_patterns():
                     "⚠️ No patterns detected - insufficient data or no patterns found"
                 )
 
-            return patterns_result
+            # Assert that we got a valid result
+            assert patterns_result is not None, "Pattern detection failed"
+            assert "patterns" in patterns_result, "Missing patterns in result"
 
         except Exception as e:
             logger.error(f"❌ Error testing trend patterns: {e}")
             import traceback
 
             traceback.print_exc()
-            return None
+            assert False, f"Trend patterns test failed: {e}"
 
 
 def test_data_summary():
@@ -198,14 +207,16 @@ def test_data_summary():
             else:
                 logger.warning("⚠️ No data summary generated - insufficient data")
 
-            return summary_result
+            # Assert that we got a valid result
+            assert summary_result is not None, "Data summary generation failed"
+            assert "summary" in summary_result, "Missing summary in result"
 
         except Exception as e:
             logger.error(f"❌ Error testing data summary: {e}")
             import traceback
 
             traceback.print_exc()
-            return None
+            assert False, f"Data summary test failed: {e}"
 
 
 def test_performance_optimization():
@@ -248,14 +259,16 @@ def test_performance_optimization():
             else:
                 logger.warning("⚠️ No optimization recommendations generated")
 
-            return optimization_result
+            # Assert that we got a valid result
+            assert optimization_result is not None, "Performance optimization failed"
+            assert "recommendations" in optimization_result, "Missing recommendations in result"
 
         except Exception as e:
             logger.error(f"❌ Error testing performance optimization: {e}")
             import traceback
 
             traceback.print_exc()
-            return None
+            assert False, f"Performance optimization test failed: {e}"
 
 
 def test_metric_trends():
@@ -300,14 +313,18 @@ def test_metric_trends():
             else:
                 logger.warning("⚠️ No period summary generated - insufficient data")
 
-            return {"trend_result": trend_result, "period_summary": period_summary}
+            # Assert that we got valid results
+            assert trend_result is not None, "Trend calculation failed"
+            assert period_summary is not None, "Period summary failed"
+            assert "trends" in trend_result, "Missing trends in result"
+            assert "summary" in period_summary, "Missing summary in period_summary"
 
         except Exception as e:
             logger.error(f"❌ Error testing metric trends: {e}")
             import traceback
 
             traceback.print_exc()
-            return None
+            assert False, f"Metric trends test failed: {e}"
 
 
 def main():

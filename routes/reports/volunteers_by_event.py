@@ -27,7 +27,7 @@ def _parse_date(value: str, default: datetime | None = None) -> datetime | None:
 
 def _default_date_range():
     # Past 365 days by default
-    end = datetime.utcnow()
+    end = datetime.now(datetime.UTC)
     start = end - timedelta(days=365)
     return start, end
 
@@ -194,7 +194,7 @@ def _query_volunteers(
                 .join(EventParticipation, Event.id == EventParticipation.event_id)
                 .filter(
                     EventParticipation.volunteer_id == volunteer.id,
-                    Event.start_date > datetime.utcnow(),
+                    Event.start_date > datetime.now(datetime.UTC),
                     Event.status.in_(
                         [
                             EventStatus.CONFIRMED,
