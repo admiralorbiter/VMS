@@ -191,7 +191,7 @@ def load_routes(bp):
         volunteer_data = all_volunteers[start_idx:end_idx]
 
         return render_template(
-            "reports/first_time_volunteer.html",
+            "reports/volunteers/first_time_volunteer.html",
             volunteers=volunteer_data,
             school_year=school_year,
             school_year_display=f"20{school_year[:2]}-{school_year[2:]}",

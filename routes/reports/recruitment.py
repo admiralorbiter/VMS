@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, Response, render_template, request
 from flask_login import login_required
@@ -53,7 +53,7 @@ def load_routes(bp):
         ]
 
         return render_template(
-            "reports/recruitment_tools.html", tools=recruitment_tools
+            "reports/recruitment/recruitment_tools.html", tools=recruitment_tools
         )
 
     # Quick recruitment tool
@@ -187,7 +187,7 @@ def load_routes(bp):
             )
 
         return render_template(
-            "reports/recruitment_report.html",
+            "reports/recruitment/recruitment_report.html",
             events=events_data,
             volunteers=volunteers_data,
             search_query=search_query,
@@ -311,7 +311,7 @@ def load_routes(bp):
         )
 
         return render_template(
-            "reports/recruitment_search.html",
+            "reports/recruitment/recruitment_search.html",
             volunteers=pagination.items,
             search_query=search_query,
             pagination=pagination,
@@ -342,7 +342,7 @@ def load_routes(bp):
         # If no event chosen, show simple selector of upcoming/recent events
         if not event_id:
             # Upcoming (next 180 days) or recent past (last 30 days) for convenience
-            now = datetime.now(datetime.UTC)
+            now = datetime.now(timezone.utc)
             upcoming = (
                 Event.query.filter(Event.start_date >= now)
                 .order_by(Event.start_date.asc())
@@ -356,7 +356,7 @@ def load_routes(bp):
                 .all()
             )
             return render_template(
-                "reports/recruitment_candidates.html",
+                "reports/recruitment/recruitment_candidates.html",
                 event=None,
                 candidates=[],
                 upcoming_events=upcoming,
@@ -369,7 +369,7 @@ def load_routes(bp):
         if not event:
             return (
                 render_template(
-                    "reports/recruitment_candidates.html",
+                    "reports/recruitment/recruitment_candidates.html",
                     event=None,
                     candidates=[],
                     error=f"Event {event_id} not found",
@@ -1469,7 +1469,7 @@ def load_routes(bp):
             if not last_date:
                 return 0.0
             try:
-                days = (datetime.now(datetime.UTC).date() - last_date).days
+                days = (datetime.now(timezone.utc).date() - last_date).days
             except Exception:
                 return 0.0
             if days <= 90:
@@ -1622,7 +1622,7 @@ def load_routes(bp):
             ).first()
             if existing:
                 existing.candidates_data = candidates
-                existing.last_updated = datetime.now(datetime.UTC)
+                existing.last_updated = datetime.now(timezone.utc)
             else:
                 db.session.add(
                     RecruitmentCandidatesCache(
@@ -1644,7 +1644,7 @@ def load_routes(bp):
         event.debug_keywords = list(kw)  # For debug display
 
         return render_template(
-            "reports/recruitment_candidates.html",
+            "reports/recruitment/recruitment_candidates.html",
             event=event,
             candidates=candidates,
             upcoming_events=[],
@@ -1652,7 +1652,7 @@ def load_routes(bp):
             limit=limit,
             min_score=min_score,
             last_refreshed=(
-                cached_row.last_updated if cached_row else datetime.now(datetime.UTC)
+                cached_row.last_updated if cached_row else datetime.now(timezone.utc)
             ),
             is_cached=bool(cached_row),
         )

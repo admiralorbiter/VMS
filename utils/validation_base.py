@@ -6,7 +6,7 @@ Base validator class for Salesforce data validation.
 import logging
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import psutil
@@ -129,12 +129,12 @@ class DataValidator(ABC):
 
     def start_validation(self):
         """Start validation and record start time."""
-        self.start_time = datetime.now(datetime.UTC)
+        self.start_time = datetime.now(timezone.utc)
         logger.info(f"Starting validation: {self.__class__.__name__}")
 
     def end_validation(self):
         """End validation and record end time."""
-        self.end_time = datetime.now(datetime.UTC)
+        self.end_time = datetime.now(timezone.utc)
         self._update_performance_metrics()
         logger.info(
             f"Completed validation: {self.__class__.__name__} in {self.execution_time_seconds}s"
@@ -388,14 +388,14 @@ class ValidationContext:
         """
         self.run_id = run_id
         self.user_id = user_id
-        self.start_time = datetime.now(datetime.UTC)
+        self.start_time = datetime.now(timezone.utc)
         self.config = get_config_section("validation_rules")
 
         logger.debug(f"Created validation context for run {run_id}")
 
     def get_elapsed_time(self) -> float:
         """Get elapsed time since context creation."""
-        return (datetime.now(datetime.UTC) - self.start_time).total_seconds()
+        return (datetime.now(timezone.utc) - self.start_time).total_seconds()
 
     def is_timeout_reached(self) -> bool:
         """Check if validation timeout has been reached."""

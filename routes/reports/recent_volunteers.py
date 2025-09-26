@@ -773,7 +773,7 @@ def load_routes(bp: Blueprint):
         selected_type_values = [t.value for t in selected_types]
 
         rendered = render_template(
-            "reports/recent_volunteers.html",
+            "reports/volunteers/recent_volunteers.html",
             # Filters
             type_choices=type_choices,
             selected_types=selected_type_values,

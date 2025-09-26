@@ -101,7 +101,7 @@ def load_routes(bp):
                 school_years.reverse()  # Most recent first
 
                 return render_template(
-                    "reports/organization_report.html",
+                    "reports/organizations/organization_report.html",
                     organizations=org_data,
                     school_year=school_year,
                     school_years=school_years,
@@ -208,7 +208,7 @@ def load_routes(bp):
         school_years.reverse()  # Most recent first
 
         return render_template(
-            "reports/organization_report.html",
+            "reports/organizations/organization_report.html",
             organizations=org_data,
             school_year=school_year,
             school_years=school_years,
@@ -310,7 +310,7 @@ def load_routes(bp):
         school_years = service.get_school_years()
 
         return render_template(
-            "reports/organization_report_detail.html",
+            "reports/organizations/organization_report_detail.html",
             organization=organization,
             volunteers=volunteers_data,
             in_person_events=in_person_events_data,

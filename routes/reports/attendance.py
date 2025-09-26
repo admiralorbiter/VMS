@@ -55,7 +55,7 @@ def load_routes(bp):
             school_year = f"{str(current_year - 1)[-2:]}-{str(current_year)[-2:]}"
 
         return render_template(
-            "reports/attendance_report.html",
+            "reports/attendance/attendance_report.html",
             districts=districts,
             current_school_year=school_year,
         )

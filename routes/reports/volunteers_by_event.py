@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 from flask import Blueprint, render_template, request, send_file
@@ -27,7 +27,7 @@ def _parse_date(value: str, default: datetime | None = None) -> datetime | None:
 
 def _default_date_range():
     # Past 365 days by default
-    end = datetime.now(datetime.UTC)
+    end = datetime.now(timezone.utc)
     start = end - timedelta(days=365)
     return start, end
 
@@ -194,7 +194,7 @@ def _query_volunteers(
                 .join(EventParticipation, Event.id == EventParticipation.event_id)
                 .filter(
                     EventParticipation.volunteer_id == volunteer.id,
-                    Event.start_date > datetime.now(datetime.UTC),
+                    Event.start_date > datetime.now(timezone.utc),
                     Event.status.in_(
                         [
                             EventStatus.CONFIRMED,
@@ -348,7 +348,7 @@ def load_routes(bp: Blueprint):
             export_params["school_year"] = school_year
 
         return render_template(
-            "reports/volunteers_by_event.html",
+            "reports/volunteers/volunteers_by_event.html",
             volunteers=volunteers,
             type_choices=type_choices,
             selected_types=selected_type_values,

@@ -79,7 +79,7 @@ def load_routes(bp):
         ).all()
 
         return render_template(
-            "reports/district_year_end.html",
+            "reports/districts/district_year_end.html",
             districts=district_stats,
             school_year=school_year,
             school_years=school_years,
@@ -230,7 +230,7 @@ def load_routes(bp):
                     )
 
                     return render_template(
-                        "reports/district_year_end_detail.html",
+                        "reports/districts/district_year_end_detail.html",
                         district=district,
                         school_year=school_year,
                         stats=stats,
@@ -477,7 +477,7 @@ def load_routes(bp):
         schools_by_level = generate_schools_by_level_data(district, events)
 
         return render_template(
-            "reports/district_year_end_detail.html",
+            "reports/districts/district_year_end_detail.html",
             district=district,
             school_year=school_year,
             stats=stats,
@@ -931,7 +931,7 @@ def load_routes(bp):
         ).all()
 
         return render_template(
-            "reports/google_sheets_management.html",
+            "reports/shared/google_sheets_management.html",
             sheets=sheets,
             academic_year=academic_year,
             school_year=school_year,

@@ -1926,7 +1926,7 @@ def load_routes(bp):
                 )
 
                 return render_template(
-                    "reports/virtual_usage.html",
+                    "reports/virtual/virtual_usage.html",
                     session_data=session_data["paginated_data"],
                     filter_options=filter_options,
                     current_filters=current_filters,
@@ -2013,7 +2013,7 @@ def load_routes(bp):
         )
 
         return render_template(
-            "reports/virtual_usage.html",
+            "reports/virtual/virtual_usage.html",
             session_data=session_result["paginated_data"],
             filter_options=filter_options,
             current_filters=current_filters,
@@ -2180,7 +2180,7 @@ def load_routes(bp):
                     summary_stats = cached_data.summary_stats
 
                 return render_template(
-                    "reports/virtual_usage_district.html",
+                    "reports/virtual/virtual_usage_district.html",
                     district_name=district_name,
                     monthly_stats=monthly_stats,
                     current_filters=current_filters,
@@ -2237,7 +2237,7 @@ def load_routes(bp):
             last_refreshed = datetime.now(timezone.utc)
 
         return render_template(
-            "reports/virtual_usage_district.html",
+            "reports/virtual/virtual_usage_district.html",
             district_name=district_name,
             monthly_stats=monthly_stats,
             current_filters=current_filters,
@@ -3564,7 +3564,7 @@ def load_routes(bp):
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "reports/virtual_breakdown.html",
+            "reports/virtual/virtual_breakdown.html",
             monthly_breakdown=monthly_breakdown,
             ytd_totals=ytd_totals,
             running_count=running_count,
@@ -3606,7 +3606,7 @@ def load_routes(bp):
         )
 
         return render_template(
-            "reports/virtual_google_sheets.html",
+            "reports/virtual/virtual_google_sheets.html",
             sheets=sheets,
             districts=districts,
             virtual_year=virtual_year,
@@ -3837,7 +3837,7 @@ def load_routes(bp):
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "reports/virtual_teacher_breakdown.html",
+            "reports/virtual/virtual_teacher_breakdown.html",
             district_name=district_name,
             teacher_school_breakdown=teacher_school_breakdown,
             current_filters=current_filters,
@@ -3922,7 +3922,7 @@ def load_routes(bp):
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "reports/virtual_teacher_progress.html",
+            "reports/virtual/virtual_teacher_progress.html",
             district_name=district_name,
             teacher_progress_data=teacher_progress_data,
             current_filters=current_filters,
@@ -3955,7 +3955,7 @@ def load_routes(bp):
         )
 
         return render_template(
-            "reports/virtual_teacher_progress_google_sheets.html",
+            "reports/virtual/virtual_teacher_progress_google_sheets.html",
             sheets=sheets,
             district_name=district_name,
             virtual_year=virtual_year,

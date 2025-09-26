@@ -138,7 +138,7 @@ def load_routes(bp):
                 unfilled_events.append(event)
 
         return render_template(
-            "reports/dia_events.html",
+            "reports/events/dia_events.html",
             filled_events=filled_events,
             unfilled_events=unfilled_events,
             total_dia_events=len(dia_events),

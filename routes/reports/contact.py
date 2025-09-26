@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, render_template, request
 from flask_login import login_required
@@ -20,7 +20,7 @@ def load_routes(bp):
 
         # Base query for future events that are confirmed
         query = Event.query.filter(
-            Event.start_date >= datetime.now(datetime.UTC),  # Only future events
+            Event.start_date >= datetime.now(timezone.utc),  # Only future events
             Event.status == EventStatus.CONFIRMED,
         )
 
@@ -53,7 +53,7 @@ def load_routes(bp):
             }
 
         return render_template(
-            "reports/contact_report.html",
+            "reports/events/contact_report.html",
             events=upcoming_events,
             event_stats=event_stats,
             search=search,
@@ -113,7 +113,7 @@ def load_routes(bp):
                 )
 
         return render_template(
-            "reports/contact_report_detail.html",
+            "reports/events/contact_report_detail.html",
             event=event,
             participants_by_status=participants_by_status,
             sort=sort,

@@ -157,7 +157,7 @@ def load_routes(bp):
         school_years.reverse()  # Most recent first
 
         return render_template(
-            "reports/volunteer_thankyou.html",
+            "reports/volunteers/volunteer_thankyou.html",
             volunteers=volunteer_data,
             summary_stats=summary_stats,
             school_year=school_year,
@@ -408,7 +408,7 @@ def load_routes(bp):
         school_years.reverse()  # Most recent first
 
         return render_template(
-            "reports/volunteer_thankyou_detail.html",
+            "reports/volunteers/volunteer_thankyou_detail.html",
             volunteer=volunteer,
             events=events_data,
             total_hours=total_hours,
