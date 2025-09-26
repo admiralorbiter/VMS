@@ -200,12 +200,13 @@ def history_table():
     # Apply pagination
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # Get unique activity types and statuses for filters
+    # Get unique activity types and statuses for filters (with limits for performance)
     activity_types = (
         db.session.query(History.activity_type)
         .filter(History.is_deleted == False)
         .distinct()
         .order_by(History.activity_type)
+        .limit(50)  # Limit to prevent loading massive datasets
         .all()
     )
     activity_types = [t[0] for t in activity_types if t[0]]  # Remove None values
@@ -215,6 +216,7 @@ def history_table():
         .filter(History.is_deleted == False)
         .distinct()
         .order_by(History.activity_status)
+        .limit(50)  # Limit to prevent loading massive datasets
         .all()
     )
     activity_statuses = [s[0] for s in activity_statuses if s[0]]  # Remove None values

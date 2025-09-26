@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
@@ -196,10 +197,6 @@ def app():
 
         # Create all tables
         db.create_all()
-
-        # Verify tables were created
-        inspector = db.inspect(db.engine)
-        print("\nDebug - Created tables:", inspector.get_table_names())
 
         yield test_app
 

@@ -47,21 +47,11 @@ def list_teachers():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
 
-    # Query teachers with pagination - include teachers who participate in events
-    teachers_query = db.session.query(Teacher).distinct()
-
-    # Add teachers who participate in events (including virtual sessions)
-    teachers_with_events = db.session.query(Teacher).join(EventTeacher).distinct()
-
-    # Combine both queries and remove duplicates
-    all_teachers = teachers_query.union(teachers_with_events).order_by(
-        Teacher.last_name, Teacher.first_name
-    )
-
-    # Apply pagination manually since union doesn't work well with paginate
-    total_teachers = all_teachers.count()
-    offset = (page - 1) * per_page
-    teachers_list = all_teachers.offset(offset).limit(per_page).all()
+    # Query teachers with pagination - simplified for better performance
+    teachers_query = Teacher.query.order_by(Teacher.last_name, Teacher.first_name)
+    
+    # Apply pagination directly
+    teachers = teachers_query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Create a pagination-like object
     class Pagination:
@@ -94,13 +84,8 @@ def list_teachers():
                     yield num
                     last = num
 
-    teachers = Pagination(teachers_list, page, per_page, total_teachers)
-
-    # Calculate total counts for pagination info
-    total_teachers_count = Teacher.query.count()
-
-    # Get schools for the filter dropdown
-    schools = School.query.order_by(School.name).all()
+    # Get schools for the filter dropdown (with limit for performance)
+    schools = School.query.order_by(School.name).limit(100).all()
 
     return render_template(
         "teachers/teachers.html",
@@ -108,7 +93,7 @@ def list_teachers():
         schools=schools,
         current_page=page,
         per_page=per_page,
-        total_teachers=total_teachers_count,
+        total_teachers=teachers.total,
         per_page_options=[10, 25, 50, 100],
     )
 

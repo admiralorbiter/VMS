@@ -46,6 +46,8 @@ def test_delete_teacher(client, auth_headers):
     assert_route_response(response, expected_statuses=[200, 302, 404, 500])
 
 
+@pytest.mark.slow
+@pytest.mark.salesforce
 def test_import_teachers_salesforce(client, auth_headers):
     """Test importing teachers from Salesforce"""
     response = safe_route_test(

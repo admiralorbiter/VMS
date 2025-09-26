@@ -68,15 +68,17 @@
                                 </a>
                             </td>
                             <td>
-                                {% if teacher.emails %}
-                                    {{ teacher.emails[0].email if teacher.emails else 'No email' }}
+                                {% set first_email = teacher.emails.first() %}
+                                {% if first_email %}
+                                    {{ first_email.email }}
                                 {% else %}
                                     No email
                                 {% endif %}
                             </td>
                             <td>
-                                {% if teacher.phones %}
-                                    {{ teacher.phones[0].number if teacher.phones else 'No phone' }}
+                                {% set first_phone = teacher.phones.first() %}
+                                {% if first_phone %}
+                                    {{ first_phone.number }}
                                 {% else %}
                                     No phone
                                 {% endif %}
