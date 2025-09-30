@@ -151,6 +151,30 @@
     text-decoration: none;
 }
 
+.export-btn {
+    background: #28a745;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.export-btn:hover {
+    background: #218838;
+    color: white;
+    text-decoration: none;
+}
+
 .teacher-progress-table {
     background: white;
     border-radius: 10px;
@@ -411,6 +435,12 @@
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('report.virtual_district_teacher_progress', district_name=district_name) }}"
                    class="reset-btn">Reset</a>
+                {% if teacher_progress_data %}
+                <a href="{{ url_for('report.virtual_district_teacher_progress_export', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d'), date_to=current_filters.date_to.strftime('%Y-%m-%d')) }}"
+                   class="export-btn">
+                    <i class="fas fa-file-excel"></i> Export to Excel
+                </a>
+                {% endif %}
             </div>
         </form>
     </div>
