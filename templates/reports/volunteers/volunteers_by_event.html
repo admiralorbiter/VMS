@@ -191,6 +191,35 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
   }
+
+  /* Search help styling */
+  .search-fields-info {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .search-fields-list {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .search-fields-list li {
+    margin-bottom: 0.25rem;
+    padding-left: 0.5rem;
+  }
+
+  .search-hint {
+    margin-top: 0.25rem;
+    color: #6c757d;
+    font-size: 0.75rem;
+  }
+
+  .search-tips {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    border-left: 4px solid #2c5aa0;
+  }
 </style>
 {% endblock %}
 
@@ -207,7 +236,7 @@
     <div class="row g-2 align-items-end">
       <div class="col-lg-1 col-md-3 col-sm-6">
         <div class="form-check mb-1">
-          <input class="form-check-input" type="checkbox" name="all_past_data" value="1" id="allPastData" {% if all_past_data and not last_2_years %}checked{% endif %}>
+          <input class="form-check-input" type="checkbox" name="all_past_data" value="1" id="allPastData" {% if all_past_data %}checked{% endif %}>
           <label class="form-check-label small" for="allPastData">
             <strong>All Past Data</strong>
           </label>
@@ -231,15 +260,35 @@
         <label class="form-label small">To</label>
         <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm" {% if all_past_data or last_2_years %}disabled{% endif %}>
       </div>
-      <div class="col-lg-3 col-md-6">
-        <label class="form-label small">Event Title Contains</label>
-        <input type="text" name="title" value="{{ title_contains }}" class="form-control form-control-sm" placeholder="Career Fair">
+      <div class="col-lg-6 col-md-12">
+        <div class="form-group">
+          <label class="form-label small">Search Volunteers</label>
+          <input type="text"
+                 id="search"
+                 name="search"
+                 class="form-control form-control-sm"
+                 value="{{ search_query }}"
+                 placeholder="Try searching: tech edu (finds volunteers in technology and education)">
+          <div class="search-hint small">
+            <i class="fas fa-info-circle"></i> Searches names, organizations, event titles, and event types (e.g., "tech edu" finds people in technology OR education)
+          </div>
+        </div>
       </div>
+      <div class="col-lg-6 col-md-12">
+        <div class="form-group">
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+          <a href="{{ url_for('report.volunteers_by_event_report') }}" class="btn btn-secondary btn-sm ml-2">Clear</a>
+          <button type="button" id="toggleSearchFields" class="btn btn-outline-info btn-sm ml-2" title="Show/hide search field explanations">
+            <i class="fas fa-info-circle"></i> Search Help
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="row g-2 align-items-end mt-2">
       <div class="col-12">
         <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
           <label class="form-label mb-0 small">Event Types</label>
           <div class="event-pills-actions d-flex align-items-center">
-            <input class="form-control form-control-sm d-inline-block w-auto me-2" id="eventTypeSearch" type="text" placeholder="Search types...">
             <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnSelectAll">Select all</button>
             <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnClearAll">Clear</button>
             <button type="button" class="btn btn-sm btn-outline-primary" id="btnDefaults">Defaults</button>
@@ -252,11 +301,60 @@
           {% endfor %}
         </div>
       </div>
-      <div class="col-12">
-        <button class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Apply</button>
-      </div>
     </div>
   </form>
+
+  <!-- Search Fields Explanation -->
+  <div class="search-fields-info" id="searchFieldsInfo">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-search"></i>
+          Search Fields & Capabilities
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6><i class="fas fa-user"></i> Volunteer Information</h6>
+            <ul class="search-fields-list">
+              <li><strong>First Name</strong> - Exact or partial matches</li>
+              <li><strong>Last Name</strong> - Exact or partial matches</li>
+              <li><strong>Title/Position</strong> - Job title or role</li>
+            </ul>
+
+            <h6><i class="fas fa-building"></i> Organization & Affiliation</h6>
+            <ul class="search-fields-list">
+              <li><strong>Organization Name</strong> - Company, school, or institution</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6><i class="fas fa-tools"></i> Skills & Expertise</h6>
+            <ul class="search-fields-list">
+              <li><strong>Skill Names</strong> - Programming, teaching, mentoring, etc.</li>
+            </ul>
+
+            <h6><i class="fas fa-calendar"></i> Event Participation</h6>
+            <ul class="search-fields-list">
+              <li><strong>Event Titles</strong> - Past events the volunteer participated in</li>
+              <li><strong>Event Types</strong> - Career Fair, Data Viz, etc.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="search-tips mt-3">
+          <h6><i class="fas fa-lightbulb"></i> Search Tips</h6>
+          <ul class="search-fields-list">
+            <li><strong>OR Search:</strong> "tech edu" finds volunteers in technology OR education</li>
+            <li><strong>Partial Matches:</strong> "prog" will find "programming", "programmer", etc.</li>
+            <li><strong>Multiple Terms:</strong> Use spaces to separate different search concepts</li>
+            <li><strong>Organization Search:</strong> Search by company, school, or institution names</li>
+            <li><strong>Event Search:</strong> Find volunteers by event titles or event types (Career Fair, Data Viz, etc.)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="table-card">
     <div class="table-responsive">
@@ -318,15 +416,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize event type checkboxes - select all by default if none are selected
-  const eventTypeInputs = document.querySelectorAll('#eventTypePills input.btn-check');
-  const checkedInputs = document.querySelectorAll('#eventTypePills input.btn-check:checked');
-
-  // If no event types are currently selected, select all by default
-  if (checkedInputs.length === 0 && eventTypeInputs.length > 0) {
-    eventTypeInputs.forEach(input => input.checked = true);
-  }
-
   // Handle date range options (mutually exclusive)
   const allPastDataCheckbox = document.getElementById('allPastData');
   const last2YearsCheckbox = document.getElementById('last2Years');
@@ -366,8 +455,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Ensure mutual exclusivity on page load
     if (allPastDataCheckbox.checked && last2YearsCheckbox.checked) {
-      // If both are checked, default to all_past_data
-      last2YearsCheckbox.checked = false;
+      // If both are checked, default to last_2_years
+      allPastDataCheckbox.checked = false;
     }
 
     // Set initial state
@@ -377,6 +466,55 @@ document.addEventListener('DOMContentLoaded', function() {
     allPastDataCheckbox.addEventListener('change', handleAllPastDataChange);
     last2YearsCheckbox.addEventListener('change', handleLast2YearsChange);
   }
+
+  // Handle search help toggle
+  const toggleButton = document.getElementById('toggleSearchFields');
+  const searchFieldsInfo = document.getElementById('searchFieldsInfo');
+
+  if (toggleButton && searchFieldsInfo) {
+    // Initially hide the section
+    searchFieldsInfo.classList.add('d-none');
+
+    toggleButton.addEventListener('click', function() {
+      if (searchFieldsInfo.classList.contains('d-none')) {
+        // Show the section
+        searchFieldsInfo.classList.remove('d-none');
+        // Add a small delay to ensure the element is visible before adding the show class
+        setTimeout(() => {
+          searchFieldsInfo.classList.add('show');
+        }, 10);
+
+        toggleButton.innerHTML = '<i class="fas fa-times-circle"></i> Hide Help';
+        toggleButton.classList.remove('btn-outline-info');
+        toggleButton.classList.add('btn-info');
+      } else {
+        // Hide the section
+        searchFieldsInfo.classList.remove('show');
+        // Wait for the transition to complete before hiding
+        setTimeout(() => {
+          searchFieldsInfo.classList.add('d-none');
+        }, 300);
+
+        toggleButton.innerHTML = '<i class="fas fa-info-circle"></i> Search Help';
+        toggleButton.classList.remove('btn-info');
+        toggleButton.classList.add('btn-outline-info');
+      }
+    });
+  }
+
+  // Event type pills behavior
+  const btnSelectAll = document.getElementById('btnSelectAll');
+  const btnClearAll = document.getElementById('btnClearAll');
+  const btnDefaults = document.getElementById('btnDefaults');
+  const container = document.getElementById('eventTypePills');
+
+  function allInputs(){ return Array.from(container.querySelectorAll('input.btn-check')); }
+  if (btnSelectAll) btnSelectAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = true); });
+  if (btnClearAll) btnClearAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = false); });
+  if (btnDefaults) btnDefaults.addEventListener('click', () => {
+    // Select all event types as default
+    allInputs().forEach(i => { i.checked = true; });
+  });
 
   // Sorting logic for table
   const table = document.querySelector('.table');
@@ -426,34 +564,6 @@ document.addEventListener('DOMContentLoaded', function() {
     tbody.innerHTML = '';
     rows.forEach(r => tbody.appendChild(r));
   }
-
-  // Event type pills behavior
-  const search = document.getElementById('eventTypeSearch');
-  const container = document.getElementById('eventTypePills');
-  const btnSelectAll = document.getElementById('btnSelectAll');
-  const btnClearAll = document.getElementById('btnClearAll');
-  const btnDefaults = document.getElementById('btnDefaults');
-
-  if (search && container) {
-    search.addEventListener('input', () => {
-      const q = search.value.trim().toLowerCase();
-      const labels = container.querySelectorAll('label.event-pill');
-      labels.forEach(l => {
-        const match = l.dataset.label.includes(q);
-        l.style.display = match ? '' : 'none';
-        const input = document.getElementById(l.getAttribute('for'));
-        if (input) input.style.display = match ? 'none' : 'none'; // keep inputs hidden (controlled by labels)
-      });
-    });
-  }
-
-  function allInputs(){ return Array.from(container.querySelectorAll('input.btn-check')); }
-  if (btnSelectAll) btnSelectAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = true); });
-  if (btnClearAll) btnClearAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = false); });
-  if (btnDefaults) btnDefaults.addEventListener('click', () => {
-    // Select all event types as default
-    allInputs().forEach(i => { i.checked = true; });
-  });
 });
 </script>
 {% endblock %}
