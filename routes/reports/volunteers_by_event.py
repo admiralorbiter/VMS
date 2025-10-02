@@ -7,6 +7,7 @@ from flask_login import login_required
 from sqlalchemy import func
 
 from models import db, eagerload_volunteer_bundle
+from models.contact import Email
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import EventParticipation, Volunteer
@@ -402,23 +403,49 @@ def _query_volunteers_with_search(
                 }
             )
 
+    # Get volunteer details (emails, skills, etc.) for display
+    volunteer_details = {}
+    if volunteer_ids:
+        # Get volunteers and their last email dates
+        volunteers_query = db.session.query(
+            Volunteer.id, Volunteer.last_non_internal_email_date
+        ).filter(Volunteer.id.in_(volunteer_ids))
+
+        # Get primary emails for volunteers
+        emails_query = db.session.query(Email.contact_id, Email.email).filter(
+            Email.contact_id.in_(volunteer_ids), Email.primary == True
+        )
+
+        # Create a mapping of volunteer_id to email
+        email_map = {row.contact_id: row.email for row in emails_query.all()}
+
+        for row in volunteers_query.all():
+            volunteer_details[row.id] = {
+                "email": email_map.get(row.id),
+                "skills": "",
+                "last_non_internal_email_date": row.last_non_internal_email_date,
+            }
+
     # Convert to the expected format
     volunteers = []
     for row in results:
         volunteer_id = row.id
         future_events_list = future_events.get(volunteer_id, [])
+        details = volunteer_details.get(volunteer_id, {})
 
         volunteers.append(
             {
                 "id": volunteer_id,
                 "name": f"{row.first_name} {row.last_name}",
-                "email": None,  # We'll get this separately if needed
+                "email": details.get("email"),
                 "organization": row.organization_name or "Independent",
                 "organization_id": row.organization_id,
-                "skills": "",  # We'll get this separately if needed
+                "skills": details.get("skills", ""),
                 "event_count": int(row.event_count or 0),
                 "last_event_date": row.last_event_date,
-                "last_non_internal_email_date": None,  # We'll get this separately if needed
+                "last_non_internal_email_date": details.get(
+                    "last_non_internal_email_date"
+                ),
                 "total_volunteer_count": total_counts.get(volunteer_id, 0),
                 "future_events": future_events_list,
                 "future_events_count": len(future_events_list),
