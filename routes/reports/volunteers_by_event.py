@@ -272,6 +272,8 @@ def _query_volunteers_with_search(
     end_date: datetime,
     search_query: str | None,
     selected_types: list[EventType],
+    page: int = 1,
+    per_page: int = 25,
 ):
     """
     Query volunteers with wide search functionality (OR mode).
@@ -338,7 +340,10 @@ def _query_volunteers_with_search(
         Organization.id,
     ).order_by(func.max(Event.start_date).desc())
 
-    results = query.all()
+    # Apply pagination
+    total_count = query.count()
+    paginated_query = query.offset((page - 1) * per_page).limit(per_page)
+    results = paginated_query.all()
 
     # Get volunteer IDs for additional queries
     volunteer_ids = [row.id for row in results]
@@ -476,15 +481,37 @@ def _query_volunteers_with_search(
 
     # Sort by name
     volunteers.sort(key=lambda r: (r["name"] or "").lower())
-    return volunteers
+
+    # Calculate pagination info
+    total_pages = (total_count + per_page - 1) // per_page
+    has_prev = page > 1
+    has_next = page < total_pages
+
+    return {
+        "volunteers": volunteers,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
+            "prev_num": page - 1 if has_prev else None,
+            "next_num": page + 1 if has_next else None,
+        },
+    }
 
 
 def load_routes(bp: Blueprint):
     @bp.route("/reports/volunteers/by-event")
     @login_required
     def volunteers_by_event_report():
-        # Params: search, event_types, date_from, date_to, all_past_data, last_2_years
+        # Params: search, event_types, date_from, date_to, all_past_data, last_2_years, page, per_page
         search_query = request.args.get("search", "").strip()
+
+        # Pagination parameters
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 25))  # Default 25 per page
 
         # Handle event types
         raw_types = request.args.getlist("event_types")
@@ -521,9 +548,11 @@ def load_routes(bp: Blueprint):
             start_date = _parse_date(date_from_param, start_date)
             end_date = _parse_date(date_to_param, end_date)
 
-        volunteers = _query_volunteers_with_search(
-            start_date, end_date, search_query, selected_types
+        result = _query_volunteers_with_search(
+            start_date, end_date, search_query, selected_types, page, per_page
         )
+        volunteers = result["volunteers"]
+        pagination = result["pagination"]
 
         # Ensure organization and skills strings for UI
         for v in volunteers:
@@ -555,6 +584,7 @@ def load_routes(bp: Blueprint):
         return render_template(
             "reports/volunteers/volunteers_by_event.html",
             volunteers=volunteers,
+            pagination=pagination,
             search_query=search_query,
             all_past_data=all_past_data,
             last_2_years=last_2_years,
@@ -614,9 +644,11 @@ def load_routes(bp: Blueprint):
             start_date = _parse_date(date_from_param, start_date)
             end_date = _parse_date(date_to_param, end_date)
 
-        volunteers = _query_volunteers_with_search(
-            start_date, end_date, search_query, selected_types
+        # For Excel export, get all results (no pagination)
+        result = _query_volunteers_with_search(
+            start_date, end_date, search_query, selected_types, page=1, per_page=10000
         )
+        volunteers = result["volunteers"]
 
         # Build rows for Excel
         rows = []
