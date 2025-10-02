@@ -10,7 +10,13 @@ from models import db, eagerload_volunteer_bundle
 from models.contact import Email
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
-from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
+from models.volunteer import (
+    ConnectorData,
+    EventParticipation,
+    Skill,
+    Volunteer,
+    VolunteerSkill,
+)
 from routes.reports.common import get_current_school_year
 
 # Blueprint is provided by parent reports package via load_routes
@@ -279,27 +285,14 @@ def _query_volunteers_with_search(
     Query volunteers with wide search functionality (OR mode).
     Searches across volunteer names, organizations, event titles, and event types.
     """
-    # Base query with all necessary joins
-    query = (
+    # First get unique volunteers who participated in events (like main volunteers page)
+    volunteer_subquery = (
         db.session.query(
-            Volunteer.id,
-            Volunteer.first_name,
-            Volunteer.last_name,
+            EventParticipation.volunteer_id,
             func.count(EventParticipation.id).label("event_count"),
             func.max(Event.start_date).label("last_event_date"),
-            Organization.name.label("organization_name"),
-            Organization.id.label("organization_id"),
         )
-        .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
         .join(Event, Event.id == EventParticipation.event_id)
-        .outerjoin(
-            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
-        )
-        .outerjoin(
-            Organization, VolunteerOrganization.organization_id == Organization.id
-        )
-        .outerjoin(VolunteerSkill, Volunteer.id == VolunteerSkill.volunteer_id)
-        .outerjoin(Skill, VolunteerSkill.skill_id == Skill.id)
         .filter(
             Event.start_date >= start_date,
             Event.start_date <= end_date,
@@ -308,8 +301,24 @@ def _query_volunteers_with_search(
             EventParticipation.status.in_(
                 ["Attended", "Completed", "Successfully Completed", "Simulcast"]
             ),
-            Volunteer.exclude_from_reports == False,
         )
+        .group_by(EventParticipation.volunteer_id)
+        .subquery()
+    )
+
+    # Main query - get unique volunteers only (no organization joins to prevent duplicates)
+    query = (
+        db.session.query(
+            Volunteer.id,
+            Volunteer.first_name,
+            Volunteer.last_name,
+            volunteer_subquery.c.event_count,
+            volunteer_subquery.c.last_event_date,
+        )
+        .join(volunteer_subquery, Volunteer.id == volunteer_subquery.c.volunteer_id)
+        .outerjoin(VolunteerSkill, Volunteer.id == VolunteerSkill.volunteer_id)
+        .outerjoin(Skill, VolunteerSkill.skill_id == Skill.id)
+        .filter(Volunteer.exclude_from_reports == False)
     )
 
     # Apply search if provided (always uses wide/OR search)
@@ -317,17 +326,43 @@ def _query_volunteers_with_search(
         # Split search query into terms and remove empty strings
         search_terms = [term.strip() for term in search_query.split() if term.strip()]
 
+        # Create subquery for event-based search
+        event_search_subquery = (
+            db.session.query(EventParticipation.volunteer_id)
+            .join(Event, Event.id == EventParticipation.event_id)
+            .filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                Event.status == EventStatus.COMPLETED,
+                Event.type.in_(selected_types),
+                EventParticipation.status.in_(
+                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                ),
+            )
+            .subquery()
+        )
+
         # OR mode: Match any term across all fields
         search_conditions = []
         for term in search_terms:
+            # Check if any volunteer matches this term in events
+            event_matches = (
+                db.session.query(event_search_subquery.c.volunteer_id)
+                .filter(
+                    db.or_(
+                        Event.title.ilike(f"%{term}%"), Event.type.ilike(f"%{term}%")
+                    )
+                )
+                .exists()
+            )
+
             search_conditions.append(
                 db.or_(
                     Volunteer.first_name.ilike(f"%{term}%"),
                     Volunteer.last_name.ilike(f"%{term}%"),
-                    Organization.name.ilike(f"%{term}%"),
-                    Event.title.ilike(f"%{term}%"),
-                    Event.type.ilike(f"%{term}%"),
+                    Volunteer.organization_name.ilike(f"%{term}%"),
                     Skill.name.ilike(f"%{term}%"),
+                    event_matches,
                 )
             )
         query = query.filter(db.or_(*search_conditions))
@@ -336,9 +371,9 @@ def _query_volunteers_with_search(
         Volunteer.id,
         Volunteer.first_name,
         Volunteer.last_name,
-        Organization.name,
-        Organization.id,
-    ).order_by(func.max(Event.start_date).desc())
+        volunteer_subquery.c.event_count,
+        volunteer_subquery.c.last_event_date,
+    ).order_by(volunteer_subquery.c.last_event_date.desc())
 
     # Apply pagination
     total_count = query.count()
@@ -432,6 +467,11 @@ def _query_volunteers_with_search(
             .order_by(VolunteerSkill.volunteer_id, Skill.name)
         )
 
+        # Get connector data for volunteers
+        connector_query = db.session.query(
+            ConnectorData.volunteer_id, ConnectorData.user_auth_id
+        ).filter(ConnectorData.volunteer_id.in_(volunteer_ids))
+
         # Create mappings
         email_map = {row.contact_id: row.email for row in emails_query.all()}
 
@@ -445,12 +485,54 @@ def _query_volunteers_with_search(
         # Convert to comma-separated strings
         skills_map = {k: ", ".join(v) for k, v in skills_map.items()}
 
+        # Create connector mapping
+        connector_map = {
+            row.volunteer_id: row.user_auth_id for row in connector_query.all()
+        }
+
         for row in volunteers_query.all():
+            user_auth_id = connector_map.get(row.id)
             volunteer_details[row.id] = {
                 "email": email_map.get(row.id),
                 "skills": skills_map.get(row.id, ""),
                 "last_non_internal_email_date": row.last_non_internal_email_date,
+                "connector_profile_url": (
+                    f"https://prepkc.nepris.com/app/user/{user_auth_id}"
+                    if user_auth_id
+                    else None
+                ),
             }
+
+    # Get organization information for volunteers (like main volunteers page)
+    volunteer_orgs = {}
+    if volunteer_ids:
+        # Get volunteer organizations with proper organization names
+        org_query = (
+            db.session.query(
+                VolunteerOrganization.volunteer_id,
+                Organization.name,
+                Organization.id,
+                VolunteerOrganization.is_primary,
+                VolunteerOrganization.role,
+            )
+            .join(
+                Organization, VolunteerOrganization.organization_id == Organization.id
+            )
+            .filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids))
+            .order_by(VolunteerOrganization.is_primary.desc(), Organization.name)
+        )
+
+        for row in org_query.all():
+            if row.volunteer_id not in volunteer_orgs:
+                volunteer_orgs[row.volunteer_id] = []
+            volunteer_orgs[row.volunteer_id].append(
+                {
+                    "name": row.name,
+                    "id": row.id,
+                    "is_primary": row.is_primary,
+                    "role": row.role,
+                }
+            )
 
     # Convert to the expected format
     volunteers = []
@@ -459,19 +541,46 @@ def _query_volunteers_with_search(
         future_events_list = future_events.get(volunteer_id, [])
         details = volunteer_details.get(volunteer_id, {})
 
+        # Get primary organization or first organization
+        orgs = volunteer_orgs.get(volunteer_id, [])
+        primary_org = next((org for org in orgs if org["is_primary"]), None)
+        if not primary_org and orgs:
+            primary_org = orgs[0]  # Use first org if no primary
+
+        # Fallback to volunteer's direct organization_name if no relationship
+        if not primary_org:
+            # Get the volunteer object to access organization_name
+            volunteer_obj = db.session.get(Volunteer, volunteer_id)
+            org_name = volunteer_obj.organization_name if volunteer_obj else None
+            if org_name and not (len(org_name) == 18 and org_name.isalnum()):
+                primary_org = {
+                    "name": org_name,
+                    "id": None,
+                    "is_primary": True,
+                    "role": None,
+                }
+            else:
+                primary_org = {
+                    "name": "Independent",
+                    "id": None,
+                    "is_primary": True,
+                    "role": None,
+                }
+
         volunteers.append(
             {
                 "id": volunteer_id,
                 "name": f"{row.first_name} {row.last_name}",
                 "email": details.get("email"),
-                "organization": row.organization_name or "Independent",
-                "organization_id": row.organization_id,
+                "organization": primary_org["name"],
+                "organization_id": primary_org["id"],
                 "skills": details.get("skills", ""),
                 "event_count": int(row.event_count or 0),
                 "last_event_date": row.last_event_date,
                 "last_non_internal_email_date": details.get(
                     "last_non_internal_email_date"
                 ),
+                "connector_profile_url": details.get("connector_profile_url"),
                 "total_volunteer_count": total_counts.get(volunteer_id, 0),
                 "future_events": future_events_list,
                 "future_events_count": len(future_events_list),

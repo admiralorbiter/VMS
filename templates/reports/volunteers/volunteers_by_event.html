@@ -160,6 +160,28 @@
     border-color: #dee2e6;
   }
 
+  /* Connector icon styling */
+  .connector-icon-btn {
+    padding: 0.25rem 0.5rem;
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+  }
+
+  .connector-icon-btn:hover {
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  .connector-icon-btn i {
+    font-size: 0.75rem;
+  }
+
   /* Link styling for volunteer and organization names */
   .volunteer-link, .organization-link {
     color: #007bff;
@@ -411,11 +433,18 @@
         <tbody>
           {% for v in volunteers %}
           <tr>
-            <td class="cell-name">
-              <a href="{{ url_for('volunteers.view_volunteer', id=v.id) }}" class="volunteer-link">
+          <td class="cell-name">
+            <div class="d-flex align-items-center">
+              <a href="{{ url_for('volunteers.view_volunteer', id=v.id) }}" class="volunteer-link me-2">
                 {{ v.name }}
               </a>
-            </td>
+              {% if v.connector_profile_url %}
+                <a href="{{ v.connector_profile_url }}" class="btn btn-sm connector-icon-btn" target="_blank" title="Connector Profile">
+                  <i class="fa-solid fa-plug"></i>
+                </a>
+              {% endif %}
+            </div>
+          </td>
             <td class="cell-email">{{ v.email }}</td>
             <td class="cell-org">
               {% if v.organization_id %}
