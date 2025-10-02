@@ -10,7 +10,7 @@ from models import db, eagerload_volunteer_bundle
 from models.contact import Email
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
-from models.volunteer import EventParticipation, Volunteer
+from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
 from routes.reports.common import get_current_school_year
 
 # Blueprint is provided by parent reports package via load_routes
@@ -296,6 +296,8 @@ def _query_volunteers_with_search(
         .outerjoin(
             Organization, VolunteerOrganization.organization_id == Organization.id
         )
+        .outerjoin(VolunteerSkill, Volunteer.id == VolunteerSkill.volunteer_id)
+        .outerjoin(Skill, VolunteerSkill.skill_id == Skill.id)
         .filter(
             Event.start_date >= start_date,
             Event.start_date <= end_date,
@@ -323,6 +325,7 @@ def _query_volunteers_with_search(
                     Organization.name.ilike(f"%{term}%"),
                     Event.title.ilike(f"%{term}%"),
                     Event.type.ilike(f"%{term}%"),
+                    Skill.name.ilike(f"%{term}%"),
                 )
             )
         query = query.filter(db.or_(*search_conditions))
@@ -416,13 +419,31 @@ def _query_volunteers_with_search(
             Email.contact_id.in_(volunteer_ids), Email.primary == True
         )
 
-        # Create a mapping of volunteer_id to email
+        # Get skills for volunteers
+        skills_query = (
+            db.session.query(VolunteerSkill.volunteer_id, Skill.name)
+            .join(Skill, VolunteerSkill.skill_id == Skill.id)
+            .filter(VolunteerSkill.volunteer_id.in_(volunteer_ids))
+            .order_by(VolunteerSkill.volunteer_id, Skill.name)
+        )
+
+        # Create mappings
         email_map = {row.contact_id: row.email for row in emails_query.all()}
+
+        # Group skills by volunteer_id
+        skills_map = {}
+        for row in skills_query.all():
+            if row.volunteer_id not in skills_map:
+                skills_map[row.volunteer_id] = []
+            skills_map[row.volunteer_id].append(row.name)
+
+        # Convert to comma-separated strings
+        skills_map = {k: ", ".join(v) for k, v in skills_map.items()}
 
         for row in volunteers_query.all():
             volunteer_details[row.id] = {
                 "email": email_map.get(row.id),
-                "skills": "",
+                "skills": skills_map.get(row.id, ""),
                 "last_non_internal_email_date": row.last_non_internal_email_date,
             }
 
