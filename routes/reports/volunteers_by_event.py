@@ -357,6 +357,22 @@ def _query_volunteers_with_search(
                 .exists()
             )
 
+            # Check if any volunteer matches this term in organizations
+            org_matches = (
+                db.session.query(VolunteerOrganization.volunteer_id)
+                .join(
+                    Organization,
+                    VolunteerOrganization.organization_id == Organization.id,
+                )
+                .filter(
+                    Organization.name.ilike(f"%{term}%"),
+                    VolunteerOrganization.volunteer_id.in_(
+                        db.session.query(volunteer_subquery.c.volunteer_id)
+                    ),
+                )
+                .exists()
+            )
+
             search_conditions.append(
                 db.or_(
                     Volunteer.first_name.ilike(f"%{term}%"),
@@ -364,6 +380,7 @@ def _query_volunteers_with_search(
                     Volunteer.organization_name.ilike(f"%{term}%"),
                     Skill.name.ilike(f"%{term}%"),
                     event_matches,
+                    org_matches,
                 )
             )
         query = query.filter(db.or_(*search_conditions))
@@ -382,7 +399,7 @@ def _query_volunteers_with_search(
         Volunteer.last_name,
         volunteer_subquery.c.event_count,
         volunteer_subquery.c.last_event_date,
-    ).order_by(volunteer_subquery.c.last_event_date.desc())
+    ).order_by(Volunteer.first_name, Volunteer.last_name)
 
     # Apply pagination
     total_count = query.count()
@@ -460,7 +477,9 @@ def _query_volunteers_with_search(
     if volunteer_ids:
         # Get volunteers and their last email dates
         volunteers_query = db.session.query(
-            Volunteer.id, Volunteer.last_non_internal_email_date
+            Volunteer.id,
+            Volunteer.last_email_date,
+            Volunteer.last_non_internal_email_date,
         ).filter(Volunteer.id.in_(volunteer_ids))
 
         # Get primary emails for volunteers
@@ -501,10 +520,19 @@ def _query_volunteers_with_search(
 
         for row in volunteers_query.all():
             user_auth_id = connector_map.get(row.id)
+            # Use the more recent of the two email dates
+            last_email_date = row.last_email_date
+            if row.last_non_internal_email_date and row.last_email_date:
+                last_email_date = max(
+                    row.last_email_date, row.last_non_internal_email_date
+                )
+            elif row.last_non_internal_email_date:
+                last_email_date = row.last_non_internal_email_date
+
             volunteer_details[row.id] = {
                 "email": email_map.get(row.id),
                 "skills": skills_map.get(row.id, ""),
-                "last_non_internal_email_date": row.last_non_internal_email_date,
+                "last_email_date": last_email_date,
                 "connector_profile_url": (
                     f"https://prepkc.nepris.com/app/user/{user_auth_id}"
                     if user_auth_id
@@ -586,9 +614,7 @@ def _query_volunteers_with_search(
                 "skills": details.get("skills", ""),
                 "event_count": int(row.event_count or 0),
                 "last_event_date": row.last_event_date,
-                "last_non_internal_email_date": details.get(
-                    "last_non_internal_email_date"
-                ),
+                "last_email_date": details.get("last_email_date"),
                 "connector_profile_url": details.get("connector_profile_url"),
                 "total_volunteer_count": total_counts.get(volunteer_id, 0),
                 "future_events": future_events_list,
@@ -597,8 +623,7 @@ def _query_volunteers_with_search(
             }
         )
 
-    # Sort by name
-    volunteers.sort(key=lambda r: (r["name"] or "").lower())
+    # Volunteers are already sorted by name from the database query
 
     # Calculate pagination info
     total_pages = (total_count + per_page - 1) // per_page
@@ -792,8 +817,8 @@ def load_routes(bp: Blueprint):
                 else ""
             )
             last_email_date = (
-                v["last_non_internal_email_date"].strftime("%m/%d/%y")
-                if v["last_non_internal_email_date"]
+                v["last_email_date"].strftime("%m/%d/%y")
+                if v["last_email_date"]
                 else ""
             )
             # Combine past and future events for Excel
