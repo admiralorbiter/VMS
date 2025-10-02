@@ -307,7 +307,7 @@ def _query_volunteers_with_search(
         .subquery()
     )
 
-    # Main query - get unique volunteers only (no organization joins to prevent duplicates)
+    # Main query - get unique volunteers only (no joins to prevent duplicates)
     query = (
         db.session.query(
             Volunteer.id,
@@ -317,8 +317,6 @@ def _query_volunteers_with_search(
             volunteer_subquery.c.last_event_date,
         )
         .join(volunteer_subquery, Volunteer.id == volunteer_subquery.c.volunteer_id)
-        .outerjoin(VolunteerSkill, Volunteer.id == VolunteerSkill.volunteer_id)
-        .outerjoin(Skill, VolunteerSkill.skill_id == Skill.id)
         .filter(Volunteer.exclude_from_reports == False)
     )
 
@@ -327,63 +325,67 @@ def _query_volunteers_with_search(
         # Split search query into terms and remove empty strings
         search_terms = [term.strip() for term in search_query.split() if term.strip()]
 
-        # Create subquery for event-based search
-        event_search_subquery = (
-            db.session.query(EventParticipation.volunteer_id)
-            .join(Event, Event.id == EventParticipation.event_id)
-            .filter(
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
-                Event.status == EventStatus.COMPLETED,
-                Event.type.in_(selected_types),
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
-                ),
-            )
-            .subquery()
-        )
+        # Apply the search filter using subqueries to avoid duplicates
+        if search_terms:
+            # OR mode: Match any term across all fields using subqueries
+            search_conditions = []
+            for term in search_terms:
+                term_conditions = []
 
-        # OR mode: Match any term across all fields
-        search_conditions = []
-        for term in search_terms:
-            # Check if any volunteer matches this term in events
-            event_matches = (
-                db.session.query(event_search_subquery.c.volunteer_id)
-                .filter(
-                    db.or_(
-                        Event.title.ilike(f"%{term}%"), Event.type.ilike(f"%{term}%")
+                # Basic name and organization search
+                term_conditions.append(Volunteer.first_name.ilike(f"%{term}%"))
+                term_conditions.append(Volunteer.last_name.ilike(f"%{term}%"))
+                term_conditions.append(Volunteer.organization_name.ilike(f"%{term}%"))
+
+                # Organization search using IN clause instead of exists()
+                org_ids_subquery = (
+                    db.session.query(VolunteerOrganization.volunteer_id)
+                    .join(
+                        Organization,
+                        VolunteerOrganization.organization_id == Organization.id,
+                    )
+                    .filter(Organization.name.ilike(f"%{term}%"))
+                )
+                term_conditions.append(Volunteer.id.in_(org_ids_subquery))
+
+                # Skills search using IN clause
+                skill_ids_subquery = (
+                    db.session.query(VolunteerSkill.volunteer_id)
+                    .join(Skill, VolunteerSkill.skill_id == Skill.id)
+                    .filter(Skill.name.ilike(f"%{term}%"))
+                )
+                term_conditions.append(Volunteer.id.in_(skill_ids_subquery))
+
+                # Event search using IN clause
+                event_ids_subquery = (
+                    db.session.query(EventParticipation.volunteer_id)
+                    .join(Event, Event.id == EventParticipation.event_id)
+                    .filter(
+                        Event.start_date >= start_date,
+                        Event.start_date <= end_date,
+                        Event.status == EventStatus.COMPLETED,
+                        Event.type.in_(selected_types),
+                        EventParticipation.status.in_(
+                            [
+                                "Attended",
+                                "Completed",
+                                "Successfully Completed",
+                                "Simulcast",
+                            ]
+                        ),
+                        db.or_(
+                            Event.title.ilike(f"%{term}%"),
+                            Event.type.ilike(f"%{term}%"),
+                        ),
                     )
                 )
-                .exists()
-            )
+                term_conditions.append(Volunteer.id.in_(event_ids_subquery))
 
-            # Check if any volunteer matches this term in organizations
-            org_matches = (
-                db.session.query(VolunteerOrganization.volunteer_id)
-                .join(
-                    Organization,
-                    VolunteerOrganization.organization_id == Organization.id,
-                )
-                .filter(
-                    Organization.name.ilike(f"%{term}%"),
-                    VolunteerOrganization.volunteer_id.in_(
-                        db.session.query(volunteer_subquery.c.volunteer_id)
-                    ),
-                )
-                .exists()
-            )
+                # Combine all conditions for this term with OR
+                search_conditions.append(db.or_(*term_conditions))
 
-            search_conditions.append(
-                db.or_(
-                    Volunteer.first_name.ilike(f"%{term}%"),
-                    Volunteer.last_name.ilike(f"%{term}%"),
-                    Volunteer.organization_name.ilike(f"%{term}%"),
-                    Skill.name.ilike(f"%{term}%"),
-                    event_matches,
-                    org_matches,
-                )
-            )
-        query = query.filter(db.or_(*search_conditions))
+            # Combine all term conditions with OR
+            query = query.filter(db.or_(*search_conditions))
 
     # Apply connector filter if requested
     if connector_only:
