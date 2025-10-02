@@ -37,19 +37,19 @@
   .event-types {
     display:flex;
     flex-wrap:wrap;
-    gap:10px;
-    max-height: 240px;
+    gap:6px;
+    max-height: 200px;
     overflow:auto;
-    padding:10px;
+    padding:8px;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius:8px;
+    border-radius:6px;
   }
   .event-pill {
-    --bs-btn-padding-y:.2rem;
-    --bs-btn-padding-x:.6rem;
-    --bs-btn-font-size:.85rem;
-    border-radius:20px;
+    --bs-btn-padding-y:.15rem;
+    --bs-btn-padding-x:.5rem;
+    --bs-btn-font-size:.8rem;
+    border-radius:16px;
   }
   .btn-check:checked + .event-pill {
     background:#2c5aa0;
@@ -152,6 +152,45 @@
   .volunteer-link:visited, .organization-link:visited {
     color: #6f42c1;
   }
+
+  /* Date range checkbox styling */
+  #allPastData:checked + label,
+  #last2Years:checked + label {
+    color: #2c5aa0;
+    font-weight: 600;
+  }
+
+  .form-check-input:checked {
+    background-color: #2c5aa0;
+    border-color: #2c5aa0;
+  }
+
+  /* Compact form styling */
+  .filters-card .row {
+    margin-bottom: 0.5rem;
+  }
+
+  .filters-card .form-check {
+    margin-bottom: 0.25rem;
+  }
+
+  .filters-card .form-text {
+    margin-top: 0.125rem;
+    margin-bottom: 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .filters-card .form-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .filters-card .form-control-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
 </style>
 {% endblock %}
 
@@ -165,31 +204,44 @@
   </div>
 
   <form class="filters-card" method="get" action="{{ url_for('report.volunteers_by_event_report') }}">
-    <div class="row g-3 align-items-end">
-      <div class="col-lg-3 col-md-6">
-        <label class="form-label">School Year</label>
-        <input type="text" name="school_year" value="{{ school_year }}" class="form-control" placeholder="e.g., 2324">
-        <div class="form-text">Leave blank to use date range.</div>
+    <div class="row g-2 align-items-end">
+      <div class="col-lg-1 col-md-3 col-sm-6">
+        <div class="form-check mb-1">
+          <input class="form-check-input" type="checkbox" name="all_past_data" value="1" id="allPastData" {% if all_past_data and not last_2_years %}checked{% endif %}>
+          <label class="form-check-label small" for="allPastData">
+            <strong>All Past Data</strong>
+          </label>
+        </div>
+        <div class="form-text small">All historical data</div>
+      </div>
+      <div class="col-lg-1 col-md-3 col-sm-6">
+        <div class="form-check mb-1">
+          <input class="form-check-input" type="checkbox" name="last_2_years" value="1" id="last2Years" {% if last_2_years %}checked{% endif %}>
+          <label class="form-check-label small" for="last2Years">
+            <strong>Last 2 Years</strong>
+          </label>
+        </div>
+        <div class="form-text small">Recent data</div>
+      </div>
+      <div class="col-lg-2 col-md-3 col-sm-6">
+        <label class="form-label small">From</label>
+        <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-sm" {% if all_past_data or last_2_years %}disabled{% endif %}>
+      </div>
+      <div class="col-lg-2 col-md-3 col-sm-6">
+        <label class="form-label small">To</label>
+        <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm" {% if all_past_data or last_2_years %}disabled{% endif %}>
       </div>
       <div class="col-lg-3 col-md-6">
-        <label class="form-label">From</label>
-        <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
-      </div>
-      <div class="col-lg-3 col-md-6">
-        <label class="form-label">To</label>
-        <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
-      </div>
-      <div class="col-lg-3 col-md-6">
-        <label class="form-label">Event Title Contains</label>
-        <input type="text" name="title" value="{{ title_contains }}" class="form-control" placeholder="Career Fair">
+        <label class="form-label small">Event Title Contains</label>
+        <input type="text" name="title" value="{{ title_contains }}" class="form-control form-control-sm" placeholder="Career Fair">
       </div>
       <div class="col-12">
-        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
-          <label class="form-label mb-0">Event Types</label>
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
+          <label class="form-label mb-0 small">Event Types</label>
           <div class="event-pills-actions d-flex align-items-center">
             <input class="form-control form-control-sm d-inline-block w-auto me-2" id="eventTypeSearch" type="text" placeholder="Search types...">
-            <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="btnSelectAll">Select all</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="btnClearAll">Clear</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnSelectAll">Select all</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnClearAll">Clear</button>
             <button type="button" class="btn btn-sm btn-outline-primary" id="btnDefaults">Defaults</button>
           </div>
         </div>
@@ -201,7 +253,7 @@
         </div>
       </div>
       <div class="col-12">
-        <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Apply</button>
+        <button class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Apply</button>
       </div>
     </div>
   </form>
@@ -266,6 +318,66 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize event type checkboxes - select all by default if none are selected
+  const eventTypeInputs = document.querySelectorAll('#eventTypePills input.btn-check');
+  const checkedInputs = document.querySelectorAll('#eventTypePills input.btn-check:checked');
+
+  // If no event types are currently selected, select all by default
+  if (checkedInputs.length === 0 && eventTypeInputs.length > 0) {
+    eventTypeInputs.forEach(input => input.checked = true);
+  }
+
+  // Handle date range options (mutually exclusive)
+  const allPastDataCheckbox = document.getElementById('allPastData');
+  const last2YearsCheckbox = document.getElementById('last2Years');
+  const dateFromInput = document.querySelector('input[name="date_from"]');
+  const dateToInput = document.querySelector('input[name="date_to"]');
+
+  if (allPastDataCheckbox && last2YearsCheckbox && dateFromInput && dateToInput) {
+    function updateDateFields() {
+      const allPastChecked = allPastDataCheckbox.checked;
+      const last2YearsChecked = last2YearsCheckbox.checked;
+
+      // Disable date fields if either option is checked
+      const shouldDisable = allPastChecked || last2YearsChecked;
+      dateFromInput.disabled = shouldDisable;
+      dateToInput.disabled = shouldDisable;
+
+      // Clear date values when either option is checked
+      if (shouldDisable) {
+        dateFromInput.value = '';
+        dateToInput.value = '';
+      }
+    }
+
+    function handleAllPastDataChange() {
+      if (allPastDataCheckbox.checked) {
+        last2YearsCheckbox.checked = false;
+      }
+      updateDateFields();
+    }
+
+    function handleLast2YearsChange() {
+      if (last2YearsCheckbox.checked) {
+        allPastDataCheckbox.checked = false;
+      }
+      updateDateFields();
+    }
+
+    // Ensure mutual exclusivity on page load
+    if (allPastDataCheckbox.checked && last2YearsCheckbox.checked) {
+      // If both are checked, default to all_past_data
+      last2YearsCheckbox.checked = false;
+    }
+
+    // Set initial state
+    updateDateFields();
+
+    // Add event listeners
+    allPastDataCheckbox.addEventListener('change', handleAllPastDataChange);
+    last2YearsCheckbox.addEventListener('change', handleLast2YearsChange);
+  }
+
   // Sorting logic for table
   const table = document.querySelector('.table');
   if (!table) return;
@@ -339,8 +451,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (btnSelectAll) btnSelectAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = true); });
   if (btnClearAll) btnClearAll.addEventListener('click', () => { allInputs().forEach(i => i.checked = false); });
   if (btnDefaults) btnDefaults.addEventListener('click', () => {
-    const defaults = new Set(['career_fair','data_viz']);
-    allInputs().forEach(i => { i.checked = defaults.has(i.value); });
+    // Select all event types as default
+    allInputs().forEach(i => { i.checked = true; });
   });
 });
 </script>

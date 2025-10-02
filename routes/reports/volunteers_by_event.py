@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 from flask import Blueprint, render_template, request, send_file
@@ -10,7 +10,7 @@ from models import db, eagerload_volunteer_bundle
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import EventParticipation, Volunteer
-from routes.reports.common import get_current_school_year, get_school_year_date_range
+from routes.reports.common import get_current_school_year
 
 # Blueprint is provided by parent reports package via load_routes
 volunteers_by_event_bp = Blueprint("volunteers_by_event", __name__)
@@ -55,7 +55,8 @@ def _event_type_choices():
 
 def _normalize_selected_types(raw_types: list[str] | None) -> list[EventType]:
     if not raw_types:
-        return [EventType.CAREER_FAIR, EventType.DATA_VIZ]
+        # Return all event types as default (select all)
+        return list(EventType)
 
     normalized: list[EventType] = []
     values = {et.value: et for et in EventType}
@@ -75,7 +76,7 @@ def _normalize_selected_types(raw_types: list[str] | None) -> list[EventType]:
         if et not in seen:
             seen.add(et)
             unique.append(et)
-    return unique or [EventType.CAREER_FAIR, EventType.DATA_VIZ]
+    return unique or list(EventType)  # Fallback to all event types
 
 
 def _get_primary_org_name(volunteer: Volunteer) -> str | None:
@@ -131,117 +132,135 @@ def _query_volunteers(
     Eliminates N+1 query problems and reduces database load significantly.
     """
     # Single query with proper joins and aggregation
-    query = db.session.query(
-        Volunteer.id,
-        Volunteer.first_name,
-        Volunteer.last_name,
-        func.count(EventParticipation.id).label('event_count'),
-        func.max(Event.start_date).label('last_event_date'),
-        Organization.name.label('organization_name')
-    ).join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)\
-    .join(Event, Event.id == EventParticipation.event_id)\
-    .outerjoin(VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id)\
-    .outerjoin(Organization, VolunteerOrganization.organization_id == Organization.id)\
-    .filter(
-        Event.start_date >= start_date,
-        Event.start_date <= end_date,
-        Event.status == EventStatus.COMPLETED,
-        Event.type.in_(selected_types),
-        EventParticipation.status.in_([
-            "Attended", "Completed", "Successfully Completed", "Simulcast"
-        ]),
-        Volunteer.exclude_from_reports == False
+    query = (
+        db.session.query(
+            Volunteer.id,
+            Volunteer.first_name,
+            Volunteer.last_name,
+            func.count(EventParticipation.id).label("event_count"),
+            func.max(Event.start_date).label("last_event_date"),
+            Organization.name.label("organization_name"),
+        )
+        .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
+        .join(Event, Event.id == EventParticipation.event_id)
+        .outerjoin(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        )
+        .outerjoin(
+            Organization, VolunteerOrganization.organization_id == Organization.id
+        )
+        .filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.status == EventStatus.COMPLETED,
+            Event.type.in_(selected_types),
+            EventParticipation.status.in_(
+                ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+            ),
+            Volunteer.exclude_from_reports == False,
+        )
     )
-    
+
     if title_contains:
         like = f"%{title_contains.strip()}%"
         query = query.filter(Event.title.ilike(like))
-    
+
     query = query.group_by(
-        Volunteer.id, 
-        Volunteer.first_name, 
-        Volunteer.last_name,
-        Organization.name
+        Volunteer.id, Volunteer.first_name, Volunteer.last_name, Organization.name
     ).order_by(func.max(Event.start_date).desc())
-    
+
     results = query.all()
-    
+
     # Get volunteer IDs for additional queries
     volunteer_ids = [row.id for row in results]
-    
+
     # Single query for total volunteer counts (all time)
     total_counts = {}
     if volunteer_ids:
-        total_count_query = db.session.query(
-            EventParticipation.volunteer_id,
-            func.count(EventParticipation.id).label('total_count')
-        ).join(Event, Event.id == EventParticipation.event_id)\
-        .filter(
-            EventParticipation.volunteer_id.in_(volunteer_ids),
-            EventParticipation.status.in_([
-                "Attended", "Completed", "Successfully Completed", "Simulcast"
-            ]),
-            Event.status == EventStatus.COMPLETED
-        ).group_by(EventParticipation.volunteer_id)
-        
+        total_count_query = (
+            db.session.query(
+                EventParticipation.volunteer_id,
+                func.count(EventParticipation.id).label("total_count"),
+            )
+            .join(Event, Event.id == EventParticipation.event_id)
+            .filter(
+                EventParticipation.volunteer_id.in_(volunteer_ids),
+                EventParticipation.status.in_(
+                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                ),
+                Event.status == EventStatus.COMPLETED,
+            )
+            .group_by(EventParticipation.volunteer_id)
+        )
+
         for row in total_count_query.all():
             total_counts[row.volunteer_id] = row.total_count
-    
+
     # Single query for future events
     future_events = {}
     if volunteer_ids:
-        future_query = db.session.query(
-            EventParticipation.volunteer_id,
-            Event.id,
-            Event.title,
-            Event.start_date,
-            Event.type
-        ).join(Event, Event.id == EventParticipation.event_id)\
-        .filter(
-            EventParticipation.volunteer_id.in_(volunteer_ids),
-            Event.start_date > datetime.now(timezone.utc),
-            Event.status.in_([
-                EventStatus.CONFIRMED,
-                EventStatus.PUBLISHED,
-                EventStatus.REQUESTED,
-            ]),
-            EventParticipation.status.notin_([
-                "Cancelled", "No Show", "Declined", "Withdrawn"
-            ])
-        ).order_by(EventParticipation.volunteer_id, Event.start_date)
-        
+        future_query = (
+            db.session.query(
+                EventParticipation.volunteer_id,
+                Event.id,
+                Event.title,
+                Event.start_date,
+                Event.type,
+            )
+            .join(Event, Event.id == EventParticipation.event_id)
+            .filter(
+                EventParticipation.volunteer_id.in_(volunteer_ids),
+                Event.start_date > datetime.now(timezone.utc),
+                Event.status.in_(
+                    [
+                        EventStatus.CONFIRMED,
+                        EventStatus.PUBLISHED,
+                        EventStatus.REQUESTED,
+                    ]
+                ),
+                EventParticipation.status.notin_(
+                    ["Cancelled", "No Show", "Declined", "Withdrawn"]
+                ),
+            )
+            .order_by(EventParticipation.volunteer_id, Event.start_date)
+        )
+
         for row in future_query.all():
             if row.volunteer_id not in future_events:
                 future_events[row.volunteer_id] = []
-            future_events[row.volunteer_id].append({
-                'id': row.id,
-                'title': row.title,
-                'date': row.start_date,
-                'type': row.type.value if row.type else None
-            })
-    
+            future_events[row.volunteer_id].append(
+                {
+                    "id": row.id,
+                    "title": row.title,
+                    "date": row.start_date,
+                    "type": row.type.value if row.type else None,
+                }
+            )
+
     # Convert to the expected format
     volunteers = []
     for row in results:
         volunteer_id = row.id
         future_events_list = future_events.get(volunteer_id, [])
-        
-        volunteers.append({
-            'id': volunteer_id,
-            'name': f"{row.first_name} {row.last_name}",
-            'email': None,  # We'll get this separately if needed
-            'organization': row.organization_name or 'Independent',
-            'organization_id': None,  # We'll get this separately if needed
-            'skills': "",  # We'll get this separately if needed
-            'event_count': int(row.event_count or 0),
-            'last_event_date': row.last_event_date,
-            'last_non_internal_email_date': None,  # We'll get this separately if needed
-            'total_volunteer_count': total_counts.get(volunteer_id, 0),
-            'future_events': future_events_list,
-            'future_events_count': len(future_events_list),
-            'events': []  # We'll populate this if needed for detailed view
-        })
-    
+
+        volunteers.append(
+            {
+                "id": volunteer_id,
+                "name": f"{row.first_name} {row.last_name}",
+                "email": None,  # We'll get this separately if needed
+                "organization": row.organization_name or "Independent",
+                "organization_id": None,  # We'll get this separately if needed
+                "skills": "",  # We'll get this separately if needed
+                "event_count": int(row.event_count or 0),
+                "last_event_date": row.last_event_date,
+                "last_non_internal_email_date": None,  # We'll get this separately if needed
+                "total_volunteer_count": total_counts.get(volunteer_id, 0),
+                "future_events": future_events_list,
+                "future_events_count": len(future_events_list),
+                "events": [],  # We'll populate this if needed for detailed view
+            }
+        )
+
     # Sort by name
     volunteers.sort(key=lambda r: (r["name"] or "").lower())
     return volunteers
@@ -251,7 +270,7 @@ def load_routes(bp: Blueprint):
     @bp.route("/reports/volunteers/by-event")
     @login_required
     def volunteers_by_event_report():
-        # Params: event_types (comma-separated), date_from, date_to, school_year, title
+        # Params: event_types (comma-separated), date_from, date_to, all_past_data, title
         raw_types = request.args.getlist("event_types")
         if not raw_types:
             raw_types = (
@@ -261,13 +280,27 @@ def load_routes(bp: Blueprint):
             )
         selected_types = _normalize_selected_types(raw_types)
 
-        school_year = request.args.get("school_year")
+        all_past_data = request.args.get("all_past_data") == "1"
+        last_2_years = request.args.get("last_2_years") == "1"
+
+        # Ensure mutual exclusivity - if last_2_years is selected, uncheck all_past_data
+        if last_2_years:
+            all_past_data = False
+        # If neither is selected, default to all_past_data
+        elif not all_past_data and not last_2_years:
+            all_past_data = True
         date_from_param = request.args.get("date_from")
         date_to_param = request.args.get("date_to")
         title_contains = request.args.get("title", "").strip() or None
 
-        if school_year:
-            start_date, end_date = get_school_year_date_range(school_year)
+        if all_past_data:
+            # Search all historical data - set a very early start date
+            start_date = datetime(2000, 1, 1)  # Very early date to capture all data
+            end_date = datetime.now(timezone.utc)  # Current time
+        elif last_2_years:
+            # Search last 2 years
+            end_date = datetime.now(timezone.utc)
+            start_date = end_date - timedelta(days=730)  # 2 years = 730 days
         else:
             start_date, end_date = _default_date_range()
             start_date = _parse_date(date_from_param, start_date)
@@ -321,22 +354,41 @@ def load_routes(bp: Blueprint):
         # Build querystring for export link
         export_params = {
             "event_types": ",".join(selected_type_values),
-            "date_from": start_date.strftime("%Y-%m-%d") if start_date else "",
-            "date_to": end_date.strftime("%Y-%m-%d") if end_date else "",
+            "date_from": (
+                start_date.strftime("%Y-%m-%d")
+                if start_date and not all_past_data and not last_2_years
+                else ""
+            ),
+            "date_to": (
+                end_date.strftime("%Y-%m-%d")
+                if end_date and not all_past_data and not last_2_years
+                else ""
+            ),
         }
         if title_contains:
             export_params["title"] = title_contains
-        if school_year:
-            export_params["school_year"] = school_year
+        if all_past_data:
+            export_params["all_past_data"] = "1"
+        if last_2_years:
+            export_params["last_2_years"] = "1"
 
         return render_template(
             "reports/volunteers/volunteers_by_event.html",
             volunteers=volunteers,
             type_choices=type_choices,
             selected_types=selected_type_values,
-            school_year=school_year or "",
-            date_from=start_date.strftime("%Y-%m-%d") if start_date else "",
-            date_to=end_date.strftime("%Y-%m-%d") if end_date else "",
+            all_past_data=all_past_data,
+            last_2_years=last_2_years,
+            date_from=(
+                start_date.strftime("%Y-%m-%d")
+                if start_date and not all_past_data and not last_2_years
+                else ""
+            ),
+            date_to=(
+                end_date.strftime("%Y-%m-%d")
+                if end_date and not all_past_data and not last_2_years
+                else ""
+            ),
             title_contains=title_contains or "",
             export_params=export_params,
             now=datetime.now(),
@@ -354,13 +406,27 @@ def load_routes(bp: Blueprint):
             )
         selected_types = _normalize_selected_types(raw_types)
 
-        school_year = request.args.get("school_year")
+        all_past_data = request.args.get("all_past_data") == "1"
+        last_2_years = request.args.get("last_2_years") == "1"
+
+        # Ensure mutual exclusivity - if last_2_years is selected, uncheck all_past_data
+        if last_2_years:
+            all_past_data = False
+        # If neither is selected, default to all_past_data
+        elif not all_past_data and not last_2_years:
+            all_past_data = True
         date_from_param = request.args.get("date_from")
         date_to_param = request.args.get("date_to")
         title_contains = request.args.get("title", "").strip() or None
 
-        if school_year:
-            start_date, end_date = get_school_year_date_range(school_year)
+        if all_past_data:
+            # Search all historical data - set a very early start date
+            start_date = datetime(2000, 1, 1)  # Very early date to capture all data
+            end_date = datetime.now(timezone.utc)  # Current time
+        elif last_2_years:
+            # Search last 2 years
+            end_date = datetime.now(timezone.utc)
+            start_date = end_date - timedelta(days=730)  # 2 years = 730 days
         else:
             start_date, end_date = _default_date_range()
             start_date = _parse_date(date_from_param, start_date)
@@ -432,8 +498,10 @@ def load_routes(bp: Blueprint):
         type_suffix = (
             "_" + ",".join([t.value for t in selected_types]) if selected_types else ""
         )
-        if school_year:
-            filename = f"Volunteers_By_Event{type_suffix}_{school_year[:2]}-{school_year[2:]}.xlsx"
+        if all_past_data:
+            filename = f"Volunteers_By_Event{type_suffix}_All_Past_Data.xlsx"
+        elif last_2_years:
+            filename = f"Volunteers_By_Event{type_suffix}_Last_2_Years.xlsx"
         else:
             filename = f"Volunteers_By_Event{type_suffix}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
 
