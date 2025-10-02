@@ -504,40 +504,8 @@ def load_routes(bp: Blueprint):
             start_date, end_date, search_query, selected_types
         )
 
-        # For display: build concise events string per volunteer
+        # Ensure organization and skills strings for UI
         for v in volunteers:
-            # Combine past and future events for display
-            all_events = v["events"] + v.get("future_events", [])
-
-            # Sort by date (past events first, then future)
-            all_events.sort(key=lambda x: x.get("date") or datetime.min)
-
-            titles = [e["title"] for e in all_events]
-            unique_titles = []
-            seen = set()
-            for t in titles:
-                if t and t not in seen:
-                    seen.add(t)
-                    unique_titles.append(t)
-
-            # Show past events first, then indicate future events
-            past_titles = [e["title"] for e in v["events"] if e.get("title")]
-            future_titles = [
-                e["title"] for e in v.get("future_events", []) if e.get("title")
-            ]
-
-            display_parts = []
-            if past_titles:
-                display_parts.append("; ".join(past_titles[:3]))
-            if future_titles:
-                future_display = " [Upcoming: " + "; ".join(future_titles[:2]) + "]"
-                display_parts.append(future_display)
-
-            v["events_display"] = "".join(display_parts)
-            if len(unique_titles) > 5:
-                v["events_display"] += " …"
-
-            # Ensure organization and skills strings for UI
             v["organization"] = v.get("organization") or "None"
             v["skills"] = v.get("skills") or ""
 
@@ -662,11 +630,9 @@ def load_routes(bp: Blueprint):
                     "Email": v["email"],
                     "Organization": v.get("organization") or "",
                     "Skills": v.get("skills") or "",
-                    "Events (Count)": v["event_count"],
                     "Last Volunteered Date": last_volunteered_display,
                     "Last Email": last_email_date,
-                    "# Times": v.get("total_volunteer_count", 0),
-                    "Event Titles": "; ".join(sorted(set(all_titles))),
+                    "Past Events": v.get("total_volunteer_count", 0),
                 }
             )
 
@@ -679,11 +645,9 @@ def load_routes(bp: Blueprint):
             ws.set_column("B:B", 36)  # Email
             ws.set_column("C:C", 26)  # Organization
             ws.set_column("D:D", 40)  # Skills
-            ws.set_column("E:E", 14)  # Events (Count)
-            ws.set_column("F:F", 20)  # Last Volunteered Date (with upcoming info)
-            ws.set_column("G:G", 12)  # Last Email
-            ws.set_column("H:H", 10)  # # Times
-            ws.set_column("I:I", 60)  # Event Titles
+            ws.set_column("E:E", 20)  # Last Volunteered Date (with upcoming info)
+            ws.set_column("F:F", 12)  # Last Email
+            ws.set_column("G:G", 12)  # Past Events
 
         output.seek(0)
 
