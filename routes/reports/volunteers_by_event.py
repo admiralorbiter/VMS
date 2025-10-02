@@ -280,6 +280,7 @@ def _query_volunteers_with_search(
     selected_types: list[EventType],
     page: int = 1,
     per_page: int = 25,
+    connector_only: bool = False,
 ):
     """
     Query volunteers with wide search functionality (OR mode).
@@ -366,6 +367,14 @@ def _query_volunteers_with_search(
                 )
             )
         query = query.filter(db.or_(*search_conditions))
+
+    # Apply connector filter if requested
+    if connector_only:
+        # Use INNER JOIN to only get volunteers with VALID connector data (with user_auth_id)
+        query = query.join(ConnectorData, Volunteer.id == ConnectorData.volunteer_id)
+        query = query.filter(
+            ConnectorData.user_auth_id.isnot(None), ConnectorData.user_auth_id != ""
+        )
 
     query = query.group_by(
         Volunteer.id,
@@ -634,6 +643,7 @@ def load_routes(bp: Blueprint):
 
         all_past_data = request.args.get("all_past_data") == "1"
         last_2_years = request.args.get("last_2_years") == "1"
+        connector_only = request.args.get("connector_only") == "1"
 
         # Ensure mutual exclusivity - if all_past_data is selected, uncheck last_2_years
         if all_past_data:
@@ -658,7 +668,13 @@ def load_routes(bp: Blueprint):
             end_date = _parse_date(date_to_param, end_date)
 
         result = _query_volunteers_with_search(
-            start_date, end_date, search_query, selected_types, page, per_page
+            start_date,
+            end_date,
+            search_query,
+            selected_types,
+            page,
+            per_page,
+            connector_only,
         )
         volunteers = result["volunteers"]
         pagination = result["pagination"]
@@ -697,6 +713,7 @@ def load_routes(bp: Blueprint):
             search_query=search_query,
             all_past_data=all_past_data,
             last_2_years=last_2_years,
+            connector_only=connector_only,
             date_from=(
                 start_date.strftime("%Y-%m-%d")
                 if start_date and not all_past_data and not last_2_years
@@ -730,6 +747,7 @@ def load_routes(bp: Blueprint):
 
         all_past_data = request.args.get("all_past_data") == "1"
         last_2_years = request.args.get("last_2_years") == "1"
+        connector_only = request.args.get("connector_only") == "1"
 
         # Ensure mutual exclusivity - if all_past_data is selected, uncheck last_2_years
         if all_past_data:
@@ -755,7 +773,13 @@ def load_routes(bp: Blueprint):
 
         # For Excel export, get all results (no pagination)
         result = _query_volunteers_with_search(
-            start_date, end_date, search_query, selected_types, page=1, per_page=10000
+            start_date,
+            end_date,
+            search_query,
+            selected_types,
+            page=1,
+            per_page=10000,
+            connector_only=connector_only,
         )
         volunteers = result["volunteers"]
 
