@@ -401,6 +401,7 @@
                     <div class="col-auto">
                         <select name="security_level" class="form-select" required>
                             <option value="" disabled selected>Select Role</option>
+                            <option value="-1">KCK Viewer (Restricted Access)</option>
                             <option value="0">User</option>
                             <option value="1">Supervisor</option>
                             <option value="2">Manager</option>
@@ -832,7 +833,9 @@
                             <td>{{ user.username }}</td>
                             <td>{{ user.email }}</td>
                             <td>
-                                {% if user.security_level == SecurityLevel.USER %}
+                                {% if user.security_level == SecurityLevel.KCK_VIEWER %}
+                                    <span class="badge bg-warning">KCK Viewer</span>
+                                {% elif user.security_level == SecurityLevel.USER %}
                                     <span class="badge bg-secondary">User</span>
                                 {% elif user.security_level == SecurityLevel.SUPERVISOR %}
                                     <span class="badge bg-info">Supervisor</span>

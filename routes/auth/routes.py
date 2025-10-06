@@ -50,6 +50,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm  # Adjust import path as needed
 from models import User, db  # Adjust import path as needed
+from models.user import SecurityLevel
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -80,7 +81,16 @@ def login():
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
             flash("Logged in successfully.", "success")
-            return redirect(url_for("index"))  # Update to use main blueprint
+            
+            # Redirect KCK viewers directly to their dashboard
+            if user.is_kck_viewer:
+                return redirect(url_for("report.virtual_district_teacher_progress", 
+                                      district_name="Kansas City Kansas Public Schools",
+                                      year="2025-2026",
+                                      date_from="2025-08-01",
+                                      date_to="2026-07-31"))
+            
+            return redirect(url_for("index"))  # Regular users go to main page
         else:
             flash("Invalid username/email or password.", "danger")
     return render_template("login.html", form=form)
@@ -116,7 +126,7 @@ def admin():
         Rendered admin template with user list
     """
     users = User.query.all()
-    return render_template("management/admin.html", users=users)
+    return render_template("management/admin.html", users=users, SecurityLevel=SecurityLevel)
 
 
 @auth_bp.route("/admin/users", methods=["POST"])
@@ -167,7 +177,7 @@ def create_user():
 
     # For admin users (security_level 3), allow creating any valid security level
     # For non-admin users, ensure they can only create users with lower security levels
-    if not (0 <= security_level <= 3) or (
+    if not (-1 <= security_level <= 3) or (
         not current_user.is_admin and security_level >= current_user.security_level
     ):
         flash("Invalid security level or insufficient permissions", "danger")

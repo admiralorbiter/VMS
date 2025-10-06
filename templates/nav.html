@@ -54,29 +54,40 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           {% if current_user.is_authenticated %}
-            <li class="nav-item">
-              <a class="nav-link" href="/volunteers">Volunteers</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/events">Events</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/organizations">Orgs</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/reports">Reports</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/calendar">Calendar</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#" id="moreMenuToggle">
-                More <i class="fas fa-chevron-right"></i>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/logout">Logout</a>
-            </li>
+            {% if current_user.is_kck_viewer %}
+              {# Simplified navigation for KCK viewers #}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('report.virtual_district_teacher_progress', district_name='Kansas City Kansas Public Schools', year='2025-2026', date_from='2025-08-01', date_to='2026-07-31') }}">KCK Teacher Progress</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/logout">Logout</a>
+              </li>
+            {% else %}
+              {# Full navigation for regular users #}
+              <li class="nav-item">
+                <a class="nav-link" href="/volunteers">Volunteers</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/events">Events</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/organizations">Orgs</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/reports">Reports</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/calendar">Calendar</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" id="moreMenuToggle">
+                  More <i class="fas fa-chevron-right"></i>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/logout">Logout</a>
+              </li>
+            {% endif %}
           {% else %}
             <li class="nav-item">
               <a class="nav-link" href="/login">Login</a>
@@ -87,7 +98,8 @@
     </div>
   </nav>
 
-{# Side Navigation Panel - Additional menu items #}
+{# Side Navigation Panel - Additional menu items (hidden for KCK viewers) #}
+{% if not current_user.is_kck_viewer %}
 <div class="side-nav-panel" id="sideNavPanel">
   <div class="side-nav-content">
     <ul class="side-nav-menu">
@@ -114,6 +126,7 @@
     </ul>
   </div>
 </div>
+{% endif %}
 
 {# Bug Report Modal Container - HTMX target for dynamic content #}
 <div id="bugReportModal" class="modal" tabindex="-1">

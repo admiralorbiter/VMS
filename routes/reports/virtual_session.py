@@ -14,6 +14,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from routes.utils import kck_viewer_only
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy import extract, func, or_
@@ -4025,6 +4026,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress")
     @login_required
+    @kck_viewer_only
     def virtual_district_teacher_progress(district_name):
         """
         Show teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
@@ -4364,6 +4366,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress/export")
     @login_required
+    @kck_viewer_only
     def virtual_district_teacher_progress_export(district_name):
         """
         Export teacher progress tracking data to Excel for Kansas City Kansas Public Schools.
