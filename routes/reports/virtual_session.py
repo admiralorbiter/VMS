@@ -14,7 +14,6 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from routes.utils import kck_viewer_only
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy import extract, func, or_
@@ -29,6 +28,7 @@ from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCach
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
+from routes.utils import kck_viewer_only
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
@@ -1742,54 +1742,76 @@ def compute_virtual_session_district_data(
 # --- End Data Processing Helper Functions ---
 
 
-def generate_teacher_progress_excel(teacher_progress_data, district_name, virtual_year, date_from, date_to):
+def generate_teacher_progress_excel(
+    teacher_progress_data, district_name, virtual_year, date_from, date_to
+):
     """
     Generate Excel file with teacher progress data including summary and detailed sheets.
-    
+
     Args:
         teacher_progress_data: Dictionary with school progress data
         district_name: Name of the district
         virtual_year: Virtual year
         date_from: Start date
         date_to: End date
-        
+
     Returns:
         Excel file as bytes
     """
     # Create workbook
     wb = openpyxl.Workbook()
-    
+
     # Remove default sheet
     wb.remove(wb.active)
-    
+
     # Create styles
     header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="366092", end_color="366092", fill_type="solid"
+    )
     border = Border(
         left=Side(style="thin"),
         right=Side(style="thin"),
         top=Side(style="thin"),
-        bottom=Side(style="thin")
+        bottom=Side(style="thin"),
     )
     center_alignment = Alignment(horizontal="center", vertical="center")
-    
+
     # Create Summary Sheet
     summary_ws = wb.create_sheet("Summary")
-    
+
     # Summary headers
     summary_headers = [
-        "District", "Virtual Year", "Date Range", "Total Schools", "Total Teachers",
-        "Goals Achieved", "Goals Achieved %", "In Progress", "In Progress %",
-        "Not Started", "Not Started %"
+        "District",
+        "Virtual Year",
+        "Date Range",
+        "Total Schools",
+        "Total Teachers",
+        "Goals Achieved",
+        "Goals Achieved %",
+        "In Progress",
+        "In Progress %",
+        "Not Started",
+        "Not Started %",
     ]
-    
+
     # Calculate totals
     total_schools = len(teacher_progress_data)
-    total_teachers = sum(school_data["total_teachers"] for school_data in teacher_progress_data.values())
-    total_achieved = sum(school_data["goals_achieved"] for school_data in teacher_progress_data.values())
-    total_in_progress = sum(school_data["goals_in_progress"] for school_data in teacher_progress_data.values())
-    total_not_started = sum(school_data["goals_not_started"] for school_data in teacher_progress_data.values())
-    
+    total_teachers = sum(
+        school_data["total_teachers"] for school_data in teacher_progress_data.values()
+    )
+    total_achieved = sum(
+        school_data["goals_achieved"] for school_data in teacher_progress_data.values()
+    )
+    total_in_progress = sum(
+        school_data["goals_in_progress"]
+        for school_data in teacher_progress_data.values()
+    )
+    total_not_started = sum(
+        school_data["goals_not_started"]
+        for school_data in teacher_progress_data.values()
+    )
+
     # Write summary headers
     for col, header in enumerate(summary_headers, 1):
         cell = summary_ws.cell(row=1, column=col, value=header)
@@ -1797,7 +1819,7 @@ def generate_teacher_progress_excel(teacher_progress_data, district_name, virtua
         cell.fill = header_fill
         cell.border = border
         cell.alignment = center_alignment
-    
+
     # Write summary data
     summary_data = [
         district_name,
@@ -1806,32 +1828,50 @@ def generate_teacher_progress_excel(teacher_progress_data, district_name, virtua
         total_schools,
         total_teachers,
         total_achieved,
-        f"{(total_achieved / total_teachers * 100):.1f}%" if total_teachers > 0 else "0.0%",
+        (
+            f"{(total_achieved / total_teachers * 100):.1f}%"
+            if total_teachers > 0
+            else "0.0%"
+        ),
         total_in_progress,
-        f"{(total_in_progress / total_teachers * 100):.1f}%" if total_teachers > 0 else "0.0%",
+        (
+            f"{(total_in_progress / total_teachers * 100):.1f}%"
+            if total_teachers > 0
+            else "0.0%"
+        ),
         total_not_started,
-        f"{(total_not_started / total_teachers * 100):.1f}%" if total_teachers > 0 else "0.0%"
+        (
+            f"{(total_not_started / total_teachers * 100):.1f}%"
+            if total_teachers > 0
+            else "0.0%"
+        ),
     ]
-    
+
     for col, value in enumerate(summary_data, 1):
         cell = summary_ws.cell(row=2, column=col, value=value)
         cell.border = border
         if col in [4, 5, 6, 8, 10]:  # Numeric columns
             cell.alignment = center_alignment
-    
+
     # Auto-adjust column widths for summary
     for col in range(1, len(summary_headers) + 1):
         summary_ws.column_dimensions[get_column_letter(col)].width = 15
-    
+
     # Create School Summary Sheet
     school_summary_ws = wb.create_sheet("School Summary")
-    
+
     # School summary headers
     school_headers = [
-        "School Name", "Total Teachers", "Goals Achieved", "Goals Achieved %",
-        "In Progress", "In Progress %", "Not Started", "Not Started %"
+        "School Name",
+        "Total Teachers",
+        "Goals Achieved",
+        "Goals Achieved %",
+        "In Progress",
+        "In Progress %",
+        "Not Started",
+        "Not Started %",
     ]
-    
+
     # Write school summary headers
     for col, header in enumerate(school_headers, 1):
         cell = school_summary_ws.cell(row=1, column=col, value=header)
@@ -1839,7 +1879,7 @@ def generate_teacher_progress_excel(teacher_progress_data, district_name, virtua
         cell.fill = header_fill
         cell.border = border
         cell.alignment = center_alignment
-    
+
     # Write school summary data
     row = 2
     for school_name, school_data in teacher_progress_data.items():
@@ -1847,34 +1887,53 @@ def generate_teacher_progress_excel(teacher_progress_data, district_name, virtua
             school_name,
             school_data["total_teachers"],
             school_data["goals_achieved"],
-            f"{(school_data['goals_achieved'] / school_data['total_teachers'] * 100):.1f}%" if school_data["total_teachers"] > 0 else "0.0%",
+            (
+                f"{(school_data['goals_achieved'] / school_data['total_teachers'] * 100):.1f}%"
+                if school_data["total_teachers"] > 0
+                else "0.0%"
+            ),
             school_data["goals_in_progress"],
-            f"{(school_data['goals_in_progress'] / school_data['total_teachers'] * 100):.1f}%" if school_data["total_teachers"] > 0 else "0.0%",
+            (
+                f"{(school_data['goals_in_progress'] / school_data['total_teachers'] * 100):.1f}%"
+                if school_data["total_teachers"] > 0
+                else "0.0%"
+            ),
             school_data["goals_not_started"],
-            f"{(school_data['goals_not_started'] / school_data['total_teachers'] * 100):.1f}%" if school_data["total_teachers"] > 0 else "0.0%"
+            (
+                f"{(school_data['goals_not_started'] / school_data['total_teachers'] * 100):.1f}%"
+                if school_data["total_teachers"] > 0
+                else "0.0%"
+            ),
         ]
-        
+
         for col, value in enumerate(school_data_row, 1):
             cell = school_summary_ws.cell(row=row, column=col, value=value)
             cell.border = border
             if col in [2, 3, 4, 5, 6, 7, 8]:  # Numeric columns
                 cell.alignment = center_alignment
-        
+
         row += 1
-    
+
     # Auto-adjust column widths for school summary
     for col in range(1, len(school_headers) + 1):
         school_summary_ws.column_dimensions[get_column_letter(col)].width = 18
-    
+
     # Create Detailed Teacher Sheet
     teacher_detail_ws = wb.create_sheet("Teacher Details")
-    
+
     # Teacher detail headers
     teacher_headers = [
-        "School", "Teacher Name", "Email", "Grade", "Target Sessions",
-        "Completed Sessions", "Planned Sessions", "Progress %", "Goal Status"
+        "School",
+        "Teacher Name",
+        "Email",
+        "Grade",
+        "Target Sessions",
+        "Completed Sessions",
+        "Planned Sessions",
+        "Progress %",
+        "Goal Status",
     ]
-    
+
     # Write teacher detail headers
     for col, header in enumerate(teacher_headers, 1):
         cell = teacher_detail_ws.cell(row=1, column=col, value=header)
@@ -1882,7 +1941,7 @@ def generate_teacher_progress_excel(teacher_progress_data, district_name, virtua
         cell.fill = header_fill
         cell.border = border
         cell.alignment = center_alignment
-    
+
     # Write teacher detail data
     row = 2
     for school_name, school_data in teacher_progress_data.items():
@@ -1896,27 +1955,27 @@ def generate_teacher_progress_excel(teacher_progress_data, district_name, virtua
                 teacher["completed_sessions"],
                 teacher["planned_sessions"],
                 f"{teacher['progress_percentage']:.1f}%",
-                teacher["goal_status_text"]
+                teacher["goal_status_text"],
             ]
-            
+
             for col, value in enumerate(teacher_row, 1):
                 cell = teacher_detail_ws.cell(row=row, column=col, value=value)
                 cell.border = border
                 if col in [5, 6, 7, 8]:  # Numeric columns
                     cell.alignment = center_alignment
-            
+
             row += 1
-    
+
     # Auto-adjust column widths for teacher details
     column_widths = [20, 25, 30, 8, 12, 15, 15, 12, 15]
     for col, width in enumerate(column_widths, 1):
         teacher_detail_ws.column_dimensions[get_column_letter(col)].width = width
-    
+
     # Save to bytes
     excel_buffer = io.BytesIO()
     wb.save(excel_buffer)
     excel_buffer.seek(0)
-    
+
     return excel_buffer.getvalue()
 
 
@@ -4102,12 +4161,24 @@ def load_routes(bp):
 
         virtual_year_options = generate_school_year_options()
 
+        # Compute the last time virtual session data was updated (any event update)
+        from sqlalchemy.sql import func as _sql_func
+
+        from models.event import Event, EventType
+
+        last_virtual_update = (
+            db.session.query(_sql_func.max(Event.updated_at))
+            .filter(Event.type == EventType.VIRTUAL_SESSION)
+            .scalar()
+        )
+
         return render_template(
             "reports/virtual/virtual_teacher_progress.html",
             district_name=district_name,
             teacher_progress_data=teacher_progress_data,
             current_filters=current_filters,
             virtual_year_options=virtual_year_options,
+            last_virtual_update=last_virtual_update,
         )
 
     @bp.route(
@@ -4123,6 +4194,16 @@ def load_routes(bp):
                 "error",
             )
             return redirect(url_for("report.virtual_usage"))
+
+        # Prevent KCK Viewer accounts from accessing management UI
+        if getattr(current_user, "is_kck_viewer", False):
+            flash("Access denied for KCK Viewer accounts.", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_district_teacher_progress",
+                    district_name=district_name,
+                )
+            )
 
         virtual_year = request.args.get("year", get_current_virtual_year())
 
@@ -4157,6 +4238,16 @@ def load_routes(bp):
                 "error",
             )
             return redirect(url_for("report.virtual_usage"))
+
+        # Block KCK Viewer accounts
+        if getattr(current_user, "is_kck_viewer", False):
+            flash("Access denied for KCK Viewer accounts.", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_district_teacher_progress",
+                    district_name=district_name,
+                )
+            )
 
         try:
             virtual_year = request.form.get("virtual_year")
@@ -4241,6 +4332,16 @@ def load_routes(bp):
                 "error",
             )
             return redirect(url_for("report.virtual_usage"))
+
+        # Block KCK Viewer accounts
+        if getattr(current_user, "is_kck_viewer", False):
+            flash("Access denied for KCK Viewer accounts.", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_district_teacher_progress",
+                    district_name=district_name,
+                )
+            )
 
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
@@ -4431,7 +4532,11 @@ def load_routes(bp):
 
         # Generate Excel file
         excel_data = generate_teacher_progress_excel(
-            teacher_progress_data, district_name, selected_virtual_year, date_from, date_to
+            teacher_progress_data,
+            district_name,
+            selected_virtual_year,
+            date_from,
+            date_to,
         )
 
         # Create filename with timestamp
@@ -4459,6 +4564,16 @@ def load_routes(bp):
                 "error",
             )
             return redirect(url_for("report.virtual_usage"))
+
+        # Block KCK Viewer accounts
+        if getattr(current_user, "is_kck_viewer", False):
+            flash("Access denied for KCK Viewer accounts.", "error")
+            return redirect(
+                url_for(
+                    "report.virtual_district_teacher_progress",
+                    district_name=district_name,
+                )
+            )
 
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)

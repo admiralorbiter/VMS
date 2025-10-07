@@ -386,8 +386,12 @@
         <h1 class="district-title">{{ district_name }}</h1>
         <p class="district-subtitle">Teacher Progress Tracking - Virtual Year: {{ current_filters.year }}</p>
         <p class="district-subtitle">Date Range: {{ current_filters.date_from.strftime('%Y-%m-%d') }} to {{ current_filters.date_to.strftime('%Y-%m-%d') }}</p>
+        {% if last_virtual_update %}
+        <p class="district-subtitle">Last Virtual Session Update: {{ last_virtual_update.strftime('%Y-%m-%d %H:%M') }}</p>
+        {% endif %}
     </div>
 
+    {% if current_user and (not current_user.is_kck_viewer) %}
     <!-- Description Section -->
     <div class="progress-description">
         <h3>Teacher Progress Tracking</h3>
@@ -395,17 +399,23 @@
 
         <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404; font-size: 0.9em;">
             <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong> Teacher names in connector sessions must match the KCK teacher name spreadsheet.
+            {% if current_user and (not current_user.is_kck_viewer) %}
             <a href="{{ url_for('report.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
                style="color: #856404; font-weight: 600; text-decoration: underline;">Update names here</a>.
+            {% else %}
+            <span style="font-weight: 600;">Contact an admin to update names.</span>
+            {% endif %}
         </div>
-
+        {% if current_user and (not current_user.is_kck_viewer) %}
         <p style="margin-top: 15px;">
             <a href="{{ url_for('report.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
                style="color: #155724; font-weight: 600; text-decoration: underline;">
                 <i class="fas fa-cog"></i> Manage Google Sheets & Import Data
             </a>
         </p>
+        {% endif %}
     </div>
+    {% endif %}
 
     <!-- Filter Section -->
     <div class="filters-section">
