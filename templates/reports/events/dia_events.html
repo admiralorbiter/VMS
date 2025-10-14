@@ -163,13 +163,33 @@
   <!-- Page Header -->
   <div class="row mb-4">
     <div class="col-12">
-      <h1 class="h2 mb-3">
-        <i class="fas fa-chart-bar text-primary me-2"></i>
-        Data in Action (DIA) Events Report
-      </h1>
-      <p class="text-muted">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h1 class="h2 mb-0">
+            <i class="fas fa-chart-bar text-primary me-2"></i>
+            Data in Action (DIA) Events Report
+          </h1>
+        </div>
+        <div>
+          <a href="{{ url_for(request.endpoint, refresh=1) }}" class="btn btn-outline-primary">
+            <i class="fas fa-sync-alt me-1"></i>
+            Refresh Cache
+          </a>
+        </div>
+      </div>
+      <p class="text-muted mb-2">
         Overview of upcoming DIA events showing filled and unfilled positions with volunteer contact information.
       </p>
+      {% if cache_last_updated %}
+      <div class="alert alert-info py-2 mb-0">
+        <i class="fas fa-info-circle me-1"></i>
+        <small>
+          <strong>Cache Status:</strong> Data cached {{ cache_last_updated.strftime('%B %d, %Y at %I:%M %p') }}
+          ({{ ((now - cache_last_updated).total_seconds() / 3600) | round(1) }} hours ago).
+          Cache expires after 24 hours.
+        </small>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -215,6 +235,8 @@
           {% if filled_events %}
             {% for event_data in filled_events %}
               {% set event = event_data.event %}
+              {% set event_type = event.type.value if event.type is defined and event.type.value is defined else event.type %}
+              {% set event_status = event.status.value if event.status is defined and event.status.value is defined else event.status %}
               <div class="event-card">
                 <div class="event-header">
                   <h5 class="event-title mb-2">{{ event.title }}</h5>
@@ -229,15 +251,15 @@
                         {{ event.location or 'Virtual' }}
                       </div>
                     </div>
-                    {% if event.school_obj %}
+                    {% if event.school_obj or event.school_name %}
                     <div class="mt-1">
                       <i class="fas fa-school me-1"></i>
-                      {{ event.school_obj.name }}
+                      {{ event.school_obj.name if event.school_obj else event.school_name }}
                     </div>
                     {% endif %}
                     <div class="mt-1">
-                      <span class="badge bg-primary me-1">{{ event.type.value.replace('_', ' ').title() }}</span>
-                      <span class="badge bg-{{ 'success' if event.status.value == 'Completed' else 'warning' if event.status.value == 'Confirmed' else 'secondary' }}">{{ event.status.value }}</span>
+                      <span class="badge bg-primary me-1">{{ event_type.replace('_', ' ').title() }}</span>
+                      <span class="badge bg-{{ 'success' if event_status == 'Completed' else 'warning' if event_status == 'Confirmed' else 'secondary' }}">{{ event_status }}</span>
                     </div>
                   </div>
                 </div>
@@ -296,6 +318,8 @@
         <div class="card-body">
           {% if unfilled_events %}
             {% for event in unfilled_events %}
+              {% set event_type = event.type.value if event.type is defined and event.type.value is defined else event.type %}
+              {% set event_status = event.status.value if event.status is defined and event.status.value is defined else event.status %}
               <div class="event-card">
                 <div class="event-header">
                   <h5 class="event-title mb-2">{{ event.title }}</h5>
@@ -310,15 +334,15 @@
                         {{ event.location or 'Virtual' }}
                       </div>
                     </div>
-                    {% if event.school_obj %}
+                    {% if event.school_obj or event.school_name %}
                     <div class="mt-1">
                       <i class="fas fa-school me-1"></i>
-                      {{ event.school_obj.name }}
+                      {{ event.school_obj.name if event.school_obj else event.school_name }}
                     </div>
                     {% endif %}
                     <div class="mt-1">
-                      <span class="badge bg-primary me-1">{{ event.type.value.replace('_', ' ').title() }}</span>
-                      <span class="badge bg-{{ 'success' if event.status.value == 'Completed' else 'warning' if event.status.value == 'Confirmed' else 'secondary' }}">{{ event.status.value }}</span>
+                      <span class="badge bg-primary me-1">{{ event_type.replace('_', ' ').title() }}</span>
+                      <span class="badge bg-{{ 'success' if event_status == 'Completed' else 'warning' if event_status == 'Confirmed' else 'secondary' }}">{{ event_status }}</span>
                     </div>
                     {% if event.volunteers_needed %}
                     <div class="mt-2">

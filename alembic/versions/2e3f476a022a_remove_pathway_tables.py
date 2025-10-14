@@ -24,11 +24,22 @@ def upgrade() -> None:
     # Drop pathway-related tables that are no longer needed
     # These tables were part of the old pathways system that has been removed
 
-    # Drop pathway_contacts table
-    op.drop_table("pathway_contacts")
+    # Check if tables exist before dropping
+    from sqlalchemy import inspect
 
-    # Drop pathway_events table
-    op.drop_table("pathway_events")
+    from alembic import context
+
+    bind = context.get_bind()
+    inspector = inspect(bind)
+    existing_tables = inspector.get_table_names()
+
+    # Drop pathway_contacts table if it exists
+    if "pathway_contacts" in existing_tables:
+        op.drop_table("pathway_contacts")
+
+    # Drop pathway_events table if it exists
+    if "pathway_events" in existing_tables:
+        op.drop_table("pathway_events")
 
 
 def downgrade() -> None:

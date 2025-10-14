@@ -587,3 +587,46 @@ class RecruitmentCandidatesCache(db.Model):
 
     def __repr__(self):
         return f"<RecruitmentCandidatesCache event_id={self.event_id}>"
+
+
+class DIAEventsReportCache(db.Model):
+    """
+    Model for caching DIA events report data.
+
+    This model stores pre-computed DIA events reports to improve performance
+    when displaying upcoming DIA events with volunteer assignments.
+
+    Database Table:
+        dia_events_report_cache - Cached DIA events reports
+
+    Key Features:
+        - Caches filled and unfilled DIA events
+        - Includes volunteer contact information
+        - Automatic timestamp tracking for cache invalidation
+        - Single cache entry (no complex filter parameters)
+
+    Data Structure:
+        - report_data: Main report data as JSON containing:
+            - filled_events: Events with volunteers assigned
+            - unfilled_events: Events without volunteers
+            - Event details, volunteer info, and contact data
+
+    Performance Features:
+        - Single cache entry for fast access
+        - Cached data reduces database queries
+        - Automatic invalidation after 24 hours
+    """
+
+    __tablename__ = "dia_events_report_cache"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Cached JSON payload containing filled and unfilled events
+    report_data = db.Column(db.JSON, nullable=False)
+
+    last_updated = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    def __repr__(self):
+        return f"<DIAEventsReportCache updated={self.last_updated}>"
