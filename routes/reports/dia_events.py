@@ -299,11 +299,32 @@ def _query_dia_events():
                         if any_email_obj:
                             primary_email = any_email_obj.email
 
+                    # Get organization name from VolunteerOrganization relationship
+                    organization_name = "N/A"
+                    
+                    # First try to get organization from VolunteerOrganization relationship
+                    from models.organization import VolunteerOrganization
+                    vol_org = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, is_primary=True
+                    ).first()
+                    
+                    # If no primary organization, get any organization
+                    if not vol_org:
+                        vol_org = VolunteerOrganization.query.filter_by(
+                            volunteer_id=volunteer.id
+                        ).first()
+                    
+                    if vol_org and vol_org.organization:
+                        organization_name = vol_org.organization.name
+                    elif volunteer.organization_name and not volunteer.organization_name.startswith('00'):
+                        # Only use organization_name if it doesn't look like a Salesforce ID
+                        organization_name = volunteer.organization_name
+
                     volunteers.append(
                         {
                             "name": f"{volunteer.first_name} {volunteer.last_name}".strip(),
                             "email": primary_email,
-                            "organization": volunteer.organization_name or "N/A",
+                            "organization": organization_name,
                             "status": participation.status,
                             "participant_type": participation.participant_type
                             or "Volunteer",
