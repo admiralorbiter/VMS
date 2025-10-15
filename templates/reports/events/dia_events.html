@@ -155,6 +155,18 @@
     font-weight: 600;
     color: #495057;
   }
+
+  .salesforce-btn {
+    background-color: #00a1e0;
+    color: white;
+    border: none;
+    margin-left: 0.25rem;
+  }
+
+  .salesforce-btn:hover {
+    background-color: #0084c7;
+    color: white;
+  }
 </style>
 {% endblock %}
 
@@ -260,6 +272,11 @@
                     <div class="mt-1">
                       <span class="badge bg-primary me-1">{{ event_type.replace('_', ' ').title() }}</span>
                       <span class="badge bg-{{ 'success' if event_status == 'Completed' else 'warning' if event_status == 'Confirmed' else 'secondary' }}">{{ event_status }}</span>
+                      {% if event.salesforce_url %}
+                      <a href="{{ event.salesforce_url }}" class="btn btn-sm salesforce-btn" target="_blank" title="View in Salesforce">
+                        <i class="fa-solid fa-cloud"></i>
+                      </a>
+                      {% endif %}
                     </div>
                   </div>
                 </div>
@@ -343,6 +360,11 @@
                     <div class="mt-1">
                       <span class="badge bg-primary me-1">{{ event_type.replace('_', ' ').title() }}</span>
                       <span class="badge bg-{{ 'success' if event_status == 'Completed' else 'warning' if event_status == 'Confirmed' else 'secondary' }}">{{ event_status }}</span>
+                      {% if event.salesforce_url %}
+                      <a href="{{ event.salesforce_url }}" class="btn btn-sm salesforce-btn" target="_blank" title="View in Salesforce">
+                        <i class="fa-solid fa-cloud"></i>
+                      </a>
+                      {% endif %}
                     </div>
                     {% if event.volunteers_needed %}
                     <div class="mt-2">

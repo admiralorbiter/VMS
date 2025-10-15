@@ -90,6 +90,8 @@ def _serialize_for_cache(filled_events: list[dict], unfilled_events: list) -> di
             "school_name": event.school_obj.name if event.school_obj else None,
             "status": event.status.value if event.status else None,
             "description": event.description,
+            "salesforce_id": event.salesforce_id,
+            "salesforce_url": event.salesforce_url,
         }
 
         volunteers_data = []
@@ -121,6 +123,8 @@ def _serialize_for_cache(filled_events: list[dict], unfilled_events: list) -> di
                 "school_name": event.school_obj.name if event.school_obj else None,
                 "status": event.status.value if event.status else None,
                 "description": event.description,
+                "salesforce_id": event.salesforce_id,
+                "salesforce_url": event.salesforce_url,
                 "volunteers_needed": (
                     event.volunteers_needed
                     if hasattr(event, "volunteers_needed")
@@ -173,6 +177,8 @@ def _deserialize_from_cache(payload: dict) -> tuple[list[dict], list[dict]]:
             "school_name": event_data.get("school_name"),
             "status": event_data["status"],
             "description": event_data["description"],
+            "salesforce_id": event_data.get("salesforce_id"),
+            "salesforce_url": event_data.get("salesforce_url"),
         }
 
         volunteers_data = []
@@ -203,6 +209,8 @@ def _deserialize_from_cache(payload: dict) -> tuple[list[dict], list[dict]]:
                 "school_name": event_data.get("school_name"),
                 "status": event_data["status"],
                 "description": event_data["description"],
+                "salesforce_id": event_data.get("salesforce_id"),
+                "salesforce_url": event_data.get("salesforce_url"),
                 "volunteers_needed": event_data.get("volunteers_needed"),
             }
         )
