@@ -250,7 +250,7 @@ def _query_dia_events():
             - filled_events: List of dicts with event and volunteer data
             - unfilled_events: List of Event objects without volunteers
     """
-    # Get all upcoming DIA events (events with type containing "DIA")
+    # Get all upcoming DIA events that actually need volunteers
     now = datetime.now(timezone.utc)
     dia_events = (
         Event.query.filter(
@@ -260,6 +260,17 @@ def _query_dia_events():
                     Event.type == EventType.DIA_CLASSROOM_SPEAKER,
                 ),
                 Event.start_date > now,  # Only upcoming events
+                # Filter to only show events that need volunteers
+                # This excludes events like "Hills" and "STEAM Studio" that don't need volunteers
+                or_(
+                    Event.volunteers_needed > 0,  # Events with explicit volunteer needs
+                    # Events with "Voices Behind the Data" in title typically need volunteers
+                    Event.title.like('%Voices Behind the Data%'),
+                    # Events with "Data Ethics Speaker" in title typically need volunteers  
+                    Event.title.like('%Data Ethics Speaker%'),
+                    # Events with "Project Mentors" in title typically need volunteers
+                    Event.title.like('%Project Mentors%'),
+                )
             )
         )
         .order_by(Event.start_date.asc())
