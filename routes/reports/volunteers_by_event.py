@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 from flask import Blueprint, render_template, request, send_file
@@ -693,10 +693,32 @@ def _query_volunteers_with_search(
             return (volunteer["skills"] or "").lower()
         elif sort_by == "last":
             # Sort by last event date
-            return volunteer["last_event_date"] or datetime.min
+            date_val = volunteer["last_event_date"]
+            if date_val is None:
+                return datetime.min
+            # Ensure it's a datetime object for consistent comparison
+            if isinstance(date_val, datetime):
+                return date_val  # Already a datetime
+            elif isinstance(date_val, date):
+                return datetime.combine(
+                    date_val, datetime.min.time()
+                )  # Convert date to datetime
+            else:
+                return datetime.min  # Fallback for unexpected types
         elif sort_by == "last_email":
             # Sort by last email date
-            return volunteer["last_email_date"] or datetime.min
+            date_val = volunteer["last_email_date"]
+            if date_val is None:
+                return datetime.min
+            # Ensure it's a datetime object for consistent comparison
+            if isinstance(date_val, datetime):
+                return date_val  # Already a datetime
+            elif isinstance(date_val, date):
+                return datetime.combine(
+                    date_val, datetime.min.time()
+                )  # Convert date to datetime
+            else:
+                return datetime.min  # Fallback for unexpected types
         elif sort_by == "total_volunteer":
             # Sort by total volunteer count
             return volunteer["total_volunteer_count"] or 0
