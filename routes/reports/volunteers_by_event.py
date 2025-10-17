@@ -282,6 +282,8 @@ def _query_volunteers_with_search(
     page: int = 1,
     per_page: int = 25,
     connector_only: bool = False,
+    sort_by: str = "name",
+    sort_order: str = "asc",
 ):
     """
     Query volunteers with wide search functionality (OR mode).
@@ -399,15 +401,16 @@ def _query_volunteers_with_search(
         Volunteer.first_name,
         Volunteer.last_name,
         volunteer_subquery.c.event_count,
-    ).order_by(Volunteer.first_name, Volunteer.last_name)
+    )
 
-    # Apply pagination
+    # Get total count for pagination
     total_count = query.count()
-    paginated_query = query.offset((page - 1) * per_page).limit(per_page)
-    results = paginated_query.all()
+
+    # Get ALL results first (no pagination yet)
+    all_results = query.all()
 
     # Get volunteer IDs for additional queries
-    volunteer_ids = [row.id for row in results]
+    volunteer_ids = [row.id for row in all_results]
 
     # Single query for actual last event date (all time, not filtered by date range)
     last_event_dates = {}
@@ -628,7 +631,7 @@ def _query_volunteers_with_search(
 
     # Convert to the expected format
     volunteers = []
-    for row in results:
+    for row in all_results:
         volunteer_id = row.id
         future_events_list = future_events.get(volunteer_id, [])
         details = volunteer_details.get(volunteer_id, {})
@@ -678,7 +681,35 @@ def _query_volunteers_with_search(
             }
         )
 
-    # Volunteers are already sorted by name from the database query
+    # Apply server-side sorting
+    def get_sort_key(volunteer):
+        if sort_by == "name":
+            return (volunteer["name"] or "").lower()
+        elif sort_by == "email":
+            return (volunteer["email"] or "").lower()
+        elif sort_by == "organization":
+            return (volunteer["organization"] or "").lower()
+        elif sort_by == "skills":
+            return (volunteer["skills"] or "").lower()
+        elif sort_by == "last":
+            # Sort by last event date
+            return volunteer["last_event_date"] or datetime.min
+        elif sort_by == "last_email":
+            # Sort by last email date
+            return volunteer["last_email_date"] or datetime.min
+        elif sort_by == "total_volunteer":
+            # Sort by total volunteer count
+            return volunteer["total_volunteer_count"] or 0
+        else:
+            return (volunteer["name"] or "").lower()
+
+    # Sort volunteers based on sort_by and sort_order
+    volunteers.sort(key=get_sort_key, reverse=(sort_order == "desc"))
+
+    # Apply pagination to sorted results
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    paginated_volunteers = volunteers[start_idx:end_idx]
 
     # Calculate pagination info
     total_pages = (total_count + per_page - 1) // per_page
@@ -686,7 +717,7 @@ def _query_volunteers_with_search(
     has_next = page < total_pages
 
     return {
-        "volunteers": volunteers,
+        "volunteers": paginated_volunteers,
         "pagination": {
             "page": page,
             "per_page": per_page,
@@ -704,12 +735,16 @@ def load_routes(bp: Blueprint):
     @bp.route("/reports/volunteers/by-event")
     @login_required
     def volunteers_by_event_report():
-        # Params: search, event_types, date_from, date_to, all_past_data, last_2_years, page, per_page
+        # Params: search, event_types, date_from, date_to, all_past_data, last_2_years, page, per_page, sort, order
         search_query = request.args.get("search", "").strip()
 
         # Pagination parameters
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("per_page", 25))  # Default 25 per page
+
+        # Sorting parameters
+        sort_by = request.args.get("sort", "name")  # Default sort by name
+        sort_order = request.args.get("order", "asc")  # Default ascending order
 
         # Handle event types
         raw_types = request.args.getlist("event_types")
@@ -755,6 +790,8 @@ def load_routes(bp: Blueprint):
             page,
             per_page,
             connector_only,
+            sort_by,
+            sort_order,
         )
         volunteers = result["volunteers"]
         pagination = result["pagination"]
@@ -808,6 +845,8 @@ def load_routes(bp: Blueprint):
             now=datetime.now(),
             type_choices=_event_type_choices(),
             selected_types=[t.value for t in selected_types],
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
 
     @bp.route("/reports/volunteers/by-event/excel")

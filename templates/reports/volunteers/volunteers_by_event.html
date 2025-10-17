@@ -527,7 +527,9 @@
                               last_2_years=last_2_years,
                               connector_only=connector_only,
                               date_from=date_from,
-                              date_to=date_to) if pagination.has_prev else '#' }}"
+                              date_to=date_to,
+                              sort=sort_by,
+                              order=sort_order) if pagination.has_prev else '#' }}"
                aria-label="Previous">
               <span aria-hidden="true">&laquo;</span>
             </a>
@@ -548,7 +550,9 @@
                                 last_2_years=last_2_years,
                                 connector_only=connector_only,
                                 date_from=date_from,
-                                date_to=date_to) }}">1</a>
+                                date_to=date_to,
+                                sort=sort_by,
+                                order=sort_order) }}">1</a>
             </li>
             {% if start_page > 2 %}
               <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -566,7 +570,9 @@
                                 last_2_years=last_2_years,
                                 connector_only=connector_only,
                                 date_from=date_from,
-                                date_to=date_to) }}">{{ page_num }}</a>
+                                date_to=date_to,
+                                sort=sort_by,
+                                order=sort_order) }}">{{ page_num }}</a>
             </li>
           {% endfor %}
 
@@ -584,7 +590,9 @@
                                 last_2_years=last_2_years,
                                 connector_only=connector_only,
                                 date_from=date_from,
-                                date_to=date_to) }}">{{ pagination.total_pages }}</a>
+                                date_to=date_to,
+                                sort=sort_by,
+                                order=sort_order) }}">{{ pagination.total_pages }}</a>
             </li>
           {% endif %}
 
@@ -599,7 +607,9 @@
                               last_2_years=last_2_years,
                               connector_only=connector_only,
                               date_from=date_from,
-                              date_to=date_to) if pagination.has_next else '#' }}"
+                              date_to=date_to,
+                              sort=sort_by,
+                              order=sort_order) if pagination.has_next else '#' }}"
                aria-label="Next">
               <span aria-hidden="true">&raquo;</span>
             </a>
@@ -715,54 +725,44 @@ document.addEventListener('DOMContentLoaded', function() {
     allInputs().forEach(i => { i.checked = true; });
   });
 
-  // Sorting logic for table
+  // Server-side sorting logic for table
   const table = document.querySelector('.table');
   if (!table) return;
-  const tbody = table.querySelector('tbody');
   const headers = table.querySelectorAll('th.sortable');
-  let currentSort = { key: null, dir: 'asc' };
+
+  // Get current sort parameters from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentSort = urlParams.get('sort') || 'name';
+  const currentOrder = urlParams.get('order') || 'asc';
 
   headers.forEach(h => {
     h.addEventListener('click', () => {
       const key = h.dataset.sort;
-      if (currentSort.key === key) {
-        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
-      } else {
-        currentSort = { key, dir: 'asc' };
+      let newOrder = 'asc';
+
+      // If clicking the same column, toggle order
+      if (currentSort === key) {
+        newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
       }
-      headers.forEach(x => x.classList.remove('sort-asc','sort-desc'));
-      h.classList.add(currentSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
-      sortRows(currentSort.key, currentSort.dir);
+
+      // Build new URL with sort parameters
+      const newUrlParams = new URLSearchParams(window.location.search);
+      newUrlParams.set('sort', key);
+      newUrlParams.set('order', newOrder);
+      newUrlParams.set('page', '1'); // Reset to first page when sorting
+
+      // Navigate to new URL
+      window.location.href = window.location.pathname + '?' + newUrlParams.toString();
     });
   });
 
-  function text(el, sel) { const n = el.querySelector(sel); return (n ? n.textContent : el.querySelector(sel)?.textContent || '').trim(); }
-  function sortRows(key, dir) {
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    const mult = dir === 'asc' ? 1 : -1;
-    rows.sort((a,b) => {
-      let av='', bv='';
-      switch(key){
-        case 'name': av = a.querySelector('.cell-name').textContent.trim().toLowerCase(); bv = b.querySelector('.cell-name').textContent.trim().toLowerCase(); break;
-        case 'email': av = a.querySelector('.cell-email').textContent.trim().toLowerCase(); bv = b.querySelector('.cell-email').textContent.trim().toLowerCase(); break;
-        case 'organization': av = a.querySelector('.cell-org').textContent.trim().toLowerCase(); bv = b.querySelector('.cell-org').textContent.trim().toLowerCase(); break;
-        case 'skills': av = a.querySelector('.cell-skills').textContent.trim().toLowerCase(); bv = b.querySelector('.cell-skills').textContent.trim().toLowerCase(); break;
-        case 'events': av = parseInt(a.querySelector('.cell-events').dataset.count || '0'); bv = parseInt(b.querySelector('.cell-events').dataset.count || '0'); break;
-        case 'last': av = a.querySelector('.cell-last').textContent.trim(); bv = b.querySelector('.cell-last').textContent.trim();
-                    // convert mm/dd/yy -> Date (ignore the "upcoming" text)
-                    av = av.split('\n')[0]; bv = bv.split('\n')[0];
-                    av = av ? new Date(av) : new Date(0); bv = bv ? new Date(bv) : new Date(0); break;
-        case 'last_email': av = a.querySelector('.cell-last-email').textContent.trim(); bv = b.querySelector('.cell-last-email').textContent.trim();
-                    // convert mm/dd/yy -> Date
-                    av = av ? new Date(av) : new Date(0); bv = bv ? new Date(bv) : new Date(0); break;
-        case 'total_volunteer': av = parseInt(a.querySelector('.cell-total-volunteer').dataset.count || '0'); bv = parseInt(b.querySelector('.cell-total-volunteer').dataset.count || '0'); break;
-      }
-      if (typeof av === 'string' && typeof bv === 'string') { if (av > bv) return 1*mult; if (av < bv) return -1*mult; return 0; }
-      return (av - bv) * mult;
-    });
-    tbody.innerHTML = '';
-    rows.forEach(r => tbody.appendChild(r));
-  }
+  // Set visual indicators for current sort
+  headers.forEach(h => {
+    const key = h.dataset.sort;
+    if (currentSort === key) {
+      h.classList.add(currentOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
 
 });
 </script>
