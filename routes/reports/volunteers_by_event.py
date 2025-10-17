@@ -288,7 +288,6 @@ def _query_volunteers_with_search(
     Searches across volunteer names, organizations, event titles, and event types.
     """
     # First get unique volunteers who participated in events (like main volunteers page)
-    # Note: Removed last_event_date from this subquery - will get actual last event date separately
     volunteer_subquery = (
         db.session.query(
             EventParticipation.volunteer_id,
@@ -507,8 +506,8 @@ def _query_volunteers_with_search(
             .filter(
                 History.contact_id.in_(volunteer_ids),
                 History.is_deleted == False,
-                History.history_type == "email",
-                History.activity_type.in_(["Email", "email", "Communication"]),
+                History.history_type == "activity",
+                History.activity_type == "Email",
             )
             .group_by(History.contact_id)
         )
