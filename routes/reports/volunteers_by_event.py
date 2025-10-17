@@ -9,6 +9,7 @@ from sqlalchemy import func
 from models import db, eagerload_volunteer_bundle
 from models.contact import Email
 from models.event import Event, EventStatus, EventType
+from models.history import History
 from models.organization import Organization, VolunteerOrganization
 from models.volunteer import (
     ConnectorData,
@@ -287,11 +288,11 @@ def _query_volunteers_with_search(
     Searches across volunteer names, organizations, event titles, and event types.
     """
     # First get unique volunteers who participated in events (like main volunteers page)
+    # Note: Removed last_event_date from this subquery - will get actual last event date separately
     volunteer_subquery = (
         db.session.query(
             EventParticipation.volunteer_id,
             func.count(EventParticipation.id).label("event_count"),
-            func.max(Event.start_date).label("last_event_date"),
         )
         .join(Event, Event.id == EventParticipation.event_id)
         .filter(
@@ -314,7 +315,6 @@ def _query_volunteers_with_search(
             Volunteer.first_name,
             Volunteer.last_name,
             volunteer_subquery.c.event_count,
-            volunteer_subquery.c.last_event_date,
         )
         .join(volunteer_subquery, Volunteer.id == volunteer_subquery.c.volunteer_id)
         .filter(Volunteer.exclude_from_reports == False)
@@ -400,7 +400,6 @@ def _query_volunteers_with_search(
         Volunteer.first_name,
         Volunteer.last_name,
         volunteer_subquery.c.event_count,
-        volunteer_subquery.c.last_event_date,
     ).order_by(Volunteer.first_name, Volunteer.last_name)
 
     # Apply pagination
@@ -410,6 +409,28 @@ def _query_volunteers_with_search(
 
     # Get volunteer IDs for additional queries
     volunteer_ids = [row.id for row in results]
+
+    # Single query for actual last event date (all time, not filtered by date range)
+    last_event_dates = {}
+    if volunteer_ids:
+        last_event_query = (
+            db.session.query(
+                EventParticipation.volunteer_id,
+                func.max(Event.start_date).label("last_event_date"),
+            )
+            .join(Event, Event.id == EventParticipation.event_id)
+            .filter(
+                EventParticipation.volunteer_id.in_(volunteer_ids),
+                Event.status == EventStatus.COMPLETED,
+                EventParticipation.status.in_(
+                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                ),
+            )
+            .group_by(EventParticipation.volunteer_id)
+        )
+
+        for row in last_event_query.all():
+            last_event_dates[row.volunteer_id] = row.last_event_date
 
     # Single query for total volunteer counts (all time)
     total_counts = {}
@@ -477,12 +498,25 @@ def _query_volunteers_with_search(
     # Get volunteer details (emails, skills, etc.) for display
     volunteer_details = {}
     if volunteer_ids:
-        # Get volunteers and their last email dates
-        volunteers_query = db.session.query(
-            Volunteer.id,
-            Volunteer.last_email_date,
-            Volunteer.last_non_internal_email_date,
-        ).filter(Volunteer.id.in_(volunteer_ids))
+        # Get actual last email dates from History table for each volunteer
+        email_dates_query = (
+            db.session.query(
+                History.contact_id,
+                func.max(History.activity_date).label("last_email_date"),
+            )
+            .filter(
+                History.contact_id.in_(volunteer_ids),
+                History.is_deleted == False,
+                History.history_type == "email",
+                History.activity_type.in_(["Email", "email", "Communication"]),
+            )
+            .group_by(History.contact_id)
+        )
+
+        # Create email dates mapping
+        email_dates_map = {
+            row.contact_id: row.last_email_date for row in email_dates_query.all()
+        }
 
         # Get primary emails for volunteers
         emails_query = db.session.query(Email.contact_id, Email.email).filter(
@@ -520,20 +554,15 @@ def _query_volunteers_with_search(
             row.volunteer_id: row.user_auth_id for row in connector_query.all()
         }
 
-        for row in volunteers_query.all():
-            user_auth_id = connector_map.get(row.id)
-            # Use the more recent of the two email dates
-            last_email_date = row.last_email_date
-            if row.last_non_internal_email_date and row.last_email_date:
-                last_email_date = max(
-                    row.last_email_date, row.last_non_internal_email_date
-                )
-            elif row.last_non_internal_email_date:
-                last_email_date = row.last_non_internal_email_date
+        # Build volunteer details dictionary
+        for volunteer_id in volunteer_ids:
+            user_auth_id = connector_map.get(volunteer_id)
+            # Get the actual last email date from History table
+            last_email_date = email_dates_map.get(volunteer_id)
 
-            volunteer_details[row.id] = {
-                "email": email_map.get(row.id),
-                "skills": skills_map.get(row.id, ""),
+            volunteer_details[volunteer_id] = {
+                "email": email_map.get(volunteer_id),
+                "skills": skills_map.get(volunteer_id, ""),
                 "last_email_date": last_email_date,
                 "connector_profile_url": (
                     f"https://prepkc.nepris.com/app/user/{user_auth_id}"
@@ -615,7 +644,7 @@ def _query_volunteers_with_search(
                 "organization_id": primary_org["id"],
                 "skills": details.get("skills", ""),
                 "event_count": int(row.event_count or 0),
-                "last_event_date": row.last_event_date,
+                "last_event_date": last_event_dates.get(volunteer_id),
                 "last_email_date": details.get("last_email_date"),
                 "connector_profile_url": details.get("connector_profile_url"),
                 "total_volunteer_count": total_counts.get(volunteer_id, 0),
