@@ -497,25 +497,50 @@ def _query_volunteers_with_search(
     # Get volunteer details (emails, skills, etc.) for display
     volunteer_details = {}
     if volunteer_ids:
-        # Get actual last email dates from History table for each volunteer
-        email_dates_query = (
-            db.session.query(
-                History.contact_id,
-                func.max(History.activity_date).label("last_email_date"),
-            )
-            .filter(
-                History.contact_id.in_(volunteer_ids),
-                History.is_deleted == False,
-                History.history_type == "activity",
-                History.activity_type == "Email",
-            )
-            .group_by(History.contact_id)
-        )
+        # Get actual last email dates from Contact model for each volunteer
+        # If Contact.last_email_date is missing or outdated, fall back to History table
+        email_dates_query = db.session.query(
+            Volunteer.id,
+            Volunteer.last_email_date,
+        ).filter(Volunteer.id.in_(volunteer_ids), Volunteer.last_email_date.isnot(None))
 
-        # Create email dates mapping
+        # Create email dates mapping from Contact model
         email_dates_map = {
-            row.contact_id: row.last_email_date for row in email_dates_query.all()
+            row.id: row.last_email_date for row in email_dates_query.all()
         }
+
+        # For volunteers without Contact.last_email_date, get from History table
+        missing_volunteers = [
+            vid for vid in volunteer_ids if vid not in email_dates_map
+        ]
+        if missing_volunteers:
+            history_email_dates_query = (
+                db.session.query(
+                    History.contact_id,
+                    func.max(History.activity_date).label("most_recent_date"),
+                )
+                .filter(
+                    History.contact_id.in_(missing_volunteers),
+                    History.is_deleted == False,
+                    db.or_(
+                        # Activity type emails
+                        db.and_(
+                            History.history_type == "activity",
+                            History.activity_type == "Email",
+                        ),
+                        # Note type emails (summary contains "Email:")
+                        db.and_(
+                            History.history_type == "note",
+                            History.summary.ilike("%email:%"),
+                        ),
+                    ),
+                )
+                .group_by(History.contact_id)
+            )
+
+            # Add history-based email dates to the mapping
+            for row in history_email_dates_query.all():
+                email_dates_map[row.contact_id] = row.most_recent_date
 
         # Get primary emails for volunteers
         emails_query = db.session.query(Email.contact_id, Email.email).filter(
@@ -556,7 +581,7 @@ def _query_volunteers_with_search(
         # Build volunteer details dictionary
         for volunteer_id in volunteer_ids:
             user_auth_id = connector_map.get(volunteer_id)
-            # Get the actual last email date from History table
+            # Get the actual last email date from Contact model
             last_email_date = email_dates_map.get(volunteer_id)
 
             volunteer_details[volunteer_id] = {
