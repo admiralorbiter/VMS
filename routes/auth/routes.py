@@ -81,15 +81,31 @@ def login():
         if user and check_password_hash(user.password_hash, form.password.data):
             login_user(user)
             flash("Logged in successfully.", "success")
-            
-            # Redirect KCK viewers directly to their dashboard
-            if user.is_kck_viewer:
-                return redirect(url_for("report.virtual_district_teacher_progress", 
-                                      district_name="Kansas City Kansas Public Schools",
-                                      year="2025-2026",
-                                      date_from="2025-08-01",
-                                      date_to="2026-07-31"))
-            
+
+            # Redirect district-scoped users to their first assigned district
+            if user.scope_type == "district" and user.allowed_districts:
+                import json
+
+                try:
+                    districts = (
+                        json.loads(user.allowed_districts)
+                        if isinstance(user.allowed_districts, str)
+                        else user.allowed_districts
+                    )
+                    first_district = districts[0] if districts else None
+                    if first_district:
+                        return redirect(
+                            url_for(
+                                "report.virtual_district_teacher_progress",
+                                district_name=first_district,
+                                year="2025-2026",
+                                date_from="2025-08-01",
+                                date_to="2026-07-31",
+                            )
+                        )
+                except (json.JSONDecodeError, TypeError, IndexError):
+                    pass  # Fall through to normal redirect
+
             return redirect(url_for("index"))  # Regular users go to main page
         else:
             flash("Invalid username/email or password.", "danger")
@@ -126,7 +142,9 @@ def admin():
         Rendered admin template with user list
     """
     users = User.query.all()
-    return render_template("management/admin.html", users=users, SecurityLevel=SecurityLevel)
+    return render_template(
+        "management/admin.html", users=users, SecurityLevel=SecurityLevel
+    )
 
 
 @auth_bp.route("/admin/users", methods=["POST"])
@@ -162,6 +180,8 @@ def create_user():
     email = request.form.get("email")
     password = request.form.get("password")
     security_level = request.form.get("security_level", type=int)
+    scope_type = request.form.get("scope_type", "global")
+    allowed_districts = request.form.getlist("allowed_districts")
 
     if not all([username, email, password, security_level is not None]):
         flash("All fields are required", "danger")
@@ -183,11 +203,15 @@ def create_user():
         flash("Invalid security level or insufficient permissions", "danger")
         return redirect(url_for("auth.admin"))
 
+    import json
+
     user = User(
         username=username,
         email=email,
         password_hash=generate_password_hash(password),
         security_level=security_level,
+        scope_type=scope_type,
+        allowed_districts=json.dumps(allowed_districts) if allowed_districts else None,
     )
 
     try:

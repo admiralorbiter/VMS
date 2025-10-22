@@ -102,6 +102,29 @@ canonical: "/docs/living/Features.md"
 | **Enhanced Reporting** | 🎯 In Progress | 25% | Phase 4 priority |
 | **Mobile Optimization** | 📋 Planned | 0% | Q2 2025 |
 
+### **Security & Access Control Features**
+| Feature | Status | Completion | Notes |
+|---------|--------|------------|-------|
+| **District-Scoped User Access** | ✅ Complete | 100% | Flexible district and school scoping for restricted access |
+| **Role-Based Access Control** | ✅ Complete | 100% | USER, SUPERVISOR, MANAGER, ADMIN hierarchy |
+| **API Token Authentication** | ✅ Complete | 100% | Secure API access with expiration |
+
+#### District-Scoped User Access
+The system supports flexible district and school scoping for restricted-access users.
+
+**Scope Types:**
+- **Global**: Full access to all districts and schools (default for all users)
+- **District**: Access restricted to specific assigned districts
+- **School**: Access restricted to specific schools (future implementation)
+
+**Use Cases:**
+- External stakeholders who need visibility into specific districts
+- Partner organizations with limited scope
+- Auditors reviewing specific regions
+
+**Admin Management:**
+Admins can assign district scope when creating or editing users through the Admin panel.
+
 ### **Advanced Features**
 | Feature | Status | Completion | Notes |
 |---------|--------|------------|-------|

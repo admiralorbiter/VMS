@@ -119,14 +119,14 @@ def admin_required(func):
 def kck_viewer_or_higher_required(func):
     """
     Decorator to require KCK viewer level or higher permissions.
-    
+
     Allows access to:
     - KCK viewers (restricted to KCK page only)
     - Regular users and above (full access)
-    
+
     Args:
         func: Function to decorate
-        
+
     Returns:
         Decorated function with permission validation
     """
@@ -136,11 +136,11 @@ def kck_viewer_or_higher_required(func):
     def wrapper(*args, **kwargs):
         if not getattr(current_user, "is_authenticated", False):
             return jsonify({"error": "Authentication required"}), 401
-        
+
         # KCK viewers and all higher levels can access
         if getattr(current_user, "security_level", -2) >= -1:
             return func(*args, **kwargs)
-        
+
         return jsonify({"error": "Insufficient permissions"}), 403
 
     return wrapper
@@ -148,33 +148,43 @@ def kck_viewer_or_higher_required(func):
 
 def kck_viewer_only(func):
     """
+    DEPRECATED: Use @district_scoped_required instead.
+
     Decorator to restrict access to KCK viewers only.
-    
+    Kept for backwards compatibility.
+
     This should be used for the specific KCK teacher progress page
     to ensure only KCK viewers can access it.
-    
+
     Args:
         func: Function to decorate
-        
+
     Returns:
         Decorated function with KCK viewer validation
     """
+    import warnings
+
+    warnings.warn(
+        "kck_viewer_only is deprecated. Use @district_scoped_required instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from functools import wraps
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not getattr(current_user, "is_authenticated", False):
             return jsonify({"error": "Authentication required"}), 401
-        
+
         # Only KCK viewers can access this specific page
         if getattr(current_user, "is_kck_viewer", False):
             return func(*args, **kwargs)
-        
+
         # For non-KCK viewers, check if they have higher permissions
         # If they do, allow access (admins, managers, etc.)
         if getattr(current_user, "security_level", -2) > -1:
             return func(*args, **kwargs)
-        
+
         return jsonify({"error": "Access restricted to KCK viewers"}), 403
 
     return wrapper

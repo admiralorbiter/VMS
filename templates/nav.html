@@ -54,10 +54,18 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           {% if current_user.is_authenticated %}
-            {% if current_user.is_kck_viewer %}
-              {# Simplified navigation for KCK viewers #}
+            {% if current_user.scope_type == 'district' and current_user.allowed_districts %}
+              {# Simplified navigation for district-scoped viewers #}
+              {% set districts = current_user.allowed_districts|from_json %}
+              {% if districts and districts|length > 0 %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('report.virtual_district_teacher_progress', district_name=districts[0], year='2025-2026', date_from='2025-08-01', date_to='2026-07-31') }}">District Progress</a>
+                </li>
+              {% endif %}
               <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('report.virtual_district_teacher_progress', district_name='Kansas City Kansas Public Schools', year='2025-2026', date_from='2025-08-01', date_to='2026-07-31') }}">KCK Teacher Progress</a>
+                <a class="nav-link" href="/admin">
+                  <i class="fas fa-cog"></i> Settings
+                </a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="/logout">Logout</a>

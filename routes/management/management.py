@@ -138,24 +138,29 @@ def admin():
     """
     Display the main admin panel.
 
-    Provides administrative interface for user management, system
-    configuration, and administrative functions. Requires supervisor
-    or higher security level access.
+    Provides administrative interface for password changes (all users) and
+    user management (admin only). All logged-in users can access this page
+    to change their password, but only admins can see user management features.
 
     Permission Requirements:
-        - Security level >= SUPERVISOR
+        - Login required (any security level)
+        - User management features restricted to ADMIN (3) level
 
     Returns:
-        Rendered admin template with user list and configuration options
+        Rendered admin template with password change form and optionally user list
 
     Raises:
-        Redirect to main index if unauthorized
+        Redirect to login if not authenticated
     """
-    if not current_user.security_level >= SecurityLevel.SUPERVISOR:
-        flash("Access denied. Supervisor or higher privileges required.", "error")
-        return redirect(url_for("index"))
+    # Allow all logged-in users to access admin panel for password changes
+    # But restrict user management features to admins only (handled in template)
 
     users = User.query.all()
+    # Load districts for district scoping
+    from models.district_model import District
+
+    districts = District.query.order_by(District.name).all()
+
     # Provide academic years with Google Sheets for the dropdown (virtual sessions only)
     from models.google_sheet import GoogleSheet
 
@@ -166,7 +171,10 @@ def admin():
         .all()
     ]
     return render_template(
-        "management/admin.html", users=users, sheet_years=sheet_years
+        "management/admin.html",
+        users=users,
+        districts=districts,
+        sheet_years=sheet_years,
     )
 
 

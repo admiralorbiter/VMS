@@ -28,6 +28,7 @@ from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCach
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
+from routes.decorators import district_scoped_required
 from routes.utils import kck_viewer_only
 
 # Create blueprint
@@ -4085,7 +4086,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress")
     @login_required
-    @kck_viewer_only
+    @district_scoped_required
     def virtual_district_teacher_progress(district_name):
         """
         Show teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
@@ -4195,9 +4196,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Prevent KCK Viewer accounts from accessing management UI
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Prevent district-scoped users from accessing management UI
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4239,9 +4240,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4333,9 +4334,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4565,9 +4566,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",

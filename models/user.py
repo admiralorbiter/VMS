@@ -165,6 +165,12 @@ class User(db.Model, UserMixin):
     api_token = db.Column(db.String(64), unique=True, index=True)
     token_expiry = db.Column(db.DateTime)
 
+    # District and school scoping for restricted-access users
+    allowed_districts = db.Column(db.Text)  # JSON string: ["District 1", "District 2"]
+    scope_type = db.Column(
+        db.String(20), default="global", nullable=False
+    )  # 'global', 'district', 'school'
+
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -222,6 +228,9 @@ class User(db.Model, UserMixin):
     @property
     def is_kck_viewer(self):
         """
+        DEPRECATED: Use is_district_scoped and can_view_district() instead.
+        Backwards compatibility for existing KCK viewer checks.
+
         Property decorator makes this method accessible like an attribute:
         user.is_kck_viewer instead of user.is_kck_viewer()
 
@@ -232,7 +241,74 @@ class User(db.Model, UserMixin):
             if user.is_kck_viewer:
                 # Redirect to KCK page
         """
+        if self.scope_type == "district" and self.allowed_districts:
+            import json
+
+            try:
+                districts = (
+                    json.loads(self.allowed_districts)
+                    if isinstance(self.allowed_districts, str)
+                    else self.allowed_districts
+                )
+                return "Kansas City Kansas Public Schools" in districts
+            except (json.JSONDecodeError, TypeError):
+                pass
         return self.security_level == SecurityLevel.KCK_VIEWER
+
+    @property
+    def is_district_scoped(self):
+        """Check if user has district-level scope restrictions."""
+        return self.scope_type == "district"
+
+    @property
+    def is_school_scoped(self):
+        """Check if user has school-level scope restrictions."""
+        return self.scope_type == "school"
+
+    def can_view_district(self, district_name):
+        """
+        Check if user can view data for specified district.
+
+        Args:
+            district_name: Name of district to check access for
+
+        Returns:
+            Boolean indicating if user has access
+        """
+        if self.scope_type == "global":
+            return True
+
+        if self.scope_type == "district" and self.allowed_districts:
+            import json
+
+            try:
+                districts = (
+                    json.loads(self.allowed_districts)
+                    if isinstance(self.allowed_districts, str)
+                    else self.allowed_districts
+                )
+                return district_name in districts
+            except (json.JSONDecodeError, TypeError):
+                return False
+
+        return False
+
+    def can_view_school(self, school_id):
+        """
+        Check if user can view data for specified school.
+        Future implementation for school-level scoping.
+
+        Args:
+            school_id: ID of school to check access for
+
+        Returns:
+            Boolean indicating if user has access
+        """
+        if self.scope_type == "global":
+            return True
+
+        # Future: implement school-level scoping
+        return False
 
     @is_admin.setter
     def is_admin(self, value):
