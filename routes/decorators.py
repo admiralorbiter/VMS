@@ -109,3 +109,34 @@ def school_scoped_required(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def global_users_only(func):
+    """
+    Decorator to restrict access to global users only.
+
+    Blocks district-scoped and school-scoped users from accessing
+    routes that should only be available to global users.
+
+    Usage:
+        @global_users_only
+        def admin_only_route():
+            # Only global users can access
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user.scope_type != "global":
+            return (
+                jsonify(
+                    {
+                        "error": "Access denied",
+                        "message": "This feature is only available to global users",
+                    }
+                ),
+                403,
+            )
+
+        return func(*args, **kwargs)
+
+    return wrapper

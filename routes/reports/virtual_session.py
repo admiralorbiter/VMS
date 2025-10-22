@@ -2143,21 +2143,31 @@ def load_routes(bp):
                         )
                     )
 
-                    # Filter district summaries to only show the three specified districts
-                    allowed_districts = [
-                        "Kansas City Kansas Public Schools",
-                        "Hickman Mills School District",
-                        "Kansas City Public Schools (MO)",
-                    ]
+                    # Filter district summaries based on user scope
+                    if (
+                        current_user.scope_type == "district"
+                        and current_user.allowed_districts
+                    ):
+                        import json
 
-                    # Create filtered district summaries
-                    filtered_district_summaries = {}
-                    for district_name, summary in district_summaries.items():
-                        if district_name in allowed_districts:
-                            filtered_district_summaries[district_name] = summary
+                        try:
+                            allowed_districts = (
+                                json.loads(current_user.allowed_districts)
+                                if isinstance(current_user.allowed_districts, str)
+                                else current_user.allowed_districts
+                            )
 
-                    # Replace the original district_summaries with the filtered version
-                    district_summaries = filtered_district_summaries
+                            # Create filtered district summaries
+                            filtered_district_summaries = {}
+                            for district_name, summary in district_summaries.items():
+                                if district_name in allowed_districts:
+                                    filtered_district_summaries[district_name] = summary
+
+                            # Replace the original district_summaries with the filtered version
+                            district_summaries = filtered_district_summaries
+                        except (json.JSONDecodeError, TypeError):
+                            # If parsing fails, show no districts
+                            district_summaries = {}
 
                 # Apply sorting and pagination as before
                 session_data = apply_sorting_and_pagination(
@@ -2203,21 +2213,28 @@ def load_routes(bp):
             f"DEBUG: Final district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
         )
 
-        # Filter district summaries to only show the three specified districts
-        allowed_districts = [
-            "Kansas City Kansas Public Schools",
-            "Hickman Mills School District",
-            "Kansas City Public Schools (MO)",
-        ]
+        # Filter district summaries based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
 
-        # Create filtered district summaries
-        filtered_district_summaries = {}
-        for district_name, summary in district_summaries.items():
-            if district_name in allowed_districts:
-                filtered_district_summaries[district_name] = summary
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
 
-        # Replace the original district_summaries with the filtered version
-        district_summaries = filtered_district_summaries
+                # Create filtered district summaries
+                filtered_district_summaries = {}
+                for district_name, summary in district_summaries.items():
+                    if district_name in allowed_districts:
+                        filtered_district_summaries[district_name] = summary
+
+                # Replace the original district_summaries with the filtered version
+                district_summaries = filtered_district_summaries
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                district_summaries = {}
 
         print(
             f"DEBUG: After filtering, district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
@@ -2266,6 +2283,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>")
     @login_required
+    @district_scoped_required
     def virtual_usage_district(district_name):
         # Get filter parameters: Use virtual year instead of school year
         default_virtual_year = get_current_virtual_year()
@@ -3013,6 +3031,24 @@ def load_routes(bp):
             Event.start_date >= date_from,
             Event.start_date <= date_to,
         )
+
+        # Apply district filtering for district-scoped users
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter events by allowed districts
+                base_query = base_query.filter(
+                    Event.districts.any(District.name.in_(allowed_districts))
+                )
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, return no events
+                base_query = base_query.filter(False)
 
         events = base_query.all()
 
@@ -3979,6 +4015,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/district/<district_name>/google-sheet")
     @login_required
+    @district_scoped_required
     def get_district_google_sheet(district_name):
         """Get Google Sheet for a specific district and year"""
         virtual_year = request.args.get("year", get_current_virtual_year())
@@ -4009,6 +4046,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teachers")
     @login_required
+    @district_scoped_required
     def virtual_district_teacher_breakdown(district_name):
         """
         Show detailed teacher breakdown by school for a specific district.

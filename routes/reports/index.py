@@ -54,7 +54,7 @@ Security Features:
 """
 
 from flask import Blueprint, render_template
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 # Create blueprint
 index_bp = Blueprint("reports_index", __name__)
@@ -105,7 +105,7 @@ def load_routes(bp):
             Rendered reports template with available report catalog
         """
         # Define available reports
-        available_reports = [
+        all_reports = [
             {
                 "title": "Virtual Session Usage",
                 "description": "View virtual session statistics by district, including attendance rates and total participation.",
@@ -192,5 +192,18 @@ def load_routes(bp):
                 "category": "Event Management",
             },
         ]
+
+        # Filter reports based on user scope
+        if current_user.scope_type == "district":
+            # District-scoped users only see district-specific reports
+            available_reports = [
+                report
+                for report in all_reports
+                if report["url"]
+                in ["/reports/virtual/usage", "/reports/district/year-end"]
+            ]
+        else:
+            # Global users see all reports
+            available_reports = all_reports
 
         return render_template("reports/reports.html", reports=available_reports)

@@ -82,6 +82,7 @@ from models.event import Event
 from models.history import History
 from models.teacher import Teacher
 from models.volunteer import Volunteer
+from routes.decorators import global_users_only
 from routes.utils import parse_date
 
 history_bp = Blueprint("history", __name__)
@@ -89,6 +90,7 @@ history_bp = Blueprint("history", __name__)
 
 @history_bp.route("/history_table")
 @login_required
+@global_users_only
 def history_table():
     """
     Display the main history table with filtering and pagination.
@@ -233,6 +235,7 @@ def history_table():
 
 @history_bp.route("/history/view/<int:id>")
 @login_required
+@global_users_only
 def view_history(id):
     """
     Display detailed view of a specific history item.
@@ -255,6 +258,7 @@ def view_history(id):
 
 @history_bp.route("/history/add", methods=["POST"])
 @login_required
+@global_users_only
 def add_history():
     """
     Add a new history entry.
@@ -321,6 +325,7 @@ def add_history():
 
 @history_bp.route("/history/delete/<int:id>", methods=["POST"])
 @login_required
+@global_users_only
 def delete_history(id):
     """
     Soft delete a history entry.
@@ -359,6 +364,7 @@ def delete_history(id):
 
 @history_bp.route("/history/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_history_from_salesforce():
     """
     Import history data from Salesforce.
