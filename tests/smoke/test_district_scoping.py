@@ -59,37 +59,19 @@ def test_is_school_scoped_property():
     assert school_user.is_school_scoped == True
 
 
-def test_backwards_compatibility_is_kck_viewer():
-    """Test backwards compatibility with is_kck_viewer property."""
-    # Test new district-scoped user with KCK district
-    kck_district_user = User(
+def test_district_scoped_kck_access():
+    """Test district-scoped user with KCK access."""
+    kck_user = User(
         username="kck_test",
         email="kck@test.com",
+        security_level=0,  # USER level
         scope_type="district",
         allowed_districts='["Kansas City Kansas Public Schools"]',
     )
-    assert kck_district_user.is_kck_viewer == True
-
-    # Test old-style KCK viewer (security_level = -1)
-    old_kck_user = User(
-        username="old_kck_test",
-        email="oldkck@test.com",
-        security_level=SecurityLevel.KCK_VIEWER,
-    )
-    assert old_kck_user.is_kck_viewer == True
-
-    # Test non-KCK district user
-    other_district_user = User(
-        username="other_test",
-        email="other@test.com",
-        scope_type="district",
-        allowed_districts='["Other District"]',
-    )
-    assert other_district_user.is_kck_viewer == False
-
-    # Test global user
-    global_user = User(scope_type="global")
-    assert global_user.is_kck_viewer == False
+    assert kck_user.security_level == 0
+    assert kck_user.is_district_scoped == True
+    assert kck_user.can_view_district("Kansas City Kansas Public Schools") == True
+    assert kck_user.can_view_district("Other District") == False
 
 
 def test_json_parsing_edge_cases():
@@ -128,6 +110,6 @@ if __name__ == "__main__":
     test_can_view_district_method()
     test_is_district_scoped_property()
     test_is_school_scoped_property()
-    test_backwards_compatibility_is_kck_viewer()
+    test_district_scoped_kck_access()
     test_json_parsing_edge_cases()
     print("All smoke tests passed!")

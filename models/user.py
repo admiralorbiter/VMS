@@ -67,14 +67,12 @@ class SecurityLevel(IntEnum):
     Higher numbers indicate more privileges.
 
     Security Level Hierarchy:
-        - KCK_VIEWER (-1): Restricted access to KCK teacher progress page only
         - USER (0): Basic access to view data and perform limited operations
         - SUPERVISOR (1): Can supervise regular users and access additional features
         - MANAGER (2): Can manage supervisors and users, access administrative features
         - ADMIN (3): Full system access with all privileges
     """
 
-    KCK_VIEWER = -1  # Restricted access to KCK teacher progress page only
     USER = 0  # Regular user with basic access
     SUPERVISOR = 1  # Can supervise regular users
     MANAGER = 2  # Can manage supervisors and users
@@ -226,36 +224,6 @@ class User(db.Model, UserMixin):
         return self.security_level == SecurityLevel.ADMIN
 
     @property
-    def is_kck_viewer(self):
-        """
-        DEPRECATED: Use is_district_scoped and can_view_district() instead.
-        Backwards compatibility for existing KCK viewer checks.
-
-        Property decorator makes this method accessible like an attribute:
-        user.is_kck_viewer instead of user.is_kck_viewer()
-
-        Returns:
-            Boolean indicating if user is a KCK viewer with restricted access
-
-        Usage:
-            if user.is_kck_viewer:
-                # Redirect to KCK page
-        """
-        if self.scope_type == "district" and self.allowed_districts:
-            import json
-
-            try:
-                districts = (
-                    json.loads(self.allowed_districts)
-                    if isinstance(self.allowed_districts, str)
-                    else self.allowed_districts
-                )
-                return "Kansas City Kansas Public Schools" in districts
-            except (json.JSONDecodeError, TypeError):
-                pass
-        return self.security_level == SecurityLevel.KCK_VIEWER
-
-    @property
     def is_district_scoped(self):
         """Check if user has district-level scope restrictions."""
         return self.scope_type == "district"
@@ -344,7 +312,6 @@ class User(db.Model, UserMixin):
         """
         Check if user can manage another user based on security level.
         Users can only manage users with lower security levels.
-        Admins can manage all users including KCK viewers.
 
         Args:
             other_user: User instance to check management permissions against
@@ -359,10 +326,7 @@ class User(db.Model, UserMixin):
         # Admins can manage everyone
         if self.is_admin:
             return True
-        # Regular users cannot manage KCK viewers (special case)
-        if other_user.is_kck_viewer:
-            return False
-        # Otherwise, users can only manage users with lower security levels
+        # Users can only manage users with lower security levels
         return self.security_level > other_user.security_level
 
     @classmethod

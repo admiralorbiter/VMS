@@ -29,7 +29,6 @@ from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
 from routes.decorators import district_scoped_required
-from routes.utils import kck_viewer_only
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
@@ -4468,7 +4467,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress/export")
     @login_required
-    @kck_viewer_only
+    @district_scoped_required
     def virtual_district_teacher_progress_export(district_name):
         """
         Export teacher progress tracking data to Excel for Kansas City Kansas Public Schools.
