@@ -399,6 +399,24 @@ touch /var/www/yourusername_pythonanywhere_com_wsgi.py
 python scripts/pythonanywhere_cache_manager.py health
 ```
 
+### **3. Database Schema Updates**
+```bash
+# Backup database before migration
+cp instance/your_database.db instance/your_database_backup_$(date +%Y%m%d_%H%M%S).db
+
+# Apply migrations
+alembic upgrade head
+
+# Verify migration success
+alembic current
+
+# Restart web app
+touch /var/www/yourusername_pythonanywhere_com_wsgi.py
+
+# Test application
+# Visit: https://yourusername.pythonanywhere.com/
+```
+
 ## 📋 **Checklist**
 
 ### **Initial Deployment**
