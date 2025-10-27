@@ -6,7 +6,7 @@ import pandas as pd
 import pytz
 import xlsxwriter
 from flask import jsonify, make_response, render_template, request, send_file
-from flask_login import login_required
+from flask_login import current_user, login_required
 from sqlalchemy import any_, extract
 
 from models import db
@@ -449,5 +449,28 @@ def update_event_districts(event, district_names):
             )
             current_districts.add(name)
             event.district_partner = ", ".join(current_districts)
-        else:
-            event.district_partner = name
+
+
+def get_district_filtered_query(base_query, district_field):
+    """
+    Apply district scoping filter to query.
+
+    Args:
+        base_query: SQLAlchemy query object
+        district_field: The field to filter on (e.g., District.name)
+
+    Returns:
+        Filtered query based on user's scope
+    """
+    if current_user.scope_type == "global":
+        return base_query
+
+    if current_user.scope_type == "district" and current_user.allowed_districts:
+        allowed = (
+            json.loads(current_user.allowed_districts)
+            if isinstance(current_user.allowed_districts, str)
+            else current_user.allowed_districts
+        )
+        return base_query.filter(district_field.in_(allowed))
+
+    return base_query.filter(False)  # No access

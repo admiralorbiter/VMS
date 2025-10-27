@@ -1,5 +1,8 @@
 # KCK Viewer User System
 
+⚠️ **DEPRECATED**: This system has been replaced by the flexible District-Scoped User Access system.
+    See `/docs/living/Features.md` for the new implementation.
+
 ## Overview
 
 The KCK Viewer system provides a restricted access user type that can only view the Kansas City Kansas Public Schools teacher progress tracking page. This system is designed for stakeholders who need access to specific district data without full system access.

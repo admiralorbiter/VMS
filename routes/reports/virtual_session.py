@@ -28,7 +28,8 @@ from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCach
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
-from routes.utils import kck_viewer_only
+from routes.decorators import district_scoped_required
+from routes.utils import admin_required
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
@@ -2143,21 +2144,31 @@ def load_routes(bp):
                         )
                     )
 
-                    # Filter district summaries to only show the three specified districts
-                    allowed_districts = [
-                        "Kansas City Kansas Public Schools",
-                        "Hickman Mills School District",
-                        "Kansas City Public Schools (MO)",
-                    ]
+                    # Filter district summaries based on user scope
+                    if (
+                        current_user.scope_type == "district"
+                        and current_user.allowed_districts
+                    ):
+                        import json
 
-                    # Create filtered district summaries
-                    filtered_district_summaries = {}
-                    for district_name, summary in district_summaries.items():
-                        if district_name in allowed_districts:
-                            filtered_district_summaries[district_name] = summary
+                        try:
+                            allowed_districts = (
+                                json.loads(current_user.allowed_districts)
+                                if isinstance(current_user.allowed_districts, str)
+                                else current_user.allowed_districts
+                            )
 
-                    # Replace the original district_summaries with the filtered version
-                    district_summaries = filtered_district_summaries
+                            # Create filtered district summaries
+                            filtered_district_summaries = {}
+                            for district_name, summary in district_summaries.items():
+                                if district_name in allowed_districts:
+                                    filtered_district_summaries[district_name] = summary
+
+                            # Replace the original district_summaries with the filtered version
+                            district_summaries = filtered_district_summaries
+                        except (json.JSONDecodeError, TypeError):
+                            # If parsing fails, show no districts
+                            district_summaries = {}
 
                 # Apply sorting and pagination as before
                 session_data = apply_sorting_and_pagination(
@@ -2203,21 +2214,28 @@ def load_routes(bp):
             f"DEBUG: Final district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
         )
 
-        # Filter district summaries to only show the three specified districts
-        allowed_districts = [
-            "Kansas City Kansas Public Schools",
-            "Hickman Mills School District",
-            "Kansas City Public Schools (MO)",
-        ]
+        # Filter district summaries based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
 
-        # Create filtered district summaries
-        filtered_district_summaries = {}
-        for district_name, summary in district_summaries.items():
-            if district_name in allowed_districts:
-                filtered_district_summaries[district_name] = summary
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
 
-        # Replace the original district_summaries with the filtered version
-        district_summaries = filtered_district_summaries
+                # Create filtered district summaries
+                filtered_district_summaries = {}
+                for district_name, summary in district_summaries.items():
+                    if district_name in allowed_districts:
+                        filtered_district_summaries[district_name] = summary
+
+                # Replace the original district_summaries with the filtered version
+                district_summaries = filtered_district_summaries
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                district_summaries = {}
 
         print(
             f"DEBUG: After filtering, district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
@@ -2266,6 +2284,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>")
     @login_required
+    @district_scoped_required
     def virtual_usage_district(district_name):
         # Get filter parameters: Use virtual year instead of school year
         default_virtual_year = get_current_virtual_year()
@@ -3013,6 +3032,24 @@ def load_routes(bp):
             Event.start_date >= date_from,
             Event.start_date <= date_to,
         )
+
+        # Apply district filtering for district-scoped users
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter events by allowed districts
+                base_query = base_query.filter(
+                    Event.districts.any(District.name.in_(allowed_districts))
+                )
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, return no events
+                base_query = base_query.filter(False)
 
         events = base_query.all()
 
@@ -3979,6 +4016,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/district/<district_name>/google-sheet")
     @login_required
+    @district_scoped_required
     def get_district_google_sheet(district_name):
         """Get Google Sheet for a specific district and year"""
         virtual_year = request.args.get("year", get_current_virtual_year())
@@ -4009,6 +4047,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teachers")
     @login_required
+    @district_scoped_required
     def virtual_district_teacher_breakdown(district_name):
         """
         Show detailed teacher breakdown by school for a specific district.
@@ -4085,7 +4124,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress")
     @login_required
-    @kck_viewer_only
+    @district_scoped_required
     def virtual_district_teacher_progress(district_name):
         """
         Show teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
@@ -4185,6 +4224,7 @@ def load_routes(bp):
         "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets"
     )
     @login_required
+    @admin_required
     def virtual_teacher_progress_google_sheets(district_name):
         """Manage Google Sheets for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4195,9 +4235,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Prevent KCK Viewer accounts from accessing management UI
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Prevent district-scoped users from accessing management UI
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4229,6 +4269,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def create_teacher_progress_google_sheet(district_name):
         """Create a new Google Sheet for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4239,9 +4280,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4323,6 +4364,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def import_teacher_progress_data(district_name, sheet_id):
         """Import teacher progress data from Google Sheet"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4333,9 +4375,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4467,7 +4509,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress/export")
     @login_required
-    @kck_viewer_only
+    @district_scoped_required
     def virtual_district_teacher_progress_export(district_name):
         """
         Export teacher progress tracking data to Excel for Kansas City Kansas Public Schools.
@@ -4555,6 +4597,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def delete_teacher_progress_google_sheet(district_name, sheet_id):
         """Delete a Google Sheet for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4565,9 +4608,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",

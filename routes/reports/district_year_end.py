@@ -22,6 +22,7 @@ from models.reports import DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation
+from routes.decorators import district_scoped_required
 from routes.reports.common import (
     DISTRICT_MAPPING,
     cache_district_stats,
@@ -59,6 +60,26 @@ def load_routes(bp):
             cache_district_stats_with_events(
                 school_year, district_stats, host_filter=host_filter
             )
+
+        # Filter district stats based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter to only show allowed districts
+                district_stats = {
+                    district_name: stats
+                    for district_name, stats in district_stats.items()
+                    if district_name in allowed_districts
+                }
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                district_stats = {}
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -125,6 +146,7 @@ def load_routes(bp):
 
     @bp.route("/reports/district/year-end/detail/<district_name>")
     @login_required
+    @district_scoped_required
     def district_year_end_detail(district_name):
         """Show detailed year-end report for a specific district"""
         school_year = request.args.get("school_year", get_current_school_year())
@@ -492,6 +514,7 @@ def load_routes(bp):
 
     @bp.route("/reports/district/year-end/<district_name>/excel")
     @login_required
+    @district_scoped_required
     def district_year_end_excel(district_name):
         """Generate Excel file for district year-end report"""
         school_year = request.args.get("school_year", get_current_school_year())

@@ -401,12 +401,26 @@
                     <div class="col-auto">
                         <select name="security_level" class="form-select" required>
                             <option value="" disabled selected>Select Role</option>
-                            <option value="-1">KCK Viewer (Restricted Access)</option>
                             <option value="0">User</option>
                             <option value="1">Supervisor</option>
                             <option value="2">Manager</option>
                             <option value="3">Admin</option>
                         </select>
+                    </div>
+                    <div class="col-auto">
+                        <select name="scope_type" class="form-select" id="scope_type">
+                            <option value="global">Global (All Districts)</option>
+                            <option value="district">District-Scoped</option>
+                            <option value="school">School-Scoped (Future)</option>
+                        </select>
+                    </div>
+                    <div class="col-auto" id="district-scope-section" style="display:none;">
+                        <select name="allowed_districts" class="form-select" multiple>
+                            {% for district in districts %}
+                                <option value="{{ district.name }}">{{ district.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple districts</small>
                     </div>
                     <div class="col-auto">
                         <button type="submit" class="btn btn-primary">
@@ -812,7 +826,8 @@
     {# Toast Container for Notifications #}
     <div class="toast-container" id="toastContainer"></div>
 
-    {# Users Table #}
+    {# Users Table - Admin Only #}
+    {% if current_user.is_admin %}
     <div class="card admin-card mt-4">
         <div class="card-body">
             <h5 class="card-title">Current Users</h5>
@@ -870,7 +885,7 @@
             </div>
         </div>
     </div>
-</div>
+    {% endif %}
 
 {# Simple Modal for User Editing #}
 <div id="modalBackdrop" class="modal-backdrop" _="on click if target.id is 'modalBackdrop' remove .show from me"></div>
@@ -1751,6 +1766,18 @@ document.body.addEventListener('htmx:afterRequest', function(event) {
         } catch(e) {
             showToast('Error', 'Failed to update user', 'error');
         }
+    }
+});
+
+// District scoping functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const scopeTypeSelect = document.getElementById('scope_type');
+    const districtSection = document.getElementById('district-scope-section');
+
+    if (scopeTypeSelect && districtSection) {
+        scopeTypeSelect.addEventListener('change', function() {
+            districtSection.style.display = (this.value === 'district') ? 'block' : 'none';
+        });
     }
 });
 </script>

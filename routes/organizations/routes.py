@@ -94,6 +94,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School  # Add this import at the top
 from models.teacher import Teacher  # Add this import at the top
 from models.volunteer import EventParticipation
+from routes.decorators import global_users_only
 from routes.utils import admin_required, log_audit_action, parse_date
 
 # Create the organizations blueprint
@@ -102,6 +103,7 @@ organizations_bp = Blueprint("organizations", __name__)
 
 @organizations_bp.route("/organizations")
 @login_required
+@global_users_only
 def organizations():
     """
     Display the main organizations listing page with filtering and pagination.
@@ -228,6 +230,7 @@ def organizations():
 
 @organizations_bp.route("/organizations/view/<int:id>")
 @login_required
+@global_users_only
 def view_organization(id):
     """
     Display detailed information about a specific organization.
@@ -337,6 +340,7 @@ def view_organization(id):
 
 @organizations_bp.route("/organizations/add", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def add_organization():
     """
     Create a new organization in the system.
@@ -448,6 +452,7 @@ def delete_organization(id):
 
 @organizations_bp.route("/organizations/edit/<int:id>", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def edit_organization(id):
     """
     Edit an existing organization.
@@ -554,6 +559,7 @@ def purge_organizations():
 
 @organizations_bp.route("/organizations/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_organizations_from_salesforce():
     """
     Import organizations from Salesforce into the local database.

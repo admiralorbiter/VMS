@@ -67,14 +67,12 @@ class SecurityLevel(IntEnum):
     Higher numbers indicate more privileges.
 
     Security Level Hierarchy:
-        - KCK_VIEWER (-1): Restricted access to KCK teacher progress page only
         - USER (0): Basic access to view data and perform limited operations
         - SUPERVISOR (1): Can supervise regular users and access additional features
         - MANAGER (2): Can manage supervisors and users, access administrative features
         - ADMIN (3): Full system access with all privileges
     """
 
-    KCK_VIEWER = -1  # Restricted access to KCK teacher progress page only
     USER = 0  # Regular user with basic access
     SUPERVISOR = 1  # Can supervise regular users
     MANAGER = 2  # Can manage supervisors and users
@@ -165,6 +163,12 @@ class User(db.Model, UserMixin):
     api_token = db.Column(db.String(64), unique=True, index=True)
     token_expiry = db.Column(db.DateTime)
 
+    # District and school scoping for restricted-access users
+    allowed_districts = db.Column(db.Text)  # JSON string: ["District 1", "District 2"]
+    scope_type = db.Column(
+        db.String(20), default="global", nullable=False
+    )  # 'global', 'district', 'school'
+
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -220,19 +224,59 @@ class User(db.Model, UserMixin):
         return self.security_level == SecurityLevel.ADMIN
 
     @property
-    def is_kck_viewer(self):
+    def is_district_scoped(self):
+        """Check if user has district-level scope restrictions."""
+        return self.scope_type == "district"
+
+    @property
+    def is_school_scoped(self):
+        """Check if user has school-level scope restrictions."""
+        return self.scope_type == "school"
+
+    def can_view_district(self, district_name):
         """
-        Property decorator makes this method accessible like an attribute:
-        user.is_kck_viewer instead of user.is_kck_viewer()
+        Check if user can view data for specified district.
+
+        Args:
+            district_name: Name of district to check access for
 
         Returns:
-            Boolean indicating if user is a KCK viewer with restricted access
-
-        Usage:
-            if user.is_kck_viewer:
-                # Redirect to KCK page
+            Boolean indicating if user has access
         """
-        return self.security_level == SecurityLevel.KCK_VIEWER
+        if self.scope_type == "global":
+            return True
+
+        if self.scope_type == "district" and self.allowed_districts:
+            import json
+
+            try:
+                districts = (
+                    json.loads(self.allowed_districts)
+                    if isinstance(self.allowed_districts, str)
+                    else self.allowed_districts
+                )
+                return district_name in districts
+            except (json.JSONDecodeError, TypeError):
+                return False
+
+        return False
+
+    def can_view_school(self, school_id):
+        """
+        Check if user can view data for specified school.
+        Future implementation for school-level scoping.
+
+        Args:
+            school_id: ID of school to check access for
+
+        Returns:
+            Boolean indicating if user has access
+        """
+        if self.scope_type == "global":
+            return True
+
+        # Future: implement school-level scoping
+        return False
 
     @is_admin.setter
     def is_admin(self, value):
@@ -268,7 +312,6 @@ class User(db.Model, UserMixin):
         """
         Check if user can manage another user based on security level.
         Users can only manage users with lower security levels.
-        Admins can manage all users including KCK viewers.
 
         Args:
             other_user: User instance to check management permissions against
@@ -283,10 +326,7 @@ class User(db.Model, UserMixin):
         # Admins can manage everyone
         if self.is_admin:
             return True
-        # Regular users cannot manage KCK viewers (special case)
-        if other_user.is_kck_viewer:
-            return False
-        # Otherwise, users can only manage users with lower security levels
+        # Users can only manage users with lower security levels
         return self.security_level > other_user.security_level
 
     @classmethod

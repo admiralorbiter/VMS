@@ -71,6 +71,7 @@ from models.volunteer import (
     Volunteer,
     VolunteerSkill,
 )
+from routes.decorators import global_users_only
 from routes.utils import (
     admin_required,
     get_email_addresses,
@@ -243,6 +244,7 @@ def process_volunteer_row(row, success_count, error_count, errors):
 
 @volunteers_bp.route("/volunteers")
 @login_required
+@global_users_only
 def volunteers():
     """
     Main volunteer listing page with filtering, sorting, and pagination.
@@ -477,6 +479,7 @@ def volunteers():
 
 @volunteers_bp.route("/volunteers/add", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def add_volunteer():
     form = VolunteerForm()
 
@@ -578,6 +581,7 @@ def add_volunteer():
 
 @volunteers_bp.route("/volunteers/view/<int:id>")
 @login_required
+@global_users_only
 def view_volunteer(id):
     volunteer = db.session.get(Volunteer, id)
     if not volunteer:
@@ -750,6 +754,7 @@ def view_volunteer(id):
 
 @volunteers_bp.route("/volunteers/edit/<int:id>", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def edit_volunteer(id):
     volunteer = db.session.get(Volunteer, id)
     if not volunteer:
@@ -1093,6 +1098,7 @@ def delete_volunteer(id):
 
 @volunteers_bp.route("/volunteers/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_from_salesforce():
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
@@ -1873,6 +1879,7 @@ def import_from_salesforce():
 
 @volunteers_bp.route("/volunteers/toggle-exclude-reports/<int:id>", methods=["POST"])
 @login_required
+@global_users_only
 def toggle_exclude_reports(id):
     """Toggle the exclude_from_reports field for a volunteer - Admin only"""
     if not current_user.is_admin:
@@ -1903,10 +1910,9 @@ def toggle_exclude_reports(id):
 
 @volunteers_bp.route("/volunteers/update-local-status/<int:id>", methods=["POST"])
 @login_required
+@global_users_only
 def update_local_status(id):
-    """Update the local status for a volunteer - Admin only"""
-    if not current_user.is_admin:
-        return jsonify({"success": False, "message": "Admin access required"}), 403
+    """Update the local status for a volunteer - Available to all global users"""
 
     try:
         volunteer = db.session.get(Volunteer, id)
@@ -1947,6 +1953,7 @@ def update_local_status(id):
 
 @volunteers_bp.route("/volunteers/update-local-statuses", methods=["POST"])
 @login_required
+@global_users_only
 def update_local_statuses():
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
@@ -2115,6 +2122,7 @@ def update_local_statuses():
 
 @volunteers_bp.route("/volunteers/<int:volunteer_id>/organizations")
 @login_required
+@global_users_only
 def get_organizations_json(volunteer_id):
     """Get organizations data for a specific volunteer as JSON"""
     try:

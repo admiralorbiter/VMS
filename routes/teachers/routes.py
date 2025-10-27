@@ -28,6 +28,7 @@ from models.contact import ContactTypeEnum, Email, GenderEnum, Phone
 from models.event import EventTeacher
 from models.school_model import School
 from models.teacher import Teacher, TeacherStatus
+from routes.decorators import global_users_only
 from routes.utils import parse_date
 
 # Create Blueprint for teacher routes
@@ -36,6 +37,7 @@ teachers_bp = Blueprint("teachers", __name__)
 
 @teachers_bp.route("/teachers")
 @login_required
+@global_users_only
 def list_teachers():
     """
     Main teacher management page showing paginated list of teachers.
@@ -49,7 +51,7 @@ def list_teachers():
 
     # Query teachers with pagination - simplified for better performance
     teachers_query = Teacher.query.order_by(Teacher.last_name, Teacher.first_name)
-    
+
     # Apply pagination directly
     teachers = teachers_query.paginate(page=page, per_page=per_page, error_out=False)
 
@@ -100,6 +102,7 @@ def list_teachers():
 
 @teachers_bp.route("/teachers/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_teachers_from_salesforce():
     """
     Import teacher data from Salesforce.
@@ -216,6 +219,7 @@ def import_teachers_from_salesforce():
 
 @teachers_bp.route("/teachers/toggle-exclude-reports/<int:id>", methods=["POST"])
 @login_required
+@global_users_only
 def toggle_teacher_exclude_reports(id):
     """Toggle the exclude_from_reports field for a teacher - Admin only"""
     if not current_user.is_admin:
@@ -246,6 +250,7 @@ def toggle_teacher_exclude_reports(id):
 
 @teachers_bp.route("/teachers/view/<int:teacher_id>")
 @login_required
+@global_users_only
 def view_teacher(teacher_id):
     """
     View detailed information for a specific teacher.
@@ -284,6 +289,7 @@ def view_teacher(teacher_id):
 
 @teachers_bp.route("/teachers/edit/<int:teacher_id>", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def edit_teacher(teacher_id):
     """
     Edit teacher information - Admin only
