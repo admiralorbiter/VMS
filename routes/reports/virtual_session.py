@@ -29,6 +29,7 @@ from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
 from routes.decorators import district_scoped_required
+from routes.utils import admin_required
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
@@ -4223,6 +4224,7 @@ def load_routes(bp):
         "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets"
     )
     @login_required
+    @admin_required
     def virtual_teacher_progress_google_sheets(district_name):
         """Manage Google Sheets for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4267,6 +4269,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def create_teacher_progress_google_sheet(district_name):
         """Create a new Google Sheet for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4361,6 +4364,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def import_teacher_progress_data(district_name, sheet_id):
         """Import teacher progress data from Google Sheet"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4593,6 +4597,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def delete_teacher_progress_google_sheet(district_name, sheet_id):
         """Delete a Google Sheet for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only

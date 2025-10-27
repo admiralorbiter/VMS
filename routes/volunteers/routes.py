@@ -1912,9 +1912,17 @@ def toggle_exclude_reports(id):
 @login_required
 @global_users_only
 def update_local_status(id):
-    """Update the local status for a volunteer - Admin only"""
-    if not current_user.is_admin:
-        return jsonify({"success": False, "message": "Admin access required"}), 403
+    """Update the local status for a volunteer - Requires security level > 0 (Supervisor, Manager, or Admin)"""
+    if current_user.security_level <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Sufficient security level required (Supervisor or higher)",
+                }
+            ),
+            403,
+        )
 
     try:
         volunteer = db.session.get(Volunteer, id)
