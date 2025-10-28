@@ -284,7 +284,20 @@ def process_participation_row(row, success_count, error_count, errors):
         # Check if participation already exists
         existing = EventParticipation.query.filter_by(salesforce_id=row["Id"]).first()
         if existing:
-            return success_count, error_count  # Skip existing records
+            # Update existing record with current Salesforce data
+            existing.status = row["Status__c"]
+            existing.delivery_hours = safe_parse_delivery_hours(
+                row.get("Delivery_Hours__c")
+            )
+            # Update other fields that might have changed
+            if row.get("Email__c"):
+                existing.email = row["Email__c"]
+            if row.get("Title__c"):
+                existing.title = row["Title__c"]
+            if row.get("Age_Group__c"):
+                existing.age_group = row["Age_Group__c"]
+            # print(f"Successfully updated participation: {row['Id']}")  # Debug log
+            return success_count + 1, error_count
 
         # Find the volunteer and event by their Salesforce IDs
         volunteer = Volunteer.query.filter_by(
