@@ -1,6 +1,11 @@
-# Daily Imports Script
+# Daily Imports Scripts
 
-A single-file Python script for running daily Salesforce imports on PythonAnywhere. This script directly calls the VMS import functions without needing HTTP requests.
+Scripts for running daily imports on PythonAnywhere. These scripts directly call VMS import functions without needing HTTP requests.
+
+## Scripts
+
+- **`daily_imports.py`** - Main daily Salesforce import script
+- **`run_virtual_import_2025_26_standalone.py`** - Virtual session import for 2025-2026 academic year
 
 ## Quick Start
 
@@ -20,30 +25,44 @@ STUDENTS_CHUNK_SIZE=2000
 STUDENTS_SLEEP_MS=200
 ```
 
-### 2. Run the script
+### 2. Run the scripts
+
+#### Daily Salesforce Imports
 ```bash
 # Daily imports (organizations, volunteers, affiliations, events, history)
-python daily_imports.py --daily
+python scripts/daily_imports/daily_imports.py --daily
 
 # Full imports (everything)
-python daily_imports.py --full
+python scripts/daily_imports/daily_imports.py --full
 
 # Only specific imports
-python daily_imports.py --only organizations,volunteers
+python scripts/daily_imports/daily_imports.py --only organizations,volunteers
 
 # Test without running
-python daily_imports.py --dry-run
+python scripts/daily_imports/daily_imports.py --dry-run
 
 # Validate configuration
-python daily_imports.py --validate
+python scripts/daily_imports/daily_imports.py --validate
+```
+
+#### Virtual Session Import
+```bash
+# Import virtual sessions for 2025-2026 academic year
+python scripts/daily_imports/run_virtual_import_2025_26_standalone.py
 ```
 
 ## PythonAnywhere Setup
 
-1. Upload `daily_imports.py` to your project directory
-2. Create a scheduled task:
-   - Command: `cd /home/yourusername/mysite && python daily_imports.py --daily`
+1. Upload both scripts to your project `scripts/daily_imports/` directory
+2. Create scheduled tasks:
+
+   **Daily Salesforce Imports:**
+   - Command: `cd /home/yourusername/mysite && python scripts/daily_imports/daily_imports.py --daily`
    - Schedule: Daily at 2:00 AM
+
+   **Virtual Session Import:**
+   - Command: `cd /home/yourusername/mysite && python scripts/daily_imports/run_virtual_import_2025_26_standalone.py`
+   - Schedule: As needed (often daily or weekly)
 
 ## Import Sequence
 
@@ -73,8 +92,43 @@ The script runs imports in this order:
 - `--validate` - Validate configuration
 - `--config` - Show current configuration
 
+## Script Details
+
+### daily_imports.py
+
+Main daily Salesforce import script. Handles all entity imports (organizations, volunteers, events, etc.).
+
+**Note:** This script requires proper authentication setup. Ensure the admin user has `scope_type="global"` set in the database.
+
+### run_virtual_import_2025_26_standalone.py
+
+Standalone virtual session import script for the 2025-2026 academic year. Imports virtual session data from Google Sheets configured in the VMS admin panel.
+
+**Features:**
+- Imports virtual session data from Google Sheets
+- Works standalone without Flask app running
+- Processes teachers, presenters, and events
+- Creates or updates districts and schools
+- Handles errors gracefully with rollback
+
+**Requirements:**
+- Valid Google Sheet configuration for 2025-2026 academic year (configured in admin panel)
+- Database connection and models
+- All required dependencies installed
+
 ## Troubleshooting
 
-Check logs: `tail -f logs/daily_imports.log`
+**Daily Imports Log:**
+```bash
+tail -f logs/daily_imports.log
+```
 
-Debug mode: `python daily_imports.py --daily --log-level DEBUG`
+**Debug mode:**
+```bash
+python scripts/daily_imports/daily_imports.py --daily --log-level DEBUG
+```
+
+**Virtual Import Issues:**
+- Ensure Google Sheet is configured in admin panel for academic year "2025-2026"
+- Check that the sheet has proper permissions and is publicly readable for CSV export
+- Verify database connection is working

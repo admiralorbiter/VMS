@@ -9,9 +9,14 @@ data integrity issues that could cause volunteers to not appear in event lists.
 Should be run after each nightly import to ensure data consistency.
 """
 
+import os
 import sys
 
-sys.path.append(".")
+# Ensure repository root is on sys.path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from datetime import datetime, timedelta
 

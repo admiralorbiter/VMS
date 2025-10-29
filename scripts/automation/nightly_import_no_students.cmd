@@ -16,7 +16,7 @@ IF "%VMS_BASE_URL%"=="" (
   set VMS_BASE_URL=http://localhost:5050
 )
 
-python manage_imports.py --sequential --exclude students --timeout 0 --base-url %VMS_BASE_URL%
+python scripts\cli\manage_imports.py --sequential --exclude students --timeout 0 --base-url %VMS_BASE_URL%
 
 popd
 endlocal
