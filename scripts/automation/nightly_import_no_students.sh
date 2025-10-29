@@ -20,7 +20,7 @@ fi
 
 : "${VMS_BASE_URL:=${VMS_BASE_URL:-https://yourusername.pythonanywhere.com}}"
 
-python manage_imports.py \
+python scripts/cli/manage_imports.py \
   --sequential \
   --exclude students \
   --timeout 0 \

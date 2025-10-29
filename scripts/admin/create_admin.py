@@ -1,6 +1,14 @@
 # create_admin.py
 
+import os
 import sys
+
+# Ensure repository root is on sys.path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
 from getpass import getpass
 
 from werkzeug.security import generate_password_hash

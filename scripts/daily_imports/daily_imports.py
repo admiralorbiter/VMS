@@ -48,7 +48,7 @@ except ImportError:
 from flask import Flask
 
 # Import Flask-Login components
-from flask_login import LoginManager, login_user
+from flask_login import login_user
 
 from config import DevelopmentConfig, ProductionConfig
 from models import db
@@ -96,14 +96,7 @@ class DailyImporter:
     def __init__(self, app: Flask, logger: logging.Logger):
         self.app = app
         self.logger = logger
-        self.login_manager = LoginManager()
-        self.login_manager.init_app(app)
-        self.login_manager.login_view = "auth.login"
-
-        # Set up user loader
-        @self.login_manager.user_loader
-        def load_user(user_id):
-            return db.session.get(User, int(user_id))
+        # Use the app's existing login_manager instead of creating a new one
 
         # Define import sequence (matching admin.html order)
         self.import_steps = [
@@ -185,6 +178,7 @@ class DailyImporter:
                     username="admin",
                     email="admin@example.com",
                     security_level=SecurityLevel.ADMIN,
+                    scope_type="global",  # Global scope for admin user
                     password_hash=generate_password_hash(
                         "admin123"
                     ),  # Default password
@@ -194,6 +188,14 @@ class DailyImporter:
                 self.logger.warning(
                     "Created default admin user with password 'admin123'"
                 )
+
+            # Ensure admin user has global scope
+            if (
+                not hasattr(admin_user, "scope_type")
+                or admin_user.scope_type != "global"
+            ):
+                admin_user.scope_type = "global"
+                db.session.commit()
 
             self.admin_user = admin_user
             self.logger.info(f"Using admin user: {admin_user.username}")
@@ -216,30 +218,28 @@ class DailyImporter:
                     self.logger.info("Authenticated as admin user (mocked)")
 
     def _run_with_auth(self, func, *args, **kwargs):
-        """Run a function with mocked authentication."""
+        """Run a function with proper Flask-Login authentication."""
         with self.app.app_context():
+            if not self.admin_user:
+                self.setup_admin_user()
+
+            # Ensure admin user has global scope
+            if (
+                not hasattr(self.admin_user, "scope_type")
+                or self.admin_user.scope_type != "global"
+            ):
+                self.admin_user.scope_type = "global"
+                db.session.commit()
+
+            # Use Flask-Login's login_user() within request context
             with self.app.test_request_context():
-                from unittest.mock import MagicMock, patch
+                from flask_login import login_user
 
-                from flask_login import current_user
+                # Properly log in the user using Flask-Login
+                login_user(self.admin_user)
 
-                # Create a mock request object
-                mock_request = MagicMock()
-                mock_request.method = "POST"
-                mock_request.json = None
-                mock_request.form = {}
-
-                # Ensure our admin user has the is_admin property
-                if not hasattr(self.admin_user, "is_admin"):
-                    self.admin_user.is_admin = True
-
-                # Patch current_user, request, and login_required decorator
-                with patch("flask_login.current_user", self.admin_user), patch(
-                    "flask.request", mock_request
-                ), patch(
-                    "flask_login.login_required", lambda f: f
-                ):  # Bypass login_required
-                    return func(*args, **kwargs)
+                # Now current_user will work properly
+                return func(*args, **kwargs)
 
     def _import_organizations(self) -> Dict:
         """Import organizations from Salesforce."""
@@ -832,35 +832,9 @@ def setup_logger(
 
 
 def create_app() -> Flask:
-    """Create and configure Flask application."""
-    app = Flask(__name__)
-
-    # Load configuration
-    flask_env = os.environ.get("FLASK_ENV", "development")
-    if flask_env == "production":
-        app.config.from_object(ProductionConfig)
-    else:
-        app.config.from_object(DevelopmentConfig)
-
-    # Initialize extensions
-    db.init_app(app)
-
-    # Create instance directory if it doesn't exist
-    instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instance")
-    if not os.path.exists(instance_path):
-        os.makedirs(instance_path)
-
-    # Register all routes (this is crucial for Flask-Login to work)
-    from routes.routes import init_routes
-
-    init_routes(app)
-
-    # Create DB tables on startup
-    with app.app_context():
-        try:
-            db.create_all()
-        except Exception as e:
-            print(f"Database initialization error: {e}")
+    """Create and configure Flask application - use the actual app from app.py."""
+    # Import the actual app instance which has LoginManager properly configured
+    from app import app
 
     return app
 

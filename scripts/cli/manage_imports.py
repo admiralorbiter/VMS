@@ -18,22 +18,22 @@ Features:
 
 Usage examples:
     # Full run
-    python manage_imports.py --sequential \
+    python scripts/cli/manage_imports.py --sequential \
         --base-url http://localhost:5050 \
         --username admin --password admin123
 
     # Targeted run for teachers only
-    python manage_imports.py --only teachers \
+    python scripts/cli/manage_imports.py --only teachers \
         --base-url http://localhost:5050 \
         --username admin --password admin123
 
     # Full run but skip heavy steps (schools, classes, students)
-    python manage_imports.py --sequential --exclude schools,classes,students \
+    python scripts/cli/manage_imports.py --sequential --exclude schools,classes,students \
         --base-url http://localhost:5050 \
         --username admin --password admin123
 
     # Fast test: run only students for a single chunk
-    python manage_imports.py --only students --students-max-chunks 1 \
+    python scripts/cli/manage_imports.py --only students --students-max-chunks 1 \
         --base-url http://localhost:5050 \
         --username admin --password admin123
 
@@ -56,6 +56,12 @@ import sys
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+
+# Ensure repository root is on sys.path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 try:
     import requests
