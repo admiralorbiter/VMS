@@ -1174,7 +1174,7 @@ def import_sheet():
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
 
         # Use requests with streaming
-        response = requests.get(csv_url, stream=True)
+        response = requests.get(csv_url, stream=True, timeout=30)
         response.raise_for_status()
 
         # Read the CSV in chunks

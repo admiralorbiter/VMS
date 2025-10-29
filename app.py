@@ -677,6 +677,11 @@ def api_quality_settings():
         return jsonify({"error": str(e)}), 500
 
 
+def create_app():
+    """Minimal app factory to integrate with WSGI servers and tests."""
+    return app
+
+
 if __name__ == "__main__":
     # Start cache refresh scheduler in production
     if flask_env == "production":
@@ -688,4 +693,6 @@ if __name__ == "__main__":
 
     # Use production-ready server configuration
     port = int(os.environ.get("PORT", 5050))
-    app.run(host="0.0.0.0", port=port)
+    bind_all = os.environ.get("BIND_ALL", "0") in ("1", "true", "True")
+    host = "0.0.0.0" if (flask_env == "production" or bind_all) else "127.0.0.1"
+    app.run(host=host, port=port)

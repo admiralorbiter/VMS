@@ -90,12 +90,12 @@ Currently implemented:
    ```
 
 4. **Environment Setup**
-   - Create a `.env` file in the root directory
-   - Add required environment variables:
-     ```
-     SECRET_KEY=your-secret-key
-     DATABASE_URL=sqlite:///vms.db
-     ```
+   - Copy `.env.example` to `.env` in the project root
+   - Edit `.env` and set required variables (see `.env.example` for a full list):
+     - `SECRET_KEY`
+     - `DATABASE_URL` (defaults to `sqlite:///vms.db`)
+     - Salesforce credentials if using validation/import tools (`SF_USERNAME`, `SF_PASSWORD`, `SF_SECURITY_TOKEN`)
+   - Note: Redis is not used; caching is handled by Flask-Caching
 
 5. **Run the Application**
    ```bash
@@ -104,7 +104,7 @@ Currently implemented:
    # On Unix/MacOS
    python3 app.py
    ```
-   The application will be available at `http://localhost:5000`
+   The application will be available at `http://localhost:5050`
 
 6. **Salesforce Data Validation System Setup** ✅ **COMPLETED**
    ```bash

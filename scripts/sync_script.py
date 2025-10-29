@@ -21,7 +21,7 @@ def trigger_sync():
                 f"Using token: {TOKEN[:5]}..."
             )  # Print first 5 chars for verification
 
-            response = requests.post(f"{BASE_URL}{endpoint}?token={TOKEN}")
+            response = requests.post(f"{BASE_URL}{endpoint}?token={TOKEN}", timeout=30)
             response.raise_for_status()
             print(f"Response status code: {response.status_code}")
             print(f"Response content: {response.text}")  # Print raw response
