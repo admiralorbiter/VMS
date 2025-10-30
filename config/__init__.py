@@ -51,7 +51,10 @@ class ProductionConfig(Config):
     """Production configuration."""
 
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
+    # Fallback to SQLite file if DATABASE_URL is not provided, so the app can boot
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL") or f"sqlite:///{Config.DEFAULT_DB_PATH}"
+    )
 
 
 class TestingConfig(Config):
