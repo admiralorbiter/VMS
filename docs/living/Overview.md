@@ -188,6 +188,19 @@ The VMS system uses **polymorphic inheritance** where `Contact` is the base clas
 - **Admin Panel**: `/management/admin`
 - **API Documentation**: See API spec in `/docs/old/04-api-spec.md`
 
+## 🔒 Session Cookie Security
+
+The application enforces hardened cookie flags:
+
+- Session cookies: HttpOnly, SameSite=Lax; Secure in production, not required in local dev.
+- Remember-me cookies: HttpOnly, SameSite=Lax; Secure in production, not required in local dev.
+
+Environment variables:
+
+- `SESSION_COOKIE_NAME` (default `vms_session`)
+- `REMEMBER_COOKIE_NAME` (default `vms_remember`)
+- `SESSION_LIFETIME_SECONDS` (default 28800, i.e., 8 hours)
+
 ## 📝 Ask me (examples)
 
 - "What is the current system architecture and technology stack?"
