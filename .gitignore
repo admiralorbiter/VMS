@@ -1,6 +1,7 @@
 # Ignore data directory
 data/
 .vscode/
+.pytest_cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
