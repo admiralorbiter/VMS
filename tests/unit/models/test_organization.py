@@ -3,7 +3,12 @@ from datetime import datetime
 import pytest
 
 from models import db
-from models.organization import Organization, VolunteerOrganization
+from models.organization import (
+    Organization,
+    OrganizationTypeEnum,
+    VolunteerOrganization,
+    VolunteerOrganizationStatusEnum,
+)
 
 
 def test_new_organization(app):
@@ -13,7 +18,7 @@ def test_new_organization(app):
         try:
             org = Organization(
                 name="Test Organization",
-                salesforce_id="001TEST123456789",
+                salesforce_id="001TEST123456789AB",
                 description="Test Description",
                 billing_street="123 Test St",
                 billing_city="Test City",
@@ -28,7 +33,7 @@ def test_new_organization(app):
             # Test basic fields
             assert org.id is not None
             assert org.name == "Test Organization"
-            assert org.salesforce_id == "001TEST123456789"
+            assert org.salesforce_id == "001TEST123456789AB"
 
             # Test address fields
             assert org.billing_street == "123 Test St"
@@ -42,7 +47,7 @@ def test_new_organization(app):
             assert isinstance(org.updated_at, datetime)
 
             # Test Salesforce URL
-            expected_url = "https://prep-kc.lightning.force.com/lightning/r/Account/001TEST123456789/view"
+            expected_url = "https://prep-kc.lightning.force.com/lightning/r/Account/001TEST123456789AB/view"
             assert org.salesforce_url == expected_url
 
             db.session.commit()
@@ -59,7 +64,7 @@ def test_volunteer_organization_relationship(app, test_volunteer):
         db.session.begin()
         try:
             # Create organization
-            org = Organization(name="Test Corp", type="Business")
+            org = Organization(name="Test Corp", type=OrganizationTypeEnum.BUSINESS)
             db.session.add(org)
             db.session.flush()
 
@@ -69,7 +74,7 @@ def test_volunteer_organization_relationship(app, test_volunteer):
                 organization_id=org.id,
                 role="Software Engineer",
                 is_primary=True,
-                status="Current",
+                status=VolunteerOrganizationStatusEnum.CURRENT,
             )
             db.session.add(vol_org)
             db.session.flush()
@@ -84,7 +89,7 @@ def test_volunteer_organization_relationship(app, test_volunteer):
             vol_org = org.volunteer_organizations[0]
             assert vol_org.role == "Software Engineer"
             assert vol_org.is_primary is True
-            assert vol_org.status == "Current"
+            assert vol_org.status == VolunteerOrganizationStatusEnum.CURRENT
             assert isinstance(vol_org.created_at, datetime)
             assert isinstance(vol_org.updated_at, datetime)
 
@@ -136,11 +141,11 @@ def test_organization_salesforce_url(app):
         try:
             # Test with Salesforce ID
             org_with_sf = Organization(
-                name="SF Test Org", salesforce_id="001TEST123456789"
+                name="SF Test Org", salesforce_id="001TEST123456789AB"
             )
             assert (
                 org_with_sf.salesforce_url
-                == "https://prep-kc.lightning.force.com/lightning/r/Account/001TEST123456789/view"
+                == "https://prep-kc.lightning.force.com/lightning/r/Account/001TEST123456789AB/view"
             )
 
             # Test without Salesforce ID
@@ -199,12 +204,12 @@ def test_organization_unique_salesforce_id(app):
         db.session.begin()
         try:
             # Create first organization
-            org1 = Organization(name="First Org", salesforce_id="001TEST123456789")
+            org1 = Organization(name="First Org", salesforce_id="001TEST123456789AB")
             db.session.add(org1)
             db.session.flush()
 
             # Attempt to create second organization with same Salesforce ID
-            org2 = Organization(name="Second Org", salesforce_id="001TEST123456789")
+            org2 = Organization(name="Second Org", salesforce_id="001TEST123456789AB")
             db.session.add(org2)
 
             # Should raise IntegrityError due to unique constraint
@@ -235,14 +240,14 @@ def test_volunteer_organization_multiple_relationships(app, test_volunteer):
                 organization_id=org1.id,
                 role="Manager",
                 is_primary=True,
-                status="Current",
+                status=VolunteerOrganizationStatusEnum.CURRENT,
             )
             vol_org2 = VolunteerOrganization(
                 volunteer_id=test_volunteer.id,
                 organization_id=org2.id,
                 role="Contributor",
                 is_primary=False,
-                status="Past",
+                status=VolunteerOrganizationStatusEnum.PAST,
             )
             db.session.add_all([vol_org1, vol_org2])
             db.session.flush()
