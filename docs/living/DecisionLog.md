@@ -66,6 +66,15 @@ ADRs are immutable records of significant technical decisions that capture the c
 - **Location**: `/docs/old/projects/global/ADR/G-003-vanilla-javascript.md`
 - **Key Points**: No build process, easier debugging, better performance
 
+#### **G-004: Database-Side Timestamp Defaults** ✅ Accepted
+- **Date**: 2025-10-31
+- **Status**: Accepted
+- **Project**: Global
+- **Summary**: Standardize all timestamp columns to use `server_default=func.now()` instead of Python-side defaults
+- **Location**: `docs/development/TIMESTAMP_STANDARDS.md`
+- **Key Points**: Future Python 3.15+ compatibility, better timezone consistency, database-side reliability, eliminates lambda bug risks
+- **Related Changes**: Updated all 34 timestamp columns across 11 model files, removed duplicate code, extracted constants to `config/model_constants.py`
+
 ### **Validation System Decisions**
 
 #### **V-001: Comprehensive Validation Architecture** ✅ Accepted

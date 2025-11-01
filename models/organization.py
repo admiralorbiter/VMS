@@ -73,6 +73,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from models import db
 
@@ -146,15 +147,15 @@ class Organization(db.Model):
     billing_postal_code = db.Column(String(255), nullable=True)
     billing_country = db.Column(String(255), nullable=True)
 
-    # Automatic timestamp fields for audit trail (timezone-aware, Python-side defaults)
+    # Automatic timestamp fields for audit trail (timezone-aware, database-side defaults)
     # last_activity_date: Manually set to track business-level activity
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
     last_activity_date = db.Column(db.DateTime, nullable=True)
@@ -295,14 +296,14 @@ class VolunteerOrganization(db.Model):
         String(50), default="Current"
     )  # e.g., 'Current', 'Past', 'Pending'
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 

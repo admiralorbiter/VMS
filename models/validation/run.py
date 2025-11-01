@@ -3,7 +3,7 @@
 ValidationRun model for tracking validation execution sessions.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -155,7 +155,7 @@ class ValidationRun(db.Model):
     ):
         """Mark the validation run as completed."""
         self.status = "completed"
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
         self.progress_percentage = 100
 
         if execution_time is not None:
@@ -168,14 +168,14 @@ class ValidationRun(db.Model):
     def mark_failed(self, error_message: str, error_traceback: str = None):
         """Mark the validation run as failed."""
         self.status = "failed"
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
         self.error_message = error_message
         self.error_traceback = error_traceback
 
     def mark_cancelled(self):
         """Mark the validation run as cancelled."""
         self.status = "cancelled"
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
 
     def update_summary_stats(
         self,
@@ -282,7 +282,7 @@ class ValidationRun(db.Model):
     @classmethod
     def cleanup_old_runs(cls, days: int = 90):
         """Clean up old validation runs and their associated data."""
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         old_runs = cls.query.filter(cls.completed_at < cutoff_date).all()
 
         for run in old_runs:

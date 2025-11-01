@@ -76,6 +76,7 @@ from enum import Enum as PyEnum
 from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declared_attr, relationship
 
+from config.model_constants import KC_METRO_ZIP_PREFIXES, KC_REGION_ZIP_PREFIXES
 from models import db
 
 
@@ -613,19 +614,16 @@ class Contact(db.Model):
             LocalStatusEnum or None: Local status if determinable from address
         """
         try:
-            # Define KC metro and regional zip code prefixes
-            kc_metro_prefixes = ("640", "641", "660", "661", "664", "665", "666")
-            region_prefixes = ("644", "645", "646", "670", "671", "672", "673", "674")
-
+            # Use constants from model_constants for zip code prefixes
             def check_address_status(address):
                 """Helper function to check status based on zip code prefix"""
                 if not address or not address.zip_code:
                     return None
 
                 zip_prefix = address.zip_code[:3]
-                if zip_prefix in kc_metro_prefixes:
+                if zip_prefix in KC_METRO_ZIP_PREFIXES:
                     return LocalStatusEnum.local
-                if zip_prefix in region_prefixes:
+                if zip_prefix in KC_REGION_ZIP_PREFIXES:
                     return LocalStatusEnum.partial
                 return LocalStatusEnum.non_local
 

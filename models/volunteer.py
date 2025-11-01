@@ -42,9 +42,6 @@ Security and Privacy:
 - Access control based on user permissions
 - Audit trails for data changes
 - GDPR compliance considerations
-
-Author: VMS Development Team
-Last Updated: 2024
 """
 
 from datetime import date, datetime
@@ -61,6 +58,7 @@ from sqlalchemy import (
     or_,
 )
 from sqlalchemy.orm import declared_attr, relationship, validates
+from sqlalchemy.sql import func
 
 from models import db
 from models.contact import (
@@ -134,14 +132,14 @@ class ConnectorData(db.Model):
     affiliations = db.Column(Text)  # Organizations/groups they're affiliated with
     industry = db.Column(String(255))  # Their professional industry
 
-    # Automatic timestamp tracking (timezone-aware, Python-side defaults)
+    # Automatic timestamp tracking (timezone-aware, database-side defaults)
     created_at = db.Column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=True
+        DateTime(timezone=True), server_default=func.now(), nullable=True
     )
     updated_at = db.Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=True,
     )
 
@@ -350,47 +348,6 @@ class Volunteer(Contact):
     def _check_local_status_from_events(self):
         """
         Check local status based on event participation for volunteers.
-
-        If a volunteer has participated in any in-person events (non-virtual),
-        they are very likely local since they physically attended.
-
-        Returns:
-            LocalStatusEnum or None: Local status if determinable from events
-        """
-        try:
-            from models.event import Event, EventFormat, EventType
-
-            # Check for participation in non-virtual events with attended status
-            in_person_participation = (
-                EventParticipation.query.filter(
-                    EventParticipation.volunteer_id == self.id,
-                    EventParticipation.status.in_(
-                        ["Attended", "Completed", "Successfully Completed"]
-                    ),
-                )
-                .join(Event, EventParticipation.event_id == Event.id)
-                .filter(
-                    Event.type != EventType.VIRTUAL_SESSION,
-                    Event.format != EventFormat.VIRTUAL,
-                )
-                .first()
-            )
-
-            if in_person_participation:
-                # Strong indicator they are local - they attended in-person
-                return LocalStatusEnum.local
-
-            return None
-
-        except Exception as e:
-            print(
-                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
-            )
-            return None
-
-    def _check_local_status_from_events(self):
-        """
-        Check local status based on event participation.
 
         If a volunteer has participated in any in-person events (non-virtual),
         they are very likely local since they physically attended.

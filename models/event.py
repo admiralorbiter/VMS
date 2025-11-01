@@ -110,6 +110,7 @@ from flask import current_app
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import String
 from sqlalchemy.orm import validates
+from sqlalchemy.sql import func
 
 from models import db
 from models.attendance import EventAttendanceDetail
@@ -508,16 +509,16 @@ class Event(db.Model):
     professionals = db.Column(db.Text)  # Consider normalizing this data
     professional_ids = db.Column(db.Text)  # Consider normalizing this data
 
-    # Timestamps for auditing (timezone-aware, Python-side defaults)
+    # Timestamps for auditing (timezone-aware, database-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
+        server_default=func.now(),
         nullable=False,
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 
@@ -1024,13 +1025,11 @@ class EventTeacher(db.Model):
     notes = db.Column(db.Text)
 
     # Timestamps
-    created_at = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     # Relationships
@@ -1068,13 +1067,11 @@ class EventStudentParticipation(db.Model):
     age_group = db.Column(db.String(100), nullable=True)  # From Age_Group__c
 
     # Timestamps
-    created_at = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     # Relationships (optional but helpful)

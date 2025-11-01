@@ -75,6 +75,7 @@ import pandas as pd
 from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship, validates
 
+from config.model_constants import GRADE_MAX, GRADE_MIN
 from models import db
 from models.contact import (
     Contact,
@@ -279,8 +280,8 @@ class Student(Contact):
         Raises:
             ValueError: If grade is outside 0-12 range
         """
-        if grade is not None and not (0 <= grade <= 12):
-            raise ValueError("Grade must be between 0 and 12")
+        if grade is not None and not (GRADE_MIN <= grade <= GRADE_MAX):
+            raise ValueError(f"Grade must be between {GRADE_MIN} and {GRADE_MAX}")
         return grade
 
     def __repr__(self):

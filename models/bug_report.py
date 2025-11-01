@@ -65,6 +65,8 @@ Usage Examples:
 from datetime import datetime, timezone
 from enum import IntEnum
 
+from sqlalchemy.sql import func
+
 from . import db
 
 
@@ -165,6 +167,6 @@ class BugReport(db.Model):
     )
     resolution_notes = db.Column(db.Text)
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     resolved_at = db.Column(db.DateTime)

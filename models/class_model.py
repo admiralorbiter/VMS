@@ -72,6 +72,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Index, text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from models import db
 
@@ -163,10 +164,10 @@ class Class(db.Model):
     )
     class_year = db.Column(db.Integer, nullable=False)  # Academic year number
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     # Explicit relationship with School model

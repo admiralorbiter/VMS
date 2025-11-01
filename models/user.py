@@ -57,6 +57,7 @@ from datetime import datetime, timedelta, timezone
 from enum import IntEnum
 
 from flask_login import UserMixin
+from sqlalchemy.sql import func
 
 from . import db
 
@@ -169,14 +170,14 @@ class User(db.Model, UserMixin):
         db.String(20), default="global", nullable=False
     )  # 'global', 'district', 'school'
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 

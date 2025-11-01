@@ -77,10 +77,12 @@ from sqlalchemy import Boolean, Date, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import declared_attr, relationship, validates
+from sqlalchemy.sql import func
 
 from models import db
 from models.contact import Contact, ContactTypeEnum, Email, GenderEnum, Phone
 from models.school_model import School
+from models.utils import validate_salesforce_id
 
 
 class TeacherStatus(str, Enum):
@@ -207,10 +209,10 @@ class Teacher(Contact):
         String(18), nullable=True
     )  # Remove ForeignKey constraint
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(DateTime(timezone=True), default=datetime.utcnow)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
+    created_at = db.Column(DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     # Enhanced event tracking
@@ -277,9 +279,9 @@ class Teacher(Contact):
         return value
 
     @validates("salesforce_contact_id")
-    def validate_salesforce_id(self, key, value):
+    def validate_salesforce_id_field(self, key, value):
         """
-        Validate Salesforce ID format.
+        Validate Salesforce ID format using shared validator.
 
         Args:
             key: Field name being validated
@@ -291,9 +293,7 @@ class Teacher(Contact):
         Raises:
             ValueError: If Salesforce ID format is invalid
         """
-        if value and (len(value) != 18 or not value.isalnum()):
-            raise ValueError("Salesforce ID must be 18 alphanumeric characters")
-        return value
+        return validate_salesforce_id(value)
 
     @validates("status")
     def validate_status(self, key, value):

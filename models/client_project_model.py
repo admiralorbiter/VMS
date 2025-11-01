@@ -66,6 +66,8 @@ Usage Examples:
 from datetime import datetime
 from enum import Enum
 
+from sqlalchemy.sql import func
+
 from models import db
 
 
@@ -163,10 +165,10 @@ class ClientProject(db.Model):
     project_dates = db.Column(db.String(100))
     number_of_students = db.Column(db.Integer)
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     def to_dict(self):

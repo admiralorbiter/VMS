@@ -63,6 +63,8 @@ Usage Examples:
 
 from datetime import datetime, timezone
 
+from sqlalchemy.sql import func
+
 from models import db  # Import db from models instead of creating new instance
 
 
@@ -111,7 +113,7 @@ class DistrictYearEndReport(db.Model):
     report_data = db.Column(db.JSON, nullable=False)
     events_data = db.Column(db.JSON, nullable=True)
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     district = db.relationship("District", backref="year_end_reports")
@@ -179,7 +181,7 @@ class DistrictEngagementReport(db.Model):
     breakdown_data = db.Column(db.JSON, nullable=True)
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     district = db.relationship("District", backref="engagement_reports")
@@ -245,7 +247,7 @@ class OrganizationReport(db.Model):
     volunteers_data = db.Column(db.JSON, nullable=True)
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     organization = db.relationship("Organization", backref="cached_reports")
@@ -292,7 +294,7 @@ class OrganizationSummaryCache(db.Model):
     school_year = db.Column(db.String(4), nullable=False, index=True)  # e.g., '2425'
     organizations_data = db.Column(db.JSON)  # Cached organization summary data
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     def __repr__(self):
@@ -348,7 +350,7 @@ class OrganizationDetailCache(db.Model):
     summary_stats = db.Column(db.JSON)  # Summary statistics
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     # Unique constraint to prevent duplicates
@@ -372,7 +374,7 @@ class FirstTimeVolunteerReportCache(db.Model):
     school_year = db.Column(db.String(4), nullable=False, index=True)
     report_data = db.Column(db.JSON, nullable=False)
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     __table_args__ = (
         db.UniqueConstraint("school_year", name="uq_first_time_volunteer_report_cache"),
@@ -428,7 +430,7 @@ class VirtualSessionReportCache(db.Model):
     filter_options = db.Column(db.JSON, nullable=True)  # Available filter options
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     __table_args__ = (
@@ -469,9 +471,7 @@ class RecentVolunteersReportCache(db.Model):
     # Cached JSON payload
     report_data = db.Column(db.JSON, nullable=False)
 
-    last_updated = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    last_updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -540,9 +540,7 @@ class VirtualSessionDistrictCache(db.Model):
     teacher_breakdown = db.Column(db.JSON, nullable=True)  # Teacher statistics
     summary_stats = db.Column(db.JSON, nullable=True)  # Overall district stats
 
-    last_updated = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    last_updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -581,9 +579,7 @@ class RecruitmentCandidatesCache(db.Model):
     # Cached JSON payload: list of candidate dicts
     candidates_data = db.Column(db.JSON, nullable=False)
 
-    last_updated = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    last_updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):
         return f"<RecruitmentCandidatesCache event_id={self.event_id}>"
@@ -624,9 +620,7 @@ class DIAEventsReportCache(db.Model):
     # Cached JSON payload containing filled and unfilled events
     report_data = db.Column(db.JSON, nullable=False)
 
-    last_updated = db.Column(
-        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    last_updated = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):
         return f"<DIAEventsReportCache updated={self.last_updated}>"

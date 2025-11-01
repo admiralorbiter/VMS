@@ -79,6 +79,7 @@ from enum import Enum
 
 from sqlalchemy import event
 from sqlalchemy.orm import validates
+from sqlalchemy.sql import func
 
 from models import db
 from models.utils import get_utc_now
@@ -192,8 +193,8 @@ class History(db.Model):
         db.String(50), index=True
     )  # Current status of the activity
 
-    # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     # Note: updated_at column removed to match current database schema
 
     # Status and Integration Fields
