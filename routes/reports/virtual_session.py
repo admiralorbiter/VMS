@@ -2149,25 +2149,18 @@ def load_routes(bp):
                         current_user.scope_type == "district"
                         and current_user.allowed_districts
                     ):
-                        import json
-
+                        # allowed_districts is now native JSON (list), no parsing needed
                         try:
-                            allowed_districts = (
-                                json.loads(current_user.allowed_districts)
-                                if isinstance(current_user.allowed_districts, str)
-                                else current_user.allowed_districts
-                            )
-
                             # Create filtered district summaries
                             filtered_district_summaries = {}
                             for district_name, summary in district_summaries.items():
-                                if district_name in allowed_districts:
+                                if district_name in current_user.allowed_districts:
                                     filtered_district_summaries[district_name] = summary
 
                             # Replace the original district_summaries with the filtered version
                             district_summaries = filtered_district_summaries
-                        except (json.JSONDecodeError, TypeError):
-                            # If parsing fails, show no districts
+                        except (TypeError, ValueError):
+                            # If filtering fails, show no districts
                             district_summaries = {}
 
                 # Apply sorting and pagination as before
@@ -2216,25 +2209,18 @@ def load_routes(bp):
 
         # Filter district summaries based on user scope
         if current_user.scope_type == "district" and current_user.allowed_districts:
-            import json
-
+            # allowed_districts is now native JSON (list), no parsing needed
             try:
-                allowed_districts = (
-                    json.loads(current_user.allowed_districts)
-                    if isinstance(current_user.allowed_districts, str)
-                    else current_user.allowed_districts
-                )
-
                 # Create filtered district summaries
                 filtered_district_summaries = {}
                 for district_name, summary in district_summaries.items():
-                    if district_name in allowed_districts:
+                    if district_name in current_user.allowed_districts:
                         filtered_district_summaries[district_name] = summary
 
                 # Replace the original district_summaries with the filtered version
                 district_summaries = filtered_district_summaries
-            except (json.JSONDecodeError, TypeError):
-                # If parsing fails, show no districts
+            except (TypeError, ValueError):
+                # If filtering fails, show no districts
                 district_summaries = {}
 
         print(
@@ -3035,20 +3021,14 @@ def load_routes(bp):
 
         # Apply district filtering for district-scoped users
         if current_user.scope_type == "district" and current_user.allowed_districts:
-            import json
-
+            # allowed_districts is now native JSON (list), no parsing needed
             try:
-                allowed_districts = (
-                    json.loads(current_user.allowed_districts)
-                    if isinstance(current_user.allowed_districts, str)
-                    else current_user.allowed_districts
-                )
                 # Filter events by allowed districts
                 base_query = base_query.filter(
-                    Event.districts.any(District.name.in_(allowed_districts))
+                    Event.districts.any(District.name.in_(current_user.allowed_districts))
                 )
-            except (json.JSONDecodeError, TypeError):
-                # If parsing fails, return no events
+            except (TypeError, ValueError):
+                # If filtering fails, return no events
                 base_query = base_query.filter(False)
 
         events = base_query.all()

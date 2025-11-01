@@ -36,7 +36,36 @@ API Token Management:
 - Secure token generation
 - Token expiration tracking
 - Token validation and revocation
+- Token rotation and refresh capabilities
 - User lookup by token
+
+Password Management:
+    Password hashing is handled by Werkzeug in routes/auth modules:
+    - routes/auth/routes.py: Uses generate_password_hash() for creation/updates
+    - routes/auth/routes.py: Uses check_password_hash() for validation
+    - scripts/admin/create_admin.py: Admin creation uses generate_password_hash()
+    
+    This model only stores the password_hash field; actual hashing is done
+    at the route level before saving to the database.
+
+District Scoping Usage:
+    # In routes - using decorator
+    from routes.decorators import district_scoped_required
+    
+    @district_scoped_required
+    def district_report(district_name):
+        # User automatically validated for district access
+        pass
+    
+    # In queries - filtering data
+    from routes.reports.common import get_district_filtered_query
+    query = District.query
+    filtered = get_district_filtered_query(query, District.name)
+    
+    # Manual checking
+    if current_user.can_view_district("Kansas City Kansas Public Schools"):
+        # Show district data
+        pass
 
 Dependencies:
 - Flask-SQLAlchemy for database operations
@@ -51,6 +80,7 @@ Database Schema:
 - API token storage with expiration
 """
 
+import json
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -83,60 +113,20 @@ class SecurityLevel(IntEnum):
 # User model
 class User(db.Model, UserMixin):
     """
-    User model representing system users with role-based access control.
+    User model with role-based access control and API token authentication.
 
-    This model provides comprehensive user management functionality including
-    authentication, authorization, and API access control. It integrates with
-    Flask-Login for session management and provides security level-based
-    access control.
-
-    Inherits from:
-        - db.Model: SQLAlchemy's base model class for database operations
-        - UserMixin: Flask-Login mixin that provides default implementations
-                    for user authentication methods
-
-    Database Table:
-        users - Contains all user account information
+    Integrates with Flask-Login for session management and provides security level-based
+    permissions (USER, SUPERVISOR, MANAGER, ADMIN). Supports district/school scoping for
+    restricted access users.
 
     Key Features:
-        - Secure password storage with hashing
-        - Role-based access control with security levels
-        - API token authentication system
-        - Audit trail with timestamps
-        - User management and permission checking
+        - Secure password hashing and API token authentication
+        - Four-tier security level hierarchy with permission checking
+        - District/school scoping for data access control
+        - Automatic timestamp audit trail
+        - Token expiration and revocation management
 
-    Attributes:
-        id: Unique identifier for the user (primary key)
-        username: Unique username for login (indexed)
-        email: Unique email address (indexed)
-        password_hash: Hashed password (never store plain text passwords!)
-        first_name: User's first name
-        last_name: User's last name
-        security_level: User's security level (USER, SUPERVISOR, MANAGER, ADMIN)
-        created_at: Timestamp of user creation (auto-set to UTC)
-        updated_at: Timestamp of last update (auto-updates)
-        api_token: Token for API authentication (unique, indexed)
-        token_expiry: Expiration timestamp for the token
-
-    Security Features:
-        - Password hashing prevents plain text storage
-        - API tokens with expiration for secure API access
-        - Security level hierarchy for access control
-        - Audit timestamps for accountability
-
-    Usage Examples:
-        # Create a new user
-        user = User(username='john', email='john@example.com', is_admin=True)
-
-        # Check permissions
-        if user.has_permission_level(SecurityLevel.MANAGER):
-            # Perform manager-level action
-
-        # Generate API token
-        token = user.generate_api_token(expiration=30)
-
-        # Find user by login
-        user = User.find_by_username_or_email('john@example.com')
+    See module docstring for detailed features and security architecture.
     """
 
     __tablename__ = "users"  # Explicitly naming the table is a best practice
@@ -165,7 +155,8 @@ class User(db.Model, UserMixin):
     token_expiry = db.Column(db.DateTime)
 
     # District and school scoping for restricted-access users
-    allowed_districts = db.Column(db.Text)  # JSON string: ["District 1", "District 2"]
+    allowed_districts = db.Column(db.JSON)  # Native JSON: ["District 1", "District 2"]
+    allowed_schools = db.Column(db.JSON)  # Native JSON: ["school_id_1", "school_id_2"]
     scope_type = db.Column(
         db.String(20), default="global", nullable=False
     )  # 'global', 'district', 'school'
@@ -185,28 +176,27 @@ class User(db.Model, UserMixin):
         """
         Initialize a new user instance.
 
-        The is_admin parameter is a convenience flag that sets the security level.
-        All timestamps are automatically set to UTC timezone.
+        Note: The 'is_admin' parameter is deprecated. Use 'security_level' directly instead.
+        Timestamps are automatically set by the database (server_default=func.now()).
 
         Args:
-            **kwargs: User attributes including optional is_admin flag
+            **kwargs: User attributes. Use security_level=SecurityLevel.ADMIN instead of is_admin=True
 
         Usage:
-            new_user = User(username='john', email='john@example.com', is_admin=True)
-            new_user = User(username='jane', email='jane@example.com', security_level=SecurityLevel.MANAGER)
-        """
-        # Set timestamps if not provided
-        now = datetime.now(timezone.utc)
-        if "created_at" not in kwargs:
-            kwargs["created_at"] = now
-        if "updated_at" not in kwargs:
-            kwargs["updated_at"] = now
+            # Recommended approach
+            user = User(username='john', email='john@example.com', security_level=SecurityLevel.ADMIN)
+            user = User(username='jane', email='jane@example.com', security_level=SecurityLevel.MANAGER)
 
-        is_admin_value = kwargs.pop(
-            "is_admin", False
-        )  # Extract is_admin before super().__init__
+            # Legacy support (deprecated)
+            user = User(username='bob', email='bob@example.com', is_admin=True)
+        """
+        # Handle deprecated is_admin parameter for backwards compatibility
+        is_admin_value = kwargs.pop("is_admin", None)
+        
         super().__init__(**kwargs)
-        if "security_level" not in kwargs:
+        
+        # Apply is_admin if provided and security_level was not explicitly set
+        if is_admin_value is not None and "security_level" not in kwargs:
             self.is_admin = is_admin_value  # Use the setter to set security_level
 
     @property
@@ -248,16 +238,9 @@ class User(db.Model, UserMixin):
             return True
 
         if self.scope_type == "district" and self.allowed_districts:
-            import json
-
             try:
-                districts = (
-                    json.loads(self.allowed_districts)
-                    if isinstance(self.allowed_districts, str)
-                    else self.allowed_districts
-                )
-                return district_name in districts
-            except (json.JSONDecodeError, TypeError):
+                return district_name in self.allowed_districts
+            except (TypeError, ValueError):
                 return False
 
         return False
@@ -265,10 +248,9 @@ class User(db.Model, UserMixin):
     def can_view_school(self, school_id):
         """
         Check if user can view data for specified school.
-        Future implementation for school-level scoping.
 
         Args:
-            school_id: ID of school to check access for
+            school_id: Salesforce ID of school to check access for
 
         Returns:
             Boolean indicating if user has access
@@ -276,7 +258,12 @@ class User(db.Model, UserMixin):
         if self.scope_type == "global":
             return True
 
-        # Future: implement school-level scoping
+        if self.scope_type == "school" and self.allowed_schools:
+            try:
+                return school_id in self.allowed_schools
+            except (TypeError, ValueError):
+                return False
+
         return False
 
     @is_admin.setter
@@ -419,6 +406,25 @@ class User(db.Model, UserMixin):
         self.api_token = None
         self.token_expiry = None
         db.session.commit()
+
+    def refresh_api_token(self, expiration=30):
+        """
+        Refresh the API token by generating a new one.
+
+        This is useful for token rotation security practices. The old
+        token is immediately invalidated when the new one is generated.
+
+        Args:
+            expiration: Token validity in days (default: 30)
+
+        Returns:
+            The new token string
+
+        Usage:
+            new_token = user.refresh_api_token()
+            # Old token is now invalid, use new_token
+        """
+        return self.generate_api_token(expiration)
 
     @classmethod
     def find_by_api_token(cls, token):

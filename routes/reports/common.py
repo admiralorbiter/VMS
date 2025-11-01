@@ -466,11 +466,7 @@ def get_district_filtered_query(base_query, district_field):
         return base_query
 
     if current_user.scope_type == "district" and current_user.allowed_districts:
-        allowed = (
-            json.loads(current_user.allowed_districts)
-            if isinstance(current_user.allowed_districts, str)
-            else current_user.allowed_districts
-        )
-        return base_query.filter(district_field.in_(allowed))
+        # allowed_districts is now native JSON (list), no parsing needed
+        return base_query.filter(district_field.in_(current_user.allowed_districts))
 
     return base_query.filter(False)  # No access

@@ -162,22 +162,16 @@ def admin():
         users = [current_user]
         # Only show their allowed districts
         if current_user.allowed_districts:
-            import json
-
+            # allowed_districts is now native JSON (list), no parsing needed
             try:
-                allowed_districts = (
-                    json.loads(current_user.allowed_districts)
-                    if isinstance(current_user.allowed_districts, str)
-                    else current_user.allowed_districts
-                )
                 from models.district_model import District
 
                 districts = (
-                    District.query.filter(District.name.in_(allowed_districts))
+                    District.query.filter(District.name.in_(current_user.allowed_districts))
                     .order_by(District.name)
                     .all()
                 )
-            except (json.JSONDecodeError, TypeError):
+            except (TypeError, ValueError):
                 districts = []
         else:
             districts = []

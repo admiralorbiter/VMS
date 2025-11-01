@@ -21,7 +21,7 @@ def test_can_view_district_method():
         username="district_test",
         email="district@test.com",
         scope_type="district",
-        allowed_districts='["District A", "District B"]',
+        allowed_districts=["District A", "District B"],
     )
     assert district_user.can_view_district("District A") == True
     assert district_user.can_view_district("District B") == True
@@ -66,7 +66,7 @@ def test_district_scoped_kck_access():
         email="kck@test.com",
         security_level=0,  # USER level
         scope_type="district",
-        allowed_districts='["Kansas City Kansas Public Schools"]',
+        allowed_districts=["Kansas City Kansas Public Schools"],
     )
     assert kck_user.security_level == 0
     assert kck_user.is_district_scoped == True
@@ -75,31 +75,31 @@ def test_district_scoped_kck_access():
 
 
 def test_json_parsing_edge_cases():
-    """Test JSON parsing edge cases in can_view_district method."""
-    # Test with malformed JSON
-    malformed_user = User(
-        username="malformed_test",
-        email="malformed@test.com",
+    """Test edge cases in can_view_district method with native JSON columns."""
+    # Test with empty list
+    empty_list_user = User(
+        username="empty_list_test",
+        email="emptylist@test.com",
         scope_type="district",
-        allowed_districts='["District A", "District B"',  # Missing closing bracket
+        allowed_districts=[],  # Empty list
     )
-    assert malformed_user.can_view_district("District A") == False
+    assert empty_list_user.can_view_district("Any District") == False
 
-    # Test with empty string
-    empty_user = User(
-        username="empty_test",
-        email="empty@test.com",
+    # Test with None
+    none_user = User(
+        username="none_test",
+        email="none@test.com",
         scope_type="district",
-        allowed_districts="",
+        allowed_districts=None,
     )
-    assert empty_user.can_view_district("Any District") == False
+    assert none_user.can_view_district("Any District") == False
 
-    # Test with already parsed list (shouldn't happen in practice but good to test)
+    # Test with normal list (native JSON)
     list_user = User(
         username="list_test",
         email="list@test.com",
         scope_type="district",
-        allowed_districts=["District A", "District B"],  # Already a list
+        allowed_districts=["District A", "District B"],
     )
     assert list_user.can_view_district("District A") == True
     assert list_user.can_view_district("District C") == False

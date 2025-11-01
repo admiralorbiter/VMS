@@ -63,22 +63,16 @@ def load_routes(bp):
 
         # Filter district stats based on user scope
         if current_user.scope_type == "district" and current_user.allowed_districts:
-            import json
-
+            # allowed_districts is now native JSON (list), no parsing needed
             try:
-                allowed_districts = (
-                    json.loads(current_user.allowed_districts)
-                    if isinstance(current_user.allowed_districts, str)
-                    else current_user.allowed_districts
-                )
                 # Filter to only show allowed districts
                 district_stats = {
                     district_name: stats
                     for district_name, stats in district_stats.items()
-                    if district_name in allowed_districts
+                    if district_name in current_user.allowed_districts
                 }
-            except (json.JSONDecodeError, TypeError):
-                # If parsing fails, show no districts
+            except (TypeError, ValueError):
+                # If filtering fails, show no districts
                 district_stats = {}
 
         # Generate list of school years (from 2020-21 to current+1)
