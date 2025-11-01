@@ -33,11 +33,12 @@ Architecture:
 """
 
 import os
-from datetime import datetime, timezone  # Keep this as it might be used elsewhere
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file FIRST, before any other imports
+# Load environment variables FIRST, before any other imports
 # This ensures all environment-dependent code has access to configuration
 load_dotenv()
 
@@ -51,6 +52,8 @@ from models.user import SecurityLevel
 from routes.routes import init_routes
 from utils import format_event_type_for_badge, short_date
 from utils.cache_refresh_scheduler import start_cache_refresh_scheduler
+from utils.startup_validation import log_startup_info
+from utils.template_filters import from_json_filter
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -64,6 +67,9 @@ if flask_env == "production":
     app.config.from_object(ProductionConfig)
 else:
     app.config.from_object(DevelopmentConfig)
+
+# Validate and log startup configuration
+log_startup_info(app)
 
 # Initialize Flask extensions
 # SQLAlchemy: Database ORM for all model operations
@@ -98,13 +104,19 @@ with app.app_context():
 
 # User loader callback for Flask-Login
 @login_manager.user_loader
-def load_user(user_id):
+def load_user(user_id: str) -> Optional[User]:
+    """Load user by ID for Flask-Login session management."""
     return db.session.get(User, int(user_id))
 
 
 # Add SecurityLevel to Flask's template context
 @app.context_processor
-def inject_security_levels():
+def inject_security_levels() -> Dict[str, Any]:
+    """
+    Inject security level constants into template context.
+
+    Makes security level enums available in all templates for access control.
+    """
     return {
         "SecurityLevel": SecurityLevel,
         "USER": SecurityLevel.USER,
@@ -112,6 +124,107 @@ def inject_security_levels():
         "MANAGER": SecurityLevel.MANAGER,
         "ADMIN": SecurityLevel.ADMIN,
     }
+
+
+# Global security headers for all responses
+@app.after_request
+def set_security_headers(response):
+    """
+    Add security headers to all HTTP responses.
+
+    Implements defense-in-depth security headers to protect against
+    common web vulnerabilities and attacks.
+
+    Headers applied:
+    - X-Content-Type-Options: Prevents MIME-type sniffing attacks
+    - X-Frame-Options: Prevents clickjacking attacks
+    - X-XSS-Protection: Enables browser XSS filter
+    - Strict-Transport-Security: Force HTTPS in production
+
+    Args:
+        response: Flask response object to modify
+
+    Returns:
+        Modified response with security headers
+    """
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+
+    # Only add HSTS header in production with HTTPS
+    if os.environ.get("FLASK_ENV") == "production":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+
+    return response
+
+
+# Global error handlers
+@app.errorhandler(500)
+def internal_server_error(error):
+    """
+    Handle 500 Internal Server Error globally.
+
+    Provides user-friendly error page and logs detailed error information
+    for debugging. Prevents exposing sensitive stack traces to users.
+
+    Args:
+        error: Exception object that triggered the error
+
+    Returns:
+        Rendered error template or JSON error response
+    """
+    app.logger.error(f"Internal Server Error: {error}", exc_info=True)
+
+    # Return JSON for API requests, HTML for browser requests
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Internal server error occurred"}), 500
+
+    # For web requests, return error page
+    return render_template("errors/500.html"), 500
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    """
+    Handle 404 Not Found Error globally.
+
+    Provides user-friendly error page for missing resources.
+
+    Args:
+        error: Exception object that triggered the error
+
+    Returns:
+        Rendered error template or JSON error response
+    """
+    # Return JSON for API requests, HTML for browser requests
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Resource not found"}), 404
+
+    # For web requests, return error page
+    return render_template("errors/404.html"), 404
+
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    """
+    Handle 403 Forbidden Error globally.
+
+    Provides user-friendly error page for unauthorized access.
+
+    Args:
+        error: Exception object that triggered the error
+
+    Returns:
+        Rendered error template or JSON error response
+    """
+    # Return JSON for API requests, HTML for browser requests
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Access forbidden"}), 403
+
+    # For web requests, return error page
+    return render_template("errors/403.html"), 403
 
 
 # Initialize routes from all blueprints
@@ -122,53 +235,79 @@ init_routes(app)
 # These filters are available in all templates for data formatting and display
 app.jinja_env.filters["short_date"] = short_date
 app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
-
-# Add custom JSON filter for district scoping and data serialization
-import json
-
-
-def from_json_filter(json_string):
-    """
-    Custom Jinja2 filter to parse JSON strings.
-
-    Safely converts JSON strings to Python objects, returning empty list
-    for invalid or empty values. Used for deserializing stored JSON data
-    in templates.
-
-    Args:
-        json_string: JSON string to parse, or already-parsed object
-
-    Returns:
-        Parsed Python object (list/dict) or empty list on failure
-    """
-    if not json_string or json_string == "None" or json_string == "null":
-        return []
-    try:
-        if isinstance(json_string, str):
-            return json.loads(json_string)
-        return json_string
-    except (json.JSONDecodeError, TypeError):
-        return []
-
-
 app.jinja_env.filters["from_json"] = from_json_filter
 
 
 @app.route("/docs/<path:filename>")
 def documentation(filename):
+    """Serve documentation files."""
     return send_from_directory("documentation", filename)
 
 
-def create_app():
+@app.route("/health")
+def health_check():
     """
-    Minimal app factory to integrate with WSGI servers and tests.
+    Health check endpoint for monitoring and load balancers.
 
-    This function provides a standard WSGI application interface for deployment
-    to production servers (Gunicorn, uWSGI, etc.) and for testing frameworks.
+    Returns JSON with application status, database connectivity, and version.
+    Useful for monitoring tools, load balancers, and container orchestration.
+    """
+    try:
+        # Test database connectivity
+        db.session.execute(db.text("SELECT 1"))
+        db_status = "healthy"
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    return jsonify(
+        {
+            "status": "healthy" if db_status == "healthy" else "degraded",
+            "database": db_status,
+            "environment": os.environ.get("FLASK_ENV", "development"),
+            "version": "1.0.0",
+        }
+    )
+
+
+@app.route("/ready")
+def readiness_check():
+    """
+    Readiness check for container orchestration.
+
+    Returns 200 if app is ready to serve traffic, 503 otherwise.
+    Used by Kubernetes/Docker to determine when to start routing traffic.
+    """
+    try:
+        # Verify database is accessible
+        db.session.execute(db.text("SELECT 1"))
+        return jsonify({"status": "ready"}), 200
+    except Exception:
+        return jsonify({"status": "not ready"}), 503
+
+
+def create_app(config_name: Optional[str] = None) -> Flask:
+    """
+    Application factory for creating Flask app instances.
+
+    Supports different configurations for testing, development, and production.
+    If config_name is not provided, uses FLASK_ENV environment variable.
+
+    Args:
+        config_name: Configuration name ('development', 'production', 'testing')
+                     If None, uses FLASK_ENV environment variable
 
     Returns:
         Configured Flask application instance
+
+    Note:
+        Currently returns a pre-configured app instance. Full factory pattern
+        would require refactoring this module to avoid circular imports.
     """
+    if config_name is None:
+        config_name = os.environ.get("FLASK_ENV", "development")
+
+    # For now, just return the existing app instance
+    # Full factory pattern would require refactoring the entire module
     return app
 
 

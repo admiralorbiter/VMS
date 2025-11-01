@@ -170,7 +170,7 @@ def mock_template_rendering(app):
 @pytest.fixture
 def app():
     # Create a fresh Flask app instance for testing
-    test_app = Flask(__name__, template_folder='../templates')
+    test_app = Flask(__name__, template_folder="../templates")
     test_app.config.from_object(TestingConfig)
 
     # Initialize extensions
@@ -793,3 +793,19 @@ def new_session(app):
         session = db.Session(bind=db.engine)
         yield session
         session.close()
+
+
+# Integration test fixtures for app.py decorators
+@pytest.fixture
+def real_app():
+    """Fixture that uses the actual Flask app from app.py for integration tests"""
+    from app import app as real_app_instance
+
+    with real_app_instance.test_request_context():
+        yield real_app_instance
+
+
+@pytest.fixture
+def real_client(real_app):
+    """Test client using the real Flask app"""
+    return real_app.test_client()

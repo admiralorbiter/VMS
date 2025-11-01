@@ -1,0 +1,32 @@
+{# Error 500 - Internal Server Error Template #}
+{% extends "base.html" %}
+
+{% block title %}Internal Server Error - VMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-4x text-danger mb-4"></i>
+                    <h1 class="display-4 fw-bold text-danger">500</h1>
+                    <h2 class="h4 mb-3">Internal Server Error</h2>
+                    <p class="lead text-muted">
+                        We're sorry, but something went wrong on our end. Our team has been notified and is working to fix the issue.
+                    </p>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i>Go Home
+                        </a>
+                        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>Go Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
