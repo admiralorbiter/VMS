@@ -53,9 +53,10 @@ from routes.client_projects.routes import client_projects_bp
 from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
-from routes.management.management import management_bp
 from routes.management.cache_management import cache_management_bp
+from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
+from routes.quality.routes import quality_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
@@ -88,6 +89,7 @@ def init_routes(app):
         - client_projects_bp: Client project routes (/client_projects/*)
 
         - pathway_events_bp: Pathway event routes (/pathway_events/*)
+        - quality_bp: Quality scoring and validation routes (/quality_dashboard, /api/quality-*)
         - api_bp: API endpoints (/api/v1/*)
     """
     app.register_blueprint(auth_bp)
@@ -108,6 +110,7 @@ def init_routes(app):
     app.register_blueprint(pathway_events_bp)
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
+    app.register_blueprint(quality_bp)
     app.register_blueprint(api_bp, url_prefix="/api/v1")
 
     @app.route("/")
