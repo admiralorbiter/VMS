@@ -44,6 +44,7 @@ Security and Privacy:
 - GDPR compliance considerations
 """
 
+import warnings
 from datetime import date, datetime
 
 from sqlalchemy import (
@@ -72,6 +73,7 @@ from models.contact import (
     SkillSourceEnum,
 )
 from models.history import History
+from models.utils import validate_salesforce_id
 
 
 class ConnectorSubscriptionEnum(FormEnum):
@@ -279,6 +281,44 @@ class Volunteer(Contact):
         Enum(VolunteerStatus), default=VolunteerStatus.ACTIVE, index=True
     )
 
+    @validates("status")
+    def validate_status(self, key, value):
+        """
+        Validates volunteer status to ensure it's a valid VolunteerStatus enum value.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The status value to validate
+
+        Returns:
+            VolunteerStatus: Valid status enum value
+
+        Raises:
+            ValueError: If status value is invalid
+
+        Example:
+            >>> volunteer.validate_status("status", "active")
+            VolunteerStatus.ACTIVE
+        """
+        if value is None:
+            return VolunteerStatus.ACTIVE  # Default to ACTIVE
+        if isinstance(value, VolunteerStatus):
+            return value
+        if isinstance(value, str):
+            # Try value-based lookup
+            for enum_member in VolunteerStatus:
+                if enum_member.value.lower() == value.lower():
+                    return enum_member
+            # Try name-based lookup
+            try:
+                return VolunteerStatus[value.upper()]
+            except KeyError:
+                raise ValueError(
+                    f"Invalid status: {value}. "
+                    f"Valid values: {[s.value for s in VolunteerStatus if s.value]}"
+                )
+        raise ValueError(f"Status must be a VolunteerStatus enum value")
+
     # Relationship definitions
     # Note: @declared_attr is used to define these relationships dynamically during class creation
 
@@ -304,7 +344,9 @@ class Volunteer(Contact):
         Calculates the total number of times this volunteer has volunteered.
 
         This property combines actual event participations with manual adjustments
-        to provide an accurate count of volunteer activity.
+        to provide an accurate count of volunteer activity. It counts participations
+        with status "Attended", "Completed", or "Successfully Completed" and adds
+        any manual adjustments.
 
         Returns:
             int: Total count of volunteer sessions including manual adjustments
@@ -312,9 +354,16 @@ class Volunteer(Contact):
         Note:
             This avoids double counting by not adding times_volunteered field
             which may contain outdated data from Salesforce imports.
-        """
-        from sqlalchemy import or_
 
+        Performance Note:
+            This property executes a database query on every access. For loops
+            accessing this property multiple times, consider eager loading or
+            caching the result.
+
+        Example:
+            >>> volunteer.total_times_volunteered
+            15  # 12 participations + 3 manual adjustments
+        """
         # Get count of participations with all relevant statuses
         participation_count = EventParticipation.query.filter(
             EventParticipation.volunteer_id == self.id,
@@ -354,8 +403,13 @@ class Volunteer(Contact):
 
         Returns:
             LocalStatusEnum or None: Local status if determinable from events
+
+        Note:
+            Event, EventFormat, and EventType are imported inside this method
+            to avoid circular import issues between volunteer and event models.
         """
         try:
+            # Import inside method to avoid circular dependencies
             from models.event import Event, EventFormat, EventType
 
             # Check for participation in non-virtual events with attended status
@@ -381,8 +435,9 @@ class Volunteer(Contact):
             return None
 
         except Exception as e:
-            print(
-                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
+            warnings.warn(
+                f"Error checking local status from events for volunteer {self.id}: {str(e)}",
+                UserWarning,
             )
             return None
 
@@ -393,6 +448,8 @@ class Volunteer(Contact):
 
         This validator ensures that date fields are properly formatted and converted
         from various input formats (strings, date objects) to consistent date objects.
+        Invalid dates result in warnings and return None rather than raising exceptions,
+        allowing the save operation to continue with null values.
 
         Args:
             key (str): The name of the field being validated
@@ -402,7 +459,14 @@ class Volunteer(Contact):
             date: Converted date object or None if invalid
 
         Raises:
-            ValueError: If date string cannot be parsed
+            ValueError: If date string cannot be parsed (only in strict mode, not used here)
+
+        Example:
+            >>> volunteer.validate_dates("first_volunteer_date", "2024-01-15")
+            datetime.date(2024, 1, 15)
+
+            >>> volunteer.validate_dates("first_volunteer_date", "invalid")
+            None  # Returns None and logs warning
         """
         if not value:  # Handle empty strings and None
             return None
@@ -410,7 +474,10 @@ class Volunteer(Contact):
             try:
                 value = datetime.strptime(value, "%Y-%m-%d").date()
             except ValueError:
-                print(f"Warning: Invalid date format for {key}: {value}")
+                warnings.warn(
+                    f"Invalid date format for {key}: {value}. Expected format: YYYY-MM-DD",
+                    UserWarning,
+                )
                 return None
         return value
 
@@ -421,13 +488,25 @@ class Volunteer(Contact):
 
         This validator handles various input formats and ensures count fields
         are properly formatted as integers with a minimum value of 0.
+        Invalid values result in warnings and return 0 rather than raising exceptions,
+        allowing the save operation to continue with default values.
 
         Args:
             key (str): The name of the field being validated
-            value: The count value to validate
+            value: The count value to validate (can be int, float, or string)
 
         Returns:
             int: Normalized count value (minimum 0)
+
+        Example:
+            >>> volunteer.validate_counts("times_volunteered", "5")
+            5
+
+            >>> volunteer.validate_counts("times_volunteered", -10)
+            0  # Negative values are normalized to 0
+
+            >>> volunteer.validate_counts("times_volunteered", "invalid")
+            0  # Returns 0 and logs warning
         """
         if not value:  # Handle empty strings and None
             return 0
@@ -435,7 +514,10 @@ class Volunteer(Contact):
             value = int(float(value))  # Handle string numbers and floats
             return max(0, value)
         except (ValueError, TypeError):
-            print(f"Warning: Invalid {key} value: {value}")
+            warnings.warn(
+                f"Invalid {key} value: {value}. Using default value of 0.",
+                UserWarning,
+            )
             return 0
 
     @validates("education")
@@ -444,7 +526,8 @@ class Volunteer(Contact):
         Validates education enum values to ensure they are valid EducationEnum instances.
 
         This validator handles both enum instances and string representations,
-        converting strings to proper enum values when possible.
+        converting strings to proper enum values when possible. Uses value-based
+        lookup instead of name-based lookup for better compatibility.
 
         Args:
             key (str): The name of the field being validated
@@ -455,17 +538,34 @@ class Volunteer(Contact):
 
         Raises:
             ValueError: If education value is invalid
+
+        Examples:
+            >>> volunteer.validate_education("education", "Bachelor's Degree")
+            EducationEnum.BACHELORS_DEGREE
+
+            >>> volunteer.validate_education("education", EducationEnum.MASTERS)
+            EducationEnum.MASTERS
         """
         if value is not None:
             # If it's already an enum instance, return it
             if isinstance(value, EducationEnum):
                 return value
             if isinstance(value, str):
+                # Try value-based lookup first (matches enum.value)
+                for enum_member in EducationEnum:
+                    if enum_member.value.lower() == value.lower():
+                        return enum_member
+                # Fallback to name-based lookup for backwards compatibility
                 try:
-                    return EducationEnum[value.upper()]
+                    return EducationEnum[value.upper().replace(" ", "_")]
                 except KeyError:
-                    raise ValueError(f"Invalid education value: {value}")
-            raise ValueError(f"Education must be an EducationEnum value")
+                    raise ValueError(
+                        f"Invalid education value: {value}. "
+                        f"Valid values: {[e.value for e in EducationEnum]}"
+                    )
+            raise ValueError(
+                f"Education must be an EducationEnum value or valid string"
+            )
         return value
 
     # Add data cleaning for Salesforce imports
@@ -483,12 +583,41 @@ class Volunteer(Contact):
 
         Returns:
             Volunteer: New Volunteer instance with cleaned data
+
+        Example:
+            >>> sf_data = {
+            ...     "first_name": "John",
+            ...     "last_name": "Doe",
+            ...     "email": "",
+            ...     "status": "active"
+            ... }
+            >>> volunteer = Volunteer.from_salesforce(sf_data)
+            >>> volunteer.email is None
+            True
         """
         # Convert empty strings to None
         cleaned = {k: (None if v == "" else v) for k, v in data.items()}
         return cls(**cleaned)
 
-    # Relationship definitions that were accidentally removed
+    def __repr__(self):
+        """
+        Developer-friendly string representation of the Volunteer model.
+
+        Returns:
+            str: Debug representation showing volunteer ID and name
+
+        Example:
+            >>> repr(volunteer)
+            '<Volunteer 123: John Doe>'
+        """
+        name = (
+            f"{self.first_name} {self.last_name}".strip()
+            if hasattr(self, "first_name")
+            else "Unknown"
+        )
+        return f"<Volunteer {self.id}: {name}>"
+
+    # Relationship definitions
     @declared_attr
     def volunteer_organizations(cls):
         """
@@ -673,6 +802,27 @@ class EventParticipation(db.Model):
     title = db.Column(String(100), nullable=True)
     participant_type = db.Column(String(50), default="Volunteer")
     contact = db.Column(String(255), nullable=True)
+
+    @validates("salesforce_id")
+    def validate_salesforce_id_field(self, key, value):
+        """
+        Validates Salesforce ID format using shared validator.
+
+        Args:
+            key (str): The name of the field being validated
+            value: Salesforce ID to validate
+
+        Returns:
+            str: Validated Salesforce ID or None
+
+        Raises:
+            ValueError: If Salesforce ID format is invalid
+
+        Example:
+            >>> participation.validate_salesforce_id_field("salesforce_id", "0011234567890ABCD")
+            '0011234567890ABCD'
+        """
+        return validate_salesforce_id(value)
 
     # Relationships
     event = relationship("Event", backref="volunteer_participations")
