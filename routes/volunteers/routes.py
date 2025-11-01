@@ -28,6 +28,7 @@ import csv
 import io
 import json
 import os
+import traceback
 from datetime import datetime
 
 from flask import (
@@ -1160,6 +1161,7 @@ def import_from_salesforce():
         print(f"Found {total_records} records to process")
 
         success_count = 0
+        committed_count = 0  # Actually committed records
         error_count = 0
         created_count = 0
         updated_count = 0
@@ -1168,6 +1170,10 @@ def import_from_salesforce():
         # Progress tracking
         progress_interval = max(1, total_records // 20)  # Show progress every 5%
         last_progress = 0
+
+        # Periodic commit settings
+        commit_interval = 100  # Commit every 100 records
+        last_commit_count = 0
 
         # Add comprehensive education mapping
         education_mapping = {
@@ -1205,12 +1211,14 @@ def import_from_salesforce():
 
         # Process each row from Salesforce
         for i, row in enumerate(sf_rows):
+            # Create savepoint for this record to isolate errors
+            savepoint = db.session.begin_nested()
             try:
                 # Progress indicator
                 if i >= last_progress + progress_interval:
                     progress = (i / total_records) * 100
                     print(
-                        f"Progress: {progress:.1f}% ({i}/{total_records}) - Created: {created_count}, Updated: {updated_count}, Errors: {error_count}"
+                        f"Progress: {progress:.1f}% ({i}/{total_records}) - Committed: {committed_count}, Created: {created_count}, Updated: {updated_count}, Errors: {error_count}"
                     )
                     last_progress = i
 
@@ -1509,12 +1517,12 @@ def import_from_salesforce():
                 }
 
                 # Get preferred email type
-                preferred_email = row.get("npe01__Preferred_Email__c", "").lower()
+                preferred_email = (row.get("npe01__Preferred_Email__c") or "").lower()
                 email_changes = False
 
                 # Process each email field
                 for email_field, email_type in email_fields.items():
-                    email_value = row.get(email_field)
+                    email_value = (row.get(email_field) or "").strip()
                     if not email_value:
                         continue
 
@@ -1580,12 +1588,12 @@ def import_from_salesforce():
                 }
 
                 # Get preferred phone type
-                preferred_phone = row.get("npe01__PreferredPhone__c", "").lower()
+                preferred_phone = (row.get("npe01__PreferredPhone__c") or "").lower()
                 phone_changes = False
 
                 # Process each phone field
                 for phone_field, phone_type in phone_fields.items():
-                    phone_value = row.get(phone_field)
+                    phone_value = (row.get(phone_field) or "").strip()
                     if not phone_value:
                         continue
 
@@ -1799,7 +1807,12 @@ def import_from_salesforce():
                             setattr(volunteer.connector, field, value)
                             updates.append(f"c{field[:2]}")
 
+                # Commit the savepoint for this record
+                savepoint.commit()
+
+                # Update counters AFTER successful commit
                 success_count += 1
+                committed_count += 1
                 created_count = created_count + 1 if is_new else created_count
                 updated_count = (
                     updated_count + 1 if not is_new and updates else updated_count
@@ -1816,52 +1829,104 @@ def import_from_salesforce():
                         f"[{i+1:4d}] {status}: {volunteer.first_name} {volunteer.last_name}"
                     )
 
+                # Periodic commit to reduce memory and provide checkpoints
+                if committed_count > 0 and committed_count % commit_interval == 0:
+                    try:
+                        db.session.commit()
+                        print(
+                            f"[CHECKPOINT] Committed {committed_count - last_commit_count} records (Total: {committed_count})"
+                        )
+                        last_commit_count = committed_count
+                    except Exception as commit_error:
+                        print(
+                            f"[WARNING] Periodic commit failed at record {i+1}: {str(commit_error)}"
+                        )
+                        # Continue processing - final commit will retry
+
             except Exception as e:
+                # Rollback only this record's savepoint, not the entire session
+                savepoint.rollback()
                 error_count += 1
+
+                # Get more detailed error information
+                error_traceback = traceback.format_exc()
+
                 error_detail = {
                     "name": f"{row.get('FirstName', '')} {row.get('LastName', '')}",
                     "salesforce_id": row.get("Id", ""),
+                    "record_number": i + 1,
                     "error": str(e),
+                    "traceback": error_traceback,
                 }
                 errors.append(error_detail)
+
+                # Print error with more context
+                error_msg = str(e)
                 print(
-                    f"[{i+1:4d}] ERROR: {error_detail['name']} (ID: {error_detail['salesforce_id']}) - {str(e)[:100]}"
+                    f"[{i+1:4d}] ERROR: {error_detail['name']} (ID: {error_detail['salesforce_id']}) - {error_msg[:100]}"
                 )
-                db.session.rollback()
+                # Log full traceback for debugging (truncated for console)
+                if len(error_traceback) > 200:
+                    print(
+                        f"      Traceback (first 200 chars): {error_traceback[:200]}..."
+                    )
+                else:
+                    print(f"      Traceback: {error_traceback}")
 
         # Final summary
         print(f"\n{'='*60}")
         print(f"IMPORT COMPLETE")
         print(f"{'='*60}")
-        print(f"Total Records: {total_records}")
-        print(f"Successful:    {success_count}")
-        print(f"Created:       {created_count}")
-        print(f"Updated:       {updated_count}")
-        print(f"Errors:        {error_count}")
+        print(f"Total Records:    {total_records}")
+        print(f"Successfully Processed: {success_count}")
+        print(f"Actually Committed: {committed_count}")
+        print(f"Created:          {created_count}")
+        print(f"Updated:          {updated_count}")
+        print(f"Errors:           {error_count}")
         print(f"{'='*60}")
 
         if errors:
             print(f"\nERROR SUMMARY (showing first 10):")
             for i, error in enumerate(errors[:10]):
-                print(f"  {i+1:2d}. {error['name']} (ID: {error['salesforce_id']})")
-                print(f"      {error['error'][:80]}...")
+                print(
+                    f"  {i+1:2d}. Record #{error.get('record_number', '?')}: {error['name']} (ID: {error['salesforce_id']})"
+                )
+                print(f"      Error: {error['error'][:80]}...")
             if len(errors) > 10:
                 print(f"  ... and {len(errors) - 10} more errors")
 
-        # Commit all successful changes
+        # Final commit of any remaining changes
         try:
             db.session.commit()
+            final_committed = Volunteer.query.count()
+            print(f"\nFinal database count: {final_committed} volunteers")
+
             return jsonify(
                 {
                     "success": True,
-                    "message": f"Successfully processed {success_count} volunteers (Created: {created_count}, Updated: {updated_count}) with {error_count} errors",
+                    "message": f"Successfully processed {success_count} volunteers (Committed: {committed_count}, Created: {created_count}, Updated: {updated_count}) with {error_count} errors",
+                    "stats": {
+                        "total_records": total_records,
+                        "success_count": success_count,
+                        "committed_count": committed_count,
+                        "created_count": created_count,
+                        "updated_count": updated_count,
+                        "error_count": error_count,
+                    },
                 }
             )
         except Exception as e:
             db.session.rollback()
+            error_traceback = traceback.format_exc()
+            print(f"\n[FATAL] Final commit failed: {str(e)}")
+            print(f"Traceback: {error_traceback}")
             return (
                 jsonify(
-                    {"success": False, "message": f"Database commit error: {str(e)}"}
+                    {
+                        "success": False,
+                        "message": f"Database commit error: {str(e)}",
+                        "committed_before_failure": committed_count,
+                    }
                 ),
                 500,
             )

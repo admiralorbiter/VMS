@@ -300,3 +300,261 @@ def test_primary_validation(app):
 
         # Clean up
         db.session.rollback()
+
+
+def test_phone_to_dict(app):
+    """Test Phone model's to_dict method"""
+    with app.app_context():
+        contact = Contact(type="contact", first_name="Test", last_name="Phone")
+        db.session.add(contact)
+        db.session.commit()
+
+        phone = Phone(
+            contact_id=contact.id,
+            number="555-123-4567",
+            type=ContactTypeEnum.personal,
+            primary=True,
+        )
+        db.session.add(phone)
+        db.session.commit()
+
+        phone_dict = phone.to_dict()
+
+        assert phone_dict == {
+            "id": phone.id,
+            "number": "555-123-4567",
+            "type": "personal",
+            "primary": True,
+        }
+
+        # Test with no type set
+        phone.type = None
+        db.session.commit()
+        assert phone.to_dict()["type"] is None
+
+        # Cleanup
+        db.session.delete(contact)
+        db.session.commit()
+
+
+def test_address_to_dict(app):
+    """Test Address model's to_dict method"""
+    with app.app_context():
+        contact = Contact(type="contact", first_name="Test", last_name="Address")
+        db.session.add(contact)
+        db.session.commit()
+
+        address = Address(
+            contact_id=contact.id,
+            address_line1="123 Main St",
+            address_line2="Suite 100",
+            city="Kansas City",
+            state="MO",
+            zip_code="64111",
+            country="USA",
+            type=ContactTypeEnum.personal,
+            primary=True,
+        )
+        db.session.add(address)
+        db.session.commit()
+
+        address_dict = address.to_dict()
+
+        assert address_dict == {
+            "id": address.id,
+            "address_line1": "123 Main St",
+            "address_line2": "Suite 100",
+            "city": "Kansas City",
+            "state": "MO",
+            "zip_code": "64111",
+            "country": "USA",
+            "type": "personal",
+            "primary": True,
+        }
+
+        # Test with no type set
+        address.type = None
+        db.session.commit()
+        assert address.to_dict()["type"] is None
+
+        # Cleanup
+        db.session.delete(contact)
+        db.session.commit()
+
+
+def test_string_representations(test_contact):
+    """Test __repr__ and __str__ methods for all models"""
+    # Test Contact
+    repr_str = repr(test_contact)
+    assert "Contact" in repr_str
+    assert str(test_contact.id) in repr_str
+    assert test_contact.full_name in repr_str
+
+    str_str = str(test_contact)
+    assert str_str == test_contact.full_name
+
+    # Test Phone
+    phone = test_contact.phones.first()
+    repr_str = repr(phone)
+    assert "Phone" in repr_str
+    assert str(phone.id) in repr_str
+    assert phone.number in repr_str
+
+    str_str = str(phone)
+    assert phone.number in str_str
+    assert "[Primary]" in str_str  # Should show primary status
+
+    # Test Email
+    email = test_contact.emails.first()
+    repr_str = repr(email)
+    assert "Email" in repr_str
+    assert str(email.id) in repr_str
+    assert email.email in repr_str
+
+    str_str = str(email)
+    assert email.email in str_str
+    assert "[Primary]" in str_str  # Should show primary status
+
+    # Test Address
+    address = test_contact.addresses.first()
+    repr_str = repr(address)
+    assert "Address" in repr_str
+    assert str(address.id) in repr_str
+
+    str_str = str(address)
+    assert address.address_line1 in str_str
+    assert "[Primary]" in str_str  # Should show primary status
+
+
+def test_automatic_primary_phone_validation(app):
+    """Test that SQLAlchemy event listeners automatically enforce single primary phone"""
+    with app.app_context():
+        contact = Contact(type="contact", first_name="Test", last_name="Auto")
+        db.session.add(contact)
+        db.session.commit()
+
+        # Add first primary phone
+        phone1 = Phone(
+            contact_id=contact.id,
+            number="555-1111",
+            primary=True,
+        )
+        db.session.add(phone1)
+        db.session.commit()
+
+        # Add second primary phone - should automatically unmark first
+        phone2 = Phone(
+            contact_id=contact.id,
+            number="555-2222",
+            primary=True,
+        )
+        db.session.add(phone2)
+        db.session.commit()
+
+        # Refresh to get latest state
+        db.session.refresh(phone1)
+        db.session.refresh(phone2)
+
+        # Verify only phone2 is primary
+        assert phone1.primary is False
+        assert phone2.primary is True
+
+        # Update phone1 to primary - should unmark phone2
+        phone1.primary = True
+        db.session.commit()
+        db.session.refresh(phone2)
+
+        assert phone1.primary is True
+        assert phone2.primary is False
+
+        # Cleanup
+        db.session.delete(contact)
+        db.session.commit()
+
+
+def test_automatic_primary_email_validation(app):
+    """Test that SQLAlchemy event listeners automatically enforce single primary email"""
+    with app.app_context():
+        contact = Contact(type="contact", first_name="Test", last_name="Auto")
+        db.session.add(contact)
+        db.session.commit()
+
+        # Add first primary email
+        email1 = Email(
+            contact_id=contact.id,
+            email="test1@example.com",
+            primary=True,
+        )
+        db.session.add(email1)
+        db.session.commit()
+
+        # Add second primary email - should automatically unmark first
+        email2 = Email(
+            contact_id=contact.id,
+            email="test2@example.com",
+            primary=True,
+        )
+        db.session.add(email2)
+        db.session.commit()
+
+        # Refresh to get latest state
+        db.session.refresh(email1)
+        db.session.refresh(email2)
+
+        # Verify only email2 is primary
+        assert email1.primary is False
+        assert email2.primary is True
+
+        # Update email1 to primary - should unmark email2
+        email1.primary = True
+        db.session.commit()
+        db.session.refresh(email2)
+
+        assert email1.primary is True
+        assert email2.primary is False
+
+        # Cleanup
+        db.session.delete(contact)
+        db.session.commit()
+
+
+def test_phone_number_required_constraint(app):
+    """Test that Phone.number is required (nullable=False)"""
+    with app.app_context():
+        contact = Contact(type="contact", first_name="Test", last_name="Required")
+        db.session.add(contact)
+        db.session.commit()
+
+        # Try to create phone without number
+        phone = Phone(contact_id=contact.id, primary=False)
+        db.session.add(phone)
+
+        with pytest.raises(Exception):  # Should raise IntegrityError or similar
+            db.session.commit()
+
+        db.session.rollback()
+
+        # Cleanup
+        db.session.delete(contact)
+        db.session.commit()
+
+
+def test_email_address_required_constraint(app):
+    """Test that Email.email is required (nullable=False)"""
+    with app.app_context():
+        contact = Contact(type="contact", first_name="Test", last_name="Required")
+        db.session.add(contact)
+        db.session.commit()
+
+        # Try to create email without email address
+        email = Email(contact_id=contact.id, primary=False)
+        db.session.add(email)
+
+        with pytest.raises(Exception):  # Should raise IntegrityError or similar
+            db.session.commit()
+
+        db.session.rollback()
+
+        # Cleanup
+        db.session.delete(contact)
+        db.session.commit()
