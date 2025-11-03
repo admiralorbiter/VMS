@@ -493,13 +493,17 @@ Last Updated: 2024
         <div class="profile-card participation-card">
             <div class="card-header">
                 <i class="fa-solid fa-calendar-check"></i>
-                <h2>Event Participation ({{ participation_stats['Attended']|length + participation_stats['No-Show']|length + participation_stats['Cancelled']|length }} total)</h2>
+                <h2>Event Participation ({{ participation_stats['Attended']|length + participation_stats['No-Show']|length + participation_stats['Cancelled']|length + participation_stats['Scheduled']|length }} total)</h2>
             </div>
             <div class="card-content">
                 <div class="participation-tabs">
                     <div class="participation-tab active">
                         <i class="fa-solid fa-check-circle"></i>
                         <span>Attended ({{ participation_stats['Attended']|length }})</span>
+                    </div>
+                    <div class="participation-tab">
+                        <i class="fa-solid fa-clock"></i>
+                        <span>Scheduled ({{ participation_stats['Scheduled']|length }})</span>
                     </div>
                     <div class="participation-tab">
                         <i class="fa-solid fa-times-circle"></i>

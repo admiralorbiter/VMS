@@ -608,6 +608,8 @@ def view_volunteer(id):
         "cancelled": "Cancelled",  # Handle lowercase version
         "CANCELLED": "Cancelled",  # Handle uppercase version
         "CANCELED": "Cancelled",  # Handle uppercase version
+        "Scheduled": "Scheduled",  # Keep scheduled for future events
+        "scheduled": "Scheduled",  # Handle lowercase
         # Virtual-specific statuses
         "successfully completed": "Attended",
         "simulcast": "Attended",
@@ -630,7 +632,13 @@ def view_volunteer(id):
     }
 
     # Initialize participation stats with empty lists
-    participation_stats = {"Attended": [], "No-Show": [], "Cancelled": []}
+    participation_stats = {
+        "Attended": [],
+        "No-Show": [],
+        "Cancelled": [],
+        "Scheduled": [],
+        "Unknown": [],
+    }
 
     # Process each participation record
     for participation in participations:
@@ -642,8 +650,29 @@ def view_volunteer(id):
             f"Processing participation: Event='{participation.event.title}', Status='{status}'"
         )
 
+        # Get the event date first, handling virtual events that might store date differently
+        event_date = None
+        if participation.event.start_date:
+            event_date = participation.event.start_date
+        elif hasattr(participation.event, "date") and participation.event.date:
+            event_date = participation.event.date
+        else:
+            # If no date available, create a default date to avoid errors
+            event_date = datetime.now()
+
+        # Determine if event is in the future
+        is_future_event = event_date > datetime.now()
+
+        # Handle "Scheduled" status with date-awareness BEFORE other mappings
+        if status and status.lower() == "scheduled":
+            # For past events with "Scheduled", mark as "Unknown" since status wasn't updated
+            mapped_status = "Unknown" if not is_future_event else "Scheduled"
+            print(
+                f"Processing 'Scheduled' status for event '{participation.event.title}': "
+                f"{'Future' if is_future_event else 'Past'} -> {mapped_status}"
+            )
         # If status isn't directly usable, try mapping it
-        if status not in participation_stats:
+        elif status not in participation_stats:
             # Try using the mapping first
             mapped_status = status_mapping.get(status, None)
 
@@ -687,25 +716,15 @@ def view_volunteer(id):
                         f"Detected cancelled event from title (partial match): '{participation.event.title}'"
                     )
                 else:
-                    # Only default to Attended if we can't determine otherwise
-                    mapped_status = "Attended"
+                    # Only default to Unknown now (not Attended)
+                    mapped_status = "Unknown"
                     print(
-                        f"WARNING: Unknown status '{status}' for event '{participation.event.title}' - defaulting to Attended"
+                        f"WARNING: Unknown status '{status}' for event '{participation.event.title}' - using Unknown"
                     )
         else:
             mapped_status = status
 
         print(f"Final mapped status: '{mapped_status}'")
-
-        # Get the event date, handling virtual events that might store date differently
-        event_date = None
-        if participation.event.start_date:
-            event_date = participation.event.start_date
-        elif hasattr(participation.event, "date") and participation.event.date:
-            event_date = participation.event.date
-        else:
-            # If no date available, create a default date to avoid errors
-            event_date = datetime.now()
 
         # Add to appropriate category
         if mapped_status in participation_stats:

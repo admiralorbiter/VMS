@@ -276,14 +276,26 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // Show the selected event list
-            // Get the text content of the span that contains just the status (not the count)
-            const statusSpan = tab.querySelector('span:not(.participation-tab-count)');
-            const status = statusSpan.textContent.trim();
+            // Get the text content and extract status
+            const tabText = tab.textContent.trim();
+            let status;
+
+            if (tabText.includes('Attended')) {
+                status = 'Attended';
+            } else if (tabText.includes('Scheduled')) {
+                status = 'Scheduled';
+            } else if (tabText.includes('No-Shows')) {
+                status = 'No-Show';
+            } else if (tabText.includes('Cancelled')) {
+                status = 'Cancelled';
+            }
 
             // Find the matching event list
-            const targetList = document.querySelector(`.event-list[data-status="${status}"]`);
-            if (targetList) {
-                targetList.style.display = 'block';
+            if (status) {
+                const targetList = document.querySelector(`.event-list[data-status="${status}"]`);
+                if (targetList) {
+                    targetList.style.display = 'block';
+                }
             }
         });
     });
@@ -491,6 +503,8 @@ function initializeVolunteerView() {
 
             if (tabText.includes('Attended')) {
                 status = 'Attended';
+            } else if (tabText.includes('Scheduled')) {
+                status = 'Scheduled';
             } else if (tabText.includes('No-Shows')) {
                 status = 'No-Show';
             } else if (tabText.includes('Cancelled')) {
