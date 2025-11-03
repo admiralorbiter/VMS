@@ -237,8 +237,8 @@ def test_student_participation_import_guard(client, auth_headers, test_event, ap
             "Age_Group__c": None,
         }
 
-        # Use a fixed salesforce_id for the test
-        event_sf_id = "EVT_SF_1"
+        # Use a fixed salesforce_id for the test (18 alphanumeric characters)
+        event_sf_id = "EVTSF1000123456789"  # 18 characters
         row1["Session__c"] = event_sf_id
         row2["Session__c"] = event_sf_id
         

@@ -88,11 +88,11 @@ def validate_salesforce_id(value):
             return validate_salesforce_id(value)
 
         # Or use directly
-        validated_id = validate_salesforce_id("0011234567890ABCD")
+        validated_id = validate_salesforce_id("0011234567890ABCDE")
 
     Examples:
-        >>> validate_salesforce_id("0011234567890ABCD")
-        '0011234567890ABCD'
+        >>> validate_salesforce_id("0011234567890ABCDE")
+        '0011234567890ABCDE'
 
         >>> validate_salesforce_id("invalid")
         ValueError: Salesforce ID must be exactly 18 alphanumeric characters
@@ -105,6 +105,10 @@ def validate_salesforce_id(value):
 
     if not isinstance(value, str):
         raise ValueError("Salesforce ID must be a string")
+    
+    # Allow empty strings (treated as None)
+    if value == "":
+        return None
 
     if len(value) != SALESFORCE_ID_LENGTH:
         raise ValueError(

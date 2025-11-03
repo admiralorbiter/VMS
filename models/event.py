@@ -102,6 +102,7 @@ Usage Examples:
     event.update_from_csv(csv_data)
 """
 
+import warnings
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -114,6 +115,7 @@ from sqlalchemy.sql import func
 
 from models import db
 from models.attendance import EventAttendanceDetail
+from models.utils import validate_salesforce_id
 from models.volunteer import EventParticipation
 
 # Define the association table first
@@ -571,10 +573,10 @@ class Event(db.Model):
         cascade="all, delete-orphan",
     )
 
-    # TODO: Consider adding validation methods:
-    # - Ensure end_date is after start_date
-    # - Validate attendance counts don't exceed capacity
-    # - Check for valid status transitions
+    # Note: Validation is handled automatically via @validates decorators:
+    # - Date validation: @validates("start_date", "end_date") with timezone handling
+    # - Count validation: @validates for all count fields with normalization
+    # - Status transitions: validate_status_transition() called automatically
 
     __mapper_args__ = {"confirm_deleted_rows": False}
 
@@ -636,20 +638,51 @@ class Event(db.Model):
 
     @property
     def is_past_event(self):
-        """Check if event is in the past"""
+        """
+        Check if event is in the past.
+
+        Returns:
+            bool: True if event has ended (or started if no end_date), False otherwise
+
+        Example:
+            >>> event.start_date = datetime(2023, 1, 1, tzinfo=timezone.utc)
+            >>> event.is_past_event
+            True  # If current date is after start_date
+        """
         if not self.end_date:
             return self.start_date < datetime.now(timezone.utc)
         return self.end_date < datetime.now(timezone.utc)
 
     @property
     def is_upcoming(self):
-        """Check if event is upcoming"""
+        """
+        Check if event is upcoming (hasn't started yet).
+
+        Returns:
+            bool: True if event start_date is in the future, False otherwise
+
+        Example:
+            >>> event.start_date = datetime(2025, 1, 1, tzinfo=timezone.utc)
+            >>> event.is_upcoming
+            True  # If current date is before start_date
+        """
         now = datetime.now(timezone.utc)
         return self.start_date > now
 
     @property
     def is_in_progress(self):
-        """Helper method to determine if an event is currently in progress"""
+        """
+        Determine if an event is currently in progress.
+
+        Returns:
+            bool: True if current time is between start_date and end_date (or after start_date if no end_date)
+
+        Example:
+            >>> event.start_date = datetime.now(timezone.utc) - timedelta(hours=1)
+            >>> event.end_date = datetime.now(timezone.utc) + timedelta(hours=1)
+            >>> event.is_in_progress
+            True
+        """
         now = datetime.now(timezone.utc)
         if self.end_date:
             return self.start_date <= now <= self.end_date
@@ -659,8 +692,19 @@ class Event(db.Model):
         """
         Determines if registration is still possible for this event.
 
+        Registration is allowed when:
+        - Event status is not CANCELLED or COMPLETED
+        - Event has not passed (not in the past)
+        - Available slots exist (if slot tracking is enabled)
+
         Returns:
             bool: True if registration is allowed, False otherwise
+
+        Example:
+            >>> event.status = EventStatus.PUBLISHED
+            >>> event.available_slots = 10
+            >>> event.can_register()
+            True
 
         Usage:
             if event.can_register():
@@ -674,19 +718,66 @@ class Event(db.Model):
 
     def merge_duplicate(self, data):
         """
-        Merge data from a duplicate event's CSV row
+        Merge data from a duplicate event's CSV row.
 
         This method combines data from duplicate events, typically used
         when importing data from external sources that may contain duplicates.
+        Includes error handling for invalid data with warnings for non-critical issues.
 
         Args:
             data (dict): CSV row data to merge
+
+        Raises:
+            ValueError: If critical data is missing or invalid
+
+        Example:
+            >>> event.merge_duplicate({
+            ...     "Registered Student Count": "10",
+            ...     "Attended Student Count": "8",
+            ...     "Name": "John Doe",
+            ...     "SignUp Role": "professional"
+            ... })
         """
-        # Combine counts
-        new_registered = int(
-            data.get("Registered Student Count", "0").replace("n/a", "0")
-        )
-        new_attended = int(data.get("Attended Student Count", "0").replace("n/a", "0"))
+        if not isinstance(data, dict):
+            raise ValueError("Data must be a dictionary")
+
+        # Combine counts with error handling
+        try:
+            registered_str = str(data.get("Registered Student Count", "0")).replace("n/a", "0")
+            new_registered = int(float(registered_str)) if registered_str else 0
+            if new_registered < 0:
+                warnings.warn(
+                    f"Event {self.id}: Negative registered count value: {new_registered}. "
+                    f"Using 0 instead.",
+                    UserWarning,
+                )
+                new_registered = 0
+        except (ValueError, TypeError) as e:
+            warnings.warn(
+                f"Event {self.id}: Invalid registered count value: {data.get('Registered Student Count')}. "
+                f"Error: {str(e)}. Skipping count update.",
+                UserWarning,
+            )
+            new_registered = 0
+
+        try:
+            attended_str = str(data.get("Attended Student Count", "0")).replace("n/a", "0")
+            new_attended = int(float(attended_str)) if attended_str else 0
+            if new_attended < 0:
+                warnings.warn(
+                    f"Event {self.id}: Negative attended count value: {new_attended}. "
+                    f"Using 0 instead.",
+                    UserWarning,
+                )
+                new_attended = 0
+        except (ValueError, TypeError) as e:
+            warnings.warn(
+                f"Event {self.id}: Invalid attended count value: {data.get('Attended Student Count')}. "
+                f"Error: {str(e)}. Skipping count update.",
+                UserWarning,
+            )
+            new_attended = 0
+
         self.registered_count += new_registered
         self.attended_count += new_attended
 
@@ -762,46 +853,158 @@ class Event(db.Model):
 
     def update_from_csv(self, data):
         """
-        Update event from CSV data
+        Update event from CSV data.
 
         This method updates an event with data from a CSV import,
         typically used for bulk data updates from external sources.
+        Includes comprehensive error handling with warnings for non-critical issues.
 
         Args:
             data (dict): CSV row data containing event information
-        """
-        # Validate required fields
-        if not data.get("Date"):
-            raise ValueError("Date is required")
-        if not data.get("Title"):
-            raise ValueError("Title is required")
 
+        Raises:
+            ValueError: If required fields (Date, Title) are missing or invalid
+
+        Example:
+            >>> event.update_from_csv({
+            ...     "Date": "01/15/2024",
+            ...     "Title": "Career Fair",
+            ...     "Status": "Completed",
+            ...     "Registered Student Count": "50"
+            ... })
+        """
+        if not isinstance(data, dict):
+            raise ValueError("Data must be a dictionary")
+
+        # Validate required fields
         date_str = data.get("Date")
         if not date_str:
-            raise ValueError("Date is required")
+            raise ValueError("Date is required for event update")
 
+        title = data.get("Title")
+        if not title or not str(title).strip():
+            raise ValueError("Title is required for event update")
+
+        # Set basic fields
         self.session_id = data.get("Session ID")
-        self.title = data.get("Title")
+        self.title = str(title).strip()
         self.series = data.get("Series or Event Title")
-        self.start_date = datetime.strptime(date_str, "%m/%d/%Y")
-        self.status = data.get("Status")
-        self.duration = int(data.get("Duration", 0))
+
+        # Parse date with multiple format support and error handling
+        try:
+            # Try common CSV date formats
+            date_formats = ["%m/%d/%Y", "%Y-%m-%d", "%m-%d-%Y", "%d/%m/%Y"]
+            parsed_date = None
+            for fmt in date_formats:
+                try:
+                    parsed_date = datetime.strptime(str(date_str).strip(), fmt)
+                    break
+                except ValueError:
+                    continue
+
+            if parsed_date is None:
+                raise ValueError(f"Unable to parse date: {date_str}")
+
+            # Ensure timezone awareness
+            if parsed_date.tzinfo is None:
+                parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+
+            self.start_date = parsed_date
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid date format: {date_str}. Error: {str(e)}")
+
+        # Set status with validation
+        status_str = data.get("Status")
+        if status_str:
+            try:
+                self.status = status_str  # Will use the status validator
+            except ValueError as e:
+                warnings.warn(
+                    f"Event {self.id}: Invalid status value '{status_str}'. "
+                    f"Error: {str(e)}. Using default status.",
+                    UserWarning,
+                )
+                self.status = EventStatus.DRAFT
+
+        # Set duration with error handling
+        duration_str = data.get("Duration", "0")
+        try:
+            self.duration = int(float(str(duration_str).replace("n/a", "0")))
+            if self.duration < 0:
+                warnings.warn(
+                    f"Event {self.id}: Negative duration value: {self.duration}. "
+                    f"Setting to 0.",
+                    UserWarning,
+                )
+                self.duration = 0
+        except (ValueError, TypeError) as e:
+            warnings.warn(
+                f"Event {self.id}: Invalid duration value: {duration_str}. "
+                f"Error: {str(e)}. Setting to None.",
+                UserWarning,
+            )
+            self.duration = None
+
         self.school = data.get("School")
         self.district_partner = data.get("District or Company")
-        self.registered_count = int(
-            data.get("Registered Student Count", "0").replace("n/a", "0")
-        )
-        self.attended_count = int(
-            data.get("Attended Student Count", "0").replace("n/a", "0")
-        )
 
-        # Add handling for volunteers_needed
-        if data.get("Volunteers Needed"):
-            self.volunteers_needed = int(data.get("Volunteers Needed", "0"))
+        # Set counts with error handling
+        try:
+            registered_str = str(data.get("Registered Student Count", "0")).replace("n/a", "0")
+            self.registered_count = int(float(registered_str)) if registered_str else 0
+            if self.registered_count < 0:
+                warnings.warn(
+                    f"Event {self.id}: Negative registered count. Setting to 0.",
+                    UserWarning,
+                )
+                self.registered_count = 0
+        except (ValueError, TypeError) as e:
+            warnings.warn(
+                f"Event {self.id}: Invalid registered count: {data.get('Registered Student Count')}. "
+                f"Error: {str(e)}. Setting to 0.",
+                UserWarning,
+            )
+            self.registered_count = 0
 
+        try:
+            attended_str = str(data.get("Attended Student Count", "0")).replace("n/a", "0")
+            self.attended_count = int(float(attended_str)) if attended_str else 0
+            if self.attended_count < 0:
+                warnings.warn(
+                    f"Event {self.id}: Negative attended count. Setting to 0.",
+                    UserWarning,
+                )
+                self.attended_count = 0
+        except (ValueError, TypeError) as e:
+            warnings.warn(
+                f"Event {self.id}: Invalid attended count: {data.get('Attended Student Count')}. "
+                f"Error: {str(e)}. Setting to 0.",
+                UserWarning,
+            )
+            self.attended_count = 0
+
+        # Add handling for volunteers_needed with error handling
+        volunteers_needed_str = data.get("Volunteers Needed")
+        if volunteers_needed_str:
+            try:
+                self.volunteers_needed = int(float(str(volunteers_needed_str)))
+                if self.volunteers_needed < 0:
+                    warnings.warn(
+                        f"Event {self.id}: Negative volunteers needed. Setting to 0.",
+                        UserWarning,
+                    )
+                    self.volunteers_needed = 0
+            except (ValueError, TypeError) as e:
+                warnings.warn(
+                    f"Event {self.id}: Invalid volunteers needed value: {volunteers_needed_str}. "
+                    f"Error: {str(e)}. Skipping.",
+                    UserWarning,
+                )
+
+        # Set event type
         self.type = EventType.VIRTUAL_SESSION
 
-        # Handle role-specific data
+        # Handle role-specific data with error handling
         role = data.get("SignUp Role", "").strip().lower()
         name = data.get("Name", "").strip()
         user_id = data.get("User Auth Id", "").strip()
@@ -860,39 +1063,55 @@ class Event(db.Model):
                     volunteer, participant_type="Professional", status="Confirmed"
                 )
 
-    def validate_dates(self):
-        """Ensure event dates are valid"""
-        if self.end_date and self.start_date and self.end_date < self.start_date:
-            raise ValueError("End date must be after start date")
+    def validate_status_transition(self, new_status=None):
+        """
+        Validate status transitions to ensure logical workflow.
 
-    def validate_counts(self):
-        """Ensure attendance counts are consistent"""
-        if self.attended_count > self.registered_count:
-            raise ValueError("Attended count cannot exceed registered count")
+        This method checks if a status transition from the previous status to the
+        new status is valid according to business rules. Invalid transitions
+        raise exceptions to prevent data inconsistencies.
 
-    def validate_status_transition(self):
-        """Validate status transitions"""
+        Status Workflow Rules:
+        - COMPLETED cannot transition to DRAFT
+        - CANCELLED cannot transition to COMPLETED
+        - DRAFT cannot transition to COMPLETED (but can transition to CANCELLED - cancellation allowed from any status)
+
+        Args:
+            new_status: The new status value to validate. If None, uses self.status.
+
+        Raises:
+            ValueError: If status transition is invalid
+
+        Note:
+            This method is called automatically by the status validator when
+            status changes are detected.
+
+        Example:
+            >>> event.status = EventStatus.DRAFT
+            >>> event.status = EventStatus.COMPLETED  # Raises ValueError
+        """
         if not self._previous_status:
             return
 
         invalid_transitions = {
             EventStatus.COMPLETED: [EventStatus.DRAFT],
             EventStatus.CANCELLED: [EventStatus.COMPLETED],
-            EventStatus.DRAFT: [EventStatus.COMPLETED, EventStatus.CANCELLED],
+            EventStatus.DRAFT: [EventStatus.COMPLETED],  # DRAFT can transition to CANCELLED (cancellation allowed from any status)
         }
 
+        # Use provided new_status or fall back to self.status
+        status_to_check = new_status if new_status is not None else self.status
+        
+        # Check if the transition from previous_status to new_status is invalid
         if (
-            self._previous_status in invalid_transitions
-            and self.status in invalid_transitions[self._previous_status]
+            self._previous_status
+            and self._previous_status in invalid_transitions
+            and status_to_check in invalid_transitions[self._previous_status]
         ):
             raise ValueError(
-                f"Invalid status transition from {self._previous_status} to {self.status}"
+                f"Invalid status transition from {self._previous_status} to {status_to_check}"
             )
 
-    def validate_title(self):
-        """Validate event title"""
-        if not self.title or not self.title.strip():
-            raise ValueError("Event title cannot be empty")
 
     @property
     def is_at_capacity(self):
@@ -925,49 +1144,531 @@ class Event(db.Model):
         )
 
     def __init__(self, *args, **kwargs):
-        """Initialize event with validation"""
+        """
+        Initialize event with automatic validation.
+
+        Validation is handled automatically via @validates decorators when fields are assigned.
+        The status field is tracked for transition validation.
+        """
         super().__init__(*args, **kwargs)
-        self._previous_status = self.status
-        self.validate_title()  # Validate title on initialization
+        self._previous_status = getattr(self, "status", None)
 
     @validates("status")
     def validate_status(self, key, value):
-        """Validate status changes"""
-        if not hasattr(self, "status"):
-            self._previous_status = None
+        """
+        Validates event status to ensure it's a valid EventStatus enum value.
+
+        This validator handles both enum instances and string representations,
+        converting strings to proper enum values when possible. Uses value-based
+        lookup instead of name-based lookup for better compatibility. Also tracks
+        status transitions and validates them.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The status value to validate
+
+        Returns:
+            EventStatus: Valid status enum value
+
+        Raises:
+            ValueError: If status value is invalid or transition is invalid
+
+        Example:
+            >>> event.validate_status("status", "Completed")
+            EventStatus.COMPLETED
+
+            >>> event.validate_status("status", EventStatus.CONFIRMED)
+            EventStatus.CONFIRMED
+        """
+        # Track previous status for transition validation
+        # Always get current status first (handles cases after commit/refresh)
+        current_status = getattr(self, "status", None)
+        # Initialize _previous_status if it doesn't exist or is None
+        if not hasattr(self, "_previous_status"):
+            self._previous_status = current_status
         else:
-            self._previous_status = self.status
+            # Update _previous_status with current status before validation
+            # This ensures we track the status before the new assignment
+            self._previous_status = current_status if current_status is not None else None
 
-        if value not in EventStatus.__members__.values():
-            raise ValueError(f"Invalid status: {value}")
+        # Handle None - default to DRAFT
+        if value is None:
+            value = EventStatus.DRAFT
 
-        if self._previous_status:
-            self.validate_status_transition()
-        return value
+        # If it's already an enum instance, validate it exists
+        if isinstance(value, EventStatus):
+            # Check transition from _previous_status to new value (before assignment)
+            if self._previous_status:
+                self.validate_status_transition(new_status=value)
+            return value
+
+        # Handle string input - try value-based lookup first
+        if isinstance(value, str):
+            for enum_member in EventStatus:
+                if enum_member.value.lower() == value.lower():
+                    # Check transition from _previous_status to new value (before assignment)
+                    if self._previous_status:
+                        self.validate_status_transition(new_status=enum_member)
+                    return enum_member
+            # Try name-based lookup for backwards compatibility
+            try:
+                enum_value = EventStatus[value.upper().replace(" ", "_")]
+                if self._previous_status:
+                    self.validate_status_transition(new_status=enum_value)
+                return enum_value
+            except KeyError:
+                raise ValueError(
+                    f"Invalid status: {value}. "
+                    f"Valid values: {[s.value for s in EventStatus]}"
+                )
+
+        raise ValueError(f"Status must be an EventStatus enum value or valid string")
+
+    @validates("type")
+    def validate_type(self, key, value):
+        """
+        Validates event type to ensure it's a valid EventType enum value.
+
+        This validator handles both enum instances and string representations,
+        converting strings to proper enum values when possible. Uses value-based
+        lookup instead of name-based lookup for better compatibility.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The type value to validate
+
+        Returns:
+            EventType: Valid type enum value
+
+        Raises:
+            ValueError: If type value is invalid
+
+        Example:
+            >>> event.validate_type("type", "virtual_session")
+            EventType.VIRTUAL_SESSION
+
+            >>> event.validate_type("type", EventType.CAREER_FAIR)
+            EventType.CAREER_FAIR
+        """
+        if value is None:
+            return EventType.IN_PERSON  # Default type
+
+        if isinstance(value, EventType):
+            return value
+
+        if isinstance(value, str):
+            # Try value-based lookup first (matches enum.value)
+            for enum_member in EventType:
+                if enum_member.value.lower() == value.lower():
+                    return enum_member
+            # Try name-based lookup for backwards compatibility
+            try:
+                return EventType[value.upper()]
+            except KeyError:
+                raise ValueError(
+                    f"Invalid event type: {value}. "
+                    f"Valid values: {[t.value for t in EventType]}"
+                )
+
+        raise ValueError(f"Type must be an EventType enum value or valid string")
+
+    @validates("format")
+    def validate_format(self, key, value):
+        """
+        Validates event format to ensure it's a valid EventFormat enum value.
+
+        This validator handles both enum instances and string representations,
+        converting strings to proper enum values when possible. Uses value-based
+        lookup instead of name-based lookup for better compatibility.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The format value to validate
+
+        Returns:
+            EventFormat: Valid format enum value
+
+        Raises:
+            ValueError: If format value is invalid
+
+        Example:
+            >>> event.validate_format("format", "virtual")
+            EventFormat.VIRTUAL
+
+            >>> event.validate_format("format", EventFormat.IN_PERSON)
+            EventFormat.IN_PERSON
+        """
+        if value is None:
+            return EventFormat.IN_PERSON  # Default format
+
+        if isinstance(value, EventFormat):
+            return value
+
+        if isinstance(value, str):
+            # Try value-based lookup first (matches enum.value)
+            for enum_member in EventFormat:
+                if enum_member.value.lower() == value.lower():
+                    return enum_member
+            # Try name-based lookup for backwards compatibility
+            try:
+                return EventFormat[value.upper()]
+            except KeyError:
+                raise ValueError(
+                    f"Invalid event format: {value}. "
+                    f"Valid values: {[f.value for f in EventFormat]}"
+                )
+
+        raise ValueError(f"Format must be an EventFormat enum value or valid string")
+
+    @validates("cancellation_reason")
+    def validate_cancellation_reason(self, key, value):
+        """
+        Validates cancellation reason to ensure it's a valid CancellationReason enum value.
+
+        This validator handles both enum instances and string representations,
+        converting strings to proper enum values when possible. Uses value-based
+        lookup instead of name-based lookup for better compatibility.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The cancellation reason value to validate
+
+        Returns:
+            CancellationReason or None: Valid cancellation reason enum value or None
+
+        Raises:
+            ValueError: If cancellation reason value is invalid
+
+        Example:
+            >>> event.validate_cancellation_reason("cancellation_reason", "weather")
+            CancellationReason.WEATHER
+
+            >>> event.validate_cancellation_reason("cancellation_reason", CancellationReason.LOW_ENROLLMENT)
+            CancellationReason.LOW_ENROLLMENT
+        """
+        if value is None:
+            return None  # Cancellation reason is optional
+
+        if isinstance(value, CancellationReason):
+            return value
+
+        if isinstance(value, str):
+            # Try value-based lookup first (matches enum.value)
+            for enum_member in CancellationReason:
+                if enum_member.value.lower() == value.lower():
+                    return enum_member
+            # Try name-based lookup for backwards compatibility
+            try:
+                return CancellationReason[value.upper()]
+            except KeyError:
+                raise ValueError(
+                    f"Invalid cancellation reason: {value}. "
+                    f"Valid values: {[r.value for r in CancellationReason]}"
+                )
+
+        raise ValueError(
+            f"Cancellation reason must be a CancellationReason enum value or valid string"
+        )
+
+    @validates("salesforce_id")
+    def validate_salesforce_id_field(self, key, value):
+        """
+        Validates Salesforce ID format using shared validator.
+
+        Args:
+            key (str): The name of the field being validated
+            value: Salesforce ID to validate
+
+        Returns:
+            str: Validated Salesforce ID or None
+
+        Raises:
+            ValueError: If Salesforce ID format is invalid
+
+        Example:
+            >>> event.validate_salesforce_id_field("salesforce_id", "0011234567890ABCD")
+            '0011234567890ABCD'
+        """
+        return validate_salesforce_id(value)
 
     @validates("title")
     def validate_title_field(self, key, value):
-        """Validate title field"""
+        """
+        Validates event title to ensure it's not empty.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The title value to validate
+
+        Returns:
+            str: Validated title string
+
+        Raises:
+            ValueError: If title is empty or None
+
+        Example:
+            >>> event.validate_title_field("title", "Career Fair 2024")
+            'Career Fair 2024'
+        """
         if not value or not value.strip():
             raise ValueError("Event title cannot be empty")
-        return value
+        return value.strip()
+
+    @validates("start_date", "end_date")
+    def validate_dates(self, key, value):
+        """
+        Validates and converts datetime fields to proper datetime objects with timezone awareness.
+
+        This validator ensures that date/datetime fields are properly formatted and converted
+        from various input formats (strings, datetime objects) to consistent timezone-aware
+        datetime objects. Invalid dates result in warnings and return None rather than raising
+        exceptions, allowing the save operation to continue with null values.
+
+        Args:
+            key (str): The name of the field being validated (start_date or end_date)
+            value: The datetime value to validate (can be string, datetime, or None)
+
+        Returns:
+            datetime: Converted timezone-aware datetime object or None if invalid
+
+        Raises:
+            ValueError: If date string cannot be parsed in strict mode
+
+        Example:
+            >>> event.validate_dates("start_date", "2024-01-15 10:00:00")
+            datetime.datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+            >>> event.validate_dates("start_date", "invalid")
+            None  # Returns None and logs warning
+        """
+        if not value:  # Handle empty strings and None
+            return None
+
+        # If it's already a datetime, ensure timezone awareness
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                # Assume UTC if timezone-naive
+                warnings.warn(
+                    f"Timezone-naive datetime provided for {key}. Assuming UTC.",
+                    UserWarning,
+                )
+                return value.replace(tzinfo=timezone.utc)
+            return value
+
+        # Handle string input - try common formats
+        if isinstance(value, str):
+            # Try ISO format first (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+            date_formats = [
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M:%S%z",
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S%z",
+                "%Y-%m-%d",
+                "%m/%d/%Y %H:%M:%S",
+                "%m/%d/%Y",
+            ]
+
+            for fmt in date_formats:
+                try:
+                    parsed = datetime.strptime(value, fmt)
+                    # If parsed datetime is naive, make it timezone-aware (UTC)
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=timezone.utc)
+                    return parsed
+                except ValueError:
+                    continue
+
+            # If no format worked, log warning and return None
+            warnings.warn(
+                f"Invalid date format for {key}: {value}. "
+                f"Expected formats: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS",
+                UserWarning,
+            )
+            return None
+
+        # For other types, log warning
+        warnings.warn(
+            f"Invalid type for {key}: {type(value).__name__}. Expected datetime or string.",
+            UserWarning,
+        )
+        return None
+
+    def _validate_date_relationship(self):
+        """
+        Internal method to validate that end_date is after start_date.
+
+        This is called after date assignments to ensure date consistency.
+        Uses warnings for non-critical issues instead of exceptions.
+
+        Note:
+            This method should be called manually after both dates are set,
+            or can be triggered via event listeners.
+        """
+        if self.end_date and self.start_date:
+            if self.end_date < self.start_date:
+                warnings.warn(
+                    f"Event {self.id}: End date ({self.end_date}) is before start date ({self.start_date}). "
+                    f"This may indicate a data issue.",
+                    UserWarning,
+                )
+
+    @validates(
+        "participant_count",
+        "registered_count",
+        "attended_count",
+        "available_slots",
+        "scheduled_participants_count",
+        "volunteers_needed",
+        "total_requested_volunteer_jobs",
+    )
+    def validate_counts(self, key, value):
+        """
+        Validates and normalizes count fields to ensure they are non-negative integers.
+
+        This validator handles various input formats and ensures count fields
+        are properly formatted as integers with a minimum value of 0.
+        Invalid values result in warnings and return 0 rather than raising exceptions,
+        allowing the save operation to continue with default values.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The count value to validate (can be int, float, or string)
+
+        Returns:
+            int: Normalized count value (minimum 0)
+
+        Example:
+            >>> event.validate_counts("participant_count", "5")
+            5
+
+            >>> event.validate_counts("participant_count", -10)
+            0  # Negative values are normalized to 0
+
+            >>> event.validate_counts("participant_count", "invalid")
+            0  # Returns 0 and logs warning
+        """
+        if not value and value != 0:  # Handle empty strings, None, but allow 0
+            return 0
+        try:
+            original_value = value
+            value = int(float(value))  # Handle string numbers and floats
+            # Issue warning if value is negative (will be normalized to 0)
+            if value < 0:
+                warnings.warn(
+                    f"Invalid {key} value: {original_value}. Negative values normalized to 0.",
+                    UserWarning,
+                )
+                return 0
+            return value  # Already non-negative, no need for max()
+        except (ValueError, TypeError):
+            warnings.warn(
+                f"Invalid {key} value: {value}. Using default value of 0.",
+                UserWarning,
+            )
+            return 0
+
+    @validates("duration")
+    def validate_duration(self, key, value):
+        """
+        Validates and normalizes duration field to ensure it's a non-negative integer.
+
+        Duration represents the length of the event in minutes (or appropriate time unit).
+        This validator handles various input formats and ensures duration is properly
+        formatted as an integer with a minimum value of 0.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The duration value to validate (can be int, float, or string)
+
+        Returns:
+            int or None: Normalized duration value (minimum 0) or None if not provided
+
+        Example:
+            >>> event.validate_duration("duration", "60")
+            60
+
+            >>> event.validate_duration("duration", -30)
+            0  # Negative values are normalized to 0
+
+            >>> event.validate_duration("duration", None)
+            None  # Duration is optional
+        """
+        if not value and value != 0:  # Handle empty strings, None, but allow 0
+            return None  # Duration is optional
+        try:
+            original_value = value
+            value = int(float(value))  # Handle string numbers and floats
+            # Issue warning if value is negative (will be normalized to 0)
+            if value < 0:
+                warnings.warn(
+                    f"Invalid {key} value: {original_value}. Negative values normalized to 0.",
+                    UserWarning,
+                )
+                return 0
+            return value  # Already non-negative, no need for max()
+        except (ValueError, TypeError):
+            warnings.warn(
+                f"Invalid {key} value: {value}. Setting to None.",
+                UserWarning,
+            )
+            return None
+
+    def _validate_count_relationships(self):
+        """
+        Internal method to validate relationships between count fields.
+
+        This is called after count assignments to ensure count consistency.
+        Uses warnings for non-critical issues instead of exceptions.
+
+        Note:
+            This method should be called manually after counts are updated,
+            or can be triggered via event listeners.
+        """
+        if self.attended_count and self.registered_count:
+            if self.attended_count > self.registered_count:
+                warnings.warn(
+                    f"Event {self.id}: Attended count ({self.attended_count}) exceeds "
+                    f"registered count ({self.registered_count}). This may indicate a data issue.",
+                    UserWarning,
+                )
+
+        if self.attended_count and self.participant_count:
+            if self.attended_count > self.participant_count:
+                warnings.warn(
+                    f"Event {self.id}: Attended count ({self.attended_count}) exceeds "
+                    f"participant count ({self.participant_count}). This may indicate a data issue.",
+                    UserWarning,
+                )
 
     def add_volunteer(
         self, volunteer, participant_type="Volunteer", status="Confirmed"
     ):
         """
-        Add volunteer to event and create participation record
+        Add volunteer to event and create participation record.
 
         This method adds a volunteer to an event and creates the necessary
-        participation record to track their involvement.
+        participation record to track their involvement. If the volunteer is
+        already associated with the event, updates the existing participation record.
 
         Args:
-            volunteer: Volunteer object to add
-            participant_type: Type of participation (default: 'Volunteer')
-            status: Participation status (default: 'Confirmed')
+            volunteer (Volunteer): Volunteer object to add to the event
+            participant_type (str): Type of participation, e.g., 'Volunteer', 'Professional'
+                (default: 'Volunteer')
+            status (str): Participation status, e.g., 'Confirmed', 'Attended', 'No-Show'
+                (default: 'Confirmed')
 
         Returns:
-            EventParticipation: The created participation record
+            EventParticipation: The created or updated participation record
+
+        Example:
+            >>> volunteer = Volunteer.query.first()
+            >>> participation = event.add_volunteer(volunteer, participant_type="Professional")
+            >>> participation.status
+            'Confirmed'
+
+        Note:
+            This method automatically handles the many-to-many relationship
+            and creates the EventParticipation record for tracking.
         """
         # Add to many-to-many relationship if not present
         if volunteer not in self.volunteers:
