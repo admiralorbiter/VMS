@@ -1,4 +1,5 @@
 import io
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 import openpyxl
@@ -30,6 +31,8 @@ from models.teacher import Teacher
 from models.volunteer import Volunteer
 from routes.decorators import district_scoped_required
 from routes.utils import admin_required
+
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
@@ -3025,7 +3028,9 @@ def load_routes(bp):
             try:
                 # Filter events by allowed districts
                 base_query = base_query.filter(
-                    Event.districts.any(District.name.in_(current_user.allowed_districts))
+                    Event.districts.any(
+                        District.name.in_(current_user.allowed_districts)
+                    )
                 )
             except (TypeError, ValueError):
                 # If filtering fails, return no events
@@ -4346,7 +4351,15 @@ def load_routes(bp):
     @login_required
     @admin_required
     def import_teacher_progress_data(district_name, sheet_id):
-        """Import teacher progress data from Google Sheet"""
+        """
+        Import teacher progress data from Google Sheet with robust error handling.
+
+        This function:
+        - Reads data from Google Sheets with case-insensitive column matching
+        - Validates each record individually (doesn't fail entire import on one error)
+        - Provides detailed logging and user feedback
+        - Verifies data was actually imported
+        """
         # Restrict access to Kansas City Kansas Public Schools only
         if district_name != "Kansas City Kansas Public Schools":
             flash(
@@ -4365,11 +4378,19 @@ def load_routes(bp):
                 )
             )
 
+        sheet = None
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
+            logger.info(
+                f"Starting teacher progress import for sheet ID {sheet_id}, "
+                f"academic_year: {sheet.academic_year}, purpose: {sheet.purpose}"
+            )
 
             if sheet.purpose != "teacher_progress_tracking":
                 flash("Invalid sheet type for teacher progress tracking.", "error")
+                logger.warning(
+                    f"Invalid sheet purpose: {sheet.purpose} (expected: teacher_progress_tracking)"
+                )
                 return redirect(
                     url_for(
                         "report.virtual_teacher_progress_google_sheets",
@@ -4382,9 +4403,10 @@ def load_routes(bp):
             import pandas as pd
 
             # Get the sheet ID from the GoogleSheet record
-            sheet_id = sheet.sheet_id
-            if not sheet_id:
+            google_sheet_id = sheet.sheet_id
+            if not google_sheet_id:
                 flash("No sheet ID found for this Google Sheet.", "error")
+                logger.error("No sheet_id found in GoogleSheet record")
                 return redirect(
                     url_for(
                         "report.virtual_teacher_progress_google_sheets",
@@ -4394,20 +4416,28 @@ def load_routes(bp):
                 )
 
             # Create CSV URL for Google Sheets - use export format which works better
-            csv_url = (
-                f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-            )
+            csv_url = f"https://docs.google.com/spreadsheets/d/{google_sheet_id}/export?format=csv"
 
+            logger.info(f"Attempting to read Google Sheet from: {csv_url}")
             try:
                 # Read data from Google Sheet
                 df = pd.read_csv(csv_url)
+                logger.info(f"Successfully read {len(df)} rows from Google Sheet")
             except Exception as e:
                 # Try alternative URL format if the first one fails
-                csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+                logger.warning(
+                    f"First CSV URL failed: {str(e)}, trying alternative format"
+                )
+                csv_url = f"https://docs.google.com/spreadsheets/d/{google_sheet_id}/export?format=csv&gid=0"
                 try:
                     df = pd.read_csv(csv_url)
+                    logger.info(
+                        f"Successfully read {len(df)} rows using alternative URL"
+                    )
                 except Exception as e2:
-                    flash(f"Error reading Google Sheet: {str(e2)}", "error")
+                    error_msg = f"Error reading Google Sheet: {str(e2)}"
+                    logger.error(error_msg)
+                    flash(error_msg, "error")
                     return redirect(
                         url_for(
                             "report.virtual_teacher_progress_google_sheets",
@@ -4416,74 +4446,335 @@ def load_routes(bp):
                         )
                     )
 
-            # Convert DataFrame to list of dictionaries
-            # Expected columns: Building, Name, Email, Grade
+            # Log detected column names
+            logger.info(f"Detected columns in sheet: {list(df.columns)}")
+
+            # Helper function to find column case-insensitively
+            def find_column(df, possible_names):
+                """Find column by case-insensitive matching."""
+                df_cols_lower = {col.lower(): col for col in df.columns}
+                for name in possible_names:
+                    if name.lower() in df_cols_lower:
+                        return df_cols_lower[name.lower()]
+                return None
+
+            # Find columns with case-insensitive matching and fallbacks
+            building_col = find_column(
+                df, ["Building", "building", "School", "school", "School Name"]
+            )
+            name_col = find_column(
+                df, ["Name", "name", "Teacher Name", "Teacher", "teacher"]
+            )
+            email_col = find_column(
+                df, ["Email", "email", "E-mail", "e-mail", "Email Address"]
+            )
+            grade_col = find_column(
+                df, ["Grade", "grade", "Grade Level", "grade level"]
+            )
+
+            # Log column detection results
+            logger.info(
+                f"Column mapping - Building: {building_col}, Name: {name_col}, "
+                f"Email: {email_col}, Grade: {grade_col}"
+            )
+
+            # Validate required columns exist
+            missing_cols = []
+            if not building_col:
+                missing_cols.append("Building")
+            if not name_col:
+                missing_cols.append("Name")
+            if not email_col:
+                missing_cols.append("Email")
+
+            if missing_cols:
+                error_msg = (
+                    f"Required columns not found in sheet: {', '.join(missing_cols)}. "
+                    f"Available columns: {', '.join(df.columns)}"
+                )
+                logger.error(error_msg)
+                flash(error_msg, "error")
+                return redirect(
+                    url_for(
+                        "report.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=sheet.academic_year,
+                    )
+                )
+
+            # Use virtual_year from sheet, fallback to academic_year if not set
+            virtual_year = getattr(sheet, "virtual_year", None) or sheet.academic_year
+            academic_year = sheet.academic_year
+
+            logger.info(
+                f"Using virtual_year: {virtual_year}, academic_year: {academic_year}"
+            )
+
+            # Process rows and collect valid teacher data
             sample_teachers = []
-            for _, row in df.iterrows():
+            skipped_rows = 0
+            skipped_reasons = {"empty": 0, "missing_fields": 0}
+
+            for idx, row in df.iterrows():
                 # Skip empty rows
-                if pd.isna(row.get("Building")) or pd.isna(row.get("Name")):
+                building_val = (
+                    str(row.get(building_col, "")).strip()
+                    if building_col and not pd.isna(row.get(building_col, None))
+                    else ""
+                )
+                name_val = (
+                    str(row.get(name_col, "")).strip()
+                    if name_col and not pd.isna(row.get(name_col, None))
+                    else ""
+                )
+
+                if not building_val or not name_val:
+                    skipped_rows += 1
+                    skipped_reasons["empty"] += 1
                     continue
 
-                teacher_data = {
-                    "building": str(row.get("Building", "")).strip(),
-                    "name": str(row.get("Name", "")).strip(),
-                    "email": str(row.get("Email", "")).strip(),
-                    "grade": str(row.get("Grade", "")).strip(),
-                }
+                email_val = (
+                    str(row.get(email_col, "")).strip()
+                    if email_col and not pd.isna(row.get(email_col, None))
+                    else ""
+                )
+                grade_val = (
+                    str(row.get(grade_col, "")).strip()
+                    if grade_col and not pd.isna(row.get(grade_col, None))
+                    else ""
+                )
 
                 # Only add if we have required fields
-                if (
-                    teacher_data["building"]
-                    and teacher_data["name"]
-                    and teacher_data["email"]
-                ):
-                    sample_teachers.append(teacher_data)
+                if building_val and name_val and email_val:
+                    sample_teachers.append(
+                        {
+                            "building": building_val,
+                            "name": name_val,
+                            "email": email_val,
+                            "grade": grade_val if grade_val else None,
+                        }
+                    )
+                else:
+                    skipped_rows += 1
+                    skipped_reasons["missing_fields"] += 1
+                    logger.debug(
+                        f"Row {idx + 1} skipped - missing required fields: "
+                        f"building={bool(building_val)}, name={bool(name_val)}, email={bool(email_val)}"
+                    )
 
-            # Clear existing data for this academic year
+            logger.info(
+                f"Processed {len(df)} rows: {len(sample_teachers)} valid, "
+                f"{skipped_rows} skipped (empty: {skipped_reasons['empty']}, "
+                f"missing fields: {skipped_reasons['missing_fields']})"
+            )
+
+            # Clear existing data for this academic year and virtual year
+            from sqlalchemy.exc import IntegrityError
+
             from models import TeacherProgress
 
-            TeacherProgress.query.filter_by(
-                academic_year=sheet.academic_year, virtual_year=sheet.academic_year
+            deleted_count = TeacherProgress.query.filter_by(
+                academic_year=academic_year, virtual_year=virtual_year
             ).delete()
-
-            # Import new data
-            imported_count = 0
-            for teacher_data in sample_teachers:
-                teacher_progress = TeacherProgress(
-                    academic_year=sheet.academic_year,
-                    virtual_year=sheet.academic_year,
-                    building=teacher_data["building"],
-                    name=teacher_data["name"],
-                    email=teacher_data["email"],
-                    grade=teacher_data["grade"],
-                    target_sessions=1,  # Default target of 1 session
-                    created_by=current_user.id,
-                )
-                db.session.add(teacher_progress)
-                imported_count += 1
-
+            # Commit the delete immediately to ensure it's persisted
             db.session.commit()
+            logger.info(f"Deleted {deleted_count} existing records for {virtual_year}")
 
-            flash(
-                f"Successfully imported {imported_count} teachers from '{sheet.sheet_name}' for {sheet.academic_year}.",
-                "success",
+            # Detect and handle duplicates within the import batch
+            seen_emails = set()
+            duplicate_in_batch = []
+            unique_teachers = []
+
+            for idx, teacher_data in enumerate(sample_teachers, 1):
+                email_key = teacher_data["email"].lower().strip()
+                if email_key in seen_emails:
+                    duplicate_in_batch.append(
+                        f"Row {idx}: Duplicate email '{teacher_data['email']}' for {teacher_data.get('name', 'Unknown')}"
+                    )
+                    logger.warning(
+                        f"Duplicate email in import batch: {teacher_data['email']} "
+                        f"(Row {idx}, Name: {teacher_data.get('name', 'Unknown')})"
+                    )
+                    continue
+                seen_emails.add(email_key)
+                unique_teachers.append(teacher_data)
+
+            if duplicate_in_batch:
+                logger.warning(
+                    f"Found {len(duplicate_in_batch)} duplicate emails in import batch. "
+                    f"Only first occurrence of each will be imported."
+                )
+
+            # Import new data with per-record error handling and individual commits
+            imported_count = 0
+            updated_count = 0
+            validation_errors = []
+            db_errors = []
+            duplicate_errors = []
+
+            for idx, teacher_data in enumerate(unique_teachers, 1):
+                try:
+                    email_lower = teacher_data["email"].lower().strip()
+
+                    # Check if record already exists (shouldn't happen after delete, but handle it)
+                    existing = TeacherProgress.query.filter_by(
+                        email=email_lower, virtual_year=virtual_year
+                    ).first()
+
+                    if existing:
+                        # Update existing record instead of creating new one
+                        existing.academic_year = academic_year
+                        existing.building = teacher_data["building"]
+                        existing.name = teacher_data["name"]
+                        existing.email = email_lower
+                        existing.grade = (
+                            teacher_data["grade"] if teacher_data["grade"] else None
+                        )
+                        existing.target_sessions = 1
+                        # updated_at is automatically handled by the column's onupdate=func.now()
+                        updated_count += 1
+                        logger.debug(
+                            f"Updating existing record for {teacher_data.get('name', 'Unknown')} "
+                            f"({email_lower})"
+                        )
+                    else:
+                        # Create new TeacherProgress record (validation happens here)
+                        teacher_progress = TeacherProgress(
+                            academic_year=academic_year,
+                            virtual_year=virtual_year,
+                            building=teacher_data["building"],
+                            name=teacher_data["name"],
+                            email=email_lower,
+                            grade=(
+                                teacher_data["grade"] if teacher_data["grade"] else None
+                            ),
+                            target_sessions=1,  # Default target of 1 session
+                            created_by=current_user.id,
+                        )
+                        db.session.add(teacher_progress)
+                        imported_count += 1
+
+                    # Commit each record individually to avoid rollback of all records on error
+                    db.session.commit()
+                    logger.debug(
+                        f"Successfully saved record {idx}/{len(unique_teachers)}: "
+                        f"{teacher_data.get('name', 'Unknown')}"
+                    )
+
+                except IntegrityError as e:
+                    # Handle unique constraint violation (duplicate email)
+                    db.session.rollback()
+                    error_msg = (
+                        f"Row {idx}: Duplicate email '{teacher_data['email']}' for "
+                        f"{teacher_data.get('name', 'Unknown')} (already exists in database)"
+                    )
+                    duplicate_errors.append(error_msg)
+                    logger.warning(error_msg)
+                    continue
+
+                except ValueError as e:
+                    # Validation error - log but continue
+                    db.session.rollback()
+                    error_msg = f"Row {idx}: Validation failed for {teacher_data.get('name', 'Unknown')} - {str(e)}"
+                    validation_errors.append(error_msg)
+                    logger.warning(error_msg)
+                    continue
+
+                except Exception as e:
+                    # Other errors - log but continue
+                    db.session.rollback()
+                    error_msg = f"Row {idx}: Error processing record for {teacher_data.get('name', 'Unknown')} - {str(e)}"
+                    db_errors.append(error_msg)
+                    logger.error(error_msg, exc_info=True)
+                    continue
+
+            total_processed = imported_count + updated_count
+            logger.info(
+                f"Import complete: {imported_count} new records, {updated_count} updated records, "
+                f"{len(validation_errors)} validation errors, {len(db_errors)} db errors, "
+                f"{len(duplicate_errors)} duplicate errors"
             )
+
+            # Verify import by querying database
+            actual_count = TeacherProgress.query.filter_by(
+                academic_year=academic_year, virtual_year=virtual_year
+            ).count()
+
+            logger.info(
+                f"Import verification: Expected {total_processed} (imported: {imported_count}, "
+                f"updated: {updated_count}), Found {actual_count} records in database"
+            )
+
+            # Build user feedback message
+            if total_processed > 0:
+                success_msg = (
+                    f"Successfully processed {total_processed} teachers from '{sheet.sheet_name}' "
+                    f"for {virtual_year}."
+                )
+                if imported_count > 0 and updated_count > 0:
+                    success_msg += f" ({imported_count} new, {updated_count} updated)"
+                elif updated_count > 0:
+                    success_msg += f" ({updated_count} updated)"
+                flash(success_msg, "success")
+            else:
+                flash(
+                    f"No teachers were successfully imported from '{sheet.sheet_name}'. "
+                    f"Please check the errors below.",
+                    "error",
+                )
+
+            # Report duplicate emails in batch
+            if duplicate_in_batch:
+                flash(
+                    f"Found {len(duplicate_in_batch)} duplicate emails in the spreadsheet. "
+                    f"Only the first occurrence of each was imported.",
+                    "warning",
+                )
+
+            # Report various error types
+            all_errors = validation_errors + db_errors + duplicate_errors
+            if all_errors:
+                error_count = len(all_errors)
+                error_details = "\n".join(all_errors[:10])  # Show first 10 errors
+                error_type_msg = []
+                if validation_errors:
+                    error_type_msg.append(f"{len(validation_errors)} validation")
+                if db_errors:
+                    error_type_msg.append(f"{len(db_errors)} database")
+                if duplicate_errors:
+                    error_type_msg.append(f"{len(duplicate_errors)} duplicate")
+
+                flash(
+                    f"{error_count} record(s) had errors ({', '.join(error_type_msg)}):\n{error_details}",
+                    "warning" if error_count < total_processed else "error",
+                )
+
+            if actual_count != total_processed:
+                warning_msg = (
+                    f"Note: Processed {total_processed} records but found {actual_count} in database. "
+                    f"This may indicate some records were skipped due to duplicates or errors."
+                )
+                logger.warning(warning_msg)
+                flash(warning_msg, "warning")
 
             return redirect(
                 url_for(
                     "report.virtual_teacher_progress_google_sheets",
                     district_name=district_name,
-                    year=sheet.academic_year,
+                    year=virtual_year,
                 )
             )
 
         except Exception as e:
-            flash(f"Error importing teacher progress data: {str(e)}", "error")
+            error_msg = f"Error importing teacher progress data: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            flash(error_msg, "error")
+            year = sheet.academic_year if sheet else "unknown"
             return redirect(
                 url_for(
                     "report.virtual_teacher_progress_google_sheets",
                     district_name=district_name,
-                    year=sheet.academic_year,
+                    year=year,
                 )
             )
 
