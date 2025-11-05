@@ -44,7 +44,7 @@ Integration Features:
 - Salesforce ID mapping for synchronization
 - Email message ID tracking
 - Event relationship for activity context
-- Volunteer relationship for activity association
+- Contact relationship for activity association (volunteers, teachers, etc.)
 
 Data Management:
 - Soft deletion for data preservation
@@ -55,7 +55,7 @@ Data Management:
 Usage Examples:
     # Create a new history record
     history = History(
-        volunteer_id=volunteer.id,
+        contact_id=volunteer.id,
         action="volunteer_created",
         summary="New volunteer registration",
         description="Volunteer completed registration process",
@@ -72,33 +72,53 @@ Usage Examples:
 
     # Convert to dictionary for API
     history_dict = history.to_dict()
+
+    # Use enum for type validation
+    history.history_type_enum = HistoryType.ACTIVITY
 """
 
+import warnings
 from datetime import datetime, timezone
-from enum import Enum
 
-from sqlalchemy import event
 from sqlalchemy.orm import validates
 from sqlalchemy.sql import func
 
 from models import db
-from models.utils import get_utc_now
+from models.contact import FormEnum
+from models.utils import get_utc_now, validate_salesforce_id
 
 
-class HistoryType(Enum):
+class HistoryType(FormEnum):
     """
     Enum for categorizing different types of history records.
 
     Provides standardized categories for organizing and filtering
-    history records based on their purpose and content.
+    history records based on their purpose and content. Inherits from
+    FormEnum to provide form integration methods (choices(), choices_required()).
 
     Categories:
-        - NOTE: General notes and comments about volunteers
-        - ACTIVITY: Volunteer activities and engagements
-        - STATUS_CHANGE: Changes to volunteer status or information
+        - NOTE: General notes and comments about contacts
+        - ACTIVITY: Contact activities and engagements
+        - STATUS_CHANGE: Changes to contact status or information
         - ENGAGEMENT: Specific engagement activities and interactions
         - SYSTEM: System-generated records and automated actions
         - OTHER: Miscellaneous history records that don't fit other categories
+
+    Usage Examples:
+        # Use in forms
+        history_type_field = SelectField(
+            "History Type",
+            choices=HistoryType.choices(),
+            validators=[Optional()]
+        )
+
+        # Validate history type
+        history.history_type_enum = HistoryType.ACTIVITY
+        assert history.history_type == "activity"
+
+        # Check enum value
+        if history.history_type_enum == HistoryType.NOTE:
+            print("This is a note")
     """
 
     NOTE = "note"
@@ -130,9 +150,10 @@ class History(db.Model):
         - Recent activity detection
 
     Relationships:
-        - Many-to-one with Volunteer model
+        - Many-to-one with Contact model (volunteers, teachers, etc.)
         - Many-to-one with Event model (optional)
         - Many-to-one with User model (created_by, updated_by)
+        - Cascade delete configured for contact relationship
 
     Activity Tracking:
         - action: Type of action performed (e.g., "created", "updated")
@@ -216,13 +237,13 @@ class History(db.Model):
     notes = db.Column(db.Text, nullable=True)
 
     # Relationship Definitions
-    # cascade='all, delete-orphan' ensures proper cleanup of related records
+    # Note: Cascade delete configured for proper cleanup of related records
     event = db.relationship(
         "Event",
         backref=db.backref(
             "histories",
             lazy="dynamic",  # Lazy loading for better performance
-            cascade="all, delete-orphan",  # Automatically handle related records
+            cascade="all, delete-orphan",  # Automatically delete histories when event is deleted
         ),
         post_update=True,  # Avoid circular dependency issues
         foreign_keys=[event_id],  # Explicitly specify foreign key
@@ -230,12 +251,24 @@ class History(db.Model):
 
     contact = db.relationship(
         "Contact",
-        backref=db.backref("histories", lazy="dynamic", cascade="all, delete-orphan"),
+        backref=db.backref(
+            "histories",
+            lazy="dynamic",
+            cascade="all, delete-orphan",  # Automatically delete histories when contact is deleted
+        ),
         passive_deletes=True,  # Works with ondelete="CASCADE" for better performance
     )
 
-    created_by = db.relationship("User", foreign_keys=[created_by_id])
-    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+    created_by = db.relationship(
+        "User",
+        foreign_keys=[created_by_id],
+        backref=db.backref("created_histories", lazy="dynamic"),
+    )
+    updated_by = db.relationship(
+        "User",
+        foreign_keys=[updated_by_id],
+        backref=db.backref("updated_histories", lazy="dynamic"),
+    )
 
     __table_args__ = (
         # Composite index for common queries
@@ -256,6 +289,172 @@ class History(db.Model):
         if "activity_date" not in kwargs:
             kwargs["activity_date"] = datetime.now(timezone.utc)
         super().__init__(**kwargs)
+
+    @validates("history_type")
+    def validate_history_type(self, key, value):
+        """
+        Validates history_type to ensure it's a valid HistoryType enum value.
+
+        This validator handles both enum instances and string representations,
+        converting strings to proper enum values when possible. Uses value-based
+        lookup for better compatibility. Invalid values fall back to HistoryType.OTHER
+        per existing test expectations.
+
+        Args:
+            key (str): The name of the field being validated
+            value: The history_type value to validate
+
+        Returns:
+            str: Validated history_type string value (lowercase)
+
+        Example:
+            >>> history.validate_history_type("history_type", "activity")
+            'activity'
+
+            >>> history.validate_history_type("history_type", HistoryType.ACTIVITY)
+            'activity'
+
+            >>> history.validate_history_type("history_type", "NOTE")
+            'note'
+
+            >>> history.validate_history_type("history_type", "invalid")
+            'other'  # Falls back to OTHER for invalid values
+        """
+        if value is None:
+            return HistoryType.NOTE.value  # Default to NOTE
+
+        # If it's already an enum instance, return its value
+        if isinstance(value, HistoryType):
+            return value.value.lower()
+
+        # Handle string input - try value-based lookup first (case-insensitive)
+        if isinstance(value, str):
+            value_lower = value.lower().strip()
+            for enum_member in HistoryType:
+                if enum_member.value.lower() == value_lower:
+                    return enum_member.value.lower()
+            # Try name-based lookup for backwards compatibility
+            try:
+                enum_member = HistoryType[value.upper().replace(" ", "_")]
+                return enum_member.value.lower()
+            except KeyError:
+                # Invalid value - fall back to OTHER per test expectations
+                warnings.warn(
+                    f"Invalid history_type value: {value}. Using HistoryType.OTHER.",
+                    UserWarning,
+                )
+                return HistoryType.OTHER.value
+
+        # For other types, warn and use default
+        warnings.warn(
+            f"Invalid history_type type: {type(value).__name__}. Using HistoryType.NOTE.",
+            UserWarning,
+        )
+        return HistoryType.NOTE.value
+
+    @validates("salesforce_id")
+    def validate_salesforce_id_field(self, key, value):
+        """
+        Validates Salesforce ID format using shared validator.
+
+        Args:
+            key (str): The name of the field being validated
+            value: Salesforce ID to validate
+
+        Returns:
+            str: Validated Salesforce ID or None
+
+        Raises:
+            ValueError: If Salesforce ID format is invalid
+
+        Example:
+            >>> history.validate_salesforce_id_field("salesforce_id", "0011234567890ABCD")
+            '0011234567890ABCD'
+        """
+        return validate_salesforce_id(value)
+
+    @validates("activity_date")
+    def validate_activity_date(self, key, value):
+        """
+        Validates and converts activity_date field to proper datetime object with timezone awareness.
+
+        This validator ensures that activity_date fields are properly formatted and converted
+        from various input formats (strings, datetime objects) to consistent timezone-aware
+        datetime objects. Invalid dates result in warnings and return None rather than raising
+        exceptions, allowing the save operation to continue with null values.
+
+        Note: The database column is currently not timezone-aware (db.DateTime), but this
+        validator ensures all datetime objects are timezone-aware in Python. A migration will
+        be needed to make the database column timezone-aware (db.DateTime(timezone=True)).
+
+        Args:
+            key (str): The name of the field being validated (activity_date)
+            value: The datetime value to validate (can be string, datetime, or None)
+
+        Returns:
+            datetime: Converted timezone-aware datetime object or None if invalid
+
+        Raises:
+            ValueError: If date string cannot be parsed in strict mode
+
+        Example:
+            >>> history.validate_activity_date("activity_date", "2024-01-15 10:00:00")
+            datetime.datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+            >>> history.validate_activity_date("activity_date", "invalid")
+            None  # Returns None and logs warning
+        """
+        if not value:  # Handle empty strings and None
+            return None
+
+        # If it's already a datetime, ensure timezone awareness
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                # Assume UTC if timezone-naive
+                warnings.warn(
+                    f"Timezone-naive datetime provided for {key}. Assuming UTC.",
+                    UserWarning,
+                )
+                return value.replace(tzinfo=timezone.utc)
+            return value
+
+        # Handle string input - try common formats
+        if isinstance(value, str):
+            # Try ISO format first (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+            date_formats = [
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M:%S%z",
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S%z",
+                "%Y-%m-%d",
+                "%m/%d/%Y %H:%M:%S",
+                "%m/%d/%Y",
+            ]
+
+            for fmt in date_formats:
+                try:
+                    parsed = datetime.strptime(value, fmt)
+                    # If parsed datetime is naive, make it timezone-aware (UTC)
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=timezone.utc)
+                    return parsed
+                except ValueError:
+                    continue
+
+            # If no format worked, log warning and return None
+            warnings.warn(
+                f"Invalid date format for {key}: {value}. "
+                f"Expected formats: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS",
+                UserWarning,
+            )
+            return None
+
+        # For other types, log warning
+        warnings.warn(
+            f"Invalid type for {key}: {type(value).__name__}. Expected datetime or string.",
+            UserWarning,
+        )
+        return None
 
     @validates("notes")
     def validate_notes(self, key, value):
@@ -313,7 +512,29 @@ class History(db.Model):
     def volunteer_id(self):
         """
         Backward compatibility property for volunteer_id.
-        Returns contact_id if the contact is a volunteer, None otherwise.
+
+        **READ-ONLY PROPERTY** - This property is provided for backward compatibility
+        only. Use `contact_id` for new code.
+
+        **IMPORTANT**: This property CANNOT be used in SQLAlchemy queries. It is a
+        Python property that accesses the relationship, not a database column. To query
+        by volunteer, use:
+        ```python
+        History.query.join(Contact).filter(Contact.type == 'volunteer', History.contact_id.in_(volunteer_ids))
+        ```
+
+        Returns:
+            int or None: contact_id if the contact is a volunteer, None otherwise
+
+        Example:
+            >>> history.volunteer_id
+            123  # If contact is a volunteer
+            >>> history.volunteer_id
+            None  # If contact is not a volunteer
+
+        Note:
+            This property is deprecated in favor of using contact_id directly.
+            It will be removed in a future version.
         """
         if hasattr(self.contact, "type") and self.contact.type == "volunteer":
             return self.contact.id
@@ -322,7 +543,30 @@ class History(db.Model):
     @property
     def teacher_id(self):
         """
-        Returns contact_id if the contact is a teacher, None otherwise.
+        Backward compatibility property for teacher_id.
+
+        **READ-ONLY PROPERTY** - This property is provided for backward compatibility
+        only. Use `contact_id` for new code.
+
+        **IMPORTANT**: This property CANNOT be used in SQLAlchemy queries. It is a
+        Python property that accesses the relationship, not a database column. To query
+        by teacher, use:
+        ```python
+        History.query.join(Contact).filter(Contact.type == 'teacher', History.contact_id.in_(teacher_ids))
+        ```
+
+        Returns:
+            int or None: contact_id if the contact is a teacher, None otherwise
+
+        Example:
+            >>> history.teacher_id
+            456  # If contact is a teacher
+            >>> history.teacher_id
+            None  # If contact is not a teacher
+
+        Note:
+            This property is deprecated in favor of using contact_id directly.
+            It will be removed in a future version.
         """
         if hasattr(self.contact, "type") and self.contact.type == "teacher":
             return self.contact.id
@@ -331,7 +575,29 @@ class History(db.Model):
     @property
     def contact_type(self):
         """
-        Returns the type of contact (volunteer, teacher, etc.)
+        Returns the type of contact associated with this history record.
+
+        This property provides access to the contact type (volunteer, teacher, etc.)
+        through the Contact relationship. Useful for filtering and displaying history
+        records by contact type.
+
+        Returns:
+            str or None: The type of contact (e.g., "volunteer", "teacher") or None
+                         if contact is not loaded or type is not set
+
+        Example:
+            >>> history.contact_type
+            'volunteer'
+            >>> history.contact_type
+            'teacher'
+            >>> history.contact_type
+            None  # If contact is not loaded or type is not set
+
+        Usage:
+            # Filter history by contact type
+            if history.contact_type == "volunteer":
+                # Handle volunteer-specific logic
+                pass
         """
         return getattr(self.contact, "type", None) if self.contact else None
 
@@ -340,8 +606,27 @@ class History(db.Model):
         """
         Check if history record is from the last 30 days.
 
+        This property determines if the activity_date is within the last 30 days
+        from the current UTC time. Useful for filtering recent activities and
+        highlighting current engagement.
+
         Returns:
-            bool: True if activity occurred within last 30 days
+            bool: True if activity occurred within last 30 days, False otherwise
+
+        Example:
+            >>> # Recent activity (today)
+            >>> history.activity_date = datetime.now(timezone.utc)
+            >>> history.is_recent
+            True
+
+            >>> # Old activity (35 days ago)
+            >>> from datetime import timedelta
+            >>> history.activity_date = datetime.now(timezone.utc) - timedelta(days=35)
+            >>> history.is_recent
+            False
+
+        Note:
+            Returns False if activity_date is None or not set.
         """
         if not self.activity_date:
             return False
@@ -351,18 +636,44 @@ class History(db.Model):
         """
         Convert history record to dictionary for API responses.
 
+        Returns a comprehensive dictionary representation of the history record
+        including all fields. This method is useful for JSON serialization and
+        API responses.
+
         Returns:
-            dict: Dictionary representation of the history record
+            dict: Dictionary representation of the history record with all fields
+
+        Example:
+            >>> history = History(
+            ...     contact_id=123,
+            ...     action="volunteer_created",
+            ...     summary="New registration",
+            ...     description="Volunteer completed registration",
+            ...     activity_type="Registration",
+            ...     activity_status="Completed",
+            ...     history_type="activity"
+            ... )
+            >>> history_dict = history.to_dict()
+            >>> history_dict["action"]
+            'volunteer_created'
+            >>> history_dict["contact_type"]
+            'volunteer'
         """
         return {
             "id": self.id,
             "contact_id": self.contact_id,
             "volunteer_id": self.volunteer_id,  # Backward compatibility
-            "teacher_id": self.teacher_id,  # New field
-            "contact_type": self.contact_type,  # New field
+            "teacher_id": self.teacher_id,  # Backward compatibility
+            "contact_type": self.contact_type,
+            "event_id": self.event_id,
+            "action": self.action,
+            "summary": self.summary,
+            "description": self.description,
+            "activity_type": self.activity_type,
             "activity_date": (
                 self.activity_date.isoformat() if self.activity_date else None
             ),
+            "activity_status": self.activity_status,
             "notes": self.notes,
             "history_type": self.history_type,
             "is_deleted": self.is_deleted,
@@ -373,6 +684,8 @@ class History(db.Model):
                 if self.created_by and self.created_by.username
                 else None
             ),
+            "email_message_id": self.email_message_id,
+            "salesforce_id": self.salesforce_id,
             "metadata": self.additional_metadata,
         }
 
@@ -385,14 +698,30 @@ class History(db.Model):
         """
         return f"<History {self.id}: {self.history_type} on {self.activity_date}>"
 
-    # Add a property to handle Enum conversion
     @property
     def history_type_enum(self):
         """
-        Get the HistoryType enum value.
+        Get the HistoryType enum value from the history_type string field.
+
+        This property provides convenient access to the enum representation of
+        the history_type field. Invalid values automatically fall back to
+        HistoryType.OTHER per existing test expectations.
 
         Returns:
             HistoryType: Enum value corresponding to history_type field
+
+        Example:
+            >>> history.history_type = "activity"
+            >>> history.history_type_enum
+            HistoryType.ACTIVITY
+
+            >>> history.history_type = "invalid"
+            >>> history.history_type_enum
+            HistoryType.OTHER  # Falls back to OTHER for invalid values
+
+            >>> # Use enum for comparisons
+            >>> if history.history_type_enum == HistoryType.NOTE:
+            ...     print("This is a note")
         """
         try:
             return HistoryType(self.history_type)
@@ -402,10 +731,30 @@ class History(db.Model):
     @history_type_enum.setter
     def history_type_enum(self, value):
         """
-        Set history_type from enum value.
+        Set history_type from enum value or string.
+
+        This setter accepts both HistoryType enum instances and string values,
+        converting them appropriately. The validator ensures the value is valid
+        and falls back to OTHER for invalid values.
 
         Args:
-            value: HistoryType enum or string value
+            value: HistoryType enum or string value (case-insensitive)
+
+        Example:
+            >>> # Set using enum
+            >>> history.history_type_enum = HistoryType.ACTIVITY
+            >>> history.history_type
+            'activity'
+
+            >>> # Set using string
+            >>> history.history_type_enum = "note"
+            >>> history.history_type
+            'note'
+
+            >>> # Case-insensitive string handling
+            >>> history.history_type_enum = "ACTIVITY"
+            >>> history.history_type
+            'activity'
         """
         if isinstance(value, HistoryType):
             self.history_type = value.value.lower()

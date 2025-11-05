@@ -997,7 +997,9 @@ def purge_volunteers():
         EventParticipation.query.filter(
             EventParticipation.volunteer_id.in_(volunteer_ids)
         ).delete(synchronize_session=False)
-        History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(
+        # Fix: volunteer_id is a property, not a column - use contact_id instead
+        # Since volunteers use polymorphic inheritance, volunteer_ids are contact_ids
+        History.query.filter(History.contact_id.in_(volunteer_ids)).delete(
             synchronize_session=False
         )
         VolunteerOrganization.query.filter(
@@ -1017,7 +1019,9 @@ def purge_volunteers():
         EventParticipation.query.filter(
             EventParticipation.volunteer_id.in_(volunteer_ids)
         ).delete(synchronize_session=False)
-        History.query.filter(History.volunteer_id.in_(volunteer_ids)).delete(
+        # Fix: volunteer_id is a property, not a column - use contact_id instead
+        # Since volunteers use polymorphic inheritance, volunteer_ids are contact_ids
+        History.query.filter(History.contact_id.in_(volunteer_ids)).delete(
             synchronize_session=False
         )
         VolunteerOrganization.query.filter(
