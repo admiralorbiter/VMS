@@ -69,9 +69,8 @@ Usage Examples:
     school = teacher.school
 """
 
+import logging
 from datetime import datetime, timezone
-from enum import Enum
-from functools import cached_property
 
 from sqlalchemy import Boolean, Date, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
@@ -80,12 +79,22 @@ from sqlalchemy.orm import declared_attr, relationship, validates
 from sqlalchemy.sql import func
 
 from models import db
-from models.contact import Contact, ContactTypeEnum, Email, GenderEnum, Phone
+from models.contact import (
+    Contact,
+    ContactTypeEnum,
+    Email,
+    Enum,
+    FormEnum,
+    GenderEnum,
+    LocalStatusEnum,
+    Phone,
+)
 from models.school_model import School
-from models.utils import validate_salesforce_id
+
+logger = logging.getLogger(__name__)
 
 
-class TeacherStatus(str, Enum):
+class TeacherStatus(FormEnum):
     """
     Enum for tracking teacher status.
 
@@ -174,7 +183,11 @@ class Teacher(Contact):
 
     id = db.Column(Integer, ForeignKey("contact.id"), primary_key=True)
 
-    __mapper_args__ = {"polymorphic_identity": "teacher", "confirm_deleted_rows": False}
+    __mapper_args__ = {
+        "polymorphic_identity": "teacher",
+        "confirm_deleted_rows": False,
+        "inherit_condition": id == Contact.id,
+    }
 
     # Teacher-specific fields
     department = db.Column(String(50), nullable=True, index=True)
@@ -190,6 +203,13 @@ class Teacher(Contact):
         SQLAlchemyEnum(TeacherStatus), default=TeacherStatus.ACTIVE, index=True
     )
     active = db.Column(Boolean, default=True, nullable=False)
+    status_change_date = db.Column(DateTime(timezone=True), nullable=True)
+
+    # Local status fields for geographic analysis
+    local_status = db.Column(
+        Enum(LocalStatusEnum), default=LocalStatusEnum.unknown, index=True
+    )
+    local_status_last_updated = db.Column(DateTime(timezone=True), nullable=True)
 
     # Connector fields for tracking teacher relationships
     connector_role = db.Column(String(50), nullable=True)
@@ -202,12 +222,14 @@ class Teacher(Contact):
     last_mailchimp_date = db.Column(Date, nullable=True)
 
     # Salesforce Integration Fields
-    salesforce_contact_id = db.Column(
-        String(18), unique=True, nullable=True, index=True
-    )
+    # Note: salesforce_individual_id is inherited from Contact base class
+    # salesforce_school_id: Stores Salesforce school ID (18 chars) for reports/queries
+    # school_id: Primary relationship field (String(255)) matches School.id format
     salesforce_school_id = db.Column(
-        String(18), nullable=True
-    )  # Remove ForeignKey constraint
+        String(18),
+        nullable=True,
+        comment="Salesforce school ID for reports and queries",
+    )
 
     # Automatic timestamps for audit trail (timezone-aware, database-side defaults)
     created_at = db.Column(DateTime(timezone=True), server_default=func.now())
@@ -236,14 +258,18 @@ class Teacher(Contact):
 
         Returns:
             LocalStatusEnum: Local status assumption for teachers
+
+        Example:
+            >>> teacher._get_local_status_assumption()
+            LocalStatusEnum.local
         """
         try:
-            from models.contact import LocalStatusEnum
-
             return LocalStatusEnum.local
         except Exception as e:
-            print(
-                f"Error getting local status assumption for teacher {self.id}: {str(e)}"
+            logger.warning(
+                "Error getting local status assumption for teacher %d: %s",
+                self.id,
+                str(e),
             )
             return LocalStatusEnum.local
 
@@ -278,43 +304,68 @@ class Teacher(Contact):
             return value.capitalize()
         return value
 
-    @validates("salesforce_contact_id")
-    def validate_salesforce_id_field(self, key, value):
-        """
-        Validate Salesforce ID format using shared validator.
-
-        Args:
-            key: Field name being validated
-            value: Salesforce ID to validate
-
-        Returns:
-            str: Validated Salesforce ID
-
-        Raises:
-            ValueError: If Salesforce ID format is invalid
-        """
-        return validate_salesforce_id(value)
-
     @validates("status")
     def validate_status(self, key, value):
         """
-        Ensure proper handling of status changes.
+        Validates teacher status to ensure it's a valid TeacherStatus enum value.
+
+        Automatically syncs the `active` field based on status value and tracks
+        status change date for audit purposes.
 
         Args:
-            key: Field name being validated
-            value: Status value to validate
+            key (str): The name of the field being validated
+            value: The status value to validate (can be enum, string, or None)
 
         Returns:
-            TeacherStatus: Validated status value
+            TeacherStatus: Valid status enum value
 
         Raises:
-            ValueError: If status is not a valid TeacherStatus
+            ValueError: If status value is invalid
+
+        Example:
+            >>> teacher.validate_status("status", "active")
+            TeacherStatus.ACTIVE
+
+            >>> teacher.validate_status("status", TeacherStatus.INACTIVE)
+            TeacherStatus.INACTIVE
+
+        Note:
+            - Automatically sets `active = True` when status is ACTIVE
+            - Automatically sets `active = False` for all other statuses
+            - Tracks status change date when status changes
         """
-        if value not in TeacherStatus:
-            raise ValueError(f"Invalid status. Must be one of: {list(TeacherStatus)}")
-        if hasattr(self, "status") and self.status != value:
+        if value is None:
+            return TeacherStatus.ACTIVE  # Default to ACTIVE
+        if isinstance(value, TeacherStatus):
+            validated_value = value
+        elif isinstance(value, str):
+            # Try value-based lookup first (matches enum.value)
+            validated_value = None
+            for enum_member in TeacherStatus:
+                if enum_member.value.lower() == value.lower():
+                    validated_value = enum_member
+                    break
+            # Try name-based lookup for backwards compatibility
+            if validated_value is None:
+                try:
+                    validated_value = TeacherStatus[value.upper()]
+                except KeyError:
+                    raise ValueError(
+                        f"Invalid status: {value}. "
+                        f"Valid values: {[s.value for s in TeacherStatus if s.value]}"
+                    )
+        else:
+            raise ValueError(f"Status must be a TeacherStatus enum value or string")
+
+        # Sync active field with status
+        self.active = validated_value == TeacherStatus.ACTIVE
+
+        # Track status change date if status is actually changing
+        current_status = getattr(self, "status", None)
+        if current_status is not None and current_status != validated_value:
             self.status_change_date = datetime.now(timezone.utc)
-        return value
+
+        return validated_value
 
     def __repr__(self):
         """
@@ -334,7 +385,17 @@ class Teacher(Contact):
         and communication tracking.
 
         Args:
-            data: Dictionary containing CSV data fields
+            data: Dictionary containing CSV data fields with Salesforce field names
+
+        Example:
+            >>> csv_data = {
+            ...     "FirstName": "Jane",
+            ...     "LastName": "Smith",
+            ...     "npsp__Primary_Affiliation__c": "0015f00000JVZsFAAX",
+            ...     "Department": "Science",
+            ...     "Email": "jane@example.com"
+            ... }
+            >>> teacher.update_from_csv(csv_data)
         """
         # Basic info
         self.first_name = data.get("FirstName", "").strip()
@@ -401,32 +462,85 @@ class Teacher(Contact):
             list: List of upcoming events for this teacher
         """
         now = datetime.now(timezone.utc)
-        return [
-            reg.event
-            for reg in self.event_registrations.all()
-            if reg.event.start_date > now
-        ]
+        result = []
+        for reg in self.event_registrations:
+            if reg.event:
+                # Normalize event start_date to UTC if it's naive (SQLite may return naive datetimes)
+                event_start = reg.event.start_date
+                if event_start.tzinfo is None:
+                    event_start = event_start.replace(tzinfo=timezone.utc)
+                if event_start > now:
+                    result.append(reg.event)
+        return result
 
     @property
     def past_events(self):
-        """Get teacher's past events."""
-        return [
-            reg.event
-            for reg in self.event_registrations.all()
-            if reg.event and reg.event.start_date < datetime.now()
-        ]
+        """
+        Get teacher's past events.
+
+        Returns events that have already started based on current UTC time.
+        Uses timezone-aware datetime for consistency with upcoming_events.
+
+        Returns:
+            list: List of past events for this teacher
+
+        Example:
+            >>> past = teacher.past_events
+            >>> len(past)
+            5
+        """
+        now = datetime.now(timezone.utc)
+        result = []
+        for reg in self.event_registrations:
+            if reg.event:
+                # Normalize event start_date to UTC if it's naive (SQLite may return naive datetimes)
+                event_start = reg.event.start_date
+                if event_start.tzinfo is None:
+                    event_start = event_start.replace(tzinfo=timezone.utc)
+                if event_start < now:
+                    result.append(reg.event)
+        return result
 
     @classmethod
     def import_from_salesforce(cls, sf_data, db_session):
         """
         Import teacher data from Salesforce.
 
+        Creates a new teacher or updates an existing one based on Salesforce
+        individual ID. Handles contact information, school relationships, and
+        demographic data.
+
         Args:
-            sf_data: Dictionary containing Salesforce teacher data
+            sf_data: Dictionary containing Salesforce teacher data with fields:
+                - Id: Salesforce Contact ID (required)
+                - FirstName: Teacher's first name (required)
+                - LastName: Teacher's last name (required)
+                - AccountId: Salesforce Account ID
+                - npsp__Primary_Affiliation__c: School Salesforce ID
+                - Department: Teacher's department
+                - Gender__c: Gender value
+                - Email: Email address
+                - Phone: Phone number
+                - Last_Email_Message__c: Last email date
+                - Last_Mailchimp_Email_Date__c: Last Mailchimp date
             db_session: SQLAlchemy database session
 
         Returns:
             tuple: (teacher_object, is_new_teacher, error_message)
+                - teacher_object: Teacher instance or None if error
+                - is_new_teacher: Boolean indicating if teacher was newly created
+                - error_message: String error message or None if successful
+
+        Example:
+            >>> sf_data = {
+            ...     "Id": "0031234567890ABCD",
+            ...     "FirstName": "Jane",
+            ...     "LastName": "Smith",
+            ...     "npsp__Primary_Affiliation__c": "0015f00000JVZsFAAX"
+            ... }
+            >>> teacher, is_new, error = Teacher.import_from_salesforce(sf_data, db.session)
+            >>> if error:
+            ...     print(f"Error: {error}")
         """
         try:
             # Extract required fields
@@ -455,10 +569,19 @@ class Teacher(Contact):
             teacher.salesforce_account_id = sf_data.get("AccountId")
             teacher.first_name = first_name
             teacher.last_name = last_name
-            teacher.school_id = sf_data.get("npsp__Primary_Affiliation__c")
-            teacher.salesforce_school_id = sf_data.get(
-                "npsp__Primary_Affiliation__c"
-            )  # Keep both for compatibility
+
+            # Handle school ID - set both fields appropriately
+            primary_affiliation = sf_data.get("npsp__Primary_Affiliation__c")
+            if primary_affiliation:
+                # Strip whitespace and ensure it's a string
+                primary_affiliation = str(primary_affiliation).strip()
+                if primary_affiliation:
+                    # school_id: Primary relationship field (matches School.id format)
+                    teacher.school_id = primary_affiliation
+                    # salesforce_school_id: Only set if it's a valid 18-char Salesforce ID
+                    if len(primary_affiliation) == 18:
+                        teacher.salesforce_school_id = primary_affiliation
+
             teacher.department = sf_data.get("Department")
 
             # Set default status for new teachers
@@ -473,8 +596,11 @@ class Teacher(Contact):
                     teacher.gender = GenderEnum[gender_key]
                 except KeyError:
                     # Log invalid gender but don't fail the import
-                    print(
-                        f"Invalid gender value for {first_name} {last_name}: {gender_value}"
+                    logger.warning(
+                        "Invalid gender value for %s %s: %s",
+                        first_name,
+                        last_name,
+                        gender_value,
                     )
 
             # Handle date fields
@@ -505,12 +631,26 @@ class Teacher(Contact):
         """
         Update teacher's contact information from Salesforce data.
 
+        Adds or updates email and phone records for the teacher. Creates new
+        contact records if they don't exist, marking them as primary and
+        professional type.
+
         Args:
-            sf_data: Dictionary containing Salesforce teacher data
+            sf_data: Dictionary containing Salesforce teacher data with fields:
+                - Email: Email address (optional)
+                - Phone: Phone number (optional)
             db_session: SQLAlchemy database session
 
         Returns:
             tuple: (success, error_message)
+                - success: Boolean indicating if update was successful
+                - error_message: String error message or None if successful
+
+        Example:
+            >>> sf_data = {"Email": "jane@example.com", "Phone": "555-1234"}
+            >>> success, error = teacher.update_contact_info(sf_data, db.session)
+            >>> if success:
+            ...     db.session.commit()
         """
         try:
             # Handle email
