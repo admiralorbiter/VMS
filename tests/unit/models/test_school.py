@@ -88,7 +88,7 @@ def test_school_cascade_delete(app):
         district = District(
             name="Test District",
             district_code="9999",
-            salesforce_id="0015f00000TEST999",
+            salesforce_id="0015f00000TEST999A",
         )
         db.session.add(district)
         db.session.commit()
@@ -98,7 +98,7 @@ def test_school_cascade_delete(app):
             id="0015f00000TEST789",
             name="Cascade Test School",
             district_id=district.id,
-            salesforce_district_id="0015f00000TEST999",
+            salesforce_district_id="0015f00000TEST999A",
         )
         db.session.add(school)
         db.session.commit()
@@ -143,7 +143,7 @@ def test_multiple_schools_per_district(app):
     """Test adding multiple schools to one district"""
     with app.app_context():
         district = District(
-            name="Multi-School District", salesforce_id="0015f00000MULTI01"
+            name="Multi-School District", salesforce_id="0015f00000MULTI01A"
         )
         db.session.add(district)
         db.session.commit()

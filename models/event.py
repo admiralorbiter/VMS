@@ -132,7 +132,7 @@ event_districts = db.Table(
     "event_districts",
     db.Column("event_id", db.Integer, db.ForeignKey("event.id"), primary_key=True),
     db.Column(
-        "district_id", db.String(18), db.ForeignKey("district.id"), primary_key=True
+        "district_id", db.Integer, db.ForeignKey("district.id"), primary_key=True
     ),
 )
 
@@ -743,7 +743,9 @@ class Event(db.Model):
 
         # Combine counts with error handling
         try:
-            registered_str = str(data.get("Registered Student Count", "0")).replace("n/a", "0")
+            registered_str = str(data.get("Registered Student Count", "0")).replace(
+                "n/a", "0"
+            )
             new_registered = int(float(registered_str)) if registered_str else 0
             if new_registered < 0:
                 warnings.warn(
@@ -761,7 +763,9 @@ class Event(db.Model):
             new_registered = 0
 
         try:
-            attended_str = str(data.get("Attended Student Count", "0")).replace("n/a", "0")
+            attended_str = str(data.get("Attended Student Count", "0")).replace(
+                "n/a", "0"
+            )
             new_attended = int(float(attended_str)) if attended_str else 0
             if new_attended < 0:
                 warnings.warn(
@@ -950,7 +954,9 @@ class Event(db.Model):
 
         # Set counts with error handling
         try:
-            registered_str = str(data.get("Registered Student Count", "0")).replace("n/a", "0")
+            registered_str = str(data.get("Registered Student Count", "0")).replace(
+                "n/a", "0"
+            )
             self.registered_count = int(float(registered_str)) if registered_str else 0
             if self.registered_count < 0:
                 warnings.warn(
@@ -967,7 +973,9 @@ class Event(db.Model):
             self.registered_count = 0
 
         try:
-            attended_str = str(data.get("Attended Student Count", "0")).replace("n/a", "0")
+            attended_str = str(data.get("Attended Student Count", "0")).replace(
+                "n/a", "0"
+            )
             self.attended_count = int(float(attended_str)) if attended_str else 0
             if self.attended_count < 0:
                 warnings.warn(
@@ -1096,12 +1104,14 @@ class Event(db.Model):
         invalid_transitions = {
             EventStatus.COMPLETED: [EventStatus.DRAFT],
             EventStatus.CANCELLED: [EventStatus.COMPLETED],
-            EventStatus.DRAFT: [EventStatus.COMPLETED],  # DRAFT can transition to CANCELLED (cancellation allowed from any status)
+            EventStatus.DRAFT: [
+                EventStatus.COMPLETED
+            ],  # DRAFT can transition to CANCELLED (cancellation allowed from any status)
         }
 
         # Use provided new_status or fall back to self.status
         status_to_check = new_status if new_status is not None else self.status
-        
+
         # Check if the transition from previous_status to new_status is invalid
         if (
             self._previous_status
@@ -1111,7 +1121,6 @@ class Event(db.Model):
             raise ValueError(
                 f"Invalid status transition from {self._previous_status} to {status_to_check}"
             )
-
 
     @property
     def is_at_capacity(self):
@@ -1189,7 +1198,9 @@ class Event(db.Model):
         else:
             # Update _previous_status with current status before validation
             # This ensures we track the status before the new assignment
-            self._previous_status = current_status if current_status is not None else None
+            self._previous_status = (
+                current_status if current_status is not None else None
+            )
 
         # Handle None - default to DRAFT
         if value is None:

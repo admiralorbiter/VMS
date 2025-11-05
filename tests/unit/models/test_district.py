@@ -133,7 +133,7 @@ def test_district_schools_query(app):
     """Test querying schools relationship"""
     with app.app_context():
         district = District(
-            name="Query Test District", salesforce_id="0015f00000QUERY01"
+            name="Query Test District", salesforce_id="0015f00000QUERY01A"
         )
         db.session.add(district)
         db.session.commit()

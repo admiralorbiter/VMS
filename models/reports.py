@@ -107,7 +107,7 @@ class DistrictYearEndReport(db.Model):
     __tablename__ = "district_year_end_reports"
 
     id = db.Column(db.Integer, primary_key=True)
-    district_id = db.Column(db.String(18), db.ForeignKey("district.id"), nullable=False)
+    district_id = db.Column(db.Integer, db.ForeignKey("district.id"), nullable=False)
     school_year = db.Column(db.String(4), nullable=False, index=True)  # Added index
     host_filter = db.Column(db.String(20), default="all", nullable=False, index=True)
     report_data = db.Column(db.JSON, nullable=False)
@@ -168,7 +168,7 @@ class DistrictEngagementReport(db.Model):
     __tablename__ = "district_engagement_reports"
 
     id = db.Column(db.Integer, primary_key=True)
-    district_id = db.Column(db.String(18), db.ForeignKey("district.id"), nullable=False)
+    district_id = db.Column(db.Integer, db.ForeignKey("district.id"), nullable=False)
     school_year = db.Column(db.String(4), nullable=False, index=True)
 
     # Cache for summary stats and detailed data

@@ -18,7 +18,7 @@ from models.reports import (
 @pytest.fixture
 def test_district(app):
     with app.app_context():
-        district = District(salesforce_id="DIST001", name="Test District")
+        district = District(salesforce_id="001TEST000DIST001A", name="Test District")
         db.session.add(district)
         db.session.commit()
         yield district

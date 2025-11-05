@@ -68,13 +68,12 @@ Usage Examples:
     active_students = class_obj.get_active_students()
 """
 
-from datetime import datetime, timezone
-
-from sqlalchemy import Index, text
-from sqlalchemy.orm import relationship
+from sqlalchemy import Index
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func
 
 from models import db
+from models.utils import validate_salesforce_id
 
 
 class Class(db.Model):
@@ -131,9 +130,9 @@ class Class(db.Model):
 
     Data Validation:
         - Class name is required
-        - Salesforce ID is unique and required
+        - Salesforce ID is unique and required, validated for format
         - School relationship is required
-        - Class year is required for organization
+        - Class year is required and validated for reasonable range (2000-2100)
 
     Performance Features:
         - Indexed fields for fast queries
@@ -149,6 +148,15 @@ class Class(db.Model):
     Key Relationships:
         - students: One-to-many relationship with Student model (defined in Student model)
         - school: Explicit relationship through school_salesforce_id
+        - district: Access district through school relationship
+
+    Helper Methods:
+        - salesforce_url: Generate Salesforce URL for class record
+        - student_count: Get count of all students in class
+        - active_student_count: Get count of active students in class
+        - district: Access district through school relationship
+        - to_dict(): Convert class to dictionary for API responses
+        - get_active_students(): Get query of active students
     """
 
     __tablename__ = "class"
@@ -181,6 +189,57 @@ class Class(db.Model):
     __table_args__ = (
         Index("idx_class_year_school", "class_year", "school_salesforce_id"),
     )
+
+    @validates("salesforce_id")
+    def validate_salesforce_id_field(self, key, value):
+        """
+        Validates Salesforce ID format using shared validator.
+
+        Args:
+            key (str): The name of the field being validated
+            value: Salesforce ID to validate
+
+        Returns:
+            str: Validated Salesforce ID or None
+
+        Raises:
+            ValueError: If Salesforce ID format is invalid
+
+        Example:
+            >>> class_obj.validate_salesforce_id_field("salesforce_id", "0011234567890ABCD")
+            '0011234567890ABCD'
+        """
+        return validate_salesforce_id(value)
+
+    @validates("class_year")
+    def validate_class_year(self, key, value):
+        """
+        Validates class year is within reasonable range.
+
+        Args:
+            key (str): The name of the field being validated
+            value: Class year to validate
+
+        Returns:
+            int: Validated class year
+
+        Raises:
+            ValueError: If class year is outside 2000-2100 range
+
+        Example:
+            >>> class_obj.validate_class_year("class_year", 2024)
+            2024
+        """
+        if value is None:
+            raise ValueError("Class year is required")
+        if not isinstance(value, int):
+            try:
+                value = int(value)
+            except (ValueError, TypeError):
+                raise ValueError("Class year must be an integer")
+        if not (2000 <= value <= 2100):
+            raise ValueError("Class year must be between 2000 and 2100")
+        return value
 
     def __repr__(self):
         """
@@ -215,6 +274,33 @@ class Class(db.Model):
             return f"https://prep-kc.lightning.force.com/lightning/r/Class__c/{self.salesforce_id}/view"
         return None
 
+    @property
+    def district(self):
+        """
+        Access district through school relationship.
+
+        Returns:
+            District or None: District object if school has district relationship,
+                            None otherwise
+        """
+        if self.school and hasattr(self.school, "district"):
+            return self.school.district
+        return None
+
+    @property
+    def active_student_count(self):
+        """
+        Returns the count of active students in this class.
+
+        Returns:
+            int: Number of active students enrolled in this class
+        """
+        from models.student import Student  # Import here to avoid circular imports
+
+        return Student.query.filter_by(
+            class_salesforce_id=self.salesforce_id, active=True
+        ).count()
+
     def to_dict(self):
         """
         Convert class to dictionary for API responses.
@@ -238,7 +324,6 @@ class Class(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
-    # Add helper method for future use
     def get_active_students(self):
         """
         Returns query of currently enrolled students.
@@ -248,5 +333,48 @@ class Class(db.Model):
         """
         return self.students.filter_by(active=True)
 
-    # TODO: Consider adding relationships:
-    # - Back reference to students (currently defined in Student model)
+    @classmethod
+    def from_salesforce(cls, data):
+        """
+        Creates a Class instance from Salesforce data with proper data cleaning.
+
+        This class method handles the conversion of Salesforce data to Class
+        instances, ensuring that empty strings are converted to None values
+        and data is properly formatted.
+
+        Args:
+            data (dict): Dictionary containing Salesforce class data
+
+        Returns:
+            Class: New Class instance with cleaned data
+
+        Example:
+            >>> sf_data = {
+            ...     "Name": "10th Grade Science",
+            ...     "Id": "a1b2c3d4e5f6g7h8i9",
+            ...     "School__c": "0015f00000JVZsFAAX",
+            ...     "Class_Year__c": "2024"
+            ... }
+            >>> class_obj = Class.from_salesforce(sf_data)
+        """
+        # Convert empty strings to None
+        cleaned = {}
+        for k, v in data.items():
+            if v == "":
+                cleaned[k] = None
+            else:
+                cleaned[k] = v
+
+        # Map common Salesforce field names to model attributes
+        mapped_data = {
+            "name": cleaned.get("Name") or cleaned.get("name"),
+            "salesforce_id": cleaned.get("Id") or cleaned.get("salesforce_id"),
+            "school_salesforce_id": cleaned.get("School__c")
+            or cleaned.get("school_salesforce_id"),
+            "class_year": cleaned.get("Class_Year__c") or cleaned.get("class_year"),
+        }
+
+        # Remove None values to avoid overwriting with None
+        mapped_data = {k: v for k, v in mapped_data.items() if v is not None}
+
+        return cls(**mapped_data)

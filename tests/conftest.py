@@ -349,7 +349,7 @@ def test_district(app):
     """Create a test district"""
     with app.app_context():
         district = District(
-            salesforce_id="DIST001",  # Use salesforce_id for string identifier
+            salesforce_id="001TEST000DIST001A",  # Valid 18-character Salesforce ID
             name="Test District",
         )
         db.session.add(district)
