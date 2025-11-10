@@ -4906,9 +4906,16 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
         Event.start_date <= date_to,
     ).all()
 
-    # Create a mapping of teacher names to their progress data
+    # Create mappings for unique teachers and their name variations
     teacher_progress_map = {}
+    teacher_alias_map = {}
     for teacher in teachers:
+        teacher_progress_map[teacher.id] = {
+            "teacher": teacher,
+            "completed_sessions": 0,
+            "planned_sessions": 0,
+        }
+
         # Store multiple possible name variations for matching
         name_variations = [
             teacher.name.lower().strip(),
@@ -4921,13 +4928,10 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
             ),
         ]
 
+        # Ensure aliases point back to the unique teacher entry
         for name_var in name_variations:
-            if name_var and name_var not in teacher_progress_map:
-                teacher_progress_map[name_var] = {
-                    "teacher": teacher,
-                    "completed_sessions": 0,
-                    "planned_sessions": 0,
-                }
+            if name_var:
+                teacher_alias_map.setdefault(name_var, teacher.id)
 
     # Count completed and planned sessions for each teacher
     for event in events:
@@ -4938,18 +4942,21 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                 )
                 teacher_key = teacher_name.lower().strip()
 
-                # Try exact match first
-                if teacher_key in teacher_progress_map:
-                    progress_data = teacher_progress_map[teacher_key]
-                else:
+                # Try exact match first against aliases
+                teacher_id = teacher_alias_map.get(teacher_key)
+                progress_data = (
+                    teacher_progress_map.get(teacher_id) if teacher_id else None
+                )
+
+                if not progress_data:
                     # Try flexible matching - look for partial matches
-                    progress_data = None
-                    for name_key, data in teacher_progress_map.items():
+                    for name_key, alias_teacher_id in teacher_alias_map.items():
                         if (teacher_key in name_key or name_key in teacher_key) and len(
                             teacher_key
                         ) > 3:
-                            progress_data = data
-                            break
+                            progress_data = teacher_progress_map.get(alias_teacher_id)
+                            if progress_data:
+                                break
 
                 if progress_data:
                     # Check teacher's individual registration status first
@@ -4989,7 +4996,7 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
 
     # Group teachers by building/school
     school_data = {}
-    for teacher_key, progress_data in teacher_progress_map.items():
+    for progress_data in teacher_progress_map.values():
         teacher = progress_data["teacher"]
         building = teacher.building
 
