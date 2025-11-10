@@ -648,7 +648,7 @@ def test_local_status_calculation(app):
         db.session.commit()
 
 
-def test_upcoming_past_events(app, test_event):
+def test_upcoming_past_events(app, test_event, test_school):
     """Test event properties with timezone-aware datetime"""
     with app.app_context():
         teacher = Teacher(first_name="Test", last_name="Teacher")
@@ -663,7 +663,7 @@ def test_upcoming_past_events(app, test_event):
             status=EventStatus.COMPLETED,
             type=EventType.IN_PERSON,
             format=EventFormat.IN_PERSON,
-            school="TEST001",
+            school=test_school.id,  # Use valid 18-character Salesforce ID from test_school fixture
             volunteers_needed=5,
         )
         db.session.add(past_event)
@@ -677,7 +677,7 @@ def test_upcoming_past_events(app, test_event):
             status=EventStatus.PUBLISHED,
             type=EventType.IN_PERSON,
             format=EventFormat.IN_PERSON,
-            school="TEST001",
+            school=test_school.id,  # Use valid 18-character Salesforce ID from test_school fixture
             volunteers_needed=5,
         )
         db.session.add(upcoming_event)

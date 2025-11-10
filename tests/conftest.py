@@ -306,12 +306,14 @@ def test_contact(app):
 def test_school(app):
     """Create a test school"""
     with app.app_context():
-        school = School(id="TEST001", name="Test School")
+        school = School(
+            id="0015f00000TEST1234", name="Test School"
+        )  # Valid 18-char Salesforce ID
         db.session.add(school)
         db.session.commit()
 
         # Get fresh instance from session
-        school = db.session.get(School, "TEST001")
+        school = db.session.get(School, "0015f00000TEST1234")
         yield school
 
         # Cleanup
@@ -372,7 +374,7 @@ def test_event(app, test_school, test_district):
             start_date=datetime.now(timezone.utc),
             end_date=datetime.now(timezone.utc) + timedelta(hours=2),
             status=EventStatus.DRAFT,
-            school="TEST001",  # Use direct ID
+            school=test_school.id,  # Use valid 18-character Salesforce ID from test_school fixture
             district_partner=test_district.id,
             volunteers_needed=5,  # Explicitly set this
             format=EventFormat.IN_PERSON,  # Add required format
@@ -587,7 +589,7 @@ def test_student(app, test_school, test_class):
             legacy_grade="Freshman",
             student_id="ST12345",
             school_id=test_school.id,
-            class_id=test_class.salesforce_id,
+            class_salesforce_id=test_class.salesforce_id,
             racial_ethnic=RaceEthnicityEnum.white,
             school_code="4045",
             ell_language="Spanish",

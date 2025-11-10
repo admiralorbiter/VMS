@@ -13,7 +13,7 @@ def test_new_class(test_class):
     assert test_class.salesforce_id == "a005f000003XNa7AAG"
     assert test_class.name == "Test Class 2024"
     assert (
-        test_class.school_salesforce_id == "TEST001"
+        test_class.school_salesforce_id == "0015f00000TEST1234"
     )  # Fixed to match the test_school fixture ID
     assert test_class.class_year == 2024
     assert isinstance(test_class.created_at, datetime)

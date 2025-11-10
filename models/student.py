@@ -71,6 +71,8 @@ Usage Examples:
     student.validate_required_fields('first_name', 'John')
 """
 
+import logging
+
 import pandas as pd
 from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship, validates
@@ -82,9 +84,13 @@ from models.contact import (
     ContactTypeEnum,
     Email,
     GenderEnum,
+    LocalStatusEnum,
     Phone,
     RaceEthnicityEnum,
 )
+from models.utils import validate_salesforce_id
+
+logger = logging.getLogger(__name__)
 
 
 class Student(Contact):
@@ -246,6 +252,7 @@ class Student(Contact):
         db.Index("idx_student_school_grade", "school_id", "current_grade"),
     )
 
+    # Validation Methods
     @validates("first_name", "last_name")
     def validate_required_fields(self, key, value):
         """
@@ -265,6 +272,25 @@ class Student(Contact):
             raise ValueError(f"{key} is required and cannot be empty")
         return value.strip()
 
+    @validates("student_id", "school_code", "ell_language")
+    def validate_string_fields(self, key, value):
+        """
+        Validate and clean string fields by stripping whitespace.
+
+        Args:
+            key: Field name being validated
+            value: Value to validate
+
+        Returns:
+            str or None: Cleaned string value or None if empty
+        """
+        if value is None:
+            return None
+        if isinstance(value, str):
+            cleaned = value.strip()
+            return cleaned if cleaned else None
+        return value
+
     @validates("current_grade")
     def validate_grade(self, key, grade):
         """
@@ -275,7 +301,7 @@ class Student(Contact):
             grade: Grade level to validate
 
         Returns:
-            Validated grade level
+            int or None: Validated grade level
 
         Raises:
             ValueError: If grade is outside 0-12 range
@@ -284,19 +310,42 @@ class Student(Contact):
             raise ValueError(f"Grade must be between {GRADE_MIN} and {GRADE_MAX}")
         return grade
 
+    @validates("school_id", "class_salesforce_id")
+    def validate_salesforce_id_field(self, key, value):
+        """
+        Validates Salesforce ID format using shared validator.
+
+        Args:
+            key: Field name being validated
+            value: Salesforce ID to validate
+
+        Returns:
+            str or None: Validated Salesforce ID or None
+
+        Raises:
+            ValueError: If Salesforce ID format is invalid
+
+        Example:
+            >>> student.validate_salesforce_id_field("school_id", "0011234567890ABCD")
+            '0011234567890ABCD'
+        """
+        return validate_salesforce_id(value)
+
+    # Properties
     def __repr__(self):
         """
         String representation of the Student model.
 
         Returns:
             str: Debug representation showing student ID and full name
-        """
-        return f"<Student {self.student_id}: {self.get_full_name}>"
 
-    @property
-    def get_full_name(self):
-        """Get student's full name."""
-        return f"{self.first_name} {self.last_name}"
+        Example:
+            >>> repr(student)
+            '<Student STU123456: John Doe>'
+        """
+        student_id = self.student_id or "N/A"
+        name = self.full_name if self.first_name and self.last_name else "Unknown"
+        return f"<Student {student_id}: {name}>"
 
     def _get_local_status_assumption(self):
         """
@@ -307,28 +356,65 @@ class Student(Contact):
 
         Returns:
             LocalStatusEnum: Local status assumption for students
+
+        Example:
+            >>> student._get_local_status_assumption()
+            LocalStatusEnum.local
         """
         try:
-            from models.contact import LocalStatusEnum
-
             return LocalStatusEnum.local
         except Exception as e:
-            print(
-                f"Error getting local status assumption for student {self.id}: {str(e)}"
+            logger.warning(
+                "Error getting local status assumption for student %d: %s",
+                self.id,
+                str(e),
             )
             return LocalStatusEnum.local
 
+    # Class Methods
     @classmethod
     def import_from_salesforce(cls, sf_data, db_session):
         """
         Import student data from Salesforce.
 
+        Creates a new student or updates an existing one based on Salesforce
+        individual ID. Handles contact information, school relationships, and
+        demographic data.
+
         Args:
-            sf_data: Dictionary containing Salesforce student data
+            sf_data: Dictionary containing Salesforce student data with fields:
+                - Id: Salesforce Contact ID (required)
+                - FirstName: Student's first name (required)
+                - LastName: Student's last name (required)
+                - AccountId: Salesforce Account ID
+                - MiddleName: Student's middle name
+                - Birthdate: Student's birthdate
+                - Local_Student_ID__c: School-specific student identifier
+                - npsp__Primary_Affiliation__c: School Salesforce ID
+                - Class__c: Class Salesforce ID
+                - Legacy_Grade__c: Legacy grade data
+                - Current_Grade__c: Current grade level
+                - Gender__c: Gender value
+                - Racial_Ethnic_Background__c: Racial/ethnic identification
             db_session: SQLAlchemy database session
 
         Returns:
             tuple: (student_object, is_new_student, error_message)
+                - student_object: Student instance or None if error
+                - is_new_student: Boolean indicating if student was newly created
+                - error_message: String error message or None if successful
+
+        Example:
+            >>> sf_data = {
+            ...     "Id": "0031234567890ABCD",
+            ...     "FirstName": "John",
+            ...     "LastName": "Doe",
+            ...     "npsp__Primary_Affiliation__c": "0015f00000JVZsFAAX",
+            ...     "Current_Grade__c": 10
+            ... }
+            >>> student, is_new, error = Student.import_from_salesforce(sf_data, db.session)
+            >>> if error:
+            ...     print(f"Error: {error}")
         """
         try:
             # Extract required fields
@@ -389,8 +475,11 @@ class Student(Contact):
                     student.gender = GenderEnum[gender_key]
                 except KeyError:
                     # Log invalid gender but don't fail the import
-                    print(
-                        f"Invalid gender value for {first_name} {last_name}: {gender_value}"
+                    logger.warning(
+                        "Invalid gender value for %s %s: %s",
+                        first_name,
+                        last_name,
+                        gender_value,
                     )
 
             # Handle racial/ethnic background
@@ -399,8 +488,12 @@ class Student(Contact):
                 try:
                     student.racial_ethnic = cls.map_racial_ethnic_value(racial_ethnic)
                 except Exception as e:
-                    print(
-                        f"Error processing racial/ethnic value for {first_name} {last_name}: {racial_ethnic}"
+                    logger.warning(
+                        "Error processing racial/ethnic value for %s %s: %s - %s",
+                        first_name,
+                        last_name,
+                        racial_ethnic,
+                        str(e),
                     )
 
             return student, is_new, None
@@ -412,6 +505,7 @@ class Student(Contact):
                 f"Error processing student {sf_data.get('FirstName', '')} {sf_data.get('LastName', '')}: {str(e)}",
             )
 
+    # Static Methods
     @staticmethod
     def map_racial_ethnic_value(value):
         """
@@ -421,7 +515,14 @@ class Student(Contact):
             value: Raw racial/ethnic value from Salesforce
 
         Returns:
-            Cleaned and standardized value or None if empty
+            str or None: Cleaned and standardized value or None if empty
+
+        Example:
+            >>> Student.map_racial_ethnic_value("  Asian  ")
+            'Asian'
+
+            >>> Student.map_racial_ethnic_value("")
+            None
         """
         if not value:
             return None
@@ -432,16 +533,31 @@ class Student(Contact):
         # Return the cleaned value directly
         return value
 
+    # Instance Methods
     def update_contact_info(self, sf_data, db_session):
         """
         Update student's contact information from Salesforce data.
 
+        Adds or updates email and phone records for the student. Creates new
+        contact records if they don't exist, marking them as primary and
+        personal type.
+
         Args:
-            sf_data: Dictionary containing Salesforce student data
+            sf_data: Dictionary containing Salesforce student data with fields:
+                - Email: Email address (optional)
+                - Phone: Phone number (optional)
             db_session: SQLAlchemy database session
 
         Returns:
             tuple: (success, error_message)
+                - success: Boolean indicating if update was successful
+                - error_message: String error message or None if successful
+
+        Example:
+            >>> sf_data = {"Email": "student@example.com", "Phone": "555-1234"}
+            >>> success, error = student.update_contact_info(sf_data, db.session)
+            >>> if success:
+            ...     db.session.commit()
         """
         try:
             # Handle email

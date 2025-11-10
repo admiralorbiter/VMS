@@ -37,13 +37,22 @@ def test_school(app):
     with app.app_context():
         # Only import School when needed
         try:
-            school = School(id="TEST001", name="Test School")
+            school = School(
+                id="0015f00000TEST1234", name="Test School"
+            )  # Valid 18-char Salesforce ID
             db.session.add(school)
             db.session.commit()
-            return school
+
+            # Get fresh instance from session to avoid detached instance errors
+            school = db.session.get(School, "0015f00000TEST1234")
+            yield school
+
+            # Cleanup
+            db.session.delete(school)
+            db.session.commit()
         except ImportError:
             # For tests that don't need school
-            return None
+            yield None
 
 
 def test_new_event(app):
@@ -270,7 +279,9 @@ def test_event_virtual_fields(app, test_school):
             session_id="TEST123",
             series="Test Series",
             duration=60,
-            school="TEST001" if test_school else None,  # Make school optional
+            school=(
+                test_school.id if test_school else None
+            ),  # Use valid 18-character Salesforce ID from test_school fixture
             district_partner="Test District",
             educators="Test Educator",
             educator_ids="EDU123",
@@ -427,18 +438,21 @@ def test_event_indexes(app):
 def test_event_date_validation(app):
     """Test automatic date validation on assignment"""
     import warnings
+
     with app.app_context():
         # Test that dates are validated automatically when assigned
         event = Event(
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test automatic validation - dates are validated on assignment
         # Assign end_date that is before start_date - should issue warning, not exception
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            event.end_date = event.start_date - timedelta(days=1)  # End date before start date
+            event.end_date = event.start_date - timedelta(
+                days=1
+            )  # End date before start date
             # Date assignment should succeed (validation is automatic via @validates)
             assert event.end_date is not None
             # But relationship check should issue warning if called
@@ -450,6 +464,7 @@ def test_event_date_validation(app):
 def test_event_count_validation(app):
     """Test automatic count validation and normalization"""
     import warnings
+
     with app.app_context():
         # Test that counts are validated automatically when assigned
         event = Event(
@@ -457,7 +472,7 @@ def test_event_count_validation(app):
             start_date=datetime.now(timezone.utc),
             registered_count=10,
         )
-        
+
         # Test automatic validation - counts are normalized on assignment
         # Negative values should normalize to 0 with warning
         with warnings.catch_warnings(record=True) as w:
@@ -465,14 +480,14 @@ def test_event_count_validation(app):
             event.attended_count = -5  # Invalid negative value
             assert event.attended_count == 0  # Should normalize to 0
             assert len(w) > 0  # Should issue warning
-        
+
         # Test that invalid strings normalize to 0 with warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             event.participant_count = "invalid"
             assert event.participant_count == 0  # Should normalize to 0
             assert len(w) > 0  # Should issue warning
-        
+
         # Test relationship validation - attended > registered should warn
         event.registered_count = 10
         event.attended_count = 15  # More attended than registered
@@ -576,6 +591,7 @@ def test_event_attendance_cascade(app, test_event):
 def test_event_edge_cases(app):
     """Test edge cases for event creation and validation"""
     import warnings
+
     with app.app_context():
         # Test case 1: Event with end date before start date - should issue warning, not exception
         event = Event(
@@ -663,7 +679,9 @@ def test_event_status_transitions(app):
         # The validator tracks _previous_status, so we need to ensure it's set
         # When we assign status, the validator will check _previous_status internally
         with pytest.raises(ValueError, match="Invalid status transition"):
-            event.status = EventStatus.DRAFT  # Invalid transition - exception raised automatically by validator
+            event.status = (
+                EventStatus.DRAFT
+            )  # Invalid transition - exception raised automatically by validator
 
 
 def test_status_enum_validator(app):
@@ -673,27 +691,27 @@ def test_status_enum_validator(app):
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test enum instance assignment
         event.status = EventStatus.PUBLISHED
         assert event.status == EventStatus.PUBLISHED
-        
+
         # Test string value assignment - value-based lookup
         event.status = "Completed"
         assert event.status == EventStatus.COMPLETED
-        
+
         # Test case-insensitive string
         event.status = "confirmed"
         assert event.status == EventStatus.CONFIRMED
-        
+
         # Test uppercase string
         event.status = "DRAFT"
         assert event.status == EventStatus.DRAFT
-        
+
         # Test None default (should become DRAFT)
         event.status = None
         assert event.status == EventStatus.DRAFT
-        
+
         # Test invalid string should raise ValueError
         with pytest.raises(ValueError, match="Invalid status"):
             event.status = "InvalidStatus"
@@ -706,23 +724,23 @@ def test_type_enum_validator(app):
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test enum instance assignment
         event.type = EventType.VIRTUAL_SESSION
         assert event.type == EventType.VIRTUAL_SESSION
-        
+
         # Test string value assignment
         event.type = "virtual_session"
         assert event.type == EventType.VIRTUAL_SESSION
-        
+
         # Test case-insensitive string
         event.type = "CAREER_FAIR"
         assert event.type == EventType.CAREER_FAIR
-        
+
         # Test None default (should become IN_PERSON)
         event.type = None
         assert event.type == EventType.IN_PERSON
-        
+
         # Test invalid string should raise ValueError
         with pytest.raises(ValueError, match="Invalid event type"):
             event.type = "InvalidType"
@@ -735,23 +753,23 @@ def test_format_enum_validator(app):
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test enum instance assignment
         event.format = EventFormat.VIRTUAL
         assert event.format == EventFormat.VIRTUAL
-        
+
         # Test string value assignment
         event.format = "virtual"
         assert event.format == EventFormat.VIRTUAL
-        
+
         # Test case-insensitive string
         event.format = "IN_PERSON"
         assert event.format == EventFormat.IN_PERSON
-        
+
         # Test None default (should become IN_PERSON)
         event.format = None
         assert event.format == EventFormat.IN_PERSON
-        
+
         # Test invalid string should raise ValueError
         with pytest.raises(ValueError, match="Invalid event format"):
             event.format = "InvalidFormat"
@@ -764,19 +782,19 @@ def test_cancellation_reason_enum_validator(app):
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test enum instance assignment
         event.cancellation_reason = CancellationReason.WEATHER
         assert event.cancellation_reason == CancellationReason.WEATHER
-        
+
         # Test string value assignment
         event.cancellation_reason = "weather"
         assert event.cancellation_reason == CancellationReason.WEATHER
-        
+
         # Test None value (optional field, should remain None)
         event.cancellation_reason = None
         assert event.cancellation_reason is None
-        
+
         # Test invalid string should raise ValueError
         with pytest.raises(ValueError, match="Invalid cancellation reason"):
             event.cancellation_reason = "InvalidReason"
@@ -785,27 +803,25 @@ def test_cancellation_reason_enum_validator(app):
 def test_datetime_validator_string_conversion(app):
     """Test datetime validator converts strings to datetime objects"""
     import warnings
+
     with app.app_context():
         # Test start_date with string input
-        event = Event(
-            title="Test Event",
-            start_date="2024-01-15 10:00:00"
-        )
+        event = Event(title="Test Event", start_date="2024-01-15 10:00:00")
         assert isinstance(event.start_date, datetime)
         assert event.start_date.tzinfo is not None  # Should be timezone-aware
-        
+
         # Test multiple date formats
         test_formats = [
             ("2024-01-15", "%Y-%m-%d"),
             ("01/15/2024", "%m/%d/%Y"),
             ("2024-01-15T10:00:00", "%Y-%m-%dT%H:%M:%S"),
         ]
-        
+
         for date_str, _ in test_formats:
             event.start_date = date_str
             assert isinstance(event.start_date, datetime)
             assert event.start_date.tzinfo is not None
-        
+
         # Test invalid date string (should return None with warning)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -818,18 +834,19 @@ def test_datetime_validator_string_conversion(app):
 def test_datetime_validator_timezone(app):
     """Test datetime validator handles timezone awareness"""
     import warnings
+
     with app.app_context():
         event = Event(
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test timezone-aware datetime input (should be preserved)
         tz_aware = datetime.now(timezone.utc)
         event.end_date = tz_aware
         assert event.end_date.tzinfo is not None
         assert event.end_date.tzinfo == timezone.utc
-        
+
         # Test timezone-naive datetime input (should get UTC timezone + warning)
         naive_dt = datetime.now()
         with warnings.catch_warnings(record=True) as w:
@@ -844,49 +861,54 @@ def test_datetime_validator_timezone(app):
 def test_date_relationship_validation(app):
     """Test date relationship validation issues warnings, not exceptions"""
     import warnings
+
     with app.app_context():
         event = Event(
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test end_date < start_date issues warning, not exception
         event.end_date = event.start_date - timedelta(days=1)
-        
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             event._validate_date_relationship()
             assert len(w) > 0
             assert any("before start date" in str(warning.message) for warning in w)
-        
+
         # Test valid relationship doesn't warn
         event.end_date = event.start_date + timedelta(days=1)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             event._validate_date_relationship()
             # Should not issue warning for valid relationship
-            assert len([warn for warn in w if "before start date" in str(warn.message)]) == 0
+            assert (
+                len([warn for warn in w if "before start date" in str(warn.message)])
+                == 0
+            )
 
 
 def test_count_validator_normalization(app):
     """Test count validators normalize values automatically"""
     import warnings
+
     with app.app_context():
         event = Event(
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test participant_count with string input
         event.participant_count = "10"
         assert event.participant_count == 10
         assert isinstance(event.participant_count, int)
-        
+
         # Test registered_count with float input
         event.registered_count = 15.7
         assert event.registered_count == 15
         assert isinstance(event.registered_count, int)
-        
+
         # Test negative values should normalize to 0 with warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -899,18 +921,18 @@ def test_count_validator_normalization(app):
             if len(w) == 0:
                 # Warnings might be suppressed, but normalization still works
                 pass
-        
+
         # Test invalid strings should normalize to 0 with warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             event.available_slots = "invalid"
             assert event.available_slots == 0
             assert len(w) > 0
-        
+
         # Test None/empty should become 0
         event.scheduled_participants_count = None
         assert event.scheduled_participants_count == 0
-        
+
         # Test all count fields
         count_fields = [
             "participant_count",
@@ -921,7 +943,7 @@ def test_count_validator_normalization(app):
             "volunteers_needed",
             "total_requested_volunteer_jobs",
         ]
-        
+
         for field in count_fields:
             setattr(event, field, "5")
             assert getattr(event, field) == 5
@@ -930,33 +952,34 @@ def test_count_validator_normalization(app):
 def test_duration_validator(app):
     """Test duration validator with normalization"""
     import warnings
+
     with app.app_context():
         event = Event(
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test duration with string input
         event.duration = "60"
         assert event.duration == 60
         assert isinstance(event.duration, int)
-        
+
         # Test duration with float input
         event.duration = 90.5
         assert event.duration == 90
         assert isinstance(event.duration, int)
-        
+
         # Test negative duration should normalize to 0
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             event.duration = -30
             assert event.duration == 0
             assert len(w) > 0
-        
+
         # Test None value (optional field, should remain None)
         event.duration = None
         assert event.duration is None
-        
+
         # Test invalid input should return None with warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -968,6 +991,7 @@ def test_duration_validator(app):
 def test_count_relationship_validation(app):
     """Test count relationship validation issues warnings"""
     import warnings
+
     with app.app_context():
         event = Event(
             title="Test Event",
@@ -975,15 +999,19 @@ def test_count_relationship_validation(app):
             registered_count=10,
             participant_count=10,
         )
-        
+
         # Test attended_count > registered_count issues warning
         event.attended_count = 15
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             event._validate_count_relationships()
             assert len(w) > 0
-            assert any("exceed" in str(warning.message).lower() and "registered" in str(warning.message).lower() for warning in w)
-        
+            assert any(
+                "exceed" in str(warning.message).lower()
+                and "registered" in str(warning.message).lower()
+                for warning in w
+            )
+
         # Test attended_count > participant_count issues warning
         event.attended_count = 15
         event.participant_count = 12
@@ -991,8 +1019,12 @@ def test_count_relationship_validation(app):
             warnings.simplefilter("always")
             event._validate_count_relationships()
             assert len(w) > 0
-            assert any("exceed" in str(warning.message).lower() and "participant" in str(warning.message).lower() for warning in w)
-        
+            assert any(
+                "exceed" in str(warning.message).lower()
+                and "participant" in str(warning.message).lower()
+                for warning in w
+            )
+
         # Test valid relationships don't warn
         event.attended_count = 8
         event.registered_count = 10
@@ -1001,7 +1033,9 @@ def test_count_relationship_validation(app):
             warnings.simplefilter("always")
             event._validate_count_relationships()
             # Should not issue warning for valid relationships
-            assert len([warn for warn in w if "exceed" in str(warn.message).lower()]) == 0
+            assert (
+                len([warn for warn in w if "exceed" in str(warn.message).lower()]) == 0
+            )
 
 
 def test_salesforce_id_validator(app):
@@ -1011,24 +1045,24 @@ def test_salesforce_id_validator(app):
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test valid 18-character Salesforce ID
         valid_id = "0011234567890ABCDE"  # 18 characters
         event.salesforce_id = valid_id
         assert event.salesforce_id == valid_id
-        
+
         # Test None value (optional field, should remain None)
         event.salesforce_id = None
         assert event.salesforce_id is None
-        
+
         # Test invalid length (should raise ValueError)
         with pytest.raises(ValueError, match="Salesforce ID must be exactly"):
             event.salesforce_id = "0011234567890ABCD"  # 17 characters
-        
+
         # Test invalid length (too long)
         with pytest.raises(ValueError, match="Salesforce ID must be exactly"):
             event.salesforce_id = "0011234567890ABCDEF"  # 19 characters
-        
+
         # Test invalid characters (should raise ValueError)
         with pytest.raises(ValueError, match="Salesforce ID must be exactly"):
             event.salesforce_id = "0011234567890ABC-"  # Contains invalid character
@@ -1037,12 +1071,13 @@ def test_salesforce_id_validator(app):
 def test_validation_warnings(app):
     """Test that warnings are issued for non-critical issues, exceptions for critical"""
     import warnings
+
     with app.app_context():
         event = Event(
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test warnings for non-critical issues
         # Invalid date format issues warning, not exception
         with warnings.catch_warnings(record=True) as w:
@@ -1050,7 +1085,7 @@ def test_validation_warnings(app):
             event.end_date = "invalid date"
             assert event.end_date is None  # Returns None
             assert len(w) > 0  # But issues warning
-        
+
         # Invalid count issues warning, not exception
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -1058,7 +1093,7 @@ def test_validation_warnings(app):
             _ = event.participant_count  # Access to trigger validation
             assert event.participant_count == 0  # Normalizes to 0
             # Warnings may be issued - normalization is the key behavior
-        
+
         # Negative count issues warning, not exception
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -1066,16 +1101,16 @@ def test_validation_warnings(app):
             _ = event.registered_count  # Access to trigger validation
             assert event.registered_count == 0  # Normalizes to 0
             # Warnings may be issued - normalization is the key behavior
-        
+
         # Test exceptions still raised for critical issues
         # Empty title should raise exception
         with pytest.raises(ValueError, match="Event title cannot be empty"):
             Event(title="", start_date=datetime.now(timezone.utc))
-        
+
         # Invalid enum should raise exception
         with pytest.raises(ValueError, match="Invalid status"):
             event.status = "InvalidStatus"
-        
+
         # Invalid Salesforce ID should raise exception
         with pytest.raises(ValueError, match="Salesforce ID"):
             event.salesforce_id = "invalid"
@@ -1088,27 +1123,27 @@ def test_automatic_validation_on_assignment(app):
             title="Test Event",
             start_date=datetime.now(timezone.utc),
         )
-        
+
         # Test enum validation is automatic
         event.status = "Completed"  # String input
         assert event.status == EventStatus.COMPLETED  # Automatically converted
-        
+
         # Test type validation is automatic
         event.type = "virtual_session"  # String input
         assert event.type == EventType.VIRTUAL_SESSION  # Automatically converted
-        
+
         # Test count validation is automatic
         event.participant_count = "10"  # String input
         assert event.participant_count == 10  # Automatically converted to int
-        
+
         # Test datetime validation is automatic
         event.end_date = "2024-01-15 10:00:00"  # String input
         assert isinstance(event.end_date, datetime)  # Automatically converted
-        
+
         # Test title validation is automatic
         with pytest.raises(ValueError):
             event.title = ""  # Empty title raises exception automatically
-        
+
         # Verify no manual validation calls are needed
         # All validation happens automatically via @validates decorators
 
@@ -1141,5 +1176,3 @@ def test_event_duplicate_volunteer(app, test_event, test_volunteer):
             raise
         finally:
             db.session.close()
-
-
