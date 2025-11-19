@@ -191,6 +191,13 @@ def load_routes(bp):
                 "url": "/reports/dia-events",
                 "category": "Event Management",
             },
+            {
+                "title": "KCTAA Volunteer Matches",
+                "description": "Match KCTAA personnel names against volunteers in the system, showing volunteer activity counts and match quality indicators.",
+                "icon": "fa-solid fa-users-gear",
+                "url": "/reports/kctaa",
+                "category": "Volunteer Reports",
+            },
         ]
 
         # Filter reports based on user scope

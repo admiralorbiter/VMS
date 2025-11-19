@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}KCTAA Volunteer Matches{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+  .report-container { max-width: 1600px; margin: 20px auto; padding: 0 16px; }
+  .filters-card { background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:16px; }
+  .table thead th { background:#2c5aa0; color:#fff; position:sticky; top:0; z-index:1; }
+  .match-exact { color: #28a745; font-weight: 600; }
+  .match-fuzzy { color: #ffc107; font-weight: 600; }
+  .match-none { color: #dc3545; font-weight: 600; }
+  .badge-exact { background-color: #28a745; }
+  .badge-fuzzy { background-color: #ffc107; color: #000; }
+  .badge-none { background-color: #dc3545; }
+  .info-box {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    color: #155724;
+  }
+  .info-box h4 {
+    margin: 0 0 10px 0;
+    color: #155724;
+    font-size: 1.1em;
+  }
+  .info-box p {
+    margin: 5px 0;
+    font-size: 0.95em;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>KCTAA Volunteer Matches</h1>
+  <p class="text-muted">Match KCTAA personnel names against volunteers in the system, showing volunteer activity and match quality indicators.</p>
+
+  {% if error %}
+  <div class="alert alert-danger" role="alert">
+    {{ error }}
+  </div>
+  {% else %}
+  <div class="info-box">
+    <h4>Matching Information</h4>
+    <p><strong>Exact Match:</strong> First and last name match exactly (case-insensitive, punctuation-insensitive).</p>
+    <p><strong>Fuzzy Match:</strong> Name similarity score ≥ {{ (90 / 100)|round(1) }} (e.g., spelling variations, similar names).</p>
+    <p><strong>Match Score:</strong> Similarity score from 0.0 (no match) to 1.0 (exact match). Higher scores indicate better matches.</p>
+    <p><strong>Match Count:</strong> Number of volunteers that matched this CSV name (multiple matches possible).</p>
+  </div>
+
+  <form class="card p-3 mb-3 filters-card" method="get">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Minimum Match Score (0.0 - 1.0)</label>
+        <input type="number" name="min_score" class="form-control" value="{{ min_score }}" min="0" max="1" step="0.1" placeholder="0.9">
+        <small class="form-text text-muted">Filter matches by minimum score (higher = stricter)</small>
+      </div>
+      <div class="col-md-4">
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" name="include_unmatched" value="1" id="includeUnmatched" {% if include_unmatched %}checked{% endif %}>
+          <label class="form-check-label" for="includeUnmatched">
+            Include Unmatched Names
+          </label>
+        </div>
+        <small class="form-text text-muted">Show CSV names with no matches</small>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Apply Filters</button>
+      <a class="btn btn-success" href="{{ url_for('report.kctaa_report_csv', min_score=min_score, include_unmatched=1 if include_unmatched else 0) }}">Download CSV</a>
+      {% if total_csv_records %}
+      <span class="ms-auto small text-muted">CSV Records: {{ total_csv_records }}, Matches: {{ total_matches }}</span>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Match Results</strong>
+      <span class="text-muted">{{ matches|length }} total rows</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>CSV Name</th>
+            <th>Matched Volunteer</th>
+            <th>Email</th>
+            <th>Organization</th>
+            <th class="text-end">Events</th>
+            <th class="text-end">Hours</th>
+            <th>Last Event</th>
+            <th>Match Type</th>
+            <th class="text-end">Match Score</th>
+            <th>Match Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for match in matches %}
+          <tr>
+            <td><strong>{{ match.csv_full_name }}</strong></td>
+            <td>
+              {% if match.volunteer_name %}
+                {{ match.volunteer_name }}
+              {% else %}
+                <span class="text-muted">No match</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if match.volunteer_email %}
+                {{ match.volunteer_email }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if match.volunteer_organization %}
+                {{ match.volunteer_organization }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end">{{ match.event_count }}</td>
+            <td class="text-end">{{ "%.1f"|format(match.total_hours) }}</td>
+            <td>
+              {% if match.last_event_date %}
+                {{ match.last_event_date.strftime('%b %d, %Y') }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if match.match_type == 'exact' %}
+                <span class="badge badge-exact text-white">Exact</span>
+              {% elif match.match_type == 'fuzzy' %}
+                <span class="badge badge-fuzzy">Fuzzy</span>
+              {% else %}
+                <span class="badge badge-none text-white">None</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <span class="{% if match.match_type == 'exact' %}match-exact{% elif match.match_type == 'fuzzy' %}match-fuzzy{% else %}match-none{% endif %}">
+                {{ "%.3f"|format(match.match_score) }}
+              </span>
+            </td>
+            <td class="text-center">
+              {% if match.match_count > 1 %}
+                <span class="badge bg-info" title="Multiple matches found">{{ match.match_count }}</span>
+              {% else %}
+                {{ match.match_count }}
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="text-center text-muted">No matches found. Try adjusting filters.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if matches %}
+  <div class="mt-3">
+    <p class="text-muted small">
+      <strong>Summary:</strong>
+      {% set exact_count = matches|selectattr('match_type', 'equalto', 'exact')|list|length %}
+      {% set fuzzy_count = matches|selectattr('match_type', 'equalto', 'fuzzy')|list|length %}
+      {% set none_count = matches|selectattr('match_type', 'equalto', 'none')|list|length %}
+      {{ exact_count }} exact match{{ 'es' if exact_count != 1 else '' }},
+      {{ fuzzy_count }} fuzzy match{{ 'es' if fuzzy_count != 1 else '' }},
+      {{ none_count }} unmatched
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
