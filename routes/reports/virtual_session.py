@@ -1162,6 +1162,64 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     return session_data, district_summaries, overall_summary, filter_options
 
 
+def _district_name_matches(target_district_name, compare_district_name):
+    """
+    Check if a district name matches the target district, including aliases.
+
+    Args:
+        target_district_name: The target district name (from URL/filter)
+        compare_district_name: The district name to compare against
+
+    Returns:
+        bool: True if the districts match (including aliases)
+    """
+    if not target_district_name or not compare_district_name:
+        return False
+
+    # Normalize for comparison (case-insensitive, strip whitespace)
+    target_normalized = target_district_name.strip().lower()
+    compare_normalized = compare_district_name.strip().lower()
+
+    # Exact match (case-insensitive)
+    if target_normalized == compare_normalized:
+        return True
+
+    # Check against DISTRICT_MAPPING aliases
+    from routes.reports.common import DISTRICT_MAPPING
+
+    # Find the target district in the mapping
+    target_mapping = None
+    for mapping in DISTRICT_MAPPING.values():
+        if mapping["name"].strip().lower() == target_normalized:
+            target_mapping = mapping
+            break
+
+    if target_mapping:
+        # Check if compare_district_name matches any alias
+        aliases = target_mapping.get("aliases", [])
+        for alias in aliases:
+            if alias.strip().lower() == compare_normalized:
+                return True
+
+        # Also check reverse: if compare_district_name is the primary name and target is an alias
+        if (
+            compare_district_name.strip().lower()
+            == target_mapping["name"].strip().lower()
+        ):
+            return True
+
+    # Reverse check: maybe compare_district_name is in the mapping and target is an alias
+    for mapping in DISTRICT_MAPPING.values():
+        if mapping["name"].strip().lower() == compare_normalized:
+            aliases = mapping.get("aliases", [])
+            for alias in aliases:
+                if alias.strip().lower() == target_normalized:
+                    return True
+            break
+
+    return False
+
+
 def compute_virtual_session_district_data(
     district_name, virtual_year, date_from, date_to
 ):
@@ -1216,7 +1274,8 @@ def compute_virtual_session_district_data(
                     teacher_district = event.district_partner
 
                 # If teacher belongs to target district, include this event
-                if teacher_district == district_name:
+                # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+                if _district_name_matches(district_name, teacher_district):
                     event_has_target_district_teacher = True
                     target_district_teachers.add(
                         f"{teacher.first_name} {teacher.last_name}"
@@ -1230,33 +1289,24 @@ def compute_virtual_session_district_data(
         if not event_has_target_district_teacher:
             continue
 
-        # Aggregate all teachers and schools for this event (for display purposes)
-        teachers = set()
-        schools = set()
-        for teacher_reg in event.teacher_registrations:
-            teacher = teacher_reg.teacher
-            if teacher:
-                teachers.add(f"{teacher.first_name} {teacher.last_name}")
-                # School
-                school_name = ""
-                if hasattr(teacher, "school_obj") and teacher.school_obj:
-                    school_name = teacher.school_obj.name
-                elif teacher.school_id:
-                    school_obj = School.query.get(teacher.school_id)
-                    if school_obj:
-                        school_name = school_obj.name
-                if school_name:
-                    schools.add(school_name)
+        # Calculate participant count for this district only
+        # Count only teachers from the target district and multiply by 25
+        district_teacher_count = len(target_district_teachers)
+        district_participant_count = district_teacher_count * 25
 
-        # Create aggregated session record
+        # Create aggregated session record using only target district teachers and schools
         session_dict[event.id] = {
             "event_id": event.id,  # This should always be the correct event ID
             "status": event.status.value if event.status else "",
             "date": event.start_date.strftime("%m/%d/%y") if event.start_date else "",
             "time": event.start_date.strftime("%I:%M %p") if event.start_date else "",
             "session_type": event.additional_information or "",
-            "teachers": sorted(teachers) if teachers else [],
-            "schools": sorted(schools) if schools else [],
+            "teachers": (
+                sorted(target_district_teachers) if target_district_teachers else []
+            ),
+            "schools": (
+                sorted(target_district_schools) if target_district_schools else []
+            ),
             "district": district_name,
             "session_title": event.title,
             "presenter": (
@@ -1287,7 +1337,7 @@ def compute_virtual_session_district_data(
             ),
             "topic_theme": event.series or "",
             "session_link": event.registration_link or "",
-            "participant_count": event.participant_count or 0,
+            "participant_count": district_participant_count,
             "duration": event.duration or 0,
             "is_simulcast": (
                 any([tr.is_simulcast for tr in event.teacher_registrations])
@@ -1343,7 +1393,8 @@ def compute_virtual_session_district_data(
                     teacher_district = event.district_partner
 
                 # If teacher belongs to target district, include this event
-                if teacher_district == district_name:
+                # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+                if _district_name_matches(district_name, teacher_district):
                     event_has_target_district_teacher = True
                     break
 
@@ -1405,7 +1456,8 @@ def compute_virtual_session_district_data(
                     teacher_district = event.district_partner
 
                 # Skip teachers not from the target district
-                if teacher_district != district_name:
+                # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+                if not _district_name_matches(district_name, teacher_district):
                     continue
 
                 teacher_id = teacher.id
@@ -1471,7 +1523,11 @@ def compute_virtual_session_district_data(
         for school_name in session["schools"]:
             # Check if this school belongs to the target district
             school = School.query.filter_by(name=school_name).first()
-            if school and school.district and school.district.name == district_name:
+            if (
+                school
+                and school.district
+                and _district_name_matches(district_name, school.district.name)
+            ):
                 total_schools.add(school_name)
                 # School breakdown
                 if school_name not in school_breakdown:
@@ -4708,7 +4764,8 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                         teacher_district_name = school_obj.district.name
 
             # Only include registrations for teachers in the requested district
-            if teacher_district_name != district_name:
+            # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+            if not _district_name_matches(district_name, teacher_district_name):
                 continue
 
             # Initialize school if not exists
