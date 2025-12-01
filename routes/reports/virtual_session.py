@@ -597,6 +597,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                             pass
 
                 # Session-level flags (local / POC sessions)
+                # Prefer event_id for consistency with session counting logic
                 sid_flag = session.get("event_id") or session.get("session_title")
                 if sid_flag:
                     if any(p.get("is_local") for p in session["presenter_data"]):
@@ -683,10 +684,17 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
     overall_student_count = unique_teacher_count * 25
 
     # Prepare overall summary stats
+    # Use session_ids (event_id) if available for session counting, otherwise fall back to session_count
+    overall_session_count = (
+        len(overall_stats.get("session_ids", set()))
+        if overall_stats.get("session_ids")
+        else len(overall_stats["session_count"])
+    )
+
     overall_summary = {
         "teacher_count": unique_teacher_count,
         "student_count": overall_student_count,
-        "session_count": len(overall_stats["session_count"]),
+        "session_count": overall_session_count,
         "experience_count": overall_stats["experience_count"],  # Use integer value
         "organization_count": len(overall_stats["organization_count"]),
         "professional_count": len(overall_stats["professional_count"]),
@@ -699,8 +707,14 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         "poc_session_count": len(overall_stats["poc_sessions"]),
     }
 
-    # Percentages overall
-    denom = overall_summary["session_count"] or 1
+    # Percentages overall - use session_ids for denominator if available
+    denom = (
+        len(overall_stats.get("session_ids", set()))
+        if overall_stats.get("session_ids")
+        else (overall_summary["session_count"] or 1)
+    )
+    if denom == 0:
+        denom = 1
     overall_summary["local_session_percent"] = (
         round(100 * overall_summary["local_session_count"] / denom)
         if overall_summary["local_session_count"]
@@ -1117,10 +1131,12 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     )
 
     # Ensure all districts with data are included in summaries
-    # If a district has data but no summary was created, create an empty summary
-
+    # Only create empty summaries for districts that appear in all_districts but have no completed sessions
+    # This allows showing all districts that exist, even if they have zero completed sessions
     for district_name in all_districts:
         if district_name not in district_summaries:
+            # Only create empty summary if we want to show all districts
+            # Otherwise, skip districts with no completed sessions
             district_summaries[district_name] = {
                 "teacher_count": 0,
                 "total_students": 0,
@@ -2192,12 +2208,86 @@ def load_routes(bp):
                     # Store original unfiltered data for district summaries
                     unfiltered_session_data = session_data.copy()
                     session_data = apply_runtime_filters(session_data, current_filters)
-                    # Recalculate summaries based on UNFILTERED data to show all districts
-                    district_summaries, overall_summary = (
-                        calculate_summaries_from_sessions(
-                            unfiltered_session_data,
-                            current_filters.get("show_all_districts", False),
-                        )
+                    # Recalculate summaries using same method as individual district pages
+                    # Get list of all districts that appear in the unfiltered data
+                    all_districts_in_data = set()
+                    for session in unfiltered_session_data:
+                        if session.get("district"):
+                            all_districts_in_data.add(session["district"])
+
+                    # Calculate district summaries using the same method as individual district pages
+                    district_summaries = {}
+                    for district_name in all_districts_in_data:
+                        try:
+                            _, _, _, _, summary_stats = (
+                                compute_virtual_session_district_data(
+                                    district_name,
+                                    selected_virtual_year,
+                                    date_from,
+                                    date_to,
+                                )
+                            )
+                            district_summaries[district_name] = {
+                                "teacher_count": summary_stats.get("total_teachers", 0),
+                                "total_students": summary_stats.get(
+                                    "total_students", 0
+                                ),
+                                "session_count": summary_stats.get(
+                                    "total_unique_sessions", 0
+                                ),
+                                "total_experiences": summary_stats.get(
+                                    "total_experiences", 0
+                                ),
+                                "organization_count": summary_stats.get(
+                                    "total_organizations", 0
+                                ),
+                                "professional_count": summary_stats.get(
+                                    "total_professionals", 0
+                                ),
+                                "professional_of_color_count": summary_stats.get(
+                                    "total_professionals_of_color", 0
+                                ),
+                                "local_professional_count": summary_stats.get(
+                                    "total_local_professionals", 0
+                                ),
+                                "school_count": summary_stats.get("total_schools", 0),
+                                "local_session_count": summary_stats.get(
+                                    "local_session_count", 0
+                                ),
+                                "poc_session_count": summary_stats.get(
+                                    "poc_session_count", 0
+                                ),
+                                "local_session_percent": summary_stats.get(
+                                    "local_session_percent", 0
+                                ),
+                                "poc_session_percent": summary_stats.get(
+                                    "poc_session_percent", 0
+                                ),
+                            }
+                        except Exception as e:
+                            print(
+                                f"DEBUG: Error calculating stats for {district_name}: {str(e)}"
+                            )
+                            district_summaries[district_name] = {
+                                "teacher_count": 0,
+                                "total_students": 0,
+                                "session_count": 0,
+                                "total_experiences": 0,
+                                "organization_count": 0,
+                                "professional_count": 0,
+                                "professional_of_color_count": 0,
+                                "local_professional_count": 0,
+                                "school_count": 0,
+                                "local_session_count": 0,
+                                "poc_session_count": 0,
+                                "local_session_percent": 0,
+                                "poc_session_percent": 0,
+                            }
+
+                    # Recalculate overall summary from unfiltered session data
+                    _, overall_summary = calculate_summaries_from_sessions(
+                        unfiltered_session_data,
+                        current_filters.get("show_all_districts", False),
                     )
 
                     # Filter district summaries based on user scope
@@ -2251,11 +2341,72 @@ def load_routes(bp):
 
         # Get unfiltered data first to ensure we have all districts for summaries
         print("DEBUG: Getting unfiltered data for district summaries...")
-        _, all_district_summaries, _, filter_options = compute_virtual_session_data(
+        session_data_unfiltered, _, _, filter_options = compute_virtual_session_data(
             selected_virtual_year, date_from, date_to, {}
         )
+
+        # Get list of all districts that appear in the data
+        all_districts_in_data = set()
+        for session in session_data_unfiltered:
+            if session.get("district"):
+                all_districts_in_data.add(session["district"])
+
         print(
-            f"DEBUG: Unfiltered district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
+            f"DEBUG: Districts found in session_data: {sorted(list(all_districts_in_data))}"
+        )
+
+        # Calculate district summaries using the same method as individual district pages
+        # This ensures consistency between breakdown cards and individual district pages
+        all_district_summaries = {}
+        for district_name in all_districts_in_data:
+            try:
+                # Use the same calculation method as individual district page
+                _, _, _, _, summary_stats = compute_virtual_session_district_data(
+                    district_name, selected_virtual_year, date_from, date_to
+                )
+                # Convert to the format expected by the breakdown template
+                all_district_summaries[district_name] = {
+                    "teacher_count": summary_stats.get("total_teachers", 0),
+                    "total_students": summary_stats.get("total_students", 0),
+                    "session_count": summary_stats.get("total_unique_sessions", 0),
+                    "total_experiences": summary_stats.get("total_experiences", 0),
+                    "organization_count": summary_stats.get("total_organizations", 0),
+                    "professional_count": summary_stats.get("total_professionals", 0),
+                    "professional_of_color_count": summary_stats.get(
+                        "total_professionals_of_color", 0
+                    ),
+                    "local_professional_count": summary_stats.get(
+                        "total_local_professionals", 0
+                    ),
+                    "school_count": summary_stats.get("total_schools", 0),
+                    "local_session_count": summary_stats.get("local_session_count", 0),
+                    "poc_session_count": summary_stats.get("poc_session_count", 0),
+                    "local_session_percent": summary_stats.get(
+                        "local_session_percent", 0
+                    ),
+                    "poc_session_percent": summary_stats.get("poc_session_percent", 0),
+                }
+            except Exception as e:
+                print(f"DEBUG: Error calculating stats for {district_name}: {str(e)}")
+                # Create empty summary if calculation fails
+                all_district_summaries[district_name] = {
+                    "teacher_count": 0,
+                    "total_students": 0,
+                    "session_count": 0,
+                    "total_experiences": 0,
+                    "organization_count": 0,
+                    "professional_count": 0,
+                    "professional_of_color_count": 0,
+                    "local_professional_count": 0,
+                    "school_count": 0,
+                    "local_session_count": 0,
+                    "poc_session_count": 0,
+                    "local_session_percent": 0,
+                    "poc_session_percent": 0,
+                }
+
+        print(
+            f"DEBUG: Calculated district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
         )
 
         # Now get filtered data for the session table
@@ -2263,7 +2414,7 @@ def load_routes(bp):
             selected_virtual_year, date_from, date_to, current_filters
         )
 
-        # Use the unfiltered district summaries as our base
+        # Use the calculated district summaries
         district_summaries = all_district_summaries
 
         print(
