@@ -5122,6 +5122,7 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
             "teacher": teacher,
             "completed_sessions": 0,
             "planned_sessions": 0,
+            "no_show_count": 0,  # Track no-shows to affect status calculation
         }
 
         # Store multiple possible name variations for matching
@@ -5167,40 +5168,78 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                                 break
 
                 if progress_data:
+                    # Normalize status strings for robust matching (similar to compute_teacher_school_breakdown)
+                    def _sanitize_status(text):
+                        """Normalize status text for comparison"""
+                        if not text:
+                            return ""
+                        t = str(text).lower().strip()
+                        # Replace common separators with spaces
+                        for ch in ["_", "-", "/", "\\", ",", ".", "  "]:
+                            t = t.replace(ch, " ")
+                        # Normalize multiple spaces
+                        while "  " in t:
+                            t = t.replace("  ", " ")
+                        return t
+
                     # Check teacher's individual registration status first
-                    teacher_reg_status = (
-                        (getattr(teacher_reg, "status", "") or "").lower().strip()
+                    teacher_reg_status = _sanitize_status(
+                        getattr(teacher_reg, "status", "")
                     )
+                    # Also check event-level status for teacher no-shows
+                    event_original_status = _sanitize_status(
+                        getattr(event, "original_status_string", "")
+                    )
+                    # Check if event status enum is NO_SHOW
+                    event_status_is_no_show = event.status == EventStatus.NO_SHOW
+
+                    # Comprehensive no-show detection
+                    # Check teacher registration status first (most specific)
                     is_teacher_no_show = (
-                        "teacher no-show" in teacher_reg_status
-                        or "teacher no show" in teacher_reg_status
-                        or "no-show" in teacher_reg_status
+                        "teacher no show" in teacher_reg_status
                         or "no show" in teacher_reg_status
                         or "did not attend" in teacher_reg_status
                     )
+
+                    # If teacher registration doesn't have no-show, check event-level status
+                    if not is_teacher_no_show:
+                        is_teacher_no_show = (
+                            "teacher no show" in event_original_status
+                            or "teacher did not attend" in event_original_status
+                            # Check if event status enum is NO_SHOW and original status mentions teacher
+                            or (
+                                event_status_is_no_show
+                                and "teacher" in event_original_status
+                            )
+                        )
                     is_teacher_cancel = (
                         "cancel" in teacher_reg_status
                         or "withdraw" in teacher_reg_status
                         or "cancelled" in teacher_reg_status
                     )
 
+                    # Track no-shows - they should not count as completed or planned,
+                    # but they affect the status calculation (teacher needs to replan)
+                    if is_teacher_no_show:
+                        progress_data["no_show_count"] += 1
+                        continue
+                    if is_teacher_cancel:
+                        continue
+
                     # Only count as completed if teacher actually attended (not no-show or cancelled)
-                    if not is_teacher_no_show and not is_teacher_cancel:
-                        # Check if this is a completed session
-                        if (
-                            event.status == EventStatus.COMPLETED
-                            or (event.status == EventStatus.SIMULCAST)
-                            or (
-                                getattr(event, "original_status_string", "") or ""
-                            ).lower()
-                            in ["completed", "successfully completed"]
-                        ):
-                            progress_data["completed_sessions"] += 1
-                        # Check if this is a planned/upcoming session
-                        elif event.status == EventStatus.DRAFT or (
-                            getattr(event, "original_status_string", "") or ""
-                        ).lower() in ["draft", "registered"]:
-                            progress_data["planned_sessions"] += 1
+                    # Check if this is a completed session
+                    if (
+                        event.status == EventStatus.COMPLETED
+                        or (event.status == EventStatus.SIMULCAST)
+                        or (getattr(event, "original_status_string", "") or "").lower()
+                        in ["completed", "successfully completed"]
+                    ):
+                        progress_data["completed_sessions"] += 1
+                    # Check if this is a planned/upcoming session
+                    elif event.status == EventStatus.DRAFT or (
+                        getattr(event, "original_status_string", "") or ""
+                    ).lower() in ["draft", "registered"]:
+                        progress_data["planned_sessions"] += 1
 
     # Group teachers by building/school
     school_data = {}
@@ -5218,9 +5257,31 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
             }
 
         # Calculate progress status
-        progress_status = teacher.get_progress_status(
-            progress_data["completed_sessions"], progress_data["planned_sessions"]
-        )
+        # If teacher has any no-shows and hasn't completed target, they need to replan
+        no_show_count = progress_data.get("no_show_count", 0)
+        completed = progress_data["completed_sessions"]
+        planned = progress_data["planned_sessions"]
+
+        # If teacher has no-shows and hasn't completed target, force "Needs Planning"
+        if no_show_count > 0 and completed < teacher.target_sessions:
+            # Override status to "Needs Planning" - no-shows mean they need to replan
+            progress_status = {
+                "status": "not_started",
+                "status_text": "Needs Planning",
+                "status_class": "not_started",
+                "progress_percentage": (
+                    min(100, (completed / teacher.target_sessions) * 100)
+                    if teacher.target_sessions > 0
+                    else 0
+                ),
+                "completed_sessions": completed,
+                "planned_sessions": planned,
+                "needed_sessions": max(
+                    0, teacher.target_sessions - completed - planned
+                ),
+            }
+        else:
+            progress_status = teacher.get_progress_status(completed, planned)
 
         teacher_info = {
             "id": teacher.id,
