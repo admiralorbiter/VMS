@@ -5126,14 +5126,27 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
         }
 
         # Store multiple possible name variations for matching
+        # Normalize names by replacing hyphens with spaces for better matching
+        base_name = teacher.name.lower().strip()
+        normalized_name = base_name.replace("-", " ").replace(".", "").replace(",", "")
+
         name_variations = [
-            teacher.name.lower().strip(),
-            teacher.name.lower().replace(".", "").replace(",", "").strip(),
+            base_name,  # Original with hyphens
+            normalized_name,  # Normalized (hyphens -> spaces)
+            base_name.replace(".", "").replace(",", "").strip(),
             # Add first + last name variation if different from stored name
             (
                 f"{teacher.name.split()[0]} {teacher.name.split()[-1]}".lower()
                 if len(teacher.name.split()) > 1
                 else teacher.name.lower()
+            ),
+            # Also add normalized first + last
+            (
+                f"{teacher.name.split()[0].lower()} {teacher.name.split()[-1].lower()}".replace(
+                    "-", " "
+                )
+                if len(teacher.name.split()) > 1
+                else normalized_name
             ),
         ]
 
@@ -5150,19 +5163,29 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                     f"{teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name}"
                 )
                 teacher_key = teacher_name.lower().strip()
+                # Normalize the key by replacing hyphens with spaces for better matching
+                teacher_key_normalized = teacher_key.replace("-", " ")
 
-                # Try exact match first against aliases
-                teacher_id = teacher_alias_map.get(teacher_key)
+                # Try exact match first against aliases (both original and normalized)
+                teacher_id = teacher_alias_map.get(
+                    teacher_key
+                ) or teacher_alias_map.get(teacher_key_normalized)
                 progress_data = (
                     teacher_progress_map.get(teacher_id) if teacher_id else None
                 )
 
                 if not progress_data:
                     # Try flexible matching - look for partial matches
+                    # Compare both original and normalized versions
                     for name_key, alias_teacher_id in teacher_alias_map.items():
-                        if (teacher_key in name_key or name_key in teacher_key) and len(
-                            teacher_key
-                        ) > 3:
+                        name_key_normalized = name_key.replace("-", " ")
+                        # Check if either version matches (original or normalized)
+                        if (
+                            teacher_key in name_key
+                            or name_key in teacher_key
+                            or teacher_key_normalized in name_key_normalized
+                            or name_key_normalized in teacher_key_normalized
+                        ) and len(teacher_key) > 3:
                             progress_data = teacher_progress_map.get(alias_teacher_id)
                             if progress_data:
                                 break
