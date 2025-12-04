@@ -5292,25 +5292,33 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
         no_show_count = progress_data.get("no_show_count", 0)
         completed = progress_data["completed_sessions"]
         planned = progress_data["planned_sessions"]
+        total_sessions = completed + planned
 
-        # If teacher has no-shows and hasn't completed target, force "Needs Planning"
+        # If teacher has no-shows and hasn't completed target, check if they need to replan
+        # Only force "Needs Planning" if they don't have enough planned sessions to meet target
         if no_show_count > 0 and completed < teacher.target_sessions:
-            # Override status to "Needs Planning" - no-shows mean they need to replan
-            progress_status = {
-                "status": "not_started",
-                "status_text": "Needs Planning",
-                "status_class": "not_started",
-                "progress_percentage": (
-                    min(100, (completed / teacher.target_sessions) * 100)
-                    if teacher.target_sessions > 0
-                    else 0
-                ),
-                "completed_sessions": completed,
-                "planned_sessions": planned,
-                "needed_sessions": max(
-                    0, teacher.target_sessions - completed - planned
-                ),
-            }
+            # If they have enough planned sessions to meet target, they're "In Progress"
+            # Otherwise, they need to replan
+            if total_sessions >= teacher.target_sessions:
+                # They have enough planned sessions, so they're "In Progress"
+                progress_status = teacher.get_progress_status(completed, planned)
+            else:
+                # Not enough planned sessions, force "Needs Planning" - no-shows mean they need to replan
+                progress_status = {
+                    "status": "not_started",
+                    "status_text": "Needs Planning",
+                    "status_class": "not_started",
+                    "progress_percentage": (
+                        min(100, (completed / teacher.target_sessions) * 100)
+                        if teacher.target_sessions > 0
+                        else 0
+                    ),
+                    "completed_sessions": completed,
+                    "planned_sessions": planned,
+                    "needed_sessions": max(
+                        0, teacher.target_sessions - completed - planned
+                    ),
+                }
         else:
             progress_status = teacher.get_progress_status(completed, planned)
 
