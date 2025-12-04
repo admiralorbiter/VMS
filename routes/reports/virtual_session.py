@@ -5249,6 +5249,12 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                     if is_teacher_cancel:
                         continue
 
+                    # Check if teacher registration has "count" status - this should count as completed
+                    # even if the event status is NO_SHOW (as long as it's not a teacher no-show)
+                    is_count_status = (
+                        teacher_reg_status == "count" or "count" in teacher_reg_status
+                    )
+
                     # Only count as completed if teacher actually attended (not no-show or cancelled)
                     # Check if this is a completed session
                     if (
@@ -5256,6 +5262,8 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                         or (event.status == EventStatus.SIMULCAST)
                         or (getattr(event, "original_status_string", "") or "").lower()
                         in ["completed", "successfully completed"]
+                        # Also count if teacher registration has "count" status
+                        or is_count_status
                     ):
                         progress_data["completed_sessions"] += 1
                     # Check if this is a planned/upcoming session
