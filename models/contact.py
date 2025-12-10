@@ -219,6 +219,7 @@ class RaceEthnicityEnum(FormEnum):
     two_or_more = "Two or More Races"
     prefer_not_to_say = "Prefer not to say"
     other = "Other"
+    other_poc = "Other POC"
 
 
 class AgeGroupEnum(FormEnum):

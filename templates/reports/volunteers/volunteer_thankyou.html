@@ -227,6 +227,7 @@
                             <span class="sort-indicator">{{ '▲' if order == 'asc' else '▼' }}</span>
                         {% endif %}
                     </th>
+                    <th>Race/Ethnicity</th>
                 </tr>
             </thead>
             <tbody>
@@ -240,6 +241,7 @@
                     <td>{{ volunteer.total_hours }}</td>
                     <td>{{ volunteer.total_events }}</td>
                     <td><span class="org-badge">{{ volunteer.organization }}</span></td>
+                    <td>{{ volunteer.race_ethnicity }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

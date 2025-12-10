@@ -1292,24 +1292,50 @@ def import_from_salesforce():
                         updates.append("gen")
 
                 # Handle race/ethnicity
+                # Primary mapping: Salesforce values -> Enum names
                 race_ethnicity_map = {
-                    "Bi-racial/Multi-racial/Multicultural": "bi_multi_racial",
-                    "Black": "black_african",
-                    "Black/African American": "black",
-                    "Prefer not to answer": "prefer_not_to_say",
-                    "Native American/Alaska Native/First Nation": "native_american",
-                    "White/Caucasian/European American": "white_caucasian",
-                    "Hispanic American/Latino": "hispanic_american",
-                    "Other POC": "other_poc",
-                    "Asian American/Pacific Islander": "asian_pacific_islander",
-                }
-
-                # Set default mappings for common cases
-                default_mapping = {
-                    "Other POC": "other",
-                    "White/Caucasian/European American": "white",
+                    # Hispanic/Latino variations
+                    "Hispanic American/Latino": "hispanic",
+                    "Hispanic or Latino": "hispanic",
+                    "Hispanic": "hispanic",
+                    "Latino": "hispanic",
+                    "Latina": "hispanic",
+                    # Black/African American variations
                     "Black": "black",
-                    "Bi-racial/Multi-racial/Multicultural": "multi_racial",
+                    "Black/African American": "black",
+                    "African American": "black",
+                    "Black or African American": "black",
+                    # White variations
+                    "White": "white",
+                    "White/Caucasian/European American": "white",
+                    "Caucasian": "white",
+                    "European American": "white",
+                    # Asian variations
+                    "Asian": "asian",
+                    "Asian American": "asian",
+                    "Asian American/Pacific Islander": "asian",  # Default to Asian, could be split
+                    # Pacific Islander variations
+                    "Pacific Islander": "native_hawaiian",
+                    "Native Hawaiian": "native_hawaiian",
+                    "Native Hawaiian or Other Pacific Islander": "native_hawaiian",
+                    # American Indian/Alaska Native variations
+                    "American Indian or Alaska Native": "american_indian",
+                    "Native American": "american_indian",
+                    "Alaska Native": "american_indian",
+                    "Native American/Alaska Native/First Nation": "american_indian",
+                    "First Nation": "american_indian",
+                    # Multi-racial variations
+                    "Bi-racial": "bi_racial",
+                    "Multi-racial": "multi_racial",
+                    "Bi-racial/Multi-racial/Multicultural": "multi_racial",  # Default to multi_racial
+                    "Two or More Races": "two_or_more",
+                    "Two or more": "two_or_more",
+                    # Other variations
+                    "Other": "other",
+                    "Other POC": "other_poc",
+                    # Prefer not to say variations
+                    "Prefer not to answer": "prefer_not_to_say",
+                    "Prefer not to say": "prefer_not_to_say",
                 }
 
                 race_ethnicity_str = row.get("Racial_Ethnic_Background__c")
@@ -1320,9 +1346,68 @@ def import_from_salesforce():
                     if "AggregateResult" in cleaned_str:
                         cleaned_str = cleaned_str.replace("AggregateResult", "").strip()
 
-                    # Try primary mapping first
+                    # Try primary mapping first (exact match)
                     enum_value = race_ethnicity_map.get(cleaned_str)
 
+                    # If no exact match, try case-insensitive match
+                    if not enum_value:
+                        cleaned_lower = cleaned_str.lower()
+                        for sf_value, enum_name in race_ethnicity_map.items():
+                            if sf_value.lower() == cleaned_lower:
+                                enum_value = enum_name
+                                break
+
+                    # If still no match, try partial matching for common patterns
+                    if not enum_value:
+                        cleaned_lower = cleaned_str.lower()
+                        if (
+                            "hispanic" in cleaned_lower
+                            or "latino" in cleaned_lower
+                            or "latina" in cleaned_lower
+                        ):
+                            enum_value = "hispanic"
+                        elif (
+                            "black" in cleaned_lower
+                            or "african american" in cleaned_lower
+                        ):
+                            enum_value = "black"
+                        elif "white" in cleaned_lower or "caucasian" in cleaned_lower:
+                            enum_value = "white"
+                        elif "asian" in cleaned_lower:
+                            enum_value = "asian"
+                        elif (
+                            "pacific islander" in cleaned_lower
+                            or "hawaiian" in cleaned_lower
+                        ):
+                            enum_value = "native_hawaiian"
+                        elif (
+                            "native american" in cleaned_lower
+                            or "alaska native" in cleaned_lower
+                            or "first nation" in cleaned_lower
+                            or "american indian" in cleaned_lower
+                        ):
+                            enum_value = "american_indian"
+                        elif (
+                            "multi" in cleaned_lower
+                            or "bi-racial" in cleaned_lower
+                            or "biracial" in cleaned_lower
+                        ):
+                            enum_value = "multi_racial"
+                        elif "two or more" in cleaned_lower:
+                            enum_value = "two_or_more"
+                        elif (
+                            "prefer not" in cleaned_lower
+                            or "not to say" in cleaned_lower
+                        ):
+                            enum_value = "prefer_not_to_say"
+                        elif (
+                            "other poc" in cleaned_lower or "otherpoc" in cleaned_lower
+                        ):
+                            enum_value = "other_poc"
+                        elif "other" in cleaned_lower:
+                            enum_value = "other"
+
+                    # Apply the mapping if we found a valid enum value
                     if enum_value and enum_value in [e.name for e in RaceEthnicityEnum]:
                         if (
                             not volunteer.race_ethnicity
@@ -1331,19 +1416,10 @@ def import_from_salesforce():
                             volunteer.race_ethnicity = RaceEthnicityEnum[enum_value]
                             updates.append("race")
                     else:
-                        # Try default mapping if primary fails
-                        default_value = default_mapping.get(cleaned_str)
-                        if default_value and default_value in [
-                            e.name for e in RaceEthnicityEnum
-                        ]:
-                            if (
-                                not volunteer.race_ethnicity
-                                or volunteer.race_ethnicity.name != default_value
-                            ):
-                                volunteer.race_ethnicity = RaceEthnicityEnum[
-                                    default_value
-                                ]
-                                updates.append("race")
+                        # Log unmapped values for debugging
+                        print(
+                            f"Warning: Unmapped race/ethnicity value '{cleaned_str}' for volunteer {volunteer.id} ({volunteer.first_name} {volunteer.last_name})"
+                        )
                 elif volunteer.race_ethnicity != RaceEthnicityEnum.unknown:
                     volunteer.race_ethnicity = RaceEthnicityEnum.unknown
                     updates.append("race")
