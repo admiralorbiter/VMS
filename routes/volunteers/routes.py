@@ -406,9 +406,10 @@ def volunteers():
                 + Volunteer.last_name
             )
         elif sort_by == "times_volunteered":
+            # Match the display calculation: attended_count + additional_volunteer_count
+            # Exclude times_volunteered to avoid double counting (it may contain outdated Salesforce data)
             sort_column = (
-                Volunteer.times_volunteered
-                + db.func.coalesce(attended_count_subq.c.attended_count, 0)
+                db.func.coalesce(attended_count_subq.c.attended_count, 0)
                 + Volunteer.additional_volunteer_count
             )
 
