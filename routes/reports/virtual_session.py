@@ -2153,6 +2153,19 @@ def load_routes(bp):
                 overall_summary = cached_data.overall_summary
                 filter_options = cached_data.filter_options
 
+                # Filter district summaries to main districts if show_all_districts is False
+                if not show_all_districts and district_summaries:
+                    main_districts = {
+                        "Hickman Mills School District",
+                        "Grandview School District",
+                        "Kansas City Kansas Public Schools",
+                    }
+                    district_summaries = {
+                        k: v
+                        for k, v in district_summaries.items()
+                        if k in main_districts
+                    }
+
                 # Check if cached data has the new fields; if any are missing, recompute summaries
                 if session_data and len(session_data) > 0:
                     sample_session = session_data[0]
@@ -2215,9 +2228,25 @@ def load_routes(bp):
                         if session.get("district"):
                             all_districts_in_data.add(session["district"])
 
+                    # Filter to only show main districts by default (unless admin requests all)
+                    main_districts = {
+                        "Hickman Mills School District",
+                        "Grandview School District",
+                        "Kansas City Kansas Public Schools",
+                    }
+
+                    # Determine which districts to show in the breakdown
+                    if show_all_districts:
+                        districts_to_show = all_districts_in_data
+                    else:
+                        # Only show main districts when show_all_districts=False
+                        districts_to_show = {
+                            d for d in all_districts_in_data if d in main_districts
+                        }
+
                     # Calculate district summaries using the same method as individual district pages
                     district_summaries = {}
-                    for district_name in all_districts_in_data:
+                    for district_name in districts_to_show:
                         try:
                             _, _, _, _, summary_stats = (
                                 compute_virtual_session_district_data(
@@ -2355,10 +2384,30 @@ def load_routes(bp):
             f"DEBUG: Districts found in session_data: {sorted(list(all_districts_in_data))}"
         )
 
+        # Filter to only show main districts by default (unless admin requests all)
+        main_districts = {
+            "Hickman Mills School District",
+            "Grandview School District",
+            "Kansas City Kansas Public Schools",
+        }
+
+        # Determine which districts to show in the breakdown
+        if show_all_districts:
+            districts_to_show = all_districts_in_data
+        else:
+            # Only show main districts when show_all_districts=False
+            districts_to_show = {
+                d for d in all_districts_in_data if d in main_districts
+            }
+
+        print(
+            f"DEBUG: Districts to show in breakdown: {sorted(list(districts_to_show))}"
+        )
+
         # Calculate district summaries using the same method as individual district pages
         # This ensures consistency between breakdown cards and individual district pages
         all_district_summaries = {}
-        for district_name in all_districts_in_data:
+        for district_name in districts_to_show:
             try:
                 # Use the same calculation method as individual district page
                 _, _, _, _, summary_stats = compute_virtual_session_district_data(
