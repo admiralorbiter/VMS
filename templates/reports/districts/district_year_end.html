@@ -147,7 +147,7 @@
         {% endif %}
     </div>
 
-    <!-- Host Filter Toggle -->
+    {# Host Filter Toggle - Commented out for now
     <div class="host-filter-toggle" style="margin-bottom: 2rem;">
         <form method="get" id="hostFilterForm" style="display: flex; gap: 0.5rem; align-items: center;">
             <input type="hidden" name="school_year" value="{{ school_year }}">
@@ -155,6 +155,7 @@
             <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
         </form>
     </div>
+    #}
 
     <div id="loadingIndicator" style="display: none;">
         <div class="spinner-border text-primary" role="status">
