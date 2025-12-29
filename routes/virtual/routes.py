@@ -318,33 +318,57 @@ def process_presenter(row, event, is_simulcast):
 def find_or_create_volunteer(
     first_name, last_name, organization=None, people_of_color=None
 ):
-    """Find an existing volunteer or create a new one"""
+    """
+    Find an existing volunteer or create a new one.
+
+    Note: first_name may contain middle names (e.g., "John Michael").
+    The Volunteer model stores these separately, so we split the first_name
+    if it contains multiple words, putting the first word in first_name
+    and remaining words in middle_name.
+    """
+    # Split first_name if it contains multiple words (preserves middle names)
+    first_name_parts = first_name.strip().split() if first_name else []
+    if len(first_name_parts) > 1:
+        # Multiple words in first_name - first goes to first_name, rest to middle_name
+        actual_first_name = first_name_parts[0]
+        middle_name = " ".join(first_name_parts[1:])
+    else:
+        actual_first_name = first_name if first_name_parts else ""
+        middle_name = ""
+
     # First try exact match on first and last name (case-insensitive)
+    # Note: We match on first_name only (not middle_name) to find existing volunteers
     volunteer = Volunteer.query.filter(
-        func.lower(Volunteer.first_name) == func.lower(first_name),
+        func.lower(Volunteer.first_name) == func.lower(actual_first_name),
         func.lower(Volunteer.last_name) == func.lower(last_name),
     ).first()
 
     # If no exact match and we have a last name, try partial matching
     if not volunteer and last_name:
         volunteer = Volunteer.query.filter(
-            Volunteer.first_name.ilike(f"{first_name}%"),
+            Volunteer.first_name.ilike(f"{actual_first_name}%"),
             Volunteer.last_name.ilike(f"{last_name}%"),
         ).first()
 
     # Create new volunteer if not found
     if not volunteer:
-        current_app.logger.info(f"Creating new volunteer: {first_name} {last_name}")
+        current_app.logger.info(
+            f"Creating new volunteer: {actual_first_name} {middle_name} {last_name}".strip()
+        )
         volunteer = Volunteer(
-            first_name=first_name,
+            first_name=actual_first_name,
+            middle_name=middle_name,
             last_name=last_name,
-            middle_name="",
             organization_name=organization if not pd.isna(organization) else None,
             is_people_of_color=map_people_of_color(people_of_color),
         )
         db.session.add(volunteer)
         db.session.flush()
     else:
+        # Update existing volunteer's middle_name if it's currently empty but we have one
+        if middle_name and not volunteer.middle_name:
+            volunteer.middle_name = middle_name
+
         # Update existing volunteer's organization if it has changed
         if (
             organization
@@ -796,29 +820,70 @@ def get_event(event_id):
 
 
 def clean_name(name):
-    """More robust name cleaning function"""
+    """
+    Clean and parse a name, handling prefixes and preserving middle names.
+
+    Returns:
+        tuple: (first_name, last_name) where first_name includes middle name if present
+
+    Examples:
+        "Dr. John Smith" -> ("John", "Smith")
+        "Dr. John Michael Smith" -> ("John Michael", "Smith")
+        "John Michael Smith" -> ("John Michael", "Smith")
+        "Dr.Smith" -> ("", "Smith")  # Edge case: no first name after prefix
+        "Dr. Smith" -> ("", "Smith")  # Edge case: only last name after prefix
+    """
     if not name or pd.isna(name):
         return "", ""
 
     name = str(name).strip()
+    original_name = name
+    name_lower = name.lower()
 
-    # Handle common prefixes
-    prefixes = ["mr.", "mrs.", "ms.", "dr.", "prof."]
-    for prefix in prefixes:
-        if name.lower().startswith(prefix):
-            name = name[len(prefix) :].strip()
+    # Handle common prefixes - check for prefix followed by period and/or space
+    # List of prefixes to check (without period/space)
+    prefix_bases = ["dr", "mr", "mrs", "ms", "prof"]
+
+    for prefix_base in prefix_bases:
+        prefix_lower = prefix_base.lower()
+        # Check various formats: "Dr. ", "Dr ", "Dr.", "dr."
+        if name_lower.startswith(prefix_lower):
+            # Check if followed by period, space, or both
+            prefix_len = len(prefix_base)
+            if len(name) > prefix_len:
+                next_char = name[prefix_len]
+                if next_char in [".", " "]:
+                    # Remove prefix and the period/space
+                    name = name[prefix_len + 1 :].strip()
+                    break
+                elif prefix_len == len(name_lower):
+                    # Prefix is the entire string, return empty
+                    return "", ""
 
     # Split name into parts
     parts = [p for p in name.split() if p]
 
     if len(parts) == 0:
+        # Edge case: Only prefix was provided, or prefix removed everything
+        # If original had exactly 2 parts like "Dr. Smith", return the second part as last name
+        original_parts = original_name.split()
+        if len(original_parts) == 2:
+            # Check if first part is a prefix
+            first_part_lower = original_parts[0].lower().rstrip(".")
+            if first_part_lower in prefix_bases:
+                # Return empty first name, last name is the second part
+                return "", original_parts[1]
         return "", ""
     elif len(parts) == 1:
-        return parts[0], ""
+        # Only one part after removing prefix - this is likely just a last name
+        # Return empty first name and the part as last name
+        return "", parts[0]
     else:
-        # For simplicity in matching, use first part as first name
-        # and last part as last name (helps match with database)
-        return parts[0], parts[-1]
+        # Multiple parts: first part(s) are first+middle, last part is last name
+        # Preserve middle names in first_name field
+        first_name = " ".join(parts[:-1])  # All parts except the last
+        last_name = parts[-1]  # Last part
+        return first_name, last_name
 
 
 def standardize_organization(org_name):
