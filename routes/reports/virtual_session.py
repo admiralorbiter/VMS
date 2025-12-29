@@ -425,6 +425,23 @@ def apply_runtime_filters(session_data, filters):
             if not filter_matched and session_status != filter_status:
                 continue
 
+        # Apply text search filter (searches teacher name, session title, and presenter)
+        if filters.get("search"):
+            search_term = filters["search"].strip().lower()
+            if search_term:
+                # Get field values, handling None and empty strings
+                teacher_name = str(session.get("teacher_name") or "").lower()
+                session_title = str(session.get("session_title") or "").lower()
+                presenter = str(session.get("presenter") or "").lower()
+
+                # Check if search term matches any of the fields (case-insensitive substring match)
+                if (
+                    search_term not in teacher_name
+                    and search_term not in session_title
+                    and search_term not in presenter
+                ):
+                    continue
+
         filtered_data.append(session)
 
     return filtered_data
@@ -2118,6 +2135,9 @@ def load_routes(bp):
             "school": request.args.get("school"),
             "district": request.args.get("district"),
             "status": request.args.get("status"),
+            "search": request.args.get(
+                "search"
+            ),  # Text search across teacher, title, presenter
             "show_all_districts": show_all_districts,
         }
 
@@ -2216,6 +2236,7 @@ def load_routes(bp):
                         current_filters["school"],
                         current_filters["district"],
                         current_filters["status"],
+                        current_filters.get("search"),  # Include search filter
                     ]
                 ):
                     # Store original unfiltered data for district summaries
@@ -2462,6 +2483,18 @@ def load_routes(bp):
         session_data, _, overall_summary, _ = compute_virtual_session_data(
             selected_virtual_year, date_from, date_to, current_filters
         )
+
+        # Apply runtime filters (including search) if any
+        if any(
+            [
+                current_filters["career_cluster"],
+                current_filters["school"],
+                current_filters["district"],
+                current_filters["status"],
+                current_filters.get("search"),  # Include search filter
+            ]
+        ):
+            session_data = apply_runtime_filters(session_data, current_filters)
 
         # Use the calculated district summaries
         district_summaries = all_district_summaries
@@ -2828,6 +2861,9 @@ def load_routes(bp):
             "school": request.args.get("school"),
             "district": request.args.get("district"),
             "status": request.args.get("status"),
+            "search": request.args.get(
+                "search"
+            ),  # Text search across teacher, title, presenter
         }
 
         # Base query for virtual session events (same as main route)
@@ -2998,6 +3034,9 @@ def load_routes(bp):
                         "duration": event.duration or 0,
                     }
                 )
+
+        # Apply runtime filters (including search)
+        session_data = apply_runtime_filters(session_data, current_filters)
 
         # Apply sorting (same logic as main route)
         sort_column = request.args.get("sort", "date")

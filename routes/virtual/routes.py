@@ -176,6 +176,41 @@ def split_teacher_names(teacher_name):
     return teacher_names
 
 
+def split_presenter_names(presenter_name):
+    """
+    Split presenter names that may contain multiple presenters separated by "&" or ";".
+
+    Args:
+        presenter_name: String containing one or more presenter names
+
+    Returns:
+        list: List of individual presenter name strings
+
+    Examples:
+        "Jerry Stern & Candy Baptist" -> ["Jerry Stern", "Candy Baptist"]
+        "Tanya McIntosh; Jordan Harvey" -> ["Tanya McIntosh", "Jordan Harvey"]
+        "John Smith" -> ["John Smith"]
+        "Jane Doe & Bob Wilson" -> ["Jane Doe", "Bob Wilson"]
+    """
+    if not presenter_name or pd.isna(presenter_name):
+        return []
+
+    presenter_name = safe_str(presenter_name)
+    if not presenter_name.strip():
+        return []
+
+    # Split by "&" or ";" and clean up each name
+    presenter_names = []
+    # First split by semicolon, then by ampersand
+    for part in presenter_name.split(";"):
+        for name in part.split("&"):
+            cleaned_name = name.strip()
+            if cleaned_name:
+                presenter_names.append(cleaned_name)
+
+    return presenter_names
+
+
 def process_teacher_data(row, is_simulcast=False):
     """
     Helper function to process just teacher data for simulcast/dateless entries.
@@ -229,49 +264,55 @@ def process_teacher_data(row, is_simulcast=False):
 
 
 def process_presenter(row, event, is_simulcast):
-    """Helper function to process presenter data"""
-    volunteer_id = None
+    """Helper function to process presenter data - handles multiple presenters separated by & or ;"""
     presenter_name = row.get("Presenter")
     presenter_org = standardize_organization(row.get("Organization", ""))
     presenter_location_col = row.get("Presenter Location")
     people_of_color = row.get("Presenter of Color?", "")
 
     if presenter_name and not pd.isna(presenter_name):
-        presenter_name = safe_str(presenter_name)
-        first_name, last_name = clean_name(presenter_name)
+        # Split presenter names if multiple presenters are listed
+        presenter_names = split_presenter_names(presenter_name)
 
-        # Only proceed if we have at least a first name
-        if first_name:
-            volunteer = find_or_create_volunteer(
-                first_name, last_name, presenter_org, people_of_color
-            )
+        # Process each presenter separately
+        for individual_presenter_name in presenter_names:
+            individual_presenter_name = safe_str(individual_presenter_name)
+            first_name, last_name = clean_name(individual_presenter_name)
 
-            if volunteer:
-                # Create or update participation record
-                create_participation(event, volunteer, event.status)
+            # Only proceed if we have at least a first name
+            if first_name:
+                volunteer = find_or_create_volunteer(
+                    first_name, last_name, presenter_org, people_of_color
+                )
 
-                # Handle volunteer association
-                update_volunteer_association(event, volunteer, is_simulcast)
+                if volunteer:
+                    # Create or update participation record
+                    create_participation(event, volunteer, event.status)
 
-                # Optionally map volunteer local status using the same column when no address is available
-                try:
-                    # Normalize presenter location column
-                    loc_str = None
-                    if presenter_location_col and not pd.isna(presenter_location_col):
-                        loc_str = str(presenter_location_col).strip()
-                    # Map volunteer local status only if currently unknown
-                    current_local_status = getattr(volunteer, "local_status", None)
-                    if current_local_status in (None, LocalStatusEnum.unknown):
-                        if loc_str and loc_str.lower().startswith("local"):
-                            volunteer.local_status = LocalStatusEnum.local
-                            # Hint presenter_data enrichment via transient attr used in reporting
-                            setattr(volunteer, "_is_local_hint", True)
-                        else:
-                            volunteer.local_status = LocalStatusEnum.non_local
-                            setattr(volunteer, "_is_local_hint", False)
-                except Exception:
-                    # Non-fatal; keep importing
-                    pass
+                    # Handle volunteer association
+                    update_volunteer_association(event, volunteer, is_simulcast)
+
+                    # Optionally map volunteer local status using the same column when no address is available
+                    try:
+                        # Normalize presenter location column
+                        loc_str = None
+                        if presenter_location_col and not pd.isna(
+                            presenter_location_col
+                        ):
+                            loc_str = str(presenter_location_col).strip()
+                        # Map volunteer local status only if currently unknown
+                        current_local_status = getattr(volunteer, "local_status", None)
+                        if current_local_status in (None, LocalStatusEnum.unknown):
+                            if loc_str and loc_str.lower().startswith("local"):
+                                volunteer.local_status = LocalStatusEnum.local
+                                # Hint presenter_data enrichment via transient attr used in reporting
+                                setattr(volunteer, "_is_local_hint", True)
+                            else:
+                                volunteer.local_status = LocalStatusEnum.non_local
+                                setattr(volunteer, "_is_local_hint", False)
+                    except Exception:
+                        # Non-fatal; keep importing
+                        pass
 
 
 def find_or_create_volunteer(

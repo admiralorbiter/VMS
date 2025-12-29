@@ -320,6 +320,13 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="filter-group">
+                <label for="search">Search:</label>
+                <input type="text" id="search" name="search"
+                       placeholder="Teacher, Title, or Presenter..."
+                       value="{{ current_filters.search if current_filters.search }}">
+            </div>
             <!-- BUTTONS BELOW FILTERS -->
                     <div class="filter-actions">
             <button type="submit" class="filter-btn">Apply Filters</button>
