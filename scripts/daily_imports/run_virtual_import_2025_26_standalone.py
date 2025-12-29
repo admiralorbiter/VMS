@@ -208,15 +208,18 @@ def run_import_logic_direct(df, academic_year):
             clean_string_value,
             clean_time_string,
             extract_session_id,
+            find_existing_event,
             generate_school_id,
             get_or_create_district,
             get_or_create_school,
+            get_status_priority,
             map_people_of_color,
             parse_datetime,
             process_presenter,
             process_teacher_data,
             process_teacher_for_event,
             safe_str,
+            should_update_status,
             split_teacher_names,
             standardize_organization,
             update_legacy_fields,
@@ -354,19 +357,30 @@ def run_import_logic_direct(df, academic_year):
                     event = db.session.get(Event, event_id)
 
                 if not event:
-                    event = Event.query.filter(
-                        func.lower(Event.title) == func.lower(title.strip()),
-                        Event.start_date == current_datetime,
-                        Event.type == EventType.VIRTUAL_SESSION,
-                    ).first()
+                    # Use flexible matching to prevent duplicates
+                    event = find_existing_event(
+                        title, current_datetime, processed_event_ids
+                    )
 
                     if event:
                         processed_event_ids[event_key] = event.id
+                        print(
+                            f"INFO: Found existing event {event.id} for '{title}' at {current_datetime.isoformat()}"
+                        )
+
+                        # Update status immediately if this is a primary row with higher priority status
+                        if is_primary_row_status:
+                            new_status = EventStatus.map_status(status_str)
+                            if should_update_status(event.status, new_status):
+                                old_status = event.status
+                                event.status = new_status
+                                event.original_status_string = status_str
+                                print(
+                                    f"INFO - Row {row_index + 1}: Updated existing event {event.id} status to '{new_status}' (was '{old_status}')"
+                                )
+
                         if not event.session_host or event.session_host != "PREPKC":
                             event.session_host = "PREPKC"
-                            print(
-                                f"UPDATED existing virtual event {event.id} ({event.title}) with session_host: PREPKC"
-                            )
                     else:
                         can_create_event_statuses = [
                             "teacher no-show",
@@ -435,6 +449,27 @@ def run_import_logic_direct(df, academic_year):
                         )
                         if not existing_district:
                             add_district_to_event(event, district_name)
+
+                # --- Status Update (runs for ALL primary rows, not just first) ---
+                # Always update status from primary rows to ensure we capture the highest status
+                if is_primary_row_status and event:
+                    new_status = EventStatus.map_status(status_str)
+                    if should_update_status(event.status, new_status):
+                        old_status = event.status
+                        event.status = new_status
+                        event.original_status_string = status_str
+                        print(
+                            f"INFO - Row {row_index + 1}: Updated event status to '{new_status}' (was '{old_status}') for '{title}' at {current_datetime.isoformat()}"
+                        )
+                    elif status_str and status_str != "":
+                        # Log when we have a status but it's not higher priority (for debugging)
+                        if (
+                            event.status == EventStatus.DRAFT
+                            and new_status != EventStatus.DRAFT
+                        ):
+                            print(
+                                f"DEBUG - Row {row_index + 1}: Status '{status_str}' -> '{new_status}' not higher than current '{event.status}' for '{title}'"
+                            )
 
                 # Primary Logic Block
                 primary_logic_run_key = (title, current_datetime.isoformat())
@@ -519,6 +554,10 @@ def run_import_logic_direct(df, academic_year):
                     event.participant_count = qualifying_teacher_rows_count
 
                     # Update event fields
+                    # Note: Status is already updated above for all primary rows
+                    # Here we just ensure original_status_string is set if not already
+                    if not event.original_status_string and status_str:
+                        event.original_status_string = status_str
                     event.description = row_data.get("Description")
                     event.additional_information = row_data.get("Session Type")
                     event.registration_link = row_data.get("Session Link")

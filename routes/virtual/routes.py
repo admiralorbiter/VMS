@@ -1134,6 +1134,94 @@ def extract_session_id(session_link):
         return None
 
 
+def get_status_priority(status):
+    """
+    Get priority value for status (higher = more important).
+    Used to determine which status should take precedence when multiple statuses exist.
+
+    Priority order:
+    - COMPLETED: 5 (highest - event actually happened)
+    - CONFIRMED: 4 (event is confirmed to happen)
+    - PUBLISHED: 3 (event is published)
+    - REQUESTED: 2 (event is requested)
+    - DRAFT: 1 (lowest - event is just a draft)
+    - Others: 0 (default)
+    """
+    priority_map = {
+        EventStatus.COMPLETED: 5,
+        EventStatus.CONFIRMED: 4,
+        EventStatus.PUBLISHED: 3,
+        EventStatus.REQUESTED: 2,
+        EventStatus.DRAFT: 1,
+    }
+    return priority_map.get(status, 0)
+
+
+def should_update_status(current_status, new_status):
+    """
+    Determine if we should update the event status based on priority.
+    Returns True if new_status has higher priority than current_status.
+    """
+    current_priority = get_status_priority(current_status)
+    new_priority = get_status_priority(new_status)
+    return new_priority > current_priority
+
+
+def find_existing_event(title, target_datetime, processed_event_ids=None):
+    """
+    Find an existing event with flexible matching to prevent duplicates.
+
+    First tries exact match (title + full datetime), then tries flexible match
+    (title + same date, ignoring time) to handle cases where time might differ slightly.
+
+    Args:
+        title: Event title
+        target_datetime: Target datetime for the event
+        processed_event_ids: Dictionary of already processed event IDs (optional)
+
+    Returns:
+        Event object if found, None otherwise
+    """
+    if not title or not target_datetime:
+        return None
+
+    title_lower = title.strip().lower()
+    target_date = target_datetime.date()
+
+    # First, try exact match (title + full datetime)
+    event = Event.query.filter(
+        func.lower(Event.title) == title_lower,
+        Event.start_date == target_datetime,
+        Event.type == EventType.VIRTUAL_SESSION,
+    ).first()
+
+    if event:
+        return event
+
+    # If no exact match, try flexible match (title + same date, any time)
+    # This handles cases where time might differ slightly (e.g., 12:30 PM vs 01:00 PM)
+    event = Event.query.filter(
+        func.lower(Event.title) == title_lower,
+        func.date(Event.start_date) == target_date,
+        Event.type == EventType.VIRTUAL_SESSION,
+    ).first()
+
+    if event:
+        # Found a match by date - update the time to match the target
+        if event.start_date != target_datetime:
+            print(
+                f"INFO: Found existing event {event.id} by date match, updating time from {event.start_date} to {target_datetime}"
+            )
+            event.start_date = target_datetime
+            if event.end_date:
+                # Update end_date to maintain duration
+                duration = (event.end_date - event.start_date).total_seconds() / 60
+                event.end_date = target_datetime + timedelta(minutes=duration or 60)
+        return event
+
+    return None
+
+
 @virtual_bp.route("/import-sheet", methods=["POST"])
 @login_required
 def import_sheet():
@@ -1360,25 +1448,32 @@ def import_sheet():
 
                 if not event:
                     # Query DB if not found via cache or if session.get failed
-                    # *** UPDATED QUERY: Filter by exact start_date (datetime) ***
-                    # REMOVED: DB query log
-                    event = Event.query.filter(
-                        func.lower(Event.title) == func.lower(title.strip()),
-                        Event.start_date == current_datetime,  # Compare full datetime
-                        Event.type == EventType.VIRTUAL_SESSION,
-                    ).first()
+                    # Use flexible matching to prevent duplicates
+                    event = find_existing_event(
+                        title, current_datetime, processed_event_ids
+                    )
 
                     if event:
                         # Found in DB, cache its ID
                         processed_event_ids[event_key] = event.id
-                        # REMOVED: DB found success log
+                        print(
+                            f"INFO: Found existing event {event.id} for '{title}' at {current_datetime.isoformat()}"
+                        )
+
+                        # Update status immediately if this is a primary row with higher priority status
+                        if is_primary_row_status:
+                            new_status = EventStatus.map_status(status_str)
+                            if should_update_status(event.status, new_status):
+                                old_status = event.status
+                                event.status = new_status
+                                event.original_status_string = status_str
+                                print(
+                                    f"INFO - Row {row_index + 1}: Updated existing event {event.id} status to '{new_status}' (was '{old_status}')"
+                                )
 
                         # Update session_host for existing events if not set
                         if not event.session_host or event.session_host != "PREPKC":
                             event.session_host = "PREPKC"
-                            print(
-                                f"UPDATED existing virtual event {event.id} ({event.title}) with session_host: PREPKC"
-                            )
                     else:
                         # Modified logic: Allow certain "incomplete" statuses to create events
                         # when no existing event is found
@@ -1463,6 +1558,18 @@ def import_sheet():
                         if not existing_district:
                             add_district_to_event(event, district_name)
                             # print(f"DEBUG: Added district '{district_name}' to event '{event.title}' from row {row_index + 1}")
+
+                # --- Status Update (runs for ALL primary rows, not just first) ---
+                # Always update status from primary rows to ensure we capture the highest status
+                if is_primary_row_status and event:
+                    new_status = EventStatus.map_status(status_str)
+                    if should_update_status(event.status, new_status):
+                        old_status = event.status
+                        event.status = new_status
+                        event.original_status_string = status_str
+                        print(
+                            f"INFO - Row {row_index + 1}: Updated event status to '{new_status}' (was '{old_status}')"
+                        )
 
                 # --- Primary Logic Block ---
                 # Run this block only ONCE per specific event instance (title + datetime)
@@ -1596,10 +1703,10 @@ def import_sheet():
                     # --- End Participant Count Calculation ---
 
                     # Update core event details from this primary row
-                    event.status = EventStatus.map_status(status_str)
-                    event.original_status_string = (
-                        status_str  # Store original status string
-                    )
+                    # Note: Status is already updated above for all primary rows
+                    # Here we just ensure original_status_string is set if not already
+                    if not event.original_status_string and status_str:
+                        event.original_status_string = status_str
                     event.session_id = extract_session_id(row_data.get("Session Link"))
 
                     # Update title if it has changed
