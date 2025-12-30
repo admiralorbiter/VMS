@@ -561,6 +561,10 @@
                             Presenter
                             <span class="sort-indicator {% if current_filters.sort == 'presenter' %}active {{ current_filters.order }}{% endif %}"></span>
                         </th>
+                        <th class="sortable-header" data-column="presenter_organization">
+                            Presenter Organization
+                            <span class="sort-indicator {% if current_filters.sort == 'presenter_organization' %}active {{ current_filters.order }}{% endif %}"></span>
+                        </th>
                         <th class="sortable-header" data-column="topic_theme">
                             Topic/Theme
                             <span class="sort-indicator {% if current_filters.sort == 'topic_theme' %}active {{ current_filters.order }}{% endif %}"></span>
@@ -619,6 +623,7 @@
                                 {{ session.presenter }}
                             {% endif %}
                         </td>
+                        <td>{{ session.presenter_organization if session.presenter_organization else "" }}</td>
                         <td>{{ session.topic_theme }}</td>
                     </tr>
                     {% endfor %}

@@ -24,6 +24,7 @@ from models.contact import LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
+from models.organization import VolunteerOrganization
 from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCache
 from models.school_model import School
 from models.teacher import Teacher
@@ -777,6 +778,7 @@ def apply_sorting_and_pagination(session_data, request_args, current_filters):
         "district": "district",
         "session_title": "session_title",
         "presenter": "presenter",
+        "presenter_organization": "presenter_organization",
         "topic_theme": "topic_theme",
     }
 
@@ -891,6 +893,37 @@ def get_google_sheet_url(virtual_year):
     return None
 
 
+def _get_primary_org_name_for_volunteer(volunteer):
+    """
+    Get the primary organization name for a volunteer.
+    Prefer explicit primary org from VolunteerOrganization, fall back to organization_name field.
+    Uses the same pattern as routes/reports/volunteers_by_event.py:_get_primary_org_name
+    """
+    # Prefer explicit primary org from association table
+    if getattr(volunteer, "volunteer_organizations", None):
+        try:
+            primary = next(
+                (vo for vo in volunteer.volunteer_organizations if vo.is_primary), None
+            )
+            if primary and primary.organization and primary.organization.name:
+                return primary.organization.name
+            # Fall back to first org if no primary
+            first = (
+                volunteer.volunteer_organizations[0].organization
+                if volunteer.volunteer_organizations
+                else None
+            )
+            if first and first.name:
+                return first.name
+        except (StopIteration, AttributeError, IndexError):
+            pass
+    # Avoid showing raw Salesforce IDs stored in organization_name
+    org_name = getattr(volunteer, "organization_name", None)
+    if org_name and not (len(str(org_name)) == 18 and str(org_name).isalnum()):
+        return org_name
+    return None
+
+
 def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     """
     Compute virtual session data from database.
@@ -905,12 +938,23 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
         Tuple of (session_data, district_summaries, overall_summary, filter_options)
     """
     # Base query for virtual session events
-    from models import eagerload_event_bundle
+    from sqlalchemy.orm import selectinload
 
-    base_query = eagerload_event_bundle(Event.query).filter(
-        Event.type == EventType.VIRTUAL_SESSION,
-        Event.start_date >= date_from,
-        Event.start_date <= date_to,
+    from models import eagerload_event_bundle
+    from models.organization import VolunteerOrganization
+
+    base_query = (
+        eagerload_event_bundle(Event.query)
+        .options(
+            selectinload(Event.volunteers)
+            .selectinload(Volunteer.volunteer_organizations)
+            .selectinload(VolunteerOrganization.organization)
+        )
+        .filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        )
     )
 
     # Apply database-level filters
@@ -1043,6 +1087,17 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                             if event.volunteers
                             else ""
                         ),
+                        "presenter_organization": (
+                            ", ".join(
+                                [
+                                    _get_primary_org_name_for_volunteer(v)
+                                    or "Independent"
+                                    for v in event.volunteers
+                                ]
+                            )
+                            if event.volunteers
+                            else ""
+                        ),
                         "presenter_data": (
                             [
                                 {
@@ -1109,6 +1164,16 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                     "session_title": event.title,
                     "presenter": (
                         ", ".join([v.full_name for v in event.volunteers])
+                        if event.volunteers
+                        else ""
+                    ),
+                    "presenter_organization": (
+                        ", ".join(
+                            [
+                                _get_primary_org_name_for_volunteer(v) or "Independent"
+                                for v in event.volunteers
+                            ]
+                        )
                         if event.volunteers
                         else ""
                     ),
@@ -1269,12 +1334,23 @@ def compute_virtual_session_district_data(
         Tuple of (session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats)
     """
     # Base query for virtual session events
-    from models import eagerload_event_bundle
+    from sqlalchemy.orm import selectinload
 
-    base_query = eagerload_event_bundle(Event.query).filter(
-        Event.type == EventType.VIRTUAL_SESSION,
-        Event.start_date >= date_from,
-        Event.start_date <= date_to,
+    from models import eagerload_event_bundle
+    from models.organization import VolunteerOrganization
+
+    base_query = (
+        eagerload_event_bundle(Event.query)
+        .options(
+            selectinload(Event.volunteers)
+            .selectinload(Volunteer.volunteer_organizations)
+            .selectinload(VolunteerOrganization.organization)
+        )
+        .filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        )
     )
 
     events = base_query.order_by(Event.start_date.desc()).all()
@@ -2966,6 +3042,17 @@ def load_routes(bp):
                                 if event.volunteers
                                 else ""
                             ),
+                            "presenter_organization": (
+                                ", ".join(
+                                    [
+                                        _get_primary_org_name_for_volunteer(v)
+                                        or "Independent"
+                                        for v in event.volunteers
+                                    ]
+                                )
+                                if event.volunteers
+                                else ""
+                            ),
                             "presenter_data": (
                                 [
                                     {"id": v.id, "name": v.full_name}
@@ -3020,6 +3107,17 @@ def load_routes(bp):
                             if event.volunteers
                             else ""
                         ),
+                        "presenter_organization": (
+                            ", ".join(
+                                [
+                                    _get_primary_org_name_for_volunteer(v)
+                                    or "Independent"
+                                    for v in event.volunteers
+                                ]
+                            )
+                            if event.volunteers
+                            else ""
+                        ),
                         "presenter_data": (
                             [
                                 {"id": v.id, "name": v.full_name}
@@ -3053,6 +3151,7 @@ def load_routes(bp):
             "district": "district",
             "session_title": "session_title",
             "presenter": "presenter",
+            "presenter_organization": "presenter_organization",
             "topic_theme": "topic_theme",
         }
 
@@ -3170,6 +3269,7 @@ def load_routes(bp):
                 session["district"],
                 session["session_title"],
                 session["presenter"],
+                session.get("presenter_organization", ""),
                 session["topic_theme"],
                 session["session_link"],
                 session["participant_count"],
