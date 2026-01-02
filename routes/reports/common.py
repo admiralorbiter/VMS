@@ -679,7 +679,8 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
 
     for event in career_fair_events:
         # Get student count for high school students only
-        district_hs_student_ids = (
+        # Query for high school students only
+        district_hs_student_participations = (
             db.session.query(EventStudentParticipation.student_id)
             .join(Student, EventStudentParticipation.student_id == Student.id)
             .join(School, Student.school_id == School.id)
@@ -691,10 +692,15 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
             )
             .all()
         )
-        hs_student_count = len(district_hs_student_ids)
-        breakdown["career_college_fair_hs_students"]["total"] += hs_student_count
 
-        event_hs_student_ids = {student_id[0] for student_id in district_hs_student_ids}
+        # Total count: all high school participations (may have duplicates if same student attended multiple times)
+        hs_student_total_count = len(district_hs_student_participations)
+        breakdown["career_college_fair_hs_students"]["total"] += hs_student_total_count
+
+        # Unique count: distinct high school student IDs
+        event_hs_student_ids = {
+            student_id[0] for student_id in district_hs_student_participations
+        }
         unique_career_fair_hs_students.update(event_hs_student_ids)
 
     breakdown["career_college_fair_hs_students"]["unique"] = len(
