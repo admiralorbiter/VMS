@@ -241,6 +241,95 @@ class DailyImporter:
                 # Now current_user will work properly
                 return func(*args, **kwargs)
 
+    def _parse_import_result(
+        self, result, default_success_message: str = "Import completed"
+    ):
+        """
+        Parse the result from an import function and return a standardized dict.
+
+        Handles:
+        - Flask Response objects
+        - Tuple responses like (jsonify({...}), status_code)
+        - Dict responses
+        - Other response types
+        """
+        if result is None:
+            return {
+                "success": False,
+                "message": "Import function returned None",
+            }
+
+        # Handle Flask Response objects (not in tuple)
+        if hasattr(result, "status_code"):
+            if result.status_code == 302:
+                return {
+                    "success": False,
+                    "message": "Authentication failed - redirect to login",
+                }
+            elif result.status_code == 200:
+                try:
+                    return result.get_json() or {
+                        "success": True,
+                        "message": default_success_message,
+                    }
+                except:
+                    return {"success": True, "message": default_success_message}
+            else:
+                try:
+                    json_data = result.get_json() or {}
+                    return {
+                        "success": False,
+                        "message": json_data.get(
+                            "message",
+                            json_data.get("error", f"HTTP {result.status_code}"),
+                        ),
+                    }
+                except:
+                    return {
+                        "success": False,
+                        "message": f"HTTP {result.status_code}",
+                    }
+
+        # Handle dict responses
+        if hasattr(result, "json"):
+            return result.json
+
+        # Handle tuple responses like (jsonify({...}), status_code)
+        if isinstance(result, tuple):
+            response_obj = result[0]
+            status_code = result[1] if len(result) > 1 else 200
+
+            # If first element is a Response object, extract JSON
+            if hasattr(response_obj, "get_json"):
+                try:
+                    json_data = response_obj.get_json() or {}
+                    return {
+                        "success": json_data.get("success", status_code == 200),
+                        "message": json_data.get("message", json_data.get("error", "")),
+                    }
+                except:
+                    return {
+                        "success": status_code == 200,
+                        "message": f"HTTP {status_code}",
+                    }
+            # If first element is a dict, use it directly
+            elif isinstance(response_obj, dict):
+                return {
+                    "success": response_obj.get("success", False),
+                    "message": response_obj.get("message", ""),
+                }
+            else:
+                return {
+                    "success": status_code == 200,
+                    "message": f"Unexpected response type: {type(response_obj)}",
+                }
+
+        # Default success case
+        return {
+            "success": True,
+            "message": default_success_message,
+        }
+
     def _import_organizations(self) -> Dict:
         """Import organizations from Salesforce."""
 
@@ -289,10 +378,36 @@ class DailyImporter:
                 if hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {
                         "success": True,
@@ -330,10 +445,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {
                         "success": True,
@@ -368,10 +509,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {
                         "success": True,
@@ -404,10 +571,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {"success": True, "message": "Events imported successfully"}
             except Exception as e:
@@ -437,10 +630,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {"success": True, "message": "History imported successfully"}
             except Exception as e:
@@ -470,10 +689,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {"success": True, "message": "Schools imported successfully"}
             except Exception as e:
@@ -503,10 +748,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {"success": True, "message": "Classes imported successfully"}
             except Exception as e:
@@ -536,10 +807,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {
                         "success": True,
@@ -572,10 +869,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {
                         "success": True,
@@ -620,10 +943,38 @@ class DailyImporter:
                     elif hasattr(result, "json"):
                         return result.json
                     elif isinstance(result, tuple):
-                        return {
-                            "success": result[0].get("success", False),
-                            "message": result[0].get("message", ""),
-                        }
+                        # Handle tuple responses like (jsonify({...}), status_code)
+                        response_obj = result[0]
+                        status_code = result[1] if len(result) > 1 else 200
+
+                        # If first element is a Response object, extract JSON
+                        if hasattr(response_obj, "get_json"):
+                            try:
+                                json_data = response_obj.get_json() or {}
+                                return {
+                                    "success": json_data.get(
+                                        "success", status_code == 200
+                                    ),
+                                    "message": json_data.get(
+                                        "message", json_data.get("error", "")
+                                    ),
+                                }
+                            except:
+                                return {
+                                    "success": status_code == 200,
+                                    "message": f"HTTP {status_code}",
+                                }
+                        # If first element is a dict, use it directly
+                        elif isinstance(response_obj, dict):
+                            return {
+                                "success": response_obj.get("success", False),
+                                "message": response_obj.get("message", ""),
+                            }
+                        else:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"Unexpected response type: {type(response_obj)}",
+                            }
                     else:
                         return {
                             "success": True,
@@ -656,10 +1007,36 @@ class DailyImporter:
                 elif hasattr(result, "json"):
                     return result.json
                 elif isinstance(result, tuple):
-                    return {
-                        "success": result[0].get("success", False),
-                        "message": result[0].get("message", ""),
-                    }
+                    # Handle tuple responses like (jsonify({...}), status_code)
+                    response_obj = result[0]
+                    status_code = result[1] if len(result) > 1 else 200
+
+                    # If first element is a Response object, extract JSON
+                    if hasattr(response_obj, "get_json"):
+                        try:
+                            json_data = response_obj.get_json() or {}
+                            return {
+                                "success": json_data.get("success", status_code == 200),
+                                "message": json_data.get(
+                                    "message", json_data.get("error", "")
+                                ),
+                            }
+                        except:
+                            return {
+                                "success": status_code == 200,
+                                "message": f"HTTP {status_code}",
+                            }
+                    # If first element is a dict, use it directly
+                    elif isinstance(response_obj, dict):
+                        return {
+                            "success": response_obj.get("success", False),
+                            "message": response_obj.get("message", ""),
+                        }
+                    else:
+                        return {
+                            "success": status_code == 200,
+                            "message": f"Unexpected response type: {type(response_obj)}",
+                        }
                 else:
                     return {
                         "success": True,
