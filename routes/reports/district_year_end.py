@@ -1059,6 +1059,148 @@ def load_routes(bp):
             }
         )
 
+    @bp.route("/reports/district/year-end/breakdown")
+    @login_required
+    def district_year_end_breakdown():
+        """Show detailed stats breakdown for all districts"""
+        # Get school year from query params or default to current
+        school_year = request.args.get("school_year", get_current_school_year())
+        host_filter = request.args.get("host_filter", "all")
+
+        # Get cached reports for the school year and host_filter
+        cached_reports = DistrictYearEndReport.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).all()
+
+        # Build breakdown data structure
+        breakdown_data = {}
+        overall_totals = {
+            "in_person_students": {"total": 0, "unique": 0},
+            "in_person_volunteers": {"total": 0, "unique": 0},
+            "career_jumping_students": {"total": 0, "unique": 0},
+            "career_speakers_students": {"total": 0, "unique": 0},
+            "career_college_fair_hs_students": {"total": 0, "unique": 0},
+            "connector_sessions": {
+                "teachers_engaged": {"total": 0, "unique": 0},
+                "students_participated": {"total": 0, "unique": None},
+                "session_count": 0,
+            },
+        }
+
+        # Track unique IDs across all districts for overall totals
+        overall_unique_in_person_students = set()
+        overall_unique_in_person_volunteers = set()
+        overall_unique_career_jumping_students = set()
+        overall_unique_career_speakers_students = set()
+        overall_unique_career_fair_hs_students = set()
+        overall_unique_connector_teachers = set()
+
+        for report in cached_reports:
+            district = report.district
+            stats = report.report_data or {}
+
+            # Get program breakdown from cache, or compute on-demand
+            if "program_breakdown" in stats:
+                breakdown = stats["program_breakdown"]
+            else:
+                # Fallback: compute on-demand
+                from routes.reports.common import calculate_program_breakdown
+
+                breakdown = calculate_program_breakdown(
+                    district.id, school_year, host_filter=host_filter
+                )
+
+            breakdown_data[district.name] = breakdown
+
+            # Accumulate overall totals
+            overall_totals["in_person_students"]["total"] += breakdown.get(
+                "in_person_students", {}
+            ).get("total", 0)
+            overall_totals["in_person_volunteers"]["total"] += breakdown.get(
+                "in_person_volunteers", {}
+            ).get("total", 0)
+            overall_totals["career_jumping_students"]["total"] += breakdown.get(
+                "career_jumping_students", {}
+            ).get("total", 0)
+            overall_totals["career_speakers_students"]["total"] += breakdown.get(
+                "career_speakers_students", {}
+            ).get("total", 0)
+            overall_totals["career_college_fair_hs_students"]["total"] += breakdown.get(
+                "career_college_fair_hs_students", {}
+            ).get("total", 0)
+            overall_totals["connector_sessions"]["teachers_engaged"]["total"] += (
+                breakdown.get("connector_sessions", {})
+                .get("teachers_engaged", {})
+                .get("total", 0)
+            )
+            overall_totals["connector_sessions"]["students_participated"]["total"] += (
+                breakdown.get("connector_sessions", {})
+                .get("students_participated", {})
+                .get("total", 0)
+            )
+            overall_totals["connector_sessions"]["session_count"] += breakdown.get(
+                "connector_sessions", {}
+            ).get("session_count", 0)
+
+            # For unique counts, we need to track across districts
+            # Note: This is an approximation - true unique would require cross-district deduplication
+            # For now, we'll sum the unique counts (which may overcount if students/volunteers
+            # participate across districts, but that's acceptable for this view)
+            overall_totals["in_person_students"]["unique"] += breakdown.get(
+                "in_person_students", {}
+            ).get("unique", 0)
+            overall_totals["in_person_volunteers"]["unique"] += breakdown.get(
+                "in_person_volunteers", {}
+            ).get("unique", 0)
+            overall_totals["career_jumping_students"]["unique"] += breakdown.get(
+                "career_jumping_students", {}
+            ).get("unique", 0)
+            overall_totals["career_speakers_students"]["unique"] += breakdown.get(
+                "career_speakers_students", {}
+            ).get("unique", 0)
+            overall_totals["career_college_fair_hs_students"][
+                "unique"
+            ] += breakdown.get("career_college_fair_hs_students", {}).get("unique", 0)
+            overall_totals["connector_sessions"]["teachers_engaged"]["unique"] += (
+                breakdown.get("connector_sessions", {})
+                .get("teachers_engaged", {})
+                .get("unique", 0)
+            )
+
+        # Filter district breakdown based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter to only show allowed districts
+                breakdown_data = {
+                    district_name: breakdown
+                    for district_name, breakdown in breakdown_data.items()
+                    if district_name in allowed_districts
+                }
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                breakdown_data = {}
+
+        # Generate list of school years (from 2020-21 to current+1)
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()  # Most recent first
+
+        return render_template(
+            "reports/districts/district_year_end_breakdown.html",
+            breakdown_data=breakdown_data,
+            overall_totals=overall_totals,
+            school_year=school_year,
+            school_years=school_years,
+            host_filter=host_filter,
+        )
+
 
 def generate_schools_by_level_data(district, events):
     """Generate schools data organized by level (High, Middle, Elementary, Other)
@@ -1438,6 +1580,13 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
         # Calculate enhanced stats for this district
         enhanced_stats = calculate_enhanced_district_stats(events, district.id)
 
+        # Calculate program breakdown
+        from routes.reports.common import calculate_program_breakdown
+
+        program_breakdown = calculate_program_breakdown(
+            district.id, school_year, host_filter=host_filter
+        )
+
         # Update stats to include enhanced data
         enhanced_stats_dict = {
             "total_events": enhanced_stats["events"]["total"],
@@ -1448,6 +1597,8 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
             "event_types": enhanced_stats["event_types"],
             # Add enhanced breakdown data
             "enhanced": enhanced_stats,
+            # Add program breakdown
+            "program_breakdown": program_breakdown,
         }
 
         # Merge with existing stats (keep any additional fields from generate_district_stats)

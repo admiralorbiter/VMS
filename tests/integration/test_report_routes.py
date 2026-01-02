@@ -69,6 +69,14 @@ def test_district_year_end_detail_report(client, auth_headers):
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
+def test_district_year_end_breakdown(client, auth_headers):
+    """Test district year end breakdown report"""
+    response = safe_route_test(
+        client, "/reports/district/year-end/breakdown", headers=auth_headers
+    )
+    assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
 def test_recruitment_report(client, auth_headers):
     """Test recruitment report"""
     response = safe_route_test(client, "/reports/recruitment", headers=auth_headers)

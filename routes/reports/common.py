@@ -474,3 +474,267 @@ def get_district_filtered_query(base_query, district_field):
         return base_query.filter(district_field.in_(allowed))
 
     return base_query.filter(False)  # No access
+
+
+def calculate_program_breakdown(district_id, school_year, host_filter="all"):
+    """
+    Calculate detailed program breakdown metrics for a district.
+
+    Returns a dictionary with metrics for:
+    - In-person students participated (total + unique)
+    - In-person volunteers engaged (total engagements + unique)
+    - Career Jumping students participated (total + unique)
+    - Career Speakers students participated (total + unique)
+    - Career/College Fair high school students participated (total + unique)
+    - Connector Sessions:
+      - Teachers engaged (confirmed attendance) (total + unique)
+      - Students participated (estimated via teachers×25; total only)
+      - Number of connector sessions
+
+    Args:
+        district_id: District ID to calculate metrics for
+        school_year: School year in 'YYZZ' format
+        host_filter: Host filter ('all' or 'prepkc')
+
+    Returns:
+        Dictionary with program breakdown metrics
+    """
+    from models.event import EventTeacher
+
+    start_date, end_date = get_school_year_date_range(school_year)
+
+    # Get district and schools
+    district = District.query.filter_by(id=district_id).first()
+    if not district:
+        return {}
+
+    schools = School.query.filter_by(district_id=district_id).all()
+    school_ids = [school.id for school in schools]
+
+    # Build query conditions (same as generate_district_stats)
+    query_conditions = [
+        Event.districts.contains(district),
+        Event.school.in_(school_ids),
+        *[Event.title.ilike(f"%{school.name}%") for school in schools],
+        *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
+        Event.district_partner.ilike(f"%{district.name}%"),
+        Event.district_partner.ilike(
+            f"%{district.name.replace(' School District', '')}%"
+        ),
+    ]
+
+    # Get district mapping for aliases
+    district_mapping = next(
+        (
+            mapping
+            for salesforce_id, mapping in DISTRICT_MAPPING.items()
+            if mapping["name"] == district.name
+        ),
+        None,
+    )
+    if district_mapping and "aliases" in district_mapping:
+        for alias in district_mapping["aliases"]:
+            query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+            query_conditions.append(
+                Event.districts.any(District.name.ilike(f"%{alias}%"))
+            )
+
+    # Base query for all completed events in date range
+    base_query = Event.query.filter(
+        Event.status == EventStatus.COMPLETED,
+        Event.start_date.between(start_date, end_date),
+        db.or_(*query_conditions),
+    )
+
+    # Apply host filter if specified
+    if host_filter == "prepkc":
+        base_query = base_query.filter(
+            db.or_(
+                Event.session_host.ilike("%PREPKC%"),
+                Event.session_host.ilike("%prepkc%"),
+                Event.session_host.ilike("%PrepKC%"),
+            )
+        )
+
+    # Initialize breakdown structure
+    breakdown = {
+        "in_person_students": {"total": 0, "unique": 0},
+        "in_person_volunteers": {"total": 0, "unique": 0},
+        "career_jumping_students": {"total": 0, "unique": 0},
+        "career_speakers_students": {"total": 0, "unique": 0},
+        "career_college_fair_hs_students": {"total": 0, "unique": 0},
+        "connector_sessions": {
+            "teachers_engaged": {"total": 0, "unique": 0},
+            "students_participated": {
+                "total": 0,
+                "unique": None,
+            },  # None = not trackable
+            "session_count": 0,
+        },
+    }
+
+    # Track unique IDs
+    unique_in_person_students = set()
+    unique_in_person_volunteers = set()
+    unique_career_jumping_students = set()
+    unique_career_speakers_students = set()
+    unique_career_fair_hs_students = set()
+    unique_connector_teachers = set()
+
+    # 1. In-person events (exclude virtual_session and connector_session)
+    in_person_events_query = base_query.filter(
+        ~Event.type.in_([EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION])
+    )
+    in_person_events = in_person_events_query.all()
+
+    for event in in_person_events:
+        # Get student count for this district
+        student_count = get_district_student_count_for_event(event, district_id)
+        breakdown["in_person_students"]["total"] += student_count
+
+        # Get unique students for in-person events
+        district_student_ids = (
+            db.session.query(EventStudentParticipation.student_id)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == "Attended",
+                School.district_id == district_id,
+            )
+            .all()
+        )
+        event_student_ids = {student_id[0] for student_id in district_student_ids}
+        unique_in_person_students.update(event_student_ids)
+
+        # Get volunteer participations
+        volunteer_participations = [
+            p
+            for p in event.volunteer_participations
+            if p.status in ["Attended", "Completed", "Successfully Completed"]
+        ]
+        breakdown["in_person_volunteers"]["total"] += len(volunteer_participations)
+        for p in volunteer_participations:
+            unique_in_person_volunteers.add(p.volunteer_id)
+
+    breakdown["in_person_students"]["unique"] = len(unique_in_person_students)
+    breakdown["in_person_volunteers"]["unique"] = len(unique_in_person_volunteers)
+
+    # 2. Career Jumping events
+    career_jumping_events = base_query.filter(
+        Event.type == EventType.CAREER_JUMPING
+    ).all()
+
+    for event in career_jumping_events:
+        student_count = get_district_student_count_for_event(event, district_id)
+        breakdown["career_jumping_students"]["total"] += student_count
+
+        district_student_ids = (
+            db.session.query(EventStudentParticipation.student_id)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == "Attended",
+                School.district_id == district_id,
+            )
+            .all()
+        )
+        event_student_ids = {student_id[0] for student_id in district_student_ids}
+        unique_career_jumping_students.update(event_student_ids)
+
+    breakdown["career_jumping_students"]["unique"] = len(unique_career_jumping_students)
+
+    # 3. Career Speakers events
+    career_speakers_events = base_query.filter(
+        Event.type == EventType.CAREER_SPEAKER
+    ).all()
+
+    for event in career_speakers_events:
+        student_count = get_district_student_count_for_event(event, district_id)
+        breakdown["career_speakers_students"]["total"] += student_count
+
+        district_student_ids = (
+            db.session.query(EventStudentParticipation.student_id)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == "Attended",
+                School.district_id == district_id,
+            )
+            .all()
+        )
+        event_student_ids = {student_id[0] for student_id in district_student_ids}
+        unique_career_speakers_students.update(event_student_ids)
+
+    breakdown["career_speakers_students"]["unique"] = len(
+        unique_career_speakers_students
+    )
+
+    # 4. Career/College Fair events (high school students only)
+    career_fair_events = base_query.filter(
+        Event.type.in_([EventType.CAREER_FAIR, EventType.COLLEGE_APPLICATION_FAIR])
+    ).all()
+
+    for event in career_fair_events:
+        # Get student count for high school students only
+        district_hs_student_ids = (
+            db.session.query(EventStudentParticipation.student_id)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == "Attended",
+                School.district_id == district_id,
+                School.level == "High",
+            )
+            .all()
+        )
+        hs_student_count = len(district_hs_student_ids)
+        breakdown["career_college_fair_hs_students"]["total"] += hs_student_count
+
+        event_hs_student_ids = {student_id[0] for student_id in district_hs_student_ids}
+        unique_career_fair_hs_students.update(event_hs_student_ids)
+
+    breakdown["career_college_fair_hs_students"]["unique"] = len(
+        unique_career_fair_hs_students
+    )
+
+    # 5. Connector Sessions (virtual_session + connector_session)
+    connector_events = base_query.filter(
+        Event.type.in_([EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION])
+    ).all()
+
+    breakdown["connector_sessions"]["session_count"] = len(connector_events)
+
+    for event in connector_events:
+        # Get confirmed teachers (attendance_confirmed_at is not None)
+        confirmed_teacher_regs = [
+            reg
+            for reg in event.teacher_registrations
+            if reg.attendance_confirmed_at is not None
+        ]
+
+        # Filter by district: only count teachers from this district's schools
+        district_confirmed_teachers = []
+        for reg in confirmed_teacher_regs:
+            teacher = reg.teacher
+            if teacher.school_id and teacher.school_id in school_ids:
+                district_confirmed_teachers.append(reg)
+                unique_connector_teachers.add(reg.teacher_id)
+
+        breakdown["connector_sessions"]["teachers_engaged"]["total"] += len(
+            district_confirmed_teachers
+        )
+
+        # Estimate students: confirmed teachers × 25
+        breakdown["connector_sessions"]["students_participated"]["total"] += (
+            len(district_confirmed_teachers) * 25
+        )
+
+    breakdown["connector_sessions"]["teachers_engaged"]["unique"] = len(
+        unique_connector_teachers
+    )
+
+    return breakdown

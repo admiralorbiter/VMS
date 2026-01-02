@@ -139,6 +139,9 @@
             <button onclick="refreshData()" class="refresh-button">
                 <i class="fas fa-sync-alt"></i> Refresh Data
             </button>
+            <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
+                <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
+            </a>
         </div>
         {% if last_updated %}
         <div class="last-updated">
