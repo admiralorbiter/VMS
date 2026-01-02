@@ -1,8 +1,9 @@
 /* Container styles */
 .district-detail-container {
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
+    padding: 1.5rem;
+    max-width: 100%;
+    margin: 0;
+    width: 100%;
 }
 
 /* Header Section */
@@ -218,7 +219,10 @@
 /* Events Table */
 .events-table-wrapper {
     overflow-x: auto;
+    overflow-y: auto;
     padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .events-table-wrapper.collapsed {
@@ -230,31 +234,58 @@
 }
 
 .events-table-wrapper.expanded {
-    max-height: 2000px;
+    max-height: 600px;
     overflow-x: auto;
+    overflow-y: auto;
     opacity: 1;
     padding: 1rem;
     transition: all 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .events-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: auto;
+}
+
+.events-table td:nth-child(3) {
+    max-width: 300px;
+    min-width: 200px;
+}
+
+.events-table td:nth-child(5) {
+    max-width: 250px;
+    min-width: 150px;
 }
 
 .events-table th {
     background-color: var(--non-photo-blue);
     color: var(--delft-blue);
-    padding: 1rem;
+    padding: 0.75rem;
     text-align: left;
     font-weight: 500;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+.events-table th:nth-child(3) {
+    max-width: 300px;
+    min-width: 200px;
+}
+
+.events-table th:nth-child(5) {
+    max-width: 250px;
+    min-width: 150px;
 }
 
 .events-table td {
-    padding: 1rem;
+    padding: 0.75rem;
     border-bottom: 1px solid var(--non-photo-blue);
     color: var(--delft-blue);
+    word-wrap: break-word;
+    max-width: 200px;
 }
 
 .events-table tr:hover {

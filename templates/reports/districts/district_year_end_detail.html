@@ -5,6 +5,11 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}">
 <style>
+    /* Override main max-width for this page to allow full width */
+    main {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
 
 
     /* Event type filtering styles */
@@ -103,8 +108,9 @@
     }
 
     .events-table-wrapper.expanded {
-        max-height: 2000px;
-        overflow: visible;
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
         opacity: 1;
         transition: all 0.3s ease;
     }
@@ -362,7 +368,9 @@
 
     .school-card .events-table-wrapper.expanded,
     .school-card .no-events-message.expanded {
-        max-height: 1000px;
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
         opacity: 1;
         transition: all 0.3s ease;
     }
