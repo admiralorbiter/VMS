@@ -1123,9 +1123,12 @@ def load_routes(bp):
         overall_totals = {
             "in_person_students": {"total": 0, "unique": 0},
             "in_person_volunteers": {"total": 0, "unique": 0},
+            "in_person_events_count": 0,
             "career_jumping_students": {"total": 0, "unique": 0},
             "career_speakers_students": {"total": 0, "unique": 0},
             "career_college_fair_hs_students": {"total": 0, "unique": 0},
+            "healthstart_students": {"total": 0, "unique": 0},
+            "bfi_students": {"total": 0, "unique": 0},
             "connector_sessions": {
                 "teachers_engaged": {"total": 0, "unique": 0},
                 "students_participated": {"total": 0, "unique": None},
@@ -1165,6 +1168,9 @@ def load_routes(bp):
             overall_totals["in_person_volunteers"]["total"] += breakdown.get(
                 "in_person_volunteers", {}
             ).get("total", 0)
+            overall_totals["in_person_events_count"] += breakdown.get(
+                "in_person_events_count", 0
+            )
             overall_totals["career_jumping_students"]["total"] += breakdown.get(
                 "career_jumping_students", {}
             ).get("total", 0)
@@ -1173,6 +1179,12 @@ def load_routes(bp):
             ).get("total", 0)
             overall_totals["career_college_fair_hs_students"]["total"] += breakdown.get(
                 "career_college_fair_hs_students", {}
+            ).get("total", 0)
+            overall_totals["healthstart_students"]["total"] += breakdown.get(
+                "healthstart_students", {}
+            ).get("total", 0)
+            overall_totals["bfi_students"]["total"] += breakdown.get(
+                "bfi_students", {}
             ).get("total", 0)
             overall_totals["connector_sessions"]["teachers_engaged"]["total"] += (
                 breakdown.get("connector_sessions", {})
@@ -1207,6 +1219,12 @@ def load_routes(bp):
             overall_totals["career_college_fair_hs_students"][
                 "unique"
             ] += breakdown.get("career_college_fair_hs_students", {}).get("unique", 0)
+            overall_totals["healthstart_students"]["unique"] += breakdown.get(
+                "healthstart_students", {}
+            ).get("unique", 0)
+            overall_totals["bfi_students"]["unique"] += breakdown.get(
+                "bfi_students", {}
+            ).get("unique", 0)
             overall_totals["connector_sessions"]["teachers_engaged"]["unique"] += (
                 breakdown.get("connector_sessions", {})
                 .get("teachers_engaged", {})

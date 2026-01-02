@@ -179,8 +179,8 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.in_person_students.total }}</span>
-                        <span class="metric-unique">{{ breakdown.in_person_students.unique }} unique</span>
+                        <span class="metric-total">{{ breakdown.get('in_person_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('in_person_students', {}).get('unique', 0) }} unique</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -198,8 +198,8 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.in_person_volunteers.total }}</span>
-                        <span class="metric-unique">{{ breakdown.in_person_volunteers.unique }} unique</span>
+                        <span class="metric-total">{{ breakdown.get('in_person_volunteers', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('in_person_volunteers', {}).get('unique', 0) }} unique</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -217,8 +217,8 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.career_jumping_students.total }}</span>
-                        <span class="metric-unique">{{ breakdown.career_jumping_students.unique }} unique</span>
+                        <span class="metric-total">{{ breakdown.get('career_jumping_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('career_jumping_students', {}).get('unique', 0) }} unique</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -236,8 +236,8 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.career_speakers_students.total }}</span>
-                        <span class="metric-unique">{{ breakdown.career_speakers_students.unique }} unique</span>
+                        <span class="metric-total">{{ breakdown.get('career_speakers_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('career_speakers_students', {}).get('unique', 0) }} unique</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -255,8 +255,46 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.career_college_fair_hs_students.total }}</span>
-                        <span class="metric-unique">{{ breakdown.career_college_fair_hs_students.unique }} unique</span>
+                        <span class="metric-total">{{ breakdown.get('career_college_fair_hs_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('career_college_fair_hs_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Health Start Students -->
+            <tr>
+                <td class="metric-name">Students Participated in Health Start</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.healthstart_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.healthstart_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('healthstart_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('healthstart_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- BFI Students -->
+            <tr>
+                <td class="metric-name">Students Participated in BFI</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.bfi_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.bfi_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('bfi_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('bfi_students', {}).get('unique', 0) }} unique</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -274,8 +312,8 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.connector_sessions.teachers_engaged.total }}</span>
-                        <span class="metric-unique">{{ breakdown.connector_sessions.teachers_engaged.unique }} unique</span>
+                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('teachers_engaged', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('connector_sessions', {}).get('teachers_engaged', {}).get('unique', 0) }} unique</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -293,8 +331,25 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.connector_sessions.students_participated.total }}</span>
+                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('students_participated', {}).get('total', 0) }}</span>
                         <span class="metric-unique not-applicable">—</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Number of In-Person Events -->
+            <tr>
+                <td class="metric-name">Number of In-Person Events</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ overall_totals.in_person_events_count }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('in_person_events_count', 0) }}</span>
                     </div>
                 </td>
                 {% endfor %}
@@ -311,7 +366,7 @@
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
                     <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.connector_sessions.session_count }}</span>
+                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('session_count', 0) }}</span>
                     </div>
                 </td>
                 {% endfor %}

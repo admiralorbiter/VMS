@@ -560,9 +560,12 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
     breakdown = {
         "in_person_students": {"total": 0, "unique": 0},
         "in_person_volunteers": {"total": 0, "unique": 0},
+        "in_person_events_count": 0,
         "career_jumping_students": {"total": 0, "unique": 0},
         "career_speakers_students": {"total": 0, "unique": 0},
         "career_college_fair_hs_students": {"total": 0, "unique": 0},
+        "healthstart_students": {"total": 0, "unique": 0},
+        "bfi_students": {"total": 0, "unique": 0},
         "connector_sessions": {
             "teachers_engaged": {"total": 0, "unique": 0},
             "students_participated": {
@@ -579,6 +582,8 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
     unique_career_jumping_students = set()
     unique_career_speakers_students = set()
     unique_career_fair_hs_students = set()
+    unique_healthstart_students = set()
+    unique_bfi_students = set()
     unique_connector_teachers = set()
 
     # 1. In-person events (exclude virtual_session and connector_session)
@@ -619,6 +624,7 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
 
     breakdown["in_person_students"]["unique"] = len(unique_in_person_students)
     breakdown["in_person_volunteers"]["unique"] = len(unique_in_person_volunteers)
+    breakdown["in_person_events_count"] = len(in_person_events)
 
     # 2. Career Jumping events
     career_jumping_events = base_query.filter(
@@ -707,7 +713,85 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
         unique_career_fair_hs_students
     )
 
-    # 5. Connector Sessions (virtual_session + connector_session)
+    # 5. Health Start events
+    # Query directly for HEALTHSTART events that might be associated with this district
+    # This ensures we catch events even if they don't match all base_query conditions
+    healthstart_events_query = Event.query.filter(
+        Event.status == EventStatus.COMPLETED,
+        Event.start_date.between(start_date, end_date),
+        Event.type == EventType.HEALTHSTART,
+        db.or_(*query_conditions),
+    )
+    if host_filter == "prepkc":
+        healthstart_events_query = healthstart_events_query.filter(
+            db.or_(
+                Event.session_host.ilike("%PREPKC%"),
+                Event.session_host.ilike("%prepkc%"),
+                Event.session_host.ilike("%PrepKC%"),
+            )
+        )
+    healthstart_events = healthstart_events_query.all()
+
+    for event in healthstart_events:
+        student_count = get_district_student_count_for_event(event, district_id)
+        breakdown["healthstart_students"]["total"] += student_count
+
+        district_student_ids = (
+            db.session.query(EventStudentParticipation.student_id)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == "Attended",
+                School.district_id == district_id,
+            )
+            .all()
+        )
+        event_student_ids = {student_id[0] for student_id in district_student_ids}
+        unique_healthstart_students.update(event_student_ids)
+
+    breakdown["healthstart_students"]["unique"] = len(unique_healthstart_students)
+
+    # 6. BFI events
+    # Query directly for BFI events that might be associated with this district
+    # This ensures we catch events even if they don't match all base_query conditions
+    bfi_events_query = Event.query.filter(
+        Event.status == EventStatus.COMPLETED,
+        Event.start_date.between(start_date, end_date),
+        Event.type == EventType.BFI,
+        db.or_(*query_conditions),
+    )
+    if host_filter == "prepkc":
+        bfi_events_query = bfi_events_query.filter(
+            db.or_(
+                Event.session_host.ilike("%PREPKC%"),
+                Event.session_host.ilike("%prepkc%"),
+                Event.session_host.ilike("%PrepKC%"),
+            )
+        )
+    bfi_events = bfi_events_query.all()
+
+    for event in bfi_events:
+        student_count = get_district_student_count_for_event(event, district_id)
+        breakdown["bfi_students"]["total"] += student_count
+
+        district_student_ids = (
+            db.session.query(EventStudentParticipation.student_id)
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id == event.id,
+                EventStudentParticipation.status == "Attended",
+                School.district_id == district_id,
+            )
+            .all()
+        )
+        event_student_ids = {student_id[0] for student_id in district_student_ids}
+        unique_bfi_students.update(event_student_ids)
+
+    breakdown["bfi_students"]["unique"] = len(unique_bfi_students)
+
+    # 7. Connector Sessions (virtual_session + connector_session)
     connector_events = base_query.filter(
         Event.type.in_([EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION])
     ).all()
