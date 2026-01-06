@@ -330,32 +330,32 @@
             <!-- BUTTONS BELOW FILTERS -->
                     <div class="filter-actions">
             <button type="submit" class="filter-btn">Apply Filters</button>
-            <a href="{{ url_for('report.virtual_usage') }}" class="reset-btn">Reset</a>
+            <a href="{{ url_for('virtual.virtual_usage') }}" class="reset-btn">Reset</a>
             {% if session_data %}
-            <a href="{{ url_for('report.virtual_usage', refresh=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
+            <a href="{{ url_for('virtual.virtual_usage', refresh=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
                class="export-btn" title="Refresh Data" style="background: #28a745;">
                 🔄 Refresh
             </a>
-            <a href="{{ url_for('report.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
+            <a href="{{ url_for('virtual.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                class="export-btn" title="Export to Excel">
                 📊 Export
             </a>
-            <a href="{{ url_for('report.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
+            <a href="{{ url_for('virtual.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                class="export-btn" title="View Detailed Breakdown">
                 📈 Breakdown
             </a>
-            <a href="{{ url_for('report.virtual_google_sheets', year=current_filters.year) }}"
+            <a href="{{ url_for('virtual.virtual_google_sheets', year=current_filters.year) }}"
                class="export-btn" title="Manage District Google Sheets">
                 📋 Manage Sheets
             </a>
             {% if current_user.is_admin %}
                 {% if request.args.get('show_all_districts') == '1' %}
-                <a href="{{ url_for('report.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
+                <a href="{{ url_for('virtual.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                    class="export-btn" title="Show Main Districts Only" style="background: #17a2b8;">
                     🏠 Main Districts
                 </a>
                 {% else %}
-                <a href="{{ url_for('report.virtual_usage', show_all_districts=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
+                <a href="{{ url_for('virtual.virtual_usage', show_all_districts=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
                    class="export-btn" title="Show All Districts" style="background: #6c757d;">
                     🌐 All Districts
                 </a>
@@ -448,14 +448,14 @@
                     <div class="district-header">
                         <h3>{{ district_name }}</h3>
                         <div style="display: flex; gap: 8px;">
-                            <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
+                            <a href="{{ url_for('virtual.virtual_usage_district', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                                class="district-link">View Details</a>
                             {% if district_name == "Kansas City Kansas Public Schools" %}
-                            <a href="{{ url_for('report.virtual_district_teacher_progress', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
+                            <a href="{{ url_for('virtual.virtual_district_teacher_progress', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                                class="district-link" style="background: rgba(40, 167, 69, 0.3);" title="Teacher Progress Tracking">
                                📈 Progress</a>
                             {% endif %}
-                            <a href="{{ url_for('report.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}"
+                            <a href="{{ url_for('virtual.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}"
                                class="district-link" style="background: rgba(255, 255, 255, 0.1);" title="View Google Sheet">
                                📊 Sheet</a>
                         </div>

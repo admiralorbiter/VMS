@@ -21,7 +21,6 @@ from routes.reports.recent_volunteers import (
     load_routes as load_recent_volunteers_routes,
 )
 from routes.reports.recruitment import load_routes as load_recruitment_routes
-from routes.reports.virtual_session import load_routes as load_virtual_routes
 from routes.reports.volunteer_thankyou import load_routes as load_volunteer_routes
 from routes.reports.volunteers_by_event import (
     load_routes as load_volunteers_by_event_routes,
@@ -29,7 +28,6 @@ from routes.reports.volunteers_by_event import (
 
 # Register all routes with the main blueprint
 load_routes(report_bp)  # This registers the main /reports route
-load_virtual_routes(report_bp)
 load_volunteer_routes(report_bp)
 load_organization_report_routes(report_bp)
 load_district_routes(report_bp)

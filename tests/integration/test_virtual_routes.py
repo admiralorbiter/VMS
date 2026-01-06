@@ -362,12 +362,12 @@ def test_calculate_summaries_with_all_districts():
 def test_virtual_usage_report_with_admin_toggle(client, auth_headers):
     """Test virtual usage report with admin district toggle"""
     # Test default view (main districts only)
-    response = safe_route_test(client, "/reports/virtual/usage", headers=auth_headers)
+    response = safe_route_test(client, "/virtual/usage", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
     # Test with show_all_districts parameter
     response = safe_route_test(
-        client, "/reports/virtual/usage?show_all_districts=1", headers=auth_headers
+        client, "/virtual/usage?show_all_districts=1", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -377,14 +377,14 @@ def test_virtual_usage_report_district_filtering(client, auth_headers):
     # Test with main district filter
     response = safe_route_test(
         client,
-        "/reports/virtual/usage?district=Hickman Mills School District",
+        "/virtual/usage?district=Hickman Mills School District",
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
     # Test with non-main district filter
     response = safe_route_test(
-        client, "/reports/virtual/usage?district=Unknown District", headers=auth_headers
+        client, "/virtual/usage?district=Unknown District", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 

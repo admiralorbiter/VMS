@@ -145,7 +145,7 @@ def test_first_time_volunteer_report(client, auth_headers):
 # New tests for virtual session reports with district filtering
 def test_virtual_usage_report_default_view(client, auth_headers):
     """Test virtual usage report default view (main districts only)"""
-    response = safe_route_test(client, "/reports/virtual/usage", headers=auth_headers)
+    response = safe_route_test(client, "/virtual/usage", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
     if response.status_code == 200:
@@ -157,7 +157,7 @@ def test_virtual_usage_report_default_view(client, auth_headers):
 def test_virtual_usage_report_all_districts_view(client, auth_headers):
     """Test virtual usage report with all districts view"""
     response = safe_route_test(
-        client, "/reports/virtual/usage?show_all_districts=1", headers=auth_headers
+        client, "/virtual/usage?show_all_districts=1", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -171,14 +171,14 @@ def test_virtual_usage_report_with_district_filter(client, auth_headers):
     # Test with main district
     response = safe_route_test(
         client,
-        "/reports/virtual/usage?district=Hickman Mills School District",
+        "/virtual/usage?district=Hickman Mills School District",
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
     # Test with non-main district
     response = safe_route_test(
-        client, "/reports/virtual/usage?district=Unknown District", headers=auth_headers
+        client, "/virtual/usage?district=Unknown District", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -189,7 +189,7 @@ def test_virtual_usage_report_with_status_filter(client, auth_headers):
     statuses = ["successfully completed", "simulcast", "completed"]
     for status in statuses:
         response = safe_route_test(
-            client, f"/reports/virtual/usage?status={status}", headers=auth_headers
+            client, f"/virtual/usage?status={status}", headers=auth_headers
         )
         assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -199,7 +199,7 @@ def test_virtual_usage_report_with_date_filters(client, auth_headers):
     # Test with date range
     response = safe_route_test(
         client,
-        "/reports/virtual/usage?date_from=2024-07-01&date_to=2024-12-31",
+        "/virtual/usage?date_from=2024-07-01&date_to=2024-12-31",
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
@@ -207,9 +207,7 @@ def test_virtual_usage_report_with_date_filters(client, auth_headers):
 
 def test_virtual_usage_report_export(client, auth_headers):
     """Test virtual usage report export functionality"""
-    response = safe_route_test(
-        client, "/reports/virtual/usage/export", headers=auth_headers
-    )
+    response = safe_route_test(client, "/virtual/usage/export", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
@@ -218,14 +216,14 @@ def test_virtual_usage_district_detail(client, auth_headers):
     # Test with main district
     response = safe_route_test(
         client,
-        "/reports/virtual/usage/district/Hickman Mills School District",
+        "/virtual/usage/district/Hickman Mills School District",
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
     # Test with non-main district
     response = safe_route_test(
-        client, "/reports/virtual/usage/district/Unknown District", headers=auth_headers
+        client, "/virtual/usage/district/Unknown District", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -233,9 +231,7 @@ def test_virtual_usage_district_detail(client, auth_headers):
 def test_virtual_usage_report_cache_functionality(client, auth_headers):
     """Test virtual usage report cache functionality"""
     # Test with refresh parameter
-    response = safe_route_test(
-        client, "/reports/virtual/usage?refresh=1", headers=auth_headers
-    )
+    response = safe_route_test(client, "/virtual/usage?refresh=1", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
@@ -244,7 +240,7 @@ def test_virtual_usage_report_filter_combinations(client, auth_headers):
     # Test multiple filters together
     response = safe_route_test(
         client,
-        "/reports/virtual/usage?district=Hickman Mills School District&status=successfully completed&show_all_districts=1",
+        "/virtual/usage?district=Hickman Mills School District&status=successfully completed&show_all_districts=1",
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
@@ -253,7 +249,7 @@ def test_virtual_usage_report_filter_combinations(client, auth_headers):
 def test_virtual_usage_report_pagination(client, auth_headers):
     """Test virtual usage report pagination"""
     response = safe_route_test(
-        client, "/reports/virtual/usage?page=1&per_page=10", headers=auth_headers
+        client, "/virtual/usage?page=1&per_page=10", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -264,14 +260,14 @@ def test_virtual_usage_report_sorting(client, auth_headers):
     sort_options = ["date", "time", "session_title", "district", "status"]
     for sort_by in sort_options:
         response = safe_route_test(
-            client, f"/reports/virtual/usage?sort_by={sort_by}", headers=auth_headers
+            client, f"/virtual/usage?sort_by={sort_by}", headers=auth_headers
         )
         assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
 def test_virtual_usage_report_unauthorized_access(client):
     """Test virtual usage report unauthorized access"""
-    response = safe_route_test(client, "/reports/virtual/usage")
+    response = safe_route_test(client, "/virtual/usage")
     assert_route_response(response, expected_statuses=[302, 401, 403, 404])
 
 
@@ -279,14 +275,14 @@ def test_virtual_usage_report_error_handling(client, auth_headers):
     """Test virtual usage report error handling"""
     # Test with invalid parameters
     response = safe_route_test(
-        client, "/reports/virtual/usage?invalid_param=test", headers=auth_headers
+        client, "/virtual/usage?invalid_param=test", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
 def test_virtual_usage_report_performance(client, auth_headers):
     """Test virtual usage report performance"""
-    response = safe_route_test(client, "/reports/virtual/usage", headers=auth_headers)
+    response = safe_route_test(client, "/virtual/usage", headers=auth_headers)
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
     if response.status_code == 200:

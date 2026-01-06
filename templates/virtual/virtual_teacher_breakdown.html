@@ -271,7 +271,7 @@
 {% block content %}
 <div class="teacher-breakdown-container">
     <div class="district-header">
-        <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year) }}" class="back-link">
+        <a href="{{ url_for('virtual.virtual_usage_district', district_name=district_name, year=current_filters.year) }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to District Report
         </a>
         <h1 class="district-title">{{ district_name }}</h1>
@@ -305,7 +305,7 @@
             </div>
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
-                <a href="{{ url_for('report.virtual_district_teacher_breakdown', district_name=district_name) }}"
+                <a href="{{ url_for('virtual.virtual_district_teacher_breakdown', district_name=district_name) }}"
                    class="reset-btn">Reset</a>
             </div>
         </form>

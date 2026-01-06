@@ -380,7 +380,7 @@
 {% block content %}
 <div class="teacher-progress-container">
     <div class="district-header">
-        <a href="{{ url_for('report.virtual_usage_district', district_name=district_name, year=current_filters.year) }}" class="back-link">
+        <a href="{{ url_for('virtual.virtual_usage_district', district_name=district_name, year=current_filters.year) }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to District Report
         </a>
         <h1 class="district-title">{{ district_name }}</h1>
@@ -400,7 +400,7 @@
         <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0; color: #856404; font-size: 0.9em;">
             <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong> Teacher names in connector sessions must match the KCK teacher name spreadsheet.
             {% if current_user and current_user.is_admin %}
-            <a href="{{ url_for('report.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
+            <a href="{{ url_for('virtual.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
                style="color: #856404; font-weight: 600; text-decoration: underline;">Update names here</a>.
             {% else %}
             <span style="font-weight: 600;">Contact an admin to update names.</span>
@@ -408,7 +408,7 @@
         </div>
         {% if current_user and current_user.is_admin %}
         <p style="margin-top: 15px;">
-            <a href="{{ url_for('report.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
+            <a href="{{ url_for('virtual.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
                style="color: #155724; font-weight: 600; text-decoration: underline;">
                 <i class="fas fa-cog"></i> Manage Google Sheets & Import Data
             </a>
@@ -443,10 +443,10 @@
             </div>
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
-                <a href="{{ url_for('report.virtual_district_teacher_progress', district_name=district_name) }}"
+                <a href="{{ url_for('virtual.virtual_district_teacher_progress', district_name=district_name) }}"
                    class="reset-btn">Reset</a>
                 {% if teacher_progress_data %}
-                <a href="{{ url_for('report.virtual_district_teacher_progress_export', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d'), date_to=current_filters.date_to.strftime('%Y-%m-%d')) }}"
+                <a href="{{ url_for('virtual.virtual_district_teacher_progress_export', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d'), date_to=current_filters.date_to.strftime('%Y-%m-%d')) }}"
                    class="export-btn">
                     <i class="fas fa-file-excel"></i> Export to Excel
                 </a>

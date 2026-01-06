@@ -516,18 +516,18 @@
     .breakdown-header {
         padding: 2rem 1rem;
     }
-    
+
     .breakdown-title {
         font-size: 2rem;
     }
-    
+
     .filters-section,
     .legend,
     .breakdown-table-container,
     .analytics-sections {
         margin: 1rem;
     }
-    
+
     .filters-form {
         grid-template-columns: 1fr;
     }
@@ -557,7 +557,7 @@
     .legend-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .analytics-grid {
         grid-template-columns: 1fr;
         gap: 1.5rem;
@@ -621,7 +621,7 @@ html {
 {% block content %}
 <div class="breakdown-container">
     <div class="breakdown-header">
-        <a href="{{ url_for('report.virtual_usage', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="back-link">
+        <a href="{{ url_for('virtual.virtual_usage', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Virtual Usage Report
         </a>
         <h1 class="breakdown-title">Virtual Sessions Detailed Breakdown</h1>
@@ -657,7 +657,7 @@ html {
 
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
-                <a href="{{ url_for('report.virtual_breakdown') }}" class="reset-btn">Reset</a>
+                <a href="{{ url_for('virtual.virtual_breakdown') }}" class="reset-btn">Reset</a>
             </div>
         </form>
     </div>

@@ -424,7 +424,7 @@
 {% block content %}
 <div class="google-sheets-container">
     <div class="district-header">
-        <a href="{{ url_for('report.virtual_district_teacher_progress', district_name=district_name, year=virtual_year) }}" class="back-link">
+        <a href="{{ url_for('virtual.virtual_district_teacher_progress', district_name=district_name, year=virtual_year) }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Teacher Progress
         </a>
         <h1 class="district-title">{{ district_name }}</h1>
@@ -500,7 +500,7 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
                         <td>{{ sheet.created_at.strftime('%Y-%m-%d %H:%M') if sheet.created_at else 'N/A' }}</td>
                         <td>
                             <div class="sheet-actions">
-                                <form method="POST" action="{{ url_for('report.import_teacher_progress_data', district_name=district_name, sheet_id=sheet.id) }}" style="display: inline;">
+                                <form method="POST" action="{{ url_for('virtual.import_teacher_progress_data', district_name=district_name, sheet_id=sheet.id) }}" style="display: inline;">
                                     <button type="submit" class="action-btn import-btn" onclick="return confirm('Import teacher data from this sheet?')">
                                         <i class="fas fa-download"></i> Import
                                     </button>
@@ -508,7 +508,7 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
                                 <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" target="_blank" class="action-btn view-btn">
                                     <i class="fas fa-external-link-alt"></i> View
                                 </a>
-                                <form method="POST" action="{{ url_for('report.delete_teacher_progress_google_sheet', district_name=district_name, sheet_id=sheet.id) }}" style="display: inline;">
+                                <form method="POST" action="{{ url_for('virtual.delete_teacher_progress_google_sheet', district_name=district_name, sheet_id=sheet.id) }}" style="display: inline;">
                                     <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete this Google Sheet configuration?')">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
@@ -538,7 +538,7 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
             <h3 class="modal-title">Add Google Sheet for Teacher Progress</h3>
             <span class="close" onclick="closeModal()">&times;</span>
         </div>
-        <form method="POST" action="{{ url_for('report.create_teacher_progress_google_sheet', district_name=district_name) }}">
+        <form method="POST" action="{{ url_for('virtual.create_teacher_progress_google_sheet', district_name=district_name) }}">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="virtual_year">Virtual Year:</label>

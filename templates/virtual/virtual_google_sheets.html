@@ -264,7 +264,7 @@
 {% block content %}
 <div class="google-sheets-container">
     <div class="page-header">
-        <a href="{{ url_for('report.virtual_usage', year=virtual_year) }}" class="back-link">
+        <a href="{{ url_for('virtual.virtual_usage', year=virtual_year) }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Virtual Usage Report
         </a>
         <h1 class="page-title">Virtual District Google Sheets</h1>
@@ -299,7 +299,7 @@
     <!-- Create New Sheet -->
     <div class="create-sheet-section">
         <h2 class="section-title">Create New Google Sheet</h2>
-        <form method="POST" action="{{ url_for('report.create_virtual_google_sheet') }}">
+        <form method="POST" action="{{ url_for('virtual.create_virtual_google_sheet') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label for="district_name">District Name:</label>
@@ -357,14 +357,14 @@
                         <td>{{ sheet.created_at.strftime('%m/%d/%Y') if sheet.created_at else '' }}</td>
                         <td>
                             <div class="actions">
-                                <a href="{{ url_for('report.view_virtual_google_sheet', sheet_id=sheet.id) }}"
+                                <a href="{{ url_for('virtual.view_virtual_google_sheet', sheet_id=sheet.id) }}"
                                    class="btn btn-secondary btn-sm" target="_blank">
                                     <i class="fas fa-external-link-alt"></i> View
                                 </a>
                                 <button onclick="toggleEditForm({{ sheet.id }})" class="btn btn-primary btn-sm">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <form method="POST" action="{{ url_for('report.delete_virtual_google_sheet', sheet_id=sheet.id) }}"
+                                <form method="POST" action="{{ url_for('virtual.delete_virtual_google_sheet', sheet_id=sheet.id) }}"
                                       style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this sheet?')">
                                     <button type="submit" class="btn btn-danger btn-sm">
                                         <i class="fas fa-trash"></i> Delete
@@ -374,7 +374,7 @@
 
                             <!-- Edit Form -->
                             <div class="edit-form" id="edit-form-{{ sheet.id }}">
-                                <form method="POST" action="{{ url_for('report.update_virtual_google_sheet', sheet_id=sheet.id) }}">
+                                <form method="POST" action="{{ url_for('virtual.update_virtual_google_sheet', sheet_id=sheet.id) }}">
                                     <div class="form-row">
                                         <div class="form-group">
                                             <label>Sheet Name:</label>
