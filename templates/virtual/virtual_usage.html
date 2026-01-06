@@ -349,6 +349,11 @@
                 📋 Manage Sheets
             </a>
             {% if current_user.is_admin %}
+            <button type="button" class="export-btn new-session-btn" onclick="openCreateVirtualModal()">
+                ➕ New Session
+            </button>
+            {% endif %}
+            {% if current_user.is_admin %}
                 {% if request.args.get('show_all_districts') == '1' %}
                 <a href="{{ url_for('virtual.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                    class="export-btn" title="Show Main Districts Only" style="background: #17a2b8;">
@@ -361,6 +366,17 @@
                 </a>
                 {% endif %}
             {% endif %}
+            {% if request.args.get('group_manual') == '1' %}
+                <a href="{{ url_for('virtual.virtual_usage') }}{{ '?' + request.query_string.decode().replace('group_manual=1', 'group_manual=0') if request.query_string else '' }}"
+                   class="export-btn" title="Show app-entered sessions line-by-line" style="background: #6c757d;">
+                    📋 Manual: Lines
+                </a>
+            {% else %}
+                <a href="{{ url_for('virtual.virtual_usage', group_manual=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
+                   class="export-btn" title="Group app-entered sessions into one row" style="background: #6c757d;">
+                    📦 Manual: Group
+                </a>
+            {% endif %}
             {% endif %}
             {% if google_sheet_url %}
             <a href="{{ google_sheet_url }}" target="_blank" class="export-btn" title="View Original Google Sheet">
@@ -370,6 +386,430 @@
         </div>
         </form>
     </div>
+
+    {% if current_user.is_admin %}
+    <!-- Create Virtual Session Modal -->
+    <div id="createVirtualModal" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h2>New Virtual Session</h2>
+                <button type="button" class="modal-close-btn" onclick="closeCreateVirtualModal()">Close</button>
+            </div>
+
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('virtual.create_virtual_usage_session') }}" class="modal-form" onclick="event.stopPropagation();">
+                    <input type="hidden" name="year" value="{{ current_filters.year }}">
+
+                    <div class="form-row form-row-3">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Time</label>
+                            <input type="time" name="time" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Duration (minutes)</label>
+                            <input type="number" name="duration" min="15" step="5" value="60">
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row-3-2-1">
+                        <div class="form-group">
+                            <label>Session Title</label>
+                            <input type="text" name="title" required placeholder="e.g., Investigating Weather Patterns...">
+                        </div>
+                        <div class="form-group">
+                            <label>Session Type</label>
+                            <input type="text" name="session_type" placeholder="e.g., Career Talk">
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select name="status" class="status-select">
+                                <option value="Draft">Draft</option>
+                                <option value="Requested">Requested</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Published">Published</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="No Show">No Show</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Topic/Theme</label>
+                        <input type="text" name="topic_theme" placeholder="e.g., STEM / Health / Finance">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Session Link (optional)</label>
+                        <input type="url" name="session_link" placeholder="https://...">
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <div class="section-header">
+                        <h3>Teachers</h3>
+                        <button type="button" class="add-item-btn" onclick="addTeacherRow()">+ Add Teacher</button>
+                    </div>
+                    <div id="teacherRows" class="dynamic-rows"></div>
+
+                    <hr class="form-divider">
+
+                    <div class="section-header">
+                        <h3>Presenters</h3>
+                        <button type="button" class="add-item-btn" onclick="addPresenterRow()">+ Add Presenter</button>
+                    </div>
+                    <div id="presenterRows" class="dynamic-rows"></div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="filter-btn" id="submitSessionBtn">Create Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      let isEditMode = false;
+      let editEventId = null;
+
+      function openCreateVirtualModal() {
+        isEditMode = false;
+        editEventId = null;
+        const m = document.getElementById('createVirtualModal');
+        const form = m.querySelector('form');
+        form.reset();
+        form.action = "{{ url_for('virtual.create_virtual_usage_session') }}";
+        m.querySelector('.modal-header h2').textContent = 'New Virtual Session';
+        document.getElementById('submitSessionBtn').textContent = 'Create Session';
+        document.getElementById('teacherRows').innerHTML = '';
+        document.getElementById('presenterRows').innerHTML = '';
+        m.classList.add('show');
+        if (!document.getElementById('teacherRows').children.length) addTeacherRow();
+        if (!document.getElementById('presenterRows').children.length) addPresenterRow();
+      }
+
+      function openEditVirtualModal(eventId) {
+        isEditMode = true;
+        editEventId = eventId;
+        const m = document.getElementById('createVirtualModal');
+        const form = m.querySelector('form');
+        form.action = `{{ url_for('virtual.edit_virtual_usage_session', event_id=0) }}`.replace('/0', '/' + eventId);
+        m.querySelector('.modal-header h2').textContent = 'Edit Virtual Session';
+        document.getElementById('submitSessionBtn').textContent = 'Update Session';
+
+        // Fetch event data
+        fetch(`{{ url_for('virtual.edit_virtual_usage_session', event_id=0) }}`.replace('/0', '/' + eventId))
+          .then(r => r.json())
+          .then(data => {
+            // Populate form fields
+            form.querySelector('input[name="title"]').value = data.title || '';
+            form.querySelector('input[name="date"]').value = data.date || '';
+            form.querySelector('input[name="time"]').value = data.time || '';
+            form.querySelector('input[name="duration"]').value = data.duration || 60;
+            form.querySelector('input[name="session_type"]').value = data.session_type || '';
+            form.querySelector('input[name="topic_theme"]').value = data.topic_theme || '';
+            form.querySelector('input[name="session_link"]').value = data.session_link || '';
+            if (data.status) {
+              const statusSelect = form.querySelector('select[name="status"]');
+              if (statusSelect) {
+                statusSelect.value = data.status;
+              }
+            }
+
+            // Clear and populate teachers
+            const teacherRows = document.getElementById('teacherRows');
+            teacherRows.innerHTML = '';
+            if (data.teachers && data.teachers.length > 0) {
+              data.teachers.forEach(teacher => {
+                addTeacherRow();
+                const lastRow = teacherRows.lastElementChild;
+                lastRow.querySelector('.teacher-id-input').value = teacher.id;
+                lastRow.querySelector('.teacher-search-input').value = teacher.name;
+                lastRow.querySelector('.teacher-school-input').value = teacher.school || '';
+              });
+            } else {
+              addTeacherRow();
+            }
+
+            // Clear and populate presenters
+            const presenterRows = document.getElementById('presenterRows');
+            presenterRows.innerHTML = '';
+            if (data.presenters && data.presenters.length > 0) {
+              data.presenters.forEach(presenter => {
+                addPresenterRow();
+                const lastRow = presenterRows.lastElementChild;
+                lastRow.querySelector('.presenter-id-input').value = presenter.id;
+                lastRow.querySelector('.presenter-search-input').value = presenter.name;
+                lastRow.querySelector('.presenter-org-input').value = presenter.organization || '';
+              });
+            } else {
+              addPresenterRow();
+            }
+
+            m.classList.add('show');
+          })
+          .catch(err => {
+            console.error('Error loading event:', err);
+            alert('Error loading event data. Please try again.');
+          });
+      }
+
+      function closeCreateVirtualModal() {
+        const m = document.getElementById('createVirtualModal');
+        m.classList.remove('show');
+        isEditMode = false;
+        editEventId = null;
+      }
+
+      function updateEventStatus(eventId, newStatus) {
+        fetch(`{{ url_for('virtual.update_virtual_session_status', event_id=0) }}`.replace('/0', '/' + eventId), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            // Optionally show a success message or update the UI
+            // The page will refresh on next load to show the new status
+          } else {
+            alert('Error updating status: ' + (data.error || 'Unknown error'));
+            // Reload to reset the dropdown
+            location.reload();
+          }
+        })
+        .catch(err => {
+          console.error('Error updating status:', err);
+          alert('Error updating status. Please try again.');
+          location.reload();
+        });
+      }
+
+      // Setup modal click handlers - close only when clicking backdrop
+      (function setupModalHandlers() {
+        const modal = document.getElementById('createVirtualModal');
+        if (!modal) {
+          setTimeout(setupModalHandlers, 50);
+          return;
+        }
+
+        // Single event handler that checks if click is on backdrop
+        modal.addEventListener('click', function(e) {
+          if (!modal.classList.contains('show')) return;
+
+          const dialog = modal.querySelector('.modal-dialog');
+
+          // If click is inside the dialog, do nothing (don't close)
+          if (dialog && dialog.contains(e.target)) {
+            return;
+          }
+
+          // Only close if clicking directly on the backdrop (modal element itself)
+          if (e.target === modal) {
+            closeCreateVirtualModal();
+          }
+        });
+      })();
+
+      function addTeacherRow() {
+        const container = document.getElementById('teacherRows');
+        const row = document.createElement('div');
+        row.className = 'dynamic-row';
+        const rowId = 'teacher-row-' + Date.now();
+        row.id = rowId;
+        row.innerHTML = `
+          <div class="form-group" style="position: relative;">
+            <label>Teacher Name</label>
+            <input type="hidden" name="teacher_id[]" class="teacher-id-input" />
+            <input type="text" name="teacher_name[]" class="teacher-search-input" placeholder="Search or type name..." autocomplete="off" />
+            <div class="search-results" style="display: none;"></div>
+          </div>
+          <div class="form-group">
+            <label>School</label>
+            <input type="text" name="teacher_school[]" class="teacher-school-input" placeholder="Auto-filled from database" readonly />
+          </div>
+          <div class="form-group" style="display: none;">
+            <label>District</label>
+            <input type="text" class="teacher-district-display" placeholder="Auto-filled from database" readonly style="background: #f0f0f0;" />
+          </div>
+          <div>
+            <button type="button" class="remove-item-btn" onclick="this.closest('.dynamic-row').remove()">Remove</button>
+          </div>
+        `;
+        container.appendChild(row);
+        setupTeacherSearch(row.querySelector('.teacher-search-input'));
+      }
+
+      function setupTeacherSearch(input) {
+        let searchTimeout;
+        const row = input.closest('.dynamic-row');
+        const idInput = row.querySelector('.teacher-id-input');
+        const schoolInput = row.querySelector('.teacher-school-input');
+        const districtDisplay = row.querySelector('.teacher-district-display');
+        const resultsDiv = input.parentElement.querySelector('.search-results');
+
+        input.addEventListener('input', function() {
+          clearTimeout(searchTimeout);
+          const query = this.value.trim();
+
+          if (query.length < 2) {
+            resultsDiv.style.display = 'none';
+            idInput.value = '';
+            schoolInput.value = '';
+            districtDisplay.value = '';
+            return;
+          }
+
+          searchTimeout = setTimeout(() => {
+            fetch(`{{ url_for('virtual.search_teachers') }}?q=${encodeURIComponent(query)}`)
+              .then(r => r.json())
+              .then(data => {
+                if (data.length === 0) {
+                  resultsDiv.style.display = 'none';
+                  // Clear fields if no results
+                  idInput.value = '';
+                  schoolInput.value = '';
+                  districtDisplay.value = '';
+                  return;
+                }
+
+                // Check for exact match (case-insensitive)
+                const exactMatch = data.find(t => t.name.toLowerCase() === query.toLowerCase());
+                if (exactMatch) {
+                  // Auto-fill if exact match found
+                  idInput.value = exactMatch.id;
+                  input.value = exactMatch.name;
+                  schoolInput.value = exactMatch.school || '';
+                  districtDisplay.value = exactMatch.district || '';
+                  resultsDiv.style.display = 'none';
+                  return;
+                }
+
+                resultsDiv.innerHTML = data.map(t => `
+                  <div class="search-result-item" data-id="${t.id}" data-name="${t.name}" data-school="${t.school || ''}" data-district="${t.district || ''}">
+                    <strong>${t.name}</strong>
+                    ${t.school ? `<br><small>${t.school}</small>` : ''}
+                    ${t.district ? `<br><small style="color: #666;">${t.district}</small>` : ''}
+                  </div>
+                `).join('');
+                resultsDiv.style.display = 'block';
+
+                // Add click handlers
+                resultsDiv.querySelectorAll('.search-result-item').forEach(item => {
+                  item.addEventListener('click', function() {
+                    idInput.value = this.dataset.id;
+                    input.value = this.dataset.name;
+                    schoolInput.value = this.dataset.school || '';
+                    districtDisplay.value = this.dataset.district || '';
+                    resultsDiv.style.display = 'none';
+                  });
+                });
+              })
+              .catch(err => {
+                console.error('Search error:', err);
+                resultsDiv.style.display = 'none';
+              });
+          }, 300);
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+          }
+        });
+      }
+
+      function addPresenterRow() {
+        const container = document.getElementById('presenterRows');
+        const row = document.createElement('div');
+        row.className = 'dynamic-row';
+        const rowId = 'presenter-row-' + Date.now();
+        row.id = rowId;
+        row.innerHTML = `
+          <div class="form-group" style="position: relative;">
+            <label>Presenter Name</label>
+            <input type="hidden" name="presenter_id[]" class="presenter-id-input" />
+            <input type="text" name="presenter_name[]" class="presenter-search-input" placeholder="Search or type name..." autocomplete="off" />
+            <div class="search-results" style="display: none;"></div>
+          </div>
+          <div class="form-group">
+            <label>Presenter Organization</label>
+            <input type="text" name="presenter_org[]" class="presenter-org-input" placeholder="Auto-filled from database" readonly />
+          </div>
+          <div>
+            <button type="button" class="remove-item-btn" onclick="this.closest('.dynamic-row').remove()">Remove</button>
+          </div>
+        `;
+        container.appendChild(row);
+        setupPresenterSearch(row.querySelector('.presenter-search-input'));
+      }
+
+      function setupPresenterSearch(input) {
+        let searchTimeout;
+        const row = input.closest('.dynamic-row');
+        const idInput = row.querySelector('.presenter-id-input');
+        const orgInput = row.querySelector('.presenter-org-input');
+        const resultsDiv = input.parentElement.querySelector('.search-results');
+
+        input.addEventListener('input', function() {
+          clearTimeout(searchTimeout);
+          const query = this.value.trim();
+
+          if (query.length < 2) {
+            resultsDiv.style.display = 'none';
+            idInput.value = '';
+            orgInput.value = '';
+            return;
+          }
+
+          searchTimeout = setTimeout(() => {
+            fetch(`{{ url_for('virtual.search_presenters') }}?q=${encodeURIComponent(query)}`)
+              .then(r => r.json())
+              .then(data => {
+                if (data.length === 0) {
+                  resultsDiv.style.display = 'none';
+                  return;
+                }
+
+                resultsDiv.innerHTML = data.map(p => `
+                  <div class="search-result-item" data-id="${p.id}" data-name="${p.name}" data-org="${p.organization || ''}">
+                    <strong>${p.name}</strong>
+                    ${p.organization ? `<br><small>${p.organization}</small>` : ''}
+                  </div>
+                `).join('');
+                resultsDiv.style.display = 'block';
+
+                // Add click handlers
+                resultsDiv.querySelectorAll('.search-result-item').forEach(item => {
+                  item.addEventListener('click', function() {
+                    idInput.value = this.dataset.id;
+                    input.value = this.dataset.name;
+                    orgInput.value = this.dataset.org || '';
+                    resultsDiv.style.display = 'none';
+                  });
+                });
+              })
+              .catch(err => console.error('Search error:', err));
+          }, 300);
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+          }
+        });
+      }
+
+    </script>
+    {% endif %}
 
     <!-- Last Refreshed Info -->
     {% if session_data %}
@@ -575,9 +1015,21 @@
                     {% for session in session_data %}
                     <tr>
                         <td>
+                            {% if session.source_host == 'APP' and current_user.is_admin %}
+                            <select class="status-quick-change" data-event-id="{{ session.event_id }}" onchange="updateEventStatus({{ session.event_id }}, this.value)" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ced4da; font-size: 0.85em; cursor: pointer;">
+                                <option value="Draft" {% if session.status == 'Draft' %}selected{% endif %}>Draft</option>
+                                <option value="Requested" {% if session.status == 'Requested' %}selected{% endif %}>Requested</option>
+                                <option value="Confirmed" {% if session.status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                                <option value="Published" {% if session.status == 'Published' %}selected{% endif %}>Published</option>
+                                <option value="Completed" {% if session.status == 'Completed' %}selected{% endif %}>Completed</option>
+                                <option value="Cancelled" {% if session.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                                <option value="No Show" {% if session.status == 'No Show' %}selected{% endif %}>No Show</option>
+                            </select>
+                            {% else %}
                             <span class="status-badge status-{{ session.status|lower|replace(' ', '-') }}">
                                 {{ session.status }}
                             </span>
+                            {% endif %}
                         </td>
                         <td>{{ session.date }}</td>
                         <td>{{ session.time }}</td>
@@ -599,6 +1051,18 @@
                                 <a href="{{ url_for('events.view_event', id=session.event_id) }}" class="session-title-link" style="flex: 1; color: #007bff; text-decoration: none;">
                                     {{ session.session_title }}
                                 </a>
+                                {% if session.source_host == 'APP' %}
+                                    <span style="font-size: 0.75em; background: #6f42c1; color: #fff; padding: 2px 6px; border-radius: 10px; white-space: nowrap;">
+                                        APP
+                                    </span>
+                                    {% if current_user.is_admin %}
+                                    <button type="button" class="edit-session-btn" onclick="openEditVirtualModal({{ session.event_id }})"
+                                            style="background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 0.8em; white-space: nowrap;"
+                                            title="Edit this session">
+                                        ✏️ Edit
+                                    </button>
+                                    {% endif %}
+                                {% endif %}
                                 {% if session.session_link %}
                                     <a href="{{ session.session_link }}" target="_blank" class="session-external-btn"
                                        style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;"

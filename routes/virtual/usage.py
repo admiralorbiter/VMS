@@ -22,13 +22,13 @@ from sqlalchemy.orm import joinedload
 from models import db
 from models.contact import LocalStatusEnum
 from models.district_model import District
-from models.event import Event, EventStatus, EventTeacher, EventType
+from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
-from models.organization import VolunteerOrganization
+from models.organization import Organization, VolunteerOrganization
 from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCache
 from models.school_model import School
 from models.teacher import Teacher
-from models.volunteer import Volunteer
+from models.volunteer import EventParticipation, Volunteer
 from routes.decorators import district_scoped_required
 from routes.utils import admin_required
 
@@ -1055,6 +1055,7 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                 session_data.append(
                     {
                         "event_id": event.id,
+                        "source_host": getattr(event, "session_host", "") or "",
                         # Use the event's status for session-level filtering (completed/simulcast),
                         # not the individual teacher registration status
                         "status": (
@@ -1144,6 +1145,7 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
             session_data.append(
                 {
                     "event_id": event.id,
+                    "source_host": getattr(event, "session_host", "") or "",
                     "status": event.status.value if event.status else "",
                     "date": (
                         event.start_date.strftime("%m/%d/%y")
@@ -2146,6 +2148,49 @@ def generate_teacher_progress_excel(
 
 
 def load_usage_routes():
+    def _group_manual_sessions_for_table(session_rows):
+        """
+        Collapse app-entered sessions (session_host == 'APP') into one row per event_id.
+        This is a display-only transform and should not be used for summary calculations.
+        """
+        manual = {}
+        passthrough = []
+
+        for row in session_rows or []:
+            if (row.get("source_host") or "") != "APP":
+                passthrough.append(row)
+                continue
+
+            eid = row.get("event_id")
+            if not eid:
+                passthrough.append(row)
+                continue
+
+            bucket = manual.get(eid)
+            if not bucket:
+                bucket = dict(row)
+                bucket["_teacher_names"] = set()
+                bucket["_school_names"] = set()
+                # Grouped rows should not link to a single teacher
+                bucket["teacher_id"] = None
+                manual[eid] = bucket
+
+            if row.get("teacher_name"):
+                bucket["_teacher_names"].add(row["teacher_name"])
+            if row.get("school_name"):
+                bucket["_school_names"].add(row["school_name"])
+
+        grouped = []
+        for eid, bucket in manual.items():
+            teachers = sorted(bucket.pop("_teacher_names", set()))
+            schools = sorted(bucket.pop("_school_names", set()))
+            bucket["teacher_name"] = ", ".join(teachers)
+            bucket["school_name"] = "; ".join(schools)
+            grouped.append(bucket)
+
+        # Keep original ordering: newest first by date/time as strings is imperfect but matches existing behavior.
+        return grouped + passthrough
+
     @virtual_bp.route("/usage")
     @login_required
     def virtual_usage():
@@ -2215,6 +2260,7 @@ def load_usage_routes():
                 "search"
             ),  # Text search across teacher, title, presenter
             "show_all_districts": show_all_districts,
+            "group_manual": request.args.get("group_manual", "0") == "1",
         }
 
         # Check if we're using default full year date range (for caching)
@@ -2270,6 +2316,8 @@ def load_usage_routes():
                         "teacher_id" not in sample_session
                         or "presenter_data" not in sample_session
                     ):
+                        needs_recompute = True
+                    if not needs_recompute and "source_host" not in sample_session:
                         needs_recompute = True
                     # Ensure newer Local/POC session coverage fields exist
                     if not needs_recompute and (
@@ -2443,6 +2491,8 @@ def load_usage_routes():
                             district_summaries = {}
 
                 # Apply sorting and pagination as before
+                if current_filters.get("group_manual"):
+                    session_data = _group_manual_sessions_for_table(session_data)
                 session_data = apply_sorting_and_pagination(
                     session_data, request.args, current_filters
                 )
@@ -2630,6 +2680,8 @@ def load_usage_routes():
             last_refreshed = datetime.now(timezone.utc)
 
         # Apply sorting and pagination
+        if current_filters.get("group_manual"):
+            session_data = _group_manual_sessions_for_table(session_data)
         session_result = apply_sorting_and_pagination(
             session_data, request.args, current_filters
         )
@@ -2646,6 +2698,685 @@ def load_usage_routes():
             last_refreshed=last_refreshed,
             is_cached=is_cached,
         )
+
+    @virtual_bp.route("/usage/api/search-teachers", methods=["GET"])
+    @login_required
+    def search_teachers():
+        """Search for teachers by name, returning id, name, school, and district."""
+        from flask import jsonify
+
+        query = request.args.get("q", "").strip()
+        if len(query) < 2:
+            return jsonify([])
+
+        # Search by first name, last name, or full name
+        search_term = f"%{query}%"
+        # NOTE: SQLite doesn't support CONCAT(). Use SQLAlchemy string concat operator instead.
+        full_name_expr = Teacher.first_name + " " + Teacher.last_name
+        teachers = (
+            Teacher.query.filter(
+                or_(
+                    func.lower(Teacher.first_name).like(func.lower(search_term)),
+                    func.lower(Teacher.last_name).like(func.lower(search_term)),
+                    func.lower(full_name_expr).like(func.lower(search_term)),
+                )
+            )
+            .options(joinedload(Teacher.school))
+            .limit(20)
+            .all()
+        )
+
+        results = []
+        for teacher in teachers:
+            school_name = teacher.school.name if teacher.school else None
+            district_name = (
+                teacher.school.district.name
+                if teacher.school and teacher.school.district
+                else None
+            )
+            results.append(
+                {
+                    "id": teacher.id,
+                    "name": f"{teacher.first_name} {teacher.last_name}".strip(),
+                    "first_name": teacher.first_name,
+                    "last_name": teacher.last_name,
+                    "school": school_name,
+                    "school_id": teacher.school_id,
+                    "district": district_name,
+                }
+            )
+
+        return jsonify(results)
+
+    @virtual_bp.route("/usage/api/search-presenters", methods=["GET"])
+    @login_required
+    def search_presenters():
+        """Search for volunteers/presenters by name, returning id, name, and organization."""
+        from flask import jsonify
+
+        query = request.args.get("q", "").strip()
+        if len(query) < 2:
+            return jsonify([])
+
+        # Search by first name, last name, or full name
+        search_term = f"%{query}%"
+        # NOTE: SQLite doesn't support CONCAT(). Use SQLAlchemy string concat operator instead.
+        full_name_expr = Volunteer.first_name + " " + Volunteer.last_name
+        volunteers = (
+            Volunteer.query.filter(
+                or_(
+                    func.lower(Volunteer.first_name).like(func.lower(search_term)),
+                    func.lower(Volunteer.last_name).like(func.lower(search_term)),
+                    func.lower(full_name_expr).like(func.lower(search_term)),
+                )
+            )
+            .limit(20)
+            .all()
+        )
+
+        results = []
+        for volunteer in volunteers:
+            # Get primary organization through VolunteerOrganization
+            vol_org = (
+                VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, is_primary=True
+                )
+                .options(joinedload(VolunteerOrganization.organization))
+                .first()
+            )
+
+            org_name = None
+            org_id = None
+            if vol_org and vol_org.organization:
+                org_name = vol_org.organization.name
+                org_id = vol_org.organization_id
+            else:
+                # Fallback to any organization
+                vol_org_any = (
+                    VolunteerOrganization.query.filter_by(volunteer_id=volunteer.id)
+                    .options(joinedload(VolunteerOrganization.organization))
+                    .first()
+                )
+                if vol_org_any and vol_org_any.organization:
+                    org_name = vol_org_any.organization.name
+                    org_id = vol_org_any.organization_id
+
+            results.append(
+                {
+                    "id": volunteer.id,
+                    "name": f"{volunteer.first_name} {volunteer.last_name}".strip(),
+                    "first_name": volunteer.first_name,
+                    "last_name": volunteer.last_name,
+                    "organization": org_name,
+                    "organization_id": org_id,
+                }
+            )
+
+        return jsonify(results)
+
+    @virtual_bp.route("/usage/update-status/<int:event_id>", methods=["POST"])
+    @login_required
+    @admin_required
+    def update_virtual_session_status(event_id):
+        """Quick update of event status only."""
+        from flask import jsonify
+
+        event = db.session.get(Event, event_id)
+        if not event or event.type != EventType.VIRTUAL_SESSION:
+            return jsonify({"error": "Event not found"}), 404
+
+        if event.session_host != "APP":
+            return jsonify({"error": "Only app-created sessions can be updated"}), 403
+
+        status_str = (
+            request.json.get("status")
+            if request.is_json
+            else request.form.get("status")
+        )
+        if not status_str:
+            return jsonify({"error": "Status is required"}), 400
+
+        try:
+            event.status = EventStatus(status_str)
+            db.session.commit()
+            return jsonify({"success": True, "status": event.status.value})
+        except ValueError:
+            return jsonify({"error": "Invalid status"}), 400
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    @virtual_bp.route("/usage/edit/<int:event_id>", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def edit_virtual_usage_session(event_id):
+        """
+        Edit an existing Virtual Session event created via the app UI.
+
+        GET: Returns event data as JSON for populating the edit form
+        POST: Updates the event with new data
+        """
+        event = db.session.get(Event, event_id)
+        if not event or event.type != EventType.VIRTUAL_SESSION:
+            flash("Event not found.", "danger")
+            return redirect(url_for("virtual.virtual_usage"))
+
+        # Only allow editing APP-created sessions
+        if event.session_host != "APP":
+            flash("Only sessions created in the app can be edited here.", "warning")
+            return redirect(url_for("virtual.virtual_usage"))
+
+        if request.method == "GET":
+            # Return event data as JSON for the edit form
+            from flask import jsonify
+
+            # Get teachers
+            teachers_data = []
+            for reg in event.teacher_registrations:
+                teacher = reg.teacher
+                if teacher:
+                    teachers_data.append(
+                        {
+                            "id": teacher.id,
+                            "name": f"{teacher.first_name} {teacher.last_name}".strip(),
+                            "school": teacher.school.name if teacher.school else "",
+                        }
+                    )
+
+            # Get presenters
+            presenters_data = []
+            for participation in event.volunteers:
+                vol_org = VolunteerOrganization.query.filter_by(
+                    volunteer_id=participation.id, is_primary=True
+                ).first()
+                org_name = (
+                    vol_org.organization.name
+                    if vol_org and vol_org.organization
+                    else None
+                )
+                presenters_data.append(
+                    {
+                        "id": participation.id,
+                        "name": f"{participation.first_name} {participation.last_name}".strip(),
+                        "organization": org_name or "",
+                    }
+                )
+
+            return jsonify(
+                {
+                    "id": event.id,
+                    "title": event.title,
+                    "date": (
+                        event.start_date.strftime("%Y-%m-%d")
+                        if event.start_date
+                        else ""
+                    ),
+                    "time": (
+                        event.start_date.strftime("%H:%M") if event.start_date else ""
+                    ),
+                    "duration": event.duration or 60,
+                    "session_type": event.additional_information or "",
+                    "topic_theme": event.series or "",
+                    "session_link": event.registration_link or "",
+                    "status": event.status.value if event.status else "Draft",
+                    "teachers": teachers_data,
+                    "presenters": presenters_data,
+                }
+            )
+
+        # POST: Update event
+        def _norm(s: str | None) -> str:
+            return (s or "").strip()
+
+        def _split_name(full_name: str) -> tuple[str, str]:
+            full_name = _norm(full_name)
+            parts = [p for p in full_name.split() if p]
+            if not parts:
+                return "", ""
+            if len(parts) == 1:
+                return parts[0], ""
+            return " ".join(parts[:-1]), parts[-1]
+
+        # Update basic fields
+        title = _norm(request.form.get("title"))
+        session_type = _norm(request.form.get("session_type"))
+        topic_theme = _norm(request.form.get("topic_theme"))
+        registration_link = _norm(request.form.get("session_link"))
+
+        date_str = _norm(request.form.get("date"))
+        time_str = _norm(request.form.get("time"))
+        duration_minutes = 60
+        try:
+            duration_minutes = int(_norm(request.form.get("duration")) or "60")
+        except ValueError:
+            duration_minutes = 60
+
+        if not title or not date_str or not time_str:
+            flash("Title, date, and time are required.", "danger")
+            return redirect(url_for("virtual.virtual_usage"))
+
+        try:
+            start_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            flash("Invalid date/time.", "danger")
+            return redirect(url_for("virtual.virtual_usage"))
+
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+        # Update event
+        status_str = _norm(request.form.get("status", "Draft"))
+        try:
+            event.status = EventStatus(status_str)
+        except ValueError:
+            event.status = EventStatus.DRAFT
+
+        event.title = title
+        event.start_date = start_dt
+        event.end_date = end_dt
+        event.duration = duration_minutes
+        event.additional_information = session_type or None
+        event.series = topic_theme or None
+        event.registration_link = registration_link or None
+
+        # Update teachers (remove old, add new)
+        EventTeacher.query.filter_by(event_id=event.id).delete()
+
+        from routes.virtual.routes import get_or_create_district, get_or_create_school
+
+        districts_set = set()
+
+        teacher_ids = request.form.getlist("teacher_id[]")
+        teacher_names = request.form.getlist("teacher_name[]")
+        teacher_schools = request.form.getlist("teacher_school[]")
+
+        for idx, t_id_raw in enumerate(teacher_ids):
+            t_id = _norm(t_id_raw)
+            t_name = _norm(teacher_names[idx]) if idx < len(teacher_names) else ""
+
+            teacher = None
+            if t_id and t_id.isdigit():
+                teacher = Teacher.query.get(int(t_id))
+
+            if not teacher and t_name:
+                t_first, t_last = _split_name(t_name)
+                if t_first and t_last:
+                    school_name = (
+                        _norm(teacher_schools[idx])
+                        if idx < len(teacher_schools)
+                        else ""
+                    )
+                    teacher_q = Teacher.query.filter(
+                        func.lower(Teacher.first_name) == func.lower(t_first),
+                        func.lower(Teacher.last_name) == func.lower(t_last),
+                    )
+                    teacher = teacher_q.first()
+
+                    if not teacher:
+                        teacher = Teacher(
+                            first_name=t_first, last_name=t_last, middle_name=""
+                        )
+                        if school_name:
+                            district_obj = get_or_create_district(None)
+                            school_obj = get_or_create_school(school_name, district_obj)
+                            if school_obj:
+                                teacher.school_id = school_obj.id
+                                if school_obj.district:
+                                    districts_set.add(school_obj.district.name)
+                        db.session.add(teacher)
+                        db.session.flush()
+
+            if not teacher:
+                continue
+
+            if teacher.school and teacher.school.district:
+                districts_set.add(teacher.school.district.name)
+
+            reg = EventTeacher(
+                event_id=event.id,
+                teacher_id=teacher.id,
+                status="registered",
+                is_simulcast=False,
+                attendance_confirmed_at=None,
+            )
+            db.session.add(reg)
+
+        # Update presenters (remove old participations, add new)
+        EventParticipation.query.filter_by(event_id=event.id).delete()
+        event.volunteers.clear()
+
+        presenter_ids = request.form.getlist("presenter_id[]")
+        presenter_names = request.form.getlist("presenter_name[]")
+        presenter_orgs = request.form.getlist("presenter_org[]")
+
+        for idx, p_id_raw in enumerate(presenter_ids):
+            p_id = _norm(p_id_raw)
+            p_name = _norm(presenter_names[idx]) if idx < len(presenter_names) else ""
+            org_name = _norm(presenter_orgs[idx]) if idx < len(presenter_orgs) else ""
+
+            volunteer = None
+            if p_id and p_id.isdigit():
+                volunteer = Volunteer.query.get(int(p_id))
+
+            if not volunteer and p_name:
+                p_first, p_last = _split_name(p_name)
+                if not p_first:
+                    continue
+                if not p_last:
+                    p_last = ""
+
+                vol_q = Volunteer.query.filter(
+                    func.lower(Volunteer.first_name) == func.lower(p_first),
+                    func.lower(Volunteer.last_name) == func.lower(p_last),
+                )
+                volunteer = vol_q.first()
+
+                if not volunteer:
+                    volunteer = Volunteer(first_name=p_first, last_name=p_last)
+                    db.session.add(volunteer)
+                    db.session.flush()
+
+            if not volunteer:
+                continue
+
+            if org_name:
+                org = Organization.query.filter(
+                    func.lower(Organization.name) == func.lower(org_name)
+                ).first()
+                if not org:
+                    org = Organization(name=org_name)
+                    db.session.add(org)
+                    db.session.flush()
+
+                vol_org = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, organization_id=org.id
+                ).first()
+                if not vol_org:
+                    has_primary = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, is_primary=True
+                    ).first()
+                    vol_org = VolunteerOrganization(
+                        volunteer_id=volunteer.id,
+                        organization_id=org.id,
+                        role="Professional",
+                        is_primary=not has_primary,
+                        status="Current",
+                    )
+                    db.session.add(vol_org)
+
+            event.add_volunteer(
+                volunteer, participant_type="Presenter", status="Confirmed"
+            )
+
+        # Update districts
+        event.districts.clear()
+        for district_name in districts_set:
+            district_obj = get_or_create_district(district_name)
+            if district_obj:
+                try:
+                    event.districts.append(district_obj)
+                except Exception:
+                    pass
+
+        if districts_set:
+            event.district_partner = ", ".join(sorted(districts_set))
+
+        db.session.commit()
+        flash("Session updated successfully!", "success")
+        return redirect(url_for("virtual.virtual_usage"))
+
+    @virtual_bp.route("/usage/create", methods=["POST"])
+    @login_required
+    @admin_required
+    def create_virtual_usage_session():
+        """
+        Create a new Virtual Session event via the app UI.
+
+        Defaults (per request):
+        - Event status: Requested
+        - Teacher registrations: registered, attendance not confirmed
+        - Presenter participation: Confirmed (as Presenter)
+        """
+
+        def _norm(s: str | None) -> str:
+            return (s or "").strip()
+
+        def _split_name(full_name: str) -> tuple[str, str]:
+            full_name = _norm(full_name)
+            parts = [p for p in full_name.split() if p]
+            if not parts:
+                return "", ""
+            if len(parts) == 1:
+                return parts[0], ""
+            return " ".join(parts[:-1]), parts[-1]
+
+        # ---- Basic event fields ----
+        year = _norm(request.form.get("year")) or get_current_virtual_year()
+        title = _norm(request.form.get("title"))
+        # District will be determined from teachers, not input directly
+        session_type = _norm(request.form.get("session_type"))
+        topic_theme = _norm(request.form.get("topic_theme"))
+        registration_link = _norm(request.form.get("session_link"))
+
+        date_str = _norm(request.form.get("date"))  # YYYY-MM-DD
+        time_str = _norm(request.form.get("time"))  # HH:MM
+        duration_minutes = 60
+        try:
+            duration_minutes = int(_norm(request.form.get("duration")) or "60")
+        except ValueError:
+            duration_minutes = 60
+        if duration_minutes <= 0:
+            duration_minutes = 60
+
+        if not title or not date_str or not time_str:
+            flash("Title, date, and time are required.", "danger")
+            return redirect(url_for("virtual.virtual_usage", year=year))
+
+        try:
+            start_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            flash("Invalid date/time.", "danger")
+            return redirect(url_for("virtual.virtual_usage", year=year))
+
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+        # ---- District/School helpers (reuse import logic) ----
+        from routes.virtual.routes import get_or_create_district, get_or_create_school
+
+        # Collect districts from teachers
+        districts_set = set()
+
+        try:
+            event = Event(
+                title=title,
+                type=EventType.VIRTUAL_SESSION,
+                format=EventFormat.VIRTUAL,
+                start_date=start_dt,
+                end_date=end_dt,
+                duration=duration_minutes,
+                status=EventStatus.DRAFT,
+                additional_information=session_type or None,
+                series=topic_theme or None,
+                registration_link=registration_link or None,
+                session_host="APP",  # Used to distinguish manual/app-entered sessions
+            )
+            db.session.add(event)
+            db.session.flush()  # get event.id
+
+            # ---- Teachers (multi) ----
+            teacher_ids = request.form.getlist("teacher_id[]")
+            teacher_names = request.form.getlist("teacher_name[]")
+            teacher_schools = request.form.getlist("teacher_school[]")
+
+            for idx, t_id_raw in enumerate(teacher_ids):
+                t_id = _norm(t_id_raw)
+                t_name = _norm(teacher_names[idx]) if idx < len(teacher_names) else ""
+
+                teacher = None
+
+                # If ID provided, use existing teacher
+                if t_id and t_id.isdigit():
+                    teacher = Teacher.query.get(int(t_id))
+
+                # If no teacher found by ID, try to find/create by name
+                if not teacher and t_name:
+                    t_first, t_last = _split_name(t_name)
+                    if t_first and t_last:
+                        school_name = (
+                            _norm(teacher_schools[idx])
+                            if idx < len(teacher_schools)
+                            else ""
+                        )
+
+                        # Find existing teacher by name (case-insensitive)
+                        teacher_q = Teacher.query.filter(
+                            func.lower(Teacher.first_name) == func.lower(t_first),
+                            func.lower(Teacher.last_name) == func.lower(t_last),
+                        )
+                        teacher = teacher_q.first()
+
+                        # Create new teacher if not found
+                        if not teacher:
+                            teacher = Teacher(
+                                first_name=t_first, last_name=t_last, middle_name=""
+                            )
+                            if school_name:
+                                district_obj = get_or_create_district(
+                                    None
+                                )  # Will be set from school
+                                school_obj = get_or_create_school(
+                                    school_name, district_obj
+                                )
+                                if school_obj:
+                                    teacher.school_id = school_obj.id
+                                    if school_obj.district:
+                                        districts_set.add(school_obj.district.name)
+                            db.session.add(teacher)
+                            db.session.flush()
+
+                if not teacher:
+                    continue
+
+                # Get district from teacher's school
+                if teacher.school and teacher.school.district:
+                    districts_set.add(teacher.school.district.name)
+
+                # Create registration if not exists
+                reg = EventTeacher.query.filter_by(
+                    event_id=event.id, teacher_id=teacher.id
+                ).first()
+                if not reg:
+                    reg = EventTeacher(
+                        event_id=event.id,
+                        teacher_id=teacher.id,
+                        status="registered",
+                        is_simulcast=False,
+                        attendance_confirmed_at=None,
+                    )
+                    db.session.add(reg)
+
+            # Attach districts to event
+            for district_name in districts_set:
+                district_obj = get_or_create_district(district_name)
+                if district_obj:
+                    try:
+                        event.districts.append(district_obj)
+                    except Exception:
+                        pass
+
+            if districts_set:
+                event.district_partner = ", ".join(sorted(districts_set))
+
+            # ---- Presenters (multi) ----
+            presenter_ids = request.form.getlist("presenter_id[]")
+            presenter_names = request.form.getlist("presenter_name[]")
+            presenter_orgs = request.form.getlist("presenter_org[]")
+
+            for idx, p_id_raw in enumerate(presenter_ids):
+                p_id = _norm(p_id_raw)
+                p_name = (
+                    _norm(presenter_names[idx]) if idx < len(presenter_names) else ""
+                )
+                org_name = (
+                    _norm(presenter_orgs[idx]) if idx < len(presenter_orgs) else ""
+                )
+
+                volunteer = None
+
+                # If ID provided, use existing volunteer
+                if p_id and p_id.isdigit():
+                    volunteer = Volunteer.query.get(int(p_id))
+
+                # If no volunteer found by ID, try to find/create by name
+                if not volunteer and p_name:
+                    p_first, p_last = _split_name(p_name)
+                    if not p_first:
+                        continue
+                    if not p_last:
+                        p_last = ""
+
+                    # Find existing volunteer by name (case-insensitive)
+                    vol_q = Volunteer.query.filter(
+                        func.lower(Volunteer.first_name) == func.lower(p_first),
+                        func.lower(Volunteer.last_name) == func.lower(p_last),
+                    )
+                    volunteer = vol_q.first()
+
+                    # Create new volunteer if not found
+                    if not volunteer:
+                        volunteer = Volunteer(first_name=p_first, last_name=p_last)
+                        db.session.add(volunteer)
+                        db.session.flush()
+
+                if not volunteer:
+                    continue
+
+                # Ensure org exists + primary association
+                if org_name:
+                    org = Organization.query.filter(
+                        func.lower(Organization.name) == func.lower(org_name)
+                    ).first()
+                    if not org:
+                        org = Organization(name=org_name)
+                        db.session.add(org)
+                        db.session.flush()
+
+                    vol_org = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, organization_id=org.id
+                    ).first()
+                    if not vol_org:
+                        # Check if volunteer has any primary org, if not make this one primary
+                        has_primary = VolunteerOrganization.query.filter_by(
+                            volunteer_id=volunteer.id, is_primary=True
+                        ).first()
+                        vol_org = VolunteerOrganization(
+                            volunteer_id=volunteer.id,
+                            organization_id=org.id,
+                            role="Professional",
+                            is_primary=not has_primary,  # Primary if no other primary exists
+                            status="Current",
+                        )
+                        db.session.add(vol_org)
+
+                # Link as presenter participation
+                event.add_volunteer(
+                    volunteer, participant_type="Presenter", status="Confirmed"
+                )
+
+            db.session.commit()
+
+            # Invalidate caches so the report reflects new entries
+            try:
+                invalidate_virtual_session_caches(year)
+            except Exception:
+                pass
+
+            flash("Virtual session created.", "success")
+            return redirect(url_for("virtual.virtual_usage", year=year))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating virtual session: {e}", "danger")
+            return redirect(url_for("virtual.virtual_usage", year=year))
 
     @virtual_bp.route("/usage/district/<district_name>")
     @login_required

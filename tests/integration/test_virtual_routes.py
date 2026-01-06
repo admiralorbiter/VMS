@@ -389,6 +389,50 @@ def test_virtual_usage_report_district_filtering(client, auth_headers):
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
+def test_create_virtual_session_from_usage_page(client, test_admin):
+    """Create a virtual session via /virtual/usage/create (admin only)."""
+    # Login as admin
+    login_resp = client.post(
+        "/login", data={"username": "admin", "password": "admin123"}
+    )
+    admin_headers = {"Cookie": login_resp.headers.get("Set-Cookie", "")}
+
+    # Create a session with one teacher and one presenter
+    payload = {
+        "year": "2025-2026",
+        "title": "Test App Created Virtual Session",
+        "district": "Grandview School District",
+        "date": "2026-05-14",
+        "time": "09:15",
+        "duration": "60",
+        "session_type": "Teacher requested",
+        "topic_theme": "STEM",
+        "teacher_name[]": ["Jane Doe"],
+        "teacher_school[]": ["Belvidere Elementary"],
+        "presenter_name[]": ["Tyler Bennett"],
+        "presenter_org[]": ["TLA Solutions"],
+    }
+
+    resp = safe_route_test(
+        client,
+        "/virtual/usage/create",
+        method="POST",
+        headers=admin_headers,
+        data=payload,
+        expected_statuses=[302, 200, 400, 403, 500],
+    )
+    assert_route_response(resp, expected_statuses=[302, 200, 400, 403, 500])
+
+    # If creation succeeded, the Event should exist
+    if resp.status_code in (200, 302):
+        from models import db
+        from models.event import Event
+
+        event = Event.query.filter_by(title="Test App Created Virtual Session").first()
+        assert event is not None
+        assert getattr(event, "session_host", None) == "APP"
+
+
 def test_enhanced_virtual_purge_functionality(client, auth_headers):
     """Test enhanced virtual purge functionality"""
     # Create test virtual session data

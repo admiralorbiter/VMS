@@ -61,7 +61,6 @@ from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 
 # Import virtual __init__ to register usage routes
-from routes.virtual import *  # noqa: F401, F403
 from routes.virtual.routes import virtual_bp
 from routes.volunteers.routes import volunteers_bp
 

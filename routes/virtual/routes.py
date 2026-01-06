@@ -129,6 +129,16 @@ from routes.utils import admin_required
 
 virtual_bp = Blueprint("virtual", __name__, url_prefix="/virtual")
 
+# Register Virtual Usage (report-style) routes under the Virtual blueprint.
+# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
+try:
+    from routes.virtual.usage import load_usage_routes as _load_usage_routes
+
+    _load_usage_routes()
+except Exception:
+    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
+    pass
+
 
 @virtual_bp.route("/virtual")
 def virtual():

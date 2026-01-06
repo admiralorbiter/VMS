@@ -4,7 +4,7 @@ status: active
 doc_type: features
 project: "global"
 owner: "@admir"
-updated: 2025-01-27
+updated: 2026-01-06
 tags: ["features","development","business-rules","validation"]
 summary: "Current feature status and development priorities for the VMS system."
 canonical: "/docs/living/Features.md"
@@ -93,6 +93,11 @@ canonical: "/docs/living/Features.md"
 | **Quality Scoring** | ✅ Complete | 100% | Accurate and actionable metrics |
 | **Import Strategy** | ✅ Complete | 100% | Understanding of intentional filtering |
 | **Real-time Dashboard** | ✅ Complete | 100% | Auto-refresh and performance optimized |
+
+### **Virtual Sessions (Manual Entry)**
+- **What it is**: Admins can create Virtual Session events directly from the Virtual Usage page (no spreadsheet import required).
+- **Supports**: Multiple teachers (each with school), multiple presenters (with organization), and later editing via the normal event edit flow.
+- **How it appears**: App-entered sessions are tagged as `APP` on the Virtual Usage table, with an optional “Manual: Group” toggle to show one row per session.
 
 ### **User Experience Features**
 | Feature | Status | Completion | Notes |
