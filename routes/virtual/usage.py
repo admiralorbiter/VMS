@@ -2148,48 +2148,104 @@ def generate_teacher_progress_excel(
 
 
 def load_usage_routes():
-    def _group_manual_sessions_for_table(session_rows):
+    def _group_sessions_for_table(session_rows):
         """
-        Collapse app-entered sessions (session_host == 'APP') into one row per event_id.
+        Group sessions by logical session identifier (title + date + time).
+        Combines multiple teachers/presenters for the same session into one row.
         This is a display-only transform and should not be used for summary calculations.
+
+        Works for both APP-created and spreadsheet-imported sessions.
         """
-        manual = {}
-        passthrough = []
+        grouped_sessions = {}
+        ungrouped = []
 
         for row in session_rows or []:
-            if (row.get("source_host") or "") != "APP":
-                passthrough.append(row)
+            # Create grouping key from title, date, and time
+            title = (row.get("session_title") or "").strip().lower()
+            date = (row.get("date") or "").strip()
+            time = (row.get("time") or "").strip()
+
+            # If we don't have the required fields, pass through ungrouped
+            if not title or not date or not time:
+                ungrouped.append(row)
                 continue
 
-            eid = row.get("event_id")
-            if not eid:
-                passthrough.append(row)
-                continue
+            # Create a unique key for this session
+            session_key = (title, date, time)
 
-            bucket = manual.get(eid)
+            bucket = grouped_sessions.get(session_key)
             if not bucket:
+                # Create new bucket with this row's data
                 bucket = dict(row)
                 bucket["_teacher_names"] = set()
                 bucket["_school_names"] = set()
+                bucket["_presenter_names"] = set()
+                bucket["_presenter_orgs"] = set()
                 # Grouped rows should not link to a single teacher
                 bucket["teacher_id"] = None
-                manual[eid] = bucket
+                grouped_sessions[session_key] = bucket
 
+            # Collect teachers and schools
             if row.get("teacher_name"):
                 bucket["_teacher_names"].add(row["teacher_name"])
             if row.get("school_name"):
                 bucket["_school_names"].add(row["school_name"])
 
+            # Collect presenters
+            if row.get("presenter"):
+                # Presenter field may contain comma-separated names
+                presenters = [
+                    p.strip() for p in row["presenter"].split(",") if p.strip()
+                ]
+                bucket["_presenter_names"].update(presenters)
+
+            # Collect presenter organizations
+            if row.get("presenter_organization"):
+                # presenter_organization is already comma-separated
+                orgs = [
+                    o.strip()
+                    for o in row["presenter_organization"].split(",")
+                    if o.strip()
+                ]
+                bucket["_presenter_orgs"].update(orgs)
+
+            # Also collect from presenter_data if available
+            if row.get("presenter_data"):
+                for presenter in row["presenter_data"]:
+                    if presenter.get("organization_name"):
+                        bucket["_presenter_orgs"].add(presenter["organization_name"])
+                    elif presenter.get("organizations"):
+                        # If organizations is a list
+                        if isinstance(presenter["organizations"], list):
+                            bucket["_presenter_orgs"].update(presenter["organizations"])
+
+        # Convert grouped sessions to list format
         grouped = []
-        for eid, bucket in manual.items():
+        for session_key, bucket in grouped_sessions.items():
             teachers = sorted(bucket.pop("_teacher_names", set()))
             schools = sorted(bucket.pop("_school_names", set()))
+            presenters = sorted(bucket.pop("_presenter_names", set()))
+            presenter_orgs = sorted(bucket.pop("_presenter_orgs", set()))
+
             bucket["teacher_name"] = ", ".join(teachers)
             bucket["school_name"] = "; ".join(schools)
+
+            # Update presenter field
+            if presenters:
+                bucket["presenter"] = ", ".join(presenters)
+            else:
+                bucket["presenter"] = ""
+
+            # Update presenter organization
+            if presenter_orgs:
+                bucket["presenter_organization"] = ", ".join(presenter_orgs)
+            elif not bucket.get("presenter_organization"):
+                bucket["presenter_organization"] = ""
+
             grouped.append(bucket)
 
         # Keep original ordering: newest first by date/time as strings is imperfect but matches existing behavior.
-        return grouped + passthrough
+        return grouped + ungrouped
 
     @virtual_bp.route("/usage")
     @login_required
@@ -2491,8 +2547,10 @@ def load_usage_routes():
                             district_summaries = {}
 
                 # Apply sorting and pagination as before
+                # Only group if explicitly requested (group_manual=1)
+                # When group_manual=0 or not set, show individual lines (one per teacher registration)
                 if current_filters.get("group_manual"):
-                    session_data = _group_manual_sessions_for_table(session_data)
+                    session_data = _group_sessions_for_table(session_data)
                 session_data = apply_sorting_and_pagination(
                     session_data, request.args, current_filters
                 )
@@ -2680,8 +2738,10 @@ def load_usage_routes():
             last_refreshed = datetime.now(timezone.utc)
 
         # Apply sorting and pagination
+        # Only group if explicitly requested (group_manual=1)
+        # When group_manual=0 or not set, show individual lines (one per teacher registration)
         if current_filters.get("group_manual"):
-            session_data = _group_manual_sessions_for_table(session_data)
+            session_data = _group_sessions_for_table(session_data)
         session_result = apply_sorting_and_pagination(
             session_data, request.args, current_filters
         )
@@ -3121,6 +3181,16 @@ def load_usage_routes():
             event.district_partner = ", ".join(sorted(districts_set))
 
         db.session.commit()
+
+        # Invalidate caches so the report reflects updated entries
+        try:
+            from routes.reports.virtual_session import get_current_virtual_year
+
+            year = get_current_virtual_year()
+            invalidate_virtual_session_caches(year)
+        except Exception:
+            pass
+
         flash("Session updated successfully!", "success")
         return redirect(url_for("virtual.virtual_usage"))
 

@@ -366,15 +366,19 @@
                 </a>
                 {% endif %}
             {% endif %}
-            {% if request.args.get('group_manual') == '1' %}
-                <a href="{{ url_for('virtual.virtual_usage') }}{{ '?' + request.query_string.decode().replace('group_manual=1', 'group_manual=0') if request.query_string else '' }}"
-                   class="export-btn" title="Show app-entered sessions line-by-line" style="background: #6c757d;">
-                    📋 Manual: Lines
+            {% set is_grouped = request.args.get('group_manual') == '1' %}
+            {% set query_params = request.args.to_dict() %}
+            {% if is_grouped %}
+                {% set _ = query_params.update({'group_manual': '0'}) %}
+                <a href="{{ url_for('virtual.virtual_usage', **query_params) }}"
+                   class="export-btn" title="Show all sessions as individual lines (one per teacher/presenter)" style="background: #6c757d;">
+                    📋 Lines
                 </a>
             {% else %}
-                <a href="{{ url_for('virtual.virtual_usage', group_manual=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
-                   class="export-btn" title="Group app-entered sessions into one row" style="background: #6c757d;">
-                    📦 Manual: Group
+                {% set _ = query_params.update({'group_manual': '1'}) %}
+                <a href="{{ url_for('virtual.virtual_usage', **query_params) }}"
+                   class="export-btn" title="Group sessions by title + date + time (combine multiple teachers/presenters)" style="background: #6c757d;">
+                    📦 Group
                 </a>
             {% endif %}
             {% endif %}
