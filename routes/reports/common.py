@@ -415,6 +415,10 @@ def generate_district_stats(school_year, host_filter="all"):
 
 def cache_district_stats(school_year, district_stats):
     """Save district statistics to the cache table"""
+    import time
+    max_retries = 3
+    retry_delay = 0.5  # seconds
+    
     for district_name, stats in district_stats.items():
         district = District.query.filter_by(name=district_name).first()
         if district:
@@ -427,8 +431,21 @@ def cache_district_stats(school_year, district_stats):
             report.report_data = stats
             report.last_updated = datetime.utcnow()
             db.session.add(report)
-
-    db.session.commit()
+            
+            # Commit after each district to avoid long-running transactions
+            for attempt in range(max_retries):
+                try:
+                    db.session.commit()
+                    break
+                except Exception as e:
+                    if "locked" in str(e).lower() and attempt < max_retries - 1:
+                        db.session.rollback()
+                        time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                        continue
+                    else:
+                        db.session.rollback()
+                        print(f"Error caching district {district_name}: {str(e)}")
+                        raise
 
 
 def update_event_districts(event, district_names):
