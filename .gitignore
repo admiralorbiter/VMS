@@ -93,3 +93,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Development/testing utility scripts
+scripts/populate_play_data.py
+scripts/populate_simple_data.py
+scripts/populate_synthetic_data.py
+scripts/verify_admin.py
