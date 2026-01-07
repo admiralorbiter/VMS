@@ -110,6 +110,9 @@ def load_routes(bp):
                     "total_hours": volunteer_hours,
                     "total_events": events,
                     "organization": organization,
+                    "race_ethnicity": (
+                        v.race_ethnicity.value if v.race_ethnicity else "Unknown"
+                    ),
                 }
             )
 
@@ -248,6 +251,9 @@ def load_routes(bp):
                     ),
                     "Total Events": events,
                     "Organization": organization,
+                    "Race/Ethnicity": (
+                        v.race_ethnicity.value if v.race_ethnicity else "Unknown"
+                    ),
                 }
             )
 
@@ -271,10 +277,11 @@ def load_routes(bp):
         worksheet.set_column("B:B", 15)  # Total Hours
         worksheet.set_column("C:C", 15)  # Total Events
         worksheet.set_column("D:D", 30)  # Organization
+        worksheet.set_column("E:E", 30)  # Race/Ethnicity
 
         # Apply header formatting
         worksheet.conditional_format(
-            "A1:D1", {"type": "no_blanks", "format": header_format}
+            "A1:E1", {"type": "no_blanks", "format": header_format}
         )
 
         # Add summary statistics

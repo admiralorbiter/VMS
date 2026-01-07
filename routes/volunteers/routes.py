@@ -71,6 +71,7 @@ from models.volunteer import (
     Volunteer,
     VolunteerSkill,
 )
+from routes.decorators import global_users_only
 from routes.utils import (
     admin_required,
     get_email_addresses,
@@ -243,6 +244,7 @@ def process_volunteer_row(row, success_count, error_count, errors):
 
 @volunteers_bp.route("/volunteers")
 @login_required
+@global_users_only
 def volunteers():
     """
     Main volunteer listing page with filtering, sorting, and pagination.
@@ -404,9 +406,10 @@ def volunteers():
                 + Volunteer.last_name
             )
         elif sort_by == "times_volunteered":
+            # Match the display calculation: attended_count + additional_volunteer_count
+            # Exclude times_volunteered to avoid double counting (it may contain outdated Salesforce data)
             sort_column = (
-                Volunteer.times_volunteered
-                + db.func.coalesce(attended_count_subq.c.attended_count, 0)
+                db.func.coalesce(attended_count_subq.c.attended_count, 0)
                 + Volunteer.additional_volunteer_count
             )
 
@@ -477,6 +480,7 @@ def volunteers():
 
 @volunteers_bp.route("/volunteers/add", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def add_volunteer():
     form = VolunteerForm()
 
@@ -578,6 +582,7 @@ def add_volunteer():
 
 @volunteers_bp.route("/volunteers/view/<int:id>")
 @login_required
+@global_users_only
 def view_volunteer(id):
     volunteer = db.session.get(Volunteer, id)
     if not volunteer:
@@ -604,6 +609,8 @@ def view_volunteer(id):
         "cancelled": "Cancelled",  # Handle lowercase version
         "CANCELLED": "Cancelled",  # Handle uppercase version
         "CANCELED": "Cancelled",  # Handle uppercase version
+        "Scheduled": "Scheduled",  # Keep scheduled for future events
+        "scheduled": "Scheduled",  # Handle lowercase
         # Virtual-specific statuses
         "successfully completed": "Attended",
         "simulcast": "Attended",
@@ -626,7 +633,13 @@ def view_volunteer(id):
     }
 
     # Initialize participation stats with empty lists
-    participation_stats = {"Attended": [], "No-Show": [], "Cancelled": []}
+    participation_stats = {
+        "Attended": [],
+        "No-Show": [],
+        "Cancelled": [],
+        "Scheduled": [],
+        "Unknown": [],
+    }
 
     # Process each participation record
     for participation in participations:
@@ -638,8 +651,29 @@ def view_volunteer(id):
             f"Processing participation: Event='{participation.event.title}', Status='{status}'"
         )
 
+        # Get the event date first, handling virtual events that might store date differently
+        event_date = None
+        if participation.event.start_date:
+            event_date = participation.event.start_date
+        elif hasattr(participation.event, "date") and participation.event.date:
+            event_date = participation.event.date
+        else:
+            # If no date available, create a default date to avoid errors
+            event_date = datetime.now()
+
+        # Determine if event is in the future
+        is_future_event = event_date > datetime.now()
+
+        # Handle "Scheduled" status with date-awareness BEFORE other mappings
+        if status and status.lower() == "scheduled":
+            # For past events with "Scheduled", mark as "Unknown" since status wasn't updated
+            mapped_status = "Unknown" if not is_future_event else "Scheduled"
+            print(
+                f"Processing 'Scheduled' status for event '{participation.event.title}': "
+                f"{'Future' if is_future_event else 'Past'} -> {mapped_status}"
+            )
         # If status isn't directly usable, try mapping it
-        if status not in participation_stats:
+        elif status not in participation_stats:
             # Try using the mapping first
             mapped_status = status_mapping.get(status, None)
 
@@ -683,25 +717,15 @@ def view_volunteer(id):
                         f"Detected cancelled event from title (partial match): '{participation.event.title}'"
                     )
                 else:
-                    # Only default to Attended if we can't determine otherwise
-                    mapped_status = "Attended"
+                    # Only default to Unknown now (not Attended)
+                    mapped_status = "Unknown"
                     print(
-                        f"WARNING: Unknown status '{status}' for event '{participation.event.title}' - defaulting to Attended"
+                        f"WARNING: Unknown status '{status}' for event '{participation.event.title}' - using Unknown"
                     )
         else:
             mapped_status = status
 
         print(f"Final mapped status: '{mapped_status}'")
-
-        # Get the event date, handling virtual events that might store date differently
-        event_date = None
-        if participation.event.start_date:
-            event_date = participation.event.start_date
-        elif hasattr(participation.event, "date") and participation.event.date:
-            event_date = participation.event.date
-        else:
-            # If no date available, create a default date to avoid errors
-            event_date = datetime.now()
 
         # Add to appropriate category
         if mapped_status in participation_stats:
@@ -750,6 +774,7 @@ def view_volunteer(id):
 
 @volunteers_bp.route("/volunteers/edit/<int:id>", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def edit_volunteer(id):
     volunteer = db.session.get(Volunteer, id)
     if not volunteer:
@@ -1093,6 +1118,7 @@ def delete_volunteer(id):
 
 @volunteers_bp.route("/volunteers/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_from_salesforce():
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
@@ -1267,24 +1293,50 @@ def import_from_salesforce():
                         updates.append("gen")
 
                 # Handle race/ethnicity
+                # Primary mapping: Salesforce values -> Enum names
                 race_ethnicity_map = {
-                    "Bi-racial/Multi-racial/Multicultural": "bi_multi_racial",
-                    "Black": "black_african",
-                    "Black/African American": "black",
-                    "Prefer not to answer": "prefer_not_to_say",
-                    "Native American/Alaska Native/First Nation": "native_american",
-                    "White/Caucasian/European American": "white_caucasian",
-                    "Hispanic American/Latino": "hispanic_american",
-                    "Other POC": "other_poc",
-                    "Asian American/Pacific Islander": "asian_pacific_islander",
-                }
-
-                # Set default mappings for common cases
-                default_mapping = {
-                    "Other POC": "other",
-                    "White/Caucasian/European American": "white",
+                    # Hispanic/Latino variations
+                    "Hispanic American/Latino": "hispanic",
+                    "Hispanic or Latino": "hispanic",
+                    "Hispanic": "hispanic",
+                    "Latino": "hispanic",
+                    "Latina": "hispanic",
+                    # Black/African American variations
                     "Black": "black",
-                    "Bi-racial/Multi-racial/Multicultural": "multi_racial",
+                    "Black/African American": "black",
+                    "African American": "black",
+                    "Black or African American": "black",
+                    # White variations
+                    "White": "white",
+                    "White/Caucasian/European American": "white",
+                    "Caucasian": "white",
+                    "European American": "white",
+                    # Asian variations
+                    "Asian": "asian",
+                    "Asian American": "asian",
+                    "Asian American/Pacific Islander": "asian",  # Default to Asian, could be split
+                    # Pacific Islander variations
+                    "Pacific Islander": "native_hawaiian",
+                    "Native Hawaiian": "native_hawaiian",
+                    "Native Hawaiian or Other Pacific Islander": "native_hawaiian",
+                    # American Indian/Alaska Native variations
+                    "American Indian or Alaska Native": "american_indian",
+                    "Native American": "american_indian",
+                    "Alaska Native": "american_indian",
+                    "Native American/Alaska Native/First Nation": "american_indian",
+                    "First Nation": "american_indian",
+                    # Multi-racial variations
+                    "Bi-racial": "bi_racial",
+                    "Multi-racial": "multi_racial",
+                    "Bi-racial/Multi-racial/Multicultural": "multi_racial",  # Default to multi_racial
+                    "Two or More Races": "two_or_more",
+                    "Two or more": "two_or_more",
+                    # Other variations
+                    "Other": "other",
+                    "Other POC": "other_poc",
+                    # Prefer not to say variations
+                    "Prefer not to answer": "prefer_not_to_say",
+                    "Prefer not to say": "prefer_not_to_say",
                 }
 
                 race_ethnicity_str = row.get("Racial_Ethnic_Background__c")
@@ -1295,9 +1347,68 @@ def import_from_salesforce():
                     if "AggregateResult" in cleaned_str:
                         cleaned_str = cleaned_str.replace("AggregateResult", "").strip()
 
-                    # Try primary mapping first
+                    # Try primary mapping first (exact match)
                     enum_value = race_ethnicity_map.get(cleaned_str)
 
+                    # If no exact match, try case-insensitive match
+                    if not enum_value:
+                        cleaned_lower = cleaned_str.lower()
+                        for sf_value, enum_name in race_ethnicity_map.items():
+                            if sf_value.lower() == cleaned_lower:
+                                enum_value = enum_name
+                                break
+
+                    # If still no match, try partial matching for common patterns
+                    if not enum_value:
+                        cleaned_lower = cleaned_str.lower()
+                        if (
+                            "hispanic" in cleaned_lower
+                            or "latino" in cleaned_lower
+                            or "latina" in cleaned_lower
+                        ):
+                            enum_value = "hispanic"
+                        elif (
+                            "black" in cleaned_lower
+                            or "african american" in cleaned_lower
+                        ):
+                            enum_value = "black"
+                        elif "white" in cleaned_lower or "caucasian" in cleaned_lower:
+                            enum_value = "white"
+                        elif "asian" in cleaned_lower:
+                            enum_value = "asian"
+                        elif (
+                            "pacific islander" in cleaned_lower
+                            or "hawaiian" in cleaned_lower
+                        ):
+                            enum_value = "native_hawaiian"
+                        elif (
+                            "native american" in cleaned_lower
+                            or "alaska native" in cleaned_lower
+                            or "first nation" in cleaned_lower
+                            or "american indian" in cleaned_lower
+                        ):
+                            enum_value = "american_indian"
+                        elif (
+                            "multi" in cleaned_lower
+                            or "bi-racial" in cleaned_lower
+                            or "biracial" in cleaned_lower
+                        ):
+                            enum_value = "multi_racial"
+                        elif "two or more" in cleaned_lower:
+                            enum_value = "two_or_more"
+                        elif (
+                            "prefer not" in cleaned_lower
+                            or "not to say" in cleaned_lower
+                        ):
+                            enum_value = "prefer_not_to_say"
+                        elif (
+                            "other poc" in cleaned_lower or "otherpoc" in cleaned_lower
+                        ):
+                            enum_value = "other_poc"
+                        elif "other" in cleaned_lower:
+                            enum_value = "other"
+
+                    # Apply the mapping if we found a valid enum value
                     if enum_value and enum_value in [e.name for e in RaceEthnicityEnum]:
                         if (
                             not volunteer.race_ethnicity
@@ -1306,19 +1417,10 @@ def import_from_salesforce():
                             volunteer.race_ethnicity = RaceEthnicityEnum[enum_value]
                             updates.append("race")
                     else:
-                        # Try default mapping if primary fails
-                        default_value = default_mapping.get(cleaned_str)
-                        if default_value and default_value in [
-                            e.name for e in RaceEthnicityEnum
-                        ]:
-                            if (
-                                not volunteer.race_ethnicity
-                                or volunteer.race_ethnicity.name != default_value
-                            ):
-                                volunteer.race_ethnicity = RaceEthnicityEnum[
-                                    default_value
-                                ]
-                                updates.append("race")
+                        # Log unmapped values for debugging
+                        print(
+                            f"Warning: Unmapped race/ethnicity value '{cleaned_str}' for volunteer {volunteer.id} ({volunteer.first_name} {volunteer.last_name})"
+                        )
                 elif volunteer.race_ethnicity != RaceEthnicityEnum.unknown:
                     volunteer.race_ethnicity = RaceEthnicityEnum.unknown
                     updates.append("race")
@@ -1873,6 +1975,7 @@ def import_from_salesforce():
 
 @volunteers_bp.route("/volunteers/toggle-exclude-reports/<int:id>", methods=["POST"])
 @login_required
+@global_users_only
 def toggle_exclude_reports(id):
     """Toggle the exclude_from_reports field for a volunteer - Admin only"""
     if not current_user.is_admin:
@@ -1903,10 +2006,9 @@ def toggle_exclude_reports(id):
 
 @volunteers_bp.route("/volunteers/update-local-status/<int:id>", methods=["POST"])
 @login_required
+@global_users_only
 def update_local_status(id):
-    """Update the local status for a volunteer - Admin only"""
-    if not current_user.is_admin:
-        return jsonify({"success": False, "message": "Admin access required"}), 403
+    """Update the local status for a volunteer - Available to all global users"""
 
     try:
         volunteer = db.session.get(Volunteer, id)
@@ -1947,6 +2049,7 @@ def update_local_status(id):
 
 @volunteers_bp.route("/volunteers/update-local-statuses", methods=["POST"])
 @login_required
+@global_users_only
 def update_local_statuses():
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
@@ -2115,6 +2218,7 @@ def update_local_statuses():
 
 @volunteers_bp.route("/volunteers/<int:volunteer_id>/organizations")
 @login_required
+@global_users_only
 def get_organizations_json(volunteer_id):
     """Get organizations data for a specific volunteer as JSON"""
     try:

@@ -199,6 +199,15 @@ body > main {
     text-decoration: none;
 }
 
+.new-session-btn {
+    background: #6f42c1;
+    box-shadow: 0 3px 0 #5a32a3;
+}
+.new-session-btn:hover {
+    background: #5a32a3;
+    color: #fff;
+}
+
 .export-btn i {
     font-size: 1.1rem;
     margin-right: 0.5rem;
@@ -461,5 +470,316 @@ body > main {
     }
     .orgs-table-container {
         padding: 0.5rem;
+    }
+}
+
+/* --- Virtual Session Create Modal Styles --- */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(29, 51, 84, 0.6);
+    z-index: 1000;
+    overflow-y: auto;
+    backdrop-filter: blur(2px);
+}
+
+.modal.show {
+    display: block;
+}
+
+.modal-dialog {
+    max-width: 900px;
+    margin: 40px auto;
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 20px 60px rgba(29, 51, 84, 0.3);
+    position: relative;
+    /* Bootstrap sets .modal-dialog { pointer-events: none; }.
+       We need the dialog to receive clicks so inputs are usable. */
+    pointer-events: auto;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 28px;
+    border-bottom: 2px solid var(--non-photo-blue);
+    background: linear-gradient(135deg, var(--ucla-blue) 0%, var(--delft-blue) 100%);
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--mint-green);
+}
+
+.modal-close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: var(--mint-green);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.modal-body {
+    padding: 28px;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    gap: 16px;
+}
+
+.form-row-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.form-row-3-2-1 {
+    grid-template-columns: 2fr 1fr 1fr;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--delft-blue);
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group input[type="number"],
+.form-group input[type="url"],
+.form-group select {
+    padding: 10px 14px;
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: white;
+    color: var(--delft-blue);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 3px rgba(70, 117, 153, 0.1);
+}
+
+.form-group input::placeholder {
+    color: #adb5bd;
+}
+
+.form-divider {
+    margin: 24px 0;
+    border: none;
+    border-top: 2px solid var(--non-photo-blue);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.add-item-btn {
+    background: var(--ucla-blue);
+    color: var(--mint-green);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 4px rgba(29, 51, 84, 0.15);
+}
+
+.add-item-btn:hover {
+    background: var(--delft-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(29, 51, 84, 0.2);
+}
+
+.dynamic-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dynamic-row {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+    padding: 12px;
+    background: var(--mint-green);
+    border-radius: 8px;
+    border: 1px solid var(--non-photo-blue);
+}
+
+.dynamic-row .form-group {
+    margin: 0;
+}
+
+.remove-item-btn {
+    background: var(--poppy);
+    color: var(--mint-green);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(214, 64, 69, 0.2);
+}
+
+.remove-item-btn:hover {
+    background: #c53030;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(214, 64, 69, 0.3);
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 2px solid var(--non-photo-blue);
+}
+
+.modal-footer .filter-btn {
+    min-width: 140px;
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
+/* Search Results Dropdown */
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid var(--ucla-blue);
+    border-radius: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(29, 51, 84, 0.15);
+    margin-top: 4px;
+}
+
+.search-result-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--non-photo-blue);
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: var(--mint-green);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item strong {
+    color: var(--delft-blue);
+    display: block;
+}
+
+.search-result-item small {
+    color: #666;
+    display: block;
+    margin-top: 4px;
+}
+
+.form-group[style*="position: relative"] {
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 20px;
+        max-width: calc(100% - 40px);
+    }
+
+    .modal-header {
+        padding: 20px;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .form-row-3,
+    .form-row-3-2-1 {
+        grid-template-columns: 1fr;
+    }
+
+    .dynamic-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .remove-item-btn {
+        width: 100%;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .add-item-btn {
+        width: 100%;
+        justify-content: center;
     }
 }

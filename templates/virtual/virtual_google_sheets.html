@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Virtual District Google Sheets - {{ virtual_year }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<style>
+.google-sheets-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.back-link:hover {
+    color: #f0f0f0;
+    text-decoration: underline;
+}
+
+.page-title {
+    margin: 0 0 10px 0;
+    font-size: 2.2em;
+    font-weight: 700;
+}
+
+.page-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.1em;
+}
+
+.year-selector {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.year-form {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.create-sheet-section {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.section-title {
+    margin: 0 0 20px 0;
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9em;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.875em;
+}
+
+.sheets-list {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.sheets-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sheets-table th,
+.sheets-table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sheets-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sheets-table tr:hover {
+    background: #f8f9fa;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.no-sheets {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 1.1em;
+}
+
+.edit-form {
+    display: none;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.edit-form.active {
+    display: block;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .year-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="google-sheets-container">
+    <div class="page-header">
+        <a href="{{ url_for('virtual.virtual_usage', year=virtual_year) }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Virtual Usage Report
+        </a>
+        <h1 class="page-title">Virtual District Google Sheets</h1>
+        <p class="page-subtitle">Manage Google Sheets for district virtual session reports</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'error' if category == 'error' else category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Year Selector -->
+    <div class="year-selector">
+        <form class="year-form" method="GET">
+            <label for="year"><strong>Virtual Year:</strong></label>
+            <select name="year" id="year" onchange="this.form.submit()">
+                {% for year in virtual_year_options %}
+                    <option value="{{ year }}" {% if year == virtual_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- Create New Sheet -->
+    <div class="create-sheet-section">
+        <h2 class="section-title">Create New Google Sheet</h2>
+        <form method="POST" action="{{ url_for('virtual.create_virtual_google_sheet') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="district_name">District Name:</label>
+                    <select name="district_name" id="district_name" required>
+                        <option value="">Select District</option>
+                        {% for district in districts %}
+                            <option value="{{ district.name }}">{{ district.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sheet_name">Sheet Name:</label>
+                    <input type="text" name="sheet_name" id="sheet_name"
+                           placeholder="e.g., Grandview Virtual Sessions 2024-2025" required>
+                </div>
+                <div class="form-group">
+                    <label for="sheet_id">Google Sheet ID or URL:</label>
+                    <input type="text" name="sheet_id" id="sheet_id"
+                           placeholder="Sheet ID or full Google Sheets URL" required>
+                </div>
+            </div>
+            <input type="hidden" name="virtual_year" value="{{ virtual_year }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Sheet
+            </button>
+        </form>
+    </div>
+
+    <!-- Existing Sheets -->
+    <div class="sheets-list">
+        <h2 class="section-title" style="padding: 20px; margin: 0; border-bottom: 1px solid #dee2e6;">
+            Google Sheets for {{ virtual_year }}
+        </h2>
+
+        {% if sheets %}
+            <table class="sheets-table">
+                <thead>
+                    <tr>
+                        <th>Sheet Name</th>
+                        <th>Created By</th>
+                        <th>Created Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sheet in sheets %}
+                    <tr>
+                        <td>
+                            <strong>{{ sheet.sheet_name }}</strong>
+                            {% if sheet.creator %}
+                                <br><small class="text-muted">by {{ sheet.creator.username }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ sheet.creator.username if sheet.creator else 'Unknown' }}</td>
+                        <td>{{ sheet.created_at.strftime('%m/%d/%Y') if sheet.created_at else '' }}</td>
+                        <td>
+                            <div class="actions">
+                                <a href="{{ url_for('virtual.view_virtual_google_sheet', sheet_id=sheet.id) }}"
+                                   class="btn btn-secondary btn-sm" target="_blank">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </a>
+                                <button onclick="toggleEditForm({{ sheet.id }})" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <form method="POST" action="{{ url_for('virtual.delete_virtual_google_sheet', sheet_id=sheet.id) }}"
+                                      style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this sheet?')">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Edit Form -->
+                            <div class="edit-form" id="edit-form-{{ sheet.id }}">
+                                <form method="POST" action="{{ url_for('virtual.update_virtual_google_sheet', sheet_id=sheet.id) }}">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Sheet Name:</label>
+                                            <input type="text" name="sheet_name" value="{{ sheet.sheet_name }}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Google Sheet ID or URL:</label>
+                                            <input type="text" name="sheet_id" value="{{ sheet.decrypted_sheet_id }}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                            <button type="button" onclick="toggleEditForm({{ sheet.id }})"
+                                                    class="btn btn-secondary btn-sm">Cancel</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="no-sheets">
+                <i class="fas fa-file-excel fa-3x" style="color: #ccc; margin-bottom: 20px;"></i>
+                <p>No Google Sheets found for {{ virtual_year }}.</p>
+                <p>Create your first sheet using the form above.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleEditForm(sheetId) {
+    const form = document.getElementById('edit-form-' + sheetId);
+    form.classList.toggle('active');
+}
+
+// Auto-generate sheet name based on district selection
+document.getElementById('district_name').addEventListener('change', function() {
+    const districtName = this.value;
+    const virtualYear = '{{ virtual_year }}';
+    const sheetNameInput = document.getElementById('sheet_name');
+
+    if (districtName && !sheetNameInput.value) {
+        sheetNameInput.value = `${districtName} Virtual Sessions ${virtualYear}`;
+    }
+});
+
+// Extract sheet ID from full Google Sheets URL
+document.getElementById('sheet_id').addEventListener('blur', function() {
+    const input = this.value.trim();
+
+    // Check if it's a full Google Sheets URL
+    const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+    const match = input.match(regex);
+
+    if (match) {
+        this.value = match[1]; // Extract just the sheet ID
+    }
+});
+</script>
+{% endblock %}

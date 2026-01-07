@@ -333,8 +333,127 @@ Exports candidate list as CSV with filename including custom keywords (e.g., "ev
 - Cache status indicates if results are fresh or cached
 - Custom keywords are displayed with special user-edit icon for easy identification
 
+### 11. KCTAA Special Report
+
+The KCTAA Special Volunteer Match Report provides a specialized tool for matching a provided list of KCTAA personnel names against volunteers in the system, showing volunteer activity and match quality indicators.
+
+#### Purpose
+- Crosswalk between KCTAA-provided name list and actual volunteers in the system
+- Track volunteer participation for KCTAA personnel
+- Identify exact and fuzzy name matches with quality scores
+- Export results for further analysis
+
+#### Data Source
+- **CSV File**: `data/kctaa_first_last_names.csv`
+- **Format**: Two columns - "First Name" and "Last Name"
+- **Configuration**: File path configurable via `KCTAA_NAME_LIST_PATH` in app config (defaults to `data/kctaa_first_last_names.csv`)
+
+#### Matching Algorithm
+
+##### Exact Match
+- First and last name match exactly (case-insensitive, punctuation-insensitive)
+- Matches where normalized first + last names are identical
+- Marked as **Exact Match = Yes** with match score of 1.0
+- Multiple exact matches possible (returns all matches)
+
+##### Fuzzy Match
+- Similarity-based matching for near-matches
+- Uses Python's `difflib.SequenceMatcher` for string similarity
+- Threshold: 90% similarity (configurable via `FUZZY_MATCH_THRESHOLD`)
+- Marked as **Exact Match = No** with match score between 0.9 and 1.0
+- Returns all matches above threshold (not just the best one)
+
+##### No Match
+- CSV names that don't match any volunteers (below threshold or no similarity)
+- Marked as **Match Type = None** with match score of 0.0
+- Can be included/excluded via filter
+
+#### Report Features
+
+##### HTML View (`/reports/kctaa`)
+- Interactive table showing all matches
+- Filters:
+  - **Minimum Match Score**: Filter by match quality (0.0 - 1.0, default: 0.9)
+  - **Include Unmatched**: Show/hide CSV names with no matches
+- Columns:
+  - CSV Name (from source list)
+  - Matched Volunteer Name
+  - Email
+  - Organization
+  - Event Count (total participations)
+  - Total Hours
+  - Last Event Date
+  - Match Type (Exact/Fuzzy/None)
+  - Match Score (0.0 - 1.0)
+  - Match Count (number of volunteers that matched)
+
+##### CSV Export (`/reports/kctaa.csv`)
+- Same columns as HTML view
+- Includes all match metadata
+- Filename: `KCTAA_Volunteer_Matches_YYYYMMDD.csv`
+- Respects same filters as HTML view
+
+#### Access
+- **URL**: `/reports/kctaa`
+- **Category**: Volunteer Reports
+- **Icon**: `fa-solid fa-users-gear`
+- **Location**: Reports index page under "Volunteer Reports" category
+
+#### Name Normalization
+Names are normalized before matching:
+- Removes punctuation (periods, commas, apostrophes, etc.)
+- Converts to lowercase
+- Trims whitespace
+- Example: "John O'Brien" → "john obrien"
+
+#### Participation Statistics
+The report aggregates volunteer participation:
+- **Event Count**: Number of completed events with statuses: "Attended", "Completed", "Successfully Completed", "Simulcast"
+- **Total Hours**: Sum of `delivery_hours` from event participations
+- **Last Event Date**: Most recent completed event participation
+- **All-time counts**: No date range filtering (includes all historical data)
+
+#### Usage Examples
+
+##### View All Matches
+```
+GET /reports/kctaa
+```
+Shows all matches above default threshold (0.9).
+
+##### Filter by Match Score
+```
+GET /reports/kctaa?min_score=0.95
+```
+Shows only matches with score ≥ 0.95 (stricter matching).
+
+##### Include Unmatched Names
+```
+GET /reports/kctaa?include_unmatched=1
+```
+Shows all CSV names, including those with no matches.
+
+##### Export Results
+```
+GET /reports/kctaa.csv?min_score=0.9&include_unmatched=0
+```
+Exports matched results as CSV.
+
+#### Configuration
+- **File Path**: Set `KCTAA_NAME_LIST_PATH` in app config
+- **Fuzzy Threshold**: Modify `FUZZY_MATCH_THRESHOLD` constant (default: 90)
+- **Default Min Score**: Modify `DEFAULT_MIN_SCORE` constant (default: 0.9)
+
+#### Matching Quality Indicators
+- **Exact Match**: Green badge, score = 1.0, most reliable
+- **Fuzzy Match**: Yellow badge, score 0.9 - 0.999, review recommended
+- **No Match**: Red badge, score = 0.0, manual review needed
+- **Match Count**: If > 1, multiple volunteers matched (ambiguous match)
+
 ## Conclusion
 
 The Volunteer Matching System provides a robust, transparent, and efficient way to connect volunteers with events. By combining multiple data sources and providing clear explanations, it ensures that both administrators and volunteers understand how matches are made, leading to better outcomes and increased trust in the system.
 
 The system is designed to be maintainable and extensible, allowing for easy updates to keyword mappings, scoring algorithms, and filtering criteria as organizational needs evolve.
+
+The KCTAA Special Report extends this system by providing specialized name matching capabilities for cross-organizational volunteer tracking, enabling efficient identification and analysis of volunteer participation across different organizational contexts.

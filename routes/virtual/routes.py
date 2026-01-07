@@ -129,6 +129,16 @@ from routes.utils import admin_required
 
 virtual_bp = Blueprint("virtual", __name__, url_prefix="/virtual")
 
+# Register Virtual Usage (report-style) routes under the Virtual blueprint.
+# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
+try:
+    from routes.virtual.usage import load_usage_routes as _load_usage_routes
+
+    _load_usage_routes()
+except Exception:
+    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
+    pass
+
 
 @virtual_bp.route("/virtual")
 def virtual():
@@ -174,6 +184,41 @@ def split_teacher_names(teacher_name):
             teacher_names.append(cleaned_name)
 
     return teacher_names
+
+
+def split_presenter_names(presenter_name):
+    """
+    Split presenter names that may contain multiple presenters separated by "&" or ";".
+
+    Args:
+        presenter_name: String containing one or more presenter names
+
+    Returns:
+        list: List of individual presenter name strings
+
+    Examples:
+        "Jerry Stern & Candy Baptist" -> ["Jerry Stern", "Candy Baptist"]
+        "Tanya McIntosh; Jordan Harvey" -> ["Tanya McIntosh", "Jordan Harvey"]
+        "John Smith" -> ["John Smith"]
+        "Jane Doe & Bob Wilson" -> ["Jane Doe", "Bob Wilson"]
+    """
+    if not presenter_name or pd.isna(presenter_name):
+        return []
+
+    presenter_name = safe_str(presenter_name)
+    if not presenter_name.strip():
+        return []
+
+    # Split by "&" or ";" and clean up each name
+    presenter_names = []
+    # First split by semicolon, then by ampersand
+    for part in presenter_name.split(";"):
+        for name in part.split("&"):
+            cleaned_name = name.strip()
+            if cleaned_name:
+                presenter_names.append(cleaned_name)
+
+    return presenter_names
 
 
 def process_teacher_data(row, is_simulcast=False):
@@ -229,81 +274,111 @@ def process_teacher_data(row, is_simulcast=False):
 
 
 def process_presenter(row, event, is_simulcast):
-    """Helper function to process presenter data"""
-    volunteer_id = None
+    """Helper function to process presenter data - handles multiple presenters separated by & or ;"""
     presenter_name = row.get("Presenter")
     presenter_org = standardize_organization(row.get("Organization", ""))
     presenter_location_col = row.get("Presenter Location")
     people_of_color = row.get("Presenter of Color?", "")
 
     if presenter_name and not pd.isna(presenter_name):
-        presenter_name = safe_str(presenter_name)
-        first_name, last_name = clean_name(presenter_name)
+        # Split presenter names if multiple presenters are listed
+        presenter_names = split_presenter_names(presenter_name)
 
-        # Only proceed if we have at least a first name
-        if first_name:
-            volunteer = find_or_create_volunteer(
-                first_name, last_name, presenter_org, people_of_color
-            )
+        # Process each presenter separately
+        for individual_presenter_name in presenter_names:
+            individual_presenter_name = safe_str(individual_presenter_name)
+            first_name, last_name = clean_name(individual_presenter_name)
 
-            if volunteer:
-                # Create or update participation record
-                create_participation(event, volunteer, event.status)
+            # Only proceed if we have at least a first name
+            if first_name:
+                volunteer = find_or_create_volunteer(
+                    first_name, last_name, presenter_org, people_of_color
+                )
 
-                # Handle volunteer association
-                update_volunteer_association(event, volunteer, is_simulcast)
+                if volunteer:
+                    # Create or update participation record
+                    create_participation(event, volunteer, event.status)
 
-                # Optionally map volunteer local status using the same column when no address is available
-                try:
-                    # Normalize presenter location column
-                    loc_str = None
-                    if presenter_location_col and not pd.isna(presenter_location_col):
-                        loc_str = str(presenter_location_col).strip()
-                    # Map volunteer local status only if currently unknown
-                    current_local_status = getattr(volunteer, "local_status", None)
-                    if current_local_status in (None, LocalStatusEnum.unknown):
-                        if loc_str and loc_str.lower().startswith("local"):
-                            volunteer.local_status = LocalStatusEnum.local
-                            # Hint presenter_data enrichment via transient attr used in reporting
-                            setattr(volunteer, "_is_local_hint", True)
-                        else:
-                            volunteer.local_status = LocalStatusEnum.non_local
-                            setattr(volunteer, "_is_local_hint", False)
-                except Exception:
-                    # Non-fatal; keep importing
-                    pass
+                    # Handle volunteer association
+                    update_volunteer_association(event, volunteer, is_simulcast)
+
+                    # Optionally map volunteer local status using the same column when no address is available
+                    try:
+                        # Normalize presenter location column
+                        loc_str = None
+                        if presenter_location_col and not pd.isna(
+                            presenter_location_col
+                        ):
+                            loc_str = str(presenter_location_col).strip()
+                        # Map volunteer local status only if currently unknown
+                        current_local_status = getattr(volunteer, "local_status", None)
+                        if current_local_status in (None, LocalStatusEnum.unknown):
+                            if loc_str and loc_str.lower().startswith("local"):
+                                volunteer.local_status = LocalStatusEnum.local
+                                # Hint presenter_data enrichment via transient attr used in reporting
+                                setattr(volunteer, "_is_local_hint", True)
+                            else:
+                                volunteer.local_status = LocalStatusEnum.non_local
+                                setattr(volunteer, "_is_local_hint", False)
+                    except Exception:
+                        # Non-fatal; keep importing
+                        pass
 
 
 def find_or_create_volunteer(
     first_name, last_name, organization=None, people_of_color=None
 ):
-    """Find an existing volunteer or create a new one"""
+    """
+    Find an existing volunteer or create a new one.
+
+    Note: first_name may contain middle names (e.g., "John Michael").
+    The Volunteer model stores these separately, so we split the first_name
+    if it contains multiple words, putting the first word in first_name
+    and remaining words in middle_name.
+    """
+    # Split first_name if it contains multiple words (preserves middle names)
+    first_name_parts = first_name.strip().split() if first_name else []
+    if len(first_name_parts) > 1:
+        # Multiple words in first_name - first goes to first_name, rest to middle_name
+        actual_first_name = first_name_parts[0]
+        middle_name = " ".join(first_name_parts[1:])
+    else:
+        actual_first_name = first_name if first_name_parts else ""
+        middle_name = ""
+
     # First try exact match on first and last name (case-insensitive)
+    # Note: We match on first_name only (not middle_name) to find existing volunteers
     volunteer = Volunteer.query.filter(
-        func.lower(Volunteer.first_name) == func.lower(first_name),
+        func.lower(Volunteer.first_name) == func.lower(actual_first_name),
         func.lower(Volunteer.last_name) == func.lower(last_name),
     ).first()
 
     # If no exact match and we have a last name, try partial matching
     if not volunteer and last_name:
         volunteer = Volunteer.query.filter(
-            Volunteer.first_name.ilike(f"{first_name}%"),
+            Volunteer.first_name.ilike(f"{actual_first_name}%"),
             Volunteer.last_name.ilike(f"{last_name}%"),
         ).first()
 
     # Create new volunteer if not found
     if not volunteer:
-        current_app.logger.info(f"Creating new volunteer: {first_name} {last_name}")
+        current_app.logger.info(
+            f"Creating new volunteer: {actual_first_name} {middle_name} {last_name}".strip()
+        )
         volunteer = Volunteer(
-            first_name=first_name,
+            first_name=actual_first_name,
+            middle_name=middle_name,
             last_name=last_name,
-            middle_name="",
             organization_name=organization if not pd.isna(organization) else None,
             is_people_of_color=map_people_of_color(people_of_color),
         )
         db.session.add(volunteer)
         db.session.flush()
     else:
+        # Update existing volunteer's middle_name if it's currently empty but we have one
+        if middle_name and not volunteer.middle_name:
+            volunteer.middle_name = middle_name
+
         # Update existing volunteer's organization if it has changed
         if (
             organization
@@ -755,29 +830,70 @@ def get_event(event_id):
 
 
 def clean_name(name):
-    """More robust name cleaning function"""
+    """
+    Clean and parse a name, handling prefixes and preserving middle names.
+
+    Returns:
+        tuple: (first_name, last_name) where first_name includes middle name if present
+
+    Examples:
+        "Dr. John Smith" -> ("John", "Smith")
+        "Dr. John Michael Smith" -> ("John Michael", "Smith")
+        "John Michael Smith" -> ("John Michael", "Smith")
+        "Dr.Smith" -> ("", "Smith")  # Edge case: no first name after prefix
+        "Dr. Smith" -> ("", "Smith")  # Edge case: only last name after prefix
+    """
     if not name or pd.isna(name):
         return "", ""
 
     name = str(name).strip()
+    original_name = name
+    name_lower = name.lower()
 
-    # Handle common prefixes
-    prefixes = ["mr.", "mrs.", "ms.", "dr.", "prof."]
-    for prefix in prefixes:
-        if name.lower().startswith(prefix):
-            name = name[len(prefix) :].strip()
+    # Handle common prefixes - check for prefix followed by period and/or space
+    # List of prefixes to check (without period/space)
+    prefix_bases = ["dr", "mr", "mrs", "ms", "prof"]
+
+    for prefix_base in prefix_bases:
+        prefix_lower = prefix_base.lower()
+        # Check various formats: "Dr. ", "Dr ", "Dr.", "dr."
+        if name_lower.startswith(prefix_lower):
+            # Check if followed by period, space, or both
+            prefix_len = len(prefix_base)
+            if len(name) > prefix_len:
+                next_char = name[prefix_len]
+                if next_char in [".", " "]:
+                    # Remove prefix and the period/space
+                    name = name[prefix_len + 1 :].strip()
+                    break
+                elif prefix_len == len(name_lower):
+                    # Prefix is the entire string, return empty
+                    return "", ""
 
     # Split name into parts
     parts = [p for p in name.split() if p]
 
     if len(parts) == 0:
+        # Edge case: Only prefix was provided, or prefix removed everything
+        # If original had exactly 2 parts like "Dr. Smith", return the second part as last name
+        original_parts = original_name.split()
+        if len(original_parts) == 2:
+            # Check if first part is a prefix
+            first_part_lower = original_parts[0].lower().rstrip(".")
+            if first_part_lower in prefix_bases:
+                # Return empty first name, last name is the second part
+                return "", original_parts[1]
         return "", ""
     elif len(parts) == 1:
-        return parts[0], ""
+        # Only one part after removing prefix - this is likely just a last name
+        # Return empty first name and the part as last name
+        return "", parts[0]
     else:
-        # For simplicity in matching, use first part as first name
-        # and last part as last name (helps match with database)
-        return parts[0], parts[-1]
+        # Multiple parts: first part(s) are first+middle, last part is last name
+        # Preserve middle names in first_name field
+        first_name = " ".join(parts[:-1])  # All parts except the last
+        last_name = parts[-1]  # Last part
+        return first_name, last_name
 
 
 def standardize_organization(org_name):
@@ -1134,6 +1250,94 @@ def extract_session_id(session_link):
         return None
 
 
+def get_status_priority(status):
+    """
+    Get priority value for status (higher = more important).
+    Used to determine which status should take precedence when multiple statuses exist.
+
+    Priority order:
+    - COMPLETED: 5 (highest - event actually happened)
+    - CONFIRMED: 4 (event is confirmed to happen)
+    - PUBLISHED: 3 (event is published)
+    - REQUESTED: 2 (event is requested)
+    - DRAFT: 1 (lowest - event is just a draft)
+    - Others: 0 (default)
+    """
+    priority_map = {
+        EventStatus.COMPLETED: 5,
+        EventStatus.CONFIRMED: 4,
+        EventStatus.PUBLISHED: 3,
+        EventStatus.REQUESTED: 2,
+        EventStatus.DRAFT: 1,
+    }
+    return priority_map.get(status, 0)
+
+
+def should_update_status(current_status, new_status):
+    """
+    Determine if we should update the event status based on priority.
+    Returns True if new_status has higher priority than current_status.
+    """
+    current_priority = get_status_priority(current_status)
+    new_priority = get_status_priority(new_status)
+    return new_priority > current_priority
+
+
+def find_existing_event(title, target_datetime, processed_event_ids=None):
+    """
+    Find an existing event with flexible matching to prevent duplicates.
+
+    First tries exact match (title + full datetime), then tries flexible match
+    (title + same date, ignoring time) to handle cases where time might differ slightly.
+
+    Args:
+        title: Event title
+        target_datetime: Target datetime for the event
+        processed_event_ids: Dictionary of already processed event IDs (optional)
+
+    Returns:
+        Event object if found, None otherwise
+    """
+    if not title or not target_datetime:
+        return None
+
+    title_lower = title.strip().lower()
+    target_date = target_datetime.date()
+
+    # First, try exact match (title + full datetime)
+    event = Event.query.filter(
+        func.lower(Event.title) == title_lower,
+        Event.start_date == target_datetime,
+        Event.type == EventType.VIRTUAL_SESSION,
+    ).first()
+
+    if event:
+        return event
+
+    # If no exact match, try flexible match (title + same date, any time)
+    # This handles cases where time might differ slightly (e.g., 12:30 PM vs 01:00 PM)
+    event = Event.query.filter(
+        func.lower(Event.title) == title_lower,
+        func.date(Event.start_date) == target_date,
+        Event.type == EventType.VIRTUAL_SESSION,
+    ).first()
+
+    if event:
+        # Found a match by date - update the time to match the target
+        if event.start_date != target_datetime:
+            print(
+                f"INFO: Found existing event {event.id} by date match, updating time from {event.start_date} to {target_datetime}"
+            )
+            event.start_date = target_datetime
+            if event.end_date:
+                # Update end_date to maintain duration
+                duration = (event.end_date - event.start_date).total_seconds() / 60
+                event.end_date = target_datetime + timedelta(minutes=duration or 60)
+        return event
+
+    return None
+
+
 @virtual_bp.route("/import-sheet", methods=["POST"])
 @login_required
 def import_sheet():
@@ -1174,7 +1378,7 @@ def import_sheet():
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
 
         # Use requests with streaming
-        response = requests.get(csv_url, stream=True)
+        response = requests.get(csv_url, stream=True, timeout=30)
         response.raise_for_status()
 
         # Read the CSV in chunks
@@ -1360,25 +1564,32 @@ def import_sheet():
 
                 if not event:
                     # Query DB if not found via cache or if session.get failed
-                    # *** UPDATED QUERY: Filter by exact start_date (datetime) ***
-                    # REMOVED: DB query log
-                    event = Event.query.filter(
-                        func.lower(Event.title) == func.lower(title.strip()),
-                        Event.start_date == current_datetime,  # Compare full datetime
-                        Event.type == EventType.VIRTUAL_SESSION,
-                    ).first()
+                    # Use flexible matching to prevent duplicates
+                    event = find_existing_event(
+                        title, current_datetime, processed_event_ids
+                    )
 
                     if event:
                         # Found in DB, cache its ID
                         processed_event_ids[event_key] = event.id
-                        # REMOVED: DB found success log
+                        print(
+                            f"INFO: Found existing event {event.id} for '{title}' at {current_datetime.isoformat()}"
+                        )
+
+                        # Update status immediately if this is a primary row with higher priority status
+                        if is_primary_row_status:
+                            new_status = EventStatus.map_status(status_str)
+                            if should_update_status(event.status, new_status):
+                                old_status = event.status
+                                event.status = new_status
+                                event.original_status_string = status_str
+                                print(
+                                    f"INFO - Row {row_index + 1}: Updated existing event {event.id} status to '{new_status}' (was '{old_status}')"
+                                )
 
                         # Update session_host for existing events if not set
                         if not event.session_host or event.session_host != "PREPKC":
                             event.session_host = "PREPKC"
-                            print(
-                                f"UPDATED existing virtual event {event.id} ({event.title}) with session_host: PREPKC"
-                            )
                     else:
                         # Modified logic: Allow certain "incomplete" statuses to create events
                         # when no existing event is found
@@ -1463,6 +1674,18 @@ def import_sheet():
                         if not existing_district:
                             add_district_to_event(event, district_name)
                             # print(f"DEBUG: Added district '{district_name}' to event '{event.title}' from row {row_index + 1}")
+
+                # --- Status Update (runs for ALL primary rows, not just first) ---
+                # Always update status from primary rows to ensure we capture the highest status
+                if is_primary_row_status and event:
+                    new_status = EventStatus.map_status(status_str)
+                    if should_update_status(event.status, new_status):
+                        old_status = event.status
+                        event.status = new_status
+                        event.original_status_string = status_str
+                        print(
+                            f"INFO - Row {row_index + 1}: Updated event status to '{new_status}' (was '{old_status}')"
+                        )
 
                 # --- Primary Logic Block ---
                 # Run this block only ONCE per specific event instance (title + datetime)
@@ -1596,10 +1819,10 @@ def import_sheet():
                     # --- End Participant Count Calculation ---
 
                     # Update core event details from this primary row
-                    event.status = EventStatus.map_status(status_str)
-                    event.original_status_string = (
-                        status_str  # Store original status string
-                    )
+                    # Note: Status is already updated above for all primary rows
+                    # Here we just ensure original_status_string is set if not already
+                    if not event.original_status_string and status_str:
+                        event.original_status_string = status_str
                     event.session_id = extract_session_id(row_data.get("Session Link"))
 
                     # Update title if it has changed

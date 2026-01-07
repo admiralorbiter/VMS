@@ -22,6 +22,7 @@ from models.reports import DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation
+from routes.decorators import district_scoped_required
 from routes.reports.common import (
     DISTRICT_MAPPING,
     cache_district_stats,
@@ -59,6 +60,26 @@ def load_routes(bp):
             cache_district_stats_with_events(
                 school_year, district_stats, host_filter=host_filter
             )
+
+        # Filter district stats based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter to only show allowed districts
+                district_stats = {
+                    district_name: stats
+                    for district_name, stats in district_stats.items()
+                    if district_name in allowed_districts
+                }
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                district_stats = {}
 
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
@@ -125,6 +146,7 @@ def load_routes(bp):
 
     @bp.route("/reports/district/year-end/detail/<district_name>")
     @login_required
+    @district_scoped_required
     def district_year_end_detail(district_name):
         """Show detailed year-end report for a specific district"""
         school_year = request.args.get("school_year", get_current_school_year())
@@ -272,7 +294,7 @@ def load_routes(bp):
                     Event.districts.any(District.name.ilike(f"%{alias}%"))
                 )
 
-        # Fetch events
+        # Fetch events (excluding connector_session for main display)
         events_query = (
             Event.query.outerjoin(School, Event.school == School.id)
             .outerjoin(EventAttendance, Event.id == EventAttendance.event_id)
@@ -294,10 +316,33 @@ def load_routes(bp):
             )
         events = events_query.all()
 
+        # For enhanced stats, we need to include connector_session events
+        # Query connector_session events separately and combine
+        connector_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.CONNECTOR_SESSION,
+            db.or_(*query_conditions),
+        ).order_by(Event.start_date)
+        if host_filter == "prepkc":
+            connector_events_query = connector_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        connector_events = connector_events_query.all()
+
+        # Combine events for enhanced stats calculation (includes connector_session)
+        all_events_for_stats = list(events) + list(connector_events)
+
         # Calculate enhanced stats from filtered events (always recalculate when filter is applied)
         # Also calculate if cached stats don't include enhanced data
         if host_filter != "all" or not stats or "enhanced" not in stats:
-            enhanced_stats = calculate_enhanced_district_stats(events, district.id)
+            enhanced_stats = calculate_enhanced_district_stats(
+                all_events_for_stats, district.id
+            )
 
             # Keep backward compatibility with existing template variables
             stats = {
@@ -492,6 +537,7 @@ def load_routes(bp):
 
     @bp.route("/reports/district/year-end/<district_name>/excel")
     @login_required
+    @district_scoped_required
     def district_year_end_excel(district_name):
         """Generate Excel file for district year-end report"""
         school_year = request.args.get("school_year", get_current_school_year())
@@ -796,8 +842,31 @@ def load_routes(bp):
         else:
             unique_organization_count = 0
 
+        # For enhanced stats, we need to include connector_session events
+        # Query connector_session events separately and combine
+        connector_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.CONNECTOR_SESSION,
+            db.or_(*query_conditions),
+        ).order_by(Event.start_date)
+        if host_filter == "prepkc":
+            connector_events_query = connector_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        connector_events = connector_events_query.all()
+
+        # Combine events for enhanced stats calculation (includes connector_session)
+        all_events_for_stats = list(events) + list(connector_events)
+
         # Calculate enhanced stats for filtered events
-        enhanced_stats = calculate_enhanced_district_stats(events, district.id)
+        enhanced_stats = calculate_enhanced_district_stats(
+            all_events_for_stats, district.id
+        )
 
         return jsonify(
             {
@@ -1034,6 +1103,166 @@ def load_routes(bp):
                 "sheets": [sheet.to_dict() for sheet in sheets],
                 "academic_year": academic_year,
             }
+        )
+
+    @bp.route("/reports/district/year-end/breakdown")
+    @login_required
+    def district_year_end_breakdown():
+        """Show detailed stats breakdown for all districts"""
+        # Get school year from query params or default to current
+        school_year = request.args.get("school_year", get_current_school_year())
+        host_filter = request.args.get("host_filter", "all")
+
+        # Get cached reports for the school year and host_filter
+        cached_reports = DistrictYearEndReport.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).all()
+
+        # Build breakdown data structure
+        breakdown_data = {}
+        overall_totals = {
+            "in_person_students": {"total": 0, "unique": 0},
+            "in_person_volunteers": {"total": 0, "unique": 0},
+            "in_person_events_count": 0,
+            "career_jumping_students": {"total": 0, "unique": 0},
+            "career_speakers_students": {"total": 0, "unique": 0},
+            "career_college_fair_hs_students": {"total": 0, "unique": 0},
+            "healthstart_students": {"total": 0, "unique": 0},
+            "bfi_students": {"total": 0, "unique": 0},
+            "connector_sessions": {
+                "teachers_engaged": {"total": 0, "unique": 0},
+                "students_participated": {"total": 0, "unique": None},
+                "session_count": 0,
+            },
+        }
+
+        # Track unique IDs across all districts for overall totals
+        overall_unique_in_person_students = set()
+        overall_unique_in_person_volunteers = set()
+        overall_unique_career_jumping_students = set()
+        overall_unique_career_speakers_students = set()
+        overall_unique_career_fair_hs_students = set()
+        overall_unique_connector_teachers = set()
+
+        for report in cached_reports:
+            district = report.district
+            stats = report.report_data or {}
+
+            # Get program breakdown from cache, or compute on-demand
+            if "program_breakdown" in stats:
+                breakdown = stats["program_breakdown"]
+            else:
+                # Fallback: compute on-demand
+                from routes.reports.common import calculate_program_breakdown
+
+                breakdown = calculate_program_breakdown(
+                    district.id, school_year, host_filter=host_filter
+                )
+
+            breakdown_data[district.name] = breakdown
+
+            # Accumulate overall totals
+            overall_totals["in_person_students"]["total"] += breakdown.get(
+                "in_person_students", {}
+            ).get("total", 0)
+            overall_totals["in_person_volunteers"]["total"] += breakdown.get(
+                "in_person_volunteers", {}
+            ).get("total", 0)
+            overall_totals["in_person_events_count"] += breakdown.get(
+                "in_person_events_count", 0
+            )
+            overall_totals["career_jumping_students"]["total"] += breakdown.get(
+                "career_jumping_students", {}
+            ).get("total", 0)
+            overall_totals["career_speakers_students"]["total"] += breakdown.get(
+                "career_speakers_students", {}
+            ).get("total", 0)
+            overall_totals["career_college_fair_hs_students"]["total"] += breakdown.get(
+                "career_college_fair_hs_students", {}
+            ).get("total", 0)
+            overall_totals["healthstart_students"]["total"] += breakdown.get(
+                "healthstart_students", {}
+            ).get("total", 0)
+            overall_totals["bfi_students"]["total"] += breakdown.get(
+                "bfi_students", {}
+            ).get("total", 0)
+            overall_totals["connector_sessions"]["teachers_engaged"]["total"] += (
+                breakdown.get("connector_sessions", {})
+                .get("teachers_engaged", {})
+                .get("total", 0)
+            )
+            overall_totals["connector_sessions"]["students_participated"]["total"] += (
+                breakdown.get("connector_sessions", {})
+                .get("students_participated", {})
+                .get("total", 0)
+            )
+            overall_totals["connector_sessions"]["session_count"] += breakdown.get(
+                "connector_sessions", {}
+            ).get("session_count", 0)
+
+            # For unique counts, we need to track across districts
+            # Note: This is an approximation - true unique would require cross-district deduplication
+            # For now, we'll sum the unique counts (which may overcount if students/volunteers
+            # participate across districts, but that's acceptable for this view)
+            overall_totals["in_person_students"]["unique"] += breakdown.get(
+                "in_person_students", {}
+            ).get("unique", 0)
+            overall_totals["in_person_volunteers"]["unique"] += breakdown.get(
+                "in_person_volunteers", {}
+            ).get("unique", 0)
+            overall_totals["career_jumping_students"]["unique"] += breakdown.get(
+                "career_jumping_students", {}
+            ).get("unique", 0)
+            overall_totals["career_speakers_students"]["unique"] += breakdown.get(
+                "career_speakers_students", {}
+            ).get("unique", 0)
+            overall_totals["career_college_fair_hs_students"][
+                "unique"
+            ] += breakdown.get("career_college_fair_hs_students", {}).get("unique", 0)
+            overall_totals["healthstart_students"]["unique"] += breakdown.get(
+                "healthstart_students", {}
+            ).get("unique", 0)
+            overall_totals["bfi_students"]["unique"] += breakdown.get(
+                "bfi_students", {}
+            ).get("unique", 0)
+            overall_totals["connector_sessions"]["teachers_engaged"]["unique"] += (
+                breakdown.get("connector_sessions", {})
+                .get("teachers_engaged", {})
+                .get("unique", 0)
+            )
+
+        # Filter district breakdown based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter to only show allowed districts
+                breakdown_data = {
+                    district_name: breakdown
+                    for district_name, breakdown in breakdown_data.items()
+                    if district_name in allowed_districts
+                }
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                breakdown_data = {}
+
+        # Generate list of school years (from 2020-21 to current+1)
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()  # Most recent first
+
+        return render_template(
+            "reports/districts/district_year_end_breakdown.html",
+            breakdown_data=breakdown_data,
+            overall_totals=overall_totals,
+            school_year=school_year,
+            school_years=school_years,
+            host_filter=host_filter,
         )
 
 
@@ -1412,8 +1641,38 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
                 data["unique_students"]
             )  # Convert set to list for JSON
 
+        # For enhanced stats, we need to include connector_session events
+        # Query connector_session events separately and combine
+        connector_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.CONNECTOR_SESSION,
+            db.or_(*query_conditions),
+        ).order_by(Event.start_date)
+        if host_filter == "prepkc":
+            connector_events_query = connector_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        connector_events = connector_events_query.all()
+
+        # Combine events for enhanced stats calculation (includes connector_session)
+        all_events_for_stats = list(events) + list(connector_events)
+
         # Calculate enhanced stats for this district
-        enhanced_stats = calculate_enhanced_district_stats(events, district.id)
+        enhanced_stats = calculate_enhanced_district_stats(
+            all_events_for_stats, district.id
+        )
+
+        # Calculate program breakdown
+        from routes.reports.common import calculate_program_breakdown
+
+        program_breakdown = calculate_program_breakdown(
+            district.id, school_year, host_filter=host_filter
+        )
 
         # Update stats to include enhanced data
         enhanced_stats_dict = {
@@ -1425,6 +1684,8 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
             "event_types": enhanced_stats["event_types"],
             # Add enhanced breakdown data
             "enhanced": enhanced_stats,
+            # Add program breakdown
+            "program_breakdown": program_breakdown,
         }
 
         # Merge with existing stats (keep any additional fields from generate_district_stats)
@@ -1517,8 +1778,18 @@ def calculate_enhanced_district_stats(events, district_id):
     org_hours_virtual = {}
     org_hours_total = {}
 
+    # Get district schools for filtering teachers
+    from models.school_model import School
+
+    district_schools = School.query.filter_by(district_id=district_id).all()
+    district_school_ids = [school.id for school in district_schools]
+
     for event in events:
-        is_virtual = event.type == EventType.VIRTUAL_SESSION
+        # Include both VIRTUAL_SESSION and CONNECTOR_SESSION as virtual
+        is_virtual = event.type in [
+            EventType.VIRTUAL_SESSION,
+            EventType.CONNECTOR_SESSION,
+        ]
 
         # Count events
         stats["events"]["total"] += 1
@@ -1538,7 +1809,26 @@ def calculate_enhanced_district_stats(events, district_id):
         )
 
         # Get student count for this district
-        student_count = get_district_student_count_for_event(event, district_id)
+        # For virtual/connector sessions, we need to use confirmed teachers from district only
+        if is_virtual:
+            # Count confirmed teachers from this district
+            confirmed_teacher_regs = [
+                reg
+                for reg in event.teacher_registrations
+                if reg.attendance_confirmed_at is not None
+            ]
+            # Filter by district: only count teachers from this district's schools
+            district_confirmed_teachers = [
+                reg
+                for reg in confirmed_teacher_regs
+                if reg.teacher.school_id
+                and reg.teacher.school_id in district_school_ids
+            ]
+            # Estimate students: confirmed teachers × 25
+            student_count = len(district_confirmed_teachers) * 25
+        else:
+            student_count = get_district_student_count_for_event(event, district_id)
+
         stats["students"]["total"] += student_count
         if is_virtual:
             stats["students"]["virtual"] += student_count
@@ -1640,27 +1930,39 @@ def calculate_enhanced_district_stats(events, district_id):
 
         # Track virtual session specific metrics
         if is_virtual:
-            # Count teachers for virtual sessions
+            # Count teachers for virtual sessions (all registered)
             teacher_registrations = event.teacher_registrations
             stats["virtual_sessions"]["registered_teachers"] += len(
                 teacher_registrations
             )
 
-            # Count confirmed teachers (those with attendance confirmed)
-            confirmed_teachers = [
+            # Count confirmed teachers (those with attendance confirmed) - ALL teachers
+            confirmed_teacher_regs = [
                 t
                 for t in teacher_registrations
                 if t.attendance_confirmed_at is not None
             ]
-            stats["virtual_sessions"]["confirmed_teachers"] += len(confirmed_teachers)
 
-            # Track unique teachers
-            for teacher_reg in teacher_registrations:
+            # Filter by district: only count teachers from this district's schools
+            district_confirmed_teachers = [
+                reg
+                for reg in confirmed_teacher_regs
+                if reg.teacher.school_id
+                and reg.teacher.school_id in district_school_ids
+            ]
+
+            stats["virtual_sessions"]["confirmed_teachers"] += len(
+                district_confirmed_teachers
+            )
+
+            # Track unique teachers (only from district, only confirmed)
+            for teacher_reg in district_confirmed_teachers:
                 unique_teachers_virtual.add(teacher_reg.teacher_id)
 
             # Count classrooms reached (assuming each teacher represents a classroom)
+            # Use confirmed teachers from district only
             stats["virtual_sessions"]["classrooms_reached"] += len(
-                teacher_registrations
+                district_confirmed_teachers
             )
 
     # Set unique counts

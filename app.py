@@ -80,6 +80,24 @@ init_routes(app)
 app.jinja_env.filters["short_date"] = short_date
 app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
 
+# Add custom JSON filter for district scoping
+import json
+
+
+def from_json_filter(json_string):
+    """Custom Jinja2 filter to parse JSON strings."""
+    if not json_string or json_string == "None" or json_string == "null":
+        return []
+    try:
+        if isinstance(json_string, str):
+            return json.loads(json_string)
+        return json_string
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+app.jinja_env.filters["from_json"] = from_json_filter
+
 
 @app.route("/docs/<path:filename>")
 def documentation(filename):
@@ -659,6 +677,11 @@ def api_quality_settings():
         return jsonify({"error": str(e)}), 500
 
 
+def create_app():
+    """Minimal app factory to integrate with WSGI servers and tests."""
+    return app
+
+
 if __name__ == "__main__":
     # Start cache refresh scheduler in production
     if flask_env == "production":
@@ -667,7 +690,9 @@ if __name__ == "__main__":
             app.logger.info("Cache refresh scheduler started")
         except Exception as e:
             app.logger.error(f"Failed to start cache refresh scheduler: {e}")
-    
+
     # Use production-ready server configuration
     port = int(os.environ.get("PORT", 5050))
-    app.run(host="0.0.0.0", port=port)
+    bind_all = os.environ.get("BIND_ALL", "0") in ("1", "true", "True")
+    host = "0.0.0.0" if (flask_env == "production" or bind_all) else "127.0.0.1"
+    app.run(host=host, port=port)

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from flask import url_for
@@ -12,7 +13,8 @@ from models.contact import (
     Phone,
     RaceEthnicityEnum,
 )
-from models.volunteer import Skill, Volunteer
+from models.event import Event, EventFormat, EventStatus, EventType
+from models.volunteer import EventParticipation, Skill, Volunteer
 from tests.conftest import assert_route_response, safe_route_test
 
 
@@ -106,8 +108,8 @@ def test_edit_volunteer(client, auth_headers, test_volunteer, app):
         }
 
         response = client.post(
-                f"/volunteers/edit/{volunteer.id}", data=data, headers=auth_headers
-            )
+            f"/volunteers/edit/{volunteer.id}", data=data, headers=auth_headers
+        )
 
         # Accept template errors or successful responses
         assert_route_response(response, expected_statuses=[200, 302, 404, 500])
@@ -282,3 +284,117 @@ def test_volunteer_skill_model(app):
         # Test reverse relationship
         assert volunteer in skill1.volunteers
         assert volunteer in skill2.volunteers
+
+
+def test_volunteer_scheduled_status_date_awareness(
+    client, auth_headers, test_volunteer, app
+):
+    """
+    Test that Scheduled status is properly categorized based on event date.
+
+    This test verifies the fix for the bug where Scheduled status events
+    were incorrectly converted to Attended without checking if the event
+    is in the future or past.
+
+    Expected behavior:
+    - Future events with Scheduled status -> Scheduled category
+    - Past events with Scheduled status -> Unknown category
+    - Past events with Attended status -> Attended category
+    """
+    with app.app_context():
+        test_volunteer = db.session.merge(test_volunteer)
+        now = datetime.now(timezone.utc)
+
+        # Create future event
+        future_event = Event(
+            title="Future Career Fair",
+            type=EventType.CAREER_FAIR,
+            format=EventFormat.IN_PERSON,
+            start_date=now + timedelta(days=30),
+            end_date=now + timedelta(days=30, hours=4),
+            status=EventStatus.CONFIRMED,
+            volunteers_needed=10,
+        )
+
+        # Create past event
+        past_event = Event(
+            title="Past Career Fair",
+            type=EventType.CAREER_FAIR,
+            format=EventFormat.IN_PERSON,
+            start_date=now - timedelta(days=30),
+            end_date=now - timedelta(days=30, hours=4),
+            status=EventStatus.COMPLETED,
+            volunteers_needed=10,
+        )
+
+        db.session.add_all([future_event, past_event])
+        db.session.flush()
+
+        # Create participations with different statuses and dates
+        future_scheduled = EventParticipation(
+            volunteer_id=test_volunteer.id,
+            event_id=future_event.id,
+            status="Scheduled",
+            delivery_hours=None,
+        )
+
+        past_scheduled = EventParticipation(
+            volunteer_id=test_volunteer.id,
+            event_id=past_event.id,
+            status="Scheduled",
+            delivery_hours=None,
+        )
+
+        past_attended = EventParticipation(
+            volunteer_id=test_volunteer.id,
+            event_id=past_event.id,
+            status="Attended",
+            delivery_hours=4.0,
+        )
+
+        db.session.add_all([future_scheduled, past_scheduled, past_attended])
+        db.session.commit()
+
+        # Mock the render_template to capture participation_stats
+        from unittest.mock import patch
+
+        captured_stats = {}
+
+        def mock_render_template(template, **kwargs):
+            if "participation_stats" in kwargs:
+                captured_stats.update(kwargs["participation_stats"])
+            return "Mock template"
+
+        # Test the volunteer view route with mocked template
+        with patch(
+            "routes.volunteers.routes.render_template", side_effect=mock_render_template
+        ):
+            response = client.get(
+                f"/volunteers/view/{test_volunteer.id}", headers=auth_headers
+            )
+
+        # Verify response is successful
+        assert response.status_code == 200
+
+        # Verify participation_stats contains correct categorization
+        assert "Scheduled" in captured_stats
+        assert "Attended" in captured_stats
+        assert "Unknown" in captured_stats
+
+        # Verify counts are correct
+        assert len(captured_stats["Scheduled"]) == 1  # Only future scheduled event
+        assert len(captured_stats["Attended"]) == 1  # Only attended event
+        assert len(captured_stats["Unknown"]) == 1  # Only past scheduled event
+
+        # Verify the correct events are in each category
+        assert captured_stats["Scheduled"][0]["event"].title == "Future Career Fair"
+        assert captured_stats["Attended"][0]["event"].title == "Past Career Fair"
+        assert captured_stats["Unknown"][0]["event"].title == "Past Career Fair"
+
+        # Clean up participations
+        db.session.delete(future_scheduled)
+        db.session.delete(past_scheduled)
+        db.session.delete(past_attended)
+        db.session.delete(future_event)
+        db.session.delete(past_event)
+        db.session.commit()

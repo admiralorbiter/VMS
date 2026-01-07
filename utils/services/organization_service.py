@@ -226,8 +226,11 @@ class OrganizationService:
             .filter(
                 VolunteerOrganization.organization_id == org_id,
                 Event.type != EventType.VIRTUAL_SESSION,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed"]
+                db.or_(
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed"]
+                    ),
+                    Event.status == EventStatus.CONFIRMED,
                 ),
                 Volunteer.exclude_from_reports == False,
             )
@@ -245,6 +248,13 @@ class OrganizationService:
         # Group events by event with volunteer names
         events_by_event = {}
         for event, volunteer, status, hours in detailed_events:
+            # For CONFIRMED events, include all volunteers; for completed events, only include those with hours
+            if event.status == EventStatus.CONFIRMED:
+                # For scheduled events, hours might be None, so set to 0 if None
+                hours = hours or 0
+            elif hours is None:
+                # Skip events without hours for completed events
+                continue
             event_key = f"{event.id}_{event.title}"
             if event_key not in events_by_event:
                 events_by_event[event_key] = {
@@ -319,8 +329,11 @@ class OrganizationService:
             .filter(
                 VolunteerOrganization.organization_id == org_id,
                 Event.type == EventType.VIRTUAL_SESSION,
-                EventParticipation.status.in_(
-                    ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                db.or_(
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+                    ),
+                    Event.status == EventStatus.CONFIRMED,
                 ),
                 Volunteer.exclude_from_reports == False,
                 db.or_(

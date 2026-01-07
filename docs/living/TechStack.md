@@ -28,6 +28,9 @@ canonical: "/docs/living/TechStack.md"
 - **Flask-Login**: 0.6+ - User session management
 - **Flask-WTF**: 1.1+ - Form handling and CSRF protection
 - **Werkzeug**: Password hashing and security utilities
+- **Role-Based Access Control**: USER, SUPERVISOR, MANAGER, ADMIN hierarchy
+- **District and School Scoping**: Flexible access control for restricted users
+- **API Token Authentication**: Secure API access with expiration
 
 ### **Data Processing & Validation**
 - **Pandas**: 1.5+ - Data manipulation and analysis

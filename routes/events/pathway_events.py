@@ -22,6 +22,7 @@ Dependencies:
 - Various utility functions from routes.utils
 """
 
+import re
 from datetime import datetime  # Add datetime
 
 from flask import Blueprint, jsonify
@@ -510,6 +511,14 @@ def sync_unaffiliated_events():
                 )
 
                 # Query for volunteer participants for this batch of events
+                # Build a safe SOQL IN list from known Salesforce IDs
+                safe_ids = ",".join(
+                    [
+                        f"'{sf_id}'"
+                        for sf_id in batch_sf_ids
+                        if re.fullmatch(r"[A-Za-z0-9]{15,18}", sf_id)
+                    ]
+                )
                 participants_query = f"""
                 SELECT
                     Id,
@@ -523,7 +532,7 @@ def sync_unaffiliated_events():
                     Title__c
                 FROM Session_Participant__c
                 WHERE Participant_Type__c = 'Volunteer'
-                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
+                AND Session__c IN ({safe_ids})
                 """
 
                 try:
@@ -567,6 +576,14 @@ def sync_unaffiliated_events():
                 print(
                     f"Processing student participants batch {i//batch_size + 1} of {(len(processed_event_sf_ids) + batch_size - 1)//batch_size} ({len(batch_sf_ids)} events)"
                 )
+                # Build a safe SOQL IN list from known Salesforce IDs
+                safe_ids_students = ",".join(
+                    [
+                        f"'{sf_id}'"
+                        for sf_id in batch_sf_ids
+                        if re.fullmatch(r"[A-Za-z0-9]{15,18}", sf_id)
+                    ]
+                )
                 student_participant_query = f"""
                 SELECT
                     Id,
@@ -580,7 +597,7 @@ def sync_unaffiliated_events():
                     Title__c
                 FROM Session_Participant__c
                 WHERE Participant_Type__c = 'Student'
-                AND Session__c IN ({','.join([f"'{sf_id}'" for sf_id in batch_sf_ids])})
+                AND Session__c IN ({safe_ids_students})
                 """
                 try:
                     student_participant_result = sf.query_all(student_participant_query)

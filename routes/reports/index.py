@@ -14,7 +14,6 @@ Key Features:
 - URL routing for report access
 
 Report Categories:
-- Virtual Events: Virtual session usage and statistics
 - Volunteer Recognition: Thank you reports and volunteer metrics
 - Organization Recognition: Organization contribution reports
 - District Reports: Comprehensive district-level analytics
@@ -24,8 +23,7 @@ Report Categories:
 - Attendance: Attendance tracking and statistics
 
 Available Reports:
-1. Virtual Session Usage: District-based virtual session statistics
-2. Volunteer Thank You Report: Top volunteers by hours and events
+1. Volunteer Thank You Report: Top volunteers by hours and events
 3. Organization Thank You Report: Organization contribution metrics
 4. District Year-End Report: Comprehensive district analytics
 5. First Time Volunteer Report: New volunteer engagement metrics
@@ -54,7 +52,7 @@ Security Features:
 """
 
 from flask import Blueprint, render_template
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 # Create blueprint
 index_bp = Blueprint("reports_index", __name__)
@@ -92,7 +90,6 @@ def load_routes(bp):
             - category: Report category for organization
 
         Categories:
-            - Virtual Events: Virtual session and online engagement
             - Volunteer Recognition: Thank you and appreciation reports
             - Organization Recognition: Organization contribution metrics
             - District Reports: District-level comprehensive analytics
@@ -105,14 +102,7 @@ def load_routes(bp):
             Rendered reports template with available report catalog
         """
         # Define available reports
-        available_reports = [
-            {
-                "title": "Virtual Session Usage",
-                "description": "View virtual session statistics by district, including attendance rates and total participation.",
-                "icon": "fa-solid fa-video",
-                "url": "/reports/virtual/usage",
-                "category": "Virtual Events",
-            },
+        all_reports = [
             {
                 "title": "Volunteer Thank You Report",
                 "description": "View top volunteers by hours and events for end of year thank you notes.",
@@ -191,6 +181,25 @@ def load_routes(bp):
                 "url": "/reports/dia-events",
                 "category": "Event Management",
             },
+            {
+                "title": "KCTAA Volunteer Matches",
+                "description": "Match KCTAA personnel names against volunteers in the system, showing volunteer activity counts and match quality indicators.",
+                "icon": "fa-solid fa-users-gear",
+                "url": "/reports/kctaa",
+                "category": "Volunteer Reports",
+            },
         ]
+
+        # Filter reports based on user scope
+        if current_user.scope_type == "district":
+            # District-scoped users only see district-specific reports
+            available_reports = [
+                report
+                for report in all_reports
+                if report["url"] in ["/reports/district/year-end"]
+            ]
+        else:
+            # Global users see all reports
+            available_reports = all_reports
 
         return render_template("reports/reports.html", reports=available_reports)

@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}District Year-End Detailed Stats Breakdown{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<style>
+.breakdown-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.breakdown-header h1 {
+    color: var(--ucla-blue);
+    margin: 0;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.back-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.back-link:hover {
+    background-color: rgba(70, 117, 153, 0.1);
+    text-decoration: none;
+}
+
+.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.breakdown-table thead {
+    background: var(--ucla-blue);
+    color: white;
+}
+
+.breakdown-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--delft-blue);
+}
+
+.breakdown-table th:first-child {
+    min-width: 250px;
+}
+
+.breakdown-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.breakdown-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.breakdown-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.metric-name {
+    font-weight: 600;
+    color: #495057;
+}
+
+.metric-value {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.metric-total {
+    font-weight: 600;
+    color: var(--ucla-blue);
+}
+
+.metric-unique {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.metric-unique.not-applicable {
+    font-style: italic;
+    color: #adb5bd;
+}
+
+.overall-column {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.district-column {
+    text-align: center;
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-style: italic;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breakdown-container">
+    <div class="breakdown-header">
+        <div>
+            <a href="{{ url_for('report.district_year_end', school_year=school_year, host_filter=host_filter) }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Districts
+            </a>
+            <h1>Detailed Stats Breakdown {{ school_year }}</h1>
+        </div>
+        <div class="header-controls">
+            <div class="year-filter">
+                <form method="get" action="{{ url_for('report.district_year_end_breakdown') }}" id="yearForm">
+                    <input type="hidden" name="host_filter" value="{{ host_filter }}">
+                    <select name="school_year" onchange="this.form.submit()">
+                        {% for y in school_years %}
+                        <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                            {{ y[:2] }}-{{ y[2:] }} School Year
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if breakdown_data %}
+    <table class="breakdown-table">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th class="overall-column">Overall</th>
+                {% for district_name in breakdown_data.keys() %}
+                <th class="district-column">{{ district_name }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <!-- In-Person Students -->
+            <tr>
+                <td class="metric-name">Students Participated in In-Person Events</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.in_person_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.in_person_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('in_person_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('in_person_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- In-Person Volunteers -->
+            <tr>
+                <td class="metric-name">Volunteers Engaged in In-Person Events</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.in_person_volunteers.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.in_person_volunteers.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('in_person_volunteers', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('in_person_volunteers', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Career Jumping Students -->
+            <tr>
+                <td class="metric-name">Students Participated in Career Jumping</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.career_jumping_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.career_jumping_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('career_jumping_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('career_jumping_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Career Speakers Students -->
+            <tr>
+                <td class="metric-name">Students Participated in Career Speakers</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.career_speakers_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.career_speakers_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('career_speakers_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('career_speakers_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Career/College Fair High School Students -->
+            <tr>
+                <td class="metric-name">High School Students in Career Fair / College Fair</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.career_college_fair_hs_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.career_college_fair_hs_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('career_college_fair_hs_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('career_college_fair_hs_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Health Start Students -->
+            <tr>
+                <td class="metric-name">Students Participated in Health Start</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.healthstart_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.healthstart_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('healthstart_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('healthstart_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- BFI Students -->
+            <tr>
+                <td class="metric-name">Students Participated in BFI</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.bfi_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.bfi_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('bfi_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('bfi_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Connector Sessions: Teachers Engaged -->
+            <tr>
+                <td class="metric-name">Teachers Engaged in Connector Sessions</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.connector_sessions.teachers_engaged.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.connector_sessions.teachers_engaged.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('teachers_engaged', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('connector_sessions', {}).get('teachers_engaged', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Connector Sessions: Students Participated -->
+            <tr>
+                <td class="metric-name">Students Participated in Connector Sessions</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.connector_sessions.students_participated.total }}</span>
+                        <span class="metric-unique not-applicable">Unique: —</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('students_participated', {}).get('total', 0) }}</span>
+                        <span class="metric-unique not-applicable">—</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Number of In-Person Events -->
+            <tr>
+                <td class="metric-name">Number of In-Person Events</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ overall_totals.in_person_events_count }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('in_person_events_count', 0) }}</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Connector Sessions: Number of Sessions -->
+            <tr>
+                <td class="metric-name">Number of Connector Sessions</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ overall_totals.connector_sessions.session_count }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('session_count', 0) }}</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">
+        <p>No breakdown data available for the selected school year.</p>
+        <p>Please refresh the data on the main district year-end report page.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

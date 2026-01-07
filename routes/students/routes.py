@@ -25,6 +25,7 @@ from models import db
 from models.contact import ContactTypeEnum, Email, GenderEnum, Phone
 from models.school_model import School
 from models.student import Student
+from routes.decorators import global_users_only
 from routes.utils import parse_date
 
 # Create Blueprint for student routes
@@ -33,6 +34,7 @@ students_bp = Blueprint("students", __name__)
 
 @students_bp.route("/students")
 @login_required
+@global_users_only
 def view_students():
     """
     Main student management page showing paginated list of students.
@@ -62,6 +64,7 @@ def view_students():
 
 @students_bp.route("/students/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_students_from_salesforce():
     """
     Import student data from Salesforce with chunked processing.
@@ -213,6 +216,7 @@ def import_students_from_salesforce():
 
 @students_bp.route("/students/view/<int:id>")
 @login_required
+@global_users_only
 def view_student_details(id):
     """
     View detailed information for a specific student.

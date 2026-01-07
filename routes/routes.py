@@ -53,12 +53,14 @@ from routes.client_projects.routes import client_projects_bp
 from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
-from routes.management.management import management_bp
 from routes.management.cache_management import cache_management_bp
+from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
+
+# Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
 from routes.volunteers.routes import volunteers_bp
 

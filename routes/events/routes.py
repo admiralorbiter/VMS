@@ -64,6 +64,7 @@ from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
+from routes.decorators import global_users_only
 from routes.utils import (
     DISTRICT_MAPPINGS,
     admin_required,
@@ -283,7 +284,20 @@ def process_participation_row(row, success_count, error_count, errors):
         # Check if participation already exists
         existing = EventParticipation.query.filter_by(salesforce_id=row["Id"]).first()
         if existing:
-            return success_count, error_count  # Skip existing records
+            # Update existing record with current Salesforce data
+            existing.status = row["Status__c"]
+            existing.delivery_hours = safe_parse_delivery_hours(
+                row.get("Delivery_Hours__c")
+            )
+            # Update other fields that might have changed
+            if row.get("Email__c"):
+                existing.email = row["Email__c"]
+            if row.get("Title__c"):
+                existing.title = row["Title__c"]
+            if row.get("Age_Group__c"):
+                existing.age_group = row["Age_Group__c"]
+            # print(f"Successfully updated participation: {row['Id']}")  # Debug log
+            return success_count + 1, error_count
 
         # Find the volunteer and event by their Salesforce IDs
         volunteer = Volunteer.query.filter_by(
@@ -513,6 +527,7 @@ def fix_missing_participation_records(event):
 
 @events_bp.route("/events")
 @login_required
+@global_users_only
 def events():
     """
     List all events with filtering, sorting, and pagination
@@ -643,6 +658,7 @@ def events():
 
 @events_bp.route("/events/add", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def add_event():
     """
     Create a new event
@@ -699,6 +715,7 @@ def add_event():
 
 @events_bp.route("/events/view/<int:id>")
 @login_required
+@global_users_only
 def view_event(id):
     """
     View detailed information about a specific event
@@ -853,6 +870,7 @@ def view_event(id):
 
 @events_bp.route("/events/edit/<int:id>", methods=["GET", "POST"])
 @login_required
+@global_users_only
 def edit_event(id):
     """
     Edit an existing event
@@ -1007,6 +1025,7 @@ def delete_event(id):
 
 @events_bp.route("/api/skills/find-or-create", methods=["POST"])
 @login_required
+@global_users_only
 def find_or_create_skill():
     """
     Find or create a skill by name
@@ -1040,6 +1059,7 @@ def find_or_create_skill():
 
 @events_bp.route("/events/import-from-salesforce", methods=["POST"])
 @login_required
+@global_users_only
 def import_events_from_salesforce():
     """
     Import events and participants from Salesforce
@@ -1236,6 +1256,7 @@ def import_events_from_salesforce():
 
 @events_bp.route("/events/sync-student-participants", methods=["POST"])
 @login_required
+@global_users_only
 def sync_student_participants():
     """
     Sync student participation data from Salesforce
@@ -1331,6 +1352,7 @@ def sync_student_participants():
 
 @events_bp.route("/events/export/<int:id>")
 @login_required
+@global_users_only
 def export_event_excel(id):
     """
     Export event data, including attended volunteer and student participation, as an Excel file.

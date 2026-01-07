@@ -31,6 +31,21 @@ class Config:
         os.environ.get("WTF_CSRF_SECRET_KEY") or "csrf-secret-key-change-in-production"
     )
 
+    # Session cookie settings (env-agnostic defaults)
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "vms_session")
+
+    # Flask-Login remember cookie settings
+    REMEMBER_COOKIE_NAME = os.environ.get("REMEMBER_COOKIE_NAME", "vms_remember")
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+
+    # Session lifetime (seconds); default 8 hours
+    PERMANENT_SESSION_LIFETIME = int(
+        os.environ.get("SESSION_LIFETIME_SECONDS", 60 * 60 * 8)
+    )
+
     # Salesforce configuration
     SF_USERNAME = os.environ.get("SF_USERNAME")
     SF_PASSWORD = os.environ.get("SF_PASSWORD")
@@ -45,13 +60,22 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get("DATABASE_URL") or f"sqlite:///{Config.DEFAULT_DB_PATH}"
     )
+    # Allow HTTP in local development
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
 
 
 class ProductionConfig(Config):
     """Production configuration."""
 
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
+    # Fallback to SQLite file if DATABASE_URL is not provided, so the app can boot
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL") or f"sqlite:///{Config.DEFAULT_DB_PATH}"
+    )
+    # Require HTTPS in production
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
 
 
 class TestingConfig(Config):

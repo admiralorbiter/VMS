@@ -139,6 +139,9 @@
             <button onclick="refreshData()" class="refresh-button">
                 <i class="fas fa-sync-alt"></i> Refresh Data
             </button>
+            <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
+                <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
+            </a>
         </div>
         {% if last_updated %}
         <div class="last-updated">
@@ -147,7 +150,7 @@
         {% endif %}
     </div>
 
-    <!-- Host Filter Toggle -->
+    {# Host Filter Toggle - Commented out for now
     <div class="host-filter-toggle" style="margin-bottom: 2rem;">
         <form method="get" id="hostFilterForm" style="display: flex; gap: 0.5rem; align-items: center;">
             <input type="hidden" name="school_year" value="{{ school_year }}">
@@ -155,6 +158,7 @@
             <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
         </form>
     </div>
+    #}
 
     <div id="loadingIndicator" style="display: none;">
         <div class="spinner-border text-primary" role="status">

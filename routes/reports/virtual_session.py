@@ -24,11 +24,13 @@ from models.contact import LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
+from models.organization import VolunteerOrganization
 from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCache
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
-from routes.utils import kck_viewer_only
+from routes.decorators import district_scoped_required
+from routes.utils import admin_required
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
@@ -424,6 +426,23 @@ def apply_runtime_filters(session_data, filters):
             if not filter_matched and session_status != filter_status:
                 continue
 
+        # Apply text search filter (searches teacher name, session title, and presenter)
+        if filters.get("search"):
+            search_term = filters["search"].strip().lower()
+            if search_term:
+                # Get field values, handling None and empty strings
+                teacher_name = str(session.get("teacher_name") or "").lower()
+                session_title = str(session.get("session_title") or "").lower()
+                presenter = str(session.get("presenter") or "").lower()
+
+                # Check if search term matches any of the fields (case-insensitive substring match)
+                if (
+                    search_term not in teacher_name
+                    and search_term not in session_title
+                    and search_term not in presenter
+                ):
+                    continue
+
         filtered_data.append(session)
 
     return filtered_data
@@ -596,6 +615,7 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
                             pass
 
                 # Session-level flags (local / POC sessions)
+                # Prefer event_id for consistency with session counting logic
                 sid_flag = session.get("event_id") or session.get("session_title")
                 if sid_flag:
                     if any(p.get("is_local") for p in session["presenter_data"]):
@@ -682,10 +702,17 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
     overall_student_count = unique_teacher_count * 25
 
     # Prepare overall summary stats
+    # Use session_ids (event_id) if available for session counting, otherwise fall back to session_count
+    overall_session_count = (
+        len(overall_stats.get("session_ids", set()))
+        if overall_stats.get("session_ids")
+        else len(overall_stats["session_count"])
+    )
+
     overall_summary = {
         "teacher_count": unique_teacher_count,
         "student_count": overall_student_count,
-        "session_count": len(overall_stats["session_count"]),
+        "session_count": overall_session_count,
         "experience_count": overall_stats["experience_count"],  # Use integer value
         "organization_count": len(overall_stats["organization_count"]),
         "professional_count": len(overall_stats["professional_count"]),
@@ -698,8 +725,14 @@ def calculate_summaries_from_sessions(session_data, show_all_districts=False):
         "poc_session_count": len(overall_stats["poc_sessions"]),
     }
 
-    # Percentages overall
-    denom = overall_summary["session_count"] or 1
+    # Percentages overall - use session_ids for denominator if available
+    denom = (
+        len(overall_stats.get("session_ids", set()))
+        if overall_stats.get("session_ids")
+        else (overall_summary["session_count"] or 1)
+    )
+    if denom == 0:
+        denom = 1
     overall_summary["local_session_percent"] = (
         round(100 * overall_summary["local_session_count"] / denom)
         if overall_summary["local_session_count"]
@@ -745,6 +778,7 @@ def apply_sorting_and_pagination(session_data, request_args, current_filters):
         "district": "district",
         "session_title": "session_title",
         "presenter": "presenter",
+        "presenter_organization": "presenter_organization",
         "topic_theme": "topic_theme",
     }
 
@@ -859,6 +893,37 @@ def get_google_sheet_url(virtual_year):
     return None
 
 
+def _get_primary_org_name_for_volunteer(volunteer):
+    """
+    Get the primary organization name for a volunteer.
+    Prefer explicit primary org from VolunteerOrganization, fall back to organization_name field.
+    Uses the same pattern as routes/reports/volunteers_by_event.py:_get_primary_org_name
+    """
+    # Prefer explicit primary org from association table
+    if getattr(volunteer, "volunteer_organizations", None):
+        try:
+            primary = next(
+                (vo for vo in volunteer.volunteer_organizations if vo.is_primary), None
+            )
+            if primary and primary.organization and primary.organization.name:
+                return primary.organization.name
+            # Fall back to first org if no primary
+            first = (
+                volunteer.volunteer_organizations[0].organization
+                if volunteer.volunteer_organizations
+                else None
+            )
+            if first and first.name:
+                return first.name
+        except (StopIteration, AttributeError, IndexError):
+            pass
+    # Avoid showing raw Salesforce IDs stored in organization_name
+    org_name = getattr(volunteer, "organization_name", None)
+    if org_name and not (len(str(org_name)) == 18 and str(org_name).isalnum()):
+        return org_name
+    return None
+
+
 def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     """
     Compute virtual session data from database.
@@ -873,12 +938,23 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
         Tuple of (session_data, district_summaries, overall_summary, filter_options)
     """
     # Base query for virtual session events
-    from models import eagerload_event_bundle
+    from sqlalchemy.orm import selectinload
 
-    base_query = eagerload_event_bundle(Event.query).filter(
-        Event.type == EventType.VIRTUAL_SESSION,
-        Event.start_date >= date_from,
-        Event.start_date <= date_to,
+    from models import eagerload_event_bundle
+    from models.organization import VolunteerOrganization
+
+    base_query = (
+        eagerload_event_bundle(Event.query)
+        .options(
+            selectinload(Event.volunteers)
+            .selectinload(Volunteer.volunteer_organizations)
+            .selectinload(VolunteerOrganization.organization)
+        )
+        .filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        )
     )
 
     # Apply database-level filters
@@ -1011,6 +1087,17 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                             if event.volunteers
                             else ""
                         ),
+                        "presenter_organization": (
+                            ", ".join(
+                                [
+                                    _get_primary_org_name_for_volunteer(v)
+                                    or "Independent"
+                                    for v in event.volunteers
+                                ]
+                            )
+                            if event.volunteers
+                            else ""
+                        ),
                         "presenter_data": (
                             [
                                 {
@@ -1080,6 +1167,16 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
                         if event.volunteers
                         else ""
                     ),
+                    "presenter_organization": (
+                        ", ".join(
+                            [
+                                _get_primary_org_name_for_volunteer(v) or "Independent"
+                                for v in event.volunteers
+                            ]
+                        )
+                        if event.volunteers
+                        else ""
+                    ),
                     "presenter_data": (
                         [
                             {
@@ -1116,10 +1213,12 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     )
 
     # Ensure all districts with data are included in summaries
-    # If a district has data but no summary was created, create an empty summary
-
+    # Only create empty summaries for districts that appear in all_districts but have no completed sessions
+    # This allows showing all districts that exist, even if they have zero completed sessions
     for district_name in all_districts:
         if district_name not in district_summaries:
+            # Only create empty summary if we want to show all districts
+            # Otherwise, skip districts with no completed sessions
             district_summaries[district_name] = {
                 "teacher_count": 0,
                 "total_students": 0,
@@ -1161,6 +1260,64 @@ def compute_virtual_session_data(virtual_year, date_from, date_to, filters):
     return session_data, district_summaries, overall_summary, filter_options
 
 
+def _district_name_matches(target_district_name, compare_district_name):
+    """
+    Check if a district name matches the target district, including aliases.
+
+    Args:
+        target_district_name: The target district name (from URL/filter)
+        compare_district_name: The district name to compare against
+
+    Returns:
+        bool: True if the districts match (including aliases)
+    """
+    if not target_district_name or not compare_district_name:
+        return False
+
+    # Normalize for comparison (case-insensitive, strip whitespace)
+    target_normalized = target_district_name.strip().lower()
+    compare_normalized = compare_district_name.strip().lower()
+
+    # Exact match (case-insensitive)
+    if target_normalized == compare_normalized:
+        return True
+
+    # Check against DISTRICT_MAPPING aliases
+    from routes.reports.common import DISTRICT_MAPPING
+
+    # Find the target district in the mapping
+    target_mapping = None
+    for mapping in DISTRICT_MAPPING.values():
+        if mapping["name"].strip().lower() == target_normalized:
+            target_mapping = mapping
+            break
+
+    if target_mapping:
+        # Check if compare_district_name matches any alias
+        aliases = target_mapping.get("aliases", [])
+        for alias in aliases:
+            if alias.strip().lower() == compare_normalized:
+                return True
+
+        # Also check reverse: if compare_district_name is the primary name and target is an alias
+        if (
+            compare_district_name.strip().lower()
+            == target_mapping["name"].strip().lower()
+        ):
+            return True
+
+    # Reverse check: maybe compare_district_name is in the mapping and target is an alias
+    for mapping in DISTRICT_MAPPING.values():
+        if mapping["name"].strip().lower() == compare_normalized:
+            aliases = mapping.get("aliases", [])
+            for alias in aliases:
+                if alias.strip().lower() == target_normalized:
+                    return True
+            break
+
+    return False
+
+
 def compute_virtual_session_district_data(
     district_name, virtual_year, date_from, date_to
 ):
@@ -1177,12 +1334,23 @@ def compute_virtual_session_district_data(
         Tuple of (session_data, monthly_stats, school_breakdown, teacher_breakdown, summary_stats)
     """
     # Base query for virtual session events
-    from models import eagerload_event_bundle
+    from sqlalchemy.orm import selectinload
 
-    base_query = eagerload_event_bundle(Event.query).filter(
-        Event.type == EventType.VIRTUAL_SESSION,
-        Event.start_date >= date_from,
-        Event.start_date <= date_to,
+    from models import eagerload_event_bundle
+    from models.organization import VolunteerOrganization
+
+    base_query = (
+        eagerload_event_bundle(Event.query)
+        .options(
+            selectinload(Event.volunteers)
+            .selectinload(Volunteer.volunteer_organizations)
+            .selectinload(VolunteerOrganization.organization)
+        )
+        .filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        )
     )
 
     events = base_query.order_by(Event.start_date.desc()).all()
@@ -1215,7 +1383,8 @@ def compute_virtual_session_district_data(
                     teacher_district = event.district_partner
 
                 # If teacher belongs to target district, include this event
-                if teacher_district == district_name:
+                # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+                if _district_name_matches(district_name, teacher_district):
                     event_has_target_district_teacher = True
                     target_district_teachers.add(
                         f"{teacher.first_name} {teacher.last_name}"
@@ -1229,33 +1398,24 @@ def compute_virtual_session_district_data(
         if not event_has_target_district_teacher:
             continue
 
-        # Aggregate all teachers and schools for this event (for display purposes)
-        teachers = set()
-        schools = set()
-        for teacher_reg in event.teacher_registrations:
-            teacher = teacher_reg.teacher
-            if teacher:
-                teachers.add(f"{teacher.first_name} {teacher.last_name}")
-                # School
-                school_name = ""
-                if hasattr(teacher, "school_obj") and teacher.school_obj:
-                    school_name = teacher.school_obj.name
-                elif teacher.school_id:
-                    school_obj = School.query.get(teacher.school_id)
-                    if school_obj:
-                        school_name = school_obj.name
-                if school_name:
-                    schools.add(school_name)
+        # Calculate participant count for this district only
+        # Count only teachers from the target district and multiply by 25
+        district_teacher_count = len(target_district_teachers)
+        district_participant_count = district_teacher_count * 25
 
-        # Create aggregated session record
+        # Create aggregated session record using only target district teachers and schools
         session_dict[event.id] = {
             "event_id": event.id,  # This should always be the correct event ID
             "status": event.status.value if event.status else "",
             "date": event.start_date.strftime("%m/%d/%y") if event.start_date else "",
             "time": event.start_date.strftime("%I:%M %p") if event.start_date else "",
             "session_type": event.additional_information or "",
-            "teachers": sorted(teachers) if teachers else [],
-            "schools": sorted(schools) if schools else [],
+            "teachers": (
+                sorted(target_district_teachers) if target_district_teachers else []
+            ),
+            "schools": (
+                sorted(target_district_schools) if target_district_schools else []
+            ),
             "district": district_name,
             "session_title": event.title,
             "presenter": (
@@ -1286,7 +1446,7 @@ def compute_virtual_session_district_data(
             ),
             "topic_theme": event.series or "",
             "session_link": event.registration_link or "",
-            "participant_count": event.participant_count or 0,
+            "participant_count": district_participant_count,
             "duration": event.duration or 0,
             "is_simulcast": (
                 any([tr.is_simulcast for tr in event.teacher_registrations])
@@ -1342,7 +1502,8 @@ def compute_virtual_session_district_data(
                     teacher_district = event.district_partner
 
                 # If teacher belongs to target district, include this event
-                if teacher_district == district_name:
+                # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+                if _district_name_matches(district_name, teacher_district):
                     event_has_target_district_teacher = True
                     break
 
@@ -1404,7 +1565,8 @@ def compute_virtual_session_district_data(
                     teacher_district = event.district_partner
 
                 # Skip teachers not from the target district
-                if teacher_district != district_name:
+                # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+                if not _district_name_matches(district_name, teacher_district):
                     continue
 
                 teacher_id = teacher.id
@@ -1470,7 +1632,11 @@ def compute_virtual_session_district_data(
         for school_name in session["schools"]:
             # Check if this school belongs to the target district
             school = School.query.filter_by(name=school_name).first()
-            if school and school.district and school.district.name == district_name:
+            if (
+                school
+                and school.district
+                and _district_name_matches(district_name, school.district.name)
+            ):
                 total_schools.add(school_name)
                 # School breakdown
                 if school_name not in school_breakdown:
@@ -2045,6 +2211,9 @@ def load_routes(bp):
             "school": request.args.get("school"),
             "district": request.args.get("district"),
             "status": request.args.get("status"),
+            "search": request.args.get(
+                "search"
+            ),  # Text search across teacher, title, presenter
             "show_all_districts": show_all_districts,
         }
 
@@ -2079,6 +2248,19 @@ def load_routes(bp):
                 district_summaries = cached_data.district_summaries
                 overall_summary = cached_data.overall_summary
                 filter_options = cached_data.filter_options
+
+                # Filter district summaries to main districts if show_all_districts is False
+                if not show_all_districts and district_summaries:
+                    main_districts = {
+                        "Hickman Mills School District",
+                        "Grandview School District",
+                        "Kansas City Kansas Public Schools",
+                    }
+                    district_summaries = {
+                        k: v
+                        for k, v in district_summaries.items()
+                        if k in main_districts
+                    }
 
                 # Check if cached data has the new fields; if any are missing, recompute summaries
                 if session_data and len(session_data) > 0:
@@ -2130,34 +2312,135 @@ def load_routes(bp):
                         current_filters["school"],
                         current_filters["district"],
                         current_filters["status"],
+                        current_filters.get("search"),  # Include search filter
                     ]
                 ):
                     # Store original unfiltered data for district summaries
                     unfiltered_session_data = session_data.copy()
                     session_data = apply_runtime_filters(session_data, current_filters)
-                    # Recalculate summaries based on UNFILTERED data to show all districts
-                    district_summaries, overall_summary = (
-                        calculate_summaries_from_sessions(
-                            unfiltered_session_data,
-                            current_filters.get("show_all_districts", False),
-                        )
+                    # Recalculate summaries using same method as individual district pages
+                    # Get list of all districts that appear in the unfiltered data
+                    all_districts_in_data = set()
+                    for session in unfiltered_session_data:
+                        if session.get("district"):
+                            all_districts_in_data.add(session["district"])
+
+                    # Filter to only show main districts by default (unless admin requests all)
+                    main_districts = {
+                        "Hickman Mills School District",
+                        "Grandview School District",
+                        "Kansas City Kansas Public Schools",
+                    }
+
+                    # Determine which districts to show in the breakdown
+                    if show_all_districts:
+                        districts_to_show = all_districts_in_data
+                    else:
+                        # Only show main districts when show_all_districts=False
+                        districts_to_show = {
+                            d for d in all_districts_in_data if d in main_districts
+                        }
+
+                    # Calculate district summaries using the same method as individual district pages
+                    district_summaries = {}
+                    for district_name in districts_to_show:
+                        try:
+                            _, _, _, _, summary_stats = (
+                                compute_virtual_session_district_data(
+                                    district_name,
+                                    selected_virtual_year,
+                                    date_from,
+                                    date_to,
+                                )
+                            )
+                            district_summaries[district_name] = {
+                                "teacher_count": summary_stats.get("total_teachers", 0),
+                                "total_students": summary_stats.get(
+                                    "total_students", 0
+                                ),
+                                "session_count": summary_stats.get(
+                                    "total_unique_sessions", 0
+                                ),
+                                "total_experiences": summary_stats.get(
+                                    "total_experiences", 0
+                                ),
+                                "organization_count": summary_stats.get(
+                                    "total_organizations", 0
+                                ),
+                                "professional_count": summary_stats.get(
+                                    "total_professionals", 0
+                                ),
+                                "professional_of_color_count": summary_stats.get(
+                                    "total_professionals_of_color", 0
+                                ),
+                                "local_professional_count": summary_stats.get(
+                                    "total_local_professionals", 0
+                                ),
+                                "school_count": summary_stats.get("total_schools", 0),
+                                "local_session_count": summary_stats.get(
+                                    "local_session_count", 0
+                                ),
+                                "poc_session_count": summary_stats.get(
+                                    "poc_session_count", 0
+                                ),
+                                "local_session_percent": summary_stats.get(
+                                    "local_session_percent", 0
+                                ),
+                                "poc_session_percent": summary_stats.get(
+                                    "poc_session_percent", 0
+                                ),
+                            }
+                        except Exception as e:
+                            print(
+                                f"DEBUG: Error calculating stats for {district_name}: {str(e)}"
+                            )
+                            district_summaries[district_name] = {
+                                "teacher_count": 0,
+                                "total_students": 0,
+                                "session_count": 0,
+                                "total_experiences": 0,
+                                "organization_count": 0,
+                                "professional_count": 0,
+                                "professional_of_color_count": 0,
+                                "local_professional_count": 0,
+                                "school_count": 0,
+                                "local_session_count": 0,
+                                "poc_session_count": 0,
+                                "local_session_percent": 0,
+                                "poc_session_percent": 0,
+                            }
+
+                    # Recalculate overall summary from unfiltered session data
+                    _, overall_summary = calculate_summaries_from_sessions(
+                        unfiltered_session_data,
+                        current_filters.get("show_all_districts", False),
                     )
 
-                    # Filter district summaries to only show the three specified districts
-                    allowed_districts = [
-                        "Kansas City Kansas Public Schools",
-                        "Hickman Mills School District",
-                        "Kansas City Public Schools (MO)",
-                    ]
+                    # Filter district summaries based on user scope
+                    if (
+                        current_user.scope_type == "district"
+                        and current_user.allowed_districts
+                    ):
+                        import json
 
-                    # Create filtered district summaries
-                    filtered_district_summaries = {}
-                    for district_name, summary in district_summaries.items():
-                        if district_name in allowed_districts:
-                            filtered_district_summaries[district_name] = summary
+                        try:
+                            allowed_districts = (
+                                json.loads(current_user.allowed_districts)
+                                if isinstance(current_user.allowed_districts, str)
+                                else current_user.allowed_districts
+                            )
 
-                    # Replace the original district_summaries with the filtered version
-                    district_summaries = filtered_district_summaries
+                            # Create filtered district summaries
+                            filtered_district_summaries = {}
+                            for district_name, summary in district_summaries.items():
+                                if district_name in allowed_districts:
+                                    filtered_district_summaries[district_name] = summary
+
+                            # Replace the original district_summaries with the filtered version
+                            district_summaries = filtered_district_summaries
+                        except (json.JSONDecodeError, TypeError):
+                            # If parsing fails, show no districts
+                            district_summaries = {}
 
                 # Apply sorting and pagination as before
                 session_data = apply_sorting_and_pagination(
@@ -2184,11 +2467,92 @@ def load_routes(bp):
 
         # Get unfiltered data first to ensure we have all districts for summaries
         print("DEBUG: Getting unfiltered data for district summaries...")
-        _, all_district_summaries, _, filter_options = compute_virtual_session_data(
+        session_data_unfiltered, _, _, filter_options = compute_virtual_session_data(
             selected_virtual_year, date_from, date_to, {}
         )
+
+        # Get list of all districts that appear in the data
+        all_districts_in_data = set()
+        for session in session_data_unfiltered:
+            if session.get("district"):
+                all_districts_in_data.add(session["district"])
+
         print(
-            f"DEBUG: Unfiltered district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
+            f"DEBUG: Districts found in session_data: {sorted(list(all_districts_in_data))}"
+        )
+
+        # Filter to only show main districts by default (unless admin requests all)
+        main_districts = {
+            "Hickman Mills School District",
+            "Grandview School District",
+            "Kansas City Kansas Public Schools",
+        }
+
+        # Determine which districts to show in the breakdown
+        if show_all_districts:
+            districts_to_show = all_districts_in_data
+        else:
+            # Only show main districts when show_all_districts=False
+            districts_to_show = {
+                d for d in all_districts_in_data if d in main_districts
+            }
+
+        print(
+            f"DEBUG: Districts to show in breakdown: {sorted(list(districts_to_show))}"
+        )
+
+        # Calculate district summaries using the same method as individual district pages
+        # This ensures consistency between breakdown cards and individual district pages
+        all_district_summaries = {}
+        for district_name in districts_to_show:
+            try:
+                # Use the same calculation method as individual district page
+                _, _, _, _, summary_stats = compute_virtual_session_district_data(
+                    district_name, selected_virtual_year, date_from, date_to
+                )
+                # Convert to the format expected by the breakdown template
+                all_district_summaries[district_name] = {
+                    "teacher_count": summary_stats.get("total_teachers", 0),
+                    "total_students": summary_stats.get("total_students", 0),
+                    "session_count": summary_stats.get("total_unique_sessions", 0),
+                    "total_experiences": summary_stats.get("total_experiences", 0),
+                    "organization_count": summary_stats.get("total_organizations", 0),
+                    "professional_count": summary_stats.get("total_professionals", 0),
+                    "professional_of_color_count": summary_stats.get(
+                        "total_professionals_of_color", 0
+                    ),
+                    "local_professional_count": summary_stats.get(
+                        "total_local_professionals", 0
+                    ),
+                    "school_count": summary_stats.get("total_schools", 0),
+                    "local_session_count": summary_stats.get("local_session_count", 0),
+                    "poc_session_count": summary_stats.get("poc_session_count", 0),
+                    "local_session_percent": summary_stats.get(
+                        "local_session_percent", 0
+                    ),
+                    "poc_session_percent": summary_stats.get("poc_session_percent", 0),
+                }
+            except Exception as e:
+                print(f"DEBUG: Error calculating stats for {district_name}: {str(e)}")
+                # Create empty summary if calculation fails
+                all_district_summaries[district_name] = {
+                    "teacher_count": 0,
+                    "total_students": 0,
+                    "session_count": 0,
+                    "total_experiences": 0,
+                    "organization_count": 0,
+                    "professional_count": 0,
+                    "professional_of_color_count": 0,
+                    "local_professional_count": 0,
+                    "school_count": 0,
+                    "local_session_count": 0,
+                    "poc_session_count": 0,
+                    "local_session_percent": 0,
+                    "poc_session_percent": 0,
+                }
+
+        print(
+            f"DEBUG: Calculated district_summaries keys: {list(all_district_summaries.keys()) if all_district_summaries else 'None'}"
         )
 
         # Now get filtered data for the session table
@@ -2196,28 +2560,47 @@ def load_routes(bp):
             selected_virtual_year, date_from, date_to, current_filters
         )
 
-        # Use the unfiltered district summaries as our base
+        # Apply runtime filters (including search) if any
+        if any(
+            [
+                current_filters["career_cluster"],
+                current_filters["school"],
+                current_filters["district"],
+                current_filters["status"],
+                current_filters.get("search"),  # Include search filter
+            ]
+        ):
+            session_data = apply_runtime_filters(session_data, current_filters)
+
+        # Use the calculated district summaries
         district_summaries = all_district_summaries
 
         print(
             f"DEBUG: Final district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
         )
 
-        # Filter district summaries to only show the three specified districts
-        allowed_districts = [
-            "Kansas City Kansas Public Schools",
-            "Hickman Mills School District",
-            "Kansas City Public Schools (MO)",
-        ]
+        # Filter district summaries based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
 
-        # Create filtered district summaries
-        filtered_district_summaries = {}
-        for district_name, summary in district_summaries.items():
-            if district_name in allowed_districts:
-                filtered_district_summaries[district_name] = summary
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
 
-        # Replace the original district_summaries with the filtered version
-        district_summaries = filtered_district_summaries
+                # Create filtered district summaries
+                filtered_district_summaries = {}
+                for district_name, summary in district_summaries.items():
+                    if district_name in allowed_districts:
+                        filtered_district_summaries[district_name] = summary
+
+                # Replace the original district_summaries with the filtered version
+                district_summaries = filtered_district_summaries
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no districts
+                district_summaries = {}
 
         print(
             f"DEBUG: After filtering, district_summaries keys: {list(district_summaries.keys()) if district_summaries else 'None'}"
@@ -2266,6 +2649,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>")
     @login_required
+    @district_scoped_required
     def virtual_usage_district(district_name):
         # Get filter parameters: Use virtual year instead of school year
         default_virtual_year = get_current_virtual_year()
@@ -2553,6 +2937,9 @@ def load_routes(bp):
             "school": request.args.get("school"),
             "district": request.args.get("district"),
             "status": request.args.get("status"),
+            "search": request.args.get(
+                "search"
+            ),  # Text search across teacher, title, presenter
         }
 
         # Base query for virtual session events (same as main route)
@@ -2655,6 +3042,17 @@ def load_routes(bp):
                                 if event.volunteers
                                 else ""
                             ),
+                            "presenter_organization": (
+                                ", ".join(
+                                    [
+                                        _get_primary_org_name_for_volunteer(v)
+                                        or "Independent"
+                                        for v in event.volunteers
+                                    ]
+                                )
+                                if event.volunteers
+                                else ""
+                            ),
                             "presenter_data": (
                                 [
                                     {"id": v.id, "name": v.full_name}
@@ -2709,6 +3107,17 @@ def load_routes(bp):
                             if event.volunteers
                             else ""
                         ),
+                        "presenter_organization": (
+                            ", ".join(
+                                [
+                                    _get_primary_org_name_for_volunteer(v)
+                                    or "Independent"
+                                    for v in event.volunteers
+                                ]
+                            )
+                            if event.volunteers
+                            else ""
+                        ),
                         "presenter_data": (
                             [
                                 {"id": v.id, "name": v.full_name}
@@ -2723,6 +3132,9 @@ def load_routes(bp):
                         "duration": event.duration or 0,
                     }
                 )
+
+        # Apply runtime filters (including search)
+        session_data = apply_runtime_filters(session_data, current_filters)
 
         # Apply sorting (same logic as main route)
         sort_column = request.args.get("sort", "date")
@@ -2739,6 +3151,7 @@ def load_routes(bp):
             "district": "district",
             "session_title": "session_title",
             "presenter": "presenter",
+            "presenter_organization": "presenter_organization",
             "topic_theme": "topic_theme",
         }
 
@@ -2856,6 +3269,7 @@ def load_routes(bp):
                 session["district"],
                 session["session_title"],
                 session["presenter"],
+                session.get("presenter_organization", ""),
                 session["topic_theme"],
                 session["session_link"],
                 session["participant_count"],
@@ -3013,6 +3427,24 @@ def load_routes(bp):
             Event.start_date >= date_from,
             Event.start_date <= date_to,
         )
+
+        # Apply district filtering for district-scoped users
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter events by allowed districts
+                base_query = base_query.filter(
+                    Event.districts.any(District.name.in_(allowed_districts))
+                )
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, return no events
+                base_query = base_query.filter(False)
 
         events = base_query.all()
 
@@ -3979,6 +4411,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/district/<district_name>/google-sheet")
     @login_required
+    @district_scoped_required
     def get_district_google_sheet(district_name):
         """Get Google Sheet for a specific district and year"""
         virtual_year = request.args.get("year", get_current_virtual_year())
@@ -4009,6 +4442,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teachers")
     @login_required
+    @district_scoped_required
     def virtual_district_teacher_breakdown(district_name):
         """
         Show detailed teacher breakdown by school for a specific district.
@@ -4085,7 +4519,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress")
     @login_required
-    @kck_viewer_only
+    @district_scoped_required
     def virtual_district_teacher_progress(district_name):
         """
         Show teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
@@ -4185,6 +4619,7 @@ def load_routes(bp):
         "/reports/virtual/usage/district/<district_name>/teacher-progress/google-sheets"
     )
     @login_required
+    @admin_required
     def virtual_teacher_progress_google_sheets(district_name):
         """Manage Google Sheets for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4195,9 +4630,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Prevent KCK Viewer accounts from accessing management UI
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Prevent district-scoped users from accessing management UI
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4229,6 +4664,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def create_teacher_progress_google_sheet(district_name):
         """Create a new Google Sheet for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4239,9 +4675,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4323,6 +4759,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def import_teacher_progress_data(district_name, sheet_id):
         """Import teacher progress data from Google Sheet"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4333,9 +4770,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4467,7 +4904,7 @@ def load_routes(bp):
 
     @bp.route("/reports/virtual/usage/district/<district_name>/teacher-progress/export")
     @login_required
-    @kck_viewer_only
+    @district_scoped_required
     def virtual_district_teacher_progress_export(district_name):
         """
         Export teacher progress tracking data to Excel for Kansas City Kansas Public Schools.
@@ -4555,6 +4992,7 @@ def load_routes(bp):
         methods=["POST"],
     )
     @login_required
+    @admin_required
     def delete_teacher_progress_google_sheet(district_name, sheet_id):
         """Delete a Google Sheet for teacher progress tracking"""
         # Restrict access to Kansas City Kansas Public Schools only
@@ -4565,9 +5003,9 @@ def load_routes(bp):
             )
             return redirect(url_for("report.virtual_usage"))
 
-        # Block KCK Viewer accounts
-        if getattr(current_user, "is_kck_viewer", False):
-            flash("Access denied for KCK Viewer accounts.", "error")
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
                     "report.virtual_district_teacher_progress",
@@ -4665,7 +5103,8 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                         teacher_district_name = school_obj.district.name
 
             # Only include registrations for teachers in the requested district
-            if teacher_district_name != district_name:
+            # Use helper function to handle aliases (e.g., "KCPS (MO)" vs "Kansas City Public Schools (MO)")
+            if not _district_name_matches(district_name, teacher_district_name):
                 continue
 
             # Initialize school if not exists
@@ -4863,28 +5302,46 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
         Event.start_date <= date_to,
     ).all()
 
-    # Create a mapping of teacher names to their progress data
+    # Create mappings for unique teachers and their name variations
     teacher_progress_map = {}
+    teacher_alias_map = {}
     for teacher in teachers:
+        teacher_progress_map[teacher.id] = {
+            "teacher": teacher,
+            "completed_sessions": 0,
+            "planned_sessions": 0,
+            "no_show_count": 0,  # Track no-shows to affect status calculation
+        }
+
         # Store multiple possible name variations for matching
+        # Normalize names by replacing hyphens with spaces for better matching
+        base_name = teacher.name.lower().strip()
+        normalized_name = base_name.replace("-", " ").replace(".", "").replace(",", "")
+
         name_variations = [
-            teacher.name.lower().strip(),
-            teacher.name.lower().replace(".", "").replace(",", "").strip(),
+            base_name,  # Original with hyphens
+            normalized_name,  # Normalized (hyphens -> spaces)
+            base_name.replace(".", "").replace(",", "").strip(),
             # Add first + last name variation if different from stored name
             (
                 f"{teacher.name.split()[0]} {teacher.name.split()[-1]}".lower()
                 if len(teacher.name.split()) > 1
                 else teacher.name.lower()
             ),
+            # Also add normalized first + last
+            (
+                f"{teacher.name.split()[0].lower()} {teacher.name.split()[-1].lower()}".replace(
+                    "-", " "
+                )
+                if len(teacher.name.split()) > 1
+                else normalized_name
+            ),
         ]
 
+        # Ensure aliases point back to the unique teacher entry
         for name_var in name_variations:
-            if name_var and name_var not in teacher_progress_map:
-                teacher_progress_map[name_var] = {
-                    "teacher": teacher,
-                    "completed_sessions": 0,
-                    "planned_sessions": 0,
-                }
+            if name_var:
+                teacher_alias_map.setdefault(name_var, teacher.id)
 
     # Count completed and planned sessions for each teacher
     for event in events:
@@ -4894,59 +5351,118 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                     f"{teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name}"
                 )
                 teacher_key = teacher_name.lower().strip()
+                # Normalize the key by replacing hyphens with spaces for better matching
+                teacher_key_normalized = teacher_key.replace("-", " ")
 
-                # Try exact match first
-                if teacher_key in teacher_progress_map:
-                    progress_data = teacher_progress_map[teacher_key]
-                else:
+                # Try exact match first against aliases (both original and normalized)
+                teacher_id = teacher_alias_map.get(
+                    teacher_key
+                ) or teacher_alias_map.get(teacher_key_normalized)
+                progress_data = (
+                    teacher_progress_map.get(teacher_id) if teacher_id else None
+                )
+
+                if not progress_data:
                     # Try flexible matching - look for partial matches
-                    progress_data = None
-                    for name_key, data in teacher_progress_map.items():
-                        if (teacher_key in name_key or name_key in teacher_key) and len(
-                            teacher_key
-                        ) > 3:
-                            progress_data = data
-                            break
+                    # Compare both original and normalized versions
+                    for name_key, alias_teacher_id in teacher_alias_map.items():
+                        name_key_normalized = name_key.replace("-", " ")
+                        # Check if either version matches (original or normalized)
+                        if (
+                            teacher_key in name_key
+                            or name_key in teacher_key
+                            or teacher_key_normalized in name_key_normalized
+                            or name_key_normalized in teacher_key_normalized
+                        ) and len(teacher_key) > 3:
+                            progress_data = teacher_progress_map.get(alias_teacher_id)
+                            if progress_data:
+                                break
 
                 if progress_data:
+                    # Normalize status strings for robust matching (similar to compute_teacher_school_breakdown)
+                    def _sanitize_status(text):
+                        """Normalize status text for comparison"""
+                        if not text:
+                            return ""
+                        t = str(text).lower().strip()
+                        # Replace common separators with spaces
+                        for ch in ["_", "-", "/", "\\", ",", ".", "  "]:
+                            t = t.replace(ch, " ")
+                        # Normalize multiple spaces
+                        while "  " in t:
+                            t = t.replace("  ", " ")
+                        return t
+
                     # Check teacher's individual registration status first
-                    teacher_reg_status = (
-                        (getattr(teacher_reg, "status", "") or "").lower().strip()
+                    teacher_reg_status = _sanitize_status(
+                        getattr(teacher_reg, "status", "")
                     )
+                    # Also check event-level status for teacher no-shows
+                    event_original_status = _sanitize_status(
+                        getattr(event, "original_status_string", "")
+                    )
+                    # Check if event status enum is NO_SHOW
+                    event_status_is_no_show = event.status == EventStatus.NO_SHOW
+
+                    # Comprehensive no-show detection
+                    # Check teacher registration status first (most specific)
                     is_teacher_no_show = (
-                        "teacher no-show" in teacher_reg_status
-                        or "teacher no show" in teacher_reg_status
-                        or "no-show" in teacher_reg_status
+                        "teacher no show" in teacher_reg_status
                         or "no show" in teacher_reg_status
                         or "did not attend" in teacher_reg_status
                     )
+
+                    # If teacher registration doesn't have no-show, check event-level status
+                    if not is_teacher_no_show:
+                        is_teacher_no_show = (
+                            "teacher no show" in event_original_status
+                            or "teacher did not attend" in event_original_status
+                            # Check if event status enum is NO_SHOW and original status mentions teacher
+                            or (
+                                event_status_is_no_show
+                                and "teacher" in event_original_status
+                            )
+                        )
                     is_teacher_cancel = (
                         "cancel" in teacher_reg_status
                         or "withdraw" in teacher_reg_status
                         or "cancelled" in teacher_reg_status
                     )
 
+                    # Track no-shows - they should not count as completed or planned,
+                    # but they affect the status calculation (teacher needs to replan)
+                    if is_teacher_no_show:
+                        progress_data["no_show_count"] += 1
+                        continue
+                    if is_teacher_cancel:
+                        continue
+
+                    # Check if teacher registration has "count" status - this should count as completed
+                    # even if the event status is NO_SHOW (as long as it's not a teacher no-show)
+                    is_count_status = (
+                        teacher_reg_status == "count" or "count" in teacher_reg_status
+                    )
+
                     # Only count as completed if teacher actually attended (not no-show or cancelled)
-                    if not is_teacher_no_show and not is_teacher_cancel:
-                        # Check if this is a completed session
-                        if (
-                            event.status == EventStatus.COMPLETED
-                            or (event.status == EventStatus.SIMULCAST)
-                            or (
-                                getattr(event, "original_status_string", "") or ""
-                            ).lower()
-                            in ["completed", "successfully completed"]
-                        ):
-                            progress_data["completed_sessions"] += 1
-                        # Check if this is a planned/upcoming session
-                        elif event.status == EventStatus.DRAFT or (
-                            getattr(event, "original_status_string", "") or ""
-                        ).lower() in ["draft", "registered"]:
-                            progress_data["planned_sessions"] += 1
+                    # Check if this is a completed session
+                    if (
+                        event.status == EventStatus.COMPLETED
+                        or (event.status == EventStatus.SIMULCAST)
+                        or (getattr(event, "original_status_string", "") or "").lower()
+                        in ["completed", "successfully completed"]
+                        # Also count if teacher registration has "count" status
+                        or is_count_status
+                    ):
+                        progress_data["completed_sessions"] += 1
+                    # Check if this is a planned/upcoming session
+                    elif event.status == EventStatus.DRAFT or (
+                        getattr(event, "original_status_string", "") or ""
+                    ).lower() in ["draft", "registered"]:
+                        progress_data["planned_sessions"] += 1
 
     # Group teachers by building/school
     school_data = {}
-    for teacher_key, progress_data in teacher_progress_map.items():
+    for progress_data in teacher_progress_map.values():
         teacher = progress_data["teacher"]
         building = teacher.building
 
@@ -4960,9 +5476,39 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
             }
 
         # Calculate progress status
-        progress_status = teacher.get_progress_status(
-            progress_data["completed_sessions"], progress_data["planned_sessions"]
-        )
+        # If teacher has any no-shows and hasn't completed target, they need to replan
+        no_show_count = progress_data.get("no_show_count", 0)
+        completed = progress_data["completed_sessions"]
+        planned = progress_data["planned_sessions"]
+        total_sessions = completed + planned
+
+        # If teacher has no-shows and hasn't completed target, check if they need to replan
+        # Only force "Needs Planning" if they don't have enough planned sessions to meet target
+        if no_show_count > 0 and completed < teacher.target_sessions:
+            # If they have enough planned sessions to meet target, they're "In Progress"
+            # Otherwise, they need to replan
+            if total_sessions >= teacher.target_sessions:
+                # They have enough planned sessions, so they're "In Progress"
+                progress_status = teacher.get_progress_status(completed, planned)
+            else:
+                # Not enough planned sessions, force "Needs Planning" - no-shows mean they need to replan
+                progress_status = {
+                    "status": "not_started",
+                    "status_text": "Needs Planning",
+                    "status_class": "not_started",
+                    "progress_percentage": (
+                        min(100, (completed / teacher.target_sessions) * 100)
+                        if teacher.target_sessions > 0
+                        else 0
+                    ),
+                    "completed_sessions": completed,
+                    "planned_sessions": planned,
+                    "needed_sessions": max(
+                        0, teacher.target_sessions - completed - planned
+                    ),
+                }
+        else:
+            progress_status = teacher.get_progress_status(completed, planned)
 
         teacher_info = {
             "id": teacher.id,

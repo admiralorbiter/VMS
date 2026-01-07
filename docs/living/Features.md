@@ -4,7 +4,7 @@ status: active
 doc_type: features
 project: "global"
 owner: "@admir"
-updated: 2025-01-27
+updated: 2026-01-06
 tags: ["features","development","business-rules","validation"]
 summary: "Current feature status and development priorities for the VMS system."
 canonical: "/docs/living/Features.md"
@@ -94,6 +94,11 @@ canonical: "/docs/living/Features.md"
 | **Import Strategy** | ✅ Complete | 100% | Understanding of intentional filtering |
 | **Real-time Dashboard** | ✅ Complete | 100% | Auto-refresh and performance optimized |
 
+### **Virtual Sessions (Manual Entry)**
+- **What it is**: Admins can create Virtual Session events directly from the Virtual Usage page (no spreadsheet import required).
+- **Supports**: Multiple teachers (each with school), multiple presenters (with organization), and later editing via the normal event edit flow.
+- **How it appears**: App-entered sessions are tagged as `APP` on the Virtual Usage table, with an optional “Manual: Group” toggle to show one row per session.
+
 ### **User Experience Features**
 | Feature | Status | Completion | Notes |
 |---------|--------|------------|-------|
@@ -101,6 +106,29 @@ canonical: "/docs/living/Features.md"
 | **Action Items** | 🎯 In Progress | 25% | Phase 4 priority |
 | **Enhanced Reporting** | 🎯 In Progress | 25% | Phase 4 priority |
 | **Mobile Optimization** | 📋 Planned | 0% | Q2 2025 |
+
+### **Security & Access Control Features**
+| Feature | Status | Completion | Notes |
+|---------|--------|------------|-------|
+| **District-Scoped User Access** | ✅ Complete | 100% | Flexible district and school scoping for restricted access |
+| **Role-Based Access Control** | ✅ Complete | 100% | USER, SUPERVISOR, MANAGER, ADMIN hierarchy |
+| **API Token Authentication** | ✅ Complete | 100% | Secure API access with expiration |
+
+#### District-Scoped User Access
+The system supports flexible district and school scoping for restricted-access users.
+
+**Scope Types:**
+- **Global**: Full access to all districts and schools (default for all users)
+- **District**: Access restricted to specific assigned districts
+- **School**: Access restricted to specific schools (future implementation)
+
+**Use Cases:**
+- External stakeholders who need visibility into specific districts
+- Partner organizations with limited scope
+- Auditors reviewing specific regions
+
+**Admin Management:**
+Admins can assign district scope when creating or editing users through the Admin panel.
 
 ### **Advanced Features**
 | Feature | Status | Completion | Notes |

@@ -24,6 +24,7 @@ from models.event import Event, EventTeacher, EventType
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher, TeacherStatus
+from routes.decorators import global_users_only
 from routes.utils import admin_required, log_audit_action, parse_date
 
 # Create Blueprint for attendance routes
@@ -32,6 +33,7 @@ attendance = Blueprint("attendance", __name__)
 
 @attendance.route("/attendance")
 @login_required
+@global_users_only
 def view_attendance():
     """
     Main attendance management page showing paginated lists of students and teachers.
@@ -204,6 +206,7 @@ def toggle_teacher_exclude_reports(id):
 
 @attendance.route("/attendance/view/<type>/<int:id>")
 @login_required
+@global_users_only
 def view_details(type, id):
     """
     View detailed information for a specific student or teacher.
@@ -272,6 +275,7 @@ def get_academic_year_range(today=None):
 
 @attendance.route("/attendance/details")
 @login_required
+@global_users_only
 def attendance_details():
     """
     Display event attendance details for a specific academic year.
@@ -323,6 +327,7 @@ def attendance_details():
 
 @attendance.route("/attendance/details/events_json")
 @login_required
+@global_users_only
 def attendance_details_events_json():
     """
     AJAX endpoint for filtered event data.
@@ -382,6 +387,7 @@ def attendance_details_events_json():
 
 @attendance.route("/attendance/details/<int:event_id>/detail", methods=["GET"])
 @login_required
+@global_users_only
 def get_attendance_detail(event_id):
     """
     Get attendance detail for a specific event.
@@ -428,6 +434,7 @@ def get_attendance_detail(event_id):
 
 @attendance.route("/attendance/details/<int:event_id>/detail", methods=["POST"])
 @login_required
+@global_users_only
 def update_attendance_detail(event_id):
     """
     Update attendance detail for a specific event.

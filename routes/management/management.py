@@ -118,6 +118,7 @@ from models.reports import (
 )
 from models.school_model import School
 from models.user import SecurityLevel, User
+from routes.decorators import global_users_only
 from routes.reports.common import get_school_year_date_range
 from routes.reports.recent_volunteers import (
     _derive_filtered_from_base,
@@ -138,24 +139,56 @@ def admin():
     """
     Display the main admin panel.
 
-    Provides administrative interface for user management, system
-    configuration, and administrative functions. Requires supervisor
-    or higher security level access.
+    Provides administrative interface for password changes (all users) and
+    user management (admin only). All logged-in users can access this page
+    to change their password, but only admins can see user management features.
 
     Permission Requirements:
-        - Security level >= SUPERVISOR
+        - Login required (any security level)
+        - User management features restricted to ADMIN (3) level
 
     Returns:
-        Rendered admin template with user list and configuration options
+        Rendered admin template with password change form and optionally user list
 
     Raises:
-        Redirect to main index if unauthorized
+        Redirect to login if not authenticated
     """
-    if not current_user.security_level >= SecurityLevel.SUPERVISOR:
-        flash("Access denied. Supervisor or higher privileges required.", "error")
-        return redirect(url_for("index"))
+    # Allow all logged-in users to access admin panel for password changes
+    # But restrict user management features to admins only (handled in template)
 
-    users = User.query.all()
+    # Filter data based on user scope
+    if current_user.scope_type == "district":
+        # District-scoped users only see themselves
+        users = [current_user]
+        # Only show their allowed districts
+        if current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                from models.district_model import District
+
+                districts = (
+                    District.query.filter(District.name.in_(allowed_districts))
+                    .order_by(District.name)
+                    .all()
+                )
+            except (json.JSONDecodeError, TypeError):
+                districts = []
+        else:
+            districts = []
+    else:
+        # Global users see all data
+        users = User.query.all()
+        # Load districts for district scoping
+        from models.district_model import District
+
+        districts = District.query.order_by(District.name).all()
+
     # Provide academic years with Google Sheets for the dropdown (virtual sessions only)
     from models.google_sheet import GoogleSheet
 
@@ -166,7 +199,10 @@ def admin():
         .all()
     ]
     return render_template(
-        "management/admin.html", users=users, sheet_years=sheet_years
+        "management/admin.html",
+        users=users,
+        districts=districts,
+        sheet_years=sheet_years,
     )
 
 
@@ -1177,6 +1213,7 @@ def import_districts():
 
 @management_bp.route("/schools")
 @login_required
+@global_users_only
 def schools():
     if not current_user.is_admin:
         flash("Access denied. Admin privileges required.", "error")
