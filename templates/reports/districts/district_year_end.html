@@ -198,6 +198,38 @@
 
         <!-- Districts Grid -->
         <main class="content-column">
+            <!-- Search & Filter Controls -->
+            <div class="search-filter-container">
+                <!-- Sort and Search Row -->
+                <div class="filter-row">
+                    <div class="sort-control">
+                        <label for="sortSelect">Sort by:</label>
+                        <select id="sortSelect" onchange="sortDistricts()">
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="events-desc">Most Events</option>
+                            <option value="events-asc">Least Events</option>
+                            <option value="students-desc">Most Students</option>
+                            <option value="volunteers-desc">Most Volunteers</option>
+                        </select>
+                    </div>
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" 
+                               id="districtSearch" 
+                               class="search-input" 
+                               placeholder="Search districts by name or code..."
+                               onkeyup="filterDistricts()">
+                        <button class="search-clear" onclick="clearSearch()" id="clearSearchBtn" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="results-count" id="resultsCount">
+                    Showing <span id="showingStart">1</span>-<span id="showingEnd">12</span> of <span id="totalCount">0</span> districts
+                </div>
+            </div>
+
             <div class="districts-grid" id="districtsContainer">
         {% for district_name, district_data in districts.items() %}
         {% set stats = district_data.stats %}
@@ -260,73 +292,41 @@
                 <div class="schools-header">
                     <h3><i class="fas fa-school"></i> Schools ({{ total_schools }})</h3>
                 </div>
-                <div class="schools-list">
+                <div class="schools-grid">
                     {% if schools_by_level.High %}
-                    <div class="school-level-group">
-                        <div class="school-level-header">
+                        {% for school in schools_by_level.High %}
+                        <div class="school-item">
                             <i class="fas fa-graduation-cap"></i>
-                            High Schools
+                            <span>{{ school.name }}</span>
                         </div>
-                        <div class="schools-grid">
-                            {% for school in schools_by_level.High %}
-                            <div class="school-item">
-                                <i class="fas fa-building"></i>
-                                <span>{{ school.name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
+                        {% endfor %}
                     {% endif %}
                     
                     {% if schools_by_level.Middle %}
-                    <div class="school-level-group">
-                        <div class="school-level-header">
+                        {% for school in schools_by_level.Middle %}
+                        <div class="school-item">
                             <i class="fas fa-book"></i>
-                            Middle Schools
+                            <span>{{ school.name }}</span>
                         </div>
-                        <div class="schools-grid">
-                            {% for school in schools_by_level.Middle %}
-                            <div class="school-item">
-                                <i class="fas fa-building"></i>
-                                <span>{{ school.name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
+                        {% endfor %}
                     {% endif %}
                     
                     {% if schools_by_level.Elementary %}
-                    <div class="school-level-group">
-                        <div class="school-level-header">
+                        {% for school in schools_by_level.Elementary %}
+                        <div class="school-item">
                             <i class="fas fa-pencil-alt"></i>
-                            Elementary Schools
+                            <span>{{ school.name }}</span>
                         </div>
-                        <div class="schools-grid">
-                            {% for school in schools_by_level.Elementary %}
-                            <div class="school-item">
-                                <i class="fas fa-building"></i>
-                                <span>{{ school.name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
+                        {% endfor %}
                     {% endif %}
                     
                     {% if schools_by_level.Other %}
-                    <div class="school-level-group">
-                        <div class="school-level-header">
+                        {% for school in schools_by_level.Other %}
+                        <div class="school-item">
                             <i class="fas fa-school"></i>
-                            Other Schools
+                            <span>{{ school.name }}</span>
                         </div>
-                        <div class="schools-grid">
-                            {% for school in schools_by_level.Other %}
-                            <div class="school-item">
-                                <i class="fas fa-building"></i>
-                                <span>{{ school.name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
+                        {% endfor %}
                     {% endif %}
                 </div>
                 {% else %}
@@ -337,6 +337,19 @@
             </div>
         </div>
         {% endfor %}
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-controls" id="paginationControls">
+                <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="pagination-info">
+                    Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+                </div>
+                <button class="pagination-btn" id="nextBtn" onclick="changePage(1)">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </main>
     </div>
@@ -394,6 +407,163 @@ function toggleDistrictCard(districtId) {
         toggleIcon.classList.remove('fa-chevron-down');
         toggleIcon.classList.add('fa-chevron-right');
         districtCard.classList.remove('expanded');
+    }
+}
+
+// Pagination & Search Configuration
+const ITEMS_PER_PAGE = 12;
+let currentPage = 1;
+let allDistricts = [];
+let filteredDistricts = [];
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all district cards
+    allDistricts = Array.from(document.querySelectorAll('.district-card'));
+    filteredDistricts = [...allDistricts];
+    
+    // Initial sort (A-Z by default)
+    sortDistricts();
+});
+
+// Get district data for sorting
+function getDistrictData(card) {
+    const name = card.querySelector('h2')?.textContent.trim() || '';
+    const statBoxes = card.querySelectorAll('.stat-value');
+    const events = parseInt(statBoxes[0]?.textContent.replace(/,/g, '')) || 0;
+    const students = parseInt(statBoxes[1]?.textContent.replace(/,/g, '')) || 0;
+    const volunteers = parseInt(statBoxes[2]?.textContent.replace(/,/g, '')) || 0;
+    return { name, events, students, volunteers };
+}
+
+// Sort districts
+function sortDistricts() {
+    const sortValue = document.getElementById('sortSelect').value;
+    
+    allDistricts.sort((a, b) => {
+        const dataA = getDistrictData(a);
+        const dataB = getDistrictData(b);
+        
+        switch(sortValue) {
+            case 'name-asc':
+                return dataA.name.localeCompare(dataB.name);
+            case 'name-desc':
+                return dataB.name.localeCompare(dataA.name);
+            case 'events-desc':
+                return dataB.events - dataA.events;
+            case 'events-asc':
+                return dataA.events - dataB.events;
+            case 'students-desc':
+                return dataB.students - dataA.students;
+            case 'volunteers-desc':
+                return dataB.volunteers - dataA.volunteers;
+            default:
+                return 0;
+        }
+    });
+    
+    // Reorder DOM elements to match sorted array
+    const container = document.getElementById('districtsContainer');
+    allDistricts.forEach(card => {
+        container.appendChild(card);
+    });
+    
+    // Re-apply current filters
+    applyFilters();
+}
+
+// Apply filters (search)
+function applyFilters() {
+    const searchTerm = document.getElementById('districtSearch').value.toLowerCase().trim();
+    
+    filteredDistricts = allDistricts.filter(card => {
+        const name = card.querySelector('h2')?.textContent.trim() || '';
+        const code = card.querySelector('.district-code')?.textContent.toLowerCase() || '';
+        
+        // Search filter
+        if (searchTerm) {
+            if (!name.toLowerCase().includes(searchTerm) && !code.includes(searchTerm)) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    currentPage = 1;
+    updateDisplay();
+}
+
+function filterDistricts() {
+    const searchTerm = document.getElementById('districtSearch').value.toLowerCase().trim();
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    // Show/hide clear button
+    clearBtn.style.display = searchTerm ? 'block' : 'none';
+    
+    applyFilters();
+}
+
+function clearSearch() {
+    document.getElementById('districtSearch').value = '';
+    document.getElementById('clearSearchBtn').style.display = 'none';
+    applyFilters();
+}
+
+function changePage(direction) {
+    const totalPages = Math.ceil(filteredDistricts.length / ITEMS_PER_PAGE);
+    currentPage = Math.max(1, Math.min(currentPage + direction, totalPages));
+    updateDisplay();
+    
+    // Scroll to top of grid
+    document.querySelector('.districts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateDisplay() {
+    const totalItems = filteredDistricts.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+    
+    // Hide all districts first
+    allDistricts.forEach(card => {
+        card.style.display = 'none';
+    });
+    
+    // Show only current page items
+    filteredDistricts.slice(startIndex, endIndex).forEach(card => {
+        card.style.display = 'flex';
+    });
+    
+    // Update counts
+    document.getElementById('showingStart').textContent = totalItems > 0 ? startIndex + 1 : 0;
+    document.getElementById('showingEnd').textContent = endIndex;
+    document.getElementById('totalCount').textContent = totalItems;
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+    
+    // Update button states
+    document.getElementById('prevBtn').disabled = currentPage <= 1;
+    document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    
+    // Show/hide pagination if only 1 page
+    document.getElementById('paginationControls').style.display = totalPages > 1 ? 'flex' : 'none';
+    
+    // Show message if no results
+    const grid = document.querySelector('.districts-grid');
+    let noResults = document.getElementById('noResultsMsg');
+    
+    if (totalItems === 0) {
+        if (!noResults) {
+            noResults = document.createElement('div');
+            noResults.id = 'noResultsMsg';
+            noResults.className = 'no-results';
+            noResults.innerHTML = '<i class="fas fa-search"></i><p>No districts found matching your search.</p>';
+            grid.parentNode.insertBefore(noResults, grid.nextSibling);
+        }
+        noResults.style.display = 'block';
+    } else if (noResults) {
+        noResults.style.display = 'none';
     }
 }
 
