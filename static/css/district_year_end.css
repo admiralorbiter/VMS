@@ -8,24 +8,47 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1.5rem;
     margin-bottom: 2rem;
     background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.12);
+    flex-wrap: wrap;
 }
 
 .report-header h1 {
     color: var(--delft-blue);
-    font-size: 1.8rem;
+    font-size: 1.75rem;
     margin: 0;
     font-weight: 600;
+    flex-shrink: 0;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    flex: 1;
+    justify-content: flex-end;
 }
 
 .year-filter {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.last-updated {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(158, 216, 219, 0.15);
+    font-size: 0.85rem;
+    color: var(--delft-blue);
+    opacity: 0.7;
+    text-align: right;
 }
 
 .year-filter select {
@@ -472,17 +495,40 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
+        padding: 1.25rem;
+    }
+    
+    .report-header h1 {
+        font-size: 1.5rem;
+        width: 100%;
     }
     
     .header-controls {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
+        gap: 0.75rem;
+        justify-content: flex-start;
     }
     
     .header-controls .refresh-button {
         width: 100%;
         justify-content: center;
+    }
+    
+    .year-filter {
+        width: 100%;
+    }
+    
+    .year-filter select {
+        width: 100%;
+    }
+    
+    .last-updated {
+        text-align: left;
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
     }
 }
 
@@ -559,8 +605,8 @@
     gap: 1rem;
     background: white;
     padding: 1.25rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .filter-row {

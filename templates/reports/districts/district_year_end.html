@@ -117,6 +117,7 @@
 .sidebar-column {
     flex: 0 0 200px; /* Fixed width, don't grow or shrink */
     min-width: 200px;
+    margin-top: 1.5rem;
 }
 
 .content-column {
@@ -146,7 +147,7 @@
 {% block content %}
 <div class="year-end-container">
     <div class="report-header">
-        <h1>District Year-End Report {{ school_year }}</h1>
+        <h1>District Year-End Report</h1>
         <div class="header-controls">
             <div class="year-filter">
                 <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
