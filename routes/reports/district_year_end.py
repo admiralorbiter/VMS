@@ -99,9 +99,38 @@ def load_routes(bp):
             academic_year=academic_year, purpose="district_reports"
         ).all()
 
+        # Get schools for each district, grouped by level
+        districts_with_schools = {}
+        for district_name, stats in district_stats.items():
+            district = District.query.filter_by(name=district_name).first()
+            if district:
+                schools = School.query.filter_by(district_id=district.id).order_by(School.name).all()
+                # Group schools by level
+                schools_by_level = {
+                    "High": [],
+                    "Middle": [],
+                    "Elementary": [],
+                    "Other": []
+                }
+                for school in schools:
+                    if school.level in ["High", "Middle", "Elementary"]:
+                        schools_by_level[school.level].append({"name": school.name, "level": school.level})
+                    else:
+                        schools_by_level["Other"].append({"name": school.name, "level": school.level})
+                
+                districts_with_schools[district_name] = {
+                    "stats": stats,
+                    "schools_by_level": schools_by_level
+                }
+            else:
+                districts_with_schools[district_name] = {
+                    "stats": stats,
+                    "schools_by_level": {"High": [], "Middle": [], "Elementary": [], "Other": []}
+                }
+
         return render_template(
             "reports/districts/district_year_end.html",
-            districts=district_stats,
+            districts=districts_with_schools,
             school_year=school_year,
             school_years=school_years,
             now=datetime.now(),
@@ -115,6 +144,8 @@ def load_routes(bp):
     @login_required
     def refresh_district_year_end():
         """Refresh the cached district year-end report data"""
+        import time
+        start_time = time.time()
         school_year = request.args.get("school_year", get_current_school_year())
         host_filter = request.args.get("host_filter", "all")
         try:
@@ -123,25 +154,43 @@ def load_routes(bp):
                 school_year=school_year, host_filter=host_filter
             ).delete()
             db.session.commit()
+            print(f"Deleted {deleted_count} cached reports")
 
-            # Generate new stats
+            # Generate new stats (this already does a lot of work)
+            print(f"Starting district stats generation for {school_year}...")
+            gen_start = time.time()
             district_stats = generate_district_stats(
                 school_year, host_filter=host_filter
             )
+            gen_time = time.time() - gen_start
+            print(f"Generated stats for {len(district_stats)} districts in {gen_time:.2f}s")
 
-            # Cache the stats and events data
+            # Cache the stats and events data (this does additional processing)
+            print(f"Starting cache with events for {len(district_stats)} districts...")
+            cache_start = time.time()
             cache_district_stats_with_events(
                 school_year, district_stats, host_filter=host_filter
             )
+            cache_time = time.time() - cache_start
+            print(f"Cached stats with events in {cache_time:.2f}s")
+
+            total_time = time.time() - start_time
+            print(f"Total refresh time: {total_time:.2f}s")
 
             return jsonify(
                 {
                     "success": True,
                     "message": f"Successfully refreshed data for {school_year[:2]}-{school_year[2:]} school year",
+                    "stats_generation_time": f"{gen_time:.2f}s",
+                    "cache_time": f"{cache_time:.2f}s",
+                    "total_time": f"{total_time:.2f}s",
                 }
             )
         except Exception as e:
             db.session.rollback()
+            print(f"Error refreshing district year-end report: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return jsonify({"success": False, "error": str(e)}), 500
 
     @bp.route("/reports/district/year-end/detail/<district_name>")
@@ -1461,7 +1510,17 @@ def generate_schools_by_level_data(district, events):
 
 def cache_district_stats_with_events(school_year, district_stats, host_filter="all"):
     """Cache district stats and events data for all districts"""
+    import time
+    max_retries = 3
+    retry_delay = 0.5  # seconds
+    
+    total_districts = len(district_stats)
+    processed = 0
+    start_time = time.time()
+    
     for district_name, stats in district_stats.items():
+        district_start = time.time()
+        processed += 1
         district = District.query.filter_by(name=district_name).first()
         if not district:
             continue
@@ -1701,8 +1760,26 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
                 unique_students
             ),  # Store overall unique student count
         }
-
-    db.session.commit()
+        
+        # Commit after each district to avoid long-running transactions
+        for attempt in range(max_retries):
+            try:
+                db.session.commit()
+                district_time = time.time() - district_start
+                elapsed = time.time() - start_time
+                avg_time = elapsed / processed if processed > 0 else 0
+                remaining = avg_time * (total_districts - processed)
+                print(f"[{processed}/{total_districts}] Cached {district_name} in {district_time:.2f}s (avg: {avg_time:.2f}s, est. remaining: {remaining:.1f}s)")
+                break
+            except Exception as e:
+                if "locked" in str(e).lower() and attempt < max_retries - 1:
+                    db.session.rollback()
+                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                    continue
+                else:
+                    db.session.rollback()
+                    print(f"Error caching district {district_name}: {str(e)}")
+                    raise
 
 
 def calculate_enhanced_district_stats(events, district_id):
