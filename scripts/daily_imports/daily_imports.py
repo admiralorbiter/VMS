@@ -36,10 +36,12 @@ vms_root = os.path.dirname(
 )  # Go up two levels: scripts/daily_imports -> scripts -> VMS
 sys.path.insert(0, vms_root)
 
-# Change to VMS root directory to ensure relative paths work correctly
+# Change to VMS root directory to ensure relative paths work correctly in production
+# This is critical for PythonAnywhere where the script might run from a different directory
 os.chdir(vms_root)
 
 # Ensure instance directory exists before importing app (fixes production path issues)
+# This ensures SQLite can create the database file if needed
 instance_dir = os.path.join(vms_root, "instance")
 if not os.path.exists(instance_dir):
     try:
@@ -54,62 +56,6 @@ try:
     load_dotenv()
 except ImportError:
     pass
-
-
-def _normalize_sqlite_database_url_for_script(vms_root_path: str) -> None:
-    """
-    Normalize DATABASE_URL early (before importing app/config/models) so app.py picks up
-    a writable SQLite file path in production environments where cwd/env differs.
-    """
-    db_url = os.environ.get("DATABASE_URL", "") or ""
-
-    def _as_abs_sqlite_path(url: str) -> str:
-        # SQLAlchemy forms:
-        # - sqlite:///relative/path.db  (relative to cwd)
-        # - sqlite:////absolute/path.db (absolute)
-        if url.startswith("sqlite:////"):
-            return url.replace("sqlite:////", "/", 1)
-        if url.startswith("sqlite:///"):
-            raw = url.replace("sqlite:///", "", 1)
-            return raw if raw.startswith("/") else os.path.join(vms_root_path, raw)
-        # Fallback: treat anything else after "sqlite:" as a relative path-ish string
-        raw = url.split("sqlite:", 1)[1]
-        raw = raw.lstrip("/")
-        return os.path.join(vms_root_path, raw)
-
-    if db_url.startswith("sqlite:"):
-        db_path = _as_abs_sqlite_path(db_url)
-        db_dir = os.path.dirname(db_path)
-        if db_dir:
-            os.makedirs(db_dir, exist_ok=True)
-
-        # Touch + connect to validate writability (fast fail with clear message)
-        try:
-            with open(db_path, "a", encoding="utf-8"):
-                pass
-            import sqlite3
-
-            conn = sqlite3.connect(db_path)
-            conn.execute("PRAGMA user_version;")
-            conn.close()
-        except OSError as e:
-            raise RuntimeError(
-                f"SQLite database path is not writable: {db_path} (from DATABASE_URL={db_url}). "
-                f"Fix permissions or set DATABASE_URL to a writable location."
-            ) from e
-
-        os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
-        return
-
-    if not db_url:
-        # If DATABASE_URL isn't set, force an absolute default under repo root.
-        default_db_path = os.path.join(vms_root_path, "instance", "your_database.db")
-        os.makedirs(os.path.dirname(default_db_path), exist_ok=True)
-        os.environ["DATABASE_URL"] = f"sqlite:///{default_db_path}"
-
-
-# Normalize DB URL as early as possible so subsequent imports use it
-_normalize_sqlite_database_url_for_script(vms_root)
 
 # Import Flask app components
 from flask import Flask
