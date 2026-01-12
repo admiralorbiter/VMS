@@ -1002,7 +1002,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.pathway_events.routes import sync_unaffiliated_events
+                from routes.events.pathway_events import sync_unaffiliated_events
 
                 original_func = sync_unaffiliated_events.__wrapped__
                 result = original_func()
@@ -1221,6 +1221,43 @@ def setup_logger(
 
 def create_app() -> Flask:
     """Create and configure Flask application - use the actual app from app.py."""
+    # Preflight: ensure SQLite DATABASE_URL (if used) points at a writable, absolute path.
+    #
+    # In production (e.g., PythonAnywhere scheduled tasks), DATABASE_URL is sometimes set
+    # to a relative sqlite path or a location that the task user can't write to, which
+    # causes: sqlite3.OperationalError: unable to open database file
+    db_url = os.environ.get("DATABASE_URL", "")
+    if db_url.startswith("sqlite:"):
+        # Accept sqlite:///relative/or/absolute.db and sqlite:////absolute.db
+        raw_path = db_url.replace("sqlite:///", "", 1)
+        if raw_path.startswith("/"):
+            db_path = raw_path
+        else:
+            # Treat as relative to repo root (vms_root)
+            db_path = os.path.join(vms_root, raw_path)
+
+        db_dir = os.path.dirname(db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+
+        # Touch the file to confirm it's writable (doesn't create tables)
+        try:
+            with open(db_path, "a", encoding="utf-8"):
+                pass
+        except OSError as e:
+            raise RuntimeError(
+                f"SQLite database path is not writable: {db_path} (from DATABASE_URL={db_url}). "
+                f"Fix permissions or set DATABASE_URL to a writable location."
+            ) from e
+
+        # Normalize env var so app.py uses the absolute path consistently
+        os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+    elif not db_url:
+        # If DATABASE_URL isn't set, force an absolute default under repo root.
+        default_db_path = os.path.join(vms_root, "instance", "your_database.db")
+        os.makedirs(os.path.dirname(default_db_path), exist_ok=True)
+        os.environ["DATABASE_URL"] = f"sqlite:///{default_db_path}"
+
     # Import the actual app instance which has LoginManager properly configured
     from app import app
 
