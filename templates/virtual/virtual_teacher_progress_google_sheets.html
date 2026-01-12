@@ -455,6 +455,14 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
             Use consistent formatting (e.g., "Jennifer M. Johnson" not "Jen Johnson").
             The system handles minor variations but consistency ensures accurate tracking.
         </div>
+
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 15px 0; color: #856404;">
+            <strong><i class="fas fa-link"></i> Teacher Matching:</strong> After importing teacher data, you need to match imported teachers to actual Teacher records in the database.
+            <a href="{{ url_for('virtual.virtual_teacher_progress_matching', district_name=district_name, year=virtual_year) }}"
+               style="color: #856404; font-weight: 600; text-decoration: underline; margin-left: 10px;">
+                <i class="fas fa-external-link-alt"></i> Go to Teacher Matching Interface
+            </a>
+        </div>
     </div>
 
     <!-- Filter Section -->
@@ -477,9 +485,15 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
     <div class="sheets-section">
         <div class="sheets-header">
             <h2 class="sheets-title">Teacher Progress Google Sheets</h2>
-            <button class="add-sheet-btn" onclick="openModal()">
-                <i class="fas fa-plus"></i> Add Google Sheet
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="{{ url_for('virtual.virtual_teacher_progress_matching', district_name=district_name, year=virtual_year) }}"
+                   class="action-btn" style="background: #6f42c1; color: white;">
+                    <i class="fas fa-link"></i> Match Teachers
+                </a>
+                <button class="add-sheet-btn" onclick="openModal()">
+                    <i class="fas fa-plus"></i> Add Google Sheet
+                </button>
+            </div>
         </div>
 
         {% if sheets %}

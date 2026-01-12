@@ -45,7 +45,8 @@ Usage Examples:
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from models import db
@@ -87,11 +88,17 @@ class TeacherProgress(db.Model):
     email = Column(String(255), nullable=False)  # Teacher email
     grade = Column(String(50), nullable=True)  # Grade level (K, 1, 2, etc.)
     target_sessions = Column(Integer, default=1)  # Target number of sessions
+    teacher_id = Column(
+        Integer, ForeignKey("teacher.id"), nullable=True
+    )  # Link to Teacher record
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     created_by = Column(Integer, db.ForeignKey("users.id"))
+
+    # Relationship to Teacher model
+    teacher = relationship("Teacher", backref="teacher_progress_entries")
 
     def __init__(
         self,
@@ -103,6 +110,7 @@ class TeacherProgress(db.Model):
         grade=None,
         target_sessions=1,
         created_by=None,
+        teacher_id=None,
     ):
         """
         Initialize a new teacher progress record.
@@ -116,6 +124,7 @@ class TeacherProgress(db.Model):
             grade: Grade level (optional)
             target_sessions: Target number of sessions (default: 1)
             created_by: User ID who created this record
+            teacher_id: ID of matched Teacher record (optional)
         """
         self.academic_year = academic_year
         self.virtual_year = virtual_year
@@ -125,6 +134,7 @@ class TeacherProgress(db.Model):
         self.grade = grade
         self.target_sessions = target_sessions
         self.created_by = created_by
+        self.teacher_id = teacher_id
 
     def get_progress_status(self, completed_sessions=0, planned_sessions=0):
         """
@@ -184,6 +194,7 @@ class TeacherProgress(db.Model):
             "email": self.email,
             "grade": self.grade,
             "target_sessions": self.target_sessions,
+            "teacher_id": self.teacher_id,
             "created_at": (
                 self.created_at.isoformat() if self.created_at is not None else None
             ),

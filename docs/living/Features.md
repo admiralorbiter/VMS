@@ -4,7 +4,7 @@ status: active
 doc_type: features
 project: "global"
 owner: "@admir"
-updated: 2026-01-06
+updated: 2026-01-12
 tags: ["features","development","business-rules","validation"]
 summary: "Current feature status and development priorities for the VMS system."
 canonical: "/docs/living/Features.md"
@@ -97,7 +97,22 @@ canonical: "/docs/living/Features.md"
 ### **Virtual Sessions (Manual Entry)**
 - **What it is**: Admins can create Virtual Session events directly from the Virtual Usage page (no spreadsheet import required).
 - **Supports**: Multiple teachers (each with school), multiple presenters (with organization), and later editing via the normal event edit flow.
-- **How it appears**: App-entered sessions are tagged as `APP` on the Virtual Usage table, with an optional “Manual: Group” toggle to show one row per session.
+- **How it appears**: App-entered sessions are tagged as `APP` on the Virtual Usage table, with an optional "Manual: Group" toggle to show one row per session.
+
+### **Teacher Progress Tracking & Matching**
+- **What it is**: System for tracking specific teachers' progress in virtual sessions for Kansas City Kansas Public Schools, with automatic matching to database records.
+- **Features**:
+  - Import teacher lists from Google Sheets with building, name, email, and grade information
+  - Automatic matching of imported teachers to database Teacher records (by email and name similarity)
+  - Manual matching interface for unmatched teachers
+  - Progress tracking against district goals (target sessions vs completed sessions)
+  - Visual indicators for matched/unmatched teachers
+  - Clickable links to teacher detail pages for matched teachers
+- **Matching Strategy**:
+  - Primary: Exact email match (compares TeacherProgress email to Teacher's primary email)
+  - Secondary: Fuzzy name matching (85%+ similarity threshold using normalized name comparison)
+  - Manual override: Admins can manually match or unmatch teachers through the admin interface
+- **Access**: Admin-only for matching interface; district-scoped users can view progress but not modify matches
 
 ### **User Experience Features**
 | Feature | Status | Completion | Notes |

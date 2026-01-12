@@ -409,8 +409,12 @@
         {% if current_user and current_user.is_admin %}
         <p style="margin-top: 15px;">
             <a href="{{ url_for('virtual.virtual_teacher_progress_google_sheets', district_name=district_name, year=current_filters.year) }}"
-               style="color: #155724; font-weight: 600; text-decoration: underline;">
+               style="color: #155724; font-weight: 600; text-decoration: underline; margin-right: 20px;">
                 <i class="fas fa-cog"></i> Manage Google Sheets & Import Data
+            </a>
+            <a href="{{ url_for('virtual.virtual_teacher_progress_matching', district_name=district_name, year=current_filters.year) }}"
+               style="color: #155724; font-weight: 600; text-decoration: underline;">
+                <i class="fas fa-link"></i> Match Teachers to Database Records
             </a>
         </p>
         {% endif %}
@@ -579,9 +583,16 @@
                 <div class="teacher-item">
                     <div class="teacher-info">
                         <div class="teacher-name">
-                            <a href="{{ url_for('teachers.view_teacher', teacher_id=teacher.id) }}" class="teacher-link">
-                                {{ teacher.name }}
-                            </a>
+                            {% if teacher.matched_teacher_id %}
+                                <a href="{{ url_for('teachers.view_teacher', teacher_id=teacher.matched_teacher_id) }}" class="teacher-link">
+                                    {{ teacher.name }}
+                                </a>
+                            {% else %}
+                                <span class="teacher-link" style="color: #6c757d; cursor: default;" title="Teacher not matched to database record">
+                                    {{ teacher.name }}
+                                    <i class="fas fa-exclamation-triangle" style="color: #ffc107; margin-left: 5px;" title="Not matched"></i>
+                                </span>
+                            {% endif %}
                             <span class="teacher-grade">Grade {{ teacher.grade }}</span>
                         </div>
                         <div class="teacher-email">{{ teacher.email }}</div>

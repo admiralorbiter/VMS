@@ -1,3 +1,4 @@
+import difflib
 import io
 from datetime import date, datetime, timedelta, timezone
 
@@ -6,6 +7,7 @@ from flask import (
     Blueprint,
     Response,
     flash,
+    jsonify,
     make_response,
     redirect,
     render_template,
@@ -20,7 +22,7 @@ from sqlalchemy import extract, func, or_
 from sqlalchemy.orm import joinedload
 
 from models import db
-from models.contact import LocalStatusEnum
+from models.contact import Email, LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
@@ -28,6 +30,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCache
 from models.school_model import School
 from models.teacher import Teacher
+from models.teacher_progress import TeacherProgress
 from models.volunteer import EventParticipation, Volunteer
 from routes.decorators import district_scoped_required
 from routes.utils import admin_required
@@ -5840,6 +5843,171 @@ def load_usage_routes():
                 )
             )
 
+    @virtual_bp.route("/usage/district/<district_name>/teacher-progress/matching")
+    @login_required
+    @admin_required
+    def virtual_teacher_progress_matching(district_name):
+        """
+        Admin interface for matching TeacherProgress entries to Teacher records.
+
+        Args:
+            district_name: Name of the district (restricted to Kansas City Kansas Public Schools)
+
+        Returns:
+            Rendered template with matching interface
+        """
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            flash(
+                "This view is only available for Kansas City Kansas Public Schools.",
+                "error",
+            )
+            return redirect(url_for("virtual.virtual_usage"))
+
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            flash("Access denied for district-scoped accounts.", "error")
+            return redirect(
+                url_for(
+                    "virtual.virtual_district_teacher_progress",
+                    district_name=district_name,
+                )
+            )
+
+        virtual_year = request.args.get("year", get_current_virtual_year())
+        show_unmatched_only = (
+            request.args.get("unmatched_only", "false").lower() == "true"
+        )
+        search_query = request.args.get("search", "").strip()
+
+        # Get all TeacherProgress entries for this virtual year
+        query = TeacherProgress.query.filter_by(virtual_year=virtual_year)
+
+        # Filter by unmatched only if requested
+        if show_unmatched_only:
+            query = query.filter_by(teacher_id=None)
+
+        # Apply search filter if provided
+        if search_query:
+            search_pattern = f"%{search_query}%"
+            query = query.filter(
+                or_(
+                    TeacherProgress.name.ilike(search_pattern),
+                    TeacherProgress.email.ilike(search_pattern),
+                    TeacherProgress.building.ilike(search_pattern),
+                )
+            )
+
+        teacher_progress_entries = query.order_by(
+            TeacherProgress.building, TeacherProgress.name
+        ).all()
+
+        # Get all teachers for manual matching dropdown
+        teachers = Teacher.query.order_by(Teacher.last_name, Teacher.first_name).all()
+
+        # Get match statistics
+        total_entries = TeacherProgress.query.filter_by(
+            virtual_year=virtual_year
+        ).count()
+        matched_entries = (
+            TeacherProgress.query.filter_by(virtual_year=virtual_year)
+            .filter(TeacherProgress.teacher_id.isnot(None))
+            .count()
+        )
+        unmatched_entries = total_entries - matched_entries
+
+        return render_template(
+            "virtual/virtual_teacher_progress_matching.html",
+            district_name=district_name,
+            teacher_progress_entries=teacher_progress_entries,
+            teachers=teachers,
+            virtual_year=virtual_year,
+            virtual_year_options=generate_school_year_options(),
+            show_unmatched_only=show_unmatched_only,
+            search_query=search_query,
+            total_entries=total_entries,
+            matched_entries=matched_entries,
+            unmatched_entries=unmatched_entries,
+        )
+
+    @virtual_bp.route(
+        "/usage/district/<district_name>/teacher-progress/matching/match",
+        methods=["POST"],
+    )
+    @login_required
+    @admin_required
+    def match_teacher_progress(district_name):
+        """Manually match a TeacherProgress entry to a Teacher record."""
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            return jsonify({"success": False, "message": "Invalid district"}), 400
+
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            return jsonify({"success": False, "message": "Access denied"}), 403
+
+        try:
+            teacher_progress_id = request.json.get("teacher_progress_id")
+            teacher_id = request.json.get("teacher_id")
+
+            if not teacher_progress_id:
+                return (
+                    jsonify(
+                        {"success": False, "message": "Missing teacher_progress_id"}
+                    ),
+                    400,
+                )
+
+            teacher_progress = TeacherProgress.query.get_or_404(teacher_progress_id)
+
+            if teacher_id:
+                # Match to teacher
+                teacher = Teacher.query.get_or_404(teacher_id)
+                teacher_progress.teacher_id = teacher.id
+                message = f'Matched "{teacher_progress.name}" to "{teacher.first_name} {teacher.last_name}"'
+            else:
+                # Unmatch (set to None)
+                teacher_progress.teacher_id = None
+                message = f'Removed match for "{teacher_progress.name}"'
+
+            db.session.commit()
+            return jsonify({"success": True, "message": message})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @virtual_bp.route(
+        "/usage/district/<district_name>/teacher-progress/matching/auto-match",
+        methods=["POST"],
+    )
+    @login_required
+    @admin_required
+    def auto_match_teacher_progress(district_name):
+        """Run automatic matching for TeacherProgress entries."""
+        # Restrict access to Kansas City Kansas Public Schools only
+        if district_name != "Kansas City Kansas Public Schools":
+            return jsonify({"success": False, "message": "Invalid district"}), 400
+
+        # Block district-scoped users
+        if current_user.scope_type == "district":
+            return jsonify({"success": False, "message": "Access denied"}), 403
+
+        try:
+            virtual_year = request.json.get("virtual_year", get_current_virtual_year())
+            stats = match_teacher_progress_to_teachers(virtual_year=virtual_year)
+
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Auto-matching completed: {stats['matched_by_email']} by email, {stats['matched_by_name']} by name, {stats['unmatched']} unmatched",
+                    "stats": stats,
+                }
+            )
+
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+
 
 def compute_teacher_school_breakdown(district_name, virtual_year, date_from, date_to):
     """
@@ -6315,6 +6483,7 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
             "email": teacher.email,
             "grade": teacher.grade,
             "target_sessions": teacher.target_sessions,
+            "matched_teacher_id": teacher.teacher_id,  # ID of matched Teacher record
             "completed_sessions": progress_data["completed_sessions"],
             "planned_sessions": progress_data["planned_sessions"],
             "needed_sessions": progress_status["needed_sessions"],
@@ -6350,3 +6519,138 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
         )
 
     return school_data
+
+
+def normalize_name(name):
+    """
+    Normalize a name for matching purposes.
+
+    Args:
+        name: Name string to normalize
+
+    Returns:
+        Normalized name string (lowercase, no punctuation, single spaces)
+    """
+    if not name:
+        return ""
+    # Convert to lowercase
+    normalized = name.lower().strip()
+    # Remove common punctuation
+    for char in [".", ",", "-", "(", ")", "'", '"']:
+        normalized = normalized.replace(char, " ")
+    # Replace multiple spaces with single space
+    while "  " in normalized:
+        normalized = normalized.replace("  ", " ")
+    return normalized.strip()
+
+
+def name_similarity(name1, name2):
+    """
+    Calculate similarity between two names using SequenceMatcher.
+
+    Args:
+        name1: First name to compare
+        name2: Second name to compare
+
+    Returns:
+        Similarity ratio between 0.0 and 1.0
+    """
+    norm1 = normalize_name(name1)
+    norm2 = normalize_name(name2)
+    return difflib.SequenceMatcher(None, norm1, norm2).ratio()
+
+
+def match_teacher_progress_to_teachers(virtual_year=None, min_similarity=0.85):
+    """
+    Automatically match TeacherProgress entries to Teacher records.
+
+    Matching strategy:
+    1. Match by email (exact match on primary email) - highest priority
+    2. Match by name (fuzzy matching with similarity threshold) - secondary
+
+    Args:
+        virtual_year: Virtual year to match teachers for (None = all years)
+        min_similarity: Minimum similarity ratio for name matching (default: 0.85)
+
+    Returns:
+        dict: Statistics about matching results
+    """
+    from models.teacher_progress import TeacherProgress
+
+    # Get all TeacherProgress entries (optionally filtered by virtual_year)
+    query = TeacherProgress.query
+    if virtual_year:
+        query = query.filter_by(virtual_year=virtual_year)
+
+    teacher_progress_entries = query.filter_by(teacher_id=None).all()
+
+    # Get all teachers with their primary emails
+    teachers = Teacher.query.all()
+
+    # Build email lookup map (email -> teacher)
+    email_to_teacher = {}
+    for teacher in teachers:
+        primary_email = teacher.emails.filter_by(primary=True).first()
+        if primary_email and primary_email.email:
+            email_lower = primary_email.email.lower().strip()
+            email_to_teacher[email_lower] = teacher
+
+    stats = {
+        "total_processed": len(teacher_progress_entries),
+        "matched_by_email": 0,
+        "matched_by_name": 0,
+        "unmatched": 0,
+        "errors": [],
+    }
+
+    for tp_entry in teacher_progress_entries:
+        try:
+            matched_teacher = None
+
+            # Strategy 1: Match by email (exact match)
+            if tp_entry.email:
+                email_lower = tp_entry.email.lower().strip()
+                matched_teacher = email_to_teacher.get(email_lower)
+                if matched_teacher:
+                    stats["matched_by_email"] += 1
+
+            # Strategy 2: Match by name (fuzzy matching) if email didn't match
+            if not matched_teacher and tp_entry.name:
+                best_match = None
+                best_similarity = 0.0
+
+                for teacher in teachers:
+                    # Build full name from teacher
+                    teacher_full_name = (
+                        f"{teacher.first_name} {teacher.last_name}".strip()
+                    )
+                    if not teacher_full_name:
+                        continue
+
+                    similarity = name_similarity(tp_entry.name, teacher_full_name)
+                    if similarity > best_similarity and similarity >= min_similarity:
+                        best_similarity = similarity
+                        best_match = teacher
+
+                if best_match:
+                    matched_teacher = best_match
+                    stats["matched_by_name"] += 1
+
+            # Update TeacherProgress entry with matched teacher_id
+            if matched_teacher:
+                tp_entry.teacher_id = matched_teacher.id
+            else:
+                stats["unmatched"] += 1
+
+        except Exception as e:
+            stats["errors"].append(f"Error matching {tp_entry.name}: {str(e)}")
+            continue
+
+    # Commit all changes
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        stats["errors"].append(f"Error committing matches: {str(e)}")
+
+    return stats
