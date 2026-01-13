@@ -63,11 +63,14 @@
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     overflow: hidden;
-    height: fit-content;
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
     position: sticky;
     top: 3.5rem;
     width: 100%;
-    max-width: 200px;
+    max-width: 320px;
 }
 
 .sidebar-header {
@@ -97,6 +100,10 @@
 
 .sidebar-content {
     padding: 0.75rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .sheets-list {

@@ -106,39 +106,35 @@
     color: white;
 }
 
-/* Main content layout with sidebar */
-.main-content-layout {
+/* Report header wrapper with sidebar on the right */
+.report-header-wrapper {
     display: flex;
-    gap: 2rem;
-    margin-top: 2rem;
+    gap: 1.5rem;
     align-items: flex-start;
+    margin-bottom: 1.5rem;
 }
 
-.sidebar-column {
-    flex: 0 0 200px; /* Fixed width, don't grow or shrink */
-    min-width: 200px;
-    margin-top: 1.5rem;
-}
-
-.content-column {
-    flex: 1; /* Take remaining space */
-    min-width: 0; /* Prevents overflow */
+.header-sidebar {
+    flex: 0 0 320px;
+    min-width: 320px;
+    flex-shrink: 0;
 }
 
 /* Responsive layout */
 @media (max-width: 1200px) {
-    .main-content-layout {
+    .report-header-wrapper {
         flex-direction: column;
         gap: 1rem;
     }
 
-    .sidebar-column {
+    .header-sidebar {
         flex: none;
-        order: 2; /* Move sidebar below content on mobile */
+        width: 100%;
+        max-width: 100%;
     }
-
-    .content-column {
-        order: 1;
+    
+    .header-sidebar .google-sheets-sidebar {
+        position: static;
     }
 }
 </style>
@@ -146,32 +142,40 @@
 
 {% block content %}
 <div class="year-end-container">
-    <div class="report-header">
-        <h1>District Year-End Report</h1>
-        <div class="header-controls">
-            <div class="year-filter">
-                <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
-                    <select name="school_year" onchange="updateReport(this)">
-                        {% for y in school_years %}
-                        <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
-                            {{ y[:2] }}-{{ y[2:] }} School Year
-                        </option>
-                        {% endfor %}
-                    </select>
-                </form>
+    <div class="report-header-wrapper">
+        <div class="report-header">
+            <div class="report-header-top">
+                <h1>District Year-End Report</h1>
+                <div class="header-controls">
+                    <div class="year-filter">
+                        <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
+                            <select name="school_year" onchange="updateReport(this)">
+                                {% for y in school_years %}
+                                <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                                    {{ y[:2] }}-{{ y[2:] }} School Year
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
+                    <button onclick="refreshData()" class="refresh-button">
+                        <i class="fas fa-sync-alt"></i> Refresh Data
+                    </button>
+                    <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
+                        <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
+                    </a>
+                </div>
             </div>
-            <button onclick="refreshData()" class="refresh-button">
-                <i class="fas fa-sync-alt"></i> Refresh Data
-            </button>
-            <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
-                <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
-            </a>
+            {% if last_updated %}
+            <div class="last-updated">
+                Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
+            </div>
+            {% endif %}
         </div>
-        {% if last_updated %}
-        <div class="last-updated">
-            Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
-        </div>
-        {% endif %}
+        <!-- Google Sheets Sidebar on the right -->
+        <aside class="header-sidebar">
+            {% include 'reports/shared/google_sheets_sidebar.html' %}
+        </aside>
     </div>
 
     {# Host Filter Toggle - Commented out for now
@@ -190,48 +194,8 @@
         </div>
     </div>
 
-    <!-- Main content with sidebar layout -->
-    <div class="main-content-layout">
-        <!-- Google Sheets Sidebar -->
-        <aside class="sidebar-column">
-            {% include 'reports/shared/google_sheets_sidebar.html' %}
-        </aside>
-
-        <!-- Districts Grid -->
-        <main class="content-column">
-            <!-- Search & Filter Controls -->
-            <div class="search-filter-container">
-                <!-- Sort and Search Row -->
-                <div class="filter-row">
-                    <div class="sort-control">
-                        <label for="sortSelect">Sort by:</label>
-                        <select id="sortSelect" onchange="sortDistricts()">
-                            <option value="name-asc">Name (A-Z)</option>
-                            <option value="name-desc">Name (Z-A)</option>
-                            <option value="events-desc">Most Events</option>
-                            <option value="events-asc">Least Events</option>
-                            <option value="students-desc">Most Students</option>
-                            <option value="volunteers-desc">Most Volunteers</option>
-                        </select>
-                    </div>
-                    <div class="search-box">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" 
-                               id="districtSearch" 
-                               class="search-input" 
-                               placeholder="Search districts by name or code..."
-                               onkeyup="filterDistricts()">
-                        <button class="search-clear" onclick="clearSearch()" id="clearSearchBtn" style="display: none;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="results-count" id="resultsCount">
-                    Showing <span id="showingStart">1</span>-<span id="showingEnd">12</span> of <span id="totalCount">0</span> districts
-                </div>
-            </div>
-
-            <div class="districts-grid" id="districtsContainer">
+    <!-- Districts Grid -->
+    <div class="districts-grid" id="districtsContainer">
         {% for district_name, district_data in districts.items() %}
         {% set stats = district_data.stats %}
         {% set schools_by_level = district_data.schools_by_level %}
@@ -352,8 +316,6 @@
                     Next <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
-        </main>
-    </div>
 </div>
 
 <script>
@@ -411,108 +373,22 @@ function toggleDistrictCard(districtId) {
     }
 }
 
-// Pagination & Search Configuration
-const ITEMS_PER_PAGE = 12;
+// Pagination Configuration
+const ITEMS_PER_PAGE = 24;
 let currentPage = 1;
 let allDistricts = [];
-let filteredDistricts = [];
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Get all district cards
     allDistricts = Array.from(document.querySelectorAll('.district-card'));
-    filteredDistricts = [...allDistricts];
     
-    // Initial sort (A-Z by default)
-    sortDistricts();
+    // Initial display
+    updateDisplay();
 });
 
-// Get district data for sorting
-function getDistrictData(card) {
-    const name = card.querySelector('h2')?.textContent.trim() || '';
-    const statBoxes = card.querySelectorAll('.stat-value');
-    const events = parseInt(statBoxes[0]?.textContent.replace(/,/g, '')) || 0;
-    const students = parseInt(statBoxes[1]?.textContent.replace(/,/g, '')) || 0;
-    const volunteers = parseInt(statBoxes[2]?.textContent.replace(/,/g, '')) || 0;
-    return { name, events, students, volunteers };
-}
-
-// Sort districts
-function sortDistricts() {
-    const sortValue = document.getElementById('sortSelect').value;
-    
-    allDistricts.sort((a, b) => {
-        const dataA = getDistrictData(a);
-        const dataB = getDistrictData(b);
-        
-        switch(sortValue) {
-            case 'name-asc':
-                return dataA.name.localeCompare(dataB.name);
-            case 'name-desc':
-                return dataB.name.localeCompare(dataA.name);
-            case 'events-desc':
-                return dataB.events - dataA.events;
-            case 'events-asc':
-                return dataA.events - dataB.events;
-            case 'students-desc':
-                return dataB.students - dataA.students;
-            case 'volunteers-desc':
-                return dataB.volunteers - dataA.volunteers;
-            default:
-                return 0;
-        }
-    });
-    
-    // Reorder DOM elements to match sorted array
-    const container = document.getElementById('districtsContainer');
-    allDistricts.forEach(card => {
-        container.appendChild(card);
-    });
-    
-    // Re-apply current filters
-    applyFilters();
-}
-
-// Apply filters (search)
-function applyFilters() {
-    const searchTerm = document.getElementById('districtSearch').value.toLowerCase().trim();
-    
-    filteredDistricts = allDistricts.filter(card => {
-        const name = card.querySelector('h2')?.textContent.trim() || '';
-        const code = card.querySelector('.district-code')?.textContent.toLowerCase() || '';
-        
-        // Search filter
-        if (searchTerm) {
-            if (!name.toLowerCase().includes(searchTerm) && !code.includes(searchTerm)) {
-                return false;
-            }
-        }
-        
-        return true;
-    });
-    
-    currentPage = 1;
-    updateDisplay();
-}
-
-function filterDistricts() {
-    const searchTerm = document.getElementById('districtSearch').value.toLowerCase().trim();
-    const clearBtn = document.getElementById('clearSearchBtn');
-    
-    // Show/hide clear button
-    clearBtn.style.display = searchTerm ? 'block' : 'none';
-    
-    applyFilters();
-}
-
-function clearSearch() {
-    document.getElementById('districtSearch').value = '';
-    document.getElementById('clearSearchBtn').style.display = 'none';
-    applyFilters();
-}
-
 function changePage(direction) {
-    const totalPages = Math.ceil(filteredDistricts.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(allDistricts.length / ITEMS_PER_PAGE);
     currentPage = Math.max(1, Math.min(currentPage + direction, totalPages));
     updateDisplay();
     
@@ -521,7 +397,7 @@ function changePage(direction) {
 }
 
 function updateDisplay() {
-    const totalItems = filteredDistricts.length;
+    const totalItems = allDistricts.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
@@ -532,14 +408,11 @@ function updateDisplay() {
     });
     
     // Show only current page items
-    filteredDistricts.slice(startIndex, endIndex).forEach(card => {
+    allDistricts.slice(startIndex, endIndex).forEach(card => {
         card.style.display = 'flex';
     });
     
-    // Update counts
-    document.getElementById('showingStart').textContent = totalItems > 0 ? startIndex + 1 : 0;
-    document.getElementById('showingEnd').textContent = endIndex;
-    document.getElementById('totalCount').textContent = totalItems;
+    // Update pagination info
     document.getElementById('currentPage').textContent = currentPage;
     document.getElementById('totalPages').textContent = totalPages;
     
@@ -549,23 +422,6 @@ function updateDisplay() {
     
     // Show/hide pagination if only 1 page
     document.getElementById('paginationControls').style.display = totalPages > 1 ? 'flex' : 'none';
-    
-    // Show message if no results
-    const grid = document.querySelector('.districts-grid');
-    let noResults = document.getElementById('noResultsMsg');
-    
-    if (totalItems === 0) {
-        if (!noResults) {
-            noResults = document.createElement('div');
-            noResults.id = 'noResultsMsg';
-            noResults.className = 'no-results';
-            noResults.innerHTML = '<i class="fas fa-search"></i><p>No districts found matching your search.</p>';
-            grid.parentNode.insertBefore(noResults, grid.nextSibling);
-        }
-        noResults.style.display = 'block';
-    } else if (noResults) {
-        noResults.style.display = 'none';
-    }
 }
 
 function refreshData() {
