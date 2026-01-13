@@ -3197,6 +3197,52 @@ def load_usage_routes():
         flash("Session updated successfully!", "success")
         return redirect(url_for("virtual.virtual_usage"))
 
+    @virtual_bp.route("/usage/delete/<int:event_id>", methods=["POST"])
+    @login_required
+    @admin_required
+    def delete_virtual_usage_session(event_id):
+        """
+        Delete a Virtual Session event created via the app UI.
+
+        Only allows deletion of APP-created sessions to prevent accidental
+        deletion of imported sessions.
+        """
+        event = db.session.get(Event, event_id)
+        if not event or event.type != EventType.VIRTUAL_SESSION:
+            flash("Event not found.", "danger")
+            return redirect(url_for("virtual.virtual_usage"))
+
+        # Only allow deleting APP-created sessions
+        if event.session_host != "APP":
+            flash("Only sessions created in the app can be deleted here.", "warning")
+            return redirect(url_for("virtual.virtual_usage"))
+
+        try:
+            # Get virtual year for cache invalidation
+            from routes.reports.virtual_session import get_current_virtual_year
+
+            year = get_current_virtual_year()
+
+            # Delete EventParticipation records (no cascade relationship)
+            EventParticipation.query.filter_by(event_id=event.id).delete()
+
+            # Delete the event (cascades will handle EventTeacher, EventComment, EventAttendanceDetail)
+            db.session.delete(event)
+            db.session.commit()
+
+            # Invalidate caches so the report reflects the deletion
+            try:
+                invalidate_virtual_session_caches(year)
+            except Exception:
+                pass
+
+            flash("Session deleted successfully!", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error deleting session: {str(e)}", "danger")
+
+        return redirect(url_for("virtual.virtual_usage"))
+
     @virtual_bp.route("/usage/create", methods=["POST"])
     @login_required
     @admin_required
