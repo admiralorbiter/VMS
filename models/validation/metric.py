@@ -425,7 +425,7 @@ class ValidationMetric(db.Model):
         """Get trend data for a specific metric over time."""
         from datetime import timedelta
 
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(
             cls.metric_name == metric_name, cls.timestamp >= cutoff_date
         )
@@ -478,7 +478,7 @@ class ValidationMetric(db.Model):
         """
         from datetime import timedelta
 
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(
             cls.metric_name == metric_name,
             cls.timestamp >= cutoff_date,
@@ -512,7 +512,7 @@ class ValidationMetric(db.Model):
         """
         from datetime import timedelta
 
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(
             cls.metric_name == metric_name, cls.timestamp >= cutoff_date
         )
@@ -642,7 +642,7 @@ class ValidationMetric(db.Model):
         """
         from datetime import timedelta
 
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(
             cls.metric_name == metric_name, cls.timestamp >= cutoff_date
         )

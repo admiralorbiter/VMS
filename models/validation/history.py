@@ -482,7 +482,7 @@ class ValidationHistory(db.Model):
         Returns:
             List of ValidationHistory records marked as anomalies
         """
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(cls.timestamp >= cutoff_date, cls.is_anomaly == 1)
 
         if entity_type:
@@ -503,7 +503,7 @@ class ValidationHistory(db.Model):
         Returns:
             Number of records deleted
         """
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=retention_days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
         old_records = cls.query.filter(cls.timestamp < cutoff_date).all()
 
         count = len(old_records)
@@ -531,7 +531,7 @@ class ValidationHistory(db.Model):
         Returns:
             Dictionary containing summary statistics
         """
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(cls.timestamp >= cutoff_date)
 
         if entity_type:
