@@ -36,6 +36,19 @@ vms_root = os.path.dirname(
 )  # Go up two levels: scripts/daily_imports -> scripts -> VMS
 sys.path.insert(0, vms_root)
 
+# Change to VMS root directory to ensure relative paths work correctly in production
+# This is critical for PythonAnywhere where the script might run from a different directory
+os.chdir(vms_root)
+
+# Ensure instance directory exists before importing app (fixes production path issues)
+# This ensures SQLite can create the database file if needed
+instance_dir = os.path.join(vms_root, "instance")
+if not os.path.exists(instance_dir):
+    try:
+        os.makedirs(instance_dir, exist_ok=True)
+    except OSError as e:
+        print(f"Warning: Could not create instance directory {instance_dir}: {e}")
+
 # Load environment variables
 try:
     from dotenv import load_dotenv
@@ -991,7 +1004,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.pathway_events.routes import sync_unaffiliated_events
+                from routes.events.pathway_events import sync_unaffiliated_events
 
                 original_func = sync_unaffiliated_events.__wrapped__
                 result = original_func()
