@@ -16,25 +16,48 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 .refresh-button {
     background-color: var(--ucla-blue);
-    color: white;
+    color: var(--mint-green);
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    transition: background-color 0.2s ease;
+    font-weight: 600;
+    font-size: 1rem;
+    box-shadow: 0 4px 0 var(--delft-blue);
+    transition: all 0.1s ease;
+    text-decoration: none;
+    position: relative;
+    height: 44px;
+    white-space: nowrap;
+    min-width: fit-content;
 }
 .refresh-button:hover {
     background-color: var(--delft-blue);
+    color: var(--mint-green);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--delft-blue);
+}
+.refresh-button:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 var(--delft-blue);
 }
 .refresh-button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.refresh-button:disabled:hover {
+    background-color: #ccc;
+    transform: none;
 }
 .fa-spin {
     animation: fa-spin 2s infinite linear;
@@ -83,38 +106,35 @@
     color: white;
 }
 
-/* Main content layout with sidebar */
-.main-content-layout {
+/* Report header wrapper with sidebar on the right */
+.report-header-wrapper {
     display: flex;
-    gap: 2rem;
-    margin-top: 2rem;
+    gap: 1.5rem;
     align-items: flex-start;
+    margin-bottom: 1.5rem;
 }
 
-.sidebar-column {
-    flex: 0 0 200px; /* Fixed width, don't grow or shrink */
-    min-width: 200px;
-}
-
-.content-column {
-    flex: 1; /* Take remaining space */
-    min-width: 0; /* Prevents overflow */
+.header-sidebar {
+    flex: 0 0 320px;
+    min-width: 320px;
+    flex-shrink: 0;
 }
 
 /* Responsive layout */
 @media (max-width: 1200px) {
-    .main-content-layout {
+    .report-header-wrapper {
         flex-direction: column;
         gap: 1rem;
     }
 
-    .sidebar-column {
+    .header-sidebar {
         flex: none;
-        order: 2; /* Move sidebar below content on mobile */
+        width: 100%;
+        max-width: 100%;
     }
-
-    .content-column {
-        order: 1;
+    
+    .header-sidebar .google-sheets-sidebar {
+        position: static;
     }
 }
 </style>
@@ -122,32 +142,40 @@
 
 {% block content %}
 <div class="year-end-container">
-    <div class="report-header">
-        <h1>District Year-End Report {{ school_year }}</h1>
-        <div class="header-controls">
-            <div class="year-filter">
-                <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
-                    <select name="school_year" onchange="updateReport(this)">
-                        {% for y in school_years %}
-                        <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
-                            {{ y[:2] }}-{{ y[2:] }} School Year
-                        </option>
-                        {% endfor %}
-                    </select>
-                </form>
+    <div class="report-header-wrapper">
+        <div class="report-header">
+            <div class="report-header-top">
+                <h1>District Year-End Report</h1>
+                <div class="header-controls">
+                    <div class="year-filter">
+                        <form method="get" action="{{ url_for('report.district_year_end') }}" id="yearForm">
+                            <select name="school_year" onchange="updateReport(this)">
+                                {% for y in school_years %}
+                                <option value="{{ y }}" {% if y == school_year %}selected{% endif %}>
+                                    {{ y[:2] }}-{{ y[2:] }} School Year
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
+                    <button onclick="refreshData()" class="refresh-button">
+                        <i class="fas fa-sync-alt"></i> Refresh Data
+                    </button>
+                    <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
+                        <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
+                    </a>
+                </div>
             </div>
-            <button onclick="refreshData()" class="refresh-button">
-                <i class="fas fa-sync-alt"></i> Refresh Data
-            </button>
-            <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
-                <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
-            </a>
+            {% if last_updated %}
+            <div class="last-updated">
+                Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
+            </div>
+            {% endif %}
         </div>
-        {% if last_updated %}
-        <div class="last-updated">
-            Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
-        </div>
-        {% endif %}
+        <!-- Google Sheets Sidebar on the right -->
+        <aside class="header-sidebar">
+            {% include 'reports/shared/google_sheets_sidebar.html' %}
+        </aside>
     </div>
 
     {# Host Filter Toggle - Commented out for now
@@ -166,56 +194,128 @@
         </div>
     </div>
 
-    <!-- Main content with sidebar layout -->
-    <div class="main-content-layout">
-        <!-- Google Sheets Sidebar -->
-        <aside class="sidebar-column">
-            {% include 'reports/shared/google_sheets_sidebar.html' %}
-        </aside>
-
-        <!-- Districts Grid -->
-        <main class="content-column">
-            <div class="districts-grid" id="districtsContainer">
-        {% for district_name, stats in districts.items() %}
+    <!-- Districts Grid -->
+    <div class="districts-grid" id="districtsContainer">
+        {% for district_name, district_data in districts.items() %}
+        {% set stats = district_data.stats %}
+        {% set schools_by_level = district_data.schools_by_level %}
         <div class="district-card">
-            <a href="{{ url_for('report.district_year_end_detail', district_name=district_name, school_year=school_year, host_filter=host_filter) }}" class="district-link">
-                <div class="district-header">
-                    <h2>{{ stats.name }}</h2>
+            <div class="district-link">
+                <div class="district-header collapsible-header" onclick="toggleDistrictCard('{{ district_name|replace(' ', '_')|replace('-', '_')|replace('.', '_')|replace("'", '') }}')">
+                    <div class="district-header-content">
+                        <div class="district-title-section">
+                            <i class="fas fa-chevron-right district-toggle-icon" id="district-toggle-{{ district_name|replace(' ', '_')|replace('-', '_')|replace('.', '_')|replace("'", '') }}"></i>
+                            <h2>{{ stats.name }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="district-actions">
+                    <a href="{{ url_for('report.district_year_end_detail', district_name=district_name, school_year=school_year, host_filter=host_filter) }}" class="view-detail-link">
+                        <i class="fas fa-chart-line"></i> View Full Report
+                    </a>
                     {% if stats.district_code %}
                     <span class="district-code">Code: {{ stats.district_code }}</span>
                     {% endif %}
                 </div>
+            </div>
 
-                <div class="stats-grid">
-                    <div class="stat-box primary">
-                        <div class="stat-value">{{ stats.total_events }}</div>
-                        <div class="stat-label">Total Events</div>
+            <!-- Collapsible Section with Stats and Schools -->
+            <div class="schools-section collapsed" id="schools-{{ district_name|replace(' ', '_')|replace('-', '_')|replace('.', '_')|replace("'", '') }}">
+                <!-- Statistics Section -->
+                <div class="stats-section">
+                    <div class="stats-header">
+                        <h3><i class="fas fa-chart-bar"></i> Statistics</h3>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-value">{{ stats.total_students }}</div>
-                        <div class="stat-label">Students Reached</div>
-                        {% if stats.unique_student_count is defined %}
-                        <div class="stat-sublabel">{{ stats.unique_student_count }} unique</div>
-                        {% endif %}
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value">{{ stats.total_volunteers }}</div>
-                        <div class="stat-label">Volunteers</div>
-                        <div class="stat-sublabel">{{ stats.unique_volunteer_count }} unique</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
-                        <div class="stat-label">Volunteer Hours</div>
+                    <div class="stats-grid">
+                        <div class="stat-box primary">
+                            <div class="stat-value">{{ stats.total_events }}</div>
+                            <div class="stat-label">Total Events</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">{{ stats.total_students }}</div>
+                            <div class="stat-label">Students Reached</div>
+                            {% if stats.unique_student_count is defined %}
+                            <div class="stat-sublabel">{{ stats.unique_student_count }} unique</div>
+                            {% endif %}
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">{{ stats.total_volunteers }}</div>
+                            <div class="stat-label">Volunteers</div>
+                            <div class="stat-sublabel">{{ stats.unique_volunteer_count }} unique</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
+                            <div class="stat-label">Volunteer Hours</div>
+                        </div>
                     </div>
                 </div>
 
-
-            </a>
+                <!-- Schools Section -->
+                {% set total_schools = schools_by_level.High|length + schools_by_level.Middle|length + schools_by_level.Elementary|length + schools_by_level.Other|length %}
+                {% if total_schools > 0 %}
+                <div class="schools-header">
+                    <h3><i class="fas fa-school"></i> Schools ({{ total_schools }})</h3>
+                </div>
+                <div class="schools-grid">
+                    {% if schools_by_level.High %}
+                        {% for school in schools_by_level.High %}
+                        <div class="school-item">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>{{ school.name }}</span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    {% if schools_by_level.Middle %}
+                        {% for school in schools_by_level.Middle %}
+                        <div class="school-item">
+                            <i class="fas fa-book"></i>
+                            <span>{{ school.name }}</span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    {% if schools_by_level.Elementary %}
+                        {% for school in schools_by_level.Elementary %}
+                        <div class="school-item">
+                            <i class="fas fa-pencil-alt"></i>
+                            <span>{{ school.name }}</span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    {% if schools_by_level.Other %}
+                        {% for school in schools_by_level.Other %}
+                        <div class="school-item">
+                            <i class="fas fa-school"></i>
+                            <span>{{ school.name }}</span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="no-schools">
+                    <p>No schools found for this district.</p>
+                </div>
+                {% endif %}
+            </div>
         </div>
         {% endfor %}
             </div>
-        </main>
-    </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-controls" id="paginationControls">
+                <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="pagination-info">
+                    Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+                </div>
+                <button class="pagination-btn" id="nextBtn" onclick="changePage(1)">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
 </div>
 
 <script>
@@ -252,6 +352,77 @@ window.addEventListener('load', function() {
     loadingIndicator.style.display = 'none';
     districtsContainer.style.opacity = '1';
 });
+
+function toggleDistrictCard(districtId) {
+    const schoolsSection = document.getElementById(`schools-${districtId}`);
+    const toggleIcon = document.getElementById(`district-toggle-${districtId}`);
+    const districtCard = schoolsSection.closest('.district-card');
+    
+    if (schoolsSection.classList.contains('collapsed')) {
+        schoolsSection.classList.remove('collapsed');
+        schoolsSection.classList.add('expanded');
+        toggleIcon.classList.remove('fa-chevron-right');
+        toggleIcon.classList.add('fa-chevron-down');
+        districtCard.classList.add('expanded');
+    } else {
+        schoolsSection.classList.remove('expanded');
+        schoolsSection.classList.add('collapsed');
+        toggleIcon.classList.remove('fa-chevron-down');
+        toggleIcon.classList.add('fa-chevron-right');
+        districtCard.classList.remove('expanded');
+    }
+}
+
+// Pagination Configuration
+const ITEMS_PER_PAGE = 24;
+let currentPage = 1;
+let allDistricts = [];
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all district cards
+    allDistricts = Array.from(document.querySelectorAll('.district-card'));
+    
+    // Initial display
+    updateDisplay();
+});
+
+function changePage(direction) {
+    const totalPages = Math.ceil(allDistricts.length / ITEMS_PER_PAGE);
+    currentPage = Math.max(1, Math.min(currentPage + direction, totalPages));
+    updateDisplay();
+    
+    // Scroll to top of grid
+    document.querySelector('.districts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateDisplay() {
+    const totalItems = allDistricts.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+    
+    // Hide all districts first
+    allDistricts.forEach(card => {
+        card.style.display = 'none';
+    });
+    
+    // Show only current page items
+    allDistricts.slice(startIndex, endIndex).forEach(card => {
+        card.style.display = 'flex';
+    });
+    
+    // Update pagination info
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+    
+    // Update button states
+    document.getElementById('prevBtn').disabled = currentPage <= 1;
+    document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    
+    // Show/hide pagination if only 1 page
+    document.getElementById('paginationControls').style.display = totalPages > 1 ? 'flex' : 'none';
+}
 
 function refreshData() {
     const loadingIndicator = document.getElementById('loadingIndicator');

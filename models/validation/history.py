@@ -6,7 +6,7 @@ This model provides comprehensive historical tracking of validation runs,
 quality scores, and trends over time for advanced analytics and reporting.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import (
@@ -196,7 +196,7 @@ class ValidationHistory(db.Model):
         """Get the number of days since this validation was run."""
         if not self.validation_date:
             return 0
-        return (datetime.now(datetime.UTC) - self.validation_date).days
+        return (datetime.now(timezone.utc) - self.validation_date).days
 
     @property
     def trend_description(self) -> str:
@@ -341,7 +341,7 @@ class ValidationHistory(db.Model):
             metrics_summary=metrics_summary,
             validation_metadata=validation_metadata,
             notes=notes,
-            validation_date=datetime.now(datetime.UTC),
+            validation_date=datetime.now(timezone.utc),
         )
 
     @classmethod
@@ -364,7 +364,7 @@ class ValidationHistory(db.Model):
         Returns:
             List of ValidationHistory records
         """
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(
             cls.entity_type == entity_type, cls.timestamp >= cutoff_date
         )
@@ -392,7 +392,7 @@ class ValidationHistory(db.Model):
         Returns:
             Dictionary containing trend analysis data
         """
-        cutoff_date = datetime.now(datetime.UTC) - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         query = cls.query.filter(
             cls.entity_type == entity_type, cls.timestamp >= cutoff_date
         )
