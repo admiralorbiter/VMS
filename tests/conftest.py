@@ -170,7 +170,7 @@ def mock_template_rendering(app):
 @pytest.fixture
 def app():
     # Create a fresh Flask app instance for testing
-    test_app = Flask(__name__, template_folder='../templates')
+    test_app = Flask(__name__, template_folder="../templates")
     test_app.config.from_object(TestingConfig)
 
     # Initialize extensions
@@ -188,6 +188,27 @@ def app():
     from routes.routes import init_routes
 
     init_routes(test_app)
+
+    # Register custom Jinja2 filters (same as in app.py)
+    import json
+
+    from utils import format_event_type_for_badge, short_date
+
+    test_app.jinja_env.filters["short_date"] = short_date
+    test_app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
+
+    def from_json_filter(json_string):
+        """Custom Jinja2 filter to parse JSON strings."""
+        if not json_string or json_string == "None" or json_string == "null":
+            return []
+        try:
+            if isinstance(json_string, str):
+                return json.loads(json_string)
+            return json_string
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    test_app.jinja_env.filters["from_json"] = from_json_filter
 
     with test_app.app_context():
         # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax
@@ -243,6 +264,29 @@ def test_admin(app):
     db.session.add(admin)
     db.session.commit()
     return admin
+
+
+@pytest.fixture
+def test_district_user(app):
+    """Create a district-scoped user for testing"""
+    import json
+
+    user = User(
+        username="districtuser",
+        email="district@example.com",
+        password_hash=generate_password_hash("password123"),
+        first_name="District",
+        last_name="User",
+        is_admin=False,
+        scope_type="district",
+        allowed_districts=json.dumps(["Kansas City Kansas Public Schools"]),
+    )
+    with app.app_context():
+        db.session.add(user)
+        db.session.commit()
+        yield user
+        db.session.delete(user)
+        db.session.commit()
 
 
 @pytest.fixture
