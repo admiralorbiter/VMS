@@ -96,7 +96,7 @@ def login():
                     if first_district:
                         return redirect(
                             url_for(
-                                "report.virtual_district_teacher_progress",
+                                "virtual.virtual_district_teacher_progress",
                                 district_name=first_district,
                                 year="2025-2026",
                                 date_from="2025-08-01",
