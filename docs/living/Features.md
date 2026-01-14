@@ -114,6 +114,36 @@ canonical: "/docs/living/Features.md"
   - Manual override: Admins can manually match or unmatch teachers through the admin interface
 - **Access**: Admin-only for matching interface; district-scoped users can view progress but not modify matches
 
+### **Data Tracker (District & Teacher Dashboards)**
+- **What it is**: Feature allowing districts and teachers to view, track, and validate participation and session data for virtual learning offerings.
+- **District Features**:
+  - District portal landing pages (e.g., `/virtual/kck`) with separate login options
+  - Teacher progress tracking dashboard showing teachers from imported TeacherProgress list
+  - Teacher breakdown by school view
+  - District usage overview with monthly statistics
+  - **Floating Issue Reporter**: Always-visible button on district views for reporting data issues
+    - Teacher selection (filtered to TeacherProgress list only)
+    - School information (auto-filled, editable)
+    - Optional session selection
+    - Issue category (Missing/Incorrect)
+    - Structured issue reports sent to admin panel
+- **Teacher Features**:
+  - Teacher dashboard (`/virtual/kck/teacher/<teacher_id>`) showing:
+    - Teacher profile information
+    - Past sessions (completed virtual sessions)
+    - Upcoming sessions (scheduled virtual sessions)
+    - Issue reporting button
+- **Issue Reporting**:
+  - District users can report issues with rich context (teacher, school, session)
+  - Teacher users can report issues related to their own data
+  - All issues appear in `/management/bug-reports` admin panel
+  - Issues are categorized and can be filtered/searched by admins
+- **Access Control**:
+  - District-scoped users restricted to their assigned districts
+  - Teacher search limited to TeacherProgress tracking list
+  - Session queries filtered by district access
+- **Documentation**: See `docs/guides/data_tracker.md` for complete details
+
 ### **User Experience Features**
 | Feature | Status | Completion | Notes |
 |---------|--------|------------|-------|
