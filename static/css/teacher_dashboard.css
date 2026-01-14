@@ -1,0 +1,445 @@
+/*
+Teacher Dashboard Styles
+========================
+
+Styling for the teacher dashboard with profile, sessions, and issue reporting.
+Uses the existing color palette from style.css for consistency.
+*/
+
+.teacher-dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* Teacher Header */
+.teacher-header {
+    background: linear-gradient(135deg, var(--ucla-blue) 0%, var(--delft-blue) 100%);
+    color: var(--mint-green);
+    padding: 2.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.teacher-profile {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.teacher-icon {
+    font-size: 4rem;
+    color: var(--mint-green);
+}
+
+.teacher-info {
+    flex: 1;
+}
+
+.teacher-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--mint-green);
+}
+
+.teacher-school {
+    margin: 0;
+    font-size: 1.1rem;
+    opacity: 0.9;
+    color: var(--mint-green);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Issue Button */
+.issue-button {
+    background-color: var(--poppy);
+    color: var(--mint-green);
+    border: none;
+    padding: 0.875rem 1.75rem;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.issue-button:hover {
+    background-color: var(--delft-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Sessions Section */
+.sessions-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.sessions-column {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sessions-title {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--non-photo-blue);
+}
+
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Session Card */
+.session-card {
+    background: var(--mint-green);
+    padding: 1.25rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--ucla-blue);
+    transition: all 0.3s ease;
+}
+
+.session-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.session-card.upcoming {
+    border-left-color: var(--ucla-blue);
+}
+
+.session-card.past {
+    border-left-color: var(--non-photo-blue);
+    opacity: 0.9;
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.session-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+    flex: 1;
+}
+
+.simulcast-badge {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.session-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.session-details > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--delft-blue);
+    font-size: 0.95rem;
+}
+
+.session-details i {
+    color: var(--ucla-blue);
+    width: 1.25rem;
+}
+
+.session-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ucla-blue);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    background-color: rgba(70, 117, 153, 0.1);
+    transition: all 0.2s ease;
+}
+
+.session-link-btn:hover {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.presenter-org {
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.9em;
+}
+
+.session-status {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(29, 51, 84, 0.1);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-badge.status-completed {
+    background-color: #10b981;
+    color: white;
+}
+
+.status-badge.status-confirmed {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.status-badge.status-published {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+}
+
+.status-badge.status-requested {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.attendance-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: rgba(29, 51, 84, 0.1);
+    color: var(--delft-blue);
+    text-transform: capitalize;
+}
+
+/* No Sessions */
+.no-sessions {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary, #6b7280);
+}
+
+.no-sessions i {
+    font-size: 3rem;
+    color: var(--non-photo-blue);
+    margin-bottom: 1rem;
+}
+
+.no-sessions p {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--ucla-blue) 0%, var(--delft-blue) 100%);
+    color: var(--mint-green);
+    padding: 1.5rem;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.close {
+    color: var(--mint-green);
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover {
+    opacity: 0.7;
+}
+
+#issueForm {
+    padding: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--non-photo-blue);
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-cancel,
+.btn-submit {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel {
+    background-color: var(--non-photo-blue);
+    color: var(--delft-blue);
+}
+
+.btn-cancel:hover {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.btn-submit {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.btn-submit:hover {
+    background-color: var(--delft-blue);
+}
+
+/* Responsive Design */
+@media (max-width: 968px) {
+    .sessions-section {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .issue-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .teacher-dashboard-container {
+        padding: 1rem 0.5rem;
+    }
+
+    .teacher-header {
+        padding: 1.5rem;
+    }
+
+    .teacher-name {
+        font-size: 2rem;
+    }
+
+    .teacher-icon {
+        font-size: 3rem;
+    }
+
+    .sessions-column {
+        padding: 1rem;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+
+    #issueForm {
+        padding: 1.5rem;
+    }
+}

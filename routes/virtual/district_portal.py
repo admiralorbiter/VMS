@@ -54,7 +54,7 @@ DISTRICT_PORTALS = {
         "staff_login_label": "District Staff Login",
         "staff_login_description": "View district-wide progress and analytics",
         # Staff login redirects to main login page
-        "teacher_login_url": "/virtual/kck/teacher/login",  # Placeholder - will be implemented later
+        "teacher_login_url": "/virtual/kck/teacher/select",  # Teacher selection page
         "staff_login_url": "/login",
     },
     # Future districts can be added here:

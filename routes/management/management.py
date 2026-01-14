@@ -94,7 +94,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -1331,10 +1331,55 @@ def bug_reports():
         flash("Access denied. Admin privileges required.", "error")
         return redirect(url_for("index"))
 
-    # Get all bug reports, newest first
-    reports = BugReport.query.order_by(BugReport.created_at.desc()).all()
+    # Get filter parameters
+    status_filter = request.args.get("status", "all")  # all, open, resolved
+    type_filter = request.args.get("type", "all")  # all, bug, data_error, other
+    search_query = request.args.get("search", "").strip()
+
+    # Start with base query
+    query = BugReport.query
+
+    # Apply status filter
+    if status_filter == "open":
+        query = query.filter(BugReport.resolved == False)
+    elif status_filter == "resolved":
+        query = query.filter(BugReport.resolved == True)
+
+    # Apply type filter
+    if type_filter == "bug":
+        query = query.filter(BugReport.type == BugReportType.BUG)
+    elif type_filter == "data_error":
+        query = query.filter(BugReport.type == BugReportType.DATA_ERROR)
+    elif type_filter == "other":
+        query = query.filter(BugReport.type == BugReportType.OTHER)
+
+    # Apply search filter
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                BugReport.description.ilike(search_term),
+                BugReport.page_title.ilike(search_term),
+                BugReport.page_url.ilike(search_term),
+            )
+        )
+
+    # Order by newest first
+    reports = query.order_by(BugReport.created_at.desc()).all()
+
+    # Separate open and resolved reports for template
+    open_reports = [r for r in reports if not r.resolved]
+    resolved_reports = [r for r in reports if r.resolved]
+
     return render_template(
-        "management/bug_reports.html", reports=reports, BugReportType=BugReportType
+        "management/bug_reports.html",
+        reports=reports,
+        open_reports=open_reports,
+        resolved_reports=resolved_reports,
+        BugReportType=BugReportType,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        search_query=search_query,
     )
 
 
@@ -1352,6 +1397,15 @@ def resolve_bug_report(report_id):
         report.resolution_notes = request.form.get("notes", "")
 
         db.session.commit()
+
+        # If HTMX request, return redirect response
+        if request.headers.get("HX-Request"):
+            from flask import make_response
+
+            response = make_response()
+            response.headers["HX-Redirect"] = url_for("management.bug_reports")
+            return response
+
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -1383,7 +1437,10 @@ def get_resolve_form(report_id):
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
-    return render_template("management/resolve_form.html", report_id=report_id)
+    report = BugReport.query.get_or_404(report_id)
+    return render_template(
+        "management/resolve_form.html", report_id=report_id, report=report
+    )
 
 
 @management_bp.route("/management/update-school-levels", methods=["POST"])

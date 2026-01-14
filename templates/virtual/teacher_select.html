@@ -1,0 +1,95 @@
+{#
+  Teacher Selection Template
+  ==========================
+
+  Simple page for selecting a teacher to view their dashboard.
+  This is a temporary solution until proper authentication is implemented.
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Select Teacher - KCK Portal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_portal.css') }}">
+<style>
+.teacher-select-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.teacher-list {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.teacher-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+.teacher-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.teacher-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.view-btn {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    padding: 0.5rem 1.5rem;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+    background-color: var(--delft-blue);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="teacher-select-container">
+    <div class="district-header">
+        <h1 class="district-title">Select Teacher</h1>
+        <p class="district-subtitle">Choose a teacher to view their dashboard</p>
+    </div>
+
+    {% if teachers %}
+    <div class="teacher-list">
+        {% for teacher in teachers %}
+        <div class="teacher-item">
+            <div>
+                <div class="teacher-name">{{ teacher.first_name }} {{ teacher.last_name }}</div>
+                {% if teacher.school %}
+                <div style="color: #6b7280; margin-top: 0.25rem;">{{ teacher.school.name }}</div>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('virtual.teacher_dashboard', teacher_id=teacher.id) }}" class="view-btn">
+                View Dashboard
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-sessions" style="text-align: center; padding: 3rem;">
+        <p>No teachers found with virtual sessions.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
