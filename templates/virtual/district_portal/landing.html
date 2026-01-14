@@ -1,0 +1,72 @@
+{#
+  District Portal Landing Page Template
+  ======================================
+
+  This template provides the landing page for district portals with two
+  separate login options for teachers and district staff.
+
+  Key Features:
+  - District-specific branding and messaging
+  - Two-card layout with separate login options
+  - Responsive design for mobile devices
+  - Uses existing color palette and design patterns
+
+  Template Variables:
+  - district: Dictionary containing district portal configuration
+    - display_name: Full district name
+    - short_name: Short district name/abbreviation
+    - welcome_message: Welcome message for the district
+    - teacher_login_label: Label for teacher login card
+    - teacher_login_description: Description for teacher login
+    - staff_login_label: Label for district staff login card
+    - staff_login_description: Description for district staff login
+    - teacher_login_url: URL for teacher login (placeholder)
+    - staff_login_url: URL for staff login (placeholder)
+#}
+
+{% extends "base.html" %}
+
+{% block title %}{{ district.display_name }} - District Portal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_portal.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="district-portal-container">
+    <!-- Header Section -->
+    <div class="district-header">
+        <h1 class="district-title">{{ district.display_name }}</h1>
+        <p class="district-subtitle">{{ district.welcome_message }}</p>
+    </div>
+
+    <!-- Login Options Section -->
+    <div class="login-options-container">
+        <!-- Teacher Login Card -->
+        <div class="login-card teacher-card">
+            <div class="login-card-icon">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+            <h2 class="login-card-title">{{ district.teacher_login_label }}</h2>
+            <p class="login-card-description">{{ district.teacher_login_description }}</p>
+            <a href="{{ district.teacher_login_url }}" class="login-card-button teacher-button">
+                <i class="fas fa-sign-in-alt"></i>
+                Login as Teacher
+            </a>
+        </div>
+
+        <!-- District Staff Login Card -->
+        <div class="login-card staff-card">
+            <div class="login-card-icon">
+                <i class="fas fa-users-cog"></i>
+            </div>
+            <h2 class="login-card-title">{{ district.staff_login_label }}</h2>
+            <p class="login-card-description">{{ district.staff_login_description }}</p>
+            <a href="{{ district.staff_login_url }}" class="login-card-button staff-button">
+                <i class="fas fa-sign-in-alt"></i>
+                Login as Staff
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
