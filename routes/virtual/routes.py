@@ -155,6 +155,14 @@ except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass
 
+# Register District Issue Reporting routes under the Virtual blueprint.
+# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
+try:
+    from routes.virtual import issues
+except Exception:
+    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
+    pass
+
 
 @virtual_bp.route("/virtual")
 def virtual():
