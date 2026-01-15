@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Email Message #{{ message.id }} - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.message-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.detail-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.detail-section h3 {
+    margin-top: 0;
+    color: var(--delft-blue);
+    border-bottom: 2px solid var(--non-photo-blue);
+    padding-bottom: 0.5rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.info-label {
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.email-preview {
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    padding: 1rem;
+    background: #f9fafb;
+    margin-top: 1rem;
+}
+
+.quality-checks {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.quality-check-item {
+    padding: 0.75rem;
+    background: #f3f4f6;
+    border-radius: 5px;
+    border-left: 4px solid #10b981;
+}
+
+.quality-check-item.failed {
+    border-left-color: var(--poppy);
+}
+
+.email-nav a:hover:not([style*="background"]) {
+    background: #f3f4f6;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="message-detail-container">
+    <!-- Navigation Bar -->
+    <nav class="email-nav" style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('email.email_overview') }}" style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-home"></i> Overview
+            </a>
+            <span style="color: #d1d5db;">|</span>
+            <a href="{{ url_for('email.email_templates') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}" style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+                <i class="fas fa-inbox"></i> Outbox
+            </a>
+            <a href="{{ url_for('email.email_attempts') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-paper-plane"></i> Delivery Attempts
+            </a>
+            <a href="{{ url_for('email.email_settings') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </nav>
+
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('email.email_outbox') }}" class="btn">← Back to Outbox</a>
+    </div>
+
+    <h1>Email Message #{{ message.id }}</h1>
+
+    <!-- Message Info -->
+    <div class="detail-section">
+        <h3>Message Information</h3>
+        <div class="info-grid">
+            <div class="info-label">Status:</div>
+            <div>
+                <span class="badge {{ EmailMessageStatus(message.status).name.lower() }}">
+                    {{ EmailMessageStatus(message.status).name }}
+                </span>
+            </div>
+
+            <div class="info-label">Template:</div>
+            <div>{{ message.template.purpose_key if message.template else 'N/A' }} (v{{ message.template.version if message.template else 'N/A' }})</div>
+
+            <div class="info-label">Recipients:</div>
+            <div>{{ message.recipient_count }} recipient(s)</div>
+
+            <div class="info-label">Created By:</div>
+            <div>{{ message.created_by.username if message.created_by else 'N/A' }}</div>
+
+            <div class="info-label">Created At:</div>
+            <div>{{ message.created_at.strftime('%Y-%m-%d %H:%M:%S') if message.created_at else 'N/A' }}</div>
+
+            {% if message.queued_at %}
+            <div class="info-label">Queued At:</div>
+            <div>{{ message.queued_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+            {% endif %}
+
+            {% if message.sent_at %}
+            <div class="info-label">Sent At:</div>
+            <div>{{ message.sent_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recipients -->
+    <div class="detail-section">
+        <h3>Recipients</h3>
+        <div style="margin-top: 1rem;">
+            <strong>To:</strong>
+            <ul>
+                {% for recipient in message.recipients %}
+                <li>{{ recipient }}</li>
+                {% endfor %}
+            </ul>
+            {% if message.excluded_recipients %}
+            <div style="margin-top: 1rem;">
+                <strong>Excluded:</strong>
+                <ul>
+                    {% for excluded in message.excluded_recipients %}
+                    <li>{{ excluded.email }} - {{ excluded.reason }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Email Preview -->
+    <div class="detail-section">
+        <h3>Email Preview</h3>
+        <div class="email-preview">
+            <strong>Subject:</strong> {{ message.subject }}
+            <hr>
+            <strong>Text Body:</strong>
+            <pre style="white-space: pre-wrap; font-family: inherit;">{{ message.text_body }}</pre>
+            <hr>
+            <strong>HTML Body:</strong>
+            <div style="border: 1px solid #e5e7eb; padding: 1rem; background: white;">
+                {{ message.html_body|safe }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quality Checks -->
+    {% if message.quality_checks %}
+    <div class="detail-section">
+        <h3>Quality Checks</h3>
+        <div style="margin-top: 1rem;">
+            <p><strong>Quality Score:</strong> {{ message.quality_score or 'N/A' }}/100</p>
+            <div class="quality-checks">
+                {% for check_name, check_result in message.quality_checks.items() %}
+                    {% if check_result is mapping %}
+                    <div class="quality-check-item {% if not check_result.passed %}failed{% endif %}">
+                        <strong>{{ check_name|replace('_', ' ')|title }}:</strong>
+                        {% if check_result.passed %}
+                            ✓ Passed
+                        {% else %}
+                            ✗ Failed
+                            {% if check_result.issues %}
+                                <ul style="margin: 0.5rem 0 0 1.5rem;">
+                                    {% for issue in check_result.issues %}
+                                    <li>{{ issue }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Delivery Attempts -->
+    <div class="detail-section">
+        <h3>Delivery Attempts</h3>
+        {% if attempts %}
+        <table class="table" style="margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Attempted At</th>
+                    <th>Mailjet ID</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attempt in attempts %}
+                <tr>
+                    <td>{{ attempt.id }}</td>
+                    <td>
+                        <span class="badge {{ DeliveryAttemptStatus(attempt.status).name.lower() }}">
+                            {{ DeliveryAttemptStatus(attempt.status).name }}
+                        </span>
+                        {% if attempt.is_dry_run %}<small>(Dry-run)</small>{% endif %}
+                    </td>
+                    <td>{{ attempt.attempted_at.strftime('%Y-%m-%d %H:%M:%S') if attempt.attempted_at else 'N/A' }}</td>
+                    <td>{{ attempt.mailjet_message_id or 'N/A' }}</td>
+                    <td>{{ attempt.error_message or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No delivery attempts yet</p>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="detail-section">
+        <h3>Actions</h3>
+        <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+            {% if message.status == EmailMessageStatus.DRAFT %}
+            <form method="POST" action="{{ url_for('email.queue_message', message_id=message.id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-success">Queue for Delivery</button>
+            </form>
+            {% endif %}
+
+            {% if message.status == EmailMessageStatus.QUEUED %}
+            <form method="POST" action="{{ url_for('email.send_message', message_id=message.id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-primary">Send Now</button>
+            </form>
+            <form method="POST" action="{{ url_for('email.send_message', message_id=message.id) }}" style="display: inline;">
+                <input type="hidden" name="dry_run" value="true">
+                <button type="submit" class="btn btn-info">Dry-Run Test</button>
+            </form>
+            <form method="POST" action="{{ url_for('email.cancel_message', message_id=message.id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure you want to cancel this message?')">Cancel</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

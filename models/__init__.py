@@ -55,6 +55,7 @@ from .class_model import Class
 from .client_project_model import ClientProject
 from .contact import Contact
 from .district_model import District
+from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
 from .event import Event, EventTeacher
 from .google_sheet import GoogleSheet
 from .history import History
@@ -105,6 +106,9 @@ __all__ = [
     "ValidationResult",
     "ValidationMetric",
     "ValidationHistory",
+    "EmailTemplate",
+    "EmailMessage",
+    "EmailDeliveryAttempt",
 ]
 
 # Eager-loading helper options

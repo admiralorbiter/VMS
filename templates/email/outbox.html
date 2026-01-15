@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Email Outbox - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.email-outbox-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.filters-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.messages-table {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.badge {
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge.draft { background-color: #6b7280; color: white; }
+.badge.queued { background-color: #3b82f6; color: white; }
+.badge.sent { background-color: #10b981; color: white; }
+.badge.failed { background-color: var(--poppy); color: white; }
+.badge.blocked { background-color: #f59e0b; color: white; }
+.badge.cancelled { background-color: #9ca3af; color: white; }
+
+.email-nav a:hover:not([style*="background"]) {
+    background: #f3f4f6;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="email-outbox-container">
+    <!-- Navigation Bar -->
+    <nav class="email-nav" style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('email.email_overview') }}" style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-home"></i> Overview
+            </a>
+            <span style="color: #d1d5db;">|</span>
+            <a href="{{ url_for('email.email_templates') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}" style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+                <i class="fas fa-inbox"></i> Outbox
+            </a>
+            <a href="{{ url_for('email.email_attempts') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-paper-plane"></i> Delivery Attempts
+            </a>
+            <a href="{{ url_for('email.email_settings') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </nav>
+
+    <div class="section-header">
+        <h1>Email Outbox</h1>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="GET" action="{{ url_for('email.email_outbox') }}" class="filters-form">
+            <div class="filter-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                    <option value="queued" {% if status_filter == 'queued' %}selected{% endif %}>Queued</option>
+                    <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>Sent</option>
+                    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="search">Search</label>
+                <input type="text" id="search" name="search" value="{{ search_query }}" placeholder="Search subject, recipients...">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="filter-btn">Apply Filters</button>
+                <a href="{{ url_for('email.email_outbox') }}" class="reset-btn">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Messages Table -->
+    <div class="messages-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Template</th>
+                    <th>Subject</th>
+                    <th>Recipients</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for message in messages %}
+                <tr>
+                    <td>{{ message.id }}</td>
+                    <td>{{ message.template.purpose_key if message.template else 'N/A' }}</td>
+                    <td>{{ message.subject[:50] }}{% if message.subject|length > 50 %}...{% endif %}</td>
+                    <td>{{ message.recipient_count }}</td>
+                    <td>
+                        <span class="badge {{ EmailMessageStatus(message.status).name.lower() }}">
+                            {{ EmailMessageStatus(message.status).name }}
+                        </span>
+                    </td>
+                    <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') if message.created_at else 'N/A' }}</td>
+                    <td>
+                        <a href="{{ url_for('email.email_message_detail', message_id=message.id) }}" class="btn btn-sm btn-primary">
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem;">
+                        No messages found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div style="margin-top: 1rem; text-align: center;">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('email.email_outbox', page=pagination.prev_num, status=status_filter, search=search_query) }}" class="btn">Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+            <a href="{{ url_for('email.email_outbox', page=pagination.next_num, status=status_filter, search=search_query) }}" class="btn">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

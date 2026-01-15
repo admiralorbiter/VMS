@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Email Settings - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.settings-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.settings-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+    margin-top: 0;
+    color: var(--delft-blue);
+    border-bottom: 2px solid var(--non-photo-blue);
+    padding-bottom: 0.5rem;
+}
+
+.info-item {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-badge.enabled { background-color: #10b981; color: white; }
+.status-badge.disabled { background-color: var(--poppy); color: white; }
+.status-badge.warning { background-color: #f59e0b; color: white; }
+
+.email-nav a:hover:not([style*="background"]) {
+    background: #f3f4f6;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- Navigation Bar -->
+    <nav class="email-nav" style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('email.email_overview') }}" style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-home"></i> Overview
+            </a>
+            <span style="color: #d1d5db;">|</span>
+            <a href="{{ url_for('email.email_templates') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-inbox"></i> Outbox
+            </a>
+            <a href="{{ url_for('email.email_attempts') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-paper-plane"></i> Delivery Attempts
+            </a>
+            <a href="{{ url_for('email.email_settings') }}" style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </nav>
+
+    <h1>Email Settings</h1>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div style="margin-bottom: 1.5rem;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'info' if category == 'info' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="settings-section">
+        <h3>Delivery Configuration</h3>
+        <div class="info-item">
+            <div class="info-label">Delivery Enabled:</div>
+            <div>
+                {% if delivery_enabled %}
+                    <span class="status-badge enabled">Enabled</span>
+                {% else %}
+                    <span class="status-badge disabled">Disabled</span>
+                    <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">
+                        Set EMAIL_DELIVERY_ENABLED=true in environment to enable
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="info-item">
+            <div class="info-label">Environment:</div>
+            <div>
+                {% if is_production %}
+                    <span class="status-badge enabled">Production</span>
+                {% else %}
+                    <span class="status-badge warning">Non-Production</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="info-item">
+            <div class="info-label">Mailjet Configured:</div>
+            <div>
+                {% if mailjet_configured %}
+                    <span class="status-badge enabled">Yes</span>
+                {% else %}
+                    <span class="status-badge disabled">No</span>
+                    <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">
+                        Set MJ_APIKEY_PUBLIC and MJ_APIKEY_PRIVATE in environment
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h3>From Address</h3>
+        <div class="info-item">
+            <div class="info-label">Email:</div>
+            <div>{{ mail_from }}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Name:</div>
+            <div>{{ mail_from_name }}</div>
+        </div>
+    </div>
+
+    {% if not is_production %}
+    <div class="settings-section">
+        <h3>Allowlist (Non-Production)</h3>
+        {% if allowlist %}
+        <p>Only these addresses/domains can receive emails:</p>
+        <ul>
+            {% for addr in allowlist %}
+            <li>{{ addr }}</li>
+            {% endfor %}
+        </ul>
+        <p style="margin-top: 1rem; color: #6b7280; font-size: 0.9rem;">
+            Configure via EMAIL_ALLOWLIST environment variable (comma-separated)
+        </p>
+        {% else %}
+        <p style="color: #6b7280;">No allowlist configured. All emails will be blocked in non-production.</p>
+        <p style="margin-top: 0.5rem; color: #6b7280; font-size: 0.9rem;">
+            Set EMAIL_ALLOWLIST in environment to allow specific addresses/domains
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="settings-section">
+        <h3>Test Email</h3>
+        <p>Send a test email to: <strong>{{ test_email_recipient }}</strong></p>
+        {% if not is_production and allowlist %}
+        <p style="margin-top: 0.5rem; color: #6b7280; font-size: 0.9rem;">
+            (Using first allowlist email for non-production testing)
+        </p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('email.test_send') }}" style="margin-top: 1rem;">
+            <div style="margin-bottom: 1rem;">
+                <label for="template_id">Template:</label>
+                <select id="template_id" name="template_id" required>
+                    <option value="">Select a template...</option>
+                    {% for template in templates %}
+                    <option value="{{ template.id }}">{{ template.purpose_key }} (v{{ template.version }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label>
+                    <input type="checkbox" name="dry_run" value="true">
+                    Dry-run (no actual delivery)
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Send Test Email</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

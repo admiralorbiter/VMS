@@ -93,6 +93,7 @@ canonical: "/docs/living/Features.md"
 | **Quality Scoring** | ✅ Complete | 100% | Accurate and actionable metrics |
 | **Import Strategy** | ✅ Complete | 100% | Understanding of intentional filtering |
 | **Real-time Dashboard** | ✅ Complete | 100% | Auto-refresh and performance optimized |
+| **Email System** | ✅ Complete | 100% | Safe-by-default Mailjet integration with admin panel |
 
 ### **Virtual Sessions (Manual Entry)**
 - **What it is**: Admins can create Virtual Session events directly from the Virtual Usage page (no spreadsheet import required).
@@ -143,6 +144,31 @@ canonical: "/docs/living/Features.md"
   - Teacher search limited to TeacherProgress tracking list
   - Session queries filtered by district access
 - **Documentation**: See `docs/guides/data_tracker.md` for complete details
+
+### **Email System (Mailjet Integration)**
+- **What it is**: Safe-by-default, testable Mailjet-based email subsystem integrated into the VMS admin panel with comprehensive tracking and safety gates.
+- **Features**:
+  - **Two-phase sending**: Messages must be explicitly queued, then sent (prevents accidental delivery)
+  - **Environment-based safety gates**: Delivery disabled by default; requires `EMAIL_DELIVERY_ENABLED=true`
+  - **Non-production allowlist**: Only configured addresses/domains can receive emails in dev/test/staging
+  - **Quality checks**: Validates recipients, template rendering, and context completeness before sending
+  - **Template versioning**: Versioned email templates with HTML and text support
+  - **Delivery tracking**: Full audit trail of all delivery attempts with Mailjet response tracking
+  - **Error alerting**: Failed deliveries automatically create BugReport entries for admin review
+  - **Dry-run mode**: Test email sending without actual delivery
+  - **Admin panel**: Complete email management interface (overview, templates, outbox, attempts, settings)
+- **Safety Features**:
+  - Global kill-switch (delivery disabled unless explicitly enabled)
+  - Recipient allowlist enforcement in non-production
+  - Rate limiting (max recipients per message)
+  - Quality score calculation (0-100) with detailed check results
+  - Automatic exclusion tracking (who was excluded and why)
+- **Admin Access**: Admin-only (`@security_level_required(3)`) for all email management operations
+- **Integration**:
+  - Integrated with Bug Reports system for failure alerting
+  - Audit logging for all email actions
+  - Ready for Data Tracker notification integration (Phase 2)
+- **Documentation**: See `docs/guides/email_system.md` for complete details
 
 ### **User Experience Features**
 | Feature | Status | Completion | Notes |

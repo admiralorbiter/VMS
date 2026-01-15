@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Email Templates - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.templates-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.template-group {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.template-group h3 {
+    margin-top: 0;
+    color: var(--delft-blue);
+    border-bottom: 2px solid var(--non-photo-blue);
+    padding-bottom: 0.5rem;
+}
+
+.template-item {
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    margin: 0.5rem 0;
+}
+
+.template-item.active {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+.email-nav a:hover:not([style*="background"]) {
+    background: #f3f4f6;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="templates-container">
+    <!-- Navigation Bar -->
+    <nav class="email-nav" style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('email.email_overview') }}" style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-home"></i> Overview
+            </a>
+            <span style="color: #d1d5db;">|</span>
+            <a href="{{ url_for('email.email_templates') }}" style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-inbox"></i> Outbox
+            </a>
+            <a href="{{ url_for('email.email_attempts') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-paper-plane"></i> Delivery Attempts
+            </a>
+            <a href="{{ url_for('email.email_settings') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </nav>
+
+    <h1>Email Templates</h1>
+
+    {% for purpose_key, templates in template_groups.items() %}
+    <div class="template-group">
+        <h3>{{ purpose_key }}</h3>
+        {% for template in templates %}
+        <div class="template-item {% if template.is_active %}active{% endif %}">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Version {{ template.version }}</strong>
+                    {% if template.is_active %}<span class="badge" style="background: #10b981; color: white;">Active</span>{% endif %}
+                    <p style="margin: 0.5rem 0 0 0; color: #6b7280;">{{ template.name }}</p>
+                    {% if template.description %}
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">{{ template.description }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{{ url_for('email.email_template_detail', template_id=template.id) }}" class="btn btn-sm btn-primary">View</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No templates found</p>
+    {% endfor %}
+</div>
+{% endblock %}
