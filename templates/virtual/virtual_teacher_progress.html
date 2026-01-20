@@ -574,13 +574,27 @@
         {% for school_name, school_data in teacher_progress_data.items() %}
         <div id="school-detail-{{ school_name|replace(' ', '_') }}" class="school-detail" style="display: none;">
             <div class="school-detail-header">
-                <h2>{{ school_name }} - Teacher Details</h2>
+                <div class="school-detail-title-section">
+                    <h2>{{ school_name }} - Teacher Details</h2>
+                    <!-- Filter Dropdown -->
+                    <div class="school-filter-container">
+                        <label for="filter-{{ school_name|replace(' ', '_') }}" class="filter-label">Filter:</label>
+                        <select id="filter-{{ school_name|replace(' ', '_') }}" 
+                                class="school-filter-select"
+                                onchange="filterTeachersByStatus('{{ school_name|replace(' ', '_') }}', this.value)">
+                            <option value="all">All</option>
+                            <option value="achieved">Goal Achieved</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="not_started">Not Started</option>
+                        </select>
+                    </div>
+                </div>
                 <button class="close-detail" onclick="toggleSchoolDetail('{{ school_name|replace(' ', '_') }}')">×</button>
             </div>
 
-            <div class="teacher-list">
+            <div class="teacher-list" id="teacher-list-{{ school_name|replace(' ', '_') }}">
                 {% for teacher in school_data.teachers %}
-                <div class="teacher-item">
+                <div class="teacher-item" data-status="{{ teacher.goal_status_class }}">
                     <div class="teacher-info">
                         <div class="teacher-name">
                             {% if teacher.matched_teacher_id %}
@@ -769,12 +783,56 @@ div.goal-status.in-progress {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #dee2e6;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
-.school-detail-header h2 {
+.school-detail-title-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.school-detail-title-section h2 {
     margin: 0;
     color: #333;
     font-size: 1.4em;
+}
+
+.school-filter-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.school-filter-select {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    color: #495057;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.school-filter-select:hover {
+    border-color: #28a745;
+}
+
+.school-filter-select:focus {
+    outline: none;
+    border-color: #28a745;
+    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25);
 }
 
 .close-detail {
@@ -862,12 +920,42 @@ function toggleSchoolDetail(schoolId) {
         // Show the selected detail view
         detailElement.style.display = 'block';
 
+        // Reset filter to "All" when opening a school detail
+        const filterSelect = document.getElementById('filter-' + schoolId);
+        if (filterSelect) {
+            filterSelect.value = 'all';
+            filterTeachersByStatus(schoolId, 'all');
+        }
+
         // Scroll to the detail view
         detailElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
         // Hide the detail view
         detailElement.style.display = 'none';
     }
+}
+
+function filterTeachersByStatus(schoolId, status) {
+    const teacherList = document.getElementById('teacher-list-' + schoolId);
+    if (!teacherList) return;
+
+    const teacherItems = teacherList.querySelectorAll('.teacher-item');
+    
+    teacherItems.forEach(item => {
+        const itemStatus = item.getAttribute('data-status');
+        
+        if (status === 'all') {
+            item.style.display = '';
+        } else if (itemStatus === status) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Update count display if needed
+    const visibleCount = Array.from(teacherItems).filter(item => item.style.display !== 'none').length;
+    const totalCount = teacherItems.length;
 }
 </script>
 
