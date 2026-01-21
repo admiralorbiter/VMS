@@ -99,8 +99,16 @@ def from_json_filter(json_string):
 app.jinja_env.filters["from_json"] = from_json_filter
 
 
+@app.route("/docs/")
+@app.route("/docs")
+def documentation_index():
+    """Serve the documentation home page"""
+    return send_from_directory("documentation", "index.html")
+
+
 @app.route("/docs/<path:filename>")
 def documentation(filename):
+    """Serve documentation assets"""
     return send_from_directory("documentation", filename)
 
 

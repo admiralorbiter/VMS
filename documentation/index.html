@@ -3,66 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Management System - Documentation</title>
+    <title>VMS Documentation</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- FontAwesome for icons -->
-    <script src="https://kit.fontawesome.com/052a51df03.js" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <nav class="sidebar">
-            <!-- Navigation will be loaded dynamically -->
-        </nav>
-        <main class="main-content">
-            <div class="hero">
-                <div class="hero-title">Welcome to the Volunteer Management System Documentation</div>
-                <div class="hero-desc">Your complete guide to using, managing, and getting the most out of the VMS platform.</div>
+    <div class="layout">
+        <!-- Navigation Sidebar -->
+        <nav>
+            <div class="nav-header">
+                <h1>VMS Documentation</h1>
+                <div class="version">v1.0</div>
             </div>
-            <!-- Common Questions Section -->
-            <section class="common-questions" style="margin: 2rem 0; padding: 1.5rem; background: #f8fffc; border-radius: 12px; border: 1px solid #cceeee;">
-                <h2 style="margin-bottom: 1rem; color: #1a3d5d;">Common Questions</h2>
-                <details style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #b0e0e6; background: #fff;">
-                    <summary style="font-size: 1.1rem; font-weight: bold; color: #205080; cursor: pointer; padding: 0.7rem 1rem; outline: none;">How do I change my password?</summary>
-                    <div style="padding: 1rem 1.5rem 1.2rem 1.5rem;">
-                        <ol style="margin-left: 1.2rem;">
-                            <li>Go to the <strong>Admin Dashboard</strong> (requires appropriate permissions).</li>
-                            <li>Find the <strong>Change Password</strong> section.</li>
-                            <li>Enter your new password and confirm it.</li>
-                            <li>Click the <strong>Change Password</strong> button.</li>
-                        </ol>
-                        <div style="margin-top: 1rem;">
-                            <img src="img/change-password.png" alt="Change Password UI" style="max-width: 600px; width: 100%; border: 1px solid #b0e0e6; border-radius: 8px; box-shadow: 0 2px 8px #e0f7fa;">
-                        </div>
-                        <p style="margin-top: 0.5rem; color: #555; font-size: 0.98rem;">You can find this section in the Admin Dashboard page (<code>admin.html</code> template).</p>
-                    </div>
-                </details>
-                <details style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #b0e0e6; background: #fff;">
-                    <summary style="font-size: 1.1rem; font-weight: bold; color: #205080; cursor: pointer; padding: 0.7rem 1rem; outline: none; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #27a6e5; border-radius: 8px; margin-right: 0.5rem;">
-                            <i class="fa-solid fa-cloud" style="color: white; font-size: 1.3rem;"></i>
-                        </span>
-                        What does the blue cloud button mean?
-                    </summary>
-                    <div style="padding: 1rem 1.5rem 1.2rem 1.5rem;">
-                        <p style="margin-bottom: 1rem;">This button is a quick link to the volunteer's record in Salesforce. Clicking it will open the corresponding Salesforce contact page in a new tab. You may see this button on volunteer profile pages and other areas where Salesforce integration is available.</p>
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #27a6e5; border-radius: 12px; box-shadow: 0 2px 4px #e0e0e0;">
-                                <i class="fa-solid fa-cloud" style="color: white; font-size: 2rem;"></i>
-                            </span>
-                            <span style="color: #555; font-size: 1rem;">Salesforce Link</span>
-                        </div>
-                        <p style="margin-top: 0.7rem; color: #888; font-size: 0.95rem;">If you have access, clicking this button will take you directly to the Salesforce record for more details or updates.</p>
-                    </div>
-                </details>
-            </section>
-            <div class="feature-grid">
-                <a class="feature-card" href="reports.html">
-                    <div class="feature-title">Reports</div>
-                    <div class="feature-desc">Generate, filter, and export reports for insights and analysis.</div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="#getting-started" class="nav-link" data-page="getting_started">
+                    Overview
                 </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">User Guide</div>
+                <a href="#user-guide" class="nav-link" data-page="user_guide">
+                    User Guide <span class="badge badge-ref">coming soon</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reports</div>
+                <a href="#reports" class="nav-link" data-page="reports">
+                    Reports Documentation <span class="badge badge-ref">coming soon</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technical</div>
+                <a href="#architecture" class="nav-link" data-page="architecture">
+                    System Architecture <span class="badge badge-ref">coming soon</span>
+                </a>
+                <a href="#api-reference" class="nav-link" data-page="api_reference">
+                    API Reference <span class="badge badge-ref">coming soon</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Operations</div>
+                <a href="#deployment" class="nav-link" data-page="deployment">
+                    Deployment Guide <span class="badge badge-ref">coming soon</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main>
+            <div id="content">
+                <!-- Content will be loaded here dynamically -->
+                <section class="loading">
+                    <h1>Loading...</h1>
+                    <p>Please wait while the documentation loads.</p>
+                </section>
             </div>
         </main>
     </div>
+
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <script src="js/nav.js"></script>
 </body>
 </html>

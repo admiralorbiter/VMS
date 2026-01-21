@@ -1,0 +1,97 @@
+# Polaris Documentation Hub
+
+**Volunteer Management System · VolunTeach · Salesforce · Pathful**
+
+This documentation covers the integrated system for managing K–12 student connections with career professionals through in-person and virtual events.
+
+## Quick Navigation
+
+- 📋 **Requirements**
+  Functional requirements (FR-xxx) with test traceability
+- 📖 **User Stories**
+  Business intent by epic with acceptance criteria
+- 🏗️ **Architecture**
+  System context, integration flows, and source-of-truth ownership
+- 📊 **Data Dictionary**
+  Canonical entity definitions, field specs, and sensitivity levels
+- 📐 **Metrics Bible**
+  How every metric is calculated—the single source of truth for reporting
+- 🔐 **RBAC Matrix**
+  Role permissions and data access controls
+- 🔌 **Integration Contracts**
+  API specs for SF↔VT, Website, Gmail sync, Pathful import
+- 🧪 **Test Packs**
+  Comprehensive test cases for all major workflows (6 packs)
+- 📈 **Reports**
+  Reporting documentation and available report types
+- 🚀 **Deployment**
+  Deployment guide and operational procedures
+- 🔍 **Data Quality**
+  Data quality dashboard and validation rules
+- 📚 **User Guide**
+  Step-by-step instructions for common tasks
+- 🔌 **API Reference**
+  API documentation for integrations
+
+## Document Hierarchy
+
+This documentation follows a **requirements → design → test** traceability chain:
+
+| Layer | Documents | Purpose |
+|-------|-----------|---------|
+| Requirements | **Purpose & Scope**, **Use Cases**, **Functional Reqs**, **User Stories**, **NFRs** | What the system must do and why |
+| Design | **Architecture**, **Data Dictionary**, **Field Mappings**, **Metrics**, **RBAC** | How the system is structured |
+| Contracts | **Contract A**, **B**, **C**, **D** | Integration boundaries and behaviors |
+| Operations | **Playbooks**, **Monitoring**, **Runbook**, **Smoke Tests** | How to operate and troubleshoot |
+| Testing | **Test Packs 1–6** | Verify requirements are met |
+
+## Core Systems
+
+| System | Purpose | Owns |
+|--------|---------|------|
+| **Salesforce (SF)** | Core data entry, CRM, in-person events, student attendance, email logging | Event details, student data, communication logs |
+| **VolunTeach (VT)** | Event sync + website publishing controls | Publish toggle, district links |
+| **Website (WEB)** | Public event display + volunteer signup | Signup capture (input only) |
+| **Polaris (POL)** | Virtual events, recruitment, dashboards, reporting | Virtual events, teacher roster, metrics |
+| **Pathful (PATH)** | Virtual signup + reminders + attendance | Session signups, attendance status |
+
+## Document Relationships
+
+### How to use this documentation
+
+**Source of Truth (SoT) documents** are authoritative—other docs reference them, never duplicate.
+
+- **[Data Dictionary](#data-dictionary)** → defines all entities and fields
+- **[Metrics Bible](#metrics-bible)** → defines all calculations
+- **[RBAC Matrix](#rbac-matrix)** → defines all permissions
+
+All other documents reference these sources rather than restating definitions.
+
+### Document Types
+
+**Source of Truth (SoT):**
+- Single authoritative definition
+- Referenced by other documents
+- Updated through formal change process
+
+**Reference Documents:**
+- Link to SoT documents
+- Provide context and usage examples
+- Never duplicate SoT definitions
+
+**Operational Documents:**
+- Procedures and playbooks
+- Troubleshooting guides
+- Monitoring and alerting
+
+## Open Decisions
+
+> [!INFO]
+> This section tracks open architectural and design decisions that require resolution.
+
+*No open decisions at this time. Check back for updates.*
+
+---
+
+*Last updated: January 2026*
+*Version: 1.0*
