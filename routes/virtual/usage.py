@@ -393,6 +393,10 @@ def apply_runtime_filters(session_data, filters):
                     "successfully completed",
                     "white lable completed",
                 ],
+                "requested": [
+                    "requested",
+                    "teacher requested",
+                ],
                 "simulcast": ["simulcast"],
                 "no show": [
                     "no show",
@@ -3027,11 +3031,11 @@ def load_usage_routes():
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
         # Update event
-        status_str = _norm(request.form.get("status", "Draft"))
+        status_str = _norm(request.form.get("status", "Requested"))
         try:
             event.status = EventStatus(status_str)
         except ValueError:
-            event.status = EventStatus.DRAFT
+            event.status = EventStatus.REQUESTED
 
         event.title = title
         event.start_date = start_dt
@@ -3312,7 +3316,7 @@ def load_usage_routes():
                 start_date=start_dt,
                 end_date=end_dt,
                 duration=duration_minutes,
-                status=EventStatus.DRAFT,
+                status=EventStatus.REQUESTED,
                 additional_information=session_type or None,
                 series=topic_theme or None,
                 registration_link=registration_link or None,

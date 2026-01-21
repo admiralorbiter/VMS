@@ -366,10 +366,10 @@ class EventStatus(str, Enum):
             status_str (str): Raw status string from external source
 
         Returns:
-            EventStatus: Mapped enum value, defaults to DRAFT if unknown
+            EventStatus: Mapped enum value, defaults to REQUESTED if unknown
         """
         if not status_str:
-            return cls.DRAFT
+            return cls.REQUESTED
 
         status_str = status_str.lower().strip()
         status_mapping = {
@@ -395,7 +395,7 @@ class EventStatus(str, Enum):
             "industry chat": cls.CONFIRMED,
         }
 
-        return status_mapping.get(status_str, cls.DRAFT)
+        return status_mapping.get(status_str, cls.REQUESTED)
 
 
 class Event(db.Model):
