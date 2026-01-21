@@ -57,21 +57,133 @@ function setupNavigation() {
 }
 
 /**
+ * Map test case number to test pack
+ * @param {string} tcId - Test case ID (e.g., 'tc-100' or '100')
+ * @returns {string|null} - Test pack page name or null
+ */
+function getTestPackForTC(tcId) {
+    // Extract number from TC ID
+    const match = tcId.match(/(\d+)/);
+    if (!match) return null;
+
+    const tcNum = parseInt(match[1], 10);
+
+    // Map TC ranges to test packs
+    if (tcNum >= 1 && tcNum <= 31) return 'test_packs/test_pack_1';
+    if (tcNum >= 100 && tcNum <= 152) return 'test_packs/test_pack_2';
+    if (tcNum >= 200 && tcNum <= 299) return 'test_packs/test_pack_3';
+    if (tcNum >= 300 && tcNum <= 381) return 'test_packs/test_pack_4';
+    if (tcNum >= 600 && tcNum <= 691) return 'test_packs/test_pack_5';
+    if (tcNum >= 700 && tcNum <= 822) return 'test_packs/test_pack_6';
+
+    return null;
+}
+
+/**
  * Handle routing based on URL hash
  */
 function handleRouting() {
     const hash = window.location.hash.slice(1); // Remove the '#'
 
+    // Check if hash is a test case anchor (tc-xxx)
+    // If so, route to the appropriate test pack page
+    if (hash && hash.match(/^tc-\d+$/i)) {
+        const testPack = getTestPackForTC(hash);
+        if (testPack) {
+            // Check if we're already on the correct test pack page
+            const currentPage = document.querySelector('.nav-link.active')?.getAttribute('data-page');
+            if (currentPage === testPack) {
+                // Already on the right page, just scroll to anchor
+                setTimeout(() => {
+                    const element = document.getElementById(hash.toLowerCase());
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+                return;
+            }
+
+            // Load the test pack page, then scroll to anchor
+            loadPage(testPack).then(() => {
+                setTimeout(() => {
+                    const element = document.getElementById(hash.toLowerCase());
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 200);
+            }).catch(err => {
+                console.error('Error loading test pack:', err);
+            });
+            updateActiveNavLink(testPack);
+            return;
+        }
+    }
+
+    // Check if hash is a requirement anchor (fr-xxx)
+    // These should scroll on current page or load requirements page
+    if (hash && hash.match(/^fr-\d+$/i)) {
+        // Check if we're on requirements page
+        const currentPage = document.querySelector('.nav-link.active')?.getAttribute('data-page');
+        if (currentPage === 'requirements') {
+            // Scroll to anchor on current page
+            setTimeout(() => {
+                const element = document.getElementById(hash.toLowerCase());
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+            return;
+        } else {
+            // Load requirements page with anchor
+            loadPage('requirements').then(() => {
+                setTimeout(() => {
+                    const element = document.getElementById(hash.toLowerCase());
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 200);
+            }).catch(err => {
+                console.error('Error loading requirements page:', err);
+            });
+            updateActiveNavLink('requirements');
+            return;
+        }
+    }
+
+    // Check if hash contains both page and anchor (e.g., 'test-pack-2#tc-100')
+    const hashParts = hash.split('#');
+    const pageHash = hashParts[0];
+    const anchorHash = hashParts[1];
+
     // Determine which page to load
     let pageName = CONFIG.defaultPage;
 
-    if (hash) {
-        // Convert hash to page name (e.g., 'getting-started' -> 'getting_started')
-        pageName = hash.replace(/-/g, '_');
+    if (pageHash) {
+        // Try to find nav link with matching hash to get data-page attribute
+        const navLink = document.querySelector(`.nav-link[href="#${pageHash}"]`);
+        if (navLink && navLink.getAttribute('data-page')) {
+            // Use the data-page attribute which has the correct path (handles subfolders)
+            pageName = navLink.getAttribute('data-page');
+        } else {
+            // Fallback: Convert hash to page name (e.g., 'getting-started' -> 'getting_started')
+            pageName = pageHash.replace(/-/g, '_');
+        }
     }
 
     // Load the page
-    loadPage(pageName);
+    loadPage(pageName).then(() => {
+        // If there's an anchor, scroll to it after page loads
+        if (anchorHash) {
+            setTimeout(() => {
+                const element = document.getElementById(anchorHash.toLowerCase());
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 200);
+        }
+    }).catch(err => {
+        console.error('Error loading page:', err);
+    });
 
     // Update active nav link
     updateActiveNavLink(pageName);
@@ -85,7 +197,8 @@ async function loadPage(pageName) {
     const contentDiv = document.getElementById('content');
     const filePath = `${CONFIG.contentPath}${pageName}${CONFIG.fileExtension}`;
 
-    try {
+    return new Promise(async (resolve, reject) => {
+        try {
         // Show loading state
         contentDiv.innerHTML = '<section class="loading"><h1>Loading...</h1><p>Please wait while the content loads.</p></section>';
 
@@ -122,10 +235,14 @@ async function loadPage(pageName) {
         // Process rendered content
         processRenderedContent();
 
+        resolve();
+
     } catch (error) {
         console.error('Error loading page:', error);
         showError(pageName, error.message);
+        reject(error);
     }
+    });
 }
 
 /**
@@ -160,36 +277,75 @@ function processRenderedContent() {
     // Process blockquotes into callouts
     const blockquotes = contentDiv.querySelectorAll('blockquote');
     blockquotes.forEach(blockquote => {
-        const firstChild = blockquote.firstElementChild;
-        if (firstChild && firstChild.tagName === 'P') {
-            const text = firstChild.textContent.trim();
+        // Get all paragraphs in the blockquote
+        const paragraphs = blockquote.querySelectorAll('p');
+        if (paragraphs.length === 0) return;
 
-            // Check for callout types
-            const calloutTypes = {
-                '[!INFO]': 'callout-info',
-                '[!WARNING]': 'callout-warning',
-                '[!DANGER]': 'callout-danger',
-                '[!SUCCESS]': 'callout-success',
-                '[!NOTE]': 'callout-sot'
-            };
+        const firstParagraph = paragraphs[0];
+        const text = firstParagraph.textContent.trim();
 
-            for (const [marker, className] of Object.entries(calloutTypes)) {
-                if (text.startsWith(marker)) {
-                    blockquote.classList.add('callout', className);
+        // Check for callout types
+        const calloutTypes = {
+            '[!INFO]': 'callout-info',
+            '[!WARNING]': 'callout-warning',
+            '[!DANGER]': 'callout-danger',
+            '[!SUCCESS]': 'callout-success',
+            '[!NOTE]': 'callout-sot'
+        };
 
-                    // Create title
-                    const title = document.createElement('div');
-                    title.className = 'callout-title';
-                    title.textContent = marker.replace('[!', '').replace(']', '');
+        for (const [marker, className] of Object.entries(calloutTypes)) {
+            if (text.startsWith(marker)) {
+                blockquote.classList.add('callout', className);
 
-                    // Remove marker from content
-                    firstChild.textContent = text.substring(marker.length).trim();
+                // Create title
+                const title = document.createElement('div');
+                title.className = 'callout-title';
+                title.textContent = marker.replace('[!', '').replace(']', '');
 
-                    // Insert title
-                    blockquote.insertBefore(title, firstChild);
-                    break;
+                // Remove marker from content while preserving HTML structure
+                // Find the first text node and remove the marker from it
+                const walker = document.createTreeWalker(
+                    firstParagraph,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+
+                let textNode = walker.nextNode();
+                if (textNode) {
+                    const nodeText = textNode.textContent;
+                    if (nodeText.trim().startsWith(marker)) {
+                        // Remove the marker and any following whitespace
+                        const escapedMarker = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const newText = nodeText.replace(new RegExp('^\\s*' + escapedMarker + '\\s*'), '');
+                        textNode.textContent = newText;
+                    }
                 }
+
+                // If the first paragraph only contained the marker, remove it
+                if (firstParagraph.textContent.trim() === '') {
+                    firstParagraph.remove();
+                }
+
+                // Insert title at the beginning of the blockquote
+                blockquote.insertBefore(title, blockquote.firstElementChild);
+                break;
             }
+        }
+    });
+
+    // Intercept cross-page anchor links (e.g., requirements#fr-501)
+    const links = contentDiv.querySelectorAll('a[href]');
+    links.forEach(link => {
+        const href = link.getAttribute('href');
+        // Check if it's a cross-page link (contains # but doesn't start with #)
+        if (href && href.includes('#') && !href.startsWith('#') && !href.startsWith('http')) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Convert to hash navigation format: requirements#fr-501 -> #requirements#fr-501
+                // Setting window.location.hash will trigger hashchange event, which calls handleRouting()
+                window.location.hash = '#' + href;
+            });
         }
     });
 }
@@ -257,7 +413,7 @@ function escapeHtml(str) {
 
 /**
  * Update active navigation link
- * @param {string} pageName - Name of the active page
+ * @param {string} pageName - Name of the active page (may include subfolder path)
  */
 function updateActiveNavLink(pageName) {
     const navLinks = document.querySelectorAll('.nav-link');
@@ -265,7 +421,8 @@ function updateActiveNavLink(pageName) {
     navLinks.forEach(link => {
         const linkPage = link.getAttribute('data-page');
 
-        if (linkPage === pageName) {
+        // Match exact path or handle subfolder paths
+        if (linkPage === pageName || linkPage === pageName.replace(/\//g, '/')) {
             link.classList.add('active');
         } else {
             link.classList.remove('active');
