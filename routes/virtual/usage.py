@@ -5893,6 +5893,232 @@ def load_usage_routes():
                 )
             )
 
+    @virtual_bp.route("/usage/recruitment")
+    @login_required
+    def virtual_recruitment():
+        """
+        Virtual Sessions Presenter Recruitment View
+
+        Displays upcoming virtual events without assigned presenters to enable
+        proactive recruitment of volunteers. Only accessible to Admin users and
+        global-scoped regular users (not district or school-scoped users).
+
+        Returns:
+            Rendered template with filtered list of events needing presenters
+        """
+        # Access Control: Allow Admin (any scope) OR User with global scope
+        # Deny: District-scoped or School-scoped users
+        if not (current_user.is_admin or current_user.scope_type == "global"):
+            flash(
+                "Access denied. This feature is only available to administrators and global users.",
+                "error",
+            )
+            return redirect(url_for("virtual.virtual_usage"))
+
+        # Get filter parameters - Use virtual year instead of school year
+        default_virtual_year = get_current_virtual_year()
+        selected_virtual_year = request.args.get("year", default_virtual_year)
+
+        # Calculate default date range based on virtual session year (Aug 1 - Jul 31)
+        default_date_from, default_date_to = get_virtual_year_dates(
+            selected_virtual_year
+        )
+
+        # Handle explicit date range parameters
+        date_from_str = request.args.get("date_from")
+        date_to_str = request.args.get("date_to")
+
+        date_from = default_date_from
+        date_to = default_date_to
+
+        if date_from_str:
+            try:
+                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
+                if (
+                    default_date_from.date()
+                    <= parsed_date_from.date()
+                    <= default_date_to.date()
+                ):
+                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+            except ValueError:
+                pass
+
+        if date_to_str:
+            try:
+                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
+                if (
+                    default_date_from.date()
+                    <= parsed_date_to.date()
+                    <= default_date_to.date()
+                ):
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                pass
+
+        if date_from > date_to:
+            date_from = default_date_from
+            date_to = default_date_to
+
+        # Current timestamp for filtering future events
+        # Use both timezone-aware and naive versions for compatibility
+        now = datetime.now(timezone.utc)
+        now_naive = datetime.now()  # For databases with naive datetime storage
+
+        # Build query for virtual events without presenter assignments
+        # Subquery to check for presenter assignments
+        from sqlalchemy import and_
+        from sqlalchemy import exists as sql_exists
+
+        presenter_exists = sql_exists().where(
+            and_(
+                EventParticipation.event_id == Event.id,
+                EventParticipation.participant_type == "Presenter",
+            )
+        )
+
+        # Main query: Virtual events, future only, without presenters
+        # Use OR condition to handle both timezone-aware and naive datetimes
+        query = Event.query.filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            or_(Event.start_date > now, Event.start_date > now_naive),
+            ~presenter_exists,  # NOT EXISTS
+        )
+
+        # Apply date range filter
+        query = query.filter(Event.start_date >= date_from, Event.start_date <= date_to)
+
+        # Apply school filter
+        school_id = request.args.get("school")
+        if school_id:
+            query = query.filter(Event.school == school_id)
+
+        # Apply district filter (via school relationship)
+        district_name = request.args.get("district")
+        if district_name:
+            query = query.join(School).filter(School.district_id == district_name)
+
+        # Apply event type filter (allows filtering to specific virtual event subtypes if needed)
+        event_type = request.args.get("event_type")
+        if event_type:
+            try:
+                query = query.filter(Event.type == EventType(event_type))
+            except (ValueError, KeyError):
+                pass  # Invalid event type, ignore filter
+
+        # Apply search filter across title and teacher names
+        search_term = request.args.get("search", "").strip()
+        if search_term:
+            query = query.filter(
+                or_(
+                    Event.title.ilike(f"%{search_term}%"),
+                    Event.educators.ilike(f"%{search_term}%"),
+                )
+            )
+
+        # Sort by start date ascending (earliest events first = highest priority)
+        query = query.order_by(Event.start_date.asc())
+
+        # Execute query
+        events = query.all()
+
+        # Prepare event data with calculated fields
+        event_data = []
+        for event in events:
+            # Ensure event.start_date is timezone-aware for comparison
+            event_start = event.start_date
+            if event_start.tzinfo is None:
+                # If naive, assume UTC
+                event_start = event_start.replace(tzinfo=timezone.utc)
+
+            # Calculate days until event
+            days_until = (event_start - now).days
+
+            # Count tagged teachers
+            teacher_count = EventTeacher.query.filter_by(event_id=event.id).count()
+
+            # Get school and district info
+            school = School.query.get(event.school) if event.school else None
+            district_display = (
+                school.district.name if school and school.district else "N/A"
+            )
+            school_name = school.name if school else "N/A"
+
+            # Format date for display (use original event.start_date for formatting)
+            try:
+                formatted_date = event.start_date.strftime("%b %d, %Y %I:%M %p")
+            except:
+                formatted_date = str(event.start_date)
+
+            event_data.append(
+                {
+                    "id": event.id,
+                    "title": event.title,
+                    "start_date": event.start_date,
+                    "school_name": school_name,
+                    "district_name": district_display,
+                    "teacher_count": teacher_count,
+                    "days_until": days_until,
+                    "formatted_date": formatted_date,
+                    "status": (
+                        event.status.value
+                        if hasattr(event.status, "value")
+                        else str(event.status)
+                    ),
+                }
+            )
+
+        # Prepare filter options for dropdowns
+        # Get all schools with virtual events
+        schools_query = (
+            db.session.query(School)
+            .join(Event)
+            .filter(Event.type == EventType.VIRTUAL_SESSION)
+            .distinct()
+            .order_by(School.name)
+        )
+        schools = schools_query.all()
+
+        # Get all districts with virtual events
+        districts_query = (
+            db.session.query(District)
+            .join(School)
+            .join(Event)
+            .filter(Event.type == EventType.VIRTUAL_SESSION)
+            .distinct()
+            .order_by(District.name)
+        )
+        districts = districts_query.all()
+
+        # Generate school year options
+        school_years = generate_school_year_options()
+
+        # Build filter options
+        filter_options = {
+            "schools": schools,
+            "districts": districts,
+            "school_years": school_years,
+            "event_types": [et for et in EventType],  # All event types
+        }
+
+        # Current filters for template
+        current_filters = {
+            "year": selected_virtual_year,
+            "date_from": date_from,
+            "date_to": date_to,
+            "school": school_id,
+            "district": district_name,
+            "event_type": event_type,
+            "search": search_term,
+        }
+
+        return render_template(
+            "virtual/virtual_recruitment.html",
+            events=event_data,
+            filter_options=filter_options,
+            current_filters=current_filters,
+            event_count=len(event_data),
+        )
+
     @virtual_bp.route("/usage/district/<district_name>/teacher-progress/matching")
     @login_required
     @admin_required

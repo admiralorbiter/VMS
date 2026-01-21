@@ -353,6 +353,14 @@
                 ➕ New Session
             </button>
             {% endif %}
+            {% if current_user.is_admin or current_user.scope_type == 'global' %}
+            <a href="{{ url_for('virtual.virtual_recruitment') }}"
+               class="export-btn"
+               title="View events needing presenters"
+               style="background: #ffc107; color: #333;">
+                <i class="fas fa-user-plus"></i> Presenter Recruitment
+            </a>
+            {% endif %}
             {% if current_user.is_admin %}
                 {% if request.args.get('show_all_districts') == '1' %}
                 <a href="{{ url_for('virtual.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
