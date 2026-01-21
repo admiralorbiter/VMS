@@ -11,7 +11,7 @@ This documentation contains **6 test packs** that verify functional requirements
 | Pack | Title | Focus Area | Requirements Covered |
 |------|-------|------------|---------------------|
 | [Test Pack 1](#test-pack-1) | District Progress Dashboard | Teacher magic links + progress status validation | [FR-501](requirements#fr-501)–[FR-503](requirements#fr-503), [FR-505](requirements#fr-505)–[FR-508](requirements#fr-508), [FR-521](requirements#fr-521)–[FR-524](requirements#fr-524) |
-| [Test Pack 2](#test-pack-2) | In-Person Event Publish | SF sync + website signup + email/calendar | [FR-101](requirements#fr-101)–[FR-109](requirements#fr-109), [FR-121](requirements#fr-121)–[FR-127](requirements#fr-127) |
+| [Test Pack 2](#test-pack-2) | In-Person Event Publish | SF sync + website signup + email/calendar | [FR-101](requirements#fr-101)–[FR-109](requirements#fr-109), [FR-108](requirements#fr-108), [FR-110](requirements#fr-110)–[FR-133](requirements#fr-133), [FR-121](requirements#fr-121)–[FR-127](requirements#fr-127) |
 | [Test Pack 3](#test-pack-3) | Virtual Events | Polaris creation + Pathful import + historical data | [FR-201](requirements#fr-201)–[FR-206](requirements#fr-206), [FR-208](requirements#fr-208), [FR-210](requirements#fr-210)–[FR-219](requirements#fr-219) |
 | [Test Pack 4](#test-pack-4) | Volunteer Recruitment | Search + communication history + sync health | [FR-301](requirements#fr-301)–[FR-306](requirements#fr-306), [FR-308](requirements#fr-308)–[FR-309](requirements#fr-309) |
 | [Test Pack 5](#test-pack-5) | Student Attendance | Roster + attendance + impact metrics | [FR-601](requirements#fr-601)–[FR-604](requirements#fr-604) |
@@ -39,9 +39,10 @@ This documentation contains **6 test packs** that verify functional requirements
 
 **Coverage:**
 - [FR-101](requirements#fr-101)–[FR-109](requirements#fr-109) (Events + visibility)
+- [FR-108](requirements#fr-108), [FR-110](requirements#fr-110)–[FR-133](requirements#fr-133) (Sync, participation, status, monitoring, reporting)
 - [FR-121](requirements#fr-121)–[FR-127](requirements#fr-127) (Signup + email)
 
-**Test Cases:** TC-100 through TC-152
+**Test Cases:** TC-100 through TC-222
 
 [View Test Pack 2 →](#test-pack-2)
 
@@ -108,7 +109,7 @@ See the [Functional Requirements](#requirements) page for complete requirement-t
 Test cases are organized by test pack:
 
 - **TC-001–TC-031:** Test Pack 1 (District Progress)
-- **TC-100–TC-152:** Test Pack 2 (In-Person Events)
+- **TC-100–TC-222:** Test Pack 2 (In-Person Events)
 - **TC-200–TC-299:** Test Pack 3 (Virtual Events)
 - **TC-300–TC-381:** Test Pack 4 (Volunteer Recruitment)
 - **TC-600–TC-691:** Test Pack 5 (Student Attendance)

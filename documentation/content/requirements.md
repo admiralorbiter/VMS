@@ -12,14 +12,84 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 
 | ID | Requirement | Test Coverage |
 |----|-------------|---------------|
-| <a id="fr-101"></a>**FR-101** | Staff shall create and maintain in-person event records in Salesforce. | [TC-100](#tc-100) |
-| <a id="fr-102"></a>**FR-102** | VolunTeach shall sync in-person events from Salesforce at least once per hour. | [TC-101](#tc-101), [TC-103](#tc-103) |
-| <a id="fr-103"></a>**FR-103** | VolunTeach shall provide a manual "sync now" action. | [TC-100](#tc-100), [TC-102](#tc-102) |
-| <a id="fr-104"></a>**FR-104** | VolunTeach shall allow staff to control whether an event appears on the public in-person events page via a visibility toggle. | [TC-110](#tc-110), [TC-111](#tc-111) |
-| <a id="fr-105"></a>**FR-105** | The system shall support events that are not displayed on the public in-person page (e.g., orientations). | [TC-112](#tc-112) |
-| <a id="fr-106"></a>**FR-106** | The website shall display for each event at minimum: volunteer slots needed, slots filled, date/time, school, and event description/type. | [TC-120](#tc-120), [TC-121](#tc-121) |
-| <a id="fr-107"></a>**FR-107** | VolunTeach shall allow staff to link events to one or more districts for district-specific website pages. | [TC-113](#tc-113), [TC-114](#tc-114) |
-| <a id="fr-109"></a>**FR-109** | Any event linked to a district shall appear on that district's website page regardless of the in-person-page visibility toggle. | [TC-113](#tc-113), [TC-115](#tc-115) |
+| <a id="fr-101"></a>**FR-101** | Staff shall create and maintain in-person event records in Salesforce. | [TC-100](test-pack-2#tc-100) |
+| <a id="fr-102"></a>**FR-102** | VolunTeach shall sync in-person events from Salesforce at least once per hour via automated scheduled sync. The system also supports scheduled daily batch imports that process events, volunteer participations, and student participations. | [TC-101](test-pack-2#tc-101), [TC-103](test-pack-2#tc-103) |
+| <a id="fr-103"></a>**FR-103** | VolunTeach shall provide a manual "sync now" action for immediate synchronization. Manual sync operations shall support large datasets with configurable batch sizes and progress indicators for use cases such as reports and historical data imports. | [TC-100](test-pack-2#tc-100), [TC-102](test-pack-2#tc-102) |
+| <a id="fr-104"></a>**FR-104** | VolunTeach shall allow staff to control whether an event appears on the public in-person events page via a visibility toggle. | [TC-110](test-pack-2#tc-110), [TC-111](test-pack-2#tc-111) |
+| <a id="fr-105"></a>**FR-105** | The system shall support events that are not displayed on the public in-person page (e.g., orientations). | [TC-112](test-pack-2#tc-112) |
+| <a id="fr-106"></a>**FR-106** | The website shall display for each event at minimum: volunteer slots needed, slots filled, date/time, school, and event description/type. | [TC-120](test-pack-2#tc-120), [TC-121](test-pack-2#tc-121) |
+| <a id="fr-107"></a>**FR-107** | VolunTeach shall allow staff to link events to one or more districts for district-specific website pages. | [TC-113](test-pack-2#tc-113), [TC-114](test-pack-2#tc-114) |
+| <a id="fr-109"></a>**FR-109** | Any event linked to a district shall appear on that district's website page regardless of the in-person-page visibility toggle. | [TC-113](test-pack-2#tc-113), [TC-115](test-pack-2#tc-115) |
+
+### Scheduled Imports
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-108"></a>**FR-108** | The system shall support scheduled daily imports of in-person events from Salesforce, including events, volunteer participations, and student participations. | [TC-160](test-pack-2#tc-160) |
+| <a id="fr-110"></a>**FR-110** | Daily imports shall process events in batches to handle large datasets without exceeding API limits. | [TC-161](test-pack-2#tc-161) |
+| <a id="fr-111"></a>**FR-111** | The system shall provide visibility into daily import status, success/failure counts, and error details. | [TC-162](test-pack-2#tc-162) |
+
+### Participation Sync
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-112"></a>**FR-112** | The system shall sync student participation data from Salesforce for in-person events, creating EventStudentParticipation records. | [TC-170](test-pack-2#tc-170) |
+| <a id="fr-113"></a>**FR-113** | Student participation sync shall update attendance status and delivery hours from Salesforce. | [TC-171](test-pack-2#tc-171) |
+| <a id="fr-114"></a>**FR-114** | The system shall sync volunteer participation data from Salesforce for in-person events, including status, delivery hours, and participant attributes. | [TC-172](test-pack-2#tc-172) |
+| <a id="fr-115"></a>**FR-115** | Volunteer participation sync shall handle batch processing for large event sets (e.g., 50 events per batch). | [TC-173](test-pack-2#tc-173) |
+
+### Unaffiliated Events
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-116"></a>**FR-116** | The system shall identify and sync events from Salesforce that are missing School, District, or Parent Account associations. | [TC-180](test-pack-2#tc-180) |
+| <a id="fr-117"></a>**FR-117** | For unaffiliated events, the system shall attempt to associate events with districts based on participating students. | [TC-181](test-pack-2#tc-181) |
+| <a id="fr-118"></a>**FR-118** | Unaffiliated event sync shall update both event data and associated volunteer/student participation records. | [TC-182](test-pack-2#tc-182) |
+
+### Status Management
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-119"></a>**FR-119** | When syncing events, the system shall update event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) from Salesforce. | [TC-190](test-pack-2#tc-190) |
+| <a id="fr-120"></a>**FR-120** | The system shall preserve cancellation reasons when events are cancelled in Salesforce. | [TC-191](test-pack-2#tc-191) |
+| <a id="fr-121"></a>**FR-121** | Status changes shall be reflected in VolunTeach and on public website within the sync cycle. | [TC-192](test-pack-2#tc-192) |
+
+### Error Handling and Monitoring
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-122"></a>**FR-122** | The system shall detect and report sync failures with detailed error messages (not silent failures). | [TC-104](test-pack-2#tc-104) |
+| <a id="fr-123"></a>**FR-123** | Sync operations shall be idempotent (no duplicates on re-sync). | [TC-102](test-pack-2#tc-102) |
+| <a id="fr-124"></a>**FR-124** | The system shall distinguish between "no events to sync" and "sync failure" for monitoring purposes. | [TC-200](test-pack-2#tc-200) |
+| <a id="fr-125"></a>**FR-125** | Failed sync operations shall be logged with timestamps, error details, and affected record counts. | [TC-201](test-pack-2#tc-201) |
+
+### Historical Data Import
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-126"></a>**FR-126** | The system shall support importing historical in-person event data from Salesforce (e.g., 2–4 years of past events). | [TC-210](test-pack-2#tc-210) |
+| <a id="fr-127"></a>**FR-127** | Historical import shall preserve event-participant relationships and maintain data integrity. | [TC-211](test-pack-2#tc-211) |
+
+### Manual Operations
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-128"></a>**FR-128** | For large datasets, the system shall provide manual sync operations that process events in configurable batch sizes. | [TC-212](test-pack-2#tc-212) |
+| <a id="fr-129"></a>**FR-129** | Manual sync operations shall provide progress indicators and allow cancellation/resumption. | [TC-213](test-pack-2#tc-213) |
+
+### Data Completeness Visibility
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-130"></a>**FR-130** | The system shall distinguish "no events to sync" from "event sync failure" (visibility into data completeness). | [TC-200](test-pack-2#tc-200) |
+| <a id="fr-131"></a>**FR-131** | Sync status indicators shall show last successful sync time, record counts, and any pending errors. | [TC-220](test-pack-2#tc-220) |
+
+### Reporting Integration
+
+| ID | Requirement | Test Coverage |
+|----|-------------|---------------|
+| <a id="fr-132"></a>**FR-132** | Event sync operations shall trigger cache invalidation for reports that depend on event data. | [TC-221](test-pack-2#tc-221) |
+| <a id="fr-133"></a>**FR-133** | Manual cache refresh for event-based reports shall be available when automated sync is insufficient for large datasets. | [TC-222](test-pack-2#tc-222) |
 
 ## 7.2 Public Volunteer Signup
 
