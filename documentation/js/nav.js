@@ -335,16 +335,34 @@ function processRenderedContent() {
     });
 
     // Intercept cross-page anchor links (e.g., requirements#fr-501)
+    // Also ensure card links work properly
     const links = contentDiv.querySelectorAll('a[href]');
     links.forEach(link => {
         const href = link.getAttribute('href');
-        // Check if it's a cross-page link (contains # but doesn't start with #)
-        if (href && href.includes('#') && !href.startsWith('#') && !href.startsWith('http')) {
+        if (!href || href.startsWith('http')) return; // Skip external links
+
+        // Handle cross-page links (e.g., requirements#fr-501 or test-pack-2#tc-100)
+        // These need to be converted to hash navigation format
+        if (href.includes('#') && !href.startsWith('#')) {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 // Convert to hash navigation format: requirements#fr-501 -> #requirements#fr-501
                 // Setting window.location.hash will trigger hashchange event, which calls handleRouting()
                 window.location.hash = '#' + href;
+            });
+        }
+        // Hash-only links (e.g., #requirements, #test-packs) - ensure they trigger routing
+        else if (href.startsWith('#')) {
+            link.addEventListener('click', (e) => {
+                // Don't prevent default - let browser handle hash change
+                // But ensure routing is triggered (in case hash doesn't change)
+                const currentHash = window.location.hash;
+                if (currentHash === href) {
+                    // Hash is already set, manually trigger routing
+                    e.preventDefault();
+                    handleRouting();
+                }
+                // Otherwise, let browser handle it and hashchange will trigger routing
             });
         }
     });
@@ -354,6 +372,7 @@ function processRenderedContent() {
  * Convert a markdown list into Polaris-style cards.
  * Expects each <li> to start with an emoji icon and contain a <strong> title,
  * followed by a description on the next line.
+ * Preserves links and makes cards clickable.
  */
 function enhanceQuickNavCards(ul) {
     const items = ul.querySelectorAll('li');
@@ -361,8 +380,14 @@ function enhanceQuickNavCards(ul) {
         // Avoid double-processing
         if (li.dataset.enhanced === 'true') return;
 
+        // Check if there's a link in the list item (might be inside strong tag)
+        const link = li.querySelector('a');
+        const href = link ? link.getAttribute('href') : null;
+        const linkText = link ? link.textContent.trim() : '';
+
         const strong = li.querySelector('strong');
-        const title = strong?.textContent?.trim() ?? '';
+        // Get title from link text if available, otherwise from strong
+        const title = linkText || (strong ? strong.textContent.trim() : '');
 
         // Get raw text and extract icon (first character, usually emoji)
         const rawText = li.textContent?.trim() ?? '';
@@ -370,16 +395,17 @@ function enhanceQuickNavCards(ul) {
         const firstText = textNodes[0]?.textContent?.trim() ?? '';
         const icon = firstText ? Array.from(firstText)[0] : '';
 
-        // Build description: get all text after the strong element
+        // Build description: get all text after the strong element or link
         let desc = '';
-        if (strong && strong.nextSibling) {
-            // Get text after <strong>
-            const afterStrong = Array.from(li.childNodes)
-                .slice(Array.from(li.childNodes).indexOf(strong) + 1)
+        const strongNode = strong || link;
+        if (strongNode && strongNode.nextSibling) {
+            // Get text after <strong> or <a>
+            const afterNode = Array.from(li.childNodes)
+                .slice(Array.from(li.childNodes).indexOf(strongNode) + 1)
                 .map(n => n.textContent)
                 .join(' ')
                 .trim();
-            desc = afterStrong.replace(/^[-–—:]\s*/, '').trim();
+            desc = afterNode.replace(/^[-–—:]\s*/, '').trim();
         } else {
             // Fallback: extract from raw text
             desc = rawText;
@@ -390,13 +416,26 @@ function enhanceQuickNavCards(ul) {
         desc = desc.replace(/\s+/g, ' ');
 
         // Rebuild card markup with proper structure
-        li.innerHTML = `
-            <div class="qn-icon" aria-hidden="true">${escapeHtml(icon)}</div>
-            <div class="qn-body">
-                <div class="qn-title">${escapeHtml(title || rawText.replace(icon, '').trim())}</div>
-                ${desc ? `<div class="qn-desc">${escapeHtml(desc)}</div>` : ''}
-            </div>
-        `;
+        // If there's a link, make the entire card clickable
+        if (href) {
+            li.innerHTML = `
+                <a href="${escapeHtml(href)}" class="qn-card-link">
+                    <div class="qn-icon" aria-hidden="true">${escapeHtml(icon)}</div>
+                    <div class="qn-body">
+                        <div class="qn-title">${escapeHtml(title || rawText.replace(icon, '').trim())}</div>
+                        ${desc ? `<div class="qn-desc">${escapeHtml(desc)}</div>` : ''}
+                    </div>
+                </a>
+            `;
+        } else {
+            li.innerHTML = `
+                <div class="qn-icon" aria-hidden="true">${escapeHtml(icon)}</div>
+                <div class="qn-body">
+                    <div class="qn-title">${escapeHtml(title || rawText.replace(icon, '').trim())}</div>
+                    ${desc ? `<div class="qn-desc">${escapeHtml(desc)}</div>` : ''}
+                </div>
+            `;
+        }
         li.classList.add('qn-card');
         li.dataset.enhanced = 'true';
     });

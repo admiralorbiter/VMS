@@ -10,6 +10,12 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 
 **Salesforce + VolunTeach + Website**
 
+> [!INFO]
+> **System Locations**
+> - **Salesforce**: [https://prep-kc.my.salesforce.com/](https://prep-kc.my.salesforce.com/) (core CRM system for data entry and event management)
+> - **VolunTeach**: [https://voluntold-prepkc.pythonanywhere.com/dashboard](https://voluntold-prepkc.pythonanywhere.com/dashboard) (admin interface for event management and sync controls)
+> - **Public Website**: [https://prepkc.org/volunteer.html](https://prepkc.org/volunteer.html) (volunteer hub with in-person events signup page)
+
 | ID | Requirement | Test Coverage |
 |----|-------------|---------------|
 | <a id="fr-101"></a>**FR-101** | Staff shall create and maintain in-person event records in Salesforce. | [TC-100](test-pack-2#tc-100) |
@@ -94,6 +100,16 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 ## 7.2 Public Volunteer Signup
 
 **Website**
+
+> [!INFO]
+> **System Location**
+> - **Public Website Volunteer Hub**: [https://prepkc.org/volunteer.html](https://prepkc.org/volunteer.html)
+>
+> The volunteer hub provides access to signup pages for:
+> - In-person events
+> - Data in Action (DIA) events
+> - Virtual events
+> - Other volunteer opportunities
 
 | ID | Requirement | Test Coverage |
 |----|-------------|---------------|

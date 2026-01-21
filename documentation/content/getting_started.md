@@ -4,6 +4,14 @@
 
 This documentation covers the integrated system for managing K–12 student connections with career professionals through in-person and virtual events.
 
+## System URLs and Locations
+
+| System | URL | Purpose |
+|--------|-----|---------|
+| **Salesforce** | [https://prep-kc.my.salesforce.com/](https://prep-kc.my.salesforce.com/) | Core CRM system for data entry, in-person events, student attendance, and email logging |
+| **VolunTeach** | [https://voluntold-prepkc.pythonanywhere.com/dashboard](https://voluntold-prepkc.pythonanywhere.com/dashboard) | Admin interface for event management, sync controls, and publishing toggles |
+| **Public Website** | [https://prepkc.org/volunteer.html](https://prepkc.org/volunteer.html) | Volunteer hub with links to signup pages for different event types |
+
 ## Quick Navigation
 
 - 📋 **[Requirements](#requirements)**
@@ -54,6 +62,17 @@ This documentation follows a **requirements → design → test** traceability c
 | **Website (WEB)** | Public event display + volunteer signup | Signup capture (input only) |
 | **Polaris (POL)** | Virtual events, recruitment, dashboards, reporting | Virtual events, teacher roster, metrics |
 | **Pathful (PATH)** | Virtual signup + reminders + attendance | Session signups, attendance status |
+
+## Public Website Structure
+
+The public website volunteer hub ([https://prepkc.org/volunteer.html](https://prepkc.org/volunteer.html)) provides access to multiple volunteer signup pages:
+
+- **In-Person Events**: Signup for traditional in-person career events
+- **Data in Action (DIA) Events**: Signup for data-focused events
+- **Virtual Events**: Signup for virtual career sessions
+- **Other Opportunities**: Additional volunteer programs
+
+These pages are controlled by VolunTeach visibility toggles and district linking settings. Events synced from Salesforce to VolunTeach can be made visible on the appropriate website pages based on staff configuration in the VolunTeach admin interface.
 
 ## Document Relationships
 
