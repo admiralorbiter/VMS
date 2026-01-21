@@ -10,12 +10,12 @@ This documentation contains **6 test packs** that verify functional requirements
 
 | Pack | Title | Focus Area | Requirements Covered |
 |------|-------|------------|---------------------|
-| [Test Pack 1](#test-pack-1) | District Progress Dashboard | Teacher magic links + progress status validation | [FR-501](requirements#fr-501)–[FR-503](requirements#fr-503), [FR-505](requirements#fr-505)–[FR-508](requirements#fr-508), [FR-521](requirements#fr-521)–[FR-524](requirements#fr-524) |
-| [Test Pack 2](#test-pack-2) | In-Person Event Publish | SF sync + website signup + email/calendar | [FR-101](requirements#fr-101)–[FR-109](requirements#fr-109), [FR-108](requirements#fr-108), [FR-110](requirements#fr-110)–[FR-133](requirements#fr-133), [FR-121](requirements#fr-121)–[FR-127](requirements#fr-127) |
-| [Test Pack 3](#test-pack-3) | Virtual Events | Polaris creation + Pathful import + historical data | [FR-201](requirements#fr-201)–[FR-206](requirements#fr-206), [FR-208](requirements#fr-208), [FR-210](requirements#fr-210)–[FR-219](requirements#fr-219) |
-| [Test Pack 4](#test-pack-4) | Volunteer Recruitment | Search + communication history + sync health | [FR-301](requirements#fr-301)–[FR-306](requirements#fr-306), [FR-308](requirements#fr-308)–[FR-309](requirements#fr-309) |
-| [Test Pack 5](#test-pack-5) | Student Attendance | Roster + attendance + impact metrics | [FR-601](requirements#fr-601)–[FR-604](requirements#fr-604) |
-| [Test Pack 6](#test-pack-6) | Reporting Dashboards | Exports + ad hoc queries + access control | [FR-401](requirements#fr-401)–[FR-406](requirements#fr-406), [FR-521](requirements#fr-521)–[FR-522](requirements#fr-522) |
+| [Test Pack 1](#test-pack-1) | District Progress Dashboard | Teacher magic links + progress status validation | [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503), [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-508](requirements#fr-district-508), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) |
+| [Test Pack 2](#test-pack-2) | In-Person Event Publish | SF sync + website signup + email/calendar | [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109), [FR-INPERSON-108](requirements#fr-inperson-108), [FR-INPERSON-110](requirements#fr-inperson-110)–[FR-INPERSON-133](requirements#fr-inperson-133), [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) |
+| [Test Pack 3](#test-pack-3) | Virtual Events | Polaris creation + Pathful import + historical data | [FR-VIRTUAL-201](requirements#fr-virtual-201)–[FR-VIRTUAL-206](requirements#fr-virtual-206), [FR-VIRTUAL-208](requirements#fr-virtual-208), [FR-VIRTUAL-210](requirements#fr-virtual-210)–[FR-VIRTUAL-219](requirements#fr-virtual-219) |
+| [Test Pack 4](#test-pack-4) | Volunteer Recruitment | Search + communication history + sync health | [FR-RECRUIT-301](requirements#fr-recruit-301)–[FR-RECRUIT-306](requirements#fr-recruit-306), [FR-RECRUIT-308](requirements#fr-recruit-308)–[FR-RECRUIT-309](requirements#fr-recruit-309) |
+| [Test Pack 5](#test-pack-5) | Student Attendance | Roster + attendance + impact metrics | [FR-STUDENT-601](requirements#fr-student-601)–[FR-STUDENT-604](requirements#fr-student-604) |
+| [Test Pack 6](#test-pack-6) | Reporting Dashboards | Exports + ad hoc queries + access control | [FR-REPORTING-401](requirements#fr-reporting-401)–[FR-REPORTING-406](requirements#fr-reporting-406), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-522](requirements#fr-district-522) |
 
 ## Test Pack Details
 
@@ -24,10 +24,10 @@ This documentation contains **6 test packs** that verify functional requirements
 **Focus:** Teacher magic links + progress status validation
 
 **Coverage:**
-- [FR-501](requirements#fr-501)–[FR-503](requirements#fr-503) (Dashboard)
-- [FR-508](requirements#fr-508) (Status definitions)
-- [FR-505](requirements#fr-505)–[FR-507](requirements#fr-507) (Magic links)
-- [FR-521](requirements#fr-521)–[FR-524](requirements#fr-524) (RBAC/Scoping)
+- [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503) (Dashboard)
+- [FR-DISTRICT-508](requirements#fr-district-508) (Status definitions)
+- [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-507](requirements#fr-district-507) (Magic links)
+- [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) (RBAC/Scoping)
 
 **Test Cases:** TC-001 through TC-031
 
@@ -38,9 +38,9 @@ This documentation contains **6 test packs** that verify functional requirements
 **Focus:** SF sync + website signup + email/calendar
 
 **Coverage:**
-- [FR-101](requirements#fr-101)–[FR-109](requirements#fr-109) (Events + visibility)
-- [FR-108](requirements#fr-108), [FR-110](requirements#fr-110)–[FR-133](requirements#fr-133) (Sync, participation, status, monitoring, reporting)
-- [FR-121](requirements#fr-121)–[FR-127](requirements#fr-127) (Signup + email)
+- [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109) (Events + visibility)
+- [FR-INPERSON-108](requirements#fr-inperson-108), [FR-INPERSON-110](requirements#fr-inperson-110)–[FR-INPERSON-133](requirements#fr-inperson-133) (Sync, participation, status, monitoring, reporting)
+- [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) (Signup + email)
 
 **Test Cases:** TC-100 through TC-222
 
@@ -51,10 +51,10 @@ This documentation contains **6 test packs** that verify functional requirements
 **Focus:** Polaris creation + Pathful import + historical data
 
 **Coverage:**
-- [FR-201](requirements#fr-201)–[FR-206](requirements#fr-206) (Virtual events)
-- [FR-208](requirements#fr-208) (Local/non-local)
-- [FR-204](requirements#fr-204) (Historical import)
-- [FR-210](requirements#fr-210)–[FR-219](requirements#fr-219) (Presenter recruitment)
+- [FR-VIRTUAL-201](requirements#fr-virtual-201)–[FR-VIRTUAL-206](requirements#fr-virtual-206) (Virtual events)
+- [FR-VIRTUAL-208](requirements#fr-virtual-208) (Local/non-local)
+- [FR-VIRTUAL-204](requirements#fr-virtual-204) (Historical import)
+- [FR-VIRTUAL-210](requirements#fr-virtual-210)–[FR-VIRTUAL-219](requirements#fr-virtual-219) (Presenter recruitment)
 
 **Test Cases:** TC-200 through TC-299
 
@@ -65,8 +65,8 @@ This documentation contains **6 test packs** that verify functional requirements
 **Focus:** Search + communication history + sync health
 
 **Coverage:**
-- [FR-301](requirements#fr-301)–[FR-306](requirements#fr-306) (Search + history)
-- [FR-308](requirements#fr-308)–[FR-309](requirements#fr-309) (Comm sync + health UX)
+- [FR-RECRUIT-301](requirements#fr-recruit-301)–[FR-RECRUIT-306](requirements#fr-recruit-306) (Search + history)
+- [FR-RECRUIT-308](requirements#fr-recruit-308)–[FR-RECRUIT-309](requirements#fr-recruit-309) (Comm sync + health UX)
 
 **Test Cases:** TC-300 through TC-381
 
@@ -77,7 +77,7 @@ This documentation contains **6 test packs** that verify functional requirements
 **Focus:** Roster + attendance + impact metrics
 
 **Coverage:**
-- [FR-601](requirements#fr-601)–[FR-604](requirements#fr-604) (Student roster + attendance + metrics)
+- [FR-STUDENT-601](requirements#fr-student-601)–[FR-STUDENT-604](requirements#fr-student-604) (Student roster + attendance + metrics)
 
 **Test Cases:** TC-600 through TC-691
 
@@ -88,8 +88,8 @@ This documentation contains **6 test packs** that verify functional requirements
 **Focus:** Exports + ad hoc queries + access control
 
 **Coverage:**
-- [FR-401](requirements#fr-401)–[FR-406](requirements#fr-406) (Dashboards + exports)
-- [FR-521](requirements#fr-521)–[FR-522](requirements#fr-522) (RBAC)
+- [FR-REPORTING-401](requirements#fr-reporting-401)–[FR-REPORTING-406](requirements#fr-reporting-406) (Dashboards + exports)
+- [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-522](requirements#fr-district-522) (RBAC)
 
 **Test Cases:** TC-700 through TC-822
 

@@ -4,7 +4,7 @@ Polaris creation + Pathful import + historical data
 
 > [!INFO]
 > **Coverage**
-> [FR-201](requirements#fr-201)–[FR-206](requirements#fr-206) (Virtual events), [FR-208](requirements#fr-208) (Local/non-local), [FR-204](requirements#fr-204) (Historical import), [FR-210](requirements#fr-210)–[FR-219](requirements#fr-219) (Presenter recruitment)
+> [FR-VIRTUAL-201](requirements#fr-virtual-201)–[FR-VIRTUAL-206](requirements#fr-virtual-206) (Virtual events), [FR-VIRTUAL-208](requirements#fr-virtual-208) (Local/non-local), [FR-VIRTUAL-204](requirements#fr-virtual-204) (Historical import), [FR-VIRTUAL-210](requirements#fr-virtual-210)–[FR-VIRTUAL-219](requirements#fr-virtual-219) (Presenter recruitment)
 
 ---
 

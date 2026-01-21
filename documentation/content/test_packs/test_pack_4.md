@@ -4,7 +4,7 @@ Search + communication history + sync health
 
 > [!INFO]
 > **Coverage**
-> [FR-301](requirements#fr-301)–[FR-306](requirements#fr-306) (Search + history), [FR-308](requirements#fr-308)–[FR-309](requirements#fr-309) (Comm sync + health UX)
+> [FR-RECRUIT-301](requirements#fr-recruit-301)–[FR-RECRUIT-306](requirements#fr-recruit-306) (Search + history), [FR-RECRUIT-308](requirements#fr-recruit-308)–[FR-RECRUIT-309](requirements#fr-recruit-309) (Comm sync + health UX)
 
 ---
 

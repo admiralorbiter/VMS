@@ -6,7 +6,7 @@ subtitle: SF sync + website signup + email/calendar
 <hr>
 <div class="callout callout-info">
 <div class="callout-title">Coverage</div>
-<div>FR-101–109 (Events + visibility), FR-121–127 (Signup + email)</div>
+<div>FR-INPERSON-101–109 (Events + visibility), FR-SIGNUP-121–127 (Signup + email)</div>
 </div>
 <h2>Test Data</h2>
 <ul>

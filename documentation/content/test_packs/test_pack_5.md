@@ -4,7 +4,7 @@ Roster + attendance + impact metrics
 
 > [!INFO]
 > **Coverage**
-> [FR-601](requirements#fr-601)–[FR-604](requirements#fr-604) (Student roster + attendance + metrics)
+> [FR-STUDENT-601](requirements#fr-student-601)–[FR-STUDENT-604](requirements#fr-student-604) (Student roster + attendance + metrics)
 
 ---
 

@@ -4,7 +4,7 @@ Exports + ad hoc queries + access control
 
 > [!INFO]
 > **Coverage**
-> [FR-401](requirements#fr-401)–[FR-406](requirements#fr-406) (Dashboards + exports), [FR-521](requirements#fr-521)–[FR-522](requirements#fr-522) (RBAC)
+> [FR-REPORTING-401](requirements#fr-reporting-401)–[FR-REPORTING-406](requirements#fr-reporting-406) (Dashboards + exports), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-522](requirements#fr-district-522) (RBAC)
 
 ---
 

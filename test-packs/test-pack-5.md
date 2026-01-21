@@ -6,7 +6,7 @@ subtitle: Roster + attendance + impact metrics
 <hr>
 <div class="callout callout-info">
 <div class="callout-title">Coverage</div>
-<div>FR-601–604 (Student roster + attendance + metrics)</div>
+<div>FR-STUDENT-601–604 (Student roster + attendance + metrics)</div>
 </div>
 <h2>Test Data</h2>
 <p><strong>District:</strong> KCK (School A, School B)</p>

@@ -4,7 +4,7 @@ Teacher magic links + progress status validation
 
 > [!INFO]
 > **Coverage**
-> [FR-501](requirements#fr-501)–[FR-503](requirements#fr-503) (Dashboard), [FR-508](requirements#fr-508) (Status definitions), [FR-505](requirements#fr-505)–[FR-507](requirements#fr-507) (Magic links), [FR-521](requirements#fr-521)–[FR-524](requirements#fr-524) (RBAC/Scoping)
+> [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503) (Dashboard), [FR-DISTRICT-508](requirements#fr-district-508) (Status definitions), [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-507](requirements#fr-district-507) (Magic links), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) (RBAC/Scoping)
 
 ---
 

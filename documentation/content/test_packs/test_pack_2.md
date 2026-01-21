@@ -4,7 +4,7 @@ SF sync + website signup + email/calendar
 
 > [!INFO]
 > **Coverage**
-> [FR-101](requirements#fr-101)–[FR-109](requirements#fr-109) (Events + visibility), [FR-108](requirements#fr-108), [FR-110](requirements#fr-110)–[FR-133](requirements#fr-133) (Sync, participation, status, monitoring, reporting), [FR-121](requirements#fr-121)–[FR-127](requirements#fr-127) (Signup + email)
+> [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109) (Events + visibility), [FR-INPERSON-108](requirements#fr-inperson-108), [FR-INPERSON-110](requirements#fr-inperson-110)–[FR-INPERSON-133](requirements#fr-inperson-133) (Sync, participation, status, monitoring, reporting), [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) (Signup + email)
 
 ---
 
@@ -118,11 +118,11 @@ SF sync + website signup + email/calendar
 
 ## Detailed Test Specifications
 
-This section provides comprehensive test specifications for requirements FR-108 through FR-133. These specifications serve as a blueprint for implementing actual tests and ensure alignment between requirements and test coverage.
+This section provides comprehensive test specifications for requirements FR-INPERSON-108 through FR-INPERSON-133. These specifications serve as a blueprint for implementing actual tests and ensure alignment between requirements and test coverage.
 
 ### Scheduled Imports
 
-#### FR-108: Scheduled Daily Imports
+#### FR-INPERSON-108: Scheduled Daily Imports
 
 **Covered by:** [TC-160](#tc-160)
 
@@ -161,7 +161,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - VolunTeach database (Event, EventParticipation, EventStudentParticipation models)
 - Daily import scheduler (scripts/daily_imports/daily_imports.py)
 
-#### FR-110: Batch Processing for Large Datasets
+#### FR-INPERSON-110: Batch Processing for Large Datasets
 
 **Covered by:** [TC-161](#tc-161)
 
@@ -197,7 +197,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Batch processing logic (scripts/daily_imports/daily_imports.py)
 - Database transaction handling
 
-#### FR-111: Import Status Visibility
+#### FR-INPERSON-111: Import Status Visibility
 
 **Covered by:** [TC-162](#tc-162)
 
@@ -237,7 +237,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Participation Sync
 
-#### FR-112: Student Participation Sync
+#### FR-INPERSON-112: Student Participation Sync
 
 **Covered by:** [TC-170](#tc-170)
 
@@ -275,7 +275,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - VolunTeach EventStudentParticipation model
 - Student sync process
 
-#### FR-113: Student Attendance Update
+#### FR-INPERSON-113: Student Attendance Update
 
 **Covered by:** [TC-171](#tc-171)
 
@@ -312,7 +312,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - VolunTeach EventStudentParticipation model
 - Status enum mapping
 
-#### FR-114: Volunteer Participation Sync
+#### FR-INPERSON-114: Volunteer Participation Sync
 
 **Covered by:** [TC-172](#tc-172)
 
@@ -348,7 +348,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - VolunTeach EventParticipation model
 - Volunteer sync process
 
-#### FR-115: Volunteer Batch Processing
+#### FR-INPERSON-115: Volunteer Batch Processing
 
 **Covered by:** [TC-173](#tc-173)
 
@@ -384,7 +384,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Unaffiliated Events
 
-#### FR-116: Identify Unaffiliated Events
+#### FR-INPERSON-116: Identify Unaffiliated Events
 
 **Covered by:** [TC-180](#tc-180)
 
@@ -421,7 +421,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Unaffiliated event sync endpoint (/pathway-events/sync-unaffiliated-events)
 - Event model and district/school associations
 
-#### FR-117: District Association Based on Students
+#### FR-INPERSON-117: District Association Based on Students
 
 **Covered by:** [TC-181](#tc-181)
 
@@ -460,7 +460,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Student-district relationship mapping
 - Event-district association logic
 
-#### FR-118: Unaffiliated Event Sync Completeness
+#### FR-INPERSON-118: Unaffiliated Event Sync Completeness
 
 **Covered by:** [TC-182](#tc-182)
 
@@ -499,7 +499,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Status Management
 
-#### FR-119: Event Status Update
+#### FR-INPERSON-119: Event Status Update
 
 **Covered by:** [TC-190](#tc-190)
 
@@ -536,7 +536,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - EventStatus enum mapping
 - Event model status field
 
-#### FR-120: Cancellation Reason Preservation
+#### FR-INPERSON-120: Cancellation Reason Preservation
 
 **Covered by:** [TC-191](#tc-191)
 
@@ -570,7 +570,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Event model cancellation_reason field
 - Cancellation reason mapping/enum
 
-#### FR-121: Status Change Propagation
+#### FR-INPERSON-121: Status Change Propagation
 
 **Covered by:** [TC-192](#tc-192)
 
@@ -609,7 +609,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Error Handling and Monitoring
 
-#### FR-122: Sync Failure Detection
+#### FR-INPERSON-122: Sync Failure Detection
 
 **Covered by:** [TC-104](#tc-104), [TC-200](#tc-200)
 
@@ -647,7 +647,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Admin interface error display
 - Salesforce API error handling
 
-#### FR-123: Idempotent Sync Operations
+#### FR-INPERSON-123: Idempotent Sync Operations
 
 **Covered by:** [TC-102](#tc-102)
 
@@ -683,7 +683,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Database upsert logic
 - Event matching/identification
 
-#### FR-124: Distinguish No Events vs Sync Failure
+#### FR-INPERSON-124: Distinguish No Events vs Sync Failure
 
 **Covered by:** [TC-200](#tc-200)
 
@@ -719,7 +719,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Monitoring and alerting systems
 - Error classification logic
 
-#### FR-125: Failed Sync Logging
+#### FR-INPERSON-125: Failed Sync Logging
 
 **Covered by:** [TC-201](#tc-201)
 
@@ -759,7 +759,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Historical Data Import
 
-#### FR-126: Historical Event Import
+#### FR-INPERSON-126: Historical Event Import
 
 **Covered by:** [TC-210](#tc-210)
 
@@ -796,7 +796,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Date range filtering
 - Batch processing for large datasets
 
-#### FR-127: Historical Data Integrity
+#### FR-INPERSON-127: Historical Data Integrity
 
 **Covered by:** [TC-211](#tc-211)
 
@@ -833,7 +833,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Manual Operations
 
-#### FR-128: Manual Sync Batch Sizes
+#### FR-INPERSON-128: Manual Sync Batch Sizes
 
 **Covered by:** [TC-212](#tc-212)
 
@@ -869,7 +869,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Batch processing logic
 - Configuration management
 
-#### FR-129: Progress Indicators and Cancellation
+#### FR-INPERSON-129: Progress Indicators and Cancellation
 
 **Covered by:** [TC-213](#tc-213)
 
@@ -909,7 +909,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Data Completeness Visibility
 
-#### FR-130: Distinguish No Events vs Failure
+#### FR-INPERSON-130: Distinguish No Events vs Failure
 
 **Covered by:** [TC-200](#tc-200)
 
@@ -945,7 +945,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Sync status reporting
 - Error classification
 
-#### FR-131: Sync Status Indicators
+#### FR-INPERSON-131: Sync Status Indicators
 
 **Covered by:** [TC-220](#tc-220)
 
@@ -983,7 +983,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 
 ### Reporting Integration
 
-#### FR-132: Cache Invalidation on Event Sync
+#### FR-INPERSON-132: Cache Invalidation on Event Sync
 
 **Covered by:** [TC-221](#tc-221)
 
@@ -1020,7 +1020,7 @@ This section provides comprehensive test specifications for requirements FR-108 
 - Cache management system
 - Report generation system
 
-#### FR-133: Manual Cache Refresh
+#### FR-INPERSON-133: Manual Cache Refresh
 
 **Covered by:** [TC-222](#tc-222)
 

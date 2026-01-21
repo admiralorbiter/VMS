@@ -6,7 +6,7 @@ subtitle: Teacher magic links + progress status validation
 <hr>
 <div class="callout callout-info">
 <div class="callout-title">Coverage</div>
-<div>FR-501–503 (Dashboard), FR-508 (Status definitions), FR-505–507 (Magic links), FR-521–524 (RBAC/Scoping)</div>
+<div>FR-DISTRICT-501–503 (Dashboard), FR-DISTRICT-508 (Status definitions), FR-DISTRICT-505–507 (Magic links), FR-DISTRICT-521–524 (RBAC/Scoping)</div>
 </div>
 <h2>Test Data Setup</h2>
 <p><strong>District: KCK</strong></p>

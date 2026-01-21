@@ -6,7 +6,7 @@ subtitle: Search + communication history + sync health
 <hr>
 <div class="callout callout-info">
 <div class="callout-title">Coverage</div>
-<div>FR-301–306 (Search + history), FR-308–309 (Comm sync + health UX)</div>
+<div>FR-RECRUIT-301–306 (Search + history), FR-RECRUIT-308–309 (Comm sync + health UX)</div>
 </div>
 <h2>Test Data: Volunteer Set</h2>
 <div class="table-wrapper">

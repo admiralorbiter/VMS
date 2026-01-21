@@ -6,7 +6,7 @@ subtitle: Exports + ad hoc queries + access control
 <hr>
 <div class="callout callout-info">
 <div class="callout-title">Coverage</div>
-<div>FR-401–406 (Dashboards + exports), FR-521–522 (RBAC)</div>
+<div>FR-REPORTING-401–406 (Dashboards + exports), FR-DISTRICT-521–522 (RBAC)</div>
 </div>
 <h2>Test Data: Leaderboards</h2>
 <div class="table-wrapper">
