@@ -10,7 +10,8 @@ This document is authoritative for all integration design decisions. Any deviati
 - [Field Mappings](field_mappings) - Cross-system data flow specifications
 - [Data Dictionary](data_dictionary) - Entity and field definitions
 - [Metrics Bible](metrics_bible) - Metric calculation definitions
-- [RBAC Matrix](rbac_matrix) - Role-based access control
+- [RBAC Matrix](rbac_matrix) - Role-based access control (Security section)
+- [Privacy & Data Handling](privacy_data_handling) - Data protection and retention policies (Security section)
 
 ## System Context
 

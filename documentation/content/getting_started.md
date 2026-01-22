@@ -32,6 +32,8 @@ This documentation covers the integrated system for managing K–12 student conn
   How every metric is calculated—the single source of truth for reporting
 - 🔐 **RBAC Matrix**
   Role permissions and data access controls
+- 🔒 **Privacy & Data Handling**
+  Data protection rules and retention policies
 - 🔌 **Integration Contracts**
   API specs for SF↔VT, Website, Gmail sync, Pathful import
 - 🧪 **[Test Packs](#test-packs)**

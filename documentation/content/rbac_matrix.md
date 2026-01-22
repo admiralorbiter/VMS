@@ -9,6 +9,7 @@ This matrix is authoritative for all permission decisions. Any deviation require
 **Related Documentation:**
 - [Data Dictionary](data_dictionary) - Entity and field definitions
 - [Metrics Bible](metrics_bible) - Metric calculation definitions
+- [Privacy & Data Handling](privacy_data_handling) - Data protection and retention policies
 
 ## Role System
 

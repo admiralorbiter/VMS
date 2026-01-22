@@ -192,7 +192,7 @@ This is the authoritative reference for all entity definitions. Other documents 
 
 **Polymorphic Identity**: `student`
 
-**Privacy Note**: Student data is Highly Sensitive. District viewers see aggregates only, never student-level PII. See [Privacy Policy](non_functional_requirements#nfr-4).
+**Privacy Note**: Student data is Highly Sensitive. District viewers see aggregates only, never student-level PII. See [Privacy & Data Handling](privacy_data_handling) and [NFR-4](non_functional_requirements#nfr-4).
 
 | Field | Type | Source | Sensitivity | Notes |
 |-------|------|--------|-------------|-------|
