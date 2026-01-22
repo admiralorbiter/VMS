@@ -432,7 +432,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-7](use_cases#uc-7)
 
-**User Guide:** [Reporting & Dashboards](user_guide/reporting#1-available-dashboards)
+**User Guide:** [Volunteer Engagement Reports](reports/volunteer_engagement)
 
 **Acceptance Criteria:**
 
@@ -447,6 +447,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-7](use_cases#uc-7)
 
+**User Guide:** [Impact & KPI Reports](reports/impact)
+
 **Acceptance Criteria:**
 
 - Dashboard shows correct totals per organization and unique organizations engaged.
@@ -459,6 +461,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-REPORTING-403](requirements#fr-reporting-403), [FR-REPORTING-404](requirements#fr-reporting-404), [FR-REPORTING-406](requirements#fr-reporting-406)
 
 **Related Use Cases:** [UC-7](use_cases#uc-7)
+
+**User Guide:** [Impact & KPI Reports](reports/impact)
 
 **Acceptance Criteria:**
 
@@ -474,6 +478,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-7](use_cases#uc-7)
 
+**User Guide:** [Ad Hoc Queries](reports/ad_hoc)
+
 **Acceptance Criteria:**
 
 - Given an organization filter, the query returns correct counts/lists.
@@ -486,6 +492,10 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-REPORTING-407](requirements#fr-reporting-407), [FR-REPORTING-408](requirements#fr-reporting-408)
 
 **Related Use Cases:** [UC-12](use_cases#uc-12)
+
+**Related Use Cases:** [UC-12](use_cases#uc-12)
+
+**User Guide:** [Partner Reconciliation](reports/partner_match)
 
 **Acceptance Criteria:**
 
