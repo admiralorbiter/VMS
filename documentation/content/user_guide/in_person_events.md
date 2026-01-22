@@ -25,19 +25,33 @@ graph LR
 
 All in-person events originate in Salesforce.
 
-1.  Log in to **Salesforce**.
-2.  Navigate to the **Campaigns** (or Events) tab.
-3.  Click **New**.
-4.  Fill in the required fields:
-    - **Event Name**: Clear, descriptive title.
-    - **Date/Time**: Start and End times.
-    - **Location**: School or venue address.
-    - **Description**: Public-facing details for volunteers.
-    - **Volunteer Slots Needed**: Specific count.
-5.  **Save** the record.
+1.  **Navigate to Sessions Tab**: Go to the **Sessions** tab (you may need to select it from the App Launcher).
+2.  **Click New**: Hit the "New" button.
+3.  **Select Record Type**: Choose **"Non-Connector Session"** and click **Next**.
+4.  **Fill in Session Details**:
+    -   **Session Name**: Use the standard format: `[Visit Type] / [School/District] / [Date] / [Grade]` (if possible).
+    -   **Session Status**: Set to **"Requested"**.
+    -   **School**: If it's a single school event, search and attach the school record.
+    -   **Format**: Select **"In-Person"**.
+    -   **Session Host**: Enter **"PREP-KC"** (Optional but recommended).
+    -   **Times**: Enter **Start Time** and **End Time** (Optional but recommended).
+5.  **Description & Location Information**:
+    -   Fill these out carefully!
 
-> [!IMPORTANT]
-> Ensure the event record type is set to "In-Person" to ensure it is picked up by the sync process.
+    > [!WARNING]
+    > **Calendar Sync Behavior**: The **Location Information** and **Description** fields are only added to the calendar invite **at the point of Session creation**. Updating these fields later in Salesforce *will not* sync changes to the calendar invite.
+    >
+    > **Recommendation**: Ensure these are correct *before* saving. If you need to update them later, you should update the calendar event manually and choose the option to **NOT** send an update email to attendees.
+
+6.  **Volunteer Job Summaries** (scrolling down):
+    -   **Total Requested Volunteer Jobs**: enter the total number of volunteers needed (e.g., `20`).
+    -   **Number of Job Types**: Enter the number of distinct roles (e.g., `4`).
+    -   *Note: We typically just fill in the numbers.*
+7.  **Click Save**.
+
+### Open Questions / Clarifications
+> [!NOTE]
+> **Process Question**: Regarding "Total Requested Volunteer Jobs" vs "Number of Job Types" - we currently just fill in the numeric values (e.g., "Need 20 volunteers"). Clarification is needed on whether we should be mapping specific job roles in practice.
 
 ## 2. Syncing to VolunTeach
 
