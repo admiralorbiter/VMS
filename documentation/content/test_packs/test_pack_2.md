@@ -18,101 +18,101 @@ SF sync + website signup + email/calendar
 
 ### A. SF → VT Sync
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-100"></a>**TC-100** | Manual sync | Event appears with correct fields |
-| <a id="tc-101"></a>**TC-101** | Hourly sync | New event appears within cycle |
-| <a id="tc-102"></a>**TC-102** | Idempotency | No duplicates on double sync |
-| <a id="tc-103"></a>**TC-103** | Update propagates | Changed slots reflected in VT |
-| <a id="tc-104"></a>**TC-104** | Failure detection | Error visible, not silent |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-100"></a>**TC-100** | Create and sync in-person event | Event created in SF and appears in VT with correct fields | Manual | 2026-01-22 |
+| <a id="tc-101"></a>**TC-101** | Hourly sync | New event appears within cycle | Automated | TBD |
+| <a id="tc-102"></a>**TC-102** | Idempotency | No duplicates on double sync | Automated | TBD |
+| <a id="tc-103"></a>**TC-103** | Update propagates | Changed slots reflected in VT | Automated | TBD |
+| <a id="tc-104"></a>**TC-104** | Failure detection | Error visible, not silent | Automated | TBD |
 
 ### B. Publish Controls + District Linking
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-110"></a>**TC-110** | Toggle ON → public page | E1 visible |
-| <a id="tc-111"></a>**TC-111** | Toggle OFF → hidden | E1 not on public page |
-| <a id="tc-112"></a>**TC-112** | Hidden orientation | E2 not on public page |
-| <a id="tc-113"></a>**TC-113** | District link (toggle OFF) | E3 visible on KCK page |
-| <a id="tc-114"></a>**TC-114** | No cross-district leak | E3 not on other district pages |
-| <a id="tc-115"></a>**TC-115** | Unlink removes | E3 gone from KCK page |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-110"></a>**TC-110** | Toggle ON → public page | E1 visible | Manual | TBD |
+| <a id="tc-111"></a>**TC-111** | Toggle OFF → hidden | E1 not on public page | Manual | TBD |
+| <a id="tc-112"></a>**TC-112** | Hidden orientation | E2 not on public page | Manual | TBD |
+| <a id="tc-113"></a>**TC-113** | District link (toggle OFF) | E3 visible on KCK page | Manual | TBD |
+| <a id="tc-114"></a>**TC-114** | No cross-district leak | E3 not on other district pages | Manual | TBD |
+| <a id="tc-115"></a>**TC-115** | Unlink removes | E3 gone from KCK page | Manual | TBD |
 
 ### C. Signup Validation
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-130"></a>**TC-130** | Required fields | Blocked with clear error |
-| <a id="tc-131"></a>**TC-131** | Email format | Invalid rejected |
-| <a id="tc-132"></a>**TC-132** | Dropdown validation | Tampered values rejected |
-| <a id="tc-133"></a>**TC-133** | Data sanitized | Whitespace trimmed, no XSS |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-130"></a>**TC-130** | Required fields | Blocked with clear error | Manual | TBD |
+| <a id="tc-131"></a>**TC-131** | Email format | Invalid rejected | Manual | TBD |
+| <a id="tc-132"></a>**TC-132** | Dropdown validation | Tampered values rejected | Manual | TBD |
+| <a id="tc-133"></a>**TC-133** | Data sanitized | Whitespace trimmed, no XSS | Manual | TBD |
 
 ### D. Persistence + Email
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-140"></a>**TC-140** | Participation created | Record exists, linked correctly |
-| <a id="tc-141"></a>**TC-141** | Values match form | All fields persisted |
-| <a id="tc-142"></a>**TC-142** | Duplicate prevention | No double signups |
-| <a id="tc-150"></a>**TC-150** | Confirmation email | Received with event details |
-| <a id="tc-151"></a>**TC-151** | Calendar invite | Received |
-| <a id="tc-152"></a>**TC-152** | Invite has location | SF location in invite |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-140"></a>**TC-140** | Participation created | Record exists, linked correctly | Automated | TBD |
+| <a id="tc-141"></a>**TC-141** | Values match form | All fields persisted | Automated | TBD |
+| <a id="tc-142"></a>**TC-142** | Duplicate prevention | No double signups | Automated | TBD |
+| <a id="tc-150"></a>**TC-150** | Confirmation email | Received with event details | Manual | TBD |
+| <a id="tc-151"></a>**TC-151** | Calendar invite | Received | Manual | TBD |
+| <a id="tc-152"></a>**TC-152** | Invite has location | SF location in invite | Manual | TBD |
 
 ### E. Scheduled Daily Imports
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-160"></a>**TC-160** | Daily import runs | Events, volunteer participations, and student participations imported |
-| <a id="tc-161"></a>**TC-161** | Batch processing | Large datasets processed in batches without API limit errors |
-| <a id="tc-162"></a>**TC-162** | Import status visibility | Success/failure counts and error details displayed |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-160"></a>**TC-160** | Daily import runs | Events, volunteer participations, and student participations imported | Automated | TBD |
+| <a id="tc-161"></a>**TC-161** | Batch processing | Large datasets processed in batches without API limit errors | Automated | TBD |
+| <a id="tc-162"></a>**TC-162** | Import status visibility | Success/failure counts and error details displayed | Automated | TBD |
 
 ### F. Participation Sync
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-170"></a>**TC-170** | Student participation sync | EventStudentParticipation records created from Salesforce |
-| <a id="tc-171"></a>**TC-171** | Student attendance update | Status and delivery hours updated from Salesforce |
-| <a id="tc-172"></a>**TC-172** | Volunteer participation sync | Status, delivery hours, and attributes synced |
-| <a id="tc-173"></a>**TC-173** | Volunteer batch processing | Large event sets processed in batches (50 events per batch) |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-170"></a>**TC-170** | Student participation sync | EventStudentParticipation records created from Salesforce | Automated | TBD |
+| <a id="tc-171"></a>**TC-171** | Student attendance update | Status and delivery hours updated from Salesforce | Automated | TBD |
+| <a id="tc-172"></a>**TC-172** | Volunteer participation sync | Status, delivery hours, and attributes synced | Automated | TBD |
+| <a id="tc-173"></a>**TC-173** | Volunteer batch processing | Large event sets processed in batches (50 events per batch) | Automated | TBD |
 
 ### G. Unaffiliated Events
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-180"></a>**TC-180** | Identify unaffiliated events | Events missing School, District, or Parent Account identified |
-| <a id="tc-181"></a>**TC-181** | District association | Events associated with districts based on participating students |
-| <a id="tc-182"></a>**TC-182** | Unaffiliated sync completeness | Event data and volunteer/student participation records updated |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-180"></a>**TC-180** | Identify unaffiliated events | Events missing School, District, or Parent Account identified | Automated | TBD |
+| <a id="tc-181"></a>**TC-181** | District association | Events associated with districts based on participating students | Automated | TBD |
+| <a id="tc-182"></a>**TC-182** | Unaffiliated sync completeness | Event data and volunteer/student participation records updated | Automated | TBD |
 
 ### H. Status Management
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-190"></a>**TC-190** | Status update | Event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) updated from Salesforce |
-| <a id="tc-191"></a>**TC-191** | Cancellation reason | Cancellation reasons preserved when events cancelled in Salesforce |
-| <a id="tc-192"></a>**TC-192** | Status propagation | Status changes reflected in VolunTeach and public website within sync cycle |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-190"></a>**TC-190** | Status update | Event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) updated from Salesforce | Automated | TBD |
+| <a id="tc-191"></a>**TC-191** | Cancellation reason | Cancellation reasons preserved when events cancelled in Salesforce | Automated | TBD |
+| <a id="tc-192"></a>**TC-192** | Status propagation | Status changes reflected in VolunTeach and public website within sync cycle | Automated | TBD |
 
 ### I. Error Handling and Monitoring
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-200"></a>**TC-200** | Distinguish no events vs failure | System distinguishes "no events to sync" from "sync failure" |
-| <a id="tc-201"></a>**TC-201** | Failed sync logging | Failed operations logged with timestamps, error details, and record counts |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-200"></a>**TC-200** | Distinguish no events vs failure | System distinguishes "no events to sync" from "sync failure" | Automated | TBD |
+| <a id="tc-201"></a>**TC-201** | Failed sync logging | Failed operations logged with timestamps, error details, and record counts | Automated | TBD |
 
 ### J. Historical Data and Manual Operations
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-210"></a>**TC-210** | Historical import | 2–4 years of past events imported from Salesforce |
-| <a id="tc-211"></a>**TC-211** | Historical data integrity | Event-participant relationships preserved during historical import |
-| <a id="tc-212"></a>**TC-212** | Manual sync batch sizes | Manual sync processes events in configurable batch sizes |
-| <a id="tc-213"></a>**TC-213** | Progress indicators | Manual sync shows progress and allows cancellation/resumption |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-210"></a>**TC-210** | Historical import | 2–4 years of past events imported from Salesforce | Automated | TBD |
+| <a id="tc-211"></a>**TC-211** | Historical data integrity | Event-participant relationships preserved during historical import | Automated | TBD |
+| <a id="tc-212"></a>**TC-212** | Manual sync batch sizes | Manual sync processes events in configurable batch sizes | Manual | TBD |
+| <a id="tc-213"></a>**TC-213** | Progress indicators | Manual sync shows progress and allows cancellation/resumption | Manual | TBD |
 
 ### K. Data Completeness and Reporting
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-220"></a>**TC-220** | Sync status indicators | Last successful sync time, record counts, and pending errors displayed |
-| <a id="tc-221"></a>**TC-221** | Cache invalidation | Event sync triggers cache invalidation for dependent reports |
-| <a id="tc-222"></a>**TC-222** | Manual cache refresh | Manual cache refresh available for event-based reports with large datasets |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-220"></a>**TC-220** | Sync status indicators | Last successful sync time, record counts, and pending errors displayed | Automated | TBD |
+| <a id="tc-221"></a>**TC-221** | Cache invalidation | Event sync triggers cache invalidation for dependent reports | Automated | TBD |
+| <a id="tc-222"></a>**TC-222** | Manual cache refresh | Manual cache refresh available for event-based reports with large datasets | Manual | TBD |
 
 ---
 
