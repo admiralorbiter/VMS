@@ -24,7 +24,7 @@ Functional requirements use **stable, namespaced IDs** that never change once as
 
 ## Traceability
 
-Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User stories with acceptance criteria in **User Stories**.
+Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User stories with acceptance criteria in **[User Stories](user_stories)**.
 
 ## 7.1 In-Person Event Management
 

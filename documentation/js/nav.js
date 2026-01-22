@@ -83,7 +83,21 @@ function getTestPackForTC(tcId) {
  * Handle routing based on URL hash
  */
 function handleRouting() {
-    const hash = window.location.hash.slice(1); // Remove the '#'
+    let hash = window.location.hash.slice(1); // Remove the '#'
+
+    // If no hash but pathname indicates a specific page, convert pathname to hash
+    if (!hash && window.location.pathname.startsWith('/docs/')) {
+        const pathname = window.location.pathname.replace('/docs/', '').replace(/\/$/, '');
+        if (pathname && pathname !== 'docs' && pathname !== '') {
+            // Convert pathname to hash format (e.g., 'user_stories' -> 'user-stories')
+            const hashFromPath = pathname.replace(/_/g, '-');
+            // Update URL with hash without triggering navigation
+            if (window.location.hash !== '#' + hashFromPath) {
+                window.history.replaceState(null, '', window.location.pathname + '#' + hashFromPath);
+                hash = hashFromPath;
+            }
+        }
+    }
 
     // Check if hash is a test case anchor (tc-xxx)
     // If so, route to the appropriate test pack page

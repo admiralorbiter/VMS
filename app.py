@@ -109,6 +109,10 @@ def documentation_index():
 @app.route("/docs/<path:filename>")
 def documentation(filename):
     """Serve documentation assets"""
+    # If the filename doesn't contain a dot (no extension), it's likely a frontend route
+    # Let the frontend handle it by serving index.html
+    if "." not in filename or filename.endswith("/"):
+        return send_from_directory("documentation", "index.html")
     return send_from_directory("documentation", filename)
 
 
