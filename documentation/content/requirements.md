@@ -21,6 +21,7 @@ Functional requirements use **stable, namespaced IDs** that never change once as
 - `REPORTING` - Reporting and dashboards (7.5)
 - `DISTRICT` - District and teacher progress (7.6)
 - `STUDENT` - Student roster and attendance (7.7)
+- `EMAIL` - Email system management (7.8)
 
 ## Traceability
 
@@ -154,7 +155,7 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 | <a id="fr-virtual-205"></a>**FR-VIRTUAL-205** | The system shall treat Pathful as the current source for virtual event signup and reminder emails. | Context only | *Context only* |
 | <a id="fr-virtual-206"></a>**FR-VIRTUAL-206** | Polaris shall ingest Pathful export data to update virtual attendance and participation tracking. | [TC-250](#tc-250)–[TC-260](#tc-260) | [US-304](user_stories#us-304) |
 | <a id="fr-virtual-207"></a>**FR-VIRTUAL-207** | The system should support automation to pull Pathful exports and load them into Polaris. *Near-term* | [TC-280](#tc-280) | *Near-term* |
-| <a id="fr-virtual-208"></a>**FR-VIRTUAL-208** | The system shall track whether a virtual volunteer is local vs non-local. | [TC-230](#tc-230)–[TC-232](#tc-232) | *Missing: US-305* |
+| <a id="fr-virtual-208"></a>**FR-VIRTUAL-208** | The system shall track whether a virtual volunteer is local vs non-local. | [TC-230](#tc-230)–[TC-232](#tc-232) | [US-305](user_stories#us-305) |
 | <a id="fr-virtual-209"></a>**FR-VIRTUAL-209** | The system should support sending automated communications that connect local volunteers. *Near-term* | [TC-281](#tc-281) | *Near-term* |
 | <a id="fr-virtual-210"></a>**FR-VIRTUAL-210** | Polaris shall provide a view listing upcoming virtual events that do not have a presenter assigned. | [TC-290](#tc-290)–[TC-299](#tc-299) | [US-307](user_stories#us-307) |
 | <a id="fr-virtual-211"></a>**FR-VIRTUAL-211** | The presenter recruitment view shall filter to show only future events (start_datetime > current date/time). | [TC-291](#tc-291) | [US-307](user_stories#us-307) |
@@ -178,7 +179,7 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 | <a id="fr-recruit-303"></a>**FR-RECRUIT-303** | Polaris shall support identifying volunteers who have participated in virtual activities (including virtual-only). | [TC-320](#tc-320)–[TC-322](#tc-322) | [US-401](user_stories#us-401) |
 | <a id="fr-recruit-304"></a>**FR-RECRUIT-304** | Polaris shall display volunteer participation history including most recent volunteer date. | [TC-340](#tc-340)–[TC-343](#tc-343) | [US-402](user_stories#us-402) |
 | <a id="fr-recruit-305"></a>**FR-RECRUIT-305** | Polaris shall display communication history sourced from Salesforce email logging (Gmail add-on), including most recent contact date. | [TC-360](#tc-360)–[TC-361](#tc-361) | [US-404](user_stories#us-404) |
-| <a id="fr-recruit-306"></a>**FR-RECRUIT-306** | Polaris shall allow staff to record recruitment notes and outcomes where Polaris provides that UI. | [TC-380](#tc-380)–[TC-381](#tc-381) | *Missing: US-403* |
+| <a id="fr-recruit-306"></a>**FR-RECRUIT-306** | Polaris shall allow staff to record recruitment notes and outcomes where Polaris provides that UI. | [TC-380](#tc-380)–[TC-381](#tc-381) | [US-403](user_stories#us-403) |
 | <a id="fr-recruit-308"></a>**FR-RECRUIT-308** | Polaris shall import/sync logged email communication records from Salesforce and associate them to the correct volunteer/person. | [TC-360](#tc-360)–[TC-366](#tc-366) | [US-404](user_stories#us-404) |
 | <a id="fr-recruit-309"></a>**FR-RECRUIT-309** | Polaris shall distinguish "no communication logged" from "communication sync failure" (visibility into data completeness). | [TC-363](#tc-363), [TC-364](#tc-364) | [US-405](user_stories#us-405) |
 
@@ -225,6 +226,48 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 | <a id="fr-student-603"></a>**FR-STUDENT-603** | Polaris reporting shall use student attendance to compute unique students reached and other impact metrics by school and district. | [TC-620](#tc-620)–[TC-624](#tc-624) | [US-603](user_stories#us-603) |
 | <a id="fr-student-604"></a>**FR-STUDENT-604** | Reporting users shall be able to view student reach metrics by district, school, event type, and date range. | | [US-603](user_stories#us-603) |
 
+## 7.8 Email System Management
+
+**Polaris Admin Panel**
+
+> [!INFO]
+> **System Location**
+> - **Admin Email Panel**: `/management/email` (overview, templates, outbox, attempts, settings)
+>
+> The email system provides safe-by-default email delivery with comprehensive tracking, quality checks, and safety gates. See [Email System Guide](../docs/guides/email_system.md) for detailed documentation.
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-email-801"></a>**FR-EMAIL-801** | Polaris shall allow Admin users to create and manage email templates with versioning support. Templates shall include HTML and text versions, required/optional placeholders, and purpose keys. | *TBD* | [US-801](user_stories#us-801) |
+| <a id="fr-email-802"></a>**FR-EMAIL-802** | Polaris shall provide an admin interface to monitor email delivery status, view delivery attempts, and track delivery metrics (sent, failed, blocked, queued). | *TBD* | [US-802](user_stories#us-802) |
+| <a id="fr-email-803"></a>**FR-EMAIL-803** | Polaris shall allow Admin users to send emails via the admin panel with safety controls including environment-based delivery gates, non-production allowlist enforcement, and two-phase sending (draft → queued → sent). | *TBD* | [US-803](user_stories#us-803) |
+| <a id="fr-email-804"></a>**FR-EMAIL-804** | The email system shall enforce environment-based safety gates: delivery disabled unless `EMAIL_DELIVERY_ENABLED=true`, and non-production allowlist enforcement. | *TBD* | *Technical requirement* |
+| <a id="fr-email-805"></a>**FR-EMAIL-805** | The email system shall support dry-run mode for testing email sending without actual delivery. | *TBD* | *Technical requirement* |
+| <a id="fr-email-806"></a>**FR-EMAIL-806** | The email system shall perform quality checks on email messages including recipient validation, template rendering validation, and context completeness checks. | *TBD* | *Technical requirement* |
+| <a id="fr-email-807"></a>**FR-EMAIL-807** | The email system shall track all delivery attempts with Mailjet response data, error details, and provider payload summaries (excluding secrets). | *TBD* | *Technical requirement* |
+| <a id="fr-email-808"></a>**FR-EMAIL-808** | Failed email deliveries that require human action shall automatically create system-generated BugReport entries. | *TBD* | *Technical requirement* |
+
+## 7.9 Data Tracker Features
+
+**Polaris District Portal + Teacher Dashboard**
+
+> [!INFO]
+> **System Locations**
+> - **District Portal**: `/virtual/<district_name>` (district landing page with login options)
+> - **District Dashboard**: `/virtual/usage/district/<district_name>` (district usage and teacher progress)
+> - **Teacher Dashboard**: `/virtual/<district_name>/teacher/<teacher_id>` (teacher session history)
+>
+> The data tracker provides district and teacher visibility into virtual session data with issue reporting capabilities. See [Data Tracker Guide](../docs/guides/data_tracker.md) for detailed documentation.
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-district-525"></a>**FR-DISTRICT-525** | District users shall be able to flag data issues (missing or incorrect data) related to teachers and sessions in their district, with structured issue reports including teacher selection, school information, optional session selection, issue category, and notes. | *TBD* | [US-506](user_stories#us-506) |
+| <a id="fr-district-526"></a>**FR-DISTRICT-526** | Teachers shall be able to view their own session history including past sessions (completed virtual sessions) and upcoming sessions (scheduled virtual sessions) via the teacher dashboard. | *TBD* | [US-507](user_stories#us-507) |
+| <a id="fr-district-527"></a>**FR-DISTRICT-527** | Teachers shall be able to flag incorrect data related to their own session data via the teacher dashboard. | *TBD* | [US-507](user_stories#us-507) |
+| <a id="fr-district-528"></a>**FR-DISTRICT-528** | District issue reports shall create BugReport entries with type `DATA_ERROR` and structured descriptions including source, district name, teacher information, school, session (if selected), category, and notes. | *TBD* | *Technical requirement* |
+| <a id="fr-district-529"></a>**FR-DISTRICT-529** | District users shall only be able to report issues for teachers in the TeacherProgress tracking list for their district. | *TBD* | *Technical requirement* |
+| <a id="fr-district-530"></a>**FR-DISTRICT-530** | The district portal landing page shall provide separate login options for District Login and Teacher Login, routing users to appropriate dashboards after authentication. | *TBD* | *Technical requirement* |
+
 ## Traceability Matrix
 
 This section provides a comprehensive view of the relationships between Functional Requirements (FR) and User Stories (US).
@@ -247,10 +290,10 @@ This section provides a comprehensive view of the relationships between Function
 | **Virtual Events** | | |
 | FR-VIRTUAL-201 | [US-301](user_stories#us-301) | Create virtual event |
 | FR-VIRTUAL-202 | [US-302](user_stories#us-302) | Tag teachers |
-| FR-VIRTUAL-203 | *Missing: US-303* | Tag presenters |
+| FR-VIRTUAL-203 | [US-303](user_stories#us-303) | Tag presenters |
 | FR-VIRTUAL-204 | [US-306](user_stories#us-306) | Historical import |
 | FR-VIRTUAL-206 | [US-304](user_stories#us-304) | Pathful import |
-| FR-VIRTUAL-208 | *Missing: US-305* | Local vs non-local |
+| FR-VIRTUAL-208 | [US-305](user_stories#us-305) | Local vs non-local |
 | FR-VIRTUAL-210-219 | [US-307](user_stories#us-307) | Presenter recruitment |
 | FR-VIRTUAL-205, 207, 209 | *Context/Near-term* | Future features |
 | **Volunteer Recruitment** | | |
@@ -268,21 +311,33 @@ This section provides a comprehensive view of the relationships between Function
 | FR-DISTRICT-501, 502, 521, 522 | [US-501](user_stories#us-501) | District dashboard |
 | FR-DISTRICT-503 | [US-502](user_stories#us-502) | Drilldown |
 | FR-DISTRICT-502, 508 | [US-503](user_stories#us-503) | Status computation |
-| FR-DISTRICT-524 | *Missing: US-504* | Roster import |
+| FR-DISTRICT-524 | [US-504](user_stories#us-504) | Roster import |
 | FR-DISTRICT-505, 506, 507, 508, 521, 523 | [US-505](user_stories#us-505) | Teacher magic link |
+| FR-DISTRICT-525, 526 | [US-506](user_stories#us-506), [US-507](user_stories#us-507) | Data tracker features |
 | FR-DISTRICT-504 | *Near-term* | Automated reminders |
 | **Student Roster** | | |
 | FR-STUDENT-601 | [US-601](user_stories#us-601) | Roster creation |
 | FR-STUDENT-602 | [US-602](user_stories#us-602) | Attendance recording |
 | FR-STUDENT-603, 604 | [US-603](user_stories#us-603) | Reporting metrics |
+| **Email System** | | |
+| FR-EMAIL-801 | [US-801](user_stories#us-801) | Template management |
+| FR-EMAIL-802 | [US-802](user_stories#us-802) | Delivery monitoring |
+| FR-EMAIL-803 | [US-803](user_stories#us-803) | Admin email sending |
+| FR-EMAIL-804-808 | *Technical requirements* | Safety gates, quality checks, tracking |
+| **Data Tracker** | | |
+| FR-DISTRICT-525 | [US-506](user_stories#us-506) | District issue flagging |
+| FR-DISTRICT-526, 527 | [US-507](user_stories#us-507) | Teacher session history |
+| FR-DISTRICT-528-530 | *Technical requirements* | Issue reporting, access control |
 
 ### Coverage Summary
 
-- **Total FRs**: 89
-- **FRs with User Stories**: 44 (49%)
-- **Technical/Infrastructure FRs** (appropriately without US): 45 (51%)
-- **User Stories Added**: 9 new stories (US-303, 305, 402, 403, 504, 506, 507, 801-803)
-- **Additional Features Documented**: Email system (US-801-803) and Data Tracker (US-506-507) features are now captured as user stories
+- **Total FRs**: 101 (89 existing + 12 new)
+- **FRs with User Stories**: 50 (50%)
+- **Technical/Infrastructure FRs** (appropriately without US): 51 (50%)
+- **New Requirements Added**:
+  - Email System: FR-EMAIL-801 through 808 (8 requirements)
+  - Data Tracker: FR-DISTRICT-525 through 530 (6 requirements)
+- **All User Stories Now Have Requirements**: All 34 user stories (US-101 through US-803) now have corresponding functional requirements
 
 ### US → FR Mapping
 
@@ -298,16 +353,23 @@ This section provides a comprehensive view of the relationships between Function
 | US-203 | FR-SIGNUP-123, 124, 125 |
 | US-301 | FR-VIRTUAL-201 |
 | US-302 | FR-VIRTUAL-202 |
+| US-303 | FR-VIRTUAL-203 |
 | US-304 | FR-VIRTUAL-206 |
+| US-305 | FR-VIRTUAL-208 |
 | US-306 | FR-VIRTUAL-204 |
 | US-307 | FR-VIRTUAL-210 through 219 |
 | US-401 | FR-RECRUIT-301, 302, 303 |
+| US-402 | FR-RECRUIT-304 |
+| US-403 | FR-RECRUIT-306 |
 | US-404 | FR-RECRUIT-305, 308 |
 | US-405 | FR-RECRUIT-309 |
 | US-501 | FR-DISTRICT-501, 502, 521, 522 |
 | US-502 | FR-DISTRICT-503 |
 | US-503 | FR-DISTRICT-502, 508 |
+| US-504 | FR-DISTRICT-524 |
 | US-505 | FR-DISTRICT-505, 506, 507, 508, 521, 523 |
+| US-506 | FR-DISTRICT-525 |
+| US-507 | FR-DISTRICT-526, 527 |
 | US-601 | FR-STUDENT-601 |
 | US-602 | FR-STUDENT-602 |
 | US-603 | FR-STUDENT-603, 604 |
@@ -315,11 +377,9 @@ This section provides a comprehensive view of the relationships between Function
 | US-702 | FR-REPORTING-402, 406 |
 | US-703 | FR-REPORTING-403, 404, 406 |
 | US-704 | FR-REPORTING-405, 406 |
-| US-506 | *Data tracker features* |
-| US-507 | *Data tracker features* |
-| US-801 | *Email system features* |
-| US-802 | *Email system features* |
-| US-803 | *Email system features* |
+| US-801 | FR-EMAIL-801 |
+| US-802 | FR-EMAIL-802 |
+| US-803 | FR-EMAIL-803 |
 
 ---
 
