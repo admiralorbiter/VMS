@@ -1,31 +1,69 @@
 # Functional Requirements
 
-**Numbered requirements referenced by test packs**
+This document defines **what the system must do**. Each requirement is:
+- ✅ **Testable** - Verified by test cases in Test Packs 1-6
+- 🔗 **Traceable** - Linked to User Stories and Use Cases
+- 🎯 **Specific** - Clear acceptance criteria
 
-## Functional Requirement ID Policy
+## Quick Navigation
 
-Functional requirements use **stable, namespaced IDs** that never change once assigned:
+Jump to requirements by domain:
 
-- **Format**: `FR-{DOMAIN}-{NNN}` where:
-  - `{DOMAIN}` is a domain prefix (e.g., `INPERSON`, `SIGNUP`, `VIRTUAL`)
-  - `{NNN}` is a 3-digit number (001-999)
-- **Anchors**: Lowercase with hyphens: `fr-{domain}-{nnn}` (e.g., `fr-inperson-101`)
-- **Stability**: IDs are never reused or renumbered. Gaps in numbering are allowed.
-- **Adding new requirements**: Choose the appropriate domain and assign the next available number within that domain.
+- 🏢 [In-Person Events](#71-in-person-event-management) (FR-INPERSON-xxx)
+- ✍️ [Volunteer Signup](#72-public-volunteer-signup) (FR-SIGNUP-xxx)
+- 💻 [Virtual Events](#73-virtual-events) (FR-VIRTUAL-xxx)
+- 🔍 [Recruitment & Matching](#74-volunteer-search-recruitment--communication-history) (FR-RECRUIT-xxx)
+- 📊 [Reporting](#75-reporting-and-dashboards) (FR-REPORTING-xxx)
+- 🏫 [District Progress](#76-district-and-teacher-progress) (FR-DISTRICT-xxx)
+- 🎓 [Student Attendance](#77-student-roster-and-attendance) (FR-STUDENT-xxx)
+- 📧 [Email System](#78-email-system-management) (FR-EMAIL-xxx)
 
-**Domain Prefixes:**
-- `INPERSON` - In-person event management (7.1)
-- `SIGNUP` - Public volunteer signup (7.2)
-- `VIRTUAL` - Virtual events (7.3)
-- `RECRUIT` - Volunteer search and recruitment (7.4)
-- `REPORTING` - Reporting and dashboards (7.5)
-- `DISTRICT` - District and teacher progress (7.6)
-- `STUDENT` - Student roster and attendance (7.7)
-- `EMAIL` - Email system management (7.8)
+<details>
+<summary><strong>📋 Requirement ID Format & Conventions</strong> (for contributors)</summary>
 
-## Traceability
+### ID Structure
+Functional requirements use stable IDs: `FR-{DOMAIN}-{NNN}`
+- **Domain**: Category prefix (e.g., `INPERSON`, `VIRTUAL`)
+- **Number**: 3-digit sequence (001-999)
+- **Anchors**: Lowercase with hyphens (e.g., `fr-inperson-101`)
 
-Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User stories with acceptance criteria in **[User Stories](user_stories)**. End-to-end workflows in **[Use Cases](use_cases)**. Quality attributes and constraints in **[Non-Functional Requirements](non_functional_requirements)**.
+### Stability Rules
+- IDs never change once assigned
+- Gaps in numbering are allowed
+- Never reuse deleted requirement IDs
+
+### Domain Prefixes
+- `INPERSON` - In-person event management
+- `SIGNUP` - Public volunteer signup
+- `VIRTUAL` - Virtual events
+- `RECRUIT` - Volunteer search and recruitment
+- `REPORTING` - Reporting and dashboards
+- `DISTRICT` - District and teacher progress
+- `STUDENT` - Student roster and attendance
+- `EMAIL` - Email system management
+
+</details>
+
+## How Requirements Connect
+
+```mermaid
+graph LR
+    FR[📋 Functional Requirement] --> TC[🧪 Test Cases]
+    FR --> US[📖 User Stories]
+    FR --> UC[🔄 Use Cases]
+    US --> AC[✅ Acceptance Criteria]
+    TC --> TP[📦 Test Packs 1-6]
+
+    style FR fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style TC fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style US fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style UC fill:#fff3e0,stroke:#e65100,stroke-width:2px
+```
+
+Each requirement links to:
+- **Test Cases** - Verification in [Test Packs](test_packs/index)
+- **User Stories** - Business value in [User Stories](user_stories)
+- **Use Cases** - Workflows in [Use Cases](use_cases)
 
 ## 7.1 In-Person Event Management
 

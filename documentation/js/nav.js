@@ -380,6 +380,29 @@ function processRenderedContent() {
             });
         }
     });
+
+    // Render Mermaid diagrams
+    if (window.mermaid) {
+        // Find code blocks with language-mermaid class (marked.js output)
+        const mermaidBlocks = contentDiv.querySelectorAll('pre code.language-mermaid');
+        mermaidBlocks.forEach((block, index) => {
+            const pre = block.parentElement;
+            const code = block.textContent;
+
+            // Create a div for mermaid to render into
+            const div = document.createElement('div');
+            div.className = 'mermaid';
+            div.textContent = code;
+
+            // Replace pre with div
+            pre.parentNode.replaceChild(div, pre);
+        });
+
+        // Run mermaid
+        window.mermaid.run({
+            nodes: contentDiv.querySelectorAll('.mermaid')
+        }).catch(err => console.error('Mermaid rendering failed:', err));
+    }
 }
 
 /**

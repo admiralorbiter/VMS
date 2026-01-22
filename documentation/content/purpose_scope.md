@@ -1,16 +1,19 @@
 # Purpose and Scope
 
-**System purpose, boundaries, and functional coverage**
+> [!INFO]
+> **Executive Summary**
+>
+> **Polaris (VMS)** is the centralized hub for managing the volunteer lifecycle at PrepKC. It connects data from **Salesforce**, **VolunTeach**, and **Pathful** to provide a unified platform for event management, volunteer recruitment, and impact reporting.
 
 ## Purpose
 
 The Volunteer Management System (VMS), also known as **Polaris**, is an integrated system designed to manage K–12 student connections with career professionals through in-person and virtual events. The system serves as a centralized platform for volunteer data management, event tracking, recruitment, and reporting across multiple integrated systems.
 
-### Mission Statement
+### 🎯 Mission Statement
 
 Polaris enables educational organizations to efficiently connect students with career professionals by providing a unified system for managing volunteer events, tracking participation, monitoring district and teacher progress, and generating comprehensive impact reports.
 
-### Primary Goals
+### ⭐ Primary Goals
 
 - **Centralize volunteer data** from multiple sources (Salesforce, Pathful, Google Sheets, internal datasets)
 - **Streamline event management** for both in-person and virtual career events
@@ -19,7 +22,7 @@ Polaris enables educational organizations to efficiently connect students with c
 - **Provide comprehensive reporting** for grant reporting, district impact analysis, and volunteer recognition
 - **Support data-driven decisions** through analytics, dashboards, and ad hoc querying capabilities
 
-### Business Value
+### 💎 Business Value
 
 - **Operational Efficiency**: Reduces manual data entry and duplicate work across systems
 - **Visibility**: Provides real-time visibility into event status, volunteer participation, and district progress
@@ -33,7 +36,7 @@ Polaris enables educational organizations to efficiently connect students with c
 
 The system includes the following functional domains, each defined by functional requirements in [Requirements](requirements):
 
-#### 7.1 In-Person Event Management
+#### 7.1 🏢 In-Person Event Management
 - Event creation and maintenance in Salesforce
 - Automated and manual synchronization from Salesforce to VolunTeach
 - Public website event listings with visibility controls
@@ -44,7 +47,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-INPERSON-101](requirements#fr-inperson-101) through [FR-INPERSON-133](requirements#fr-inperson-133)
 
-#### 7.2 Public Volunteer Signup
+#### 7.2 ✍️ Public Volunteer Signup
 - Public volunteer signup forms (no authentication required)
 - Volunteer demographic data collection (name, email, organization, skills, demographics)
 - Automatic confirmation emails and calendar invites
@@ -52,7 +55,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-SIGNUP-121](requirements#fr-signup-121) through [FR-SIGNUP-127](requirements#fr-signup-127)
 
-#### 7.3 Virtual Events
+#### 7.3 💻 Virtual Events
 - Virtual event creation and management in Polaris
 - Teacher and presenter tagging for virtual sessions
 - Pathful export import for attendance and participation
@@ -62,7 +65,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201) through [FR-VIRTUAL-219](requirements#fr-virtual-219)
 
-#### 7.4 Volunteer Search & Intelligent Matching
+#### 7.4 🔍 Volunteer Search & Intelligent Matching
 - Searchable volunteer database with filtering capabilities
 - **Algorithmic candidate ranking** (scoring by history, location, keywords)
 - **Custom keyword targeting** for precise skill matching
@@ -73,7 +76,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-311](requirements#fr-recruit-311)
 
-#### 7.5 Reporting and Dashboards
+#### 7.5 📊 Reporting and Dashboards
 - Volunteer thank-you dashboards (top volunteers by hours/events)
 - Organization participation reports
 - District/school impact dashboards
@@ -84,7 +87,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401) through [FR-REPORTING-408](requirements#fr-reporting-408)
 
-#### 7.6 District and Teacher Progress
+#### 7.6 🏫 District and Teacher Progress
 - District viewer authentication and access control
 - District dashboards with school and teacher drilldown
 - Teacher progress status computation (Achieved, In Progress, Not Started)
@@ -94,7 +97,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-DISTRICT-501](requirements#fr-district-501) through [FR-DISTRICT-530](requirements#fr-district-530)
 
-#### 7.7 Student Roster and Attendance
+#### 7.7 🎓 Student Roster and Attendance
 - Student association with events (roster management)
 - Student attendance status tracking per event
 - Student reach metrics by district, school, event type, and date range
@@ -102,7 +105,7 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-STUDENT-601](requirements#fr-student-601) through [FR-STUDENT-604](requirements#fr-student-604)
 
-#### 7.8 Email System Management
+#### 7.8 📧 Email System Management
 - Email template creation and versioning
 - Email delivery monitoring and status tracking
 - Admin email sending with safety controls
@@ -144,15 +147,15 @@ These are marked as "near-term" in requirements and may be added to scope in fut
 
 ### Integration Points
 
-Polaris integrates with five core systems, each with distinct ownership and responsibilities:
+Polaris integrates with core systems to provide a unified experience.
 
-| System | Purpose | Owns | Polaris Role |
-|--------|---------|------|--------------|
-| **Salesforce (SF)** | Core CRM, data entry, in-person events, student attendance, email logging | Event details, student data, communication logs | Syncs and aggregates data from Salesforce |
-| **VolunTeach (VT)** | Event sync + website publishing controls | Publish toggle, district links | Provides sync interface and publishing controls |
-| **Website (WEB)** | Public event display + volunteer signup | Signup capture (input only) | Provides event data via API, receives signup submissions |
-| **Polaris (POL)** | Virtual events, recruitment, dashboards, reporting | Virtual events, teacher roster, metrics | Core system - manages virtual events and reporting |
-| **Pathful (PATH)** | Virtual signup + reminders + attendance | Session signups, attendance status | Imports attendance data from Pathful exports |
+![VMS Data Flow Architecture](content/images/vms_architecture_optimized.png)
+
+**System Roles:**
+*   **Salesforce**: Core CRM, System of Record for In-Person Events.
+*   **VolunTeach**: Sync engine and publishing control for In-Person Events.
+*   **Polaris**: Core application for Virtual Events, Reporting, and District Dashboards.
+*   **Pathful**: Platform for Virtual Session hosting and attendance tracking.
 
 **Reference:** [System Architecture](architecture) for detailed integration flows and source-of-truth ownership.
 
@@ -217,4 +220,4 @@ This document provides the foundational understanding of system purpose and boun
 ---
 
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*

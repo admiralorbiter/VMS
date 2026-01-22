@@ -4,6 +4,8 @@
 
 This documentation covers the integrated system for managing K–12 student connections with career professionals through in-person and virtual events.
 
+![VMS Data Flow Architecture](content/images/vms_architecture_optimized.png)
+
 ## System URLs and Locations
 
 | System | URL | Purpose |
