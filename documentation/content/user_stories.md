@@ -14,6 +14,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-INPERSON-101](requirements#fr-inperson-101)
 
+**Related Use Cases:** [UC-1](use_cases#uc-1)
+
 **Acceptance Criteria:**
 
 - Given I have Salesforce access, when I create an event with required fields, then the event is saved successfully.
@@ -24,6 +26,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** internal staff, **I want** events to sync from Salesforce into VolunTeach automatically and on-demand, **So that** the website list stays current.
 
 **Related Requirements:** [FR-INPERSON-102](requirements#fr-inperson-102), [FR-INPERSON-103](requirements#fr-inperson-103), [FR-INPERSON-123](requirements#fr-inperson-123)
+
+**Related Use Cases:** [UC-2](use_cases#uc-2)
 
 **Acceptance Criteria:**
 
@@ -37,6 +41,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-INPERSON-104](requirements#fr-inperson-104), [FR-INPERSON-105](requirements#fr-inperson-105)
 
+**Related Use Cases:** [UC-2](use_cases#uc-2)
+
 **Acceptance Criteria:**
 
 - Given an event exists in VolunTeach, when I set "In-person page visibility" ON, then the event appears on the public page.
@@ -48,6 +54,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** internal staff, **I want** to link an event to a district in VolunTeach, **So that** it appears on the district's website view.
 
 **Related Requirements:** [FR-INPERSON-107](requirements#fr-inperson-107), [FR-INPERSON-109](requirements#fr-inperson-109)
+
+**Related Use Cases:** [UC-2](use_cases#uc-2)
 
 **Acceptance Criteria:**
 
@@ -74,6 +82,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-SIGNUP-121](requirements#fr-signup-121), [FR-SIGNUP-122](requirements#fr-signup-122), [FR-SIGNUP-127](requirements#fr-signup-127)
 
+**Related Use Cases:** [UC-3](use_cases#uc-3)
+
 **Acceptance Criteria:**
 
 - Given I view an event signup form, when I submit valid required fields, then my signup is accepted and stored as a participation record.
@@ -96,6 +106,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-SIGNUP-123](requirements#fr-signup-123), [FR-SIGNUP-124](requirements#fr-signup-124), [FR-SIGNUP-125](requirements#fr-signup-125)
 
+**Related Use Cases:** [UC-3](use_cases#uc-3)
+
 **Acceptance Criteria:**
 
 - Given a successful signup, then a confirmation email is sent to the submitted email.
@@ -110,6 +122,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201)
 
+**Related Use Cases:** [UC-4](use_cases#uc-4)
+
 **Acceptance Criteria:**
 
 - Given I create a virtual event with required fields, then it saves and is visible in the event list.
@@ -120,6 +134,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** internal staff, **I want** to attach teachers to a virtual event via search, **So that** reporting and progress tracking are linked to real teacher records.
 
 **Related Requirements:** [FR-VIRTUAL-202](requirements#fr-virtual-202)
+
+**Related Use Cases:** [UC-4](use_cases#uc-4)
 
 **Acceptance Criteria:**
 
@@ -132,6 +148,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-VIRTUAL-203](requirements#fr-virtual-203)
 
+**Related Use Cases:** [UC-4](use_cases#uc-4), [UC-11](use_cases#uc-11)
+
 **Acceptance Criteria:**
 
 - Given a volunteer/presenter exists in Salesforce, when I search and select them, then they are linked to the Polaris event as a presenter.
@@ -143,6 +161,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** internal staff, **I want** to import Pathful signup/attendance data into Polaris, **So that** we can track attendance and teacher progress.
 
 **Related Requirements:** [FR-VIRTUAL-206](requirements#fr-virtual-206)
+
+**Related Use Cases:** [UC-5](use_cases#uc-5)
 
 **Acceptance Criteria:**
 
@@ -180,6 +200,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-VIRTUAL-210](requirements#fr-virtual-210), [FR-VIRTUAL-211](requirements#fr-virtual-211), [FR-VIRTUAL-212](requirements#fr-virtual-212), [FR-VIRTUAL-213](requirements#fr-virtual-213), [FR-VIRTUAL-214](requirements#fr-virtual-214), [FR-VIRTUAL-215](requirements#fr-virtual-215), [FR-VIRTUAL-216](requirements#fr-virtual-216), [FR-VIRTUAL-217](requirements#fr-virtual-217), [FR-VIRTUAL-218](requirements#fr-virtual-218), [FR-VIRTUAL-219](requirements#fr-virtual-219)
 
+**Related Use Cases:** [UC-11](use_cases#uc-11)
+
 **Acceptance Criteria:**
 
 - Given I access the presenter recruitment view at /virtual/usage/recruitment, then I see only virtual events without an assigned presenter (no EventParticipation with participant_type='Presenter').
@@ -200,6 +222,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301), [FR-RECRUIT-302](requirements#fr-recruit-302), [FR-RECRUIT-303](requirements#fr-recruit-303)
 
+**Related Use Cases:** [UC-6](use_cases#uc-6)
+
 **Acceptance Criteria:**
 
 - Given the volunteer directory, when I filter by organization, skills, career type, and local, then results match those criteria.
@@ -211,6 +235,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** internal staff, **I want** to see a volunteer's participation history including most recent volunteer date, **So that** I can understand their engagement level and prioritize outreach.
 
 **Related Requirements:** [FR-RECRUIT-304](requirements#fr-recruit-304)
+
+**Related Use Cases:** [UC-6](use_cases#uc-6)
 
 **Acceptance Criteria:**
 
@@ -236,6 +262,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-RECRUIT-305](requirements#fr-recruit-305), [FR-RECRUIT-308](requirements#fr-recruit-308)
 
+**Related Use Cases:** [UC-6](use_cases#uc-6)
+
 **Acceptance Criteria:**
 
 - Given emails are logged via Salesforce Gmail add-on, when comms sync runs, then those emails appear on the correct volunteer profile.
@@ -260,6 +288,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-DISTRICT-501](requirements#fr-district-501), [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-521](requirements#fr-district-521), [FR-DISTRICT-522](requirements#fr-district-522)
 
+**Related Use Cases:** [UC-8](use_cases#uc-8)
+
 **Acceptance Criteria:**
 
 - Given I'm a District Viewer for District X, then I can access District X's dashboard and no other districts.
@@ -271,6 +301,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-DISTRICT-503](requirements#fr-district-503)
 
+**Related Use Cases:** [UC-8](use_cases#uc-8)
+
 **Acceptance Criteria:**
 
 - Given I click a school, then I see teacher-level rows for that school only.
@@ -281,6 +313,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** internal staff and district viewers, **I want** the progress statuses to be computed consistently, **So that** reporting is trustworthy.
 
 **Related Requirements:** [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-508](requirements#fr-district-508)
+
+**Related Use Cases:** [UC-8](use_cases#uc-8)
 
 **Acceptance Criteria:**
 
@@ -307,6 +341,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-DISTRICT-505](requirements#fr-district-505), [FR-DISTRICT-506](requirements#fr-district-506), [FR-DISTRICT-507](requirements#fr-district-507), [FR-DISTRICT-508](requirements#fr-district-508), [FR-DISTRICT-521](requirements#fr-district-521), [FR-DISTRICT-523](requirements#fr-district-523)
 
+**Related Use Cases:** [UC-9](use_cases#uc-9)
+
 **Acceptance Criteria:**
 
 - Given my email exists in the roster, when I request a link, then I receive an email with a link.
@@ -321,6 +357,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-STUDENT-601](requirements#fr-student-601)
 
+**Related Use Cases:** [UC-10](use_cases#uc-10)
+
 **Acceptance Criteria:**
 
 - Given an event, when students are added to the roster, then student-event participation records exist.
@@ -328,6 +366,10 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-602"></a>US-602: Staff can mark student attendance
 
 **As** internal staff, **I want** to record attendance for rostered students, **So that** reports reflect real participation.
+
+**Related Requirements:** [FR-STUDENT-602](requirements#fr-student-602)
+
+**Related Use Cases:** [UC-10](use_cases#uc-10)
 
 **Acceptance Criteria:**
 
@@ -339,6 +381,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-STUDENT-603](requirements#fr-student-603), [FR-STUDENT-604](requirements#fr-student-604)
 
+**Related Use Cases:** [UC-10](use_cases#uc-10)
+
 **Acceptance Criteria:**
 
 - Given attended records, then unique students reached matches the defined computation rules for district/school.
@@ -348,6 +392,10 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-701"></a>US-701: Volunteer thank-you reporting
 
 **As** leadership/internal staff, **I want** volunteer thank-you dashboards, **So that** I can recognize top contributors.
+
+**Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401), [FR-REPORTING-406](requirements#fr-reporting-406)
+
+**Related Use Cases:** [UC-7](use_cases#uc-7)
 
 **Acceptance Criteria:**
 
@@ -360,6 +408,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** [FR-REPORTING-402](requirements#fr-reporting-402), [FR-REPORTING-406](requirements#fr-reporting-406)
 
+**Related Use Cases:** [UC-7](use_cases#uc-7)
+
 **Acceptance Criteria:**
 
 - Dashboard shows correct totals per organization and unique organizations engaged.
@@ -368,6 +418,10 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-703"></a>US-703: District/school impact reporting
 
 **As** leadership/internal staff, **I want** district/school impact dashboards, **So that** I can complete district reporting and grants.
+
+**Related Requirements:** [FR-REPORTING-403](requirements#fr-reporting-403), [FR-REPORTING-404](requirements#fr-reporting-404), [FR-REPORTING-406](requirements#fr-reporting-406)
+
+**Related Use Cases:** [UC-7](use_cases#uc-7)
 
 **Acceptance Criteria:**
 
@@ -380,6 +434,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** leadership/internal staff, **I want** to answer one-off questions with queries/reports, **So that** I can respond to partner and grant requests quickly.
 
 **Related Requirements:** [FR-REPORTING-405](requirements#fr-reporting-405), [FR-REPORTING-406](requirements#fr-reporting-406)
+
+**Related Use Cases:** [UC-7](use_cases#uc-7)
 
 **Acceptance Criteria:**
 

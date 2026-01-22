@@ -18,6 +18,8 @@ This documentation covers the integrated system for managing K–12 student conn
   Functional requirements (FR-xxx) with test traceability
 - 📖 **[User Stories](user_stories)**
   Business intent by epic with acceptance criteria
+- 🔄 **[Use Cases](use_cases)**
+  End-to-end workflows for key system functions
 - 🏗️ **Architecture**
   System context, integration flows, and source-of-truth ownership
 - 📊 **Data Dictionary**
