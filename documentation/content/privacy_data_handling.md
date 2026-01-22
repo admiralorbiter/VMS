@@ -97,12 +97,12 @@ If you suspect data leakage (e.g., teacher sees wrong data):
 2. **Disable affected endpoint** if possible
 3. **Document scope** - What data was exposed, to whom, when
 4. **Notify leadership** - Escalate immediately
-5. **Follow Runbook** - "Magic link shows wrong data" path
+5. **Follow Runbook** - [Runbook 10.2 - Case D: Wrong Data (SEV1)](runbook#case-d-wrong-data-sev1)
 
 > [!WARNING]
 > **Incident Response:** Any suspected data leakage should be treated as a critical security incident. Follow organizational incident response procedures immediately.
 
-**Reference:** Runbook documentation (to be created)
+**Reference:** [Runbook](runbook) for detailed troubleshooting procedures
 
 ## Access Control
 
@@ -132,7 +132,7 @@ Fields are classified by sensitivity level:
 
 1. **Final Retention Periods:** Pending organizational/legal review
 2. **Encryption at Rest:** Specific implementation details TBD
-3. **Runbook Documentation:** Incident response runbooks to be created
+3. **Monitoring Documentation:** System monitoring and health check documentation to be created
 
 ## Related Requirements
 
