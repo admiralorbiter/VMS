@@ -16,6 +16,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-1](use_cases#uc-1)
 
+**User Guide:** [In-Person Event Management](user_guide/in_person_events#creating-an-event-in-salesforce)
+
 **Acceptance Criteria:**
 
 - Given I have Salesforce access, when I create an event with required fields, then the event is saved successfully.
@@ -28,6 +30,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-INPERSON-102](requirements#fr-inperson-102), [FR-INPERSON-103](requirements#fr-inperson-103), [FR-INPERSON-123](requirements#fr-inperson-123)
 
 **Related Use Cases:** [UC-2](use_cases#uc-2)
+
+**User Guide:** [In-Person Event Management](user_guide/in_person_events#syncing-to-volunteach)
 
 **Acceptance Criteria:**
 
@@ -43,6 +47,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-2](use_cases#uc-2)
 
+**User Guide:** [In-Person Event Management](user_guide/in_person_events#managing-visibility)
+
 **Acceptance Criteria:**
 
 - Given an event exists in VolunTeach, when I set "In-person page visibility" ON, then the event appears on the public page.
@@ -56,6 +62,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-INPERSON-107](requirements#fr-inperson-107), [FR-INPERSON-109](requirements#fr-inperson-109)
 
 **Related Use Cases:** [UC-2](use_cases#uc-2)
+
+**User Guide:** [In-Person Event Management](user_guide/in_person_events#district-page-visibility)
 
 **Acceptance Criteria:**
 
@@ -83,6 +91,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-SIGNUP-121](requirements#fr-signup-121), [FR-SIGNUP-122](requirements#fr-signup-122), [FR-SIGNUP-127](requirements#fr-signup-127)
 
 **Related Use Cases:** [UC-3](use_cases#uc-3)
+
+**User Guide:** [Public Signup Flow](user_guide/public_signup)
 
 **Acceptance Criteria:**
 
@@ -123,6 +133,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201)
 
 **Related Use Cases:** [UC-4](use_cases#uc-4)
+
+**User Guide:** [Virtual Event Management](user_guide/virtual_events#1-creating-virtual-events)
 
 **Acceptance Criteria:**
 
@@ -202,6 +214,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-11](use_cases#uc-11)
 
+**User Guide:** [Virtual Event Management](user_guide/virtual_events#2-presenter-recruitment)
+
 **Acceptance Criteria:**
 
 - Given I access the presenter recruitment view at /virtual/usage/recruitment, then I see only virtual events without an assigned presenter (no EventParticipation with participant_type='Presenter').
@@ -223,6 +237,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301), [FR-RECRUIT-302](requirements#fr-recruit-302), [FR-RECRUIT-303](requirements#fr-recruit-303)
 
 **Related Use Cases:** [UC-6](use_cases#uc-6)
+
+**User Guide:** [Volunteer Recruitment](user_guide/volunteer_recruitment#1-volunteer-directory)
 
 **Acceptance Criteria:**
 
@@ -303,6 +319,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-8](use_cases#uc-8)
 
+**User Guide:** [District & Teacher Progress](user_guide/district_teacher_progress#1-district-dashboard-access)
+
 **Acceptance Criteria:**
 
 - Given I'm a District Viewer for District X, then I can access District X's dashboard and no other districts.
@@ -356,6 +374,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-9](use_cases#uc-9)
 
+**User Guide:** [District & Teacher Progress](user_guide/district_teacher_progress#3-teacher-magic-links)
+
 **Acceptance Criteria:**
 
 - Given my email exists in the roster, when I request a link, then I receive an email with a link.
@@ -371,6 +391,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-STUDENT-601](requirements#fr-student-601)
 
 **Related Use Cases:** [UC-10](use_cases#uc-10)
+
+**User Guide:** [Student Roster & Attendance](user_guide/student_management#1-rostering-students)
 
 **Acceptance Criteria:**
 
@@ -409,6 +431,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401), [FR-REPORTING-406](requirements#fr-reporting-406)
 
 **Related Use Cases:** [UC-7](use_cases#uc-7)
+
+**User Guide:** [Reporting & Dashboards](user_guide/reporting#1-available-dashboards)
 
 **Acceptance Criteria:**
 
@@ -477,6 +501,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Requirements:** *Email system features documented in guides*
 
+**User Guide:** [Email System](user_guide/email_system)
+
 **Acceptance Criteria:**
 
 - Given I access the email templates section, when I create a new template, then it is saved with a purpose key and version.
@@ -514,6 +540,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **As** a district user, **I want** to flag missing or incorrect data related to teachers and sessions in my district, **So that** internal staff can correct the data and reporting is accurate.
 
 **Related Requirements:** *Data tracker features documented in guides*
+
+**User Guide:** [Data Tracker](user_guide/data_tracker)
 
 **Acceptance Criteria:**
 

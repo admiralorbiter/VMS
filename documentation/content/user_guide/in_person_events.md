@@ -82,3 +82,12 @@ To display an event on a specific district's customized page:
 
 ### Data Mismatch?
 - If the website shows old data (e.g., wrong time), update it in Salesforce first, then run a Manual Sync in VolunTeach. VolunTeach does not write back to Salesforce; Salesforce is the source of truth.
+
+## Technical Scope & Traceability
+
+This guide addresses the following scopes:
+
+| Component | Items |
+|---|---|
+| **User Stories** | [US-101](user_stories#us-101), [US-102](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104) |
+| **Requirements** | [FR-INPERSON-101](requirements#fr-inperson-101), [FR-INPERSON-102](requirements#fr-inperson-102), [FR-INPERSON-104](requirements#fr-inperson-104), [FR-INPERSON-107](requirements#fr-inperson-107) |
