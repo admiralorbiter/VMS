@@ -14,6 +14,8 @@ This documentation covers the integrated system for managing K–12 student conn
 
 ## Quick Navigation
 
+- 🎯 **[Purpose & Scope](purpose_scope)**
+  System purpose, boundaries, and functional coverage
 - 📋 **[Requirements](#requirements)**
   Functional requirements (FR-xxx) with test traceability
 - 📖 **[User Stories](user_stories)**
@@ -22,17 +24,17 @@ This documentation covers the integrated system for managing K–12 student conn
   End-to-end workflows for key system functions
 - 📋 **[Non-Functional Requirements](non_functional_requirements)**
   Quality attributes and system constraints
-- 🏗️ **Architecture**
+- 🏗️ **[Architecture](architecture)**
   System context, integration flows, and source-of-truth ownership
 - 📊 **[Data Dictionary](data_dictionary)**
   Canonical entity definitions, field specs, and sensitivity levels
 - 🔗 **[Field Mappings](field_mappings)**
   Cross-system data flow specifications
-- 📐 **Metrics Bible**
+- 📐 **[Metrics Bible](metrics_bible)**
   How every metric is calculated—the single source of truth for reporting
-- 🔐 **RBAC Matrix**
+- 🔐 **[RBAC Matrix](rbac_matrix)**
   Role permissions and data access controls
-- 🔒 **Privacy & Data Handling**
+- 🔒 **[Privacy & Data Handling](privacy_data_handling)**
   Data protection rules and retention policies
 - 🔌 **[Integration Contracts](contracts)**
   API specs for SF↔VT, Website, Gmail sync, Pathful import
@@ -40,14 +42,18 @@ This documentation covers the integrated system for managing K–12 student conn
   Comprehensive test cases for all major workflows (6 packs)
 - 📈 **Reports**
   Reporting documentation and available report types
-- 🚀 **Deployment**
+- 🚀 **[Deployment](deployment)**
   Deployment guide and operational procedures
+- 📋 **[Import Playbook](import_playbook)**
+  Step-by-step guide for importing historical data
 - 🔍 **Data Quality**
   Data quality dashboard and validation rules
 - 📚 **User Guide**
   Step-by-step instructions for common tasks
 - 🔌 **API Reference**
   API documentation for integrations
+- 🔒 **[Audit Requirements](audit_requirements)**
+  Audit logging and compliance requirements
 
 ## Document Hierarchy
 
@@ -55,11 +61,12 @@ This documentation follows a **requirements → design → test** traceability c
 
 | Layer | Documents | Purpose |
 |-------|-----------|---------|
-| Requirements | **Purpose & Scope**, **Use Cases**, **[Functional Reqs](#requirements)**, **[User Stories](user_stories)**, **[NFRs](non_functional_requirements)** | What the system must do and why |
-| Design | **Architecture**, **[Data Dictionary](data_dictionary)**, **[Field Mappings](field_mappings)**, **Metrics**, **RBAC** | How the system is structured |
-| Contracts | **[Contract A](contract_a)**, **[Contract B](contract_b)**, **[Contract C](contract_c)**, **[Contract D](contract_d)** | Integration boundaries and behaviors |
-| Operations | **Playbooks**, **[Monitoring](monitoring)**, **[Runbook](runbook)**, **[Smoke Tests](smoke_tests)** | How to operate and troubleshoot |
-| Testing | **[Test Packs 1–6](#test-packs)** | Verify requirements are met |
+| Requirements | **[Purpose & Scope](purpose_scope)**, **[Use Cases](use_cases)**, **[Functional Reqs](#requirements)**, **[User Stories](user_stories)**, **[NFRs](non_functional_requirements)** | What the system must do and why |
+| Design | **[Architecture](architecture)**, **[Data Dictionary](data_dictionary)**, **[Field Mappings](field_mappings)**, **[Metrics Bible](metrics_bible)**, **[RBAC Matrix](rbac_matrix)** | How the system is structured |
+| Contracts | **[Contracts Overview](contracts)**, **[Contract A](contract_a)**, **[Contract B](contract_b)**, **[Contract C](contract_c)**, **[Contract D](contract_d)** | Integration boundaries and behaviors |
+| Operations | **[Import Playbook](import_playbook)**, **[Monitoring](monitoring)**, **[Runbook](runbook)**, **[Smoke Tests](smoke_tests)**, **[Deployment](deployment)** | How to operate and troubleshoot |
+| Security | **[Privacy & Data Handling](privacy_data_handling)**, **[Audit Requirements](audit_requirements)** | Security, privacy, and compliance |
+| Testing | **[Test Packs Overview](test_packs/index)**, **[Test Pack 1](test_packs/test_pack_1)**, **[Test Pack 2](test_packs/test_pack_2)**, **[Test Pack 3](test_packs/test_pack_3)**, **[Test Pack 4](test_packs/test_pack_4)**, **[Test Pack 5](test_packs/test_pack_5)**, **[Test Pack 6](test_packs/test_pack_6)** | Verify requirements are met |
 
 ## Core Systems
 
@@ -88,9 +95,10 @@ These pages are controlled by VolunTeach visibility toggles and district linking
 
 **Source of Truth (SoT) documents** are authoritative—other docs reference them, never duplicate.
 
-- **[Data Dictionary](#data-dictionary)** → defines all entities and fields
-- **[Metrics Bible](#metrics-bible)** → defines all calculations
-- **[RBAC Matrix](#rbac-matrix)** → defines all permissions
+- **[Purpose & Scope](purpose_scope)** → defines system boundaries and what's in/out of scope
+- **[Data Dictionary](data_dictionary)** → defines all entities and fields
+- **[Metrics Bible](metrics_bible)** → defines all calculations
+- **[RBAC Matrix](rbac_matrix)** → defines all permissions
 
 All other documents reference these sources rather than restating definitions.
 
