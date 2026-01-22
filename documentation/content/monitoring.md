@@ -8,6 +8,7 @@
 - **Metric definitions**: [Metrics Bible](metrics_bible) - Canonical metric calculations
 - **Sync schedules**: [Architecture - Sync Cadences](architecture#sync-cadences) - Expected sync frequencies
 - **Import procedures**: [Import Playbook](import_playbook) - Step-by-step import guides
+- **Deployment procedures**: [Deployment Guide](deployment) - PythonAnywhere deployment and maintenance
 
 ## Severity Levels
 
@@ -53,6 +54,8 @@ python scripts/pythonanywhere_cache_manager.py health
 - Returns structured health status dictionary
 
 **Reference:** `scripts/utilities/pythonanywhere_cache_manager.py` lines 138-193
+
+**Related:** [Smoke Tests](smoke_tests) for functional verification
 
 ### Import Health Monitoring
 
@@ -262,6 +265,8 @@ Monitor data freshness by checking sync timestamps:
 
 **Quick Reference:** [Runbook - Quick Triage](runbook#quick-triage-60-seconds) for threshold definitions
 
+**Configuration:** [Deployment Guide - Scheduled Tasks Setup](deployment#scheduled-tasks-setup) for setting up scheduled syncs
+
 ## Log Monitoring
 
 ### Log Files
@@ -312,7 +317,7 @@ grep "Import completed" logs/daily_imports.log
 grep "ERROR" logs/daily_imports.log | tail -20
 ```
 
-**Reference:** [PythonAnywhere Deployment - Log Monitoring](docs/living/PythonAnywhere_Deployment.md#1-log-monitoring)
+**Reference:** [Deployment Guide - Monitoring & Maintenance](deployment#monitoring--maintenance)
 
 ## Database Monitoring
 
@@ -345,7 +350,7 @@ sqlite3 instance/vms.db "VACUUM;"
 - Rapid database size growth
 - Slow query performance
 
-**Reference:** [PythonAnywhere Deployment - Database Maintenance](docs/living/PythonAnywhere_Deployment.md#2-database-maintenance)
+**Reference:** [Deployment Guide - Monitoring & Maintenance](deployment#monitoring--maintenance)
 
 ## Key Metrics
 
@@ -449,6 +454,8 @@ sqlite3 instance/vms.db "VACUUM;"
 4. Fix within 24 hours
 
 **Reference:** [Runbook](runbook) for detailed troubleshooting procedures
+
+**Related:** [Smoke Tests](smoke_tests) for functional verification after fixes
 
 ## Related Requirements
 

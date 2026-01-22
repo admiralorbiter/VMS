@@ -58,7 +58,7 @@ This documentation follows a **requirements → design → test** traceability c
 | Requirements | **Purpose & Scope**, **Use Cases**, **[Functional Reqs](#requirements)**, **[User Stories](user_stories)**, **[NFRs](non_functional_requirements)** | What the system must do and why |
 | Design | **Architecture**, **[Data Dictionary](data_dictionary)**, **[Field Mappings](field_mappings)**, **Metrics**, **RBAC** | How the system is structured |
 | Contracts | **Contract A**, **B**, **C**, **D** | Integration boundaries and behaviors |
-| Operations | **Playbooks**, **Monitoring**, **Runbook**, **Smoke Tests** | How to operate and troubleshoot |
+| Operations | **Playbooks**, **[Monitoring](monitoring)**, **[Runbook](runbook)**, **[Smoke Tests](smoke_tests)** | How to operate and troubleshoot |
 | Testing | **[Test Packs 1–6](#test-packs)** | Verify requirements are met |
 
 ## Core Systems
