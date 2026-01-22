@@ -182,6 +182,8 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 | <a id="fr-recruit-306"></a>**FR-RECRUIT-306** | Polaris shall allow staff to record recruitment notes and outcomes where Polaris provides that UI. | [TC-380](#tc-380)–[TC-381](#tc-381) | [US-403](user_stories#us-403) |
 | <a id="fr-recruit-308"></a>**FR-RECRUIT-308** | Polaris shall import/sync logged email communication records from Salesforce and associate them to the correct volunteer/person. | [TC-360](#tc-360)–[TC-366](#tc-366) | [US-404](user_stories#us-404) |
 | <a id="fr-recruit-309"></a>**FR-RECRUIT-309** | Polaris shall distinguish "no communication logged" from "communication sync failure" (visibility into data completeness). | [TC-363](#tc-363), [TC-364](#tc-364) | [US-405](user_stories#us-405) |
+| <a id="fr-recruit-310"></a>**FR-RECRUIT-310** | **Intelligent Matching**: The system shall rank volunteer candidates using a multi-dimensional scoring algorithm (history, location, keywords) to identify best matches. | *TBD* | [US-406](user_stories#us-406) |
+| <a id="fr-recruit-311"></a>**FR-RECRUIT-311** | The system shall support user-defined **custom keywords** that override or boost automatic matching for specific events. | *TBD* | [US-406](user_stories#us-406) |
 
 ## 7.5 Reporting and Dashboards
 
@@ -195,6 +197,8 @@ Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User storie
 | <a id="fr-reporting-404"></a>**FR-REPORTING-404** | Polaris shall report at minimum: unique students reached, unique volunteers reached, total volunteer hours, and unique organizations engaged. | [TC-740](#tc-740), [TC-741](#tc-741) | [US-703](user_stories#us-703) |
 | <a id="fr-reporting-405"></a>**FR-REPORTING-405** | Polaris shall support ad hoc querying/reporting for one-off participation questions (e.g., counts for a specific org). | [TC-760](#tc-760)–[TC-762](#tc-762) | [US-704](user_stories#us-704) |
 | <a id="fr-reporting-406"></a>**FR-REPORTING-406** | Polaris shall provide export outputs (e.g., CSV) suitable for grant and district reporting workflows. | [TC-780](#tc-780)–[TC-783](#tc-783) | [US-701](user_stories#us-701), [US-702](user_stories#us-702), [US-703](user_stories#us-703), [US-704](user_stories#us-704) |
+| <a id="fr-reporting-407"></a>**FR-REPORTING-407** | The system shall generate **partner reconciliation reports** (e.g., KCTAA) matching external lists against internal volunteer data. | *TBD* | [US-705](user_stories#us-705) |
+| <a id="fr-reporting-408"></a>**FR-REPORTING-408** | The system shall support **fuzzy name matching** for partner reconciliation to identify near-matches across systems. | *TBD* | [US-705](user_stories#us-705) |
 
 ## 7.6 District and Teacher Progress
 

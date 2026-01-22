@@ -277,8 +277,21 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Acceptance Criteria:**
 
-- Given a volunteer has no logged emails, then comms panel shows "no communication history logged."
 - Given the comms sync is failing, then comms panel shows an explicit sync failure status (not "no comms").
+
+### <a id="us-406"></a>US-406: Rank volunteers by relevance (Intelligent Matching)
+
+**As** internal staff, **I want** the system to rank volunteers by relevance (keywords, history, location), **So that** I don't have to sift through hundreds of records manually.
+
+**Related Requirements:** [FR-RECRUIT-310](requirements#fr-recruit-310), [FR-RECRUIT-311](requirements#fr-recruit-311)
+
+**Related Use Cases:** [UC-6](use_cases#uc-6)
+
+**Acceptance Criteria:**
+
+- Given I view recruitment search, then candidates are ranked by score (highest first).
+- Given I add "Custom Keywords", then candidates matching those keywords get a higher score.
+- The system explains *why* a candidate matched (e.g., "Matched on Title: Engineer").
 
 ## Epic 5: District Progress Dashboards + Teacher Magic Links
 
@@ -441,6 +454,20 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 - Given an organization filter, the query returns correct counts/lists.
 - Export matches query results.
+
+### <a id="us-705"></a>US-705: Reconcile external partner lists (e.g., KCTAA)
+
+**As** internal staff, **I want** to match an external list of names against our database, **So that** I can report on partner member engagement even if they used different email addresses.
+
+**Related Requirements:** [FR-REPORTING-407](requirements#fr-reporting-407), [FR-REPORTING-408](requirements#fr-reporting-408)
+
+**Related Use Cases:** [UC-12](use_cases#uc-12)
+
+**Acceptance Criteria:**
+
+- Given I upload/select a partner list (CSV), then the system returns matches against the volunteer database.
+- Given names are slightly different (e.g., "Rob" vs "Robert"), then the system identifies them as "Fuzzy Matches".
+- I can export the reconciled list showing which partners are active volunteers.
 
 ## Epic 8: Email System Management
 

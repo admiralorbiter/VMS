@@ -20,12 +20,13 @@ Use cases describe complete workflows that span multiple systems and features. T
 | [UC-3](#uc-3) | Volunteer Signs Up (Public Website) | [US-201](user_stories#us-201), [US-203](user_stories#us-203) | [Test Pack 2](test_packs/test_pack_2) |
 | [UC-4](#uc-4) | Create Virtual Event (Polaris) | [US-301](user_stories#us-301), [US-302](user_stories#us-302), [US-303](user_stories#us-303) | [Test Pack 3](test_packs/test_pack_3) |
 | [UC-5](#uc-5) | Import Virtual Signup/Attendance | [US-304](user_stories#us-304) | [Test Pack 3](test_packs/test_pack_3) |
-| [UC-6](#uc-6) | Volunteer Recruitment (Polaris) | [US-401](user_stories#us-401), [US-402](user_stories#us-402), [US-404](user_stories#us-404) | [Test Pack 4](test_packs/test_pack_4) |
-| [UC-7](#uc-7) | Reporting and Ad Hoc Queries | [US-701](user_stories#us-701), [US-702](user_stories#us-702), [US-703](user_stories#us-703), [US-704](user_stories#us-704) | [Test Pack 6](test_packs/test_pack_6) |
+| [UC-6](#uc-6) | Volunteer Recruitment & Intelligent Matching | [US-401](user_stories#us-401), [US-406](user_stories#us-406) | [Test Pack 4](test_packs/test_pack_4) |
+| [UC-7](#uc-7) | Reporting and Ad Hoc Queries | [US-701](user_stories#us-701) through [US-704](user_stories#us-704) | [Test Pack 6](test_packs/test_pack_6) |
 | [UC-8](#uc-8) | District Progress Dashboard | [US-501](user_stories#us-501), [US-502](user_stories#us-502), [US-503](user_stories#us-503) | [Test Pack 1](test_packs/test_pack_1) |
 | [UC-9](#uc-9) | Teacher Magic Link Self-Verification | [US-505](user_stories#us-505) | [Test Pack 1](test_packs/test_pack_1) |
 | [UC-10](#uc-10) | Student Roster and Attendance | [US-601](user_stories#us-601), [US-602](user_stories#us-602), [US-603](user_stories#us-603) | [Test Pack 5](test_packs/test_pack_5) |
 | [UC-11](#uc-11) | Identify and Fill Presenter Gaps | [US-307](user_stories#us-307), [US-303](user_stories#us-303) | [Test Pack 3](test_packs/test_pack_3) |
+| [UC-12](#uc-12) | Generate Partner Reconciliation Report | [US-705](user_stories#us-705) | [Test Pack 6](test_packs/test_pack_6) |
 
 ---
 
@@ -107,18 +108,20 @@ Use cases describe complete workflows that span multiple systems and features. T
 
 ---
 
-## <a id="uc-6"></a>UC-6: Volunteer Recruitment (Polaris)
+## <a id="uc-6"></a>UC-6: Volunteer Recruitment & Intelligent Matching (Polaris)
 
-**Workflow:**
-1. Staff searches volunteers by criteria (name/org/role/skills/career/local/virtual-only)
-2. Reviews volunteer participation and communication history
-3. Conducts outreach via email (manual today)
-4. Communications are logged in Salesforce via Gmail add-on and surfaced into Polaris
+ **Workflow:**
+ 1. Staff searches volunteers by criteria (name/org/role/skills/career/local/virtual-only)
+ 2. **Optional**: Staff adds "Custom Keywords" (e.g., "Python, Data Science") to boost ranking
+ 3. System **automatically ranks** candidates by score (matching history, location, keywords)
+ 4. Staff reviews volunteer profile, why they matched (score breakdown), and communication history
+ 5. Conducts outreach via email (manual today)
+ 6. Communications are logged in Salesforce via Gmail add-on and surfaced into Polaris
 
-**Related:**
-- **Requirements**: [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-309](requirements#fr-recruit-309)
-- **User Stories**: [US-401](user_stories#us-401), [US-402](user_stories#us-402), [US-404](user_stories#us-404)
-- **Test Coverage**: [Test Pack 4](test_packs/test_pack_4)
+ **Related:**
+ - **Requirements**: [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-311](requirements#fr-recruit-311)
+ - **User Stories**: [US-401](user_stories#us-401), [US-402](user_stories#us-402), [US-404](user_stories#us-404), [US-406](user_stories#us-406)
+ - **Test Coverage**: [Test Pack 4](test_packs/test_pack_4)
 
 ---
 
@@ -201,6 +204,23 @@ Use cases describe complete workflows that span multiple systems and features. T
 - **User Stories**: [US-307](user_stories#us-307), [US-303](user_stories#us-303)
 - **Test Coverage**: [Test Pack 3](test_packs/test_pack_3)
 - **Related Use Cases**: [UC-4](use_cases#uc-4) (Create Virtual Event), [UC-6](use_cases#uc-6) (Volunteer Recruitment)
+
+ ---
+
+ ## <a id="uc-12"></a>UC-12: Generate Partner Reconciliation Report (KCTAA)
+
+ **Workflow:**
+ 1. Staff logs into Polaris
+ 2. Navigates to Reports > KCTAA Match Report
+ 3. System loads configured partner name list from file
+ 4. System performs **Fuzzy Matches** against volunteer database
+ 5. Staff reviews matches (Exact vs Fuzzy vs None)
+ 6. Staff exports results to CSV to share with partner
+
+ **Related:**
+ - **Requirements**: [FR-REPORTING-407](requirements#fr-reporting-407), [FR-REPORTING-408](requirements#fr-reporting-408)
+ - **User Stories**: [US-705](user_stories#us-705)
+ - **Test Coverage**: [Test Pack 6](test_packs/test_pack_6)
 
 ---
 

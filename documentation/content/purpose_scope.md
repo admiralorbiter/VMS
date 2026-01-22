@@ -62,23 +62,27 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201) through [FR-VIRTUAL-219](requirements#fr-virtual-219)
 
-#### 7.4 Volunteer Search, Recruitment & Communication History
+#### 7.4 Volunteer Search & Intelligent Matching
 - Searchable volunteer database with filtering capabilities
+- **Algorithmic candidate ranking** (scoring by history, location, keywords)
+- **Custom keyword targeting** for precise skill matching
 - Volunteer participation history tracking
 - Communication history from Salesforce email logging
 - Recruitment notes and outcome tracking
 - Volunteer search by name, organization, role, skills, and career type
 
-**Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-309](requirements#fr-recruit-309)
+**Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-311](requirements#fr-recruit-311)
 
 #### 7.5 Reporting and Dashboards
 - Volunteer thank-you dashboards (top volunteers by hours/events)
 - Organization participation reports
 - District/school impact dashboards
+- **Partner Data Reconciliation** (e.g., KCTAA) matching external lists against internal data
+- **Fuzzy Name Matching** to identify near-matches across systems
 - Ad hoc querying capabilities
 - Export functionality (CSV) for grant and district reporting
 
-**Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401) through [FR-REPORTING-406](requirements#fr-reporting-406)
+**Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401) through [FR-REPORTING-408](requirements#fr-reporting-408)
 
 #### 7.6 District and Teacher Progress
 - District viewer authentication and access control
