@@ -20,6 +20,8 @@ This documentation covers the integrated system for managing K–12 student conn
   Business intent by epic with acceptance criteria
 - 🔄 **[Use Cases](use_cases)**
   End-to-end workflows for key system functions
+- 📋 **[Non-Functional Requirements](non_functional_requirements)**
+  Quality attributes and system constraints
 - 🏗️ **Architecture**
   System context, integration flows, and source-of-truth ownership
 - 📊 **Data Dictionary**
@@ -49,7 +51,7 @@ This documentation follows a **requirements → design → test** traceability c
 
 | Layer | Documents | Purpose |
 |-------|-----------|---------|
-| Requirements | **Purpose & Scope**, **Use Cases**, **[Functional Reqs](#requirements)**, **[User Stories](user_stories)**, **NFRs** | What the system must do and why |
+| Requirements | **Purpose & Scope**, **Use Cases**, **[Functional Reqs](#requirements)**, **[User Stories](user_stories)**, **[NFRs](non_functional_requirements)** | What the system must do and why |
 | Design | **Architecture**, **Data Dictionary**, **Field Mappings**, **Metrics**, **RBAC** | How the system is structured |
 | Contracts | **Contract A**, **B**, **C**, **D** | Integration boundaries and behaviors |
 | Operations | **Playbooks**, **Monitoring**, **Runbook**, **Smoke Tests** | How to operate and troubleshoot |

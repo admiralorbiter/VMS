@@ -25,7 +25,7 @@ Functional requirements use **stable, namespaced IDs** that never change once as
 
 ## Traceability
 
-Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User stories with acceptance criteria in **[User Stories](user_stories)**. End-to-end workflows in **[Use Cases](use_cases)**.
+Each **FR-xxx** is referenced by test cases in **Test Packs 1–6**. User stories with acceptance criteria in **[User Stories](user_stories)**. End-to-end workflows in **[Use Cases](use_cases)**. Quality attributes and constraints in **[Non-Functional Requirements](non_functional_requirements)**.
 
 ## 7.1 In-Person Event Management
 
