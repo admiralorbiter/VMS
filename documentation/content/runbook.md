@@ -4,7 +4,7 @@
 
 ## Reference
 
-- **Severity levels and monitors**: See Monitoring documentation (to be created)
+- **Severity levels and monitors**: [Monitoring and Alert](monitoring) - System health monitoring and alerting
 - **Metric definitions**: [Metrics Bible](metrics_bible) - Canonical metric calculations
 - **Import procedures**: [Import Playbook](import_playbook) - Step-by-step import guides
 - **Magic link system**: [RBAC Matrix - Teacher Magic Link System](rbac_matrix#teacher-magic-link-system)
@@ -28,7 +28,7 @@ Before diving into specific runbooks, gather these basics:
 
 ### Check These Timestamps
 
-Verify data freshness for these syncs:
+Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestamp Monitoring](monitoring#sync-timestamp-monitoring) for detailed procedures.
 
 1. **SF→VT Event Sync**: Check VolunTeach sync logs or last sync timestamp
    - Expected: Hourly sync
