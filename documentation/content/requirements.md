@@ -9,14 +9,14 @@ This document defines **what the system must do**. Each requirement is:
 
 Jump to requirements by domain:
 
-- 🏢 [In-Person Events](#71-in-person-event-management) (FR-INPERSON-xxx)
-- ✍️ [Volunteer Signup](#72-public-volunteer-signup) (FR-SIGNUP-xxx)
-- 💻 [Virtual Events](#73-virtual-events) (FR-VIRTUAL-xxx)
-- 🔍 [Recruitment & Matching](#74-volunteer-search-recruitment--communication-history) (FR-RECRUIT-xxx)
-- 📊 [Reporting](#75-reporting-and-dashboards) (FR-REPORTING-xxx)
-- 🏫 [District Progress](#76-district-and-teacher-progress) (FR-DISTRICT-xxx)
-- 🎓 [Student Attendance](#77-student-roster-and-attendance) (FR-STUDENT-xxx)
-- 📧 [Email System](#78-email-system-management) (FR-EMAIL-xxx)
+- 🏢 [In-Person Events](#in-person-event-management) (FR-INPERSON-xxx)
+- ✍️ [Volunteer Signup](#public-volunteer-signup) (FR-SIGNUP-xxx)
+- 💻 [Virtual Events](#virtual-events) (FR-VIRTUAL-xxx)
+- 🔍 [Recruitment & Matching](#volunteer-search-recruitment--communication-history) (FR-RECRUIT-xxx)
+- 📊 [Reporting](#reporting-and-dashboards) (FR-REPORTING-xxx)
+- 🏫 [District Progress](#district-and-teacher-progress) (FR-DISTRICT-xxx)
+- 🎓 [Student Attendance](#student-roster-and-attendance) (FR-STUDENT-xxx)
+- 📧 [Email System](#email-system-management) (FR-EMAIL-xxx)
 
 <details>
 <summary><strong>📋 Requirement ID Format & Conventions</strong> (for contributors)</summary>
@@ -65,7 +65,7 @@ Each requirement links to:
 - **User Stories** - Business value in [User Stories](user_stories)
 - **Use Cases** - Workflows in [Use Cases](use_cases)
 
-## 7.1 In-Person Event Management
+## <a id="in-person-event-management"></a>7.1 In-Person Event Management
 
 **Salesforce + VolunTeach + Website**
 
@@ -156,7 +156,7 @@ Each requirement links to:
 | <a id="fr-inperson-132"></a>**FR-INPERSON-132** | Event sync operations shall trigger cache invalidation for reports that depend on event data. | [TC-221](test-pack-2#tc-221) | *Technical requirement* |
 | <a id="fr-inperson-133"></a>**FR-INPERSON-133** | Manual cache refresh for event-based reports shall be available when automated sync is insufficient for large datasets. | [TC-222](test-pack-2#tc-222) | *Technical requirement* |
 
-## 7.2 Public Volunteer Signup
+## <a id="public-volunteer-signup"></a>7.2 Public Volunteer Signup
 
 **Website**
 
@@ -180,7 +180,7 @@ Each requirement links to:
 | <a id="fr-signup-126"></a>**FR-SIGNUP-126** | The signup form shall collect: First Name, Last Name, Email, Organization, Title, Volunteer Skills (dropdown), Age Group (dropdown), Highest Education Attainment (dropdown), Gender (dropdown), Race/Ethnicity (dropdown). | [TC-130](#tc-130)–[TC-132](#tc-132) | [US-202](user_stories#us-202) |
 | <a id="fr-signup-127"></a>**FR-SIGNUP-127** | The system shall store the submitted signup attributes for use in reporting, recruitment search, and volunteer profiles. | [TC-141](#tc-141) | [US-201](user_stories#us-201), [US-202](user_stories#us-202) |
 
-## 7.3 Virtual Events
+## <a id="virtual-events"></a>7.3 Virtual Events
 
 **Polaris + Pathful**
 
@@ -206,7 +206,7 @@ Each requirement links to:
 | <a id="fr-virtual-218"></a>**FR-VIRTUAL-218** | The presenter recruitment view shall support text search across event title and teacher names. | [TC-292](#tc-292) | [US-307](user_stories#us-307) |
 | <a id="fr-virtual-219"></a>**FR-VIRTUAL-219** | The presenter recruitment view shall display a success message when all upcoming virtual sessions have presenters assigned. | Context only | [US-307](user_stories#us-307) |
 
-## 7.4 Volunteer Search, Recruitment & Communication History
+## <a id="volunteer-search-recruitment--communication-history"></a>7.4 Volunteer Search, Recruitment & Communication History
 
 **Polaris + Salesforce Email Logging**
 
@@ -223,7 +223,7 @@ Each requirement links to:
 | <a id="fr-recruit-310"></a>**FR-RECRUIT-310** | **Intelligent Matching**: The system shall rank volunteer candidates using a multi-dimensional scoring algorithm (history, location, keywords) to identify best matches. | *TBD* | [US-406](user_stories#us-406) |
 | <a id="fr-recruit-311"></a>**FR-RECRUIT-311** | The system shall support user-defined **custom keywords** that override or boost automatic matching for specific events. | *TBD* | [US-406](user_stories#us-406) |
 
-## 7.5 Reporting and Dashboards
+## <a id="reporting-and-dashboards"></a>7.5 Reporting and Dashboards
 
 **Polaris**
 
@@ -238,7 +238,7 @@ Each requirement links to:
 | <a id="fr-reporting-407"></a>**FR-REPORTING-407** | The system shall generate **partner reconciliation reports** (e.g., KCTAA) matching external lists against internal volunteer data. | *TBD* | [US-705](user_stories#us-705) |
 | <a id="fr-reporting-408"></a>**FR-REPORTING-408** | The system shall support **fuzzy name matching** for partner reconciliation to identify near-matches across systems. | *TBD* | [US-705](user_stories#us-705) |
 
-## 7.6 District and Teacher Progress
+## <a id="district-and-teacher-progress"></a>7.6 District and Teacher Progress
 
 **Polaris**
 
@@ -257,7 +257,7 @@ Each requirement links to:
 | <a id="fr-district-523"></a>**FR-DISTRICT-523** | Teacher magic-link access shall be scoped to a single teacher identity matched by email from the imported district roster. | [TC-003](#tc-003), [TC-024](#tc-024) | [US-505](user_stories#us-505) |
 | <a id="fr-district-524"></a>**FR-DISTRICT-524** | The system shall support importing a district-provided teacher roster (minimum: teacher name, email, grade; school if available) and use it as the authoritative list for progress tracking and magic-link eligibility. | [TC-020](#tc-020), [TC-030](#tc-030)–[TC-031](#tc-031) | [US-504](user_stories#us-504) |
 
-## 7.7 Student Roster and Attendance
+## <a id="student-roster-and-attendance"></a>7.7 Student Roster and Attendance
 
 **Salesforce + Polaris Reporting**
 
@@ -268,7 +268,7 @@ Each requirement links to:
 | <a id="fr-student-603"></a>**FR-STUDENT-603** | Polaris reporting shall use student attendance to compute unique students reached and other impact metrics by school and district. | [TC-620](#tc-620)–[TC-624](#tc-624) | [US-603](user_stories#us-603) |
 | <a id="fr-student-604"></a>**FR-STUDENT-604** | Reporting users shall be able to view student reach metrics by district, school, event type, and date range. | | [US-603](user_stories#us-603) |
 
-## 7.8 Email System Management
+## <a id="email-system-management"></a>7.8 Email System Management
 
 **Polaris Admin Panel**
 
