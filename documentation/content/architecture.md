@@ -8,6 +8,7 @@ This document is authoritative for all integration design decisions. Any deviati
 
 **Related Documentation:**
 - [Field Mappings](field_mappings) - Cross-system data flow specifications
+- [Integration Contracts](contracts) - Integration boundaries and behaviors
 - [Data Dictionary](data_dictionary) - Entity and field definitions
 - [Metrics Bible](metrics_bible) - Metric calculation definitions
 - [RBAC Matrix](rbac_matrix) - Role-based access control (Security section)
@@ -206,6 +207,7 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 
 **Implementation:**
 - Reference: [Field Mappings - Salesforce → VolunTeach](field_mappings#1-salesforce--volunteach-in-person-sync)
+- Contract: [Contract A: Salesforce → VolunTeach](contract_a)
 
 ### VolunTeach → Website
 
@@ -224,6 +226,7 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 
 **Implementation:**
 - Website: [https://prepkc.org/volunteer.html](https://prepkc.org/volunteer.html)
+- Contract: [Contract B: Website ↔ VolunTeach API](contract_b)
 - Reference: [User Stories - Event Publishing](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104)
 
 ### Salesforce → Polaris
@@ -261,6 +264,7 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 
 **Implementation:**
 - Route: `routes/virtual/routes.py` `/virtual/import-sheet`
+- Contract: [Contract D: Pathful Export → Polaris](contract_d)
 - Reference: [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
 - Reference: [Import Playbook - Pathful Import](import_playbook#playbook-a-pathful-export--polaris-via-virtual-session-import)
 
@@ -277,6 +281,7 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 **Implementation:**
 - Route: `routes/history/routes.py` `/history/import-from-salesforce`
 - Source: Salesforce Task and EmailMessage records
+- Contract: [Contract C: Gmail Logging → Polaris](contract_c)
 - Reference: [User Stories - Communication History](user_stories#us-404)
 
 ### Website → Polaris

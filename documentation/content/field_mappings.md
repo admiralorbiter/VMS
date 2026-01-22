@@ -37,6 +37,8 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 
 **Implementation**: `routes/events/routes.py`, `routes/events/pathway_events.py`
 
+**Contract**: [Contract A: Salesforce → VolunTeach](contract_a)
+
 | SF Field | VT/POL Field | Transform | Req | Notes |
 |----------|--------------|-----------|-----|-------|
 | `Event.Id` | `Event.salesforce_id` | direct | ✅ | 18-char SF ID; unique, indexed |
@@ -75,6 +77,8 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 
 **Implementation**: `forms.py`, `routes/volunteers/routes.py`
 
+**Contract**: [Contract B: Website ↔ VolunTeach API](contract_b)
+
 | Website Field | SF Target | POL Target | Transform | Req | Sensitivity |
 |---------------|-----------|------------|-----------|-----|-------------|
 | `first_name` | `Contact.FirstName` | `Volunteer.first_name` | trim | ✅ | Sensitive (PII) |
@@ -107,6 +111,8 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 **Sync Behavior**: Idempotent on `SessionId + teacher_email` composite key. Unknown teacher/event → row flagged unmatched, not auto-created.
 
 **Implementation**: Referenced in [Data Dictionary](data_dictionary#entity-eventparticipation) and requirements.
+
+**Contract**: [Contract D: Pathful Export → Polaris](contract_d)
 
 | Pathful Column | POL Target | Transform | Idempotency | Notes |
 |----------------|------------|-----------|-------------|-------|

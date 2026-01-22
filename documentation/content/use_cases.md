@@ -40,7 +40,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 - **Requirements**: [FR-INPERSON-101](requirements#fr-inperson-101)
 - **User Stories**: [US-101](user_stories#us-101)
 - **Test Coverage**: [Test Pack 2](test_packs/test_pack_2)
-- **Contracts**: Contract A
+- **Contracts**: [Contract A](contract_a)
 
 ---
 
@@ -71,7 +71,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 - **Requirements**: [FR-SIGNUP-121](requirements#fr-signup-121) through [FR-SIGNUP-127](requirements#fr-signup-127)
 - **User Stories**: [US-201](user_stories#us-201), [US-203](user_stories#us-203)
 - **Test Coverage**: [Test Pack 2](test_packs/test_pack_2)
-- **Contracts**: Contract B
+- **Contracts**: [Contract B](contract_b)
 
 ---
 
@@ -102,7 +102,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 - **Requirements**: [FR-VIRTUAL-206](requirements#fr-virtual-206)
 - **User Stories**: [US-304](user_stories#us-304)
 - **Test Coverage**: [Test Pack 3](test_packs/test_pack_3)
-- **Contracts**: Contract D
+- **Contracts**: [Contract D](contract_d)
 - **Reference**: Import Playbooks
 
 ---

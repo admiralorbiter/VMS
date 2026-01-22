@@ -34,7 +34,7 @@ This documentation covers the integrated system for managing K–12 student conn
   Role permissions and data access controls
 - 🔒 **Privacy & Data Handling**
   Data protection rules and retention policies
-- 🔌 **Integration Contracts**
+- 🔌 **[Integration Contracts](contracts)**
   API specs for SF↔VT, Website, Gmail sync, Pathful import
 - 🧪 **[Test Packs](#test-packs)**
   Comprehensive test cases for all major workflows (6 packs)
@@ -57,7 +57,7 @@ This documentation follows a **requirements → design → test** traceability c
 |-------|-----------|---------|
 | Requirements | **Purpose & Scope**, **Use Cases**, **[Functional Reqs](#requirements)**, **[User Stories](user_stories)**, **[NFRs](non_functional_requirements)** | What the system must do and why |
 | Design | **Architecture**, **[Data Dictionary](data_dictionary)**, **[Field Mappings](field_mappings)**, **Metrics**, **RBAC** | How the system is structured |
-| Contracts | **Contract A**, **B**, **C**, **D** | Integration boundaries and behaviors |
+| Contracts | **[Contract A](contract_a)**, **[Contract B](contract_b)**, **[Contract C](contract_c)**, **[Contract D](contract_d)** | Integration boundaries and behaviors |
 | Operations | **Playbooks**, **[Monitoring](monitoring)**, **[Runbook](runbook)**, **[Smoke Tests](smoke_tests)** | How to operate and troubleshoot |
 | Testing | **[Test Packs 1–6](#test-packs)** | Verify requirements are met |
 

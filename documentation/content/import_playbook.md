@@ -64,6 +64,8 @@ Rows invalid: F
 
 **Definition of Done:** F = 0, D + E explained, A + B + C = N
 
+**Contract**: [Contract D: Pathful Export → Polaris](contract_d) for complete specification
+
 **Error Resolution:**
 
 **Unmatched Teachers:**
