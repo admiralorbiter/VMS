@@ -79,6 +79,7 @@ Data access scope stored in `User.scope_type`:
 - User management: `routes/management/management.py` with `@admin_required`
 - Password changes: Available to all authenticated users via `/admin`
 - Audit logs: `models/audit_log.py` (Admin only)
+- Reference: [Audit Requirements](audit_requirements) for logging requirements
 
 ### Events & Publishing
 

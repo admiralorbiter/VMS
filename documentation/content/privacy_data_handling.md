@@ -73,6 +73,7 @@ Document why we collect each field. Data collection purposes are documented in t
 - Application logs exclude student names, full email addresses
 - Audit logs track who accessed what data and when
 - Export operations logged with user ID and timestamp
+- Reference: [Audit Requirements](audit_requirements) for detailed audit logging requirements
 
 ### Magic Links
 
