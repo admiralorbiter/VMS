@@ -12,6 +12,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to create an in-person event record in Salesforce, **So that** it can be synced to VolunTeach and published as needed.
 
+**Related Requirements:** [FR-INPERSON-101](requirements#fr-inperson-101)
+
 **Acceptance Criteria:**
 
 - Given I have Salesforce access, when I create an event with required fields, then the event is saved successfully.
@@ -20,6 +22,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-102"></a>US-102: Sync events from Salesforce into VolunTeach
 
 **As** internal staff, **I want** events to sync from Salesforce into VolunTeach automatically and on-demand, **So that** the website list stays current.
+
+**Related Requirements:** [FR-INPERSON-102](requirements#fr-inperson-102), [FR-INPERSON-103](requirements#fr-inperson-103), [FR-INPERSON-123](requirements#fr-inperson-123)
 
 **Acceptance Criteria:**
 
@@ -31,6 +35,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to toggle whether an event appears on the public in-person events page, **So that** orientations/internal events don't show publicly.
 
+**Related Requirements:** [FR-INPERSON-104](requirements#fr-inperson-104), [FR-INPERSON-105](requirements#fr-inperson-105)
+
 **Acceptance Criteria:**
 
 - Given an event exists in VolunTeach, when I set "In-person page visibility" ON, then the event appears on the public page.
@@ -41,6 +47,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to link an event to a district in VolunTeach, **So that** it appears on the district's website view.
 
+**Related Requirements:** [FR-INPERSON-107](requirements#fr-inperson-107), [FR-INPERSON-109](requirements#fr-inperson-109)
+
 **Acceptance Criteria:**
 
 - Given an event exists, when I link it to District X, then it appears on District X's website page.
@@ -50,6 +58,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-105"></a>US-105: Display correct event details on website
 
 **As** a volunteer, **I want** to see key event information on the website listing, **So that** I can decide whether to sign up.
+
+**Related Requirements:** [FR-INPERSON-106](requirements#fr-inperson-106)
 
 **Acceptance Criteria:**
 
@@ -62,6 +72,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a volunteer, **I want** to sign up for an event without creating an account, **So that** I can register quickly.
 
+**Related Requirements:** [FR-SIGNUP-121](requirements#fr-signup-121), [FR-SIGNUP-122](requirements#fr-signup-122), [FR-SIGNUP-127](requirements#fr-signup-127)
+
 **Acceptance Criteria:**
 
 - Given I view an event signup form, when I submit valid required fields, then my signup is accepted and stored as a participation record.
@@ -71,6 +83,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** the signup form to collect standardized volunteer profile fields, **So that** we can recruit and report consistently.
 
+**Related Requirements:** [FR-SIGNUP-126](requirements#fr-signup-126), [FR-SIGNUP-127](requirements#fr-signup-127)
+
 **Acceptance Criteria:**
 
 - Given the signup form, then it requires: First Name, Last Name, Email, Organization, Title, and all dropdown fields (Skills, Age Group, Education, Gender, Race/Ethnicity).
@@ -79,6 +93,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-203"></a>US-203: Send confirmation email and calendar invite
 
 **As** a volunteer, **I want** an email confirmation and calendar invite, **So that** I have the details saved and reminders.
+
+**Related Requirements:** [FR-SIGNUP-123](requirements#fr-signup-123), [FR-SIGNUP-124](requirements#fr-signup-124), [FR-SIGNUP-125](requirements#fr-signup-125)
 
 **Acceptance Criteria:**
 
@@ -92,6 +108,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to create and edit virtual events in Polaris, **So that** we can manage sessions without Google Sheets.
 
+**Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201)
+
 **Acceptance Criteria:**
 
 - Given I create a virtual event with required fields, then it saves and is visible in the event list.
@@ -101,14 +119,30 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to attach teachers to a virtual event via search, **So that** reporting and progress tracking are linked to real teacher records.
 
+**Related Requirements:** [FR-VIRTUAL-202](requirements#fr-virtual-202)
+
 **Acceptance Criteria:**
 
 - Given a teacher exists in Salesforce, when I search and select the teacher, then the teacher is linked to the Polaris event.
 - Given a Salesforce search failure, then Polaris shows an actionable error (not silent empty results).
 
+### <a id="us-303"></a>US-303: Tag presenters to virtual events
+
+**As** internal staff, **I want** to search for and tag presenters/volunteers to a virtual event using Salesforce-linked records, **So that** events have assigned presenters and recruitment tracking is accurate.
+
+**Related Requirements:** [FR-VIRTUAL-203](requirements#fr-virtual-203)
+
+**Acceptance Criteria:**
+
+- Given a volunteer/presenter exists in Salesforce, when I search and select them, then they are linked to the Polaris event as a presenter.
+- Given I tag a presenter to an event, then the event no longer appears in the presenter recruitment view.
+- Given a Salesforce search failure, then Polaris shows an actionable error (not silent empty results).
+
 ### <a id="us-304"></a>US-304: Import Pathful export into Polaris
 
 **As** internal staff, **I want** to import Pathful signup/attendance data into Polaris, **So that** we can track attendance and teacher progress.
+
+**Related Requirements:** [FR-VIRTUAL-206](requirements#fr-virtual-206)
 
 **Acceptance Criteria:**
 
@@ -117,9 +151,23 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given rows reference unknown teachers or events, then those rows are flagged as unmatched.
 - Given required columns are missing, then the import fails with a clear missing-columns message.
 
+### <a id="us-305"></a>US-305: Track local vs non-local volunteers
+
+**As** internal staff, **I want** to track whether a virtual volunteer is local vs non-local, **So that** I can prioritize local volunteers for in-person opportunities and understand geographic reach.
+
+**Related Requirements:** [FR-VIRTUAL-208](requirements#fr-virtual-208)
+
+**Acceptance Criteria:**
+
+- Given a volunteer participates in a virtual event, when I view their profile, then I can see whether they are marked as local or non-local.
+- Given I filter volunteers by local status, then results correctly show only local or only non-local volunteers.
+- Given a volunteer's local status is unknown, then the system displays "unknown" without error.
+
 ### <a id="us-306"></a>US-306: Import historical virtual data from Google Sheets
 
 **As** internal staff, **I want** to import 2–4 years of historical virtual events from Google Sheets, **So that** our reporting and history are complete.
+
+**Related Requirements:** [FR-VIRTUAL-204](requirements#fr-virtual-204)
 
 **Acceptance Criteria:**
 
@@ -129,6 +177,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-307"></a>US-307: View upcoming sessions needing presenters
 
 **As** internal staff with global scope or admin privileges, **I want** to see a list of upcoming virtual events that don't have a presenter yet, **So that** I can proactively recruit volunteers and ensure all sessions are covered.
+
+**Related Requirements:** [FR-VIRTUAL-210](requirements#fr-virtual-210), [FR-VIRTUAL-211](requirements#fr-virtual-211), [FR-VIRTUAL-212](requirements#fr-virtual-212), [FR-VIRTUAL-213](requirements#fr-virtual-213), [FR-VIRTUAL-214](requirements#fr-virtual-214), [FR-VIRTUAL-215](requirements#fr-virtual-215), [FR-VIRTUAL-216](requirements#fr-virtual-216), [FR-VIRTUAL-217](requirements#fr-virtual-217), [FR-VIRTUAL-218](requirements#fr-virtual-218), [FR-VIRTUAL-219](requirements#fr-virtual-219)
 
 **Acceptance Criteria:**
 
@@ -148,15 +198,43 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to search volunteers by name/org/skills/career/local, **So that** I can recruit the right people quickly.
 
+**Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301), [FR-RECRUIT-302](requirements#fr-recruit-302), [FR-RECRUIT-303](requirements#fr-recruit-303)
+
 **Acceptance Criteria:**
 
 - Given the volunteer directory, when I filter by organization, skills, career type, and local, then results match those criteria.
 - Given I combine filters, then results reflect the intersection (not a union).
 - Given a volunteer is missing an attribute, then searches do not error and results are consistent.
 
+### <a id="us-402"></a>US-402: View volunteer participation history
+
+**As** internal staff, **I want** to see a volunteer's participation history including most recent volunteer date, **So that** I can understand their engagement level and prioritize outreach.
+
+**Related Requirements:** [FR-RECRUIT-304](requirements#fr-recruit-304)
+
+**Acceptance Criteria:**
+
+- Given a volunteer has participated in events, when I view their profile, then I see a list of their participation history.
+- Given the participation history, then it displays the most recent volunteer date.
+- Given a volunteer has no participation, then the profile shows an appropriate message (not an error).
+
+### <a id="us-403"></a>US-403: Record recruitment notes and outcomes
+
+**As** internal staff, **I want** to record recruitment notes and outcomes in Polaris, **So that** I can track outreach efforts and outcomes for future reference.
+
+**Related Requirements:** [FR-RECRUIT-306](requirements#fr-recruit-306)
+
+**Acceptance Criteria:**
+
+- Given I am viewing a volunteer profile, when I record a recruitment note, then the note is saved and associated with that volunteer.
+- Given I record an outcome (e.g., "Accepted", "Declined", "Follow-up needed"), then the outcome is stored and visible in the volunteer's profile.
+- Given I view a volunteer's recruitment history, then I can see all notes and outcomes in chronological order.
+
 ### <a id="us-404"></a>US-404: View communication history from Salesforce Gmail logging
 
 **As** internal staff, **I want** to see communication history in Polaris sourced from Salesforce email logs, **So that** I know the latest outreach and context.
+
+**Related Requirements:** [FR-RECRUIT-305](requirements#fr-recruit-305), [FR-RECRUIT-308](requirements#fr-recruit-308)
 
 **Acceptance Criteria:**
 
@@ -166,6 +244,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-405"></a>US-405: Distinguish "no comms" vs "sync failure"
 
 **As** internal staff, **I want** Polaris to tell me whether comms are missing because none were logged vs sync failed, **So that** I can trust what I'm seeing.
+
+**Related Requirements:** [FR-RECRUIT-309](requirements#fr-recruit-309)
 
 **Acceptance Criteria:**
 
@@ -178,6 +258,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district viewer, **I want** to see my district's progress dashboard, **So that** I can track school/teacher completion.
 
+**Related Requirements:** [FR-DISTRICT-501](requirements#fr-district-501), [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-521](requirements#fr-district-521), [FR-DISTRICT-522](requirements#fr-district-522)
+
 **Acceptance Criteria:**
 
 - Given I'm a District Viewer for District X, then I can access District X's dashboard and no other districts.
@@ -186,6 +268,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-502"></a>US-502: Drill down from district → school → teacher
 
 **As** a district viewer, **I want** to drill down to schools and teachers, **So that** I can see who needs support.
+
+**Related Requirements:** [FR-DISTRICT-503](requirements#fr-district-503)
 
 **Acceptance Criteria:**
 
@@ -196,15 +280,32 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff and district viewers, **I want** the progress statuses to be computed consistently, **So that** reporting is trustworthy.
 
+**Related Requirements:** [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-508](requirements#fr-district-508)
+
 **Acceptance Criteria:**
 
 - Achieved = teacher completed ≥1 virtual session.
 - In Progress = teacher has ≥1 future signup and 0 completed.
 - Not Started = teacher has no signups and 0 completed.
 
+### <a id="us-504"></a>US-504: Import teacher roster for progress tracking
+
+**As** internal staff, **I want** to import a district-provided teacher roster, **So that** the system can track progress and enable magic-link access for teachers.
+
+**Related Requirements:** [FR-DISTRICT-524](requirements#fr-district-524)
+
+**Acceptance Criteria:**
+
+- Given a district provides a teacher roster file (minimum: teacher name, email, grade; school if available), when I import it, then teachers are added to the system.
+- Given the roster is imported, then it becomes the authoritative list for progress tracking.
+- Given a teacher is in the roster, then they are eligible for magic-link access using their email.
+- Given the same roster is imported again, then the import is idempotent (updates existing, adds new, handles removed teachers per policy).
+
 ### <a id="us-505"></a>US-505: Teacher can request magic link and verify data
 
 **As** a teacher, **I want** to request a magic link using my email, **So that** I can view my progress and verify it.
+
+**Related Requirements:** [FR-DISTRICT-505](requirements#fr-district-505), [FR-DISTRICT-506](requirements#fr-district-506), [FR-DISTRICT-507](requirements#fr-district-507), [FR-DISTRICT-508](requirements#fr-district-508), [FR-DISTRICT-521](requirements#fr-district-521), [FR-DISTRICT-523](requirements#fr-district-523)
 
 **Acceptance Criteria:**
 
@@ -217,6 +318,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-601"></a>US-601: Staff can roster students to events
 
 **As** internal staff, **I want** to associate students with events, **So that** we can track reach and attendance.
+
+**Related Requirements:** [FR-STUDENT-601](requirements#fr-student-601)
 
 **Acceptance Criteria:**
 
@@ -233,6 +336,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ### <a id="us-603"></a>US-603: Reporting uses attendance to compute student reach
 
 **As** leadership/internal staff, **I want** reports to compute unique students reached using attendance, **So that** we can report impact accurately.
+
+**Related Requirements:** [FR-STUDENT-603](requirements#fr-student-603), [FR-STUDENT-604](requirements#fr-student-604)
 
 **Acceptance Criteria:**
 
@@ -253,6 +358,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** organization participation dashboards, **So that** I can recognize partner organizations.
 
+**Related Requirements:** [FR-REPORTING-402](requirements#fr-reporting-402), [FR-REPORTING-406](requirements#fr-reporting-406)
+
 **Acceptance Criteria:**
 
 - Dashboard shows correct totals per organization and unique organizations engaged.
@@ -272,10 +379,77 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** to answer one-off questions with queries/reports, **So that** I can respond to partner and grant requests quickly.
 
+**Related Requirements:** [FR-REPORTING-405](requirements#fr-reporting-405), [FR-REPORTING-406](requirements#fr-reporting-406)
+
 **Acceptance Criteria:**
 
 - Given an organization filter, the query returns correct counts/lists.
 - Export matches query results.
+
+## Epic 8: Email System Management
+
+### <a id="us-801"></a>US-801: Manage email templates
+
+**As** internal staff (Admin), **I want** to create and manage email templates in the admin panel, **So that** we can send consistent, branded communications to volunteers and stakeholders.
+
+**Related Requirements:** *Email system features documented in guides*
+
+**Acceptance Criteria:**
+
+- Given I access the email templates section, when I create a new template, then it is saved with a purpose key and version.
+- Given a template exists, when I preview it with sample context, then it renders correctly with placeholders filled.
+- Given I update a template, then the system validates that required placeholders are present and both HTML and text versions exist.
+
+### <a id="us-802"></a>US-802: Monitor email delivery status
+
+**As** internal staff (Admin), **I want** to monitor email delivery status and see delivery attempts, **So that** I can ensure communications are reaching recipients and troubleshoot failures.
+
+**Related Requirements:** *Email system features documented in guides*
+
+**Acceptance Criteria:**
+
+- Given emails are sent, when I view the email dashboard, then I can see delivery status (sent, failed, blocked, queued).
+- Given an email delivery fails, when I view the delivery attempt, then I see detailed error information.
+- Given I view email metrics, then I see counts of successful sends, failures, and blocked emails.
+
+### <a id="us-803"></a>US-803: Send emails via admin panel
+
+**As** internal staff (Admin), **I want** to send emails through the admin panel with safety controls, **So that** I can communicate with volunteers while preventing accidental delivery in non-production environments.
+
+**Related Requirements:** *Email system features documented in guides*
+
+**Acceptance Criteria:**
+
+- Given I am in a non-production environment, when I attempt to send an email, then delivery is blocked unless the recipient is on the allowlist.
+- Given email delivery is disabled globally, when I attempt to send, then the email is queued but not delivered.
+- Given I send an email, then the system creates a message record in the outbox before attempting delivery.
+
+## Epic 9: Data Tracker Features
+
+### <a id="us-506"></a>US-506: District users can flag data issues
+
+**As** a district user, **I want** to flag missing or incorrect data related to teachers and sessions in my district, **So that** internal staff can correct the data and reporting is accurate.
+
+**Related Requirements:** *Data tracker features documented in guides*
+
+**Acceptance Criteria:**
+
+- Given I am a district user viewing teacher or session data, when I identify incorrect information, then I can submit a flag with context (teacher, school, session, issue category, notes).
+- Given I submit a flag, then it is stored and visible to internal staff for follow-up.
+- Given I view my district's data, then I can only flag issues for teachers/sessions in my district (no cross-district access).
+
+### <a id="us-507"></a>US-507: Teachers can view their session history
+
+**As** a teacher, **I want** to view my past and upcoming virtual sessions, **So that** I can track my participation and verify the data is correct.
+
+**Related Requirements:** *Data tracker features documented in guides*
+
+**Acceptance Criteria:**
+
+- Given I authenticate as a teacher, when I access my dashboard, then I see my past sessions (completed virtual sessions).
+- Given I view my dashboard, then I see my upcoming sessions (scheduled virtual sessions).
+- Given I identify incorrect data, then I can flag it with a note to internal staff.
+- Given I view my data, then I can only see my own sessions (no access to other teachers' data).
 
 ---
 
