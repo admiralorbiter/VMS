@@ -10,6 +10,62 @@ const CONFIG = {
     fileExtension: '.md'
 };
 
+// Page manifest - maps hash names to file paths
+// Only hashes in this list will trigger page loads; everything else is treated as an anchor
+const PAGE_MANIFEST = {
+    // Getting Started
+    'getting-started': 'getting_started',
+    'purpose-scope': 'purpose_scope',
+    // Requirements
+    'requirements': 'requirements',
+    'user-stories': 'user_stories',
+    'use-cases': 'use_cases',
+    'non-functional-requirements': 'non_functional_requirements',
+    // Testing
+    'test-packs': 'test_packs/index',
+    'test-pack-1': 'test_packs/test_pack_1',
+    'test-pack-2': 'test_packs/test_pack_2',
+    'test-pack-3': 'test_packs/test_pack_3',
+    'test-pack-4': 'test_packs/test_pack_4',
+    'test-pack-5': 'test_packs/test_pack_5',
+    'test-pack-6': 'test_packs/test_pack_6',
+    // User Guide
+    'user-guide-index': 'user_guide/index',
+    'user-guide-in-person-events': 'user_guide/in_person_events',
+    'user-guide-virtual-events': 'user_guide/virtual_events',
+    'user-guide-volunteer-recruitment': 'user_guide/volunteer_recruitment',
+    'user-guide-district-teacher-progress': 'user_guide/district_teacher_progress',
+    'user-guide-student-management': 'user_guide/student_management',
+    'user-guide-reporting': 'user_guide/reporting',
+    'user-guide-email-system': 'user_guide/email_system',
+    'user-guide-data-tracker': 'user_guide/data_tracker',
+    'import-playbook': 'import_playbook',
+    // Reports
+    'reports-index': 'reports/index',
+    'reports-impact': 'reports/impact',
+    'reports-volunteer-engagement': 'reports/volunteer_engagement',
+    'reports-partner-match': 'reports/partner_match',
+    'reports-ad-hoc': 'reports/ad_hoc',
+    // Technical
+    'architecture': 'architecture',
+    'data-dictionary': 'data_dictionary',
+    'field-mappings': 'field_mappings',
+    'contracts': 'contracts',
+    'metrics-bible': 'metrics_bible',
+    'api-reference': 'api_reference',
+    // Security
+    'rbac-matrix': 'rbac_matrix',
+    'privacy-data-handling': 'privacy_data_handling',
+    'audit-requirements': 'audit_requirements',
+    // Operations
+    'deployment': 'deployment',
+    'monitoring': 'monitoring',
+    'smoke-tests': 'smoke_tests'
+};
+
+// State - track current loaded page to distinguish page nav from anchor scrolling
+let currentLoadedPage = null;
+
 /**
  * Initialize the documentation system
  */
@@ -169,29 +225,39 @@ function handleRouting() {
     const pageHash = hashParts[0];
     const anchorHash = hashParts[1];
 
-    // Check if this is just an anchor on the current page (no page part, just #anchor)
-    if (pageHash && !anchorHash) {
-        // Check if there's an element with this ID on the current page
-        const element = document.getElementById(pageHash);
-        if (element) {
-            // This is a same-page anchor link, just scroll to it
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-        }
-    }
+    // NOTE: Same-page anchor detection is handled in the pageHash block below
+    // using currentLoadedPage to properly distinguish anchors from pages
 
     // Determine which page to load
     let pageName = CONFIG.defaultPage;
 
     if (pageHash) {
-        // Try to find nav link with matching hash to get data-page attribute
-        const navLink = document.querySelector(`.nav-link[href="#${pageHash}"]`);
-        if (navLink && navLink.getAttribute('data-page')) {
-            // Use the data-page attribute which has the correct path (handles subfolders)
-            pageName = navLink.getAttribute('data-page');
+        // FIRST: Check if this hash is an anchor on the current page
+        // If so, just scroll to it instead of trying to load a new page
+        if (currentLoadedPage) {
+            const anchorElement = document.getElementById(pageHash);
+            if (anchorElement) {
+                // This is a same-page anchor, just scroll to it
+                anchorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return; // Don't try to load a new page
+            }
+        }
+
+        // Check if this hash is a known page in the manifest
+        if (PAGE_MANIFEST[pageHash]) {
+            // This is a valid page - use the manifest path
+            pageName = PAGE_MANIFEST[pageHash];
         } else {
-            // Fallback: Convert hash to page name (e.g., 'getting-started' -> 'getting_updated')
-            pageName = pageHash.replace(/-/g, '_');
+            // Hash is NOT a known page - it might be an anchor ID within a page
+            // Try to scroll to it if it exists, otherwise stay on current page
+            if (currentLoadedPage) {
+                const anchorElement = document.getElementById(pageHash);
+                if (anchorElement) {
+                    anchorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+            // Don't try to load an unknown page - just return
+            return;
         }
     }
 
@@ -228,7 +294,26 @@ async function loadPage(pageName) {
             contentDiv.innerHTML = '<section class="loading"><h1>Loading...</h1><p>Please wait while the content loads.</p></section>';
 
             // Fetch the markdown file
-            const response = await fetch(filePath);
+            let response = await fetch(filePath);
+
+            // If not found, try common subdirectories
+            if (!response.ok && response.status === 404) {
+                const commonPaths = [
+                    `user_guide/${pageName}`,
+                    `test_packs/${pageName}`,
+                    `reports/${pageName}`
+                ];
+
+                for (const altPath of commonPaths) {
+                    const altFilePath = `${CONFIG.contentPath}${altPath}${CONFIG.fileExtension}`;
+                    const altResponse = await fetch(altFilePath);
+                    if (altResponse.ok) {
+                        response = altResponse;
+                        // Don't modify history - just load the correct page
+                        break;
+                    }
+                }
+            }
 
             if (!response.ok) {
                 throw new Error(`Failed to load ${filePath}: ${response.status} ${response.statusText}`);
@@ -253,6 +338,9 @@ async function loadPage(pageName) {
 
             // Render the content
             contentDiv.innerHTML = `<section class="loaded">${html}</section>`;
+
+            // Track the current loaded page for anchor detection
+            currentLoadedPage = pageName;
 
             // Scroll to top
             window.scrollTo(0, 0);
@@ -362,35 +450,76 @@ function processRenderedContent() {
         }
     });
 
-    // Intercept cross-page anchor links (e.g., requirements#fr-501)
-    // Also ensure card links work properly
+    // Intercept all internal documentation links
+    // - Page links: change URL hash, add to browser history
+    // - Same-page anchors: just scroll, don't modify URL or history
     const links = contentDiv.querySelectorAll('a[href]');
     links.forEach(link => {
         const href = link.getAttribute('href');
-        if (!href || href.startsWith('http')) return; // Skip external links
+        if (!href) return;
 
-        // Handle cross-page links (e.g., requirements#fr-501 or test-pack-2#tc-100)
-        // These need to be converted to hash navigation format
+        // Skip external links (http/https) and special protocols
+        if (href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+        // Skip file links (images, downloads, etc.)
+        if (href.match(/\.(png|jpg|jpeg|gif|svg|pdf|zip|doc|docx)$/i)) return;
+
+        // Handle cross-page links with anchors (e.g., requirements#fr-501 or test-pack-2#tc-100)
         if (href.includes('#') && !href.startsWith('#')) {
+            const [pagePart, anchorPart] = href.split('#');
+            const pageHash = pagePart.replace(/_/g, '-');
+
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Convert to hash navigation format: requirements#fr-501 -> #requirements#fr-501
-                // Setting window.location.hash will trigger hashchange event, which calls handleRouting()
-                window.location.hash = '#' + href;
+                if (PAGE_MANIFEST[pageHash]) {
+                    // This is a cross-page link - navigate to page with anchor
+                    window.location.hash = pageHash + '#' + anchorPart;
+                } else {
+                    // Unknown page, try to scroll to anchor on current page
+                    const element = document.getElementById(anchorPart);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
             });
         }
-        // Hash-only links (e.g., #requirements, #test-packs) - ensure they trigger routing
+        // Handle hash-only links (e.g., #requirements, #in-person-event-management)
         else if (href.startsWith('#')) {
+            const targetHash = href.slice(1); // Remove leading #
+
             link.addEventListener('click', (e) => {
-                // Don't prevent default - let browser handle hash change
-                // But ensure routing is triggered (in case hash doesn't change)
-                const currentHash = window.location.hash;
-                if (currentHash === href) {
-                    // Hash is already set, manually trigger routing
-                    e.preventDefault();
-                    handleRouting();
+                e.preventDefault();
+
+                // Check if this is a page link (in manifest)
+                if (PAGE_MANIFEST[targetHash]) {
+                    // This is a page link - navigate and add to history
+                    window.location.hash = targetHash;
+                } else {
+                    // This is a same-page anchor - just scroll, don't change URL
+                    const element = document.getElementById(targetHash);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                 }
-                // Otherwise, let browser handle it and hashchange will trigger routing
+            });
+        }
+        // Handle relative page links without anchors (e.g., user_stories, requirements)
+        else if (!href.includes('/') || href.startsWith('./') || href.startsWith('../')) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                let pageName = href.replace(/^\.\//, '').replace(/^\.\.\//, '');
+                const pageHash = pageName.replace(/_/g, '-');
+
+                if (PAGE_MANIFEST[pageHash]) {
+                    // Valid page - navigate
+                    window.location.hash = pageHash;
+                } else {
+                    // Unknown - try as same-page anchor
+                    const element = document.getElementById(pageName) || document.getElementById(pageHash);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
             });
         }
     });
