@@ -23,9 +23,9 @@ graph LR
 
 ## 1. Creating an Event in Salesforce
 
-All in-person events originate in Salesforce.
+All in-person events originate in [Salesforce](https://prep-kc.my.salesforce.com/).
 
-1.  **Navigate to Sessions Tab**: Go to the **Sessions** tab (you may need to select it from the App Launcher).
+1.  **Navigate to Sessions Tab**: Log in to [Salesforce](https://prep-kc.my.salesforce.com/) and go to the **Sessions** tab (you may need to select it from the App Launcher).
 2.  **Click New**: Hit the "New" button.
 3.  **Select Record Type**: Choose **"Non-Connector Session"** and click **Next**.
 4.  **Fill in Session Details**:
@@ -58,9 +58,12 @@ All in-person events originate in Salesforce.
 VolunTeach automatically syncs changes from Salesforce **every hour**. If you need to see changes immediately (e.g., after fixing a typo), performs a manual sync.
 
 ### Manual Sync Steps
-1.  Log in to the **VolunTeach Dashboard**.
+1.  Log in to the [VolunTeach Dashboard](https://voluntold-prepkc.pythonanywhere.com/dashboard).
 2.  Navigate to the **Events** or **Sync Status** page.
-3.  Locate the **"Sync Now"** button (usually top right).
+3.  Locate the **"Sync Events"** button (usually top right).
+
+    ![Sync Events button location in the VolunTeach Dashboard](content/user_guide/images/sync_events_button.png)
+
 4.  Click it to start the process.
 5.  Wait for the progress indicator to complete.
     - *Success*: A green banner confirms "Sync completed: X events processed."
@@ -74,18 +77,36 @@ By default, synced events may be hidden or visible depending on default settings
 To show/hide an event on the main volunteer hub:
 1.  In VolunTeach, find the event in the **Event List**.
 2.  Look for the **"Show on Public Page"** toggle.
-    - **ON (Green)**: Visible to everyone on `prepkc.org/volunteer.html`.
-    - **OFF (Grey)**: Hidden from the main list (useful for private/internal events).
+    - **ON (Pink)** ![Toggle ON](content/user_guide/images/toggle_on.png): Visible to everyone on `prepkc.org/volunteer.html`.
+    - **OFF (Purple)** ![Toggle OFF](content/user_guide/images/toggle_off.png): Hidden from the main list (useful for private/internal events).
 
 ### District Page Visibility
 To display an event on a specific district's customized page:
 1.  Open the event details in VolunTeach.
-2.  Find the **"District Associations"** section.
-3.  Select the relevant district(s) (e.g., "Kansas City Public Schools").
+2.  Find the **"Linked Districts"** section.
+3.  Select the relevant district(s) (e.g., "Hickman Mills School District").
 4.  **Save** changes.
+
+![Event details showing toggle and Linked Districts section](content/user_guide/images/linked_districts.png)
 
 > [!NOTE]
 > Events linked to a district will appear on that district's page **even if** the main Public Page toggle is OFF. This allows for district-exclusive events.
+
+## 4. Verifying Events on the Website
+
+After publishing events, verify they appear correctly:
+
+1. **Public In-Person Events Page**: [https://prepkc.org/inperson.html](https://prepkc.org/inperson.html)
+   - Events with the "Show on Public Page" toggle ON appear here
+   - Accessible to all volunteers and the general public
+
+2. **District Overview Page**: [https://prepkc.org/districts/overview.html](https://prepkc.org/districts/overview.html)
+   - Shows all district-specific events
+   - Only accessible via direct link
+   - Each district has their own dedicated page
+
+> [!TIP]
+> After making visibility changes in VolunTeach, refresh the website pages to confirm events appear as expected. Changes may take a few moments to propagate.
 
 ## Troubleshooting
 

@@ -315,7 +315,10 @@ function processRenderedContent() {
             '[!WARNING]': 'callout-warning',
             '[!DANGER]': 'callout-danger',
             '[!SUCCESS]': 'callout-success',
-            '[!NOTE]': 'callout-sot'
+            '[!NOTE]': 'callout-sot',
+            '[!TIP]': 'callout-success',
+            '[!IMPORTANT]': 'callout-warning',
+            '[!CAUTION]': 'callout-danger'
         };
 
         for (const [marker, className] of Object.entries(calloutTypes)) {
