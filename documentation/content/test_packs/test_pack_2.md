@@ -11,7 +11,7 @@ SF sync + website signup + email/calendar
 ## Test Data
 
 - **E1_Public** — Full location, 5 slots
-- **E2_HiddenOrientation** — "Do not publish" type, 20 slots
+- **E2_ToggleOff** — Display toggle OFF (`display_on_website = False`), 20 slots
 - **E3_DistrictOnly** — For KCK district page only
 
 ## Test Cases
@@ -39,12 +39,24 @@ SF sync + website signup + email/calendar
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-110"></a>**TC-110** | Toggle ON → public page | E1 visible | Manual | TBD |
-| <a id="tc-111"></a>**TC-111** | Toggle OFF → hidden | E1 not on public page | Manual | TBD |
-| <a id="tc-112"></a>**TC-112** | Hidden orientation | E2 not on public page | Manual | TBD |
-| <a id="tc-113"></a>**TC-113** | District link (toggle OFF) | E3 visible on KCK page | Manual | TBD |
-| <a id="tc-114"></a>**TC-114** | No cross-district leak | E3 not on other district pages | Manual | TBD |
-| <a id="tc-115"></a>**TC-115** | Unlink removes | E3 gone from KCK page | Manual | TBD |
+| <a id="tc-110"></a>**TC-110** | Toggle ON → public page | E1 visible on volunteer signup page | Automated | 2026-01-22 |
+| <a id="tc-111"></a>**TC-111** | Toggle OFF → hidden | E1 not on public page | Automated | 2026-01-22 |
+| <a id="tc-112"></a>**TC-112** | District link (toggle OFF) | E3 visible on KCK district page | Automated | 2026-01-22 |
+| <a id="tc-113"></a>**TC-113** | No cross-district leak | E3 not on other district pages | Automated | 2026-01-22 |
+| <a id="tc-114"></a>**TC-114** | Unlink removes | E3 gone from KCK page | Automated | 2026-01-22 |
+| <a id="tc-115"></a>**TC-115** | Draft event filtering | Draft status events never imported from SF | Automated | 2026-01-22 |
+| <a id="tc-116"></a>**TC-116** | DIA event filtering | DIA events imported but hidden from volunteer signup page | Automated | 2026-01-22 |
+
+> [!NOTE]
+> **Visibility Logic (VolunTeach Microservice)**
+> - **Sync Filter**: Draft events (`Session_Status__c = 'Draft'`) are never imported from Salesforce
+> - **Manual Toggle**: `display_on_website` boolean controls visibility on public website pages
+> - **DIA Event Filtering**: DIA events are imported but excluded from volunteer signup page (shown on DIA events page instead)
+> - **No Other Event Type Filtering**: Orientation, Career Day, and all other event types have no automatic filtering - manual `display_on_website` toggle controls visibility
+>
+> **Test Coverage:** TC-110 through TC-116 are covered by automated tests in VolunTeach microservice:
+> - `test_upcoming_event_sync.py` - Salesforce sync tests (3 tests)
+> - `test_visibility_and_districts.py` - Visibility toggles and district mapping tests (5 tests)
 
 ### C. Signup Validation
 
