@@ -22,9 +22,18 @@ SF sync + website signup + email/calendar
 |----|-------------|----------|------|---------------|
 | <a id="tc-100"></a>**TC-100** | Create and sync in-person event | Event created in SF and appears in VT with correct fields | Manual | 2026-01-22 |
 | <a id="tc-101"></a>**TC-101** | Hourly sync | New event appears within cycle | Automated | TBD |
-| <a id="tc-102"></a>**TC-102** | Idempotency | No duplicates on double sync | Automated | TBD |
-| <a id="tc-103"></a>**TC-103** | Update propagates | Changed slots reflected in VT | Automated | TBD |
-| <a id="tc-104"></a>**TC-104** | Failure detection | Error visible, not silent | Automated | TBD |
+| <a id="tc-102"></a>**TC-102** | Idempotency | No duplicates on double sync | Automated | 2026-01-22 |
+| <a id="tc-103"></a>**TC-103** | Update propagates | Changed slots reflected in VT | Automated | 2026-01-22 |
+| <a id="tc-104"></a>**TC-104** | Failure detection | Error visible, not silent | Automated | 2026-01-22 |
+
+> [!NOTE]
+> **Test Implementation Details (VolunTeach Microservice)**
+> - **TC-102 & TC-103**: Covered by `test_upcoming_event_sync.py`
+>   - `test_idempotency_no_duplicates_on_double_sync` - TC-102
+>   - `test_update_propagates_changed_slots_reflected` - TC-103
+>   - `test_update_propagates_other_fields` - TC-103 extended
+> - **TC-101**: Hourly sync runs on PythonAnywhere; email notification on failure only
+> - **TC-104**: Error logging in place; errors visible to user during manual imports
 
 ### B. Publish Controls + District Linking
 
