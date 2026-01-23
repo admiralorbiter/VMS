@@ -46,6 +46,8 @@ SF sync + website signup + email/calendar
 | <a id="tc-114"></a>**TC-114** | Unlink removes | E3 gone from KCK page | Automated | 2026-01-22 |
 | <a id="tc-115"></a>**TC-115** | Draft event filtering | Draft status events never imported from SF | Automated | 2026-01-22 |
 | <a id="tc-116"></a>**TC-116** | DIA event filtering | DIA events imported but hidden from volunteer signup page | Automated | 2026-01-22 |
+| <a id="tc-120"></a>**TC-120** | Event display fields | Public page shows slots, filled, date, district (if applicable), description | Automated | 2026-01-23 |
+| <a id="tc-121"></a>**TC-121** | Field accuracy | Displayed values match Salesforce source | Automated | 2026-01-23 |
 
 > [!NOTE]
 > **Visibility Logic (VolunTeach Microservice)**
@@ -54,9 +56,10 @@ SF sync + website signup + email/calendar
 > - **DIA Event Filtering**: DIA events are imported but excluded from volunteer signup page (shown on DIA events page instead)
 > - **No Other Event Type Filtering**: Orientation, Career Day, and all other event types have no automatic filtering - manual `display_on_website` toggle controls visibility
 >
-> **Test Coverage:** TC-110 through TC-116 are covered by automated tests in VolunTeach microservice:
+> **Test Coverage:** TC-110 through TC-116 and TC-120 through TC-121 are covered by automated tests in VolunTeach microservice:
 > - `test_upcoming_event_sync.py` - Salesforce sync tests (3 tests)
 > - `test_visibility_and_districts.py` - Visibility toggles and district mapping tests (5 tests)
+> - `test_public_page_display.py` - Public page event listing API tests (TC-120, TC-121)
 
 ### C. Signup Validation
 
@@ -139,7 +142,46 @@ SF sync + website signup + email/calendar
 
 ## Detailed Test Specifications
 
-This section provides comprehensive test specifications for requirements FR-INPERSON-108 through FR-INPERSON-133. These specifications serve as a blueprint for implementing actual tests and ensure alignment between requirements and test coverage.
+This section provides comprehensive test specifications for requirements FR-INPERSON-106 and FR-INPERSON-108 through FR-INPERSON-133. These specifications serve as a blueprint for implementing actual tests and ensure alignment between requirements and test coverage.
+
+### Website Display
+
+#### FR-INPERSON-106: Website Event Display
+
+**Covered by:** [TC-120](#tc-120), [TC-121](#tc-121)
+
+**Objective:** Verify that the public volunteer signup page correctly displays required event fields (slots, date, district, description) and that the values accurately match the Salesforce source.
+
+**Prerequisites:**
+- Salesforce instance with test events
+- VolunTeach microservice running and synced with Salesforce
+- Public website API endpoint (`/events/volunteer_signup_api`) accessible
+
+**Test Steps:**
+1. Sync test events from Salesforce to VolunTeach
+2. Send GET request to `/events/volunteer_signup_api`
+3. Verify JSON response contains: `available_slots`, `filled_volunteer_jobs`, `start_datetime`, `name` (description/title), and `districts` (if linked)
+4. Compare fields in response to origin values in Salesforce
+5. Cross-check for events with and without linked districts
+
+**Expected Results:**
+- API response contains all mandatory display fields
+- `available_slots` and `filled_volunteer_jobs` reflect latest Salesforce counts
+- `start_datetime` matches Salesforce `Start_Date__c` (properly formatted)
+- `districts` array contains the correct names of linked districts
+- Events not linked to districts return an empty or null district field (optional field)
+- Record data integrity is maintained across the sync pipeline
+
+**Edge Cases:**
+- Event with 0 available slots (should be handled/archived per logic)
+- Event with multiple districts linked (all names should be present)
+- Event with no district linked (API should handle gracefully)
+- Long event descriptions (check for truncation or formatting issues)
+
+**Integration Points:**
+- VolunTeach API (`/events/volunteer_signup_api`)
+- VolunTeach Database (`Event`, `EventDistrictMapping` models)
+- Salesforce Source Data (`Session__c` object)
 
 ### Scheduled Imports
 
