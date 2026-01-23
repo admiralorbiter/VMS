@@ -30,17 +30,18 @@ GET /api/events
 
 ### Response Fields
 
-- `event_id`, `sf_event_id`, `title`
-- `start_datetime`, `school_name`
-- `volunteer_slots_needed`, `volunteer_slots_filled`
+- `event_id`, `sf_event_id`, `name`
+- `start_date`, `date_and_time`
+- `available_slots`, `filled_volunteer_jobs`
+- `event_type`, `registration_link`
 
 ### Visibility Rules (Contracted Behavior)
 
 > [!WARNING]
 > **Critical:** Visibility rules must be enforced as specified.
 
-- **Public in-person page:** includes event only if `inperson_page_visible = true`
-- **District pages:** includes event if `district_links` contains that district, **regardless** of toggle
+- **Public in-person page:** includes event only if `display_on_website = true` AND `status = 'active'`
+- **District pages:** includes event if associated via `districts` relationship (EventDistrictMapping)
 
 **Reference:** [Architecture - VolunTeach → Website](architecture#volunteach--website)
 

@@ -31,47 +31,158 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 | Teacher | `Email.email` or `TeacherProgress.email` | Normalized lowercase | Primary join key for roster matching; magic link eligibility |
 | Pathful session | `SessionId + teacher_email` | Composite | Composite preferred for idempotent imports |
 
+---
+
+# Part 1: VolunTeach Integrations
+
 ## 1. Salesforce → VolunTeach (In-person Sync)
 
 **Sync Behavior**: Idempotent on `salesforce_id`. SF edits overwrite VT. VT-owned fields preserved.
 
-**Implementation**: `routes/events/routes.py`, `routes/events/pathway_events.py`
+**Implementation**: `routes/upcoming_events.py`, `models/upcoming_event.py`, `sync_script.py`
 
 **Contract**: [Contract A: Salesforce → VolunTeach](contract_a)
 
-| SF Field | VT/POL Field | Transform | Req | Notes |
-|----------|--------------|-----------|-----|-------|
-| `Event.Id` | `Event.salesforce_id` | direct | ✅ | 18-char SF ID; unique, indexed |
-| `Event.Name` | `Event.title` | trim | ✅ | Required field |
-| `Event.Start_Date_and_Time__c` | `Event.start_date` | `parse_date()` → ISO-8601 + tz | ✅ | Required; includes timezone |
-| `Event.End_Date_and_Time__c` | `Event.end_date` | `parse_date()` → ISO-8601 + tz | ⛔️ | Optional |
-| `Event.School__c` | `Event.school` | direct | ✅ | SF ID format; required for reporting; indexed |
-| `Event.Location_Information__c` | `Event.location` | trim | ⛔️ | In-person only: full address string |
-| `Event.Volunteers_Needed__c` | `Event.volunteers_needed` | `safe_convert_to_int()` → int ≥0 | ✅ | Required for website |
-| `Event.Session_Type__c` | `Event.type` | `map_session_type()` → EventType enum | ✅ | Maps to EventType enum (IN_PERSON, VIRTUAL_SESSION, etc.) |
-| `Event.Format__c` | `Event.format` | `map_event_format()` → EventFormat enum | ✅ | Maps to EventFormat enum (IN_PERSON, VIRTUAL) |
-| `Event.Session_Status__c` | `Event.status` | direct string or EventStatus enum | ✅ | Maps to EventStatus enum (DRAFT, CONFIRMED, etc.) |
-| `Event.Description__c` | `Event.description` | trim | ⛔️ | Optional |
-| `Event.Additional_Information__c` | `Event.additional_information` | trim | ⛔️ | Optional |
-| `Event.Session_Host__c` | `Event.session_host` | trim, default "PREPKC" | ⛔️ | Default: "PREPKC" |
-| `Event.Non_Scheduled_Students_Count__c` | `Event.participant_count` | `safe_convert_to_int()` → int | ⛔️ | Total participants |
-| `Event.Total_Requested_Volunteer_Jobs__c` | `Event.total_requested_volunteer_jobs` | `safe_convert_to_int()` → int ≥0 | ⛔️ | Total requested volunteer positions |
-| `Event.Available_Slots__c` | `Event.available_slots` | `safe_convert_to_int()` → int ≥0 | ⛔️ | Available volunteer slots |
-| `Event.Cancellation_Reason__c` | `Event.cancellation_reason` | `map_cancellation_reason()` → enum | ⛔️ | Maps to CancellationReason enum |
-| `Event.District__c` or `Event.Parent_Account__c` | `Event.district_partner` | direct (via DISTRICT_MAPPINGS) | ⛔️ | District name; indexed |
-| `Event.Legacy_Skill_Covered_for_the_Session__c` | `Event.skills` (many-to-many) | `parse_event_skills()` | ⛔️ | Parsed and linked to Skill table |
-| `Event.Legacy_Skills_Needed__c` | `Event.skills` (many-to-many) | `parse_event_skills()` | ⛔️ | Parsed and linked to Skill table |
-| `Event.Requested_Skills__c` | `Event.skills` (many-to-many) | `parse_event_skills()` | ⛔️ | Parsed and linked to Skill table |
-| n/a | `Event.inperson_page_visible` | VT-controlled | ✅ | VT-owned; affects public in-person page only; preserved during sync |
-| n/a | `Event.district_links[]` | VT-controlled | ⛔️ | VT-owned; linked events show on district pages; preserved during sync |
+### Core Event Fields (Required)
 
-**VT-Owned Fields** (preserved, not overwritten by SF sync):
-- `inperson_page_visible`: Boolean flag controlled by VolunTeach
-- `district_links[]`: Array of district links controlled by VolunTeach
+| SF Field | VT Field | Notes |
+|----------|----------|-------|
+| `Session__c.Id` | `salesforce_id` | 18-char SF ID; unique, indexed |
+| `Session__c.Name` | `name` | Event title |
+| `Session__c.Start_Date__c` | `start_date` | Date only (YYYY-MM-DD), converted to ISO-8601 UTC |
+| `Session__c.Available_Slots__c` | `available_slots` | Defaults to 0 |
+| `Session__c.Filled_Volunteer_Jobs__c` | `filled_volunteer_jobs` | Defaults to 0 |
+| `Session__c.Session_Type__c` | `event_type` | e.g., "Ignite", "Virtual Workshop" |
+| `Session__c.Session_Status__c` | `session_status` | Raw SF status; not used for filtering |
 
-**Failure Handling**: Missing required fields (title, salesforce_id, start_date, school) cause event to be skipped with error logged.
+### Additional Imported Fields
 
-## 2. Website Signup → SF + Polaris
+| SF Field | VT Field | Notes |
+|----------|----------|-------|
+| `Session__c.Date_and_Time_for_Cal__c` | `date_and_time` | Display string (e.g., "09/15/2025 08:00 AM to 12:00 PM") |
+| `Session__c.Registration_Link__c` | `registration_link` | URL |
+| `Session__c.Display_on_Website__c` | `display_on_website` | **Imported on creation only** ('Yes' → True); preserved on updates |
+
+### VolunTeach-Managed Fields
+
+| VT Field | Type | Notes |
+|----------|------|-------|
+| `status` | String | VT-managed: 'active' or 'archived'; auto-set based on slots |
+| `source` | String | 'salesforce' for In-Person, 'virtual' for Virtual events |
+| `note` | Text | VT-only field for internal staff notes |
+| `districts` | Relationship | VT-managed via EventDistrictMapping table |
+
+> [!NOTE]
+> **Status Logic**:
+> - `status = 'archived'` when `available_slots == 0 AND filled_volunteer_jobs > 0`
+> - `status = 'active'` when `available_slots > 0`
+
+> [!NOTE]
+> **Multi-District Events**: VT uses the `districts` relationship (EventDistrictMapping table) to associate events with multiple districts. The SF `District__c` field is only used for Virtual events.
+
+### Fields NOT Imported
+
+| SF Field | Reason |
+|----------|--------|
+| `End_Date__c` | Not in VT model |
+| `School__c` | VT uses districts instead |
+| `Format__c` | VT uses `source` field instead |
+| `Location_Information__c` | Not in current model |
+| `Description__c` | Not in current model |
+| `Additional_Information__c` | Not in current model |
+| `Session_Host__c` | Not in current model |
+| `Non_Scheduled_Students_Count__c` | Not in current model |
+| `Total_Requested_Volunteer_Jobs__c` | Not in current model |
+| `Cancellation_Reason__c` | Not in current model |
+| `Legacy_Skill_Covered_for_the_Session__c` | Not in current model |
+| `Legacy_Skills_Needed__c` | Not in current model |
+| `Requested_Skills__c` | Not in current model |
+
+### Sync Filters (SOQL Query)
+
+Events are imported only if they meet ALL criteria:
+- `Start_Date__c > TODAY` (future events only)
+- `Available_Slots__c > 0` (available slots required)
+- `Session_Status__c != 'Draft'` (draft sessions excluded)
+
+### Automatic Cleanup
+
+- **Past events deleted**: `start_date < yesterday`
+- **Full events archived**: `available_slots == 0 AND filled_volunteer_jobs > 0`
+- **Missing from SF deleted**: Events not in query results (includes Draft sessions)
+
+**Failure Handling**: Missing required fields (Id, Name, Start_Date__c) cause event to be skipped with error logged.
+
+---
+
+# Part 2: Polaris Integrations
+
+## 2. Salesforce → Polaris (Volunteer Import)
+
+**Implementation**: `routes/volunteers/routes.py` (`/volunteers/import-from-salesforce`)
+
+| SF Field | POL Target | Transform | Notes |
+|----------|------------|-----------|-------|
+| `Contact.Id` | `Volunteer.salesforce_individual_id` | direct | 18-char SF ID |
+| `Contact.AccountId` | `Volunteer.salesforce_account_id` | direct | SF Account ID |
+| `Contact.FirstName` | `Volunteer.first_name` | trim | Required |
+| `Contact.LastName` | `Volunteer.last_name` | trim | Required |
+| `Contact.MiddleName` | `Volunteer.middle_name` | trim | Optional |
+| `Contact.Email` | `Email.email` | normalize: lowercase + trim | Primary email |
+| `Contact.npe01__Preferred_Email__c` | `Email.email` | normalize: lowercase + trim | Preferred email (primary flag) |
+| `Contact.npsp__Primary_Affiliation__c` | `Volunteer.organization_name` | trim | Organization name |
+| `Contact.Title` | `Volunteer.title` | trim | Job title |
+| `Contact.Department` | `Volunteer.department` | trim | Department |
+| `Contact.Industry` | `Volunteer.industry` | trim | Industry |
+| `Contact.Gender__c` | `Volunteer.gender` | `map_gender()` → GenderEnum | Maps to enum |
+| `Contact.Birthdate` | `Contact.birthdate` | `parse_date()` | Date of birth |
+| `Contact.Racial_Ethnic_Background__c` | `Volunteer.race_ethnicity` | map to RaceEthnicityEnum | Maps to enum |
+| `Contact.Highest_Level_of_Educational__c` | `Volunteer.education` | map to EducationEnum | Maps to enum |
+| `Contact.Age_Group__c` | `Contact.age_group` | map to AgeGroupEnum | Maps to enum |
+| `Contact.Volunteer_Skills__c` | `Volunteer.skills` (many-to-many) | `parse_volunteer_skills()` | Parsed and linked to Skill table |
+| `Contact.First_Volunteer_Date__c` | `Volunteer.first_volunteer_date` | `parse_date()` | First volunteer date |
+| `Contact.Last_Volunteer_Date__c` | `Volunteer.last_volunteer_date` | `parse_date()` | Last volunteer date |
+| `Contact.DoNotCall` | `Contact.do_not_call` | direct boolean | Phone contact preference |
+| `Contact.npsp__Do_Not_Contact__c` | `Contact.do_not_contact` | direct boolean | General contact preference |
+| `Contact.HasOptedOutOfEmail` | `Contact.email_opt_out` | direct boolean | Email marketing preference |
+| `Contact.EmailBouncedDate` | `Contact.email_bounced_date` | `parse_date()` | Failed email delivery tracking |
+
+**Dedupe**: Match by `salesforce_individual_id` (SF Contact.Id). If found, update existing; otherwise create new.
+
+## 3. Salesforce → Polaris (Teacher Import)
+
+**Implementation**: `routes/teachers/routes.py` (`/teachers/import-from-salesforce`)
+
+| SF Field | POL Target | Transform | Notes |
+|----------|------------|-----------|-------|
+| `Contact.Id` | `Teacher.salesforce_individual_id` | direct | 18-char SF ID |
+| `Contact.AccountId` | `Teacher.salesforce_account_id` | direct | SF Account ID |
+| `Contact.FirstName` | `Teacher.first_name` | trim | Required |
+| `Contact.LastName` | `Teacher.last_name` | trim | Required |
+| `Contact.Email` | `Email.email` | normalize: lowercase + trim | Primary email |
+| `Contact.npsp__Primary_Affiliation__c` | `Teacher.school_id` | direct | School SF ID |
+| `Contact.Department` | `Teacher.department` | trim | Department |
+| `Contact.Gender__c` | `Teacher.gender` | map to GenderEnum | Maps to enum |
+| `Contact.Phone` | `Phone.number` | trim | Primary phone |
+
+**Dedupe**: Match by `salesforce_individual_id` (SF Contact.Id). If found, update existing; otherwise create new.
+
+## 4. Salesforce → Polaris (Student Participation Import)
+
+**Implementation**: `routes/events/routes.py` (`process_student_participation_row()`)
+
+| SF Field | POL Target | Transform | Notes |
+|----------|------------|-----------|-------|
+| `Session_Participant__c.Id` | `EventStudentParticipation.salesforce_id` | direct | 18-char SF ID; unique |
+| `Session_Participant__c.Session__c` | `EventStudentParticipation.event_id` | match by `Event.salesforce_id` | Must match existing Event |
+| `Session_Participant__c.Contact__c` | `EventStudentParticipation.student_id` | match by `Student.salesforce_individual_id` | Must match existing Student |
+| `Session_Participant__c.Status__c` | `EventStudentParticipation.status` | direct | e.g., 'Registered', 'Attended', 'No Show' |
+| `Session_Participant__c.Delivery_Hours__c` | `EventStudentParticipation.delivery_hours` | parse float | Delivery hours |
+| `Session_Participant__c.Age_Group__c` | `EventStudentParticipation.age_group` | direct | Age group at time of event |
+
+**Idempotency**: Unique constraint on (`event_id`, `student_id`). If pair exists, update; otherwise create new.
+
+## 5. Website Signup → SF + Polaris
 
 **Sync Behavior**: Creates volunteer record in Polaris. May sync to Salesforce separately. Dedupe by normalized email.
 
@@ -106,7 +217,7 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 - Enum fields must match controlled vocabulary; invalid values rejected
 - Email must be valid format (validated by Flask-WTF Email validator)
 
-## 3. Pathful Export → Polaris
+## 6. Pathful Export → Polaris
 
 **Sync Behavior**: Idempotent on `SessionId + teacher_email` composite key. Unknown teacher/event → row flagged unmatched, not auto-created.
 
@@ -130,7 +241,7 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 
 **Idempotency**: Same file imported twice results in updates only, no duplicates (based on `SessionId + teacher_email` composite key).
 
-## 4. Teacher Roster Import
+## 7. Teacher Roster Import
 
 **Sync Behavior**: Creates/updates TeacherProgress records. Used for progress tracking and magic-link eligibility.
 
@@ -157,74 +268,7 @@ Field definitions are in [Data Dictionary](data_dictionary). This page documents
 - `TeacherProgress.teacher_id` (optional FK to `Teacher.id`): Links to Teacher record when matched
 - `TeacherProgress.created_by` (FK to `users.id`): User who created record
 
-## Additional Data Flows
-
-### Salesforce → Polaris (Volunteer Import)
-
-**Implementation**: `routes/volunteers/routes.py` (`/volunteers/import-from-salesforce`)
-
-| SF Field | POL Target | Transform | Notes |
-|----------|------------|-----------|-------|
-| `Contact.Id` | `Volunteer.salesforce_individual_id` | direct | 18-char SF ID |
-| `Contact.AccountId` | `Volunteer.salesforce_account_id` | direct | SF Account ID |
-| `Contact.FirstName` | `Volunteer.first_name` | trim | Required |
-| `Contact.LastName` | `Volunteer.last_name` | trim | Required |
-| `Contact.MiddleName` | `Volunteer.middle_name` | trim | Optional |
-| `Contact.Email` | `Email.email` | normalize: lowercase + trim | Primary email |
-| `Contact.npe01__Preferred_Email__c` | `Email.email` | normalize: lowercase + trim | Preferred email (primary flag) |
-| `Contact.npsp__Primary_Affiliation__c` | `Volunteer.organization_name` | trim | Organization name |
-| `Contact.Title` | `Volunteer.title` | trim | Job title |
-| `Contact.Department` | `Volunteer.department` | trim | Department |
-| `Contact.Industry` | `Volunteer.industry` | trim | Industry |
-| `Contact.Gender__c` | `Volunteer.gender` | `map_gender()` → GenderEnum | Maps to enum |
-| `Contact.Birthdate` | `Contact.birthdate` | `parse_date()` | Date of birth |
-| `Contact.Racial_Ethnic_Background__c` | `Volunteer.race_ethnicity` | map to RaceEthnicityEnum | Maps to enum |
-| `Contact.Highest_Level_of_Educational__c` | `Volunteer.education` | map to EducationEnum | Maps to enum |
-| `Contact.Age_Group__c` | `Contact.age_group` | map to AgeGroupEnum | Maps to enum |
-| `Contact.Volunteer_Skills__c` | `Volunteer.skills` (many-to-many) | `parse_volunteer_skills()` | Parsed and linked to Skill table |
-| `Contact.First_Volunteer_Date__c` | `Volunteer.first_volunteer_date` | `parse_date()` | First volunteer date |
-| `Contact.Last_Volunteer_Date__c` | `Volunteer.last_volunteer_date` | `parse_date()` | Last volunteer date |
-| `Contact.DoNotCall` | `Contact.do_not_call` | direct boolean | Phone contact preference |
-| `Contact.npsp__Do_Not_Contact__c` | `Contact.do_not_contact` | direct boolean | General contact preference |
-| `Contact.HasOptedOutOfEmail` | `Contact.email_opt_out` | direct boolean | Email marketing preference |
-| `Contact.EmailBouncedDate` | `Contact.email_bounced_date` | `parse_date()` | Failed email delivery tracking |
-
-**Dedupe**: Match by `salesforce_individual_id` (SF Contact.Id). If found, update existing; otherwise create new.
-
-### Salesforce → Polaris (Teacher Import)
-
-**Implementation**: `routes/teachers/routes.py` (`/teachers/import-from-salesforce`)
-
-| SF Field | POL Target | Transform | Notes |
-|----------|------------|-----------|-------|
-| `Contact.Id` | `Teacher.salesforce_individual_id` | direct | 18-char SF ID |
-| `Contact.AccountId` | `Teacher.salesforce_account_id` | direct | SF Account ID |
-| `Contact.FirstName` | `Teacher.first_name` | trim | Required |
-| `Contact.LastName` | `Teacher.last_name` | trim | Required |
-| `Contact.Email` | `Email.email` | normalize: lowercase + trim | Primary email |
-| `Contact.npsp__Primary_Affiliation__c` | `Teacher.school_id` | direct | School SF ID |
-| `Contact.Department` | `Teacher.department` | trim | Department |
-| `Contact.Gender__c` | `Teacher.gender` | map to GenderEnum | Maps to enum |
-| `Contact.Phone` | `Phone.number` | trim | Primary phone |
-
-**Dedupe**: Match by `salesforce_individual_id` (SF Contact.Id). If found, update existing; otherwise create new.
-
-### Salesforce → Polaris (Student Participation Import)
-
-**Implementation**: `routes/events/routes.py` (`process_student_participation_row()`)
-
-| SF Field | POL Target | Transform | Notes |
-|----------|------------|-----------|-------|
-| `Session_Participant__c.Id` | `EventStudentParticipation.salesforce_id` | direct | 18-char SF ID; unique |
-| `Session_Participant__c.Session__c` | `EventStudentParticipation.event_id` | match by `Event.salesforce_id` | Must match existing Event |
-| `Session_Participant__c.Contact__c` | `EventStudentParticipation.student_id` | match by `Student.salesforce_individual_id` | Must match existing Student |
-| `Session_Participant__c.Status__c` | `EventStudentParticipation.status` | direct | e.g., 'Registered', 'Attended', 'No Show' |
-| `Session_Participant__c.Delivery_Hours__c` | `EventStudentParticipation.delivery_hours` | parse float | Delivery hours |
-| `Session_Participant__c.Age_Group__c` | `EventStudentParticipation.age_group` | direct | Age group at time of event |
-
-**Idempotency**: Unique constraint on (`event_id`, `student_id`). If pair exists, update; otherwise create new.
-
 ---
 
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.2*

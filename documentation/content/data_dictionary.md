@@ -118,11 +118,10 @@ This is the authoritative reference for all entity definitions. Other documents 
 | `location` | String(255) | SF | Public | In-person only: full address string |
 | `school` | String(18) (FK to school.id) | SF/POL | Internal | Required for reporting; indexed |
 | `district_partner` | String(255) | SF/POL | Internal | District name; indexed |
-| `volunteers_needed` | Integer | SF→VT | Public | Required for website |
+| `available_slots` | Integer | SF→VT/POL | Public | **Imported from SF** (Available_Slots__c); available volunteer slots; defaults to 0 |
 | `participant_count` | Integer | SF/POL | Internal | Total participants |
 | `registered_count` | Integer | SF/POL | Internal | Registered participants (indexed) |
 | `attended_count` | Integer | SF/POL | Internal | Attended participants |
-| `available_slots` | Integer | POL | Public | Available volunteer slots |
 | `scheduled_participants_count` | Integer | POL | Internal | Scheduled participants |
 | `total_requested_volunteer_jobs` | Integer | POL | Internal | Total requested volunteer positions |
 | `additional_information` | Text | SF/POL | Public | Additional event details |
@@ -139,8 +138,14 @@ This is the authoritative reference for all entity definitions. Other documents 
 | `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
 
 **VolunTeach-Specific Fields** (managed in VolunTeach):
-- `inperson_page_visible` | Boolean | VT | Public | VT-owned; affects public in-person page only
-- `district_links[]` | Array | VT | Internal | VT-owned; linked events show on district pages
+- `name` | String | SF→VT | Public | Event title (from SF Name)
+- `event_type` | String | SF→VT | Public | Session type (from SF Session_Type__c)
+- `date_and_time` | String | SF→VT | Public | Display string (from SF Date_and_Time_for_Cal__c)
+- `display_on_website` | Boolean | SF→VT | Public | **Imported on creation only** from Display_on_Website__c; preserved locally on updates
+- `status` | String | VT | Public | VT-managed: 'active' or 'archived'; auto-set based on slots
+- `source` | String | VT | Internal | 'salesforce' for In-Person, 'virtual' for Virtual
+- `note` | Text | VT | Internal | VT-only field for internal staff notes
+- `districts` | Relationship | VT | Internal | VT-managed via EventDistrictMapping table
 
 **Relationships**:
 - Many-to-many with `Volunteer` (through `event_volunteers`)

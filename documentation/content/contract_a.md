@@ -31,16 +31,27 @@ Sync in-person event records from Salesforce into VolunTeach so staff can publis
 
 Incoming SF event **must** provide:
 
-- `sf_event_id` (SF Event.Id) — **join key**
-- `title`
-- `start_datetime`
-- `end_datetime` (or duration)
-- `school_id` or `school_name` (ID preferred)
-- `volunteer_slots_needed`
+- `sf_event_id` (SF Session__c.Id) — **join key**
+- `name` (SF Session__c.Name)
+- `start_date` (SF Session__c.Start_Date__c)
 
-**Recommended:** location fields (address/city/state/zip) for calendar/map
+**Additional imported fields**:
+- `available_slots` (SF Session__c.Available_Slots__c) — defaults to 0
+- `filled_volunteer_jobs` (SF Session__c.Filled_Volunteer_Jobs__c) — defaults to 0
+- `event_type` (SF Session__c.Session_Type__c)
+- `date_and_time` (SF Session__c.Date_and_Time_for_Cal__c) — display string
+- `registration_link` (SF Session__c.Registration_Link__c)
+- `session_status` (SF Session__c.Session_Status__c) — raw status
+- `display_on_website` (SF Session__c.Display_on_Website__c) — creation only
 
 **Reference:** [Field Mappings - Salesforce → VolunTeach](field_mappings#1-salesforce--volunteach-in-person-sync) for complete field mappings
+
+## Sync Filters
+
+Events are imported only if they meet ALL criteria:
+- `Start_Date__c > TODAY` (future events only)
+- `Available_Slots__c > 0` (available slots required)
+- `Session_Status__c != 'Draft'` (draft sessions excluded)
 
 ## Idempotency Rules
 
@@ -51,10 +62,18 @@ Incoming SF event **must** provide:
 **Update rule:** SF is authoritative for mapped fields; VT overwrites on re-sync
 
 **Exception:** VT-owned fields are preserved:
-- `inperson_page_visible` (VT-controlled)
-- `district_links[]` (VT-controlled)
+- `display_on_website` (imported on creation, then VT-controlled)
+- `status` (VT-managed: 'active' or 'archived')
+- `note` (VT-only field)
+- `districts` (VT-managed via EventDistrictMapping)
 
 **Reference:** [Architecture - Conflict Resolution R1](architecture#r1--in-person-event-salesforce-wins)
+
+## Automatic Cleanup
+
+- **Past events deleted**: `start_date < yesterday`
+- **Full events archived**: `available_slots == 0 AND filled_volunteer_jobs > 0`
+- **Missing from SF deleted**: Events not in query results (includes Draft sessions)
 
 ## Error Handling
 
