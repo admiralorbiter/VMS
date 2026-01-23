@@ -70,14 +70,14 @@ Rows invalid: F
 
 **Unmatched Teachers:**
 - **Cause:** Teacher email not in TeacherProgress roster
-- **Resolution:** 
+- **Resolution:**
   1. Import/update teacher roster first (see [Playbook B](#playbook-b-teacher-roster-import))
   2. Re-import Pathful data (idempotent - safe to re-run)
 - **Reference:** Teacher Roster Import playbook
 
 **Unmatched Events:**
 - **Cause:** `Event.session_id` doesn't match Pathful `EventId`
-- **Resolution:** 
+- **Resolution:**
   1. Create/update Event record with correct `session_id`
   2. Verify event exists in system
   3. Re-import Pathful data
@@ -85,7 +85,7 @@ Rows invalid: F
 
 **Invalid Rows:**
 - **Cause:** Missing required columns, invalid data formats
-- **Resolution:** 
+- **Resolution:**
   1. Fix in source file (Google Sheet or CSV)
   2. Validate date formats (ISO-8601 preferred)
   3. Check email normalization
@@ -559,7 +559,7 @@ python scripts/daily_imports/daily_imports.py --full
 python scripts/daily_imports/daily_imports.py --only volunteers,events
 ```
 
-**Reference:** `scripts/daily_imports/DAILY_IMPORTS_README.md`
+**Reference:** [Daily Import Scripts](daily_import_scripts)
 
 ## Import Log Template
 

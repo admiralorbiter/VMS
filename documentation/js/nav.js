@@ -60,7 +60,8 @@ const PAGE_MANIFEST = {
     // Operations
     'deployment': 'deployment',
     'monitoring': 'monitoring',
-    'smoke-tests': 'smoke_tests'
+    'smoke-tests': 'smoke_tests',
+    'daily-import-scripts': 'daily_import_scripts'
 };
 
 // State - track current loaded page to distinguish page nav from anchor scrolling
