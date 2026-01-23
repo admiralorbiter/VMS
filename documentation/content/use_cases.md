@@ -15,18 +15,18 @@ Use cases describe complete workflows that span multiple systems and features. T
 
 | ID | Title | Related User Stories | Test Coverage |
 |----|-------|---------------------|---------------|
-| [UC-1](#uc-1) | Create In-Person Event (Salesforce) | [US-101](user_stories#us-101) | [Test Pack 2](test_packs/test_pack_2) |
-| [UC-2](#uc-2) | Sync and Publish Event to Website | [US-102](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104) | [Test Pack 2](test_packs/test_pack_2) |
-| [UC-3](#uc-3) | Volunteer Signs Up (Public Website) | [US-201](user_stories#us-201), [US-203](user_stories#us-203) | [Test Pack 2](test_packs/test_pack_2) |
-| [UC-4](#uc-4) | Create Virtual Event (Polaris) | [US-301](user_stories#us-301), [US-302](user_stories#us-302), [US-303](user_stories#us-303) | [Test Pack 3](test_packs/test_pack_3) |
-| [UC-5](#uc-5) | Import Virtual Signup/Attendance | [US-304](user_stories#us-304) | [Test Pack 3](test_packs/test_pack_3) |
-| [UC-6](#uc-6) | Volunteer Recruitment & Intelligent Matching | [US-401](user_stories#us-401), [US-406](user_stories#us-406) | [Test Pack 4](test_packs/test_pack_4) |
-| [UC-7](#uc-7) | Reporting and Ad Hoc Queries | [US-701](user_stories#us-701) through [US-704](user_stories#us-704) | [Test Pack 6](test_packs/test_pack_6) |
-| [UC-8](#uc-8) | District Progress Dashboard | [US-501](user_stories#us-501), [US-502](user_stories#us-502), [US-503](user_stories#us-503) | [Test Pack 1](test_packs/test_pack_1) |
-| [UC-9](#uc-9) | Teacher Magic Link Self-Verification | [US-505](user_stories#us-505) | [Test Pack 1](test_packs/test_pack_1) |
-| [UC-10](#uc-10) | Student Roster and Attendance | [US-601](user_stories#us-601), [US-602](user_stories#us-602), [US-603](user_stories#us-603) | [Test Pack 5](test_packs/test_pack_5) |
-| [UC-11](#uc-11) | Identify and Fill Presenter Gaps | [US-307](user_stories#us-307), [US-303](user_stories#us-303) | [Test Pack 3](test_packs/test_pack_3) |
-| [UC-12](#uc-12) | Generate Partner Reconciliation Report | [US-705](user_stories#us-705) | [Test Pack 6](test_packs/test_pack_6) |
+| [UC-1](#uc-1) | Create In-Person Event (Salesforce) | [US-101](user_stories#us-101) | [Test Pack 2](#test-pack-2) |
+| [UC-2](#uc-2) | Sync and Publish Event to Website | [US-102](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104) | [Test Pack 2](#test-pack-2) |
+| [UC-3](#uc-3) | Volunteer Signs Up (Public Website) | [US-201](user_stories#us-201), [US-203](user_stories#us-203) | [Test Pack 2](#test-pack-2) |
+| [UC-4](#uc-4) | Create Virtual Event (Polaris) | [US-301](user_stories#us-301), [US-302](user_stories#us-302), [US-303](user_stories#us-303) | [Test Pack 3](#test-pack-3) |
+| [UC-5](#uc-5) | Import Virtual Signup/Attendance | [US-304](user_stories#us-304) | [Test Pack 3](#test-pack-3) |
+| [UC-6](#uc-6) | Volunteer Recruitment & Intelligent Matching | [US-401](user_stories#us-401), [US-406](user_stories#us-406) | [Test Pack 4](#test-pack-4) |
+| [UC-7](#uc-7) | Reporting and Ad Hoc Queries | [US-701](user_stories#us-701) through [US-704](user_stories#us-704) | [Test Pack 6](#test-pack-6) |
+| [UC-8](#uc-8) | District Progress Dashboard | [US-501](user_stories#us-501), [US-502](user_stories#us-502), [US-503](user_stories#us-503) | [Test Pack 1](#test-pack-1) |
+| [UC-9](#uc-9) | Teacher Magic Link Self-Verification | [US-505](user_stories#us-505) | [Test Pack 1](#test-pack-1) |
+| [UC-10](#uc-10) | Student Roster and Attendance | [US-601](user_stories#us-601), [US-602](user_stories#us-602), [US-603](user_stories#us-603) | [Test Pack 5](#test-pack-5) |
+| [UC-11](#uc-11) | Identify and Fill Presenter Gaps | [US-307](user_stories#us-307), [US-303](user_stories#us-303) | [Test Pack 3](#test-pack-3) |
+| [UC-12](#uc-12) | Generate Partner Reconciliation Report | [US-705](user_stories#us-705) | [Test Pack 6](#test-pack-6) |
 
 ---
 
@@ -40,7 +40,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Related:**
 - **Requirements**: [FR-INPERSON-101](requirements#fr-inperson-101)
 - **User Stories**: [US-101](user_stories#us-101)
-- **Test Coverage**: [Test Pack 2](test_packs/test_pack_2)
+- **Test Coverage**: [Test Pack 2](#test-pack-2)
 - **Contracts**: [Contract A](contract_a)
 
 ---
@@ -88,7 +88,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Related:**
 - **Requirements**: [FR-VIRTUAL-201](requirements#fr-virtual-201), [FR-VIRTUAL-202](requirements#fr-virtual-202), [FR-VIRTUAL-203](requirements#fr-virtual-203)
 - **User Stories**: [US-301](user_stories#us-301), [US-302](user_stories#us-302), [US-303](user_stories#us-303)
-- **Test Coverage**: [Test Pack 3](test_packs/test_pack_3)
+- **Test Coverage**: [Test Pack 3](#test-pack-3)
 
 ---
 
@@ -121,7 +121,7 @@ Use cases describe complete workflows that span multiple systems and features. T
  **Related:**
  - **Requirements**: [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-311](requirements#fr-recruit-311)
  - **User Stories**: [US-401](user_stories#us-401), [US-402](user_stories#us-402), [US-404](user_stories#us-404), [US-406](user_stories#us-406)
- - **Test Coverage**: [Test Pack 4](test_packs/test_pack_4)
+ - **Test Coverage**: [Test Pack 4](#test-pack-4)
 
 ---
 
@@ -135,7 +135,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Related:**
 - **Requirements**: [FR-REPORTING-401](requirements#fr-reporting-401) through [FR-REPORTING-406](requirements#fr-reporting-406)
 - **User Stories**: [US-701](user_stories#us-701), [US-702](user_stories#us-702), [US-703](user_stories#us-703), [US-704](user_stories#us-704)
-- **Test Coverage**: [Test Pack 6](test_packs/test_pack_6)
+- **Test Coverage**: [Test Pack 6](#test-pack-6)
 
 ---
 
@@ -150,7 +150,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Related:**
 - **Requirements**: [FR-DISTRICT-501](requirements#fr-district-501), [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-503](requirements#fr-district-503)
 - **User Stories**: [US-501](user_stories#us-501), [US-502](user_stories#us-502), [US-503](user_stories#us-503)
-- **Test Coverage**: [Test Pack 1](test_packs/test_pack_1)
+- **Test Coverage**: [Test Pack 1](#test-pack-1)
 
 ---
 
@@ -165,7 +165,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Related:**
 - **Requirements**: [FR-DISTRICT-505](requirements#fr-district-505), [FR-DISTRICT-506](requirements#fr-district-506), [FR-DISTRICT-507](requirements#fr-district-507)
 - **User Stories**: [US-505](user_stories#us-505)
-- **Test Coverage**: [Test Pack 1](test_packs/test_pack_1)
+- **Test Coverage**: [Test Pack 1](#test-pack-1)
 
 ---
 
@@ -179,7 +179,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Related:**
 - **Requirements**: [FR-STUDENT-601](requirements#fr-student-601) through [FR-STUDENT-604](requirements#fr-student-604)
 - **User Stories**: [US-601](user_stories#us-601), [US-602](user_stories#us-602), [US-603](user_stories#us-603)
-- **Test Coverage**: [Test Pack 5](test_packs/test_pack_5)
+- **Test Coverage**: [Test Pack 5](#test-pack-5)
 
 ---
 
