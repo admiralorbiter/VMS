@@ -85,9 +85,9 @@ SF sync + website signup + email/calendar
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-160"></a>**TC-160** | Daily import runs | Events, volunteer participations, and student participations imported | Automated | TBD |
-| <a id="tc-161"></a>**TC-161** | Batch processing | Large datasets processed in batches without API limit errors | Automated | TBD |
-| <a id="tc-162"></a>**TC-162** | Import status visibility | Success/failure counts and error details displayed | Automated | TBD |
+| <a id="tc-160"></a>**TC-160** | Daily import runs | Events, volunteer participations, and student participations imported | Automated | 2026-01-23 |
+| <a id="tc-161"></a>**TC-161** | Batch processing | Large datasets processed in batches without API limit errors | Automated | 2026-01-23 |
+| <a id="tc-162"></a>**TC-162** | Import status visibility | Success/failure counts and error details displayed | Automated | 2026-01-23 |
 
 ### F. Participation Sync
 
@@ -119,7 +119,7 @@ SF sync + website signup + email/calendar
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
 | <a id="tc-200"></a>**TC-200** | Distinguish no events vs failure | System distinguishes "no events to sync" from "sync failure" | Automated | TBD |
-| <a id="tc-201"></a>**TC-201** | Failed sync logging | Failed operations logged with timestamps, error details, and record counts | Automated | TBD |
+| <a id="tc-201"></a>**TC-201** | Failed sync logging | Failed operations logged with timestamps, error details, and record counts | Automated | 2026-01-23 |
 
 ### J. Historical Data and Manual Operations
 
