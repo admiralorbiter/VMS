@@ -16,6 +16,7 @@ This documentation contains **6 test packs** that verify functional requirements
 | [Test Pack 4](#test-pack-4) | Volunteer Recruitment | Search + communication history + sync health | [FR-RECRUIT-301](requirements#fr-recruit-301)–[FR-RECRUIT-306](requirements#fr-recruit-306), [FR-RECRUIT-308](requirements#fr-recruit-308)–[FR-RECRUIT-309](requirements#fr-recruit-309) |
 | [Test Pack 5](#test-pack-5) | Student Attendance | Roster + attendance + impact metrics | [FR-STUDENT-601](requirements#fr-student-601)–[FR-STUDENT-604](requirements#fr-student-604) |
 | [Test Pack 6](#test-pack-6) | Reporting Dashboards | Exports + ad hoc queries + access control | [FR-REPORTING-401](requirements#fr-reporting-401)–[FR-REPORTING-406](requirements#fr-reporting-406), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-522](requirements#fr-district-522) |
+| [Test Pack 7](#test-pack-7) | Data Integrity & Operations | Duplicates + Sync + Admin Safety | [FR-DATA-901](requirements#fr-data-901)–[FR-DATA-903](requirements#fr-data-903), [FR-OPS-904](requirements#fr-ops-904)–[FR-OPS-907](requirements#fr-ops-907) |
 
 ## Test Pack Details
 
@@ -95,6 +96,18 @@ This documentation contains **6 test packs** that verify functional requirements
 
 [View Test Pack 6 →](#test-pack-6)
 
+### Test Pack 7: Data Integrity & Operations
+
+**Focus:** Duplicates + Sync + Admin Safety
+
+**Coverage:**
+- [FR-DATA-901](requirements#fr-data-901)–[FR-DATA-903](requirements#fr-data-903) (Data Integrity)
+- [FR-OPS-904](requirements#fr-ops-904)–[FR-OPS-907](requirements#fr-ops-907) (Operational Workflows)
+
+**Test Cases:** TC-901 through TC-913
+
+[View Test Pack 7 →](#test-pack-7)
+
 ## Traceability
 
 Each test case (TC-xxx) is linked to one or more functional requirements (FR-xxx). This bidirectional linking ensures:
@@ -114,6 +127,7 @@ Test cases are organized by test pack:
 - **TC-300–TC-381:** Test Pack 4 (Volunteer Recruitment)
 - **TC-600–TC-691:** Test Pack 5 (Student Attendance)
 - **TC-700–TC-822:** Test Pack 6 (Reporting)
+- **TC-901–TC-913:** Test Pack 7 (Data Integrity & Ops)
 
 ## Using Test Packs
 

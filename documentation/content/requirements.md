@@ -17,6 +17,7 @@ Jump to requirements by domain:
 - 🏫 [District Progress](#district-and-teacher-progress) (FR-DISTRICT-xxx)
 - 🎓 [Student Attendance](#student-roster-and-attendance) (FR-STUDENT-xxx)
 - 📧 [Email System](#email-system-management) (FR-EMAIL-xxx)
+- 🛡️ [Data & Operations](#data-integrity--operations) (FR-DATA-xxx)
 
 <details>
 <summary><strong>📋 Requirement ID Format & Conventions</strong> (for contributors)</summary>
@@ -301,6 +302,20 @@ Each requirement links to:
 | <a id="fr-district-528"></a>**FR-DISTRICT-528** | District issue reports shall create BugReport entries with type `DATA_ERROR` and structured descriptions including source, district name, teacher information, school, session (if selected), category, and notes. | *TBD* | *Technical requirement* |
 | <a id="fr-district-529"></a>**FR-DISTRICT-529** | District users shall only be able to report issues for teachers in the TeacherProgress tracking list for their district. | *TBD* | *Technical requirement* |
 | <a id="fr-district-530"></a>**FR-DISTRICT-530** | The district portal landing page shall provide separate login options for District Login and Teacher Login, routing users to appropriate dashboards after authentication. | *TBD* | *Technical requirement* |
+
+## <a id="data-integrity--operations"></a>7.10 Data Integrity & Operations
+
+**Core System Logic**
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-data-901"></a>**FR-DATA-901** | **Duplicate Management**: The system shall provide automated logic to identify and merge duplicate event or participant records based on unique identifiers (Salesforce ID, email), prioritizing valid status data (e.g., 'Attended' > 'Registered'). | [TC-901](test-pack-7#tc-901) | *Technical requirement* |
+| <a id="fr-data-902"></a>**FR-DATA-902** | **Dynamic Profile Creation**: When importing participants, if a profile (Volunteer/Organization) does not exist, the system shall automatically create a draft profile using provided details to ensure data completeness. | [TC-902](test-pack-7#tc-902) | *Technical requirement* |
+| <a id="fr-data-903"></a>**FR-DATA-903** | **Sync Dependencies**: Data synchronization shall enforce dependency order (Orgs -> Volunteers -> Events) and support "Partial Success" states to prevent entire batches from failing due to single record errors. | [TC-903](test-pack-7#tc-903), [TC-904](test-pack-7#tc-904) | *Technical requirement* |
+| <a id="fr-ops-904"></a>**FR-OPS-904** | **Attendance Workflow**: The system shall track the *status of attendance taking* (Not Taken, In Progress, Completed) separately from the event status itself. | [TC-910](test-pack-7#tc-910) | *Operational requirement* |
+| <a id="fr-ops-905"></a>**FR-OPS-905** | **Admin Safety (Purge)**: The system shall provide a restricted 'Purge' capability for Administrators to bulk-delete event data, requiring high-level privileges and generating an audit log. | [TC-911](test-pack-7#tc-911) | *Operational requirement* |
+| <a id="fr-ops-906"></a>**FR-OPS-906** | **Granular Categorization**: The system shall support detailed event categorization (e.g., Career Fair, Classroom Speaker, Ignite) beyond simple Virtual/In-Person types for specialized reporting. | [TC-913](test-pack-7#tc-913) | *Operational requirement* |
+| <a id="fr-ops-907"></a>**FR-OPS-907** | **Auto-Admin Provisioning**: On initialization, if no administrator exists, the system shall securely provision a default admin account to ensure access recovery. | [TC-912](test-pack-7#tc-912) | *Technical requirement* |
 
 ## Traceability Matrix
 

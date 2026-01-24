@@ -29,6 +29,7 @@ const PAGE_MANIFEST = {
     'test-pack-4': 'test_packs/test_pack_4',
     'test-pack-5': 'test_packs/test_pack_5',
     'test-pack-6': 'test_packs/test_pack_6',
+    'test-pack-7': 'test_packs/test_pack_7',
     // User Guide
     'user-guide-index': 'user_guide/index',
     'user-guide-in-person-events': 'user_guide/in_person_events',
@@ -132,6 +133,7 @@ function getTestPackForTC(tcId) {
     if (tcNum >= 300 && tcNum <= 381) return 'test_packs/test_pack_4';
     if (tcNum >= 600 && tcNum <= 691) return 'test_packs/test_pack_5';
     if (tcNum >= 700 && tcNum <= 822) return 'test_packs/test_pack_6';
+    if (tcNum >= 900 && tcNum <= 913) return 'test_packs/test_pack_7';
 
     return null;
 }
