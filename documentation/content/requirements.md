@@ -17,7 +17,7 @@ Jump to requirements by domain:
 - 🏫 [District Progress](#district-and-teacher-progress) (FR-DISTRICT-xxx)
 - 🎓 [Student Attendance](#student-roster-and-attendance) (FR-STUDENT-xxx)
 - 📧 [Email System](#email-system-management) (FR-EMAIL-xxx)
-- 🛡️ [Data & Operations](#data-integrity--operations) (FR-DATA-xxx)
+- 🛡️ [Data & Operations](#data-integrity--operations) (FR-DATA-xxx, Sync & Imports)
 
 <details>
 <summary><strong>📋 Requirement ID Format & Conventions</strong> (for contributors)</summary>
@@ -87,58 +87,7 @@ Each requirement links to:
 | <a id="fr-inperson-107"></a>**FR-INPERSON-107** | VolunTeach shall allow staff to link events to one or more districts for district-specific website pages. | [TC-113](test-pack-2#tc-113), [TC-114](test-pack-2#tc-114) | [US-104](user_stories#us-104) |
 | <a id="fr-inperson-109"></a>**FR-INPERSON-109** | Any event linked to a district shall appear on that district's website page regardless of the in-person-page visibility toggle. | [TC-113](test-pack-2#tc-113), [TC-115](test-pack-2#tc-115) | [US-104](user_stories#us-104) |
 
-### Scheduled Imports
 
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-108"></a>**FR-INPERSON-108** | The system shall support scheduled daily imports of in-person events from Salesforce, including events, volunteer participations, and student participations. | [TC-160](test-pack-2#tc-160) | *Technical requirement* |
-| <a id="fr-inperson-110"></a>**FR-INPERSON-110** | Daily imports shall process events in batches to handle large datasets without exceeding API limits. | [TC-161](test-pack-2#tc-161) | *Technical requirement* |
-| <a id="fr-inperson-111"></a>**FR-INPERSON-111** | The system shall provide visibility into daily import status, success/failure counts, and error details. | [TC-162](test-pack-2#tc-162) | *Technical requirement* |
-
-### Participation Sync
-
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-112"></a>**FR-INPERSON-112** | The system shall sync student participation data from Salesforce for in-person events, creating EventStudentParticipation records. | [TC-170](test-pack-2#tc-170) | *Technical requirement* |
-| <a id="fr-inperson-113"></a>**FR-INPERSON-113** | Student participation sync shall update attendance status and delivery hours from Salesforce. | [TC-171](test-pack-2#tc-171) | *Technical requirement* |
-| <a id="fr-inperson-114"></a>**FR-INPERSON-114** | The system shall sync volunteer participation data from Salesforce for in-person events, including status, delivery hours, and participant attributes. | [TC-172](test-pack-2#tc-172) | *Technical requirement* |
-| <a id="fr-inperson-115"></a>**FR-INPERSON-115** | Volunteer participation sync shall handle batch processing for large event sets (e.g., 50 events per batch). | [TC-173](test-pack-2#tc-173) | *Technical requirement* |
-
-### Unaffiliated Events
-
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-116"></a>**FR-INPERSON-116** | The system shall identify and sync events from Salesforce that are missing School, District, or Parent Account associations. | [TC-180](test-pack-2#tc-180) | *Technical requirement* |
-| <a id="fr-inperson-117"></a>**FR-INPERSON-117** | For unaffiliated events, the system shall attempt to associate events with districts based on participating students. | [TC-181](test-pack-2#tc-181) | *Technical requirement* |
-| <a id="fr-inperson-118"></a>**FR-INPERSON-118** | Unaffiliated event sync shall update both event data and associated volunteer/student participation records. | [TC-182](test-pack-2#tc-182) | *Technical requirement* |
-
-### Status Management
-
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-119"></a>**FR-INPERSON-119** | When syncing events, the system shall update event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) from Salesforce. | [TC-190](test-pack-2#tc-190) | *Technical requirement* |
-| <a id="fr-inperson-120"></a>**FR-INPERSON-120** | The system shall preserve cancellation reasons when events are cancelled in Salesforce. | [TC-191](test-pack-2#tc-191) | *Technical requirement* |
-| <a id="fr-inperson-121"></a>**FR-INPERSON-121** | Status changes shall be reflected in VolunTeach and on public website within the sync cycle. | [TC-192](test-pack-2#tc-192) | *Technical requirement* |
-
-### Error Handling and Monitoring
-
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-122"></a>**FR-INPERSON-122** | The system shall detect and report sync failures with detailed error messages (not silent failures). | [TC-104](test-pack-2#tc-104) | *Technical requirement* |
-| <a id="fr-inperson-123"></a>**FR-INPERSON-123** | Sync operations shall be idempotent (no duplicates on re-sync). | [TC-102](test-pack-2#tc-102) | [US-102](user_stories#us-102) |
-| <a id="fr-inperson-124"></a>**FR-INPERSON-124** | The system shall distinguish between "no events to sync" and "sync failure" for monitoring purposes. | [TC-200](test-pack-2#tc-200) | *Technical requirement* |
-| <a id="fr-inperson-125"></a>**FR-INPERSON-125** | Failed sync operations shall be logged with timestamps, error details, and affected record counts. | [TC-201](test-pack-2#tc-201) | *Technical requirement* |
-
-
-
-
-
-### Data Completeness Visibility
-
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-130"></a>**FR-INPERSON-130** | The system shall distinguish "no events to sync" from "event sync failure" (visibility into data completeness). | [TC-200](test-pack-2#tc-200) | *Technical requirement* |
-| <a id="fr-inperson-131"></a>**FR-INPERSON-131** | Sync status indicators shall show last successful sync time, record counts, and any pending errors. | [TC-220](test-pack-2#tc-220) | *Technical requirement* |
 
 ### Reporting Integration
 
@@ -317,6 +266,35 @@ Each requirement links to:
 | <a id="fr-ops-906"></a>**FR-OPS-906** | **Granular Categorization**: The system shall support detailed event categorization (e.g., Career Fair, Classroom Speaker, Ignite) beyond simple Virtual/In-Person types for specialized reporting. | [TC-913](test-pack-7#tc-913) | *Operational requirement* |
 | <a id="fr-ops-907"></a>**FR-OPS-907** | **Auto-Admin Provisioning**: On initialization, if no administrator exists, the system shall securely provision a default admin account to ensure access recovery. | [TC-912](test-pack-7#tc-912) | *Technical requirement* |
 
+### Data Synchronization (In-Person)
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-inperson-108"></a>**FR-INPERSON-108** | The system shall support scheduled daily imports of in-person events from Salesforce, including events, volunteer participations, and student participations. | [TC-160](test-pack-7#tc-160) | *Technical requirement* |
+| <a id="fr-inperson-110"></a>**FR-INPERSON-110** | Daily imports shall process events in batches to handle large datasets without exceeding API limits. | [TC-161](test-pack-7#tc-161) | *Technical requirement* |
+| <a id="fr-inperson-111"></a>**FR-INPERSON-111** | The system shall provide visibility into daily import status, success/failure counts, and error details. | [TC-162](test-pack-7#tc-162) | *Technical requirement* |
+| <a id="fr-inperson-112"></a>**FR-INPERSON-112** | The system shall sync student participation data from Salesforce for in-person events, creating EventStudentParticipation records. | [TC-170](test-pack-7#tc-170) | *Technical requirement* |
+| <a id="fr-inperson-113"></a>**FR-INPERSON-113** | Student participation sync shall update attendance status and delivery hours from Salesforce. | [TC-171](test-pack-7#tc-171) | *Technical requirement* |
+| <a id="fr-inperson-114"></a>**FR-INPERSON-114** | The system shall sync volunteer participation data from Salesforce for in-person events, including status, delivery hours, and participant attributes. | [TC-172](test-pack-7#tc-172) | *Technical requirement* |
+| <a id="fr-inperson-115"></a>**FR-INPERSON-115** | Volunteer participation sync shall handle batch processing for large event sets (e.g., 50 events per batch). | [TC-173](test-pack-7#tc-173) | *Technical requirement* |
+| <a id="fr-inperson-116"></a>**FR-INPERSON-116** | The system shall identify and sync events from Salesforce that are missing School, District, or Parent Account associations. | [TC-180](test-pack-7#tc-180) | *Technical requirement* |
+| <a id="fr-inperson-117"></a>**FR-INPERSON-117** | For unaffiliated events, the system shall attempt to associate events with districts based on participating students. | [TC-181](test-pack-7#tc-181) | *Technical requirement* |
+| <a id="fr-inperson-118"></a>**FR-INPERSON-118** | Unaffiliated event sync shall update both event data and associated volunteer/student participation records. | [TC-182](test-pack-7#tc-182) | *Technical requirement* |
+| <a id="fr-inperson-119"></a>**FR-INPERSON-119** | When syncing events, the system shall update event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) from Salesforce. | [TC-190](test-pack-7#tc-190) | *Technical requirement* |
+| <a id="fr-inperson-120"></a>**FR-INPERSON-120** | The system shall preserve cancellation reasons when events are cancelled in Salesforce. | [TC-191](test-pack-7#tc-191) | *Technical requirement* |
+| <a id="fr-inperson-121"></a>**FR-INPERSON-121** | Status changes shall be reflected in VolunTeach and on public website within the sync cycle. | [TC-192](test-pack-7#tc-192) | *Technical requirement* |
+
+### Sync Error Monitoring
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-inperson-122"></a>**FR-INPERSON-122** | The system shall detect and report sync failures with detailed error messages (not silent failures). | [TC-104](test-pack-2#tc-104) | *Technical requirement* |
+| <a id="fr-inperson-123"></a>**FR-INPERSON-123** | Sync operations shall be idempotent (no duplicates on re-sync). | [TC-102](test-pack-2#tc-102) | [US-102](user_stories#us-102) |
+| <a id="fr-inperson-124"></a>**FR-INPERSON-124** | The system shall distinguish between "no events to sync" and "sync failure" for monitoring purposes. | [TC-200](test-pack-7#tc-200) | *Technical requirement* |
+| <a id="fr-inperson-125"></a>**FR-INPERSON-125** | Failed sync operations shall be logged with timestamps, error details, and affected record counts. | [TC-201](test-pack-7#tc-201) | *Technical requirement* |
+| <a id="fr-inperson-130"></a>**FR-INPERSON-130** | The system shall distinguish "no events to sync" from "event sync failure" (visibility into data completeness). | [TC-200](test-pack-7#tc-200) | *Technical requirement* |
+| <a id="fr-inperson-131"></a>**FR-INPERSON-131** | Sync status indicators shall show last successful sync time, record counts, and any pending errors. | [TC-220](test-pack-7#tc-220) | *Technical requirement* |
+
 ## Traceability Matrix
 
 This section provides a comprehensive view of the relationships between Functional Requirements (FR) and User Stories (US).
@@ -331,7 +309,7 @@ This section provides a comprehensive view of the relationships between Function
 | FR-INPERSON-104, 105 | [US-103](user_stories#us-103) | Visibility control |
 | FR-INPERSON-107, 109 | [US-104](user_stories#us-104) | District linking |
 | FR-INPERSON-106 | [US-105](user_stories#us-105) | Website display |
-| FR-INPERSON-108, 110-133 | *Technical requirements* | Infrastructure/sync operations |
+
 | **Public Signup** | | |
 | FR-SIGNUP-121, 122, 127 | [US-201](user_stories#us-201) | Signup without account |
 | FR-SIGNUP-126, 127 | [US-202](user_stories#us-202) | Form fields |
@@ -377,6 +355,15 @@ This section provides a comprehensive view of the relationships between Function
 | FR-DISTRICT-525 | [US-506](user_stories#us-506) | District issue flagging |
 | FR-DISTRICT-526, 527 | [US-507](user_stories#us-507) | Teacher session history |
 | FR-DISTRICT-528-530 | *Technical requirements* | Issue reporting, access control |
+| **Data & Operations** | | |
+| FR-DATA-901 | *Technical requirement* | Duplicate Management |
+| FR-DATA-902 | *Technical requirement* | Dynamic Profile Creation |
+| FR-DATA-903 | *Technical requirement* | Sync Dependencies |
+| FR-OPS-904 | *Operational requirement* | Attendance Workflow |
+| FR-OPS-905 | *Operational requirement* | Admin Safety (Purge) |
+| FR-OPS-906 | *Operational requirement* | Granular Categorization |
+| FR-OPS-907 | *Technical requirement* | Auto-Admin Provisioning |
+| FR-INPERSON-108, 110-133 | *Technical requirements* | Infrastructure/sync operations (Moved from In-Person) |
 
 ### Coverage Summary
 

@@ -11,12 +11,12 @@ This documentation contains **6 test packs** that verify functional requirements
 | Pack | Title | Focus Area | Requirements Covered |
 |------|-------|------------|---------------------|
 | [Test Pack 1](#test-pack-1) | District Progress Dashboard | Teacher magic links + progress status validation | [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503), [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-508](requirements#fr-district-508), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) |
-| [Test Pack 2](#test-pack-2) | In-Person Event Publish | SF sync + website signup + email/calendar | [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109), [FR-INPERSON-108](requirements#fr-inperson-108), [FR-INPERSON-110](requirements#fr-inperson-110)–[FR-INPERSON-133](requirements#fr-inperson-133), [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) |
+| [Test Pack 2](#test-pack-2) | In-Person Event Public Features | Event creation + website signup + email | [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109), [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) |
 | [Test Pack 3](#test-pack-3) | Virtual Events | Polaris creation + Pathful import + historical data | [FR-VIRTUAL-201](requirements#fr-virtual-201)–[FR-VIRTUAL-206](requirements#fr-virtual-206), [FR-VIRTUAL-208](requirements#fr-virtual-208), [FR-VIRTUAL-210](requirements#fr-virtual-210)–[FR-VIRTUAL-219](requirements#fr-virtual-219) |
 | [Test Pack 4](#test-pack-4) | Volunteer Recruitment | Search + communication history + sync health | [FR-RECRUIT-301](requirements#fr-recruit-301)–[FR-RECRUIT-306](requirements#fr-recruit-306), [FR-RECRUIT-308](requirements#fr-recruit-308)–[FR-RECRUIT-309](requirements#fr-recruit-309) |
 | [Test Pack 5](#test-pack-5) | Student Attendance | Roster + attendance + impact metrics | [FR-STUDENT-601](requirements#fr-student-601)–[FR-STUDENT-604](requirements#fr-student-604) |
 | [Test Pack 6](#test-pack-6) | Reporting Dashboards | Exports + ad hoc queries + access control | [FR-REPORTING-401](requirements#fr-reporting-401)–[FR-REPORTING-406](requirements#fr-reporting-406), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-522](requirements#fr-district-522) |
-| [Test Pack 7](#test-pack-7) | Data Integrity & Operations | Duplicates + Sync + Admin Safety | [FR-DATA-901](requirements#fr-data-901)–[FR-DATA-903](requirements#fr-data-903), [FR-OPS-904](requirements#fr-ops-904)–[FR-OPS-907](requirements#fr-ops-907) |
+| [Test Pack 7](#test-pack-7) | Data Integrity & Operations | Duplicates + Sync + Admin Safety + Imports | [FR-DATA-901](requirements#fr-data-901)–[FR-DATA-903](requirements#fr-data-903), [FR-OPS-904](requirements#fr-ops-904)–[FR-OPS-907](requirements#fr-ops-907), [FR-INPERSON-108](requirements#fr-inperson-108)–[FR-INPERSON-133](requirements#fr-inperson-133) |
 
 ## Test Pack Details
 
@@ -34,16 +34,15 @@ This documentation contains **6 test packs** that verify functional requirements
 
 [View Test Pack 1 →](#test-pack-1)
 
-### Test Pack 2: In-Person Event Publish
+### Test Pack 2: In-Person Event Public Features
 
-**Focus:** SF sync + website signup + email/calendar
+**Focus:** Event creation + website signup + email
 
 **Coverage:**
 - [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109) (Events + visibility)
-- [FR-INPERSON-108](requirements#fr-inperson-108), [FR-INPERSON-110](requirements#fr-inperson-110)–[FR-INPERSON-133](requirements#fr-inperson-133) (Sync, participation, status, monitoring, reporting)
 - [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) (Signup + email)
 
-**Test Cases:** TC-100 through TC-222
+**Test Cases:** TC-100 through TC-152
 
 [View Test Pack 2 →](#test-pack-2)
 
@@ -98,13 +97,14 @@ This documentation contains **6 test packs** that verify functional requirements
 
 ### Test Pack 7: Data Integrity & Operations
 
-**Focus:** Duplicates + Sync + Admin Safety
+**Focus:** Duplicates + Sync + Admin Safety + Import Logic
 
 **Coverage:**
 - [FR-DATA-901](requirements#fr-data-901)–[FR-DATA-903](requirements#fr-data-903) (Data Integrity)
 - [FR-OPS-904](requirements#fr-ops-904)–[FR-OPS-907](requirements#fr-ops-907) (Operational Workflows)
+- [FR-INPERSON-108](requirements#fr-inperson-108)–[FR-INPERSON-133](requirements#fr-inperson-133) (Scheduled Imports, Sync, Error Handling)
 
-**Test Cases:** TC-901 through TC-913
+**Test Cases:** TC-901 through TC-913, TC-160 through TC-222
 
 [View Test Pack 7 →](#test-pack-7)
 
@@ -122,7 +122,8 @@ See the [Functional Requirements](#requirements) page for complete requirement-t
 Test cases are organized by test pack:
 
 - **TC-001–TC-031:** Test Pack 1 (District Progress)
-- **TC-100–TC-222:** Test Pack 2 (In-Person Events)
+- **TC-100–TC-152:** Test Pack 2 (In-Person Public Features)
+- **TC-160–TC-222:** Test Pack 7 (Data Ops - moved from TP2)
 - **TC-200–TC-299:** Test Pack 3 (Virtual Events)
 - **TC-300–TC-381:** Test Pack 4 (Volunteer Recruitment)
 - **TC-600–TC-691:** Test Pack 5 (Student Attendance)
