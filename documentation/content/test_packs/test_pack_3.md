@@ -78,6 +78,13 @@ Polaris creation + Pathful import + historical data
 | <a id="tc-298"></a>**TC-298** | Display required fields | Shows title, date/time, school/district, teacher count, days-until |
 | <a id="tc-299"></a>**TC-299** | Navigate to volunteer search | Link/button opens volunteer recruitment correctly |
 
+### F. Historical Salesforce Import
+
+| TC | Description | Expected |
+|----|-------------|----------|
+| <a id="tc-210"></a>**TC-210** | Historical import | 2–4 years of past virtual events imported from Salesforce |
+| <a id="tc-211"></a>**TC-211** | Historical data integrity | Event-participant relationships preserved during historical import |
+
 **Additional Test Data:**
 
 - **VE3** — Future virtual event, no presenter, 5 days away (red badge)
@@ -90,5 +97,83 @@ Polaris creation + Pathful import + historical data
 
 ---
 
+## Detailed Test Specifications
+
+### Historical Salesforce Import
+
+#### FR-VIRTUAL-220: Historical Event Import
+
+**Covered by:** [TC-210](#tc-210)
+
+**Objective:** Verify that the system supports importing historical virtual event data from Salesforce (e.g., 2–4 years of past events).
+
+**Prerequisites:**
+- Salesforce with historical event data (2–4 years old)
+- Historical import functionality enabled
+- Sufficient database storage capacity
+
+**Test Steps:**
+1. Configure historical import date range (2–4 years)
+2. Execute historical import
+3. Monitor import progress
+4. Verify events are imported
+5. Verify event dates are preserved correctly
+6. Verify all historical events are imported
+
+**Expected Results:**
+- Historical events are imported successfully
+- Event dates from 2–4 years ago are preserved
+- All historical events within date range are imported
+- Import completes without errors
+- Historical data is accessible in system
+
+**Edge Cases:**
+- Very old events (5+ years)
+- Events at date range boundaries
+- Large volume of historical events (1000+)
+- Historical events with incomplete data
+
+**Integration Points:**
+- Salesforce historical data queries
+- Date range filtering
+- Batch processing for large datasets
+
+#### FR-VIRTUAL-221: Historical Data Integrity
+
+**Covered by:** [TC-211](#tc-211)
+
+**Objective:** Verify that historical virtual import preserves event-participant relationships and maintains data integrity.
+
+**Prerequisites:**
+- Historical events with participant records in Salesforce
+- Historical import functionality
+
+**Test Steps:**
+1. Execute historical import for events with participants
+2. Verify events are imported
+3. Verify participant records are imported
+4. Verify event-participant relationships are maintained
+5. Verify data integrity (no orphaned records)
+
+**Expected Results:**
+- Historical events imported with correct relationships
+- Participant records linked to correct events
+- No orphaned participation records
+- Relationship integrity maintained
+- All relationships from Salesforce preserved
+
+**Edge Cases:**
+- Historical event with participants that don't exist locally
+- Historical participant with event that doesn't exist locally
+- Complex relationship structures
+- Historical data with data quality issues
+
+**Integration Points:**
+- Relationship mapping logic
+- Data integrity validation
+- Foreign key constraints
+
+---
+
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*

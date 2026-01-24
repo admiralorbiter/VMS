@@ -130,12 +130,7 @@ Each requirement links to:
 
 
 
-### Manual Operations
 
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-128"></a>**FR-INPERSON-128** | For large datasets, the system shall provide manual sync operations that process events in configurable batch sizes. | [TC-212](test-pack-2#tc-212) | *Technical requirement* |
-| <a id="fr-inperson-129"></a>**FR-INPERSON-129** | Manual sync operations shall provide progress indicators and allow cancellation/resumption. | [TC-213](test-pack-2#tc-213) | *Technical requirement* |
 
 ### Data Completeness Visibility
 
