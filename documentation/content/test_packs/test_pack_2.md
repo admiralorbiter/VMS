@@ -93,18 +93,32 @@ SF sync + website signup + email/calendar
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-170"></a>**TC-170** | Student participation sync | EventStudentParticipation records created from Salesforce | Automated | TBD |
-| <a id="tc-171"></a>**TC-171** | Student attendance update | Status and delivery hours updated from Salesforce | Automated | TBD |
-| <a id="tc-172"></a>**TC-172** | Volunteer participation sync | Status, delivery hours, and attributes synced | Automated | TBD |
-| <a id="tc-173"></a>**TC-173** | Volunteer batch processing | Large event sets processed in batches (50 events per batch) | Automated | TBD |
+| <a id="tc-170"></a>**TC-170** | Student participation sync | EventStudentParticipation records created from Salesforce | Automated | 2026-01-23 |
+| <a id="tc-171"></a>**TC-171** | Student attendance update | Status and delivery hours updated from Salesforce | Automated | 2026-01-23 |
+| <a id="tc-172"></a>**TC-172** | Volunteer participation sync | Status, delivery hours, and attributes synced | Automated | 2026-01-23 |
+| <a id="tc-173"></a>**TC-173** | Volunteer batch processing | Large event sets processed in batches (50 events per batch) | Automated | 2026-01-23 |
+
+> [!NOTE]
+> **About "Automated" Type for Participation Sync**
+> - **Test Execution**: These tests (`tests/integration/test_participation_sync.py`) run automatically with mocked Salesforce responses
+> - **Data Pull**: The actual Salesforce data import is **manual** via `scripts/daily_imports/daily_imports.py` due to large data volume
+> - **Verification**: For production verification, run the daily import manually and review logs for success/error counts
 
 ### G. Unaffiliated Events
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-180"></a>**TC-180** | Identify unaffiliated events | Events missing School, District, or Parent Account identified | Automated | TBD |
-| <a id="tc-181"></a>**TC-181** | District association | Events associated with districts based on participating students | Automated | TBD |
-| <a id="tc-182"></a>**TC-182** | Unaffiliated sync completeness | Event data and volunteer/student participation records updated | Automated | TBD |
+| <a id="tc-180"></a>**TC-180** | Identify unaffiliated events | Events missing School, District, or Parent Account identified | Automated | 2026-01-23 |
+| <a id="tc-181"></a>**TC-181** | District association | Events associated with districts based on participating students | Automated | 2026-01-23 |
+| <a id="tc-182"></a>**TC-182** | Unaffiliated sync completeness | Event data and volunteer/student participation records updated | Automated | 2026-01-23 |
+
+> [!NOTE]
+> **About "Automated" Type for Unaffiliated Events**
+> - **Test Execution**: These tests (`tests/integration/test_unaffiliated_events.py`) run automatically with mocked Salesforce responses
+> - **Data Pull**: The actual Salesforce sync is **manual** via the `/pathway-events/sync-unaffiliated-events` endpoint or `daily_imports.py`
+> - **Verification**: For production verification, trigger the sync manually and verify event/participation records are created
+
+
 
 ### H. Status Management
 

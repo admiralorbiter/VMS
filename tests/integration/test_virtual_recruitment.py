@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from flask import url_for
+from werkzeug.security import generate_password_hash
 
 from models import db
 from models.district_model import District
@@ -28,7 +29,7 @@ class TestVirtualRecruitment:
             # Create district
             district = District.query.first()
             if not district:
-                district = District(id="TEST_DISTRICT", name="Test District")
+                district = District(name="Test District")
                 db.session.add(district)
                 db.session.flush()
 
@@ -64,15 +65,28 @@ class TestVirtualRecruitment:
             db.session.flush()
 
             # Create volunteer and assign as presenter
-            volunteer = Volunteer.query.first()
+            volunteer = Volunteer.query.filter_by(
+                first_name="Test", last_name="Presenter"
+            ).first()
             if not volunteer:
                 volunteer = Volunteer(
                     first_name="Test",
                     last_name="Presenter",
                     middle_name="",
-                    email="test.presenter@example.com",
                 )
                 db.session.add(volunteer)
+                db.session.flush()
+
+                # Add email for the volunteer
+                from models.contact import ContactTypeEnum, Email
+
+                email = Email(
+                    contact_id=volunteer.id,
+                    email="test.presenter@example.com",
+                    type=ContactTypeEnum.professional,
+                    primary=True,
+                )
+                db.session.add(email)
                 db.session.flush()
 
             # Assign presenter to second event
@@ -116,11 +130,11 @@ class TestVirtualRecruitment:
                 "volunteer": volunteer,
             }
 
-    def test_access_control_admin(self, client, admin_user, setup_test_data):
+    def test_access_control_admin(self, client, test_admin, setup_test_data):
         """Test that admin users can access the recruitment view"""
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view
@@ -137,8 +151,8 @@ class TestVirtualRecruitment:
                 email="global@test.com",
                 security_level=SecurityLevel.USER,
                 scope_type="global",
+                password_hash=generate_password_hash("testpass"),
             )
-            global_user.set_password("testpass")
             db.session.add(global_user)
             db.session.commit()
 
@@ -160,8 +174,8 @@ class TestVirtualRecruitment:
                 security_level=SecurityLevel.USER,
                 scope_type="district",
                 allowed_districts='["Test District"]',
+                password_hash=generate_password_hash("testpass"),
             )
-            district_user.set_password("testpass")
             db.session.add(district_user)
             db.session.commit()
 
@@ -171,17 +185,15 @@ class TestVirtualRecruitment:
         # Try to access recruitment view - should redirect
         response = client.get("/virtual/usage/recruitment", follow_redirects=False)
         assert response.status_code == 302  # Redirect
-        assert (
-            b"virtual/usage" in response.location or b"Access denied" in response.data
-        )
+        assert "virtual/usage" in response.location or b"Access denied" in response.data
 
     def test_query_shows_only_future_virtual_without_presenter(
-        self, client, admin_user, setup_test_data
+        self, client, test_admin, setup_test_data
     ):
         """Test that only future virtual events without presenters are shown"""
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view
@@ -200,11 +212,11 @@ class TestVirtualRecruitment:
         # Should NOT show non-virtual event
         assert b"Future In-Person Event" not in response.data
 
-    def test_days_until_calculation(self, client, admin_user, setup_test_data):
+    def test_days_until_calculation(self, client, test_admin, setup_test_data):
         """Test that days until event is calculated correctly"""
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view
@@ -215,15 +227,18 @@ class TestVirtualRecruitment:
         assert b"days" in response.data
         # The exact number might vary by test execution time, but should be around 10
 
-    def test_filtering_by_school(self, client, admin_user, app, setup_test_data):
+    def test_filtering_by_school(self, client, test_admin, app, setup_test_data):
         """Test filtering events by school"""
+        # Extract school_id in a fresh app context with refreshed object
         with app.app_context():
             test_data = setup_test_data
+            # Refresh the object to bind it to this session
+            db.session.add(test_data["school"])
             school_id = test_data["school"].id
 
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view with school filter
@@ -231,11 +246,11 @@ class TestVirtualRecruitment:
         assert response.status_code == 200
         assert b"Future Virtual Session - Needs Presenter" in response.data
 
-    def test_filtering_by_search(self, client, admin_user, setup_test_data):
+    def test_filtering_by_search(self, client, test_admin, setup_test_data):
         """Test filtering events by search term"""
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Search for specific event
@@ -248,17 +263,22 @@ class TestVirtualRecruitment:
         assert response.status_code == 200
         assert b"Future Virtual Session - Needs Presenter" not in response.data
 
-    def test_empty_state_display(self, client, admin_user, app, setup_test_data):
+    def test_empty_state_display(self, client, test_admin, app, setup_test_data):
         """Test empty state when all events have presenters"""
+        # Extract IDs in a fresh app context with refreshed objects
         with app.app_context():
-            # Assign presenter to the event that didn't have one
             test_data = setup_test_data
-            volunteer = test_data["volunteer"]
-            no_presenter_event = test_data["no_presenter_event"]
+            # Add objects to current session to bind them
+            db.session.add(test_data["volunteer"])
+            db.session.add(test_data["no_presenter_event"])
+            volunteer_id = test_data["volunteer"].id
+            no_presenter_event_id = test_data["no_presenter_event"].id
 
+        # Assign presenter to the event that didn't have one
+        with app.app_context():
             participation = EventParticipation(
-                volunteer_id=volunteer.id,
-                event_id=no_presenter_event.id,
+                volunteer_id=volunteer_id,
+                event_id=no_presenter_event_id,
                 participant_type="Presenter",
                 status="Confirmed",
             )
@@ -267,7 +287,7 @@ class TestVirtualRecruitment:
 
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view
@@ -280,11 +300,11 @@ class TestVirtualRecruitment:
             or b"All upcoming virtual sessions have presenters" in response.data
         )
 
-    def test_navigation_links_present(self, client, admin_user, setup_test_data):
+    def test_navigation_links_present(self, client, test_admin, setup_test_data):
         """Test that all navigation links are present"""
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view
@@ -297,11 +317,11 @@ class TestVirtualRecruitment:
         assert b"Apply Filters" in response.data
         assert b"Reset" in response.data
 
-    def test_event_edit_link_present(self, client, admin_user, setup_test_data):
+    def test_event_edit_link_present(self, client, test_admin, setup_test_data):
         """Test that edit event links are present for each event"""
         # Login as admin
         client.post(
-            "/login", data={"username": admin_user.username, "password": "admin123"}
+            "/login", data={"username": test_admin.username, "password": "admin123"}
         )
 
         # Access recruitment view
