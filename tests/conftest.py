@@ -210,6 +210,19 @@ def app():
 
     test_app.jinja_env.filters["from_json"] = from_json_filter
 
+    # Add SecurityLevel context processor (mirrors app.py)
+    from models.user import SecurityLevel
+
+    @test_app.context_processor
+    def inject_security_levels():
+        return {
+            "SecurityLevel": SecurityLevel,
+            "USER": SecurityLevel.USER,
+            "SUPERVISOR": SecurityLevel.SUPERVISOR,
+            "MANAGER": SecurityLevel.MANAGER,
+            "ADMIN": SecurityLevel.ADMIN,
+        }
+
     with test_app.app_context():
         # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax
         with db.engine.connect() as conn:

@@ -63,6 +63,7 @@ from .organization import Organization
 from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
 from .school_model import School
 from .student import Student
+from .sync_log import SyncLog
 from .teacher import Teacher
 from .teacher_progress import TeacherProgress
 
@@ -94,6 +95,7 @@ __all__ = [
     "Teacher",
     "TeacherProgress",
     "Student",
+    "SyncLog",
     "History",
     "EventAttendanceDetail",
     "BugReport",

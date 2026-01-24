@@ -1951,6 +1951,8 @@ def import_from_salesforce():
                 {
                     "success": True,
                     "message": f"Successfully processed {success_count} volunteers (Created: {created_count}, Updated: {updated_count}) with {error_count} errors",
+                    "processed_count": success_count,
+                    "error_count": error_count,
                 }
             )
         except Exception as e:

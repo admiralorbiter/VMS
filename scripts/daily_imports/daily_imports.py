@@ -103,6 +103,8 @@ class ImportStep:
         self.start_time = None
         self.end_time = None
         self.records_processed = 0
+        self.records_failed = 0
+        self.records_skipped = 0
 
 
 class DailyImporter:
@@ -259,22 +261,11 @@ class DailyImporter:
     def _parse_import_result(
         self, result, default_success_message: str = "Import completed"
     ):
-        """
-        Parse the result from an import function and return a standardized dict.
-
-        Handles:
-        - Flask Response objects
-        - Tuple responses like (jsonify({...}), status_code)
-        - Dict responses
-        - Other response types
-        """
+        """Standardize the result from an import function."""
         if result is None:
-            return {
-                "success": False,
-                "message": "Import function returned None",
-            }
+            return {"success": False, "message": "Import function returned None"}
 
-        # Handle Flask Response objects (not in tuple)
+        # Handle Flask Response objects
         if hasattr(result, "status_code"):
             if result.status_code == 302:
                 return {
@@ -283,9 +274,19 @@ class DailyImporter:
                 }
             elif result.status_code == 200:
                 try:
-                    return result.get_json() or {
-                        "success": True,
-                        "message": default_success_message,
+                    json_data = result.get_json() or {}
+                    return {
+                        "success": json_data.get("success", True),
+                        "message": json_data.get("message", default_success_message),
+                        "processed_count": json_data.get(
+                            "processed_count", json_data.get("successCount", 0)
+                        ),
+                        "error_count": json_data.get(
+                            "error_count", json_data.get("errorCount", 0)
+                        ),
+                        "skipped_count": json_data.get("skipped_count", 0),
+                        "is_complete": json_data.get("is_complete", False),
+                        "next_id": json_data.get("next_id"),
                     }
                 except:
                     return {"success": True, "message": default_success_message}
@@ -300,44 +301,30 @@ class DailyImporter:
                         ),
                     }
                 except:
-                    return {
-                        "success": False,
-                        "message": f"HTTP {result.status_code}",
-                    }
-
-        # Handle dict responses
-        if hasattr(result, "json"):
-            return result.json
+                    return {"success": False, "message": f"HTTP {result.status_code}"}
 
         # Handle tuple responses like (jsonify({...}), status_code)
         if isinstance(result, tuple):
             response_obj = result[0]
             status_code = result[1] if len(result) > 1 else 200
+            return self._parse_import_result(response_obj, default_success_message)
 
-            # If first element is a Response object, extract JSON
-            if hasattr(response_obj, "get_json"):
-                try:
-                    json_data = response_obj.get_json() or {}
-                    return {
-                        "success": json_data.get("success", status_code == 200),
-                        "message": json_data.get("message", json_data.get("error", "")),
-                    }
-                except:
-                    return {
-                        "success": status_code == 200,
-                        "message": f"HTTP {status_code}",
-                    }
-            # If first element is a dict, use it directly
-            elif isinstance(response_obj, dict):
-                return {
-                    "success": response_obj.get("success", False),
-                    "message": response_obj.get("message", ""),
-                }
-            else:
-                return {
-                    "success": status_code == 200,
-                    "message": f"Unexpected response type: {type(response_obj)}",
-                }
+        # Handle dict responses
+        if isinstance(result, dict):
+            return {
+                "success": result.get("success", True),
+                "message": result.get("message", default_success_message),
+                "processed_count": result.get(
+                    "processed_count", result.get("successCount", 0)
+                ),
+                "error_count": result.get("error_count", result.get("errorCount", 0)),
+                "skipped_count": result.get("skipped_count", 0),
+                "is_complete": result.get("is_complete", False),
+                "next_id": result.get("next_id"),
+            }
+
+        # Default fallback
+        return {"success": True, "message": default_success_message}
 
         # Default success case
         return {
@@ -350,84 +337,87 @@ class DailyImporter:
 
         def _call_import():
             try:
-                # Call the function directly without decorators
                 from routes.organizations.routes import (
                     import_organizations_from_salesforce,
                 )
 
-                # Get the original function without decorators
                 original_func = import_organizations_from_salesforce.__wrapped__
                 result = original_func()
+                return self._parse_import_result(
+                    result, "Organizations imported successfully"
+                )
+            except Exception as e:
+                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                return {"success": False, "message": f"Import failed: {str(e)}"}
 
-                self.logger.debug(f"Import result type: {type(result)}")
-                self.logger.debug(f"Import result: {result}")
+        return self._run_with_auth(_call_import)
 
-                if result is None:
-                    return {
-                        "success": False,
-                        "message": "Import function returned None",
-                    }
+    def _import_volunteers(self) -> Dict:
+        """Import volunteers from Salesforce."""
 
-                # Handle Flask Response objects
-                if hasattr(result, "status_code"):
-                    if result.status_code == 302:
-                        return {
-                            "success": False,
-                            "message": "Authentication failed - redirect to login",
-                        }
-                    elif result.status_code == 200:
-                        # Try to get JSON from response
-                        try:
-                            return result.get_json() or {
-                                "success": True,
-                                "message": "Import completed",
-                            }
-                        except:
-                            return {"success": True, "message": "Import completed"}
-                    else:
-                        return {
-                            "success": False,
-                            "message": f"HTTP {result.status_code}",
-                        }
+        def _call_import():
+            try:
+                from routes.volunteers.routes import import_volunteers_from_salesforce
 
-                if hasattr(result, "json"):
-                    return result.json
-                elif isinstance(result, tuple):
-                    # Handle tuple responses like (jsonify({...}), status_code)
-                    response_obj = result[0]
-                    status_code = result[1] if len(result) > 1 else 200
+                original_func = import_volunteers_from_salesforce.__wrapped__
+                result = original_func()
+                return self._parse_import_result(
+                    result, "Volunteers imported successfully"
+                )
+            except Exception as e:
+                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                return {"success": False, "message": f"Import failed: {str(e)}"}
 
-                    # If first element is a Response object, extract JSON
-                    if hasattr(response_obj, "get_json"):
-                        try:
-                            json_data = response_obj.get_json() or {}
-                            return {
-                                "success": json_data.get("success", status_code == 200),
-                                "message": json_data.get(
-                                    "message", json_data.get("error", "")
-                                ),
-                            }
-                        except:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"HTTP {status_code}",
-                            }
-                    # If first element is a dict, use it directly
-                    elif isinstance(response_obj, dict):
-                        return {
-                            "success": response_obj.get("success", False),
-                            "message": response_obj.get("message", ""),
-                        }
-                    else:
-                        return {
-                            "success": status_code == 200,
-                            "message": f"Unexpected response type: {type(response_obj)}",
-                        }
-                else:
-                    return {
-                        "success": True,
-                        "message": "Organizations imported successfully",
-                    }
+        return self._run_with_auth(_call_import)
+
+    def _import_affiliations(self) -> Dict:
+        """Import volunteer-organization affiliations."""
+
+        def _call_import():
+            try:
+                from routes.organizations.routes import (
+                    import_affiliations_from_salesforce,
+                )
+
+                original_func = import_affiliations_from_salesforce.__wrapped__
+                result = original_func()
+                return self._parse_import_result(
+                    result, "Affiliations imported successfully"
+                )
+            except Exception as e:
+                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                return {"success": False, "message": f"Import failed: {str(e)}"}
+
+        return self._run_with_auth(_call_import)
+
+    def _import_events(self) -> Dict:
+        """Import events from Salesforce."""
+
+        def _call_import():
+            try:
+                from routes.events.routes import import_events_from_salesforce
+
+                original_func = import_events_from_salesforce.__wrapped__
+                result = original_func()
+                return self._parse_import_result(result, "Events imported successfully")
+            except Exception as e:
+                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                return {"success": False, "message": f"Import failed: {str(e)}"}
+
+        return self._run_with_auth(_call_import)
+
+    def _import_history(self) -> Dict:
+        """Import history from Salesforce."""
+
+        def _call_import():
+            try:
+                from routes.history.routes import import_history_from_salesforce
+
+                original_func = import_history_from_salesforce.__wrapped__
+                result = original_func()
+                return self._parse_import_result(
+                    result, "History imported successfully"
+                )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -692,50 +682,9 @@ class DailyImporter:
 
                 original_func = import_schools.__wrapped__
                 result = original_func()
-
-                if hasattr(result, "status_code") and result.status_code == 200:
-                    try:
-                        return result.get_json() or {
-                            "success": True,
-                            "message": "Import completed",
-                        }
-                    except:
-                        return {"success": True, "message": "Import completed"}
-                elif hasattr(result, "json"):
-                    return result.json
-                elif isinstance(result, tuple):
-                    # Handle tuple responses like (jsonify({...}), status_code)
-                    response_obj = result[0]
-                    status_code = result[1] if len(result) > 1 else 200
-
-                    # If first element is a Response object, extract JSON
-                    if hasattr(response_obj, "get_json"):
-                        try:
-                            json_data = response_obj.get_json() or {}
-                            return {
-                                "success": json_data.get("success", status_code == 200),
-                                "message": json_data.get(
-                                    "message", json_data.get("error", "")
-                                ),
-                            }
-                        except:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"HTTP {status_code}",
-                            }
-                    # If first element is a dict, use it directly
-                    elif isinstance(response_obj, dict):
-                        return {
-                            "success": response_obj.get("success", False),
-                            "message": response_obj.get("message", ""),
-                        }
-                    else:
-                        return {
-                            "success": status_code == 200,
-                            "message": f"Unexpected response type: {type(response_obj)}",
-                        }
-                else:
-                    return {"success": True, "message": "Schools imported successfully"}
+                return self._parse_import_result(
+                    result, "Schools imported successfully"
+                )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -751,50 +700,9 @@ class DailyImporter:
 
                 original_func = import_classes.__wrapped__
                 result = original_func()
-
-                if hasattr(result, "status_code") and result.status_code == 200:
-                    try:
-                        return result.get_json() or {
-                            "success": True,
-                            "message": "Import completed",
-                        }
-                    except:
-                        return {"success": True, "message": "Import completed"}
-                elif hasattr(result, "json"):
-                    return result.json
-                elif isinstance(result, tuple):
-                    # Handle tuple responses like (jsonify({...}), status_code)
-                    response_obj = result[0]
-                    status_code = result[1] if len(result) > 1 else 200
-
-                    # If first element is a Response object, extract JSON
-                    if hasattr(response_obj, "get_json"):
-                        try:
-                            json_data = response_obj.get_json() or {}
-                            return {
-                                "success": json_data.get("success", status_code == 200),
-                                "message": json_data.get(
-                                    "message", json_data.get("error", "")
-                                ),
-                            }
-                        except:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"HTTP {status_code}",
-                            }
-                    # If first element is a dict, use it directly
-                    elif isinstance(response_obj, dict):
-                        return {
-                            "success": response_obj.get("success", False),
-                            "message": response_obj.get("message", ""),
-                        }
-                    else:
-                        return {
-                            "success": status_code == 200,
-                            "message": f"Unexpected response type: {type(response_obj)}",
-                        }
-                else:
-                    return {"success": True, "message": "Classes imported successfully"}
+                return self._parse_import_result(
+                    result, "Classes imported successfully"
+                )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -812,28 +720,51 @@ class DailyImporter:
                 subject = "Daily Import Report - {{date}} - {{status}}"
 
                 html_body = """
-                <h2>Daily Import Execution Report</h2>
-                <p><strong>Date:</strong> {{date}}</p>
-                <p><strong>Status:</strong> {{status}}</p>
-                <p><strong>Duration:</strong> {{duration}}</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Daily Import Report</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">{{date}}</p>
+    </div>
 
-                <h3>Import Steps</h3>
-                <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
-                    <thead>
-                        <tr style="background-color: #f2f2f2;">
-                            <th>Step</th>
-                            <th>Status</th>
-                            <th>Time</th>
-                            <th>Records</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{steps_rows}}
-                    </tbody>
-                </table>
+    <div style="background: #f9f9f9; padding: 25px; border: 1px solid #eee; border-top: none;">
+        <div style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 20px; {{status_style}}">
+            {{status}}
+        </div>
 
-                <p><em>Generated by VMS Daily Import Script</em></p>
+        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #555;">Import Summary</h2>
+            <p style="margin: 0 0 10px 0; color: #888;">Duration: <strong style="color: #333;">{{duration}}</strong></p>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #555;">Import Steps</h2>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background-color: #f8f8f8;">
+                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #eee;">Step</th>
+                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #eee;">Status</th>
+                        <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #eee;">Records</th>
+                        <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #eee;">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{steps_rows}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="background: #f0f0f0; padding: 15px; border-radius: 0 0 10px 10px; text-align: center; font-size: 12px; color: #888;">
+        Generated by VMS Daily Import Script
+    </div>
+</body>
+</html>
                 """
 
                 text_body = """
@@ -861,6 +792,7 @@ class DailyImporter:
                         "date",
                         "status",
                         "duration",
+                        "status_style",
                         "steps_rows",
                         "steps_text_list",
                     ],
@@ -932,9 +864,16 @@ class DailyImporter:
                     # Text List
                     steps_text_list += f"- {step.name}: {status_text} ({duration}) - {step.records_processed} records. {message}\n"
 
+                # Status style for email
+                if overall_success:
+                    status_style = "background-color: #d4edda; color: #155724;"
+                else:
+                    status_style = "background-color: #f8d7da; color: #721c24;"
+
                 context = {
                     "date": start_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "status": "SUCCESS" if overall_success else "COMPLETED WITH ERRORS",
+                    "status_style": status_style,
                     "duration": duration_str,
                     "steps_rows": steps_rows,
                     "steps_text_list": steps_text_list,
@@ -971,53 +910,9 @@ class DailyImporter:
 
                 original_func = import_teachers_from_salesforce.__wrapped__
                 result = original_func()
-
-                if hasattr(result, "status_code") and result.status_code == 200:
-                    try:
-                        return result.get_json() or {
-                            "success": True,
-                            "message": "Import completed",
-                        }
-                    except:
-                        return {"success": True, "message": "Import completed"}
-                elif hasattr(result, "json"):
-                    return result.json
-                elif isinstance(result, tuple):
-                    # Handle tuple responses like (jsonify({...}), status_code)
-                    response_obj = result[0]
-                    status_code = result[1] if len(result) > 1 else 200
-
-                    # If first element is a Response object, extract JSON
-                    if hasattr(response_obj, "get_json"):
-                        try:
-                            json_data = response_obj.get_json() or {}
-                            return {
-                                "success": json_data.get("success", status_code == 200),
-                                "message": json_data.get(
-                                    "message", json_data.get("error", "")
-                                ),
-                            }
-                        except:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"HTTP {status_code}",
-                            }
-                    # If first element is a dict, use it directly
-                    elif isinstance(response_obj, dict):
-                        return {
-                            "success": response_obj.get("success", False),
-                            "message": response_obj.get("message", ""),
-                        }
-                    else:
-                        return {
-                            "success": status_code == 200,
-                            "message": f"Unexpected response type: {type(response_obj)}",
-                        }
-                else:
-                    return {
-                        "success": True,
-                        "message": "Teachers imported successfully",
-                    }
+                return self._parse_import_result(
+                    result, "Teachers imported successfully"
+                )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -1033,53 +928,9 @@ class DailyImporter:
 
                 original_func = sync_student_participants.__wrapped__
                 result = original_func()
-
-                if hasattr(result, "status_code") and result.status_code == 200:
-                    try:
-                        return result.get_json() or {
-                            "success": True,
-                            "message": "Import completed",
-                        }
-                    except:
-                        return {"success": True, "message": "Import completed"}
-                elif hasattr(result, "json"):
-                    return result.json
-                elif isinstance(result, tuple):
-                    # Handle tuple responses like (jsonify({...}), status_code)
-                    response_obj = result[0]
-                    status_code = result[1] if len(result) > 1 else 200
-
-                    # If first element is a Response object, extract JSON
-                    if hasattr(response_obj, "get_json"):
-                        try:
-                            json_data = response_obj.get_json() or {}
-                            return {
-                                "success": json_data.get("success", status_code == 200),
-                                "message": json_data.get(
-                                    "message", json_data.get("error", "")
-                                ),
-                            }
-                        except:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"HTTP {status_code}",
-                            }
-                    # If first element is a dict, use it directly
-                    elif isinstance(response_obj, dict):
-                        return {
-                            "success": response_obj.get("success", False),
-                            "message": response_obj.get("message", ""),
-                        }
-                    else:
-                        return {
-                            "success": status_code == 200,
-                            "message": f"Unexpected response type: {type(response_obj)}",
-                        }
-                else:
-                    return {
-                        "success": True,
-                        "message": "Student participations imported successfully",
-                    }
+                return self._parse_import_result(
+                    result, "Student participations imported successfully"
+                )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -1107,55 +958,9 @@ class DailyImporter:
 
                 with patch("flask.request", mock_request):
                     result = original_func()
-
-                    if hasattr(result, "status_code") and result.status_code == 200:
-                        try:
-                            return result.get_json() or {
-                                "success": True,
-                                "message": "Import completed",
-                            }
-                        except:
-                            return {"success": True, "message": "Import completed"}
-                    elif hasattr(result, "json"):
-                        return result.json
-                    elif isinstance(result, tuple):
-                        # Handle tuple responses like (jsonify({...}), status_code)
-                        response_obj = result[0]
-                        status_code = result[1] if len(result) > 1 else 200
-
-                        # If first element is a Response object, extract JSON
-                        if hasattr(response_obj, "get_json"):
-                            try:
-                                json_data = response_obj.get_json() or {}
-                                return {
-                                    "success": json_data.get(
-                                        "success", status_code == 200
-                                    ),
-                                    "message": json_data.get(
-                                        "message", json_data.get("error", "")
-                                    ),
-                                }
-                            except:
-                                return {
-                                    "success": status_code == 200,
-                                    "message": f"HTTP {status_code}",
-                                }
-                        # If first element is a dict, use it directly
-                        elif isinstance(response_obj, dict):
-                            return {
-                                "success": response_obj.get("success", False),
-                                "message": response_obj.get("message", ""),
-                            }
-                        else:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"Unexpected response type: {type(response_obj)}",
-                            }
-                    else:
-                        return {
-                            "success": True,
-                            "message": "Students imported successfully",
-                        }
+                    return self._parse_import_result(
+                        result, "Students imported successfully"
+                    )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -1171,53 +976,9 @@ class DailyImporter:
 
                 original_func = sync_unaffiliated_events.__wrapped__
                 result = original_func()
-
-                if hasattr(result, "status_code") and result.status_code == 200:
-                    try:
-                        return result.get_json() or {
-                            "success": True,
-                            "message": "Import completed",
-                        }
-                    except:
-                        return {"success": True, "message": "Import completed"}
-                elif hasattr(result, "json"):
-                    return result.json
-                elif isinstance(result, tuple):
-                    # Handle tuple responses like (jsonify({...}), status_code)
-                    response_obj = result[0]
-                    status_code = result[1] if len(result) > 1 else 200
-
-                    # If first element is a Response object, extract JSON
-                    if hasattr(response_obj, "get_json"):
-                        try:
-                            json_data = response_obj.get_json() or {}
-                            return {
-                                "success": json_data.get("success", status_code == 200),
-                                "message": json_data.get(
-                                    "message", json_data.get("error", "")
-                                ),
-                            }
-                        except:
-                            return {
-                                "success": status_code == 200,
-                                "message": f"HTTP {status_code}",
-                            }
-                    # If first element is a dict, use it directly
-                    elif isinstance(response_obj, dict):
-                        return {
-                            "success": response_obj.get("success", False),
-                            "message": response_obj.get("message", ""),
-                        }
-                    else:
-                        return {
-                            "success": status_code == 200,
-                            "message": f"Unexpected response type: {type(response_obj)}",
-                        }
-                else:
-                    return {
-                        "success": True,
-                        "message": "Unaffiliated events synced successfully",
-                    }
+                return self._parse_import_result(
+                    result, "Unaffiliated events synced successfully"
+                )
             except Exception as e:
                 self.logger.error(f"Import function failed: {e}", exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
@@ -1260,6 +1021,10 @@ class DailyImporter:
 
                     if result.get("is_complete") or not last_id:
                         step.records_processed = total_processed
+                        step.records_failed = result.get(
+                            "error_count", 0
+                        )  # Ideally sum these if chunked handles errors per chunk
+                        step.records_skipped = result.get("skipped_count", 0)
                         self.logger.info(
                             f"{step.name} completed: {total_processed} total records processed"
                         )
@@ -1277,6 +1042,8 @@ class DailyImporter:
                     return False
 
                 step.records_processed = result.get("processed_count", 0)
+                step.records_failed = result.get("error_count", 0)
+                step.records_skipped = result.get("skipped_count", 0)
                 self.logger.info(f"{step.name} completed successfully")
 
             step.completed = True
@@ -1366,6 +1133,39 @@ class DailyImporter:
                 global_end_time - global_start_time
             ).total_seconds()
             duration_str = f"{total_duration_seconds:.2f} seconds"
+
+            # Record aggregate sync history (Daily Import)
+            try:
+                with self.app.app_context():
+                    from models import db
+                    from models.sync_log import SyncLog, SyncStatus
+
+                    total_processed = sum(
+                        step.records_processed for step in completed_steps
+                    )
+                    total_failed = sum(step.records_failed for step in steps_to_run)
+                    total_skipped = sum(step.records_skipped for step in steps_to_run)
+
+                    status = SyncStatus.SUCCESS.value
+                    if not overall_success:
+                        status = SyncStatus.FAILED.value
+                    elif total_failed > 0:
+                        status = SyncStatus.PARTIAL.value
+
+                    sync_log = SyncLog(
+                        sync_type="daily_import",
+                        started_at=global_start_time,
+                        completed_at=global_end_time,
+                        status=status,
+                        records_processed=total_processed,
+                        records_failed=total_failed,
+                        records_skipped=total_skipped,
+                    )
+                    db.session.add(sync_log)
+                    db.session.commit()
+                    self.logger.info("Recorded aggregate sync log for daily_import")
+            except Exception as e:
+                self.logger.warning(f"Failed to record aggregate sync log: {e}")
 
             # Use the start time of the first step as the approximate start time, or just use now - duration
             self.send_summary_email(

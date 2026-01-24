@@ -663,6 +663,8 @@ def import_organizations_from_salesforce():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} organizations with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )
@@ -839,6 +841,8 @@ def import_affiliations_from_salesforce():
             {
                 "success": True,
                 "message": f"Successfully processed {affiliation_success} affiliations with {affiliation_error} errors",
+                "processed_count": affiliation_success,
+                "error_count": affiliation_error,
                 "errors": errors[:3] if errors else [],
             }
         )

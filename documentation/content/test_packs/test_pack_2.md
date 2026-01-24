@@ -153,7 +153,7 @@ SF sync + website signup + email/calendar
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-220"></a>**TC-220** | Sync status indicators | Last successful sync time, record counts, and pending errors displayed | Automated | TBD |
+| <a id="tc-220"></a>**TC-220** | Sync status indicators | Last successful sync time, record counts, and pending errors displayed | Automated | 2026-01-23 |
 | <a id="tc-221"></a>**TC-221** | Cache invalidation | Event sync triggers cache invalidation for dependent reports | Automated | 2026-01-23 |
 | <a id="tc-222"></a>**TC-222** | Manual cache refresh | Manual cache refresh available for event-based reports with large datasets | Automated | 2026-01-23 |
 

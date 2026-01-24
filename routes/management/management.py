@@ -117,6 +117,7 @@ from models.reports import (
     VirtualSessionReportCache,
 )
 from models.school_model import School
+from models.sync_log import SyncLog, SyncStatus
 from models.user import SecurityLevel, User
 from routes.decorators import global_users_only
 from routes.reports.common import get_school_year_date_range
@@ -198,11 +199,49 @@ def admin():
         .order_by(GoogleSheet.academic_year.desc())
         .all()
     ]
+
+    # Get latest sync logs for status indicators (TC-220)
+    latest_sync = SyncLog.get_latest_by_type("events_and_participants")
+    latest_student_sync = SyncLog.get_latest_by_type("student_participants")
+    latest_overall_sync = SyncLog.get_recent_logs(limit=1)
+    latest_overall_sync = latest_overall_sync[0] if latest_overall_sync else None
+
     return render_template(
         "management/admin.html",
         users=users,
         districts=districts,
         sheet_years=sheet_years,
+        latest_sync=latest_sync,
+        latest_student_sync=latest_student_sync,
+        latest_overall_sync=latest_overall_sync,
+    )
+
+
+@management_bp.route("/admin/sync-logs")
+@login_required
+def view_sync_logs():
+    """
+    Display historical sync logs.
+
+    Permission Requirements:
+        - Admin access required
+    """
+    if not current_user.is_admin:
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("management.admin"))
+
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+    pagination = SyncLog.query.order_by(SyncLog.started_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    logs = pagination.items
+
+    return render_template(
+        "management/sync_logs.html",
+        logs=logs,
+        pagination=pagination,
+        title="Sync History",
     )
 
 
@@ -567,6 +606,8 @@ def import_classes():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} classes with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )
@@ -1110,6 +1151,8 @@ def import_schools():
             {
                 "success": True,
                 "message": f"Successfully processed {district_success} districts and {school_success} schools",
+                "processed_count": district_success + school_success,
+                "error_count": len(district_errors) + len(school_errors),
                 "district_errors": district_errors,
                 "school_errors": school_errors,
                 "level_update": (
@@ -1195,6 +1238,8 @@ def import_districts():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} districts with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )
@@ -1497,6 +1542,8 @@ def update_school_levels():
             {
                 "success": True,
                 "message": f"Successfully updated {success_count} schools with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )

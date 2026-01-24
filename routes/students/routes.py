@@ -202,6 +202,8 @@ def import_students_from_salesforce():
             "message": f"Processed chunk of {len(student_rows)} students ({success_count} successful, {error_count} errors)",
             "total_records": total_records,
             "processed_count": len(processed_ids),
+            "error_count": error_count,
+            "skipped_count": 0,
             "next_id": next_id if not is_complete else None,
             "is_complete": is_complete,
             "errors": errors[:100],  # Limit error list size in response
