@@ -124,16 +124,27 @@ SF sync + website signup + email/calendar
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-190"></a>**TC-190** | Status update | Event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) updated from Salesforce | Automated | TBD |
-| <a id="tc-191"></a>**TC-191** | Cancellation reason | Cancellation reasons preserved when events cancelled in Salesforce | Automated | TBD |
+| <a id="tc-190"></a>**TC-190** | Status update | Event status (Draft, Requested, Confirmed, Published, Completed, Cancelled) updated from Salesforce | Automated | 2026-01-23 |
+| <a id="tc-191"></a>**TC-191** | Cancellation reason | Cancellation reasons preserved when events cancelled in Salesforce | Automated | 2026-01-23 |
 | <a id="tc-192"></a>**TC-192** | Status propagation | Status changes reflected in VolunTeach and public website within sync cycle | Automated | TBD |
+
+> [!NOTE]
+> **About "Automated" Type for Status Management**
+> - **Test Execution**: These tests (`tests/integration/test_status_management.py`) run automatically with mocked Salesforce responses
+> - **Data Pull**: The actual Salesforce sync is **manual** or scheduled via `daily_imports.py`
+> - **Verification**: For production verification, trigger the sync and verify status updates are reflected in the UI
 
 ### I. Error Handling and Monitoring
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-200"></a>**TC-200** | Distinguish no events vs failure | System distinguishes "no events to sync" from "sync failure" | Automated | TBD |
+| <a id="tc-200"></a>**TC-200** | Distinguish no events vs failure | System distinguishes "no events to sync" from "sync failure" | Automated | 2026-01-23 |
 | <a id="tc-201"></a>**TC-201** | Failed sync logging | Failed operations logged with timestamps, error details, and record counts | Automated | 2026-01-23 |
+
+> [!NOTE]
+> **About Error Handling Tests**
+> - **Test Coverage**: `tests/integration/test_sync_error_handling.py` verifies that the system correctly distinguishes between empty results (success) and API errors (failure)
+> - **Logging**: Error logging is currently output to stdout/stderr in the application logs
 
 ### J. Historical Data and Manual Operations
 
