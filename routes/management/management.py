@@ -397,6 +397,7 @@ def scan_student_participation_duplicates():
 
 
 @management_bp.route("/admin/dedupe-student-participations", methods=["POST"])
+@management_bp.route("/dedupe-student-participations", methods=["POST"])
 @login_required
 def dedupe_student_participations():
     """

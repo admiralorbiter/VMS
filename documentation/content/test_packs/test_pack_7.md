@@ -22,21 +22,21 @@ Validation of system resilience, data integrity logic, and operational workflows
 
 ### Data Integrity
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-901"></a>**TC-901** | **Duplicate Merge Strategy**<br>Import row with same SalesforceID as existing event | - Single event record remains<br>- Status updates to `Confirmed`<br>- Registered counts sum or take max based on logic |
-| <a id="tc-902"></a>**TC-902** | **Profile Auto-Creation**<br>Import participant with unknown email | - New `Volunteer` record created<br>- Participation linked to new record<br>- No error returned |
-| <a id="tc-903"></a>**TC-903** | **Sync Dependency Order**<br>Attempt to import Event for unknown School | - Import fails or creates placeholder (depending on config)<br>- Error logged specific to missing dependency |
-| <a id="tc-904"></a>**TC-904** | **Partial Batch Success**<br>Import batch of 10 events, 1 invalid | - 9 Events created successfully<br>- 1 Error recorded in sync log<br>- Response indicates "Partial Success" |
+| TC | Description | Expected | Status | Last Verified |
+|----|-------------|----------|--------|---------------|
+| <a id="tc-901"></a>**TC-901** | **Duplicate Merge Strategy**<br>Import row with same SalesforceID as existing event | - Single event record remains<br>- Status updates to `Confirmed`<br>- Registered counts sum or take max based on logic | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_data_integrity.py`) |
+| <a id="tc-902"></a>**TC-902** | **Profile Auto-Creation**<br>Import participant with unknown email | - New `Volunteer` record created<br>- Participation linked to new record<br>- No error returned | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_participation_sync.py`) |
+| <a id="tc-903"></a>**TC-903** | **Sync Dependency Order**<br>Attempt to import Event for unknown School | - Import fails or creates placeholder (depending on config)<br>- Error logged specific to missing dependency | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_data_integrity.py`) |
+| <a id="tc-904"></a>**TC-904** | **Partial Batch Success**<br>Import batch of 10 events, 1 invalid | - 9 Events created successfully<br>- 1 Error recorded in sync log<br>- Response indicates "Partial Success" | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_participation_sync.py`) |
 
 ### Operational Workflows
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-910"></a>**TC-910** | **Attendance Status Workflow**<br>Update attendance to 'In Progress' | - `EventAttendance.status` = `IN_PROGRESS`<br>- Event `status` remains unchanged (e.g. `COMPLETED`) |
-| <a id="tc-911"></a>**TC-911** | **Admin Purge Action**<br>Execute purge endpoint as Admin | - Events table count = 0<br>- Audit Log contains "PURGE" entry<br>- Non-admin user receives 403 Forbidden |
-| <a id="tc-912"></a>**TC-912** | **Auto-Admin Creation**<br>Start app with empty User table | - Default `admin` user created<br>- Default password hash set<br>- Log entry confirms creation |
-| <a id="tc-913"></a>**TC-913** | **Event Categorization**<br>Create event with type 'Career Fair' | - Event saved with correct `EventType`<br>- Filtering by 'Career Fair' returns this event |
+| TC | Description | Expected | Status | Last Verified |
+|----|-------------|----------|--------|---------------|
+| <a id="tc-910"></a>**TC-910** | **Attendance Status Workflow**<br>Update attendance to 'In Progress' | - `EventAttendance.status` = `IN_PROGRESS`<br>- Event `status` remains unchanged (e.g. `COMPLETED`) | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_event.py`) |
+| <a id="tc-911"></a>**TC-911** | **Admin Purge Action**<br>Execute purge endpoint as Admin | - Events table count = 0<br>- Audit Log contains "PURGE" entry<br>- Non-admin user receives 403 Forbidden | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_management_routes.py`) |
+| <a id="tc-912"></a>**TC-912** | **Auto-Admin Creation**<br>Start app with empty User table | - Default `admin` user created<br>- Default password hash set<br>- Log entry confirms creation | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_user.py`) |
+| <a id="tc-913"></a>**TC-913** | **Event Categorization**<br>Create event with type 'Career Fair' | - Event saved with correct `EventType`<br>- Filtering by 'Career Fair' returns this event | <span style="color:green">**PASS**</span> | 2026-01-24 (Automated: `test_event.py`) |
 
 ---
 

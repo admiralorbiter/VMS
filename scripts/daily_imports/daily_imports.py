@@ -159,17 +159,17 @@ class DailyImporter:
                 self._import_teachers,
                 "Import Teachers from Salesforce (requires schools)",
             ),
-            ImportStep(
-                "student_participations",
-                self._import_student_participations,
-                "Import Student Participations (requires students, events)",
-            ),
             # Yearly Imports
             ImportStep(
                 "students",
                 self._import_students,
                 "Import Students from Salesforce (requires schools, classes, teachers)",
                 chunked=True,
+            ),
+            ImportStep(
+                "student_participations",
+                self._import_student_participations,
+                "Import Student Participations (requires students, events)",
             ),
             # Management Functions
             ImportStep(

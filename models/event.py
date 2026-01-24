@@ -1081,10 +1081,16 @@ class EventStudentParticipation(db.Model):
 
     # Relationships (optional but helpful)
     event = db.relationship(
-        "Event", backref=db.backref("student_participations", lazy="dynamic")
+        "Event",
+        backref=db.backref(
+            "student_participations", lazy="dynamic", cascade="all, delete-orphan"
+        ),
     )
     student = db.relationship(
-        "Student", backref=db.backref("event_participations", lazy="dynamic")
+        "Student",
+        backref=db.backref(
+            "event_participations", lazy="dynamic", cascade="all, delete-orphan"
+        ),
     )
 
     # Enforce uniqueness for a given event/student pair
