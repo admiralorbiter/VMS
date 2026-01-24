@@ -160,8 +160,8 @@ SF sync + website signup + email/calendar
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
 | <a id="tc-220"></a>**TC-220** | Sync status indicators | Last successful sync time, record counts, and pending errors displayed | Automated | TBD |
-| <a id="tc-221"></a>**TC-221** | Cache invalidation | Event sync triggers cache invalidation for dependent reports | Automated | TBD |
-| <a id="tc-222"></a>**TC-222** | Manual cache refresh | Manual cache refresh available for event-based reports with large datasets | Manual | TBD |
+| <a id="tc-221"></a>**TC-221** | Cache invalidation | Event sync triggers cache invalidation for dependent reports | Automated | 2026-01-23 |
+| <a id="tc-222"></a>**TC-222** | Manual cache refresh | Manual cache refresh available for event-based reports with large datasets | Automated | 2026-01-23 |
 
 ---
 
@@ -1142,7 +1142,7 @@ This section provides comprehensive test specifications for requirements FR-INPE
 - Selective refresh (specific reports vs all reports)
 
 **Integration Points:**
-- Cache management interface (routes/management/management.py)
+- Cache management interface (routes/management/cache_management.py)
 - Cache refresh system (utils/cache_refresh_scheduler.py)
 - Report generation system
 

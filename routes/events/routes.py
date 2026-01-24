@@ -75,6 +75,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
+from utils.cache_refresh_scheduler import refresh_all_caches
 
 
 def safe_parse_delivery_hours(value):
@@ -1225,6 +1226,15 @@ def import_events_from_salesforce():
                 print(f"  - {error}")
             if len(actual_errors) > 5:
                 print(f"  ... and {len(actual_errors) - 5} more errors")
+
+        # Trigger cache refresh if any data was processed
+        if success_count > 0 or participant_success > 0:
+            print(f"\nData updated. Triggering full cache refresh...")
+            try:
+                refresh_all_caches()
+                print("Cache refresh triggered successfully.")
+            except Exception as e:
+                print(f"Warning: Cache refresh failed: {e}")
 
         return jsonify(
             {
