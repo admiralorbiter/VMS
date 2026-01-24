@@ -128,12 +128,7 @@ Each requirement links to:
 | <a id="fr-inperson-124"></a>**FR-INPERSON-124** | The system shall distinguish between "no events to sync" and "sync failure" for monitoring purposes. | [TC-200](test-pack-2#tc-200) | *Technical requirement* |
 | <a id="fr-inperson-125"></a>**FR-INPERSON-125** | Failed sync operations shall be logged with timestamps, error details, and affected record counts. | [TC-201](test-pack-2#tc-201) | *Technical requirement* |
 
-### Historical Data Import
 
-| ID | Requirement | Test Coverage | Related User Stories |
-|----|-------------|---------------|----------------------|
-| <a id="fr-inperson-126"></a>**FR-INPERSON-126** | The system shall support importing historical in-person event data from Salesforce (e.g., 2–4 years of past events). | [TC-210](test-pack-2#tc-210) | *Technical requirement* |
-| <a id="fr-inperson-127"></a>**FR-INPERSON-127** | Historical import shall preserve event-participant relationships and maintain data integrity. | [TC-211](test-pack-2#tc-211) | *Technical requirement* |
 
 ### Manual Operations
 
@@ -205,6 +200,8 @@ Each requirement links to:
 | <a id="fr-virtual-217"></a>**FR-VIRTUAL-217** | The presenter recruitment view shall display urgency indicators: red (≤7 days), yellow (8-14 days), blue (>14 days). | [TC-298](#tc-298) | [US-307](user_stories#us-307) |
 | <a id="fr-virtual-218"></a>**FR-VIRTUAL-218** | The presenter recruitment view shall support text search across event title and teacher names. | [TC-292](#tc-292) | [US-307](user_stories#us-307) |
 | <a id="fr-virtual-219"></a>**FR-VIRTUAL-219** | The presenter recruitment view shall display a success message when all upcoming virtual sessions have presenters assigned. | Context only | [US-307](user_stories#us-307) |
+| <a id="fr-virtual-220"></a>**FR-VIRTUAL-220** | The system shall support importing historical virtual event data from Salesforce (e.g., 2–4 years of past events). | [TC-210](test-pack-2#tc-210) | *Technical requirement* |
+| <a id="fr-virtual-221"></a>**FR-VIRTUAL-221** | Historical virtual import shall preserve event-participant relationships and maintain data integrity. | [TC-211](test-pack-2#tc-211) | *Technical requirement* |
 
 ## <a id="volunteer-search-recruitment--communication-history"></a>7.4 Volunteer Search, Recruitment & Communication History
 

@@ -150,7 +150,7 @@ SF sync + website signup + email/calendar
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-210"></a>**TC-210** | Historical import | 2–4 years of past events imported from Salesforce | Automated | TBD |
+| <a id="tc-210"></a>**TC-210** | Historical import | 2–4 years of past virtual events imported from Salesforce | Automated | TBD |
 | <a id="tc-211"></a>**TC-211** | Historical data integrity | Event-participant relationships preserved during historical import | Automated | TBD |
 | <a id="tc-212"></a>**TC-212** | Manual sync batch sizes | Manual sync processes events in configurable batch sizes | Manual | TBD |
 | <a id="tc-213"></a>**TC-213** | Progress indicators | Manual sync shows progress and allows cancellation/resumption | Manual | TBD |
@@ -847,11 +847,11 @@ This section provides comprehensive test specifications for requirements FR-INPE
 
 ### Historical Data Import
 
-#### FR-INPERSON-126: Historical Event Import
+#### FR-VIRTUAL-220: Historical Event Import
 
 **Covered by:** [TC-210](#tc-210)
 
-**Objective:** Verify that the system supports importing historical in-person event data from Salesforce (e.g., 2–4 years of past events).
+**Objective:** Verify that the system supports importing historical virtual event data from Salesforce (e.g., 2–4 years of past events).
 
 **Prerequisites:**
 - Salesforce with historical event data (2–4 years old)
@@ -884,11 +884,11 @@ This section provides comprehensive test specifications for requirements FR-INPE
 - Date range filtering
 - Batch processing for large datasets
 
-#### FR-INPERSON-127: Historical Data Integrity
+#### FR-VIRTUAL-221: Historical Data Integrity
 
 **Covered by:** [TC-211](#tc-211)
 
-**Objective:** Verify that historical import preserves event-participant relationships and maintains data integrity.
+**Objective:** Verify that historical virtual import preserves event-participant relationships and maintains data integrity.
 
 **Prerequisites:**
 - Historical events with participant records in Salesforce
