@@ -2687,6 +2687,24 @@ def load_usage_routes():
         ):
             session_data = apply_runtime_filters(session_data, current_filters)
 
+        # Filter session_data by allowed_districts for district-scoped users
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                # Filter session_data to only include sessions from allowed districts
+                session_data = [
+                    s for s in session_data if s.get("district") in allowed_districts
+                ]
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, show no data for safety
+                session_data = []
+
         # Use the calculated district summaries
         district_summaries = all_district_summaries
 
