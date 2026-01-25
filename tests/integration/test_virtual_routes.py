@@ -410,5 +410,100 @@ def test_local_non_local_filtering(client, auth_headers):
     # This test explicitly validates that the field used for filtering exists.
     
     test_local_non_local_flag_persistence(client, auth_headers)
-    # The previous test asserts "presenter_location_type" is present and correct.
-    # We can assume client-side filtering works if the data is there.
+# --- Import Logic Tests (TC-270, TC-273, TC-275) ---
+
+def test_virtual_import_logic_idempotency(client, auth_headers):
+    """
+    Test Idempotency of import logic (TC-273).
+    Running the import twice with the exact same data should result in:
+    1. First run: Success, events created.
+    2. Second run: Success, 0 new events, 0 duplicates.
+    """
+    import pandas as pd
+    from scripts.daily_imports.run_virtual_import_2025_26_standalone import run_import_logic_direct
+    from models.event import Event
+
+    with client.application.app_context():
+        # Setup mock data using DataFrame as expected by the script
+        data = {
+            "Session Title": ["Idempotency Test Session"],
+            "Date": [(datetime.now() + timedelta(days=20)).strftime("%m/%d/%Y")],
+            "Time": ["10:00 AM"],
+            "Duration": ["60"],
+            "Session Type": ["Workshop"],
+            "Status": ["Confirmed"],
+            "Teacher Name": ["Test Teacher"],
+            "School Name": ["Test School"],
+            "District": ["Test District Independency"],
+            "Session Link": ["http://meet.google.com/abc-defg-hij"]
+        }
+        df = pd.DataFrame(data)
+        academic_year = "2025-2026"
+
+        # 1. First Run -> Should Create
+        result1 = run_import_logic_direct(df, academic_year)
+        assert result1["success"] is True
+        assert result1["success_count"] == 1
+        
+        event = Event.query.filter_by(title="Idempotency Test Session").first()
+        assert event is not None
+        event_id = event.id
+
+        # 2. Second Run -> Should Update/No-Op (Idempotent)
+        result2 = run_import_logic_direct(df, academic_year)
+        assert result2["success"] is True
+        # The script counts "processed" events, so it might still say success_count=1 if it updated it
+        # But crucially, we must check that count of events in DB is still 1
+        
+        events_count = Event.query.filter_by(title="Idempotency Test Session").count()
+        assert events_count == 1
+        
+        event_after = Event.query.filter_by(title="Idempotency Test Session").first()
+        assert event_after.id == event_id  # ID preserved
+
+
+def test_virtual_import_multi_line_handling(client, auth_headers):
+    """
+    Test Multi-line handling (TC-270, TC-275).
+    Two rows with same Session Title + Date but different teachers 
+    should result in ONE event with TWO teachers.
+    """
+    import pandas as pd
+    from scripts.daily_imports.run_virtual_import_2025_26_standalone import run_import_logic_direct
+    from models.event import Event
+
+    with client.application.app_context():
+        dataset_date = (datetime.now() + timedelta(days=25)).strftime("%m/%d/%Y")
+        data = {
+            "Session Title": ["Multi-Line Test Session", "Multi-Line Test Session"],
+            "Date": [dataset_date, dataset_date],
+            "Time": ["2:00 PM", "2:00 PM"],
+            "Duration": ["60", "60"],
+            "Session Type": ["Panel", "Panel"],
+            "Status": ["Confirmed", "Confirmed"],
+            "Teacher Name": ["Teacher A", "Teacher B"], # Different teachers
+            "School Name": ["School A", "School B"],
+            "District": ["District A", "District B"],
+            "Session Link": ["http://link", "http://link"]
+        }
+        df = pd.DataFrame(data)
+        academic_year = "2025-2026"
+
+        result = run_import_logic_direct(df, academic_year)
+        assert result["success"] is True
+        
+        # Verify only ONE event exists
+        events = Event.query.filter_by(title="Multi-Line Test Session").all()
+        assert len(events) == 1
+        event = events[0]
+        
+        # Verify associations (TC-275)
+        # Should have 2 teacher registrations
+        assert len(event.teacher_registrations) == 2
+        
+        # Verify specific teachers are linked
+        # "Teacher A" splits to First="Teacher", Last="A"
+        # "Teacher B" splits to First="Teacher", Last="B"
+        linked_last_names = [tr.teacher.last_name for tr in event.teacher_registrations]
+        assert "A" in linked_last_names
+        assert "B" in linked_last_names

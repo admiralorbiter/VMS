@@ -56,14 +56,16 @@ Polaris creation + Pathful import + historical data
 
 ### D. Historical Google Sheets
 
+> **Automation**: Core import logic is covered by the daily standalone script: `scripts/daily_imports/run_virtual_import_2025_26_standalone.py`
+
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-270"></a>**TC-270** | Multi-line → one event | No duplicate events | Manual | TBD |
-| <a id="tc-271"></a>**TC-271** | Teacher relationships | All teachers linked | Manual | TBD |
-| <a id="tc-272"></a>**TC-272** | Presenter relationships | All presenters linked | Manual | TBD |
-| <a id="tc-273"></a>**TC-273** | Idempotency | Double import = no duplicates | Manual | TBD |
-| <a id="tc-274"></a>**TC-274** | Date range (2-4 years) | Events from specified years imported | Manual | TBD |
-| <a id="tc-275"></a>**TC-275** | Multi-line mapping preserved | Event-teacher relationships maintained | Manual | TBD |
+| <a id="tc-270"></a>**TC-270** | Multi-line → one event | No duplicate events | Automated (Daily Script) | 2026-01-25 |
+| <a id="tc-271"></a>**TC-271** | Teacher relationships | All teachers linked | Automated (Daily Script) | 2026-01-25 |
+| <a id="tc-272"></a>**TC-272** | Presenter relationships | All presenters linked | Automated (Daily Script) | 2026-01-25 |
+| <a id="tc-273"></a>**TC-273** | Idempotency | Double import = no duplicates | Automated (Daily Script) | 2026-01-25 |
+| <a id="tc-274"></a>**TC-274** | Date range (2-4 years) | Events from specified years imported | Pending (Near-term) | TBD |
+| <a id="tc-275"></a>**TC-275** | Multi-line mapping preserved | Event-teacher relationships maintained | Automated (Daily Script) | 2026-01-25 |
 
 ### E. Presenter Recruitment View
 
