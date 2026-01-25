@@ -152,8 +152,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Acceptance Criteria:**
 
-- Given a teacher exists in Salesforce, when I search and select the teacher, then the teacher is linked to the Polaris event.
-- Given a Salesforce search failure, then Polaris shows an actionable error (not silent empty results).
+- Given a teacher exists in Salesforce and is synced to Polaris, when I search and select the teacher, then the teacher is linked to the Polaris event.
+- Given a synced record search failure, then Polaris shows an actionable error (not silent empty results).
 
 ### <a id="us-303"></a>US-303: Tag presenters to virtual events
 
@@ -165,9 +165,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Acceptance Criteria:**
 
-- Given a volunteer/presenter exists in Salesforce, when I search and select them, then they are linked to the Polaris event as a presenter.
+- Given a volunteer/presenter exists in Salesforce and is synced to Polaris, when I search and select them, then they are linked to the Polaris event as a presenter.
 - Given I tag a presenter to an event, then the event no longer appears in the presenter recruitment view.
-- Given a Salesforce search failure, then Polaris shows an actionable error (not silent empty results).
+- Given a synced record search failure, then Polaris shows an actionable error (not silent empty results).
 
 ### <a id="us-304"></a>US-304: Import Pathful export into Polaris
 
