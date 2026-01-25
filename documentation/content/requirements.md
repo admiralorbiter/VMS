@@ -86,6 +86,7 @@ Each requirement links to:
 | <a id="fr-inperson-106"></a>**FR-INPERSON-106** | The website shall display for each event at minimum: volunteer slots needed, slots filled, date/time, district (if linked), and event description/type. | [TC-120](test-pack-2#tc-120), [TC-121](test-pack-2#tc-121) | [US-105](user_stories#us-105) |
 | <a id="fr-inperson-107"></a>**FR-INPERSON-107** | VolunTeach shall allow staff to link events to one or more districts for district-specific website pages. | [TC-113](test-pack-2#tc-113), [TC-114](test-pack-2#tc-114) | [US-104](user_stories#us-104) |
 | <a id="fr-inperson-109"></a>**FR-INPERSON-109** | Any event linked to a district shall appear on that district's website page regardless of the in-person-page visibility toggle. | [TC-113](test-pack-2#tc-113), [TC-115](test-pack-2#tc-115) | [US-104](user_stories#us-104) |
+| <a id="fr-inperson-128"></a>**FR-INPERSON-128** | The system shall automatically display Data in Action (DIA) events (matched by "DIA" in session type) on the website regardless of the visibility toggle, provided they have a future start date and available slots. | Context only | [US-103](user_stories#us-103) |
 
 
 
@@ -106,7 +107,7 @@ Each requirement links to:
 >
 > The volunteer hub provides access to signup pages for:
 > - In-person events
-> - Data in Action (DIA) events
+> - Data in Action (DIA) events: [https://prepkc.org/dia.html](https://prepkc.org/dia.html)
 > - Virtual events
 > - Other volunteer opportunities
 
@@ -306,7 +307,7 @@ This section provides a comprehensive view of the relationships between Function
 | **In-Person Events** | | |
 | FR-INPERSON-101 | [US-101](user_stories#us-101) | Event creation |
 | FR-INPERSON-102, 103, 123 | [US-102](user_stories#us-102) | Sync operations |
-| FR-INPERSON-104, 105 | [US-103](user_stories#us-103) | Visibility control |
+| FR-INPERSON-104, 105, 128 | [US-103](user_stories#us-103) | Visibility control |
 | FR-INPERSON-107, 109 | [US-104](user_stories#us-104) | District linking |
 | FR-INPERSON-106 | [US-105](user_stories#us-105) | Website display |
 
@@ -381,7 +382,7 @@ This section provides a comprehensive view of the relationships between Function
 |------------|--------------------------------|
 | US-101 | FR-INPERSON-101 |
 | US-102 | FR-INPERSON-102, 103, 123 |
-| US-103 | FR-INPERSON-104, 105 |
+| US-103 | FR-INPERSON-104, 105, 128 |
 | US-104 | FR-INPERSON-107, 109 |
 | US-105 | FR-INPERSON-106 |
 | US-201 | FR-SIGNUP-121, 122, 127 |

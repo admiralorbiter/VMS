@@ -52,8 +52,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Acceptance Criteria:**
 
 - Given an event exists in VolunTeach, when I set "In-person page visibility" ON, then the event appears on the public page.
-- Given an event exists, when I set that toggle OFF, then the event does not appear on the public page.
+- Given an event exists, when I set that toggle OFF, then the event does not appear on the public page (unless it is a DIA event).
 - Given an event is OFF, then it may still appear on district pages if district-linked.
+- Given an event has "DIA" in the session type (Data in Action), then it appears on the public page automatically (regardless of the toggle), provided it has future slots available.
 
 ### <a id="us-104"></a>US-104: Link events to districts for district pages
 

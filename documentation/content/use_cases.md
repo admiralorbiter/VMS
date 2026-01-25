@@ -50,7 +50,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 **Workflow:**
 1. Staff opens VolunTeach
 2. Syncs events manually OR waits for hourly sync
-3. Sets in-person page visibility toggle if event should appear on public page
+3. Sets in-person page visibility toggle if event should appear on public page (Note: DIA events appear automatically regardless of toggle)
 4. Links event to district if needed for district-specific page display
 
 **Related:**

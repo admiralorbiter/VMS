@@ -30,6 +30,8 @@ All in-person events originate in [Salesforce](https://prep-kc.my.salesforce.com
 3.  **Select Record Type**: Choose **"Non-Connector Session"** and click **Next**.
 4.  **Fill in Session Details**:
     -   **Session Name**: Use the standard format: `[Visit Type] / [School/District] / [Date] / [Grade]` (if possible).
+        > [!TIP]
+        > **Data in Action (DIA)**: If this is a DIA event, ensure **"DIA"** is included in the **Session Name** (or Session Type) so it automatically appears on the [Data in Action page](https://prepkc.org/dia.html).
     -   **Session Status**: Set to **"Requested"**.
     -   **School**: If it's a single school event, search and attach the school record.
     -   **Format**: Select **"In-Person"**.
@@ -80,6 +82,20 @@ To show/hide an event on the main volunteer hub:
     - **ON (Pink)** ![Toggle ON](content/user_guide/images/toggle_on.png): Visible to everyone on `prepkc.org/volunteer.html`.
     - **OFF (Purple)** ![Toggle OFF](content/user_guide/images/toggle_off.png): Hidden from the main list (useful for private/internal events).
 
+### Data in Action (DIA) Events
+**Exception to the Rule**: Events for "Data in Action" are handled with unique logic to ensure they are always available to volunteers.
+
+-   **Identification**: The system identifies DIA events by matching **"DIA"** in the **Session Type** or **Event Name**.
+-   **Automatic Visibility**: These events are served to the website **regardless** of the "Show on Public Page" toggle.
+-   **Display Criteria**: A DIA event will appear if:
+    1.  It has "DIA" in the Session Type/Name.
+    2.  The start date is in the future.
+    3.  There are available volunteer slots.
+    4.  *(The display toggle is ignored)*.
+
+> [!IMPORTANT]
+> If you need to hide a DIA event that meets the above criteria, you must either cancel/delete it or change its name/type to remove "DIA". The visibility toggle will not hide it.
+
 ### District Page Visibility
 To display an event on a specific district's customized page:
 1.  Open the event details in VolunTeach.
@@ -104,6 +120,10 @@ After publishing events, verify they appear correctly:
    - Shows all district-specific events
    - Only accessible via direct link
    - Each district has their own dedicated page
+
+3. **Data in Action Events Page**: [https://prepkc.org/dia.html](https://prepkc.org/dia.html)
+   - Automatically displays events with "DIA" in the name/type
+   - Accessible to volunteers specifically looking for DIA opportunities
 
 > [!TIP]
 > After making visibility changes in VolunTeach, refresh the website pages to confirm events appear as expected. Changes may take a few moments to propagate.
