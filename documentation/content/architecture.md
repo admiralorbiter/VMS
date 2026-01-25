@@ -168,6 +168,7 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 | SF Schools/Classes → Polaris | Weekly | Yes | `routes/management/management.py` import routes |
 | Pathful → Polaris | Daily | Yes | `routes/virtual/routes.py` `/virtual/import-sheet` |
 | Roster → Polaris | Manual (2 week cadence) | Yes | `routes/virtual/usage.py` teacher progress import |
+| API Health Monitor | Hourly | Yes (Script) | `scripts/monitor_api.py` checks signup API |
 
 **Daily Import Script:**
 - Script: `scripts/daily_imports/daily_imports.py`

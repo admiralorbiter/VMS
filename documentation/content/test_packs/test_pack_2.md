@@ -25,6 +25,7 @@ Event creation, Website display, Volunteer signup, and Email notifications.
 | <a id="tc-102"></a>**TC-102** | Idempotency | No duplicates on double sync | Automated | 2026-01-22 |
 | <a id="tc-103"></a>**TC-103** | Update propagates | Changed slots reflected in VT | Automated | 2026-01-22 |
 | <a id="tc-104"></a>**TC-104** | Failure detection | Error visible, not silent | Automated | 2026-01-22 |
+| <a id="tc-105"></a>**TC-105** | API Health Monitoring | Hourly check of signup API endpoint, email alert on failure | Automated (Script) | 2026-01-24 |
 
 > [!NOTE]
 > **Test Implementation Details (VolunTeach Microservice)**
@@ -34,6 +35,7 @@ Event creation, Website display, Volunteer signup, and Email notifications.
 >   - `test_update_propagates_other_fields` - TC-103 extended
 > - **TC-101**: Hourly sync runs on PythonAnywhere; email notification on failure only
 > - **TC-104**: Error logging in place; errors visible to user during manual imports
+> - **TC-105**: Covered by `scripts/monitor_api.py`. Runs hourly via PythonAnywhere scheduled task. Checks `/events/volunteer_signup_api` for 200 OK and valid JSON. Alerts `DAILY_IMPORT_RECIPIENT` on failure.
 
 ### B. Publish Controls + District Linking
 
