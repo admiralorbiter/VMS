@@ -113,7 +113,7 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-signup-121"></a>**FR-SIGNUP-121** | The website shall allow volunteers to sign up for an event via a public form without authentication. | [TC-130](#tc-130)–[TC-140](#tc-140) | [US-201](user_stories#us-201) |
+| <a id="fr-signup-121"></a>**FR-SIGNUP-121** | The website shall allow volunteers to sign up for an event via a public form **(Form Assembly integration)** without authentication. | [TC-130](#tc-130)–[TC-140](#tc-140) | [US-201](user_stories#us-201) |
 | <a id="fr-signup-122"></a>**FR-SIGNUP-122** | Each signup shall create a participation record associated with the event and the volunteer identity (email-based at minimum). | [TC-140](#tc-140), [TC-142](#tc-142) | [US-201](user_stories#us-201) |
 | <a id="fr-signup-123"></a>**FR-SIGNUP-123** | The system shall send a confirmation email upon successful signup. | [TC-150](#tc-150) | [US-203](user_stories#us-203) |
 | <a id="fr-signup-124"></a>**FR-SIGNUP-124** | The system shall send a calendar invite upon successful signup. | [TC-151](#tc-151) | [US-203](user_stories#us-203) |

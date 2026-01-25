@@ -65,10 +65,10 @@ Event creation, Website display, Volunteer signup, and Email notifications.
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-130"></a>**TC-130** | Required fields | Blocked with clear error | Manual | TBD |
-| <a id="tc-131"></a>**TC-131** | Email format | Invalid rejected | Manual | TBD |
-| <a id="tc-132"></a>**TC-132** | Dropdown validation | Tampered values rejected | Manual | TBD |
-| <a id="tc-133"></a>**TC-133** | Data sanitized | Whitespace trimmed, no XSS | Manual | TBD |
+| <a id="tc-130"></a>**TC-130** | Required fields (Form Assembly) | Blocked with clear error | Manual | 2026-01-24 |
+| <a id="tc-131"></a>**TC-131** | Email format (Form Assembly) | Invalid rejected | Manual | 2026-01-24 |
+| <a id="tc-132"></a>**TC-132** | Dropdown validation (SF Picklists) | Tampered values rejected | Manual | 2026-01-24 |
+| <a id="tc-133"></a>**TC-133** | Data sanitized (Salesforce) | Whitespace trimmed, no XSS | Manual | 2026-01-24 |
 
 ### D. Persistence + Email
 

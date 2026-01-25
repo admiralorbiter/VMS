@@ -46,6 +46,8 @@ Pathful (virtual signup + attendance export)
 └──────────export──────────► Polaris Import ──► Teacher progress
 
 District Roster Import ──────────────────────► Polaris ──► Dashboards + Magic Links
+
+Public Signup (Form Assembly) ──API──► Salesforce ──Sync──► Polaris
 ```
 
 **Integration Details:**
@@ -54,8 +56,8 @@ District Roster Import ───────────────────
 - **VolunTeach → Website**: API for event listings, volunteer signup
 - **SF → Polaris**: Daily ETL imports (events, volunteers, students, organizations, history)
 - **Pathful → Polaris**: Virtual session data via Google Sheets import
-- **Website → Polaris**: Volunteer signup creates Volunteer records
-- **Gmail → SF → Polaris**: Email logging syncs to Polaris History
+- **Website (Form Assembly) → Salesforce**: Volunteer signup creates Contact/Participation in SF
+- **Salesforce → Polaris**: Daily sync imports new volunteer records
 
 ## Source of Truth Ownership
 
@@ -211,13 +213,13 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 
 ### VolunTeach → Website
 
-**Purpose:** Display events and capture volunteer signups
+**Purpose:** Display events and direct users to the Form Assembly signup form.
 
 **Flow:**
-1. VolunTeach API provides event listings
+1. VolunTeach API provides event listings (including `registration_link`)
 2. Website displays events based on visibility settings
-3. Volunteers sign up via website forms
-4. Signup data flows to Polaris (and optionally Salesforce)
+3. **"Sign Up" button** links directly to the Form Assembly URL provided by Salesforce
+4. User submits form → Data goes to Salesforce → Polaris Syncs daily
 
 **Visibility Rules:**
 - `inperson_page_visible = True`: Event appears on public in-person page
@@ -289,14 +291,14 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 **Purpose:** Create volunteer records from public signups
 
 **Flow:**
-1. Volunteer signs up on website
-2. Form data creates Volunteer record in Polaris
-3. Deduplication by normalized email
-4. May sync to Salesforce separately
+1. Volunteer signs up on website (Form Assembly form)
+2. Form data creates Contact/Participation in Salesforce
+3. Polaris daily sync imports the new record
+4. Deduplication by normalized email
 
 **Implementation:**
-- Forms: `forms.py`
-- Routes: `routes/volunteers/routes.py`
+- Form: Form Assembly integration (managed externally)
+- Import: `routes/volunteers/routes.py` (via Salesforce Sync)
 - Reference: [Field Mappings - Website Signup](field_mappings#2-website-signup--sf--polaris)
 
 ### District Roster Import → Polaris
@@ -343,12 +345,12 @@ graph LR
 
 ```mermaid
 graph LR
-    STAFF[Staff] -->|Create| SF[Salesforce Event]
-    SF -->|Hourly Sync| VT[VolunTeach]
-    STAFF -->|Configure| VT
-    VT -->|API| WEB[Website]
-    VOL[Volunteer] -->|Signup| WEB
-    WEB -->|Create| POL[Polaris Volunteer]
+    STAFF[Staff] -->|Create + Form Gen| SF[Salesforce]
+    SF -->|Sync Link| VT[VolunTeach]
+    VT -->|API w/ Link| WEB[Website]
+    VOL[Volunteer] -->|Click Sign Up| FORM[Form Assembly]
+    FORM -->|Submit| SF
+    SF -->|Daily Sync| POL[Polaris]
 ```
 
 ## System URLs
