@@ -372,6 +372,7 @@ def volunteers():
                 Volunteer.organization_name.ilike(search_term),
                 Volunteer.title.ilike(search_term),
                 Volunteer.department.ilike(search_term),
+                Volunteer.industry.ilike(search_term),
                 # Search related organization fields
                 Organization.name.ilike(search_term),
                 VolunteerOrganization.role.ilike(search_term),
@@ -387,7 +388,20 @@ def volunteers():
         query = query.join(Volunteer.skills).filter(Skill.name.ilike(search_term))
 
     if current_filters.get("local_status"):
-        query = query.filter(Volunteer.local_status == current_filters["local_status"])
+        status_val = current_filters["local_status"]
+        # Map frontend values to Enum keys
+        if status_val == "true":
+            status_val = "local"
+        elif status_val == "false":
+            status_val = "non_local"
+
+        try:
+            status_enum = LocalStatusEnum[status_val]
+            query = query.filter(Volunteer.local_status == status_enum)
+        except KeyError:
+            # If invalid status provided, return no results (or ignore)
+            # Returning no results is safer for filtering
+            query = query.filter(db.false())
 
     if current_filters.get("connector_only"):
         query = query.filter(
