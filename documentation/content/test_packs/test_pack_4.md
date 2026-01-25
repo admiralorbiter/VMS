@@ -31,7 +31,7 @@ Search + communication history + sync health
 | <a id="tc-305"></a>**TC-305** | Combined filters | Intersection works | Manual | TBD |
 | <a id="tc-306"></a>**TC-306** | Role filter | Returns matching volunteers | Automated | 2026-01-25 |
 | <a id="tc-307"></a>**TC-307** | Empty search results | Clear message displayed | Automated | 2026-01-25 |
-| <a id="tc-308"></a>**TC-308** | Search performance | Results load within acceptable time | Manual | TBD |
+| <a id="tc-308"></a>**TC-308** | Search performance | Results load within acceptable time | Automated | 2026-01-25 |
 
 ### B. Virtual-Only
 

@@ -249,3 +249,20 @@ def test_empty_search_results_tc307(client, auth_headers, recruitment_data):
     content = response.data.decode()
     assert "No volunteers found matching your search criteria" in content
     assert "Victor" not in content
+
+
+def test_search_performance_tc308(client, auth_headers, recruitment_data):
+    """TC-308: Search performance -> Results load within acceptable time (<1s)"""
+    import time
+
+    start_time = time.time()
+    response = client.get(
+        "/reports/recruitment/search?search=Tech", headers=auth_headers
+    )
+    end_time = time.time()
+    duration = end_time - start_time
+
+    assert response.status_code == 200
+    # Assert response time is reasonable (e.g., < 1000ms for this small dataset integration test)
+    # real performance testing would be load testing, but this verifies no obvious regression/timeout
+    assert duration < 1.0, f"Search took too long: {duration:.3f}s"
