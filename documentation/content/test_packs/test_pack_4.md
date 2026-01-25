@@ -21,55 +21,55 @@ Search + communication history + sync health
 
 ### A. Volunteer Search
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-300"></a>**TC-300** | Name search "Vict" | Returns V1 only |
-| <a id="tc-301"></a>**TC-301** | Org filter: TechCorp | Returns V1, V2 |
-| <a id="tc-302"></a>**TC-302** | Skill filter | Returns matching volunteers |
-| <a id="tc-303"></a>**TC-303** | Career type: Education | Returns V3 |
-| <a id="tc-304"></a>**TC-304** | Local filter | Returns V1, V3, V4 |
-| <a id="tc-305"></a>**TC-305** | Combined filters | Intersection works |
-| <a id="tc-306"></a>**TC-306** | Role filter | Returns matching volunteers |
-| <a id="tc-307"></a>**TC-307** | Empty search results | Clear message displayed |
-| <a id="tc-308"></a>**TC-308** | Search performance | Results load within acceptable time |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-300"></a>**TC-300** | Name search "Vict" | Returns V1 only | Automated | 2026-01-25 |
+| <a id="tc-301"></a>**TC-301** | Org filter: TechCorp | Returns V1, V2 | Automated | 2026-01-25 |
+| <a id="tc-302"></a>**TC-302** | Skill filter | Returns matching volunteers | Automated | 2026-01-25 |
+| <a id="tc-303"></a>**TC-303** | Career type: Education | Returns V3 | Automated | 2026-01-25 |
+| <a id="tc-304"></a>**TC-304** | Local filter | Returns V1, V3, V4 | Automated | 2026-01-25 |
+| <a id="tc-305"></a>**TC-305** | Combined filters | Intersection works | Manual | TBD |
+| <a id="tc-306"></a>**TC-306** | Role filter | Returns matching volunteers | Automated | 2026-01-25 |
+| <a id="tc-307"></a>**TC-307** | Empty search results | Clear message displayed | Automated | 2026-01-25 |
+| <a id="tc-308"></a>**TC-308** | Search performance | Results load within acceptable time | Manual | TBD |
 
 ### B. Virtual-Only
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-320"></a>**TC-320** | Virtual-only filter | Returns V2 only |
-| <a id="tc-321"></a>**TC-321** | Excludes mixed | V1 not included |
-| <a id="tc-322"></a>**TC-322** | Excludes in-person only | V3 not included |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-320"></a>**TC-320** | Virtual-only filter | Returns V2 only | Automated | 2026-01-25 |
+| <a id="tc-321"></a>**TC-321** | Excludes mixed | V1 not included | Manual | TBD |
+| <a id="tc-322"></a>**TC-322** | Excludes in-person only | V3 not included | Manual | TBD |
 
 ### C. Communication History
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-360"></a>**TC-360** | Comm history displays | V1 shows logged emails |
-| <a id="tc-361"></a>**TC-361** | Last contacted correct | Matches most recent email |
-| <a id="tc-362"></a>**TC-362** | Correct association | V2's email on V2, not V1 |
-| <a id="tc-363"></a>**TC-363** | No comms state | V3 shows "No history logged" |
-| <a id="tc-364"></a>**TC-364** | Sync failure state | Shows error, not "no comms" |
-| <a id="tc-365"></a>**TC-365** | Idempotency | Re-sync = no duplicates |
-| <a id="tc-366"></a>**TC-366** | Sync health visibility | Clear indication of sync status |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-360"></a>**TC-360** | Comm history displays | V1 shows logged emails | Manual | TBD |
+| <a id="tc-361"></a>**TC-361** | Last contacted correct | Matches most recent email | Manual | TBD |
+| <a id="tc-362"></a>**TC-362** | Correct association | V2's email on V2, not V1 | Manual | TBD |
+| <a id="tc-363"></a>**TC-363** | No comms state | V3 shows "No history logged" | Manual | TBD |
+| <a id="tc-364"></a>**TC-364** | Sync failure state | Shows error, not "no comms" | Manual | TBD |
+| <a id="tc-365"></a>**TC-365** | Idempotency | Re-sync = no duplicates | Manual | TBD |
+| <a id="tc-366"></a>**TC-366** | Sync health visibility | Clear indication of sync status | Manual | TBD |
 
 ### D. Participation History
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-340"></a>**TC-340** | Participation history displays | V1 shows both in-person and virtual events |
-| <a id="tc-341"></a>**TC-341** | Most recent date correct | Matches latest participation |
-| <a id="tc-342"></a>**TC-342** | Event count accurate | Correct number of events displayed |
-| <a id="tc-343"></a>**TC-343** | No participation state | V4 shows appropriate message |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-340"></a>**TC-340** | Participation history displays | V1 shows both in-person and virtual events | Manual | TBD |
+| <a id="tc-341"></a>**TC-341** | Most recent date correct | Matches latest participation | Manual | TBD |
+| <a id="tc-342"></a>**TC-342** | Event count accurate | Correct number of events displayed | Manual | TBD |
+| <a id="tc-343"></a>**TC-343** | No participation state | V4 shows appropriate message | Manual | TBD |
 
 ### E. Recruitment Notes
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-380"></a>**TC-380** | Record recruitment note | Note saved and displayed |
-| <a id="tc-381"></a>**TC-381** | Note outcome tracking | Outcome recorded correctly |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-380"></a>**TC-380** | Record recruitment note | Note saved and displayed | Manual | TBD |
+| <a id="tc-381"></a>**TC-381** | Note outcome tracking | Outcome recorded correctly | Manual | TBD |
 
 ---
 
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*
