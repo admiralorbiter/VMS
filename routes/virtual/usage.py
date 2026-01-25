@@ -2881,6 +2881,149 @@ def load_usage_routes():
 
         return jsonify(results)
 
+    @virtual_bp.route("/usage/api/create-teacher", methods=["POST"])
+    @login_required
+    def create_teacher_api():
+        """Create a new teacher immediately via API."""
+        from flask import jsonify
+
+        from routes.virtual.utils import get_or_create_district, get_or_create_school
+
+        def _norm(s):
+            return s.strip() if s else ""
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        f_name = _norm(data.get("first_name", ""))
+        l_name = _norm(data.get("last_name", ""))
+        school_name = _norm(data.get("school", ""))
+
+        if not f_name or not l_name:
+            return jsonify({"error": "First and Last Name are required"}), 400
+
+        try:
+            # Check for existing teacher
+            teacher = Teacher.query.filter(
+                func.lower(Teacher.first_name) == func.lower(f_name),
+                func.lower(Teacher.last_name) == func.lower(l_name),
+            ).first()
+
+            if not teacher:
+                teacher = Teacher(first_name=f_name, last_name=l_name, middle_name="")
+                if school_name:
+                    district_obj = get_or_create_district(None)
+                    school_obj = get_or_create_school(school_name, district_obj)
+                    if school_obj:
+                        teacher.school_id = school_obj.id
+                db.session.add(teacher)
+                db.session.commit()
+
+            # Re-query ensure relationships loaded (if needed)
+            school_res = teacher.school.name if teacher.school else ""
+            district_res = (
+                teacher.school.district.name
+                if teacher.school and teacher.school.district
+                else ""
+            )
+
+            return jsonify(
+                {
+                    "success": True,
+                    "id": teacher.id,
+                    "name": f"{teacher.first_name} {teacher.last_name}",
+                    "school": school_res,
+                    "district": district_res,
+                }
+            )
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    @virtual_bp.route("/usage/api/create-presenter", methods=["POST"])
+    @login_required
+    def create_presenter_api():
+        """Create a new presenter/volunteer immediately via API."""
+        from flask import jsonify
+
+        def _norm(s):
+            return s.strip() if s else ""
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        f_name = _norm(data.get("first_name", ""))
+        l_name = _norm(data.get("last_name", ""))
+        org_name = _norm(data.get("organization", ""))
+
+        if not f_name:
+            return jsonify({"error": "First Name is required"}), 400
+
+        try:
+            # Check for existing
+            volunteer = Volunteer.query.filter(
+                func.lower(Volunteer.first_name) == func.lower(f_name),
+                func.lower(Volunteer.last_name) == func.lower(l_name),
+            ).first()
+
+            if not volunteer:
+                volunteer = Volunteer(first_name=f_name, last_name=l_name)
+                db.session.add(volunteer)
+                db.session.commit()
+
+            # Handle Org
+            if org_name:
+                org = Organization.query.filter(
+                    func.lower(Organization.name) == func.lower(org_name)
+                ).first()
+                if not org:
+                    org = Organization(name=org_name)
+                    db.session.add(org)
+                    db.session.commit()
+
+                vol_org = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, organization_id=org.id
+                ).first()
+                if not vol_org:
+                    has_primary = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, is_primary=True
+                    ).first()
+                    vol_org = VolunteerOrganization(
+                        volunteer_id=volunteer.id,
+                        organization_id=org.id,
+                        role="Professional",
+                        is_primary=not has_primary,
+                        status="Current",
+                    )
+                    db.session.add(vol_org)
+                    db.session.commit()
+
+            # Get primary org for display
+            display_org = ""
+            primary_vol_org = VolunteerOrganization.query.filter_by(
+                volunteer_id=volunteer.id, is_primary=True
+            ).first()
+            if primary_vol_org and primary_vol_org.organization:
+                display_org = primary_vol_org.organization.name
+            elif not display_org and org_name:
+                display_org = org_name
+
+            return jsonify(
+                {
+                    "success": True,
+                    "id": volunteer.id,
+                    "name": f"{volunteer.first_name} {volunteer.last_name}",
+                    "organization": display_org,
+                }
+            )
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
     @virtual_bp.route("/usage/update-status/<int:event_id>", methods=["POST"])
     @login_required
     @admin_required
@@ -3107,6 +3250,54 @@ def load_usage_routes():
             )
             db.session.add(reg)
 
+        # ---- Quick Create Teachers (Edit) ----
+        new_t_first = request.form.getlist("new_teacher_first_name[]")
+        new_t_last = request.form.getlist("new_teacher_last_name[]")
+        new_t_school = request.form.getlist("new_teacher_school[]")
+
+        for idx, f_name in enumerate(new_t_first):
+            f_name = _norm(f_name)
+            l_name = _norm(new_t_last[idx]) if idx < len(new_t_last) else ""
+            if not f_name or not l_name:
+                continue
+
+            school_name = _norm(new_t_school[idx]) if idx < len(new_t_school) else ""
+
+            # Check if teacher already exists to avoid dupes
+            teacher = Teacher.query.filter(
+                func.lower(Teacher.first_name) == func.lower(f_name),
+                func.lower(Teacher.last_name) == func.lower(l_name),
+            ).first()
+
+            if not teacher:
+                teacher = Teacher(first_name=f_name, last_name=l_name, middle_name="")
+                if school_name:
+                    district_obj = get_or_create_district(None)
+                    school_obj = get_or_create_school(school_name, district_obj)
+                    if school_obj:
+                        teacher.school_id = school_obj.id
+                        if school_obj.district:
+                            districts_set.add(school_obj.district.name)
+                db.session.add(teacher)
+                db.session.flush()
+
+            if teacher.school and teacher.school.district:
+                districts_set.add(teacher.school.district.name)
+
+            # Link to event if not already linked
+            existing_reg = EventTeacher.query.filter_by(
+                event_id=event.id, teacher_id=teacher.id
+            ).first()
+            if not existing_reg:
+                reg = EventTeacher(
+                    event_id=event.id,
+                    teacher_id=teacher.id,
+                    status="registered",
+                    is_simulcast=False,
+                    attendance_confirmed_at=None,
+                )
+                db.session.add(reg)
+
         # Update presenters (remove old participations, add new)
         EventParticipation.query.filter_by(event_id=event.id).delete()
         event.volunteers.clear()
@@ -3170,6 +3361,61 @@ def load_usage_routes():
                     )
                     db.session.add(vol_org)
 
+            event.add_volunteer(
+                volunteer, participant_type="Presenter", status="Confirmed"
+            )
+
+        # ---- Quick Create Presenters (Edit) ----
+        new_p_first = request.form.getlist("new_presenter_first_name[]")
+        new_p_last = request.form.getlist("new_presenter_last_name[]")
+        new_p_org = request.form.getlist("new_presenter_org[]")
+
+        for idx, f_name in enumerate(new_p_first):
+            f_name = _norm(f_name)
+            l_name = _norm(new_p_last[idx]) if idx < len(new_p_last) else ""
+            if not f_name:
+                continue
+
+            org_name = _norm(new_p_org[idx]) if idx < len(new_p_org) else ""
+
+            # Check if exists
+            volunteer = Volunteer.query.filter(
+                func.lower(Volunteer.first_name) == func.lower(f_name),
+                func.lower(Volunteer.last_name) == func.lower(l_name),
+            ).first()
+
+            if not volunteer:
+                volunteer = Volunteer(first_name=f_name, last_name=l_name)
+                db.session.add(volunteer)
+                db.session.flush()
+
+            # Handle Organization
+            if org_name:
+                org = Organization.query.filter(
+                    func.lower(Organization.name) == func.lower(org_name)
+                ).first()
+                if not org:
+                    org = Organization(name=org_name)
+                    db.session.add(org)
+                    db.session.flush()
+
+                vol_org = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, organization_id=org.id
+                ).first()
+                if not vol_org:
+                    has_primary = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, is_primary=True
+                    ).first()
+                    vol_org = VolunteerOrganization(
+                        volunteer_id=volunteer.id,
+                        organization_id=org.id,
+                        role="Professional",
+                        is_primary=not has_primary,
+                        status="Current",
+                    )
+                    db.session.add(vol_org)
+
+            # Link to event
             event.add_volunteer(
                 volunteer, participant_type="Presenter", status="Confirmed"
             )
@@ -3397,6 +3643,60 @@ def load_usage_routes():
                     )
                     db.session.add(reg)
 
+            # ---- Quick Create Teachers (Create) ----
+            new_t_first = request.form.getlist("new_teacher_first_name[]")
+            new_t_last = request.form.getlist("new_teacher_last_name[]")
+            new_t_school = request.form.getlist("new_teacher_school[]")
+
+            for idx, f_name in enumerate(new_t_first):
+                f_name = _norm(f_name)
+                l_name = _norm(new_t_last[idx]) if idx < len(new_t_last) else ""
+                if not f_name or not l_name:
+                    continue
+
+                school_name = (
+                    _norm(new_t_school[idx]) if idx < len(new_t_school) else ""
+                )
+
+                # Check if teacher already exists to avoid dupes
+                teacher = Teacher.query.filter(
+                    func.lower(Teacher.first_name) == func.lower(f_name),
+                    func.lower(Teacher.last_name) == func.lower(l_name),
+                ).first()
+
+                if not teacher:
+                    teacher = Teacher(
+                        first_name=f_name, last_name=l_name, middle_name=""
+                    )
+                    if school_name:
+                        district_obj = get_or_create_district(
+                            None
+                        )  # Will be set from school
+                        school_obj = get_or_create_school(school_name, district_obj)
+                        if school_obj:
+                            teacher.school_id = school_obj.id
+                            if school_obj.district:
+                                districts_set.add(school_obj.district.name)
+                    db.session.add(teacher)
+                    db.session.flush()
+
+                if teacher.school and teacher.school.district:
+                    districts_set.add(teacher.school.district.name)
+
+                # Create registration if not exists
+                reg = EventTeacher.query.filter_by(
+                    event_id=event.id, teacher_id=teacher.id
+                ).first()
+                if not reg:
+                    reg = EventTeacher(
+                        event_id=event.id,
+                        teacher_id=teacher.id,
+                        status="registered",
+                        is_simulcast=False,
+                        attendance_confirmed_at=None,
+                    )
+                    db.session.add(reg)
+
             # Attach districts to event
             for district_name in districts_set:
                 district_obj = get_or_create_district(district_name)
@@ -3481,6 +3781,60 @@ def load_usage_routes():
                         db.session.add(vol_org)
 
                 # Link as presenter participation
+                event.add_volunteer(
+                    volunteer, participant_type="Presenter", status="Confirmed"
+                )
+
+            # ---- Quick Create Presenters (Create) ----
+            new_p_first = request.form.getlist("new_presenter_first_name[]")
+            new_p_last = request.form.getlist("new_presenter_last_name[]")
+            new_p_org = request.form.getlist("new_presenter_org[]")
+
+            for idx, f_name in enumerate(new_p_first):
+                f_name = _norm(f_name)
+                l_name = _norm(new_p_last[idx]) if idx < len(new_p_last) else ""
+                if not f_name:
+                    continue
+
+                org_name = _norm(new_p_org[idx]) if idx < len(new_p_org) else ""
+
+                # Check if exists
+                volunteer = Volunteer.query.filter(
+                    func.lower(Volunteer.first_name) == func.lower(f_name),
+                    func.lower(Volunteer.last_name) == func.lower(l_name),
+                ).first()
+
+                if not volunteer:
+                    volunteer = Volunteer(first_name=f_name, last_name=l_name)
+                    db.session.add(volunteer)
+                    db.session.flush()
+
+                # Handle Organization
+                if org_name:
+                    org = Organization.query.filter(
+                        func.lower(Organization.name) == func.lower(org_name)
+                    ).first()
+                    if not org:
+                        org = Organization(name=org_name)
+                        db.session.add(org)
+                        db.session.flush()
+
+                    vol_org = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, organization_id=org.id
+                    ).first()
+                    if not vol_org:
+                        has_primary = VolunteerOrganization.query.filter_by(
+                            volunteer_id=volunteer.id, is_primary=True
+                        ).first()
+                        vol_org = VolunteerOrganization(
+                            volunteer_id=volunteer.id,
+                            organization_id=org.id,
+                            role="Professional",
+                            is_primary=not has_primary,
+                            status="Current",
+                        )
+                        db.session.add(vol_org)
+
                 event.add_volunteer(
                     volunteer, participant_type="Presenter", status="Confirmed"
                 )

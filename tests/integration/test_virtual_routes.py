@@ -103,6 +103,76 @@ def test_virtual_session_creation_robust(client, test_admin):
     # assert b"Virtual session created" in response.data
 
 
+def test_virtual_session_quick_create(client, test_admin):
+    """
+    Test virtual session creation with Quick Create for Teacher and Presenter (TC-206, TC-207).
+    Verifies that local records are created and linked.
+    """
+    login_resp = client.post(
+        "/login", data={"username": "admin", "password": "admin123"}
+    )
+    if login_resp.status_code != 302:
+        pytest.skip("Admin login failed")
+
+    admin_headers = {"Cookie": login_resp.headers.get("Set-Cookie", "")}
+
+    session_title = "Quick Create Test Session"
+    session_date = (datetime.now() + timedelta(days=31)).strftime("%Y-%m-%d")
+
+    payload = {
+        "year": "2025-2026",
+        "title": session_title,
+        "date": session_date,
+        "time": "14:00",
+        "duration": "45",
+        "session_type": "Workshop",
+        "teacher_id[]": [],
+        "presenter_id[]": [],
+        # Quick Create Teacher
+        "new_teacher_first_name[]": ["QuickFirst"],
+        "new_teacher_last_name[]": ["QuickLast"],
+        "new_teacher_school[]": ["Quick School"],
+        # Quick Create Presenter
+        "new_presenter_first_name[]": ["QuickPFirst"],
+        "new_presenter_last_name[]": ["QuickPLast"],
+        "new_presenter_org[]": ["Quick Org"],
+    }
+
+    response = client.post(
+        "/virtual/usage/create",
+        data=payload,
+        headers=admin_headers,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    with client.application.app_context():
+        event = Event.query.filter_by(title=session_title).first()
+        assert event is not None
+
+        # Verify Teacher
+        assert len(event.teacher_registrations) == 1
+        teacher = event.teacher_registrations[0].teacher
+        assert teacher.first_name == "QuickFirst"
+        assert teacher.last_name == "QuickLast"
+        assert teacher.school.name == "Quick School"
+
+        # Verify Presenter
+        assert len(event.volunteers) == 1
+        volunteer = event.volunteers[0]
+        assert volunteer.first_name == "QuickPFirst"
+        assert volunteer.last_name == "QuickPLast"
+
+        # Verify Org
+        vol_org = [
+            vo
+            for vo in volunteer.volunteer_organizations
+            if vo.organization.name == "Quick Org"
+        ]
+        assert len(vol_org) > 0
+
+
 # --- Search API Tests (TC-205) ---
 
 
