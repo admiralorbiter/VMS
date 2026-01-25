@@ -477,7 +477,7 @@ function processRenderedContent() {
         // Handle cross-page links with anchors (e.g., requirements#fr-501 or test-pack-2#tc-100)
         if (href.includes('#') && !href.startsWith('#')) {
             const [pagePart, anchorPart] = href.split('#');
-            const pageHash = pagePart.replace(/_/g, '-');
+            const pageHash = pagePart.replace(/_/g, '-').replace(/\//g, '-');
 
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -519,11 +519,12 @@ function processRenderedContent() {
             });
         }
         // Handle relative page links without anchors (e.g., user_stories, requirements)
-        else if (!href.includes('/') || href.startsWith('./') || href.startsWith('../')) {
+        // Allow paths with slashes but exclude absolute paths
+        else if (!href.startsWith('/') && !href.startsWith('http')) {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 let pageName = href.replace(/^\.\//, '').replace(/^\.\.\//, '');
-                const pageHash = pageName.replace(/_/g, '-');
+                const pageHash = pageName.replace(/_/g, '-').replace(/\//g, '-');
 
                 if (PAGE_MANIFEST[pageHash]) {
                     // Valid page - navigate

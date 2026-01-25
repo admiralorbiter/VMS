@@ -1,21 +1,59 @@
 # Volunteer Recruitment
 
-This guide assists staff in finding, vetting, and managing volunteers for events.
+This guide assists staff in finding, vetting, and managing volunteers for events using the Volunteer Directory and Advanced Recruitment Search.
 
 ## 1. Volunteer Directory
 
--   **Access**: `Volunteers > Directory`
--   **Features**:
-    -   **Search**: By Name, Email, or Organization.
-    -   **Filters**: Skills, Career Type, Local vs. Non-Local.
-    -   **History**: See a volunteer's past participation.
+The Volunteer Directory is the primary interface for browsing and filtering the volunteer database.
+
+![Volunteer Directory](content/images/vol_directory.png)
+
+### Key Features
+-   **Access**: Click `Volunteers` in the top navigation.
+-   **Standard Filters**:
+    -   **Name Search**: Search by first or last name.
+    -   **Organization/Role**: Search by Organization Name, Job Title, Department, or Industry.
+    -   **Local Status**: Filter by "Local" (in-person available) or "Non-Local".
+    -   **Email**: Search by email address.
+    -   **Skills**: Search for specific skills (e.g., "Python", "Public Speaking").
+-   **Connector Only**: Check this box to filter for volunteers who are Connectors (Virtual).
+-   **Actions**:
+    -   **Apply Filters**: Updates the list based on criteria.
+    -   **Reset**: Clears all filters.
+    -   **Advanced Search**: Opens the specialized Recruitment Search tool.
 
 ## 2. Advanced Search & Matching
 
-To find the right volunteer for a specific need:
-1.  Use **Advanced Filters** to narrow down by Skills (e.g., "Engineering", "Coding").
-2.  **Intelligent Matching**: The system ranks candidates based on keyword matches and availability.
-3.  **Local Status**: Use the "Local Only" filter for in-person events.
+The Recruitment Search tool allows for powerful, multi-criteria searches to find the perfect candidates for specific opportunities.
+
+![Advanced Search](content/images/adv_search.png)
+
+### Search Fields & Capabilities
+
+#### Volunteer Information
+-   **First Name**: Exact or partial matches.
+-   **Last Name**: Exact or partial matches.
+-   **Title/Position**: Matches against job title or role.
+
+#### Organization & Affiliation
+-   **Organization Name**: Matches company, school, or institution names.
+
+#### Skills & Expertise
+-   **Skill Names**: Matches specific skills (e.g., Programming, Teaching, Mentoring).
+
+#### Event Participation
+-   **Event Titles**: Searches past events the volunteer participated in.
+
+### Search Modes
+-   **Wide Search (OR)**: Finds volunteers matching *any* of the entered terms. Good for broad discovery.
+    -   *Example*: "tech edu" finds volunteers in Technology OR Education.
+-   **Narrow Search (AND)**: Finds volunteers matching *all* entered terms. Good for specific requirements.
+    -   *Example*: "tech edu" finds volunteers in BOTH Technology AND Education.
+
+### Search Tips
+-   **Partial Matches**: "prog" will find "programming", "programmer", etc.
+-   **Multiple Terms**: Use spaces to separate different search concepts.
+-   **Intelligent Matching**: Results are ranked by relevance score (keyword matches, availability, and history).
 
 ## 3. Managing Profiles
 
