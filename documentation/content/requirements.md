@@ -148,6 +148,8 @@ Each requirement links to:
 | <a id="fr-virtual-219"></a>**FR-VIRTUAL-219** | The presenter recruitment view shall display a success message when all upcoming virtual sessions have presenters assigned. | Context only | [US-307](user_stories#us-307) |
 | <a id="fr-virtual-220"></a>**FR-VIRTUAL-220** | The system shall support importing historical virtual event data from Salesforce (e.g., 2–4 years of past events). | [TC-210](test-pack-2#tc-210) | *Technical requirement* |
 | <a id="fr-virtual-221"></a>**FR-VIRTUAL-221** | Historical virtual import shall preserve event-participant relationships and maintain data integrity. | [TC-211](test-pack-2#tc-211) | *Technical requirement* |
+| <a id="fr-virtual-222"></a>**FR-VIRTUAL-222** | The system shall allow creation of new **teacher records** locally in Polaris during virtual session creation if the teacher is not found in search. | [TC-206](test-pack-3#tc-206) | [US-308](user_stories#us-308) |
+| <a id="fr-virtual-223"></a>**FR-VIRTUAL-223** | The system shall allow creation of new **presenter/volunteer records** locally in Polaris during virtual session creation if the presenter is not found in search. | [TC-207](test-pack-3#tc-207) | [US-309](user_stories#us-309) |
 
 ## <a id="volunteer-search-recruitment--communication-history"></a>7.4 Volunteer Search, Recruitment & Communication History
 
@@ -321,7 +323,11 @@ This section provides a comprehensive view of the relationships between Function
 | FR-VIRTUAL-203 | [US-303](user_stories#us-303) | Tag presenters |
 | FR-VIRTUAL-204 | [US-306](user_stories#us-306) | Historical import |
 | FR-VIRTUAL-206 | [US-304](user_stories#us-304) | Pathful import |
+| FR-VIRTUAL-204 | [US-306](user_stories#us-306) | Historical import |
+| FR-VIRTUAL-206 | [US-304](user_stories#us-304) | Pathful import |
 | FR-VIRTUAL-208 | [US-305](user_stories#us-305) | Local vs non-local |
+| FR-VIRTUAL-222 | [US-308](user_stories#us-308) | Quick Create Teacher |
+| FR-VIRTUAL-223 | [US-309](user_stories#us-309) | Quick Create Presenter |
 | FR-VIRTUAL-210-219 | [US-307](user_stories#us-307) | Presenter recruitment |
 | FR-VIRTUAL-205, 207, 209 | *Context/Near-term* | Future features |
 | **Volunteer Recruitment** | | |
@@ -395,6 +401,8 @@ This section provides a comprehensive view of the relationships between Function
 | US-305 | FR-VIRTUAL-208 |
 | US-306 | FR-VIRTUAL-204 |
 | US-307 | FR-VIRTUAL-210 through 219 |
+| US-308 | FR-VIRTUAL-222 |
+| US-309 | FR-VIRTUAL-223 |
 | US-401 | FR-RECRUIT-301, 302, 303 |
 | US-402 | FR-RECRUIT-304 |
 | US-403 | FR-RECRUIT-306 |

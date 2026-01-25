@@ -83,7 +83,9 @@ Use cases describe complete workflows that span multiple systems and features. T
 1. Staff logs into Polaris
 2. Creates virtual event
 3. Tags teachers (Salesforce-linked)
+    - *Alternative Flow*: If teacher not found, creates new teacher locally via "Quick Create".
 4. Tags presenters/volunteers (Salesforce-linked)
+    - *Alternative Flow*: If presenter not found, creates new volunteer locally via "Quick Create".
 5. Saves event
 
 **Related:**

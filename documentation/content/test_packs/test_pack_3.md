@@ -27,6 +27,8 @@ Polaris creation + Pathful import + historical data
 | <a id="tc-203"></a>**TC-203** | Tag presenter | Link persists | Automated | 2026-01-24 |
 | <a id="tc-204"></a>**TC-204** | Multi-teacher/presenter | All relationships preserved | Automated | 2026-01-24 |
 | <a id="tc-205"></a>**TC-205** | Synced record search failure | Clear error shown | Automated | 2026-01-24 |
+| <a id="tc-206"></a>**TC-206** | Quick Create Teacher | Teacher created & linked | Manual | TBD |
+| <a id="tc-207"></a>**TC-207** | Quick Create Presenter | Volunteer created & linked | Manual | TBD |
 
 ### B. Local/Non-Local
 

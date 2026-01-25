@@ -229,6 +229,36 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I click "Find Volunteers" button, then I navigate to the volunteer search/recruitment page.
 - Given all upcoming virtual sessions have presenters, then I see a success message "All upcoming virtual sessions have presenters assigned."
 
+### <a id="us-308"></a>US-308: Quick Create Teacher in Virtual Session Flow
+
+**As** internal staff, **I want** to add a new teacher record directly from the virtual session creation form if they don't exist in search results, **So that** I can complete the event setup without navigating away.
+
+**Related Requirements:** [FR-VIRTUAL-222](requirements#fr-virtual-222)
+
+**Related Use Cases:** [UC-4](use_cases#uc-4)
+
+**Acceptance Criteria:**
+
+- Given I search for a teacher and get no results, then I see an option to "Add New Teacher".
+- Given I select "Add New Teacher", then I can enter First Name, Last Name, and School (required).
+- Given I submit the new teacher, then the record is created locally in Polaris and immediately linked to the session.
+- The new teacher is flagged as "Created in Polaris" (not synced from Salesforce).
+
+### <a id="us-309"></a>US-309: Quick Create Presenter in Virtual Session Flow
+
+**As** internal staff, **I want** to add a new presenter/volunteer record directly from the virtual session creation form if they don't exist in search results, **So that** I can tag non-synced or new volunteers immediately.
+
+**Related Requirements:** [FR-VIRTUAL-223](requirements#fr-virtual-223)
+
+**Related Use Cases:** [UC-4](use_cases#uc-4)
+
+**Acceptance Criteria:**
+
+- Given I search for a presenter and get no results, then I see an option to "Add New Presenter".
+- Given I select "Add New Presenter", then I can enter First Name, Last Name, and Organization (required) and Email (optional).
+- Given I submit the new presenter, then the record is created locally in Polaris and immediately linked to the session.
+- The new volunteer is flagged as "Created in Polaris" (not synced from Salesforce).
+
 ## Epic 4: Volunteer Recruitment (Search + History + Communication Logs)
 
 ### <a id="us-401"></a>US-401: Search volunteers with advanced filters
