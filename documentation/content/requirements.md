@@ -127,7 +127,7 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-virtual-201"></a>**FR-VIRTUAL-201** | Polaris shall allow staff to create and maintain virtual event records. | [TC-200](#tc-200), [TC-201](#tc-201) | [US-301](user_stories#us-301) |
+| <a id="fr-virtual-201"></a>**FR-VIRTUAL-201** | Polaris shall allow staff to create and maintain virtual event records. | [TC-200](test-pack-3#tc-200), [TC-201](test-pack-3#tc-201) | [US-301](user_stories#us-301) |
 | <a id="fr-virtual-202"></a>**FR-VIRTUAL-202** | Polaris shall allow staff to search for and tag teachers using Salesforce-linked teacher records. | [TC-202](#tc-202), [TC-204](#tc-204) | [US-302](user_stories#us-302) |
 | <a id="fr-virtual-203"></a>**FR-VIRTUAL-203** | Polaris shall allow staff to search for and tag presenters/volunteers using Salesforce-linked records. | [TC-203](#tc-203), [TC-204](#tc-204) | [US-303](user_stories#us-303) |
 | <a id="fr-virtual-204"></a>**FR-VIRTUAL-204** | The system shall support importing 2–4 years of historical virtual event data from Google Sheets, preserving event–teacher relationships and multi-line mapping. | [TC-270](#tc-270)–[TC-275](#tc-275) | [US-306](user_stories#us-306) |
