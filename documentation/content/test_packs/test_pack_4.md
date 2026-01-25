@@ -45,13 +45,13 @@ Search + communication history + sync health
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-360"></a>**TC-360** | Comm history displays | V1 shows logged emails | Manual | TBD |
-| <a id="tc-361"></a>**TC-361** | Last contacted correct | Matches most recent email | Manual | TBD |
-| <a id="tc-362"></a>**TC-362** | Correct association | V2's email on V2, not V1 | Manual | TBD |
-| <a id="tc-363"></a>**TC-363** | No comms state | V3 shows "No history logged" | Manual | TBD |
-| <a id="tc-364"></a>**TC-364** | Sync failure state | Shows error, not "no comms" | Manual | TBD |
-| <a id="tc-365"></a>**TC-365** | Idempotency | Re-sync = no duplicates | Manual | TBD |
-| <a id="tc-366"></a>**TC-366** | Sync health visibility | Clear indication of sync status | Manual | TBD |
+| <a id="tc-360"></a>**TC-360** | Comm history displays | V1 shows logged emails | Automated | 2026-01-25 |
+| <a id="tc-361"></a>**TC-361** | Last contacted correct | Matches most recent email | Automated | 2026-01-25 |
+| <a id="tc-362"></a>**TC-362** | Correct association | V2's email on V2, not V1 | Automated | 2026-01-25 |
+| <a id="tc-363"></a>**TC-363** | No comms state | V3 shows "No history logged" | Automated | 2026-01-25 |
+| <a id="tc-364"></a>**TC-364** | Sync failure state | Shows error, not "no comms" | Automated <br>(See TP7: TC-201) | 2026-01-23 |
+| <a id="tc-365"></a>**TC-365** | Idempotency | Re-sync = no duplicates | Automated | 2026-01-25 |
+| <a id="tc-366"></a>**TC-366** | Sync health visibility | Clear indication of sync status | Automated <br>(See TP7: TC-162) | 2026-01-23 |
 
 ### D. Participation History
 
