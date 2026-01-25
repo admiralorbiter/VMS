@@ -69,7 +69,7 @@ Public Signup (Form Assembly) ──API──► Salesforce ──Sync──► 
 | In-person page visibility | VolunTeach | Website | `Event.inperson_page_visible` field |
 | District event linking | VolunTeach | Website | `Event.district_links[]` array |
 | Virtual event definition | Polaris | — | Created/managed in Polaris |
-| Virtual attendance/signup | Pathful | Polaris (derived) | Imported via Google Sheets |
+| Virtual attendance/signup | Pathful | Polaris (derived) | Imported via Google Sheets. Pathful sends all reminder emails to prevent duplication. |
 | Teacher roster (eligible set) | Polaris (import) | Dashboards, magic links | `TeacherProgress` table |
 | Student attendance | Salesforce | Polaris (aggregates) | Row-level data in SF, aggregates in Polaris |
 | Communication logs | Salesforce | Polaris | Email logs via Gmail add-on |

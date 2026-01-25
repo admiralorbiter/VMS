@@ -131,7 +131,7 @@ Each requirement links to:
 | <a id="fr-virtual-202"></a>**FR-VIRTUAL-202** | Polaris shall allow staff to search for and tag teachers using locally synced Salesforce-linked teacher records. | [TC-202](test-pack-3#tc-202), [TC-204](test-pack-3#tc-204) | [US-302](user_stories#us-302) |
 | <a id="fr-virtual-203"></a>**FR-VIRTUAL-203** | Polaris shall allow staff to search for and tag presenters/volunteers using locally synced Salesforce-linked records. | [TC-203](test-pack-3#tc-203), [TC-204](test-pack-3#tc-204) | [US-303](user_stories#us-303) |
 | <a id="fr-virtual-204"></a>**FR-VIRTUAL-204** | The system shall support importing 2–4 years of historical virtual event data from Google Sheets, preserving event–teacher relationships and multi-line mapping. | [TC-270](#tc-270)–[TC-275](#tc-275) | [US-306](user_stories#us-306) |
-| <a id="fr-virtual-205"></a>**FR-VIRTUAL-205** | The system shall treat Pathful as the current source for virtual event signup and reminder emails. | Context only | *Context only* |
+
 | <a id="fr-virtual-206"></a>**FR-VIRTUAL-206** | Polaris shall ingest Pathful export data to update virtual attendance and participation tracking. | [TC-250](#tc-250)–[TC-260](#tc-260) | [US-304](user_stories#us-304) |
 | <a id="fr-virtual-207"></a>**FR-VIRTUAL-207** | The system should support automation to pull Pathful exports and load them into Polaris. *Near-term* | [TC-280](#tc-280) | *Near-term* |
 | <a id="fr-virtual-208"></a>**FR-VIRTUAL-208** | The system shall track whether a virtual volunteer is local vs non-local. | [TC-230](#tc-230)–[TC-232](#tc-232) | [US-305](user_stories#us-305) |
@@ -329,7 +329,7 @@ This section provides a comprehensive view of the relationships between Function
 | FR-VIRTUAL-222 | [US-308](user_stories#us-308) | Quick Create Teacher |
 | FR-VIRTUAL-223 | [US-309](user_stories#us-309) | Quick Create Presenter |
 | FR-VIRTUAL-210-219 | [US-307](user_stories#us-307) | Presenter recruitment |
-| FR-VIRTUAL-205, 207, 209 | *Context/Near-term* | Future features |
+| FR-VIRTUAL-207, 209 | *Context/Near-term* | Future features |
 | **Volunteer Recruitment** | | |
 | FR-RECRUIT-301, 302, 303 | [US-401](user_stories#us-401) | Search/filter |
 | FR-RECRUIT-304 | [US-402](user_stories#us-402) | Participation history |
