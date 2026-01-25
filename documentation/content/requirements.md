@@ -114,11 +114,11 @@ Each requirement links to:
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
 | <a id="fr-signup-121"></a>**FR-SIGNUP-121** | The website shall allow volunteers to sign up for an event via a public form **(Form Assembly integration)** without authentication. | [TC-130](#tc-130)–[TC-140](#tc-140) | [US-201](user_stories#us-201) |
-| <a id="fr-signup-122"></a>**FR-SIGNUP-122** | Each signup shall create a participation record associated with the event and the volunteer identity (email-based at minimum). | [TC-140](#tc-140), [TC-142](#tc-142) | [US-201](user_stories#us-201) |
-| <a id="fr-signup-123"></a>**FR-SIGNUP-123** | The system shall send a confirmation email upon successful signup. | [TC-150](#tc-150) | [US-203](user_stories#us-203) |
-| <a id="fr-signup-124"></a>**FR-SIGNUP-124** | The system shall send a calendar invite upon successful signup. | [TC-151](#tc-151) | [US-203](user_stories#us-203) |
+| <a id="fr-signup-122"></a>**FR-SIGNUP-122** | Each signup shall create a participation record **(in Salesforce)** associated with the event and the volunteer identity. | [TC-140](#tc-140), [TC-142](#tc-142) | [US-201](user_stories#us-201) |
+| <a id="fr-signup-123"></a>**FR-SIGNUP-123** | The system **(Salesforce)** shall send a confirmation email upon successful signup. | [TC-150](#tc-150) | [US-203](user_stories#us-203) |
+| <a id="fr-signup-124"></a>**FR-SIGNUP-124** | The system **(Salesforce)** shall send a calendar invite upon successful signup. | [TC-151](#tc-151) | [US-203](user_stories#us-203) |
 | <a id="fr-signup-125"></a>**FR-SIGNUP-125** | The calendar invite shall include event details and location/map information derived from the Salesforce event record. | [TC-152](#tc-152) | [US-203](user_stories#us-203) |
-| <a id="fr-signup-126"></a>**FR-SIGNUP-126** | The signup form shall collect: First Name, Last Name, Email, Organization, Title, Volunteer Skills (dropdown), Age Group (dropdown), Highest Education Attainment (dropdown), Gender (dropdown), Race/Ethnicity (dropdown). | [TC-130](#tc-130)–[TC-132](#tc-132) | [US-202](user_stories#us-202) |
+| <a id="fr-signup-126"></a>**FR-SIGNUP-126** | The signup form **(Form Assembly)** shall collect: First Name, Last Name, Email, Organization, Title, Volunteer Skills (dropdown), Age Group (dropdown), Highest Education Attainment (dropdown), Gender (dropdown), Race/Ethnicity (dropdown). | [TC-130](#tc-130)–[TC-132](#tc-132) | [US-202](user_stories#us-202) |
 | <a id="fr-signup-127"></a>**FR-SIGNUP-127** | The system shall store the submitted signup attributes for use in reporting, recruitment search, and volunteer profiles. | [TC-141](#tc-141) | [US-201](user_stories#us-201), [US-202](user_stories#us-202) |
 
 ## <a id="virtual-events"></a>7.3 Virtual Events

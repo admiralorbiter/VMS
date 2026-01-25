@@ -76,12 +76,12 @@ Event creation, Website display, Volunteer signup, and Email notifications.
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-140"></a>**TC-140** | Participation created | Record exists, linked correctly | Automated | TBD |
-| <a id="tc-141"></a>**TC-141** | Values match form | All fields persisted | Automated | TBD |
-| <a id="tc-142"></a>**TC-142** | Duplicate prevention | No double signups | Automated | TBD |
-| <a id="tc-150"></a>**TC-150** | Confirmation email | Received with event details | Manual | TBD |
-| <a id="tc-151"></a>**TC-151** | Calendar invite | Received | Manual | TBD |
-| <a id="tc-152"></a>**TC-152** | Invite has location | SF location in invite | Manual | TBD |
+| <a id="tc-140"></a>**TC-140** | Participation created | Record exists, linked correctly | Manual (Salesforce) | 2026-01-24 |
+| <a id="tc-141"></a>**TC-141** | Values match form | All fields persisted | Manual (Salesforce) | 2026-01-24 |
+| <a id="tc-142"></a>**TC-142** | Duplicate prevention | No double signups | Manual (Salesforce) | 2026-01-24 |
+| <a id="tc-150"></a>**TC-150** | Confirmation email | Received with event details | Manual (Salesforce) | 2026-01-24 |
+| <a id="tc-151"></a>**TC-151** | Calendar invite | Received | Manual (Salesforce) | 2026-01-24 |
+| <a id="tc-152"></a>**TC-152** | Invite has location | SF location in invite | Manual (Salesforce) | 2026-01-24 |
 
 
 
