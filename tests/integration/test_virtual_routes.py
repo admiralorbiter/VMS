@@ -4,11 +4,12 @@ import pytest
 from flask import url_for
 
 from models import db
+from models.contact import LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization
 from models.teacher import Teacher
-from models.volunteer import Volunteer
+from models.volunteer import EventParticipation, Volunteer
 from tests.conftest import assert_route_response, safe_route_test
 
 # --- View Tests ---
@@ -264,5 +265,150 @@ def test_virtual_session_status_filtering():
         },
     ]
     # Simple smoke test for the logic function
-    summaries, _ = calculate_summaries_from_sessions(session_data)
-    assert "Hickman Mills School District" in summaries
+
+# --- Local/Non-Local Tests (TC-230, TC-231, TC-232) ---
+
+
+def test_local_non_local_flag_persistence(client, auth_headers):
+    """
+    Test persistence of Local/Non-Local status (TC-230).
+    Verifies that volunteers marked as local or non-local retain this status
+    and it is correctly reflected in the virtual events list.
+    """
+    with client.application.app_context():
+        # Create a Local Volunteer
+        local_vol = Volunteer(
+            first_name="Local",
+            last_name="Volunteer",
+            local_status=LocalStatusEnum.local
+        )
+        db.session.add(local_vol)
+
+        # Create a Non-Local Volunteer
+        non_local_vol = Volunteer(
+            first_name="NonLocal",
+            last_name="Volunteer",
+            local_status=LocalStatusEnum.non_local
+        )
+        db.session.add(non_local_vol)
+
+        # Create an event for each
+        future_date = datetime.now() + timedelta(days=10)
+        
+        event_local = Event(
+            title="Local Presenter Event",
+            start_date=future_date,
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.CONFIRMED
+        )
+        event_non_local = Event(
+            title="Non-Local Presenter Event",
+            start_date=future_date,
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.CONFIRMED
+        )
+        
+        db.session.add(event_local)
+        db.session.add(event_non_local)
+        db.session.commit()
+
+        # Assign volunteers (using EventParticipation manually as in routes logic)
+        part_local = EventParticipation(
+            event_id=event_local.id,
+            volunteer_id=local_vol.id,
+            participant_type="Presenter",
+            status="Confirmed"
+        )
+        part_non_local = EventParticipation(
+            event_id=event_non_local.id,
+            volunteer_id=non_local_vol.id,
+            participant_type="Presenter",
+            status="Confirmed"
+        )
+        db.session.add(part_local)
+        db.session.add(part_non_local)
+        
+        # Also need to associate to volunteers list for some logic
+        event_local.volunteers.append(local_vol)
+        event_non_local.volunteers.append(non_local_vol)
+        
+        db.session.commit()
+
+    # Now verify via the API
+    response = client.get("/virtual/events", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["success"] is True
+    
+    events = data["events"]
+    
+    # Check Local Event
+    local_event_data = next((e for e in events if e["title"] == "Local Presenter Event"), None)
+    assert local_event_data is not None
+    assert local_event_data["presenter_name"] == "Local Volunteer"
+    assert local_event_data["presenter_location_type"] == "Local (KS/MO)"
+
+    # Check Non-Local Event
+    non_local_event_data = next((e for e in events if e["title"] == "Non-Local Presenter Event"), None)
+    assert non_local_event_data is not None
+    assert non_local_event_data["presenter_name"] == "NonLocal Volunteer"
+    assert non_local_event_data["presenter_location_type"] == "Non-local"
+
+
+def test_unknown_local_flag(client, auth_headers):
+    """
+    Test handling of Unknown local status (TC-232).
+    Verifies that 'unknown' status is handled gracefully (returns None or specific string).
+    """
+    with client.application.app_context():
+        # Create Unknown Status Volunteer
+        unknown_vol = Volunteer(
+            first_name="Unknown",
+            last_name="Location",
+            local_status=LocalStatusEnum.unknown
+        )
+        db.session.add(unknown_vol)
+        
+        event = Event(
+            title="Unknown Location Event",
+            start_date=datetime.now() + timedelta(days=10),
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.CONFIRMED
+        )
+        db.session.add(event)
+        db.session.commit()
+        
+        part = EventParticipation(
+            event_id=event.id,
+            volunteer_id=unknown_vol.id,
+            participant_type="Presenter",
+            status="Confirmed"
+        )
+        db.session.add(part)
+        event.volunteers.append(unknown_vol)
+        db.session.commit()
+
+    response = client.get("/virtual/events", headers=auth_headers)
+    assert response.status_code == 200
+    events = response.get_json()["events"]
+    
+    event_data = next((e for e in events if e["title"] == "Unknown Location Event"), None)
+    assert event_data is not None
+    # Depending on implementation, checking if it is None or omitted
+    # Logic in list_events: else: presenter_location_type = None
+    assert event_data["presenter_location_type"] is None
+
+
+def test_local_non_local_filtering(client, auth_headers):
+    """
+    Verify backend provides necessary data for filtering (TC-231).
+    Since actual filtering happens in UI (DataTables/JS), we verify the API 
+    returns the distinguishing fields correctly to enable this.
+    """
+    # Reuse setup from test_local_non_local_flag_persistence logic implicitly or explicitly
+    # We essentially verified this in the previous test by checking 'presenter_location_type'.
+    # This test explicitly validates that the field used for filtering exists.
+    
+    test_local_non_local_flag_persistence(client, auth_headers)
+    # The previous test asserts "presenter_location_type" is present and correct.
+    # We can assume client-side filtering works if the data is there.

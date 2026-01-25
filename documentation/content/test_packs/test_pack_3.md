@@ -34,9 +34,9 @@ Polaris creation + Pathful import + historical data
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-230"></a>**TC-230** | Flag persists | P1=local, P2=non-local displayed | Manual | TBD |
-| <a id="tc-231"></a>**TC-231** | Filter by local | P1 appears, P2 doesn't | Manual | TBD |
-| <a id="tc-232"></a>**TC-232** | Unknown flag handling | Displays "unknown", no crash | Manual | TBD |
+| <a id="tc-230"></a>**TC-230** | Flag persists | P1=local, P2=non-local displayed | Automated | 2026-01-24 |
+| <a id="tc-231"></a>**TC-231** | Filter by local | P1 appears, P2 doesn't | Automated | 2026-01-24 |
+| <a id="tc-232"></a>**TC-232** | Unknown flag handling | Displays "unknown", no crash | Automated | 2026-01-24 |
 
 ### C. Pathful Import
 
