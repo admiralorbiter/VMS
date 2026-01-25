@@ -13,7 +13,7 @@ Smoke tests are quick, high-level tests that verify basic system functionality i
 - **Regular health checks**: As part of routine system verification
 
 **Reference:**
-- [Testing Guide](docs/living/Testing.md) - Complete testing setup and strategy
+- [Testing Guide](test_packs) - Complete testing setup and strategy
 - [Runbook](runbook) - Troubleshooting procedures
 - [Monitoring and Alert](monitoring) - System health monitoring
 

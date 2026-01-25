@@ -67,7 +67,9 @@ const PAGE_MANIFEST = {
     'deployment': 'deployment',
     'monitoring': 'monitoring',
     'smoke-tests': 'smoke_tests',
-    'daily-import-scripts': 'daily_import_scripts'
+    'daily-import-scripts': 'daily_import_scripts',
+    'runbook': 'runbook',
+    'user-guide-public-signup': 'user_guide/public_signup'
 };
 
 // State - track current loaded page to distinguish page nav from anchor scrolling
@@ -496,6 +498,11 @@ function processRenderedContent() {
             const targetHash = href.slice(1); // Remove leading #
 
             link.addEventListener('click', (e) => {
+                // Allow special anchors (TCs, FRs) to be handled by the global hashchange event
+                if (targetHash.match(/^tc-\d+$/i) || targetHash.match(/^fr-\d+$/i)) {
+                    return;
+                }
+
                 e.preventDefault();
 
                 // Check if this is a page link (in manifest)

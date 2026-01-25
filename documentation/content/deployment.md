@@ -18,7 +18,7 @@ This guide covers deploying the VMS application to PythonAnywhere with automated
 - [Smoke Tests](smoke_tests) - Post-deployment verification
 - [Import Playbook](import_playbook) - Import procedures
 - [Architecture - Sync Cadences](architecture#sync-cadences) - Sync schedules
-- [Cache Management](docs/living/Cache_Management.md) - Cache system details
+- [Cache Management](monitoring#cache-status-dashboard) - Cache system details
 
 ## Initial Setup
 
@@ -661,7 +661,7 @@ touch /var/www/yourusername_pythonanywhere_com_wsgi.py
 - [Import Playbook](import_playbook) - Detailed import procedures
 - [Architecture](architecture) - System architecture and sync cadences
 - [Runbook](runbook) - Troubleshooting guides
-- [Cache Management](docs/living/Cache_Management.md) - Cache system details
+- [Cache Management](monitoring#cache-status-dashboard) - Cache system details
 
 ## Support
 

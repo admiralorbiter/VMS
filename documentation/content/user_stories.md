@@ -93,7 +93,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-3](use_cases#uc-3)
 
-**User Guide:** [Public Signup Flow](user_guide/public_signup)
+**User Guide:** [Public Signup Flow](#user-guide-public-signup)
 
 **Acceptance Criteria:**
 
