@@ -311,6 +311,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-6](use_cases#uc-6)
 
+**User Guide:** [Volunteer Recruitment](user_guide/volunteer_recruitment#4-logging-communication-salesforce-gmail-integration)
+
 **Acceptance Criteria:**
 
 - Given emails are logged via Salesforce Gmail add-on, when comms sync runs, then those emails appear on the correct volunteer profile.

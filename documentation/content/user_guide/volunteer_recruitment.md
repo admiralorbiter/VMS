@@ -62,6 +62,25 @@ Click any volunteer name to view their **Profile**:
 -   **Notes**: Add recruitment notes (e.g., "Interested in robotics events").
 -   **History**: View all past event participation.
 
+## 4. Logging Communication (Salesforce Gmail Integration)
+
+To ensure all volunteer communication is tracked in Polaris, internal staff must log emails using the Salesforce Gmail integration. These logs sync to the volunteer's profile history.
+
+### Setup
+Ensure you have the [Salesforce Chrome Extension](https://chromewebstore.google.com/detail/salesforce/jjghhkepijgakdammjldcbnjehfkfmha?pli=1) installed.
+
+### How to Log an Email
+1.  Open the email you want to log in Gmail.
+2.  Click the Salesforce icon in the browser extension bar (top right).
+    ![Salesforce Extension Icon](content/user_guide/images/gmail_extension_bar.png)
+3.  The Salesforce side panel will open. It attempts to match the email sender/recipient to a Salesforce record.
+4.  If the record is found, click **Log Now**.
+    ![Log Email Pane](content/user_guide/images/gmail_log_pane.png)
+5.  If not found, use the search bar in the pane to find the correct contact.
+
+> [!TIP]
+> **Log Everything**: Log all emails related to volunteering, including those with potential volunteers, partners, and existing volunteers.
+
 ## Technical Scope & Traceability
 
 This guide addresses the following scopes:
