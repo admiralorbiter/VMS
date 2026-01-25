@@ -23,10 +23,10 @@ Polaris creation + Pathful import + historical data
 |----|-------------|----------|------|---------------|
 | <a id="tc-200"></a>**TC-200** | Create event | Persists and reloads | Automated | 2026-01-24 |
 | <a id="tc-201"></a>**TC-201** | Edit event | Changes persist | Automated | 2026-01-24 |
-| <a id="tc-202"></a>**TC-202** | Tag teacher (Synced SF search) | Link persists after save | Manual | TBD |
-| <a id="tc-203"></a>**TC-203** | Tag presenter | Link persists | Manual | TBD |
-| <a id="tc-204"></a>**TC-204** | Multi-teacher/presenter | All relationships preserved | Manual | TBD |
-| <a id="tc-205"></a>**TC-205** | Synced record search failure | Clear error shown | Manual | TBD |
+| <a id="tc-202"></a>**TC-202** | Tag teacher (Synced SF search) | Link persists after save | Automated | 2026-01-24 |
+| <a id="tc-203"></a>**TC-203** | Tag presenter | Link persists | Automated | 2026-01-24 |
+| <a id="tc-204"></a>**TC-204** | Multi-teacher/presenter | All relationships preserved | Automated | 2026-01-24 |
+| <a id="tc-205"></a>**TC-205** | Synced record search failure | Clear error shown | Automated | 2026-01-24 |
 
 ### B. Local/Non-Local
 
