@@ -307,6 +307,11 @@ def load_routes(bp):
                     EventParticipation.volunteer_id,
                     db.func.count(EventParticipation.id).label("volunteer_count"),
                 )
+                .filter(
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed"]
+                    )
+                )
                 .group_by(EventParticipation.volunteer_id)
                 .subquery()
             )

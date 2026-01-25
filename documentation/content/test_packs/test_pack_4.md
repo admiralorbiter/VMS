@@ -57,10 +57,10 @@ Search + communication history + sync health
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-340"></a>**TC-340** | Participation history displays | V1 shows both in-person and virtual events | Manual | TBD |
-| <a id="tc-341"></a>**TC-341** | Most recent date correct | Matches latest participation | Manual | TBD |
-| <a id="tc-342"></a>**TC-342** | Event count accurate | Correct number of events displayed | Manual | TBD |
-| <a id="tc-343"></a>**TC-343** | No participation state | V4 shows appropriate message | Manual | TBD |
+| <a id="tc-340"></a>**TC-340** | Participation history displays | V1 shows both in-person and virtual events | Automated | 2026-01-25 |
+| <a id="tc-341"></a>**TC-341** | Most recent date correct | Matches latest participation | Automated | 2026-01-25 |
+| <a id="tc-342"></a>**TC-342** | Event count accurate | Correct number of events displayed | Automated | 2026-01-25 |
+| <a id="tc-343"></a>**TC-343** | No participation state | V4 shows appropriate message | Automated | 2026-01-25 |
 
 ### E. Recruitment Notes
 
