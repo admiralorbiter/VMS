@@ -57,6 +57,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 - **Requirements**: [FR-INPERSON-102](requirements#fr-inperson-102) through [FR-INPERSON-109](requirements#fr-inperson-109)
 - **User Stories**: [US-102](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104)
 - **Test Coverage**: [Test Pack 2](test_packs/test_pack_2)
+- **Contracts**: [Contract A](contract_a)
 
 ---
 

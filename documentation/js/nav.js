@@ -51,7 +51,12 @@ const PAGE_MANIFEST = {
     'architecture': 'architecture',
     'data-dictionary': 'data_dictionary',
     'field-mappings': 'field_mappings',
+    'field-mappings': 'field_mappings',
     'contracts': 'contracts',
+    'contract-a': 'contract_a',
+    'contract-b': 'contract_b',
+    'contract-c': 'contract_c',
+    'contract-d': 'contract_d',
     'metrics-bible': 'metrics_bible',
     'api-reference': 'api_reference',
     // Security
