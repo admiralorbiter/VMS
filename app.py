@@ -74,6 +74,32 @@ def inject_security_levels():
     }
 
 
+# Tenant context middleware (FR-TENANT-103)
+@app.before_request
+def set_tenant_context():
+    """Set tenant context from authenticated user or admin override."""
+    from flask import g
+
+    from utils.tenant_context import init_tenant_context
+
+    # Initialize tenant context for this request
+    init_tenant_context()
+
+
+# Add tenant context to template context (FR-TENANT-105)
+@app.context_processor
+def inject_tenant_context():
+    """Make tenant context available in all templates."""
+    from flask import g, session
+
+    from utils.tenant_context import get_current_tenant, is_admin_viewing_as_tenant
+
+    return {
+        "current_tenant": get_current_tenant(),
+        "is_admin_viewing_as_tenant": is_admin_viewing_as_tenant(),
+    }
+
+
 # Initialize routes
 init_routes(app)
 

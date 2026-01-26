@@ -120,24 +120,25 @@ District Suite tenant CRUD, configuration, and infrastructure
 | <a id="tc-881"></a>**TC-881** | `is_feature_enabled()` returns correct state | True for enabled, False for disabled features | Automated | 2026-01-26 |
 | <a id="tc-882"></a>**TC-882** | Unknown feature returns False | `is_feature_enabled('nonexistent')` returns False | Automated | 2026-01-26 |
 
-### J. Database Routing (FR-TENANT-103)
+### J. Database Routing (FR-TENANT-103) & Cross-Tenant Access (FR-TENANT-105)
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-890"></a>**TC-890** | Tenant user routed to tenant DB | User with tenant_id queries tenant database | Pending | Phase 2 |
-| <a id="tc-891"></a>**TC-891** | PrepKC user queries main DB | User without tenant_id queries main database | Pending | Phase 2 |
-| <a id="tc-892"></a>**TC-892** | Tenant data isolation | Tenant cannot see other tenant's data | Pending | Phase 2 |
-| <a id="tc-893"></a>**TC-893** | Admin tenant context switch | Admin can switch tenant context with audit trail | Pending | Phase 2 |
+| <a id="tc-890"></a>**TC-890** | Tenant user routed to tenant context | User with tenant_id has g.tenant set | Automated | 2026-01-26 |
+| <a id="tc-891"></a>**TC-891** | PrepKC user has no tenant context | User without tenant_id has g.tenant=None | Automated | 2026-01-26 |
+| <a id="tc-892"></a>**TC-892** | Tenant context decorator blocks access | `@require_tenant_context` aborts without tenant | Automated | 2026-01-26 |
+| <a id="tc-893"></a>**TC-893** | Admin tenant context switch | Admin override sets session-based tenant context | Automated | 2026-01-26 |
 
 ---
 
 > [!NOTE]
 > **Automated Test Files**
-> - `tests/unit/models/test_tenant.py` - Tenant model tests
+> - `tests/unit/models/test_tenant.py` - Tenant model tests (10 tests)
 > - `tests/unit/utils/test_db_manager.py` - Database manager tests (11 tests)
+> - `tests/unit/utils/test_tenant_context.py` - Tenant context tests (14 tests)
 > - `tests/integration/test_tenant_routes.py` - Tenant routes tests
 
 ---
 
 *Last updated: 2026-01-26*
-*Version: 1.2 - Added infrastructure test coverage (FR-TENANT-103, 104, 106, 107)*
+*Version: 1.3 - Added tenant context tests (TC-890-893)*

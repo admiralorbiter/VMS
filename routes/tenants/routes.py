@@ -288,3 +288,48 @@ def revoke_api_key(tenant_id):
 
     flash(f"API key for '{tenant.name}' has been revoked", "success")
     return redirect(url_for("tenants.view_tenant", tenant_id=tenant.id))
+
+
+# FR-TENANT-105: Cross-Tenant Access
+@tenants_bp.route("/switch/<int:tenant_id>", methods=["POST"])
+@login_required
+@admin_required
+def switch_tenant_context(tenant_id):
+    """
+    Switch admin's active tenant context.
+
+    This allows PrepKC admins to view the system as if they were
+    logged in as a user of a specific tenant.
+
+    Args:
+        tenant_id: ID of tenant to switch to (0 to clear)
+
+    Returns:
+        Redirect to tenant view or tenant list
+    """
+    from flask import current_app, session
+
+    from utils.tenant_context import (
+        clear_admin_tenant_override,
+        set_admin_tenant_override,
+    )
+
+    # Clear context if tenant_id is 0
+    if tenant_id == 0:
+        clear_admin_tenant_override()
+        flash("Returned to PrepKC admin view", "info")
+        return redirect(url_for("tenants.list_tenants"))
+
+    # Get the tenant
+    tenant = Tenant.query.get_or_404(tenant_id)
+
+    # Cannot switch to inactive tenant
+    if not tenant.is_active:
+        flash(f"Cannot switch to inactive tenant: {tenant.name}", "warning")
+        return redirect(url_for("tenants.view_tenant", tenant_id=tenant_id))
+
+    # Set the override
+    set_admin_tenant_override(tenant_id)
+
+    flash(f"Now viewing as: {tenant.name}", "success")
+    return redirect(url_for("tenants.view_tenant", tenant_id=tenant_id))

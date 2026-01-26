@@ -28,6 +28,16 @@
             <span class="text-muted">Slug: <code>{{ tenant.slug }}</code></span>
         </div>
         <div class="d-flex gap-2">
+            {# FR-TENANT-105: Admin context switching #}
+            {% if tenant.is_active and not is_admin_viewing_as_tenant %}
+            <form method="POST" action="{{ url_for('tenants.switch_tenant_context', tenant_id=tenant.id) }}"
+                class="d-inline">
+                <button type="submit" class="btn btn-outline-success"
+                    onclick="return confirm('Switch to view as {{ tenant.name }}?')">
+                    <i class="fas fa-user-shield me-2"></i>View as Tenant
+                </button>
+            </form>
+            {% endif %}
             <a href="{{ url_for('tenants.edit_tenant', tenant_id=tenant.id) }}" class="btn btn-outline-primary">
                 <i class="fas fa-edit me-2"></i>Edit Settings
             </a>
