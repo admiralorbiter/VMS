@@ -50,6 +50,9 @@ from routes.auth.routes import auth_bp
 from routes.bug_reports.routes import bug_reports_bp
 from routes.calendar.routes import calendar_bp
 from routes.client_projects.routes import client_projects_bp
+
+# District Suite Phase 2 - District Event Management
+from routes.district import district_bp
 from routes.email.routes import email_bp
 from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
@@ -107,6 +110,7 @@ def init_routes(app):
     app.register_blueprint(cache_management_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(tenants_bp)
+    app.register_blueprint(district_bp)  # District Suite Phase 2
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
     app.register_blueprint(email_bp)

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_events') }}">Events</a></li>
+            <li class="breadcrumb-item active">{{ 'Edit' if event else 'New' }} Event</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-4">
+        <i class="fas fa-calendar-plus me-2"></i>
+        {{ 'Edit Event' if event else 'Create New Event' }}
+    </h2>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ form_action }}">
+                <div class="row g-3">
+                    <!-- Title -->
+                    <div class="col-12">
+                        <label for="title" class="form-label">Event Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title"
+                            value="{{ event.title if event else '' }}" required>
+                    </div>
+
+                    <!-- Event Type and Format -->
+                    <div class="col-md-6">
+                        <label for="event_type" class="form-label">Event Type</label>
+                        <select class="form-select" id="event_type" name="event_type">
+                            {% for value, label in event_types %}
+                            <option value="{{ value }}" {% if event and event.type.value==value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="format" class="form-label">Format</label>
+                        <select class="form-select" id="format" name="format">
+                            <option value="in_person" {% if not event or event.format.value=='in_person' %}selected{%
+                                endif %}>
+                                In Person
+                            </option>
+                            <option value="virtual" {% if event and event.format.value=='virtual' %}selected{% endif %}>
+                                Virtual
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Start Date/Time -->
+                    <div class="col-md-3">
+                        <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="start_date" name="start_date"
+                            value="{{ event.start_date.strftime('%Y-%m-%d') if event and event.start_date else '' }}"
+                            required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="start_time" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time"
+                            value="{{ event.start_date.strftime('%H:%M') if event and event.start_date else '09:00' }}">
+                    </div>
+
+                    <!-- End Date/Time -->
+                    <div class="col-md-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date"
+                            value="{{ event.end_date.strftime('%Y-%m-%d') if event and event.end_date else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="end_time" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time"
+                            value="{{ event.end_date.strftime('%H:%M') if event and event.end_date else '' }}">
+                    </div>
+
+                    <!-- Location -->
+                    <div class="col-12">
+                        <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="location" name="location"
+                            value="{{ event.location if event else '' }}" required
+                            placeholder="Enter venue name and address">
+                    </div>
+
+                    <!-- Volunteers Needed -->
+                    <div class="col-md-4">
+                        <label for="volunteers_needed" class="form-label">Volunteers Needed</label>
+                        <input type="number" class="form-control" id="volunteers_needed" name="volunteers_needed"
+                            value="{{ event.volunteers_needed if event else 0 }}" min="0">
+                    </div>
+
+                    <!-- Status (edit mode only) -->
+                    {% if event %}
+                    <div class="col-md-4">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="Draft" {% if event.status.value=='Draft' %}selected{% endif %}>Draft</option>
+                            <option value="Published" {% if event.status.value=='Published' %}selected{% endif %}>
+                                Published</option>
+                            <option value="Confirmed" {% if event.status.value=='Confirmed' %}selected{% endif %}>
+                                Confirmed</option>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <!-- Description -->
+                    <div class="col-12">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4"
+                            placeholder="Describe the event, what volunteers will do, any special requirements...">{{ event.description if event else '' }}</textarea>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>
+                            {{ 'Update Event' if event else 'Create Event' }}
+                        </button>
+                        <a href="{{ url_for('district.list_events') }}" class="btn btn-outline-secondary ms-2">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

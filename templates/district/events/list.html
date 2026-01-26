@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item active">Events</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-calendar-alt me-2"></i>District Events</h2>
+        <a href="{{ url_for('district.new_event') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Event
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body py-2">
+            <form method="GET" class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <label class="form-label mb-0 me-2">Status:</label>
+                </div>
+                <div class="col-auto">
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="all" {% if status_filter=='all' %}selected{% endif %}>All</option>
+                        <option value="Draft" {% if status_filter=='Draft' %}selected{% endif %}>Draft</option>
+                        <option value="Published" {% if status_filter=='Published' %}selected{% endif %}>Published
+                        </option>
+                        <option value="Confirmed" {% if status_filter=='Confirmed' %}selected{% endif %}>Confirmed
+                        </option>
+                        <option value="Completed" {% if status_filter=='Completed' %}selected{% endif %}>Completed
+                        </option>
+                        <option value="Cancelled" {% if status_filter=='Cancelled' %}selected{% endif %}>Cancelled
+                        </option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Events List -->
+    {% if events %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Volunteers</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('district.view_event', event_id=event.id) }}"
+                            class="text-decoration-none fw-medium">
+                            {{ event.title }}
+                        </a>
+                    </td>
+                    <td>
+                        {{ event.start_date.strftime('%b %d, %Y') if event.start_date else '-' }}
+                        <br>
+                        <small class="text-muted">
+                            {{ event.start_date.strftime('%I:%M %p') if event.start_date else '' }}
+                        </small>
+                    </td>
+                    <td>{{ event.location or '-' }}</td>
+                    <td>
+                        {% if event.status.value == 'Draft' %}
+                        <span class="badge bg-secondary">Draft</span>
+                        {% elif event.status.value == 'Published' %}
+                        <span class="badge bg-primary">Published</span>
+                        {% elif event.status.value == 'Confirmed' %}
+                        <span class="badge bg-success">Confirmed</span>
+                        {% elif event.status.value == 'Completed' %}
+                        <span class="badge bg-info">Completed</span>
+                        {% elif event.status.value == 'Cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-light text-dark">{{ event.status.value }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.volunteers_needed %}
+                        {{ event.volunteer_count or 0 }} / {{ event.volunteers_needed }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('district.view_event', event_id=event.id) }}"
+                            class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% if event.status.value not in ['Completed', 'Cancelled'] %}
+                        <a href="{{ url_for('district.edit_event', event_id=event.id) }}"
+                            class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-calendar-xmark fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No events found</h5>
+        <p class="text-muted">Get started by creating your first event.</p>
+        <a href="{{ url_for('district.new_event') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create Event
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

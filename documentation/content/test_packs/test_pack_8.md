@@ -131,14 +131,50 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
+## Phase 2: District Events (FR-SELFSERV-201, 202, 203)
+
+### K. District Event Creation (FR-SELFSERV-201)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-901"></a>**TC-901** | Create event with required fields | Event saved with tenant_id set | Automated | 2026-01-26 |
+| <a id="tc-902"></a>**TC-902** | Event scoped to tenant | Query filters by tenant_id | Automated | 2026-01-26 |
+| <a id="tc-903"></a>**TC-903** | Event has correct initial status | New events have status=Draft | Automated | 2026-01-26 |
+| <a id="tc-904"></a>**TC-904** | Publish draft event | Status changes from Draft to Published | Automated | 2026-01-26 |
+
+### L. District Event Editing (FR-SELFSERV-202)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-910"></a>**TC-910** | Edit event updates fields | Changes persist to database | Automated | 2026-01-26 |
+| <a id="tc-911"></a>**TC-911** | Cannot edit completed event | Redirect with warning message | Automated | 2026-01-26 |
+| <a id="tc-912"></a>**TC-912** | Cannot edit cancelled event | Redirect with warning message | Automated | 2026-01-26 |
+
+### M. District Event Cancellation (FR-SELFSERV-203)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-920"></a>**TC-920** | Cancel event sets status | Event status changes to Cancelled | Automated | 2026-01-26 |
+| <a id="tc-921"></a>**TC-921** | Cannot cancel completed event | Redirect with warning message | Automated | 2026-01-26 |
+
+### N. District Event Data Isolation
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-930"></a>**TC-930** | Events list shows only tenant events | Other tenant events not visible | Automated | 2026-01-26 |
+| <a id="tc-931"></a>**TC-931** | Cannot view other tenant's event | Returns 404 for wrong tenant | Automated | 2026-01-26 |
+
+---
+
 > [!NOTE]
 > **Automated Test Files**
 > - `tests/unit/models/test_tenant.py` - Tenant model tests (10 tests)
 > - `tests/unit/utils/test_db_manager.py` - Database manager tests (11 tests)
 > - `tests/unit/utils/test_tenant_context.py` - Tenant context tests (14 tests)
 > - `tests/integration/test_tenant_routes.py` - Tenant routes tests
+> - `tests/integration/test_district_events.py` - District event routes tests
 
 ---
 
 *Last updated: 2026-01-26*
-*Version: 1.3 - Added tenant context tests (TC-890-893)*
+*Version: 1.4 - Added Phase 2 District Events tests (TC-901-931)*

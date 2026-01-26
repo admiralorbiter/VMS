@@ -523,6 +523,12 @@ class Event(db.Model):
         nullable=False,
     )
 
+    # Multi-tenant support (FR-SELFSERV-201)
+    # NULL = PrepKC event, non-NULL = district tenant event
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenant.id"), nullable=True, index=True
+    )
+
     # Relationships
     volunteers = db.relationship(
         "Volunteer",
@@ -571,6 +577,9 @@ class Event(db.Model):
         uselist=False,
         cascade="all, delete-orphan",
     )
+
+    # Tenant relationship for multi-tenant support
+    tenant = db.relationship("Tenant", backref=db.backref("events", lazy="dynamic"))
 
     # TODO: Consider adding validation methods:
     # - Ensure end_date is after start_date

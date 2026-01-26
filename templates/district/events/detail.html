@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_events') }}">Events</a></li>
+            <li class="breadcrumb-item active">{{ event.title }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1">{{ event.title }}</h2>
+            <div>
+                {% if event.status.value == 'Draft' %}
+                <span class="badge bg-secondary">Draft</span>
+                {% elif event.status.value == 'Published' %}
+                <span class="badge bg-primary">Published</span>
+                {% elif event.status.value == 'Confirmed' %}
+                <span class="badge bg-success">Confirmed</span>
+                {% elif event.status.value == 'Completed' %}
+                <span class="badge bg-info">Completed</span>
+                {% elif event.status.value == 'Cancelled' %}
+                <span class="badge bg-danger">Cancelled</span>
+                {% else %}
+                <span class="badge bg-light text-dark">{{ event.status.value }}</span>
+                {% endif %}
+
+                <span class="badge bg-light text-dark ms-1">
+                    <i class="fas fa-{{ 'video' if event.format.value == 'virtual' else 'building' }} me-1"></i>
+                    {{ 'Virtual' if event.format.value == 'virtual' else 'In Person' }}
+                </span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            {% if event.status.value == 'Draft' %}
+            <form method="POST" action="{{ url_for('district.publish_event', event_id=event.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-success" onclick="return confirm('Publish this event?')">
+                    <i class="fas fa-check me-2"></i>Publish
+                </button>
+            </form>
+            {% endif %}
+
+            {% if event.status.value not in ['Completed', 'Cancelled'] %}
+            <a href="{{ url_for('district.edit_event', event_id=event.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-2"></i>Edit
+            </a>
+            <form method="POST" action="{{ url_for('district.cancel_event', event_id=event.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-outline-danger"
+                    onclick="return confirm('Cancel this event? This cannot be undone.')">
+                    <i class="fas fa-times me-2"></i>Cancel Event
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Event Details Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Event Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <strong>Date & Time</strong>
+                            <p class="mb-0">
+                                {{ event.start_date.strftime('%B %d, %Y') if event.start_date else '-' }}
+                                <br>
+                                {{ event.start_date.strftime('%I:%M %p') if event.start_date else '' }}
+                                {% if event.end_date %}
+                                - {{ event.end_date.strftime('%I:%M %p') }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Location</strong>
+                            <p class="mb-0">{{ event.location or 'Not specified' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Event Type</strong>
+                            <p class="mb-0">{{ event.type.value.replace('_', ' ').title() }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Volunteers Needed</strong>
+                            <p class="mb-0">
+                                {% if event.volunteers_needed %}
+                                {{ event.volunteer_count or 0 }} of {{ event.volunteers_needed }} signed up
+                                {% else %}
+                                Not specified
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if event.description %}
+                    <hr>
+                    <div>
+                        <strong>Description</strong>
+                        <p class="mb-0 mt-2">{{ event.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Volunteers Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Volunteers</h5>
+                </div>
+                <div class="card-body">
+                    {% if event.volunteers %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for volunteer in event.volunteers %}
+                                <tr>
+                                    <td>{{ volunteer.first_name }} {{ volunteer.last_name }}</td>
+                                    <td><span class="badge bg-success">Signed Up</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No volunteers have signed up yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Info</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        <dt>Created</dt>
+                        <dd>{{ event.created_at.strftime('%b %d, %Y %I:%M %p') if event.created_at else '-' }}</dd>
+
+                        <dt>Last Updated</dt>
+                        <dd class="mb-0">{{ event.updated_at.strftime('%b %d, %Y %I:%M %p') if event.updated_at else '-'
+                            }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('district.list_events') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Events
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
