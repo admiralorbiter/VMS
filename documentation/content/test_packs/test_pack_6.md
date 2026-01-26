@@ -39,13 +39,13 @@ Exports + ad hoc queries + access control
 
 ### C. District Impact Dashboard
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-740"></a>**TC-740** | Required metrics shown | Students, volunteers, hours, orgs |
-| <a id="tc-741"></a>**TC-741** | Metrics match data | Numbers match fixtures |
-| <a id="tc-742"></a>**TC-742** | School drilldown | School totals correct |
-| <a id="tc-743"></a>**TC-743** | Event type filter | In-person only works |
-| <a id="tc-744"></a>**TC-744** | Date range filter | Metrics update correctly |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-740"></a>**TC-740** | Required metrics shown | Students, volunteers, hours, orgs | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-741"></a>**TC-741** | Metrics match data | Numbers match fixtures | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-742"></a>**TC-742** | School drilldown | School totals correct | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-743"></a>**TC-743** | Event type filter | In-person only works | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-744"></a>**TC-744** | Date range filter | Metrics update correctly | Automated (Polaris) | 2026-01-25 |
 
 ### D. Ad Hoc Queries
 
