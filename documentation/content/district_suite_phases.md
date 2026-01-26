@@ -51,7 +51,7 @@ District Suite transforms Polaris from a single-tenant system to a multi-tenant 
 - [x] PrepKC admin can create new tenant
 - [x] New tenant database is created with full schema
 - [x] Reference data is copied to tenant database
-- [ ] District admin can log in to their tenant
+- [x] District admin can log in to their tenant
 - [x] District admin cannot access other tenants (via `@require_tenant_context`)
 - [x] PrepKC admin can switch between tenants
 
