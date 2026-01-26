@@ -82,6 +82,100 @@
     color: #6c757d;
     font-size: 0.9rem;
 }
+
+.district-input-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.district-input-form h2 {
+    margin-top: 0;
+    color: var(--ucla-blue);
+    margin-bottom: 1.5rem;
+}
+
+.district-input-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+}
+
+.district-input-table thead {
+    background: var(--ucla-blue);
+    color: white;
+}
+
+.district-input-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+}
+
+.district-input-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.district-input-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.district-name {
+    font-weight: 600;
+    color: #495057;
+}
+
+.value-input {
+    width: 150px;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.value-input:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 2px rgba(70, 117, 153, 0.25);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: var(--ucla-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--delft-blue);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
 </style>
 {% endblock %}
 
@@ -96,17 +190,17 @@
         </div>
     </div>
 
+    {% if not data_type %}
+    <!-- Step A: Data Type Selection -->
     <div class="data-type-selector">
         <h2>Select Data Type to Enter</h2>
         <div class="data-type-options">
-            <div class="data-type-option" onclick="selectDataType('math_relays')">
-                <h3>Math Relays</h3>
-                <p>Enter Math Relays participation numbers</p>
+            {% for data_type_key, data_type_info in data_types.items() %}
+            <div class="data-type-option" onclick="selectDataType('{{ data_type_key }}')">
+                <h3>{{ data_type_info.display_name }}</h3>
+                <p>{{ data_type_info.description }}</p>
             </div>
-            <div class="data-type-option" onclick="selectDataType('data_science')">
-                <h3>Data Science</h3>
-                <p>Enter Data Science participation numbers</p>
-            </div>
+            {% endfor %}
         </div>
     </div>
 
@@ -122,6 +216,53 @@
             document.getElementById('dataTypeForm').submit();
         }
     </script>
+    {% else %}
+    <!-- Step B: District Input Form -->
+    <div class="district-input-form">
+        <h2>{{ data_type_display }}</h2>
+        <form method="post" action="{{ url_for('report.district_year_end_input_data') }}">
+            <input type="hidden" name="school_year" value="{{ school_year }}">
+            <input type="hidden" name="host_filter" value="{{ host_filter }}">
+            <input type="hidden" name="data_type" value="{{ data_type }}">
+            
+            <table class="district-input-table">
+                <thead>
+                    <tr>
+                        <th>District Name</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for district in districts %}
+                    <tr>
+                        <td class="district-name">{{ district.name }}</td>
+                        <td>
+                            <input 
+                                type="number" 
+                                name="district_{{ district.id }}" 
+                                value="{{ saved_values.get(district.id, 0) }}" 
+                                min="0" 
+                                step="1"
+                                class="value-input"
+                                required
+                            >
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="form-actions">
+                <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}" class="btn btn-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Values
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

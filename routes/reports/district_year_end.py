@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 import pytz
 import xlsxwriter
-from flask import Blueprint, jsonify, render_template, request, send_file
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from models import db
@@ -1314,14 +1314,73 @@ def load_routes(bp):
             host_filter=host_filter,
         )
 
-    @bp.route("/reports/district/year-end/input-data", methods=["GET"])
+    @bp.route("/reports/district/year-end/input-data", methods=["GET", "POST"])
     @login_required
     def district_year_end_input_data():
         """Handle manual input of district data for Year-End reports"""
+        
+        # Data type definitions (extensible for future types)
+        DATA_TYPES = {
+            "math_relays": {
+                "display_name": "Math Relays",
+                "description": "Enter Math Relays participation numbers"
+            },
+            "data_science": {
+                "display_name": "Data Science",
+                "description": "Enter Data Science participation numbers"
+            }
+        }
+        
         # Get parameters
-        school_year = request.args.get("school_year", get_current_school_year())
-        host_filter = request.args.get("host_filter", "all")
-        data_type = request.args.get("data_type")
+        school_year = request.args.get("school_year") or request.form.get("school_year") or get_current_school_year()
+        host_filter = request.args.get("host_filter") or request.form.get("host_filter") or "all"
+        data_type = request.args.get("data_type") or request.form.get("data_type")
+        
+        # Handle POST (save data) - placeholder for now
+        if request.method == "POST":
+            data_type = request.form.get("data_type")
+            if not data_type:
+                flash("Data type is required", "error")
+                return redirect(url_for("report.district_year_end_input_data", 
+                                      school_year=school_year, 
+                                      host_filter=host_filter))
+            
+            # TODO: Save data to database (will be implemented in next step)
+            flash(f"Data saved successfully for {DATA_TYPES.get(data_type, {}).get('display_name', data_type)}", "success")
+            return redirect(url_for("report.district_year_end_input_data",
+                                  school_year=school_year,
+                                  host_filter=host_filter,
+                                  data_type=data_type))
+        
+        # Handle GET (display form)
+        # Get districts from cached reports (same logic as breakdown page)
+        cached_reports = DistrictYearEndReport.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).all()
+        
+        districts = [report.district for report in cached_reports if report.district]
+        
+        # Filter districts based on user scope (same logic as breakdown page)
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                districts = [d for d in districts if d.name in allowed_districts]
+            except (json.JSONDecodeError, TypeError):
+                districts = []
+        
+        # Get saved values if data_type is selected (placeholder for now)
+        saved_values = {}
+        data_type_display = None
+        
+        if data_type:
+            data_type_info = DATA_TYPES.get(data_type, {})
+            data_type_display = data_type_info.get("display_name", data_type.replace("_", " ").title())
+            # TODO: Fetch saved values from database (will be implemented in next step)
         
         # Generate list of school years
         current_year = int(get_current_school_year()[:2])
@@ -1330,9 +1389,13 @@ def load_routes(bp):
         
         return render_template(
             "reports/districts/district_year_end_input_data.html",
+            districts=districts,
             school_year=school_year,
             host_filter=host_filter,
             data_type=data_type,
+            data_type_display=data_type_display,
+            data_types=DATA_TYPES,
+            saved_values=saved_values,
             school_years=school_years,
         )
 
