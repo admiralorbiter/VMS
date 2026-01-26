@@ -202,6 +202,11 @@ Each requirement links to:
 | <a id="fr-district-524"></a>**FR-DISTRICT-524** | The system shall support importing a district-provided teacher roster (minimum: teacher name, email, grade; school if available) using merge/upsert strategy. Removed teachers are soft-deleted. | [TC-030](#tc-030), [TC-031](#tc-031) | [US-504](user_stories#us-504) |
 | <a id="fr-district-531"></a>**FR-DISTRICT-531** | The system shall provide automatic and manual matching of imported TeacherProgress entries to Teacher database records using email (primary) and fuzzy name matching (secondary). | *TBD* | [US-508](user_stories#us-508) |
 | <a id="fr-district-532"></a>**FR-DISTRICT-532** | The system shall allow Google Sheets for teacher progress tracking to be scoped to a specific district. | *TBD* | *Technical requirement* |
+| <a id="fr-district-540"></a>**FR-DISTRICT-540** | The system shall automatically reset teacher progress status to "Not Started" at the start of each semester (January 1 and June 30). | [TC-040](#tc-040), [TC-041](#tc-041) | [US-509](user_stories#us-509) |
+| <a id="fr-district-541"></a>**FR-DISTRICT-541** | Before resetting progress, the system shall archive the previous semester's progress data including teacher status, session counts, and completion dates. | [TC-042](#tc-042) | [US-509](user_stories#us-509) |
+| <a id="fr-district-542"></a>**FR-DISTRICT-542** | Archived semester data shall be retained and viewable for historical reporting purposes. | [TC-043](#tc-043) | [US-509](user_stories#us-509) |
+| <a id="fr-district-543"></a>**FR-DISTRICT-543** | The system shall log semester reset operations with timestamps and affected record counts. | [TC-044](#tc-044) | *Technical requirement* |
+| <a id="fr-district-544"></a>**FR-DISTRICT-544** | The system shall provide a manual "Archive Semester" action for admins to force-archive current progress data at any time (e.g., for mid-semester implementation). | *TBD* | [US-509](user_stories#us-509) |
 
 ## <a id="student-roster-and-attendance"></a>7.7 Student Roster and Attendance
 
@@ -355,6 +360,7 @@ This section provides a comprehensive view of the relationships between Function
 | FR-DISTRICT-505, 506, 507, 508, 521, 523 | [US-505](user_stories#us-505) | Teacher magic link |
 | FR-DISTRICT-525, 526 | [US-506](user_stories#us-506), [US-507](user_stories#us-507) | Data tracker features |
 | FR-DISTRICT-504 | *Near-term* | Automated reminders |
+| FR-DISTRICT-540–543 | [US-509](user_stories#us-509) | Semester progress reset |
 | **Student Roster** | | |
 | FR-STUDENT-601 | [US-601](user_stories#us-601) | Roster creation (Salesforce) |
 | FR-STUDENT-602 | [US-602](user_stories#us-602) | Attendance recording (Salesforce) |
@@ -423,6 +429,7 @@ This section provides a comprehensive view of the relationships between Function
 | US-506 | FR-DISTRICT-525 |
 | US-507 | FR-DISTRICT-526, 527 |
 | US-508 | FR-DISTRICT-531 |
+| US-509 | FR-DISTRICT-540, FR-DISTRICT-541, FR-DISTRICT-542, FR-DISTRICT-543, FR-DISTRICT-544 |
 | US-601 | FR-STUDENT-601 |
 | US-602 | FR-STUDENT-602 |
 | US-603 | FR-STUDENT-603, 604 |

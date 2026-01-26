@@ -417,6 +417,21 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - The link shows only my data and cannot be modified to view other teachers.
 - I can submit a flag/note if my data is incorrect.
 
+### <a id="us-509"></a>US-509: Automatic Semester Progress Reset
+
+**As** internal staff, **I want** teacher progress to reset automatically at the start of each semester, **So that** each semester's participation is tracked independently and historical data is preserved.
+
+**Related Requirements:** [FR-DISTRICT-540](requirements#fr-district-540), [FR-DISTRICT-541](requirements#fr-district-541), [FR-DISTRICT-542](requirements#fr-district-542), [FR-DISTRICT-543](requirements#fr-district-543)
+
+**Related Use Cases:** [UC-13](use_cases#uc-13)
+
+**Acceptance Criteria:**
+
+- Given it is January 1 or June 30, when the system runs the semester reset, then all teacher progress statuses are reset to "Not Started".
+- Given the reset runs, then the previous semester's data is archived before reset.
+- Given archived data exists, then staff can view historical semester summaries.
+- Given the reset completes, then a log entry records the operation details.
+
 ## Epic 6: Student Roster + Attendance
 
 ### <a id="us-601"></a>US-601: Staff can roster students to events

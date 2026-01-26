@@ -4,7 +4,7 @@ Teacher magic links + progress status validation
 
 > [!INFO]
 > **Coverage**
-> [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503) (Dashboard), [FR-DISTRICT-508](requirements#fr-district-508) (Status definitions), [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-507](requirements#fr-district-507) (Magic links), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) (RBAC/Scoping)
+> [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503) (Dashboard), [FR-DISTRICT-508](requirements#fr-district-508) (Status definitions), [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-507](requirements#fr-district-507) (Magic links), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) (RBAC/Scoping), [FR-DISTRICT-540](requirements#fr-district-540)–[FR-DISTRICT-543](requirements#fr-district-543) (Semester Reset)
 
 ---
 
@@ -63,6 +63,17 @@ Teacher magic links + progress status validation
 | <a id="tc-032"></a>**TC-032** | Auto-match by email | Teacher matched to DB record by exact email | Automated | 2026-01-25 |
 | <a id="tc-033"></a>**TC-033** | Auto-match by fuzzy name | Teacher matched by name if email differs (85%+) | Automated | 2026-01-25 |
 | <a id="tc-034"></a>**TC-034** | Manual match | Admin can manually link unmatched teacher | Manual | 2026-01-25 |
+
+### E. Semester Reset
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-040"></a>**TC-040** | Semester reset on January 1 | All teacher statuses reset to "Not Started" | Automated | 2026-01-26 |
+| <a id="tc-041"></a>**TC-041** | Semester reset on June 30 | All teacher statuses reset to "Not Started" | Automated | 2026-01-26 |
+| <a id="tc-042"></a>**TC-042** | Archive creation | Previous semester data archived with correct counts/dates | Automated | 2026-01-26 |
+| <a id="tc-043"></a>**TC-043** | Historical data viewable | Archived semester appears in historical view | Manual | 2026-01-26 |
+| <a id="tc-044"></a>**TC-044** | Reset operation logging | Log entry created with timestamp and record counts | Automated | 2026-01-26 |
+| <a id="tc-045"></a>**TC-045** | Reset idempotency | Running reset twice on same day does not duplicate archive | Automated | 2026-01-26 |
 
 ---
 

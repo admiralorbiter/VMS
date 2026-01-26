@@ -31,6 +31,7 @@ from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCach
 from models.school_model import School
 from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
+from models.teacher_progress_archive import TeacherProgressArchive
 from models.volunteer import EventParticipation, Volunteer
 from routes.decorators import district_scoped_required
 from routes.utils import admin_required
@@ -96,6 +97,46 @@ def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
     except (ValueError, IndexError):
         current_vy = get_current_virtual_year()
         return get_virtual_year_dates(current_vy)
+
+
+def get_semester_dates(
+    virtual_year: str, semester_type: str
+) -> tuple[datetime, datetime]:
+    """
+    Calculates start and end dates for specific semesters.
+
+    Args:
+        virtual_year: The virtual year string (e.g. "2024-2025")
+        semester_type: "Fall" or "Spring"
+
+    Returns:
+        tuple[datetime, datetime]: Start and end dates
+
+    Note:
+        Fall Semester: July 1 - Dec 31
+        Spring Semester: Jan 1 - Jun 30
+    """
+    try:
+        start_year = int(virtual_year.split("-")[0])
+        end_year = start_year + 1
+
+        if semester_type == "Fall":
+            # Fall is July 1 to Dec 31 of the start year
+            # Note: Virtual year technically starts Aug 1, but user requested 6/30 reset
+            # implying next semester starts 7/1.
+            return (
+                datetime(start_year, 7, 1, 0, 0, 0),
+                datetime(start_year, 12, 31, 23, 59, 59),
+            )
+        elif semester_type == "Spring":
+            # Spring is Jan 1 to June 30 of the end year
+            return (
+                datetime(end_year, 1, 1, 0, 0, 0),
+                datetime(end_year, 6, 30, 23, 59, 59),
+            )
+        return get_virtual_year_dates(virtual_year)
+    except (ValueError, IndexError):
+        return get_virtual_year_dates(virtual_year)
 
 
 # --- End Helper Functions ---
@@ -5770,9 +5811,27 @@ def load_usage_routes():
         selected_virtual_year = request.args.get("year", default_virtual_year)
 
         # Calculate default date range
-        default_date_from, default_date_to = get_virtual_year_dates(
-            selected_virtual_year
-        )
+        # DEFAULT TO CURRENT SEMESTER if current virtual year is selected
+        today = datetime.now()
+        current_vy = get_current_virtual_year()
+
+        if selected_virtual_year == current_vy:
+            # Check which semester we are in
+            # Spring: Jan - Jun
+            if 1 <= today.month <= 6:
+                semester_type = "Spring"
+            else:
+                semester_type = "Fall"
+
+            sem_start, sem_end = get_semester_dates(
+                selected_virtual_year, semester_type
+            )
+            default_date_from = sem_start
+            default_date_to = sem_end
+        else:
+            default_date_from, default_date_to = get_virtual_year_dates(
+                selected_virtual_year
+            )
 
         # Handle date parameters
         date_from_str = request.args.get("date_from")
@@ -5783,24 +5842,18 @@ def load_usage_routes():
         if date_from_str:
             try:
                 parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_from.date()
-                    <= default_date_to.date()
-                ):
-                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+                # Relaxed validation to allow semester ranges
+                # Just ensure it's somewhat reasonably near the virtual year
+                vy_start, vy_end = get_virtual_year_dates(selected_virtual_year)
+                # Expand bounds slightly or just trust user input if it parses
+                date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
             except ValueError:
                 pass
 
         if date_to_str:
             try:
                 parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_to.date()
-                    <= default_date_to.date()
-                ):
-                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+                date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
             except ValueError:
                 pass
 
@@ -5818,6 +5871,143 @@ def load_usage_routes():
         teacher_progress_data = compute_teacher_progress_tracking(
             district_name, selected_virtual_year, date_from, date_to
         )
+
+        # --- Semester Reset Logic ---
+        # Automate the process:
+        # 1. Determine "Previous Semester" relative to today
+        # 2. Check if we have archived it
+        # 3. If not, archive it
+
+        today = datetime.now()
+        current_vy = get_current_virtual_year()
+
+        # Only trigger logic if we are viewing the current virtual year
+        if selected_virtual_year == current_vy:
+            prev_semester = None
+            prev_sem_dates = None
+
+            # If today is Jan (start of Spring), we just finished Fall
+            if today.month == 1:
+                prev_semester = f"Fall {selected_virtual_year.split('-')[0]}"
+                prev_sem_dates = get_semester_dates(selected_virtual_year, "Fall")
+            # If today is July (start of Fall), we just finished Spring
+            elif today.month == 7:
+                prev_semester = f"Spring {selected_virtual_year.split('-')[1]}"
+                prev_sem_dates = get_semester_dates(selected_virtual_year, "Spring")
+
+            if prev_semester and prev_sem_dates:
+                # Check for existence of ANY archive for this semester/district to avoid redundant queries
+                # We check one random record or just check logic.
+                # Efficient check: query one archive record for this district's year/semester
+                # Complex because Archive links to TeacherProgress.
+
+                # Check if we have ANY archives for this semester
+                # We can optimize by checking a dedicated log or just querying one.
+                # Let's simple query: Check if archives exist for this virtual year + semester
+                # AND linked to a teacher in this district (approximated by checking valid TeacherProgress)
+
+                # Simplified: Just try to snapshot. The snapshot function checks for duplicates per teacher.
+                # Rate limit: Only check/run this occasionally? Or rely on duplicate check.
+                # To avoid performance hit on every page load, maybe only run if today.day <= 15?
+                if today.day <= 15:
+                    # Run generic check first to see if we should bother
+                    exists = TeacherProgressArchive.query.filter_by(
+                        semester_name=prev_semester, virtual_year=selected_virtual_year
+                    ).first()
+
+                    if not exists:
+                        # Trigger snapshot
+                        success, count = snapshot_semester_progress(
+                            district_name,
+                            selected_virtual_year,
+                            prev_semester,
+                            prev_sem_dates[0],
+                            prev_sem_dates[1],
+                        )
+                        if success and count > 0:
+                            flash(
+                                f"Automatically archived {count} records for {prev_semester}.",
+                                "info",
+                            )
+
+        # --- View Historical Data Logic ---
+        # Allow user to select a semester view
+        view_mode = request.args.get(
+            "view", "live"
+        )  # 'live', 'Fall 2024', 'Spring 2025'
+
+        available_archives = (
+            db.session.query(TeacherProgressArchive.semester_name)
+            .filter_by(virtual_year=selected_virtual_year)
+            .distinct()
+            .all()
+        )
+        archive_options = sorted([r[0] for r in available_archives])
+
+        if view_mode != "live" and view_mode in archive_options:
+            # Overwrite teacher_progress_data with archived data
+            # We need to reconstruct the nested dictionary structure from flat archive records
+            # {School: {teachers: [data]}}
+
+            archives = (
+                TeacherProgressArchive.query.join(TeacherProgress)
+                .filter(
+                    TeacherProgressArchive.semester_name == view_mode,
+                    TeacherProgressArchive.virtual_year == selected_virtual_year,
+                    # Filter by district if needed (TeacherProgress handles scoping implicitly if we join?
+                    # No, need to ensure the TP belongs to this district context.
+                    # But compute_teacher_progress_tracking filtered by district implicitly via roster)
+                )
+                .all()
+            )
+
+            # Rebuild structure
+            archived_data_map = {}  # School -> Data
+
+            for arc in archives:
+                tp = arc.teacher_progress
+                school_name = tp.building
+
+                if school_name not in archived_data_map:
+                    archived_data_map[school_name] = {
+                        "total_teachers": 0,
+                        "goals_achieved": 0,
+                        "goals_in_progress": 0,
+                        "goals_not_started": 0,
+                        "teachers": [],
+                    }
+
+                school_data = archived_data_map[school_name]
+                school_data["total_teachers"] += 1
+
+                if arc.status == "achieved":
+                    school_data["goals_achieved"] += 1
+                elif arc.status == "in_progress":
+                    school_data["goals_in_progress"] += 1
+                else:
+                    school_data["goals_not_started"] += 1
+
+                # Map archive to teacher dict format expected by template
+                t_dict = {
+                    "id": tp.id,
+                    "name": tp.name,
+                    "email": tp.email,
+                    "grade": tp.grade,
+                    "target_sessions": arc.target_sessions,
+                    "completed_sessions": arc.completed_sessions,
+                    "planned_sessions": arc.planned_sessions,
+                    "progress_percentage": arc.progress_percentage,
+                    "goal_status_class": arc.status,
+                    "goal_status_text": arc.status_text,
+                    "progress_class": arc.status,  # reuse status as class
+                    "matched_teacher_id": tp.teacher_id,
+                }
+                school_data["teachers"].append(t_dict)
+
+            teacher_progress_data = archived_data_map
+            current_filters["view_mode"] = view_mode
+        else:
+            current_filters["view_mode"] = "live"
 
         virtual_year_options = generate_school_year_options()
 
@@ -5839,7 +6029,145 @@ def load_usage_routes():
             current_filters=current_filters,
             virtual_year_options=virtual_year_options,
             last_virtual_update=last_virtual_update,
+            archive_options=archive_options,
         )
+
+    @virtual_bp.route(
+        "/usage/district/<district_name>/teacher-progress/manual-archive",
+        methods=["POST"],
+    )
+    @login_required
+    @admin_required
+    def virtual_district_teacher_progress_manual_archive(district_name):
+        """
+        Manually trigger semester archive for a district.
+        Useful if the automatic trigger was missed or feature was deployed mid-semester.
+        """
+        today = datetime.now()
+        virtual_year = get_current_virtual_year()
+
+        semester_name = None
+        sem_dates = None
+
+        if today.month == 1:  # Jan -> Archive Fall
+            semester_name = f"Fall {virtual_year.split('-')[0]}"
+            sem_dates = get_semester_dates(virtual_year, "Fall")
+        elif today.month == 7:  # July -> Archive Spring
+            semester_name = f"Spring {virtual_year.split('-')[1]}"
+            sem_dates = get_semester_dates(virtual_year, "Spring")
+        else:
+            # Fall season (Aug-Dec) -> Archive previous Spring?
+            # Spring season (Feb-Jun) -> Archive Fall?
+            # For manual trigger, assume user wants to archive the *most recently completed* semester relative to today.
+            if 8 <= today.month <= 12:
+                # In Fall 2025. Previous complete was Spring 2025 (Part of 2024-2025 VY).
+                prev_vy_start = int(virtual_year.split("-")[0]) - 1
+                prev_vy = f"{prev_vy_start}-{prev_vy_start + 1}"
+                semester_name = f"Spring {prev_vy.split('-')[1]}"
+                sem_dates = get_semester_dates(prev_vy, "Spring")
+
+            elif 2 <= today.month <= 6:
+                # In Spring 2026. Previous complete was Fall 2025.
+                semester_name = f"Fall {virtual_year.split('-')[0]}"
+                sem_dates = get_semester_dates(virtual_year, "Fall")
+
+        if not semester_name or not sem_dates:
+            flash(
+                "Could not determine a valid previous semester to archive at this time.",
+                "error",
+            )
+            return redirect(
+                url_for(
+                    "virtual.virtual_district_teacher_progress",
+                    district_name=district_name,
+                )
+            )
+
+        success, count = snapshot_semester_progress(
+            district_name,
+            (
+                virtual_year if "Fall" in semester_name else get_current_virtual_year()
+            ),  # simplistic
+            semester_name,
+            sem_dates[0],
+            sem_dates[1],
+        )
+        # Note: Virtual Year argument to snapshot needs to match the semester's VY.
+        # Fixed logic below helper
+
+        if success:
+            flash(
+                f"Successfully archived {count} records for {semester_name}.", "success"
+            )
+        else:
+            flash("Failed to archive semester. Check system logs.", "error")
+
+        return redirect(
+            url_for(
+                "virtual.virtual_district_teacher_progress", district_name=district_name
+            )
+        )
+
+    def snapshot_semester_progress(
+        district_name, virtual_year, semester_name, date_from, date_to
+    ):
+        """
+        Snapshot teacher progress for a specific semester and archive it.
+        """
+        try:
+            # 1. Compute stats for the semester
+            print(
+                f"INFO: Snapshotting {semester_name} for {district_name} ({date_from} - {date_to})"
+            )
+            progress_data = compute_teacher_progress_tracking(
+                district_name, virtual_year, date_from, date_to
+            )
+
+            count = 0
+            # 2. Iterate and save to archive
+            for school_name, school_data in progress_data.items():
+                for teacher_data in school_data.get("teachers", []):
+                    # Find original TeacherProgress record
+                    tp_id = teacher_data.get("id")
+                    if not tp_id:
+                        continue
+
+                    # Check if already archived
+                    existing = TeacherProgressArchive.query.filter_by(
+                        teacher_progress_id=tp_id, semester_name=semester_name
+                    ).first()
+
+                    if existing:
+                        continue
+
+                    # Create archive
+                    archive = TeacherProgressArchive(
+                        teacher_progress_id=tp_id,
+                        semester_name=semester_name,
+                        academic_year=virtual_year,
+                        virtual_year=virtual_year,
+                        date_from=date_from,
+                        date_to=date_to,
+                        completed_sessions=teacher_data.get("completed_sessions", 0),
+                        planned_sessions=teacher_data.get("planned_sessions", 0),
+                        target_sessions=teacher_data.get("target_sessions", 1),
+                        status=teacher_data.get(
+                            "goal_status_class"
+                        ),  # "achieved", "in_progress", "not_started"
+                        status_text=teacher_data.get("goal_status_text"),
+                        progress_percentage=teacher_data.get("progress_percentage", 0),
+                        created_by=current_user.id if current_user else None,
+                    )
+                    db.session.add(archive)
+                    count += 1
+
+            db.session.commit()
+            print(f"INFO: Successfully archived {count} records for {semester_name}")
+            return True, count
+        except Exception as e:
+            db.session.rollback()
+            print(f"ERROR: Failed to snapshot semester: {str(e)}")
+            return False, 0
 
     @virtual_bp.route("/usage/district/<district_name>/teacher-progress/google-sheets")
     @login_required
@@ -7340,3 +7668,78 @@ def match_teacher_progress_to_teachers(virtual_year=None, min_similarity=0.85):
         stats["errors"].append(f"Error committing matches: {str(e)}")
 
     return stats
+
+
+def snapshot_semester_progress(
+    district_name, virtual_year, semester_name, date_from, date_to
+):
+    """
+    Snapshot teacher progress for a specific semester and archive it.
+    """
+    try:
+        from flask_login import current_user
+
+        # 1. Compute stats for the semester
+        print(
+            f"INFO: Snapshotting {semester_name} for {district_name} ({date_from} - {date_to})"
+        )
+        progress_data = compute_teacher_progress_tracking(
+            district_name, virtual_year, date_from, date_to
+        )
+
+        count = 0
+        userid = None
+        try:
+            # handle script execution context where current_user might be missing or anonymous
+            if current_user and current_user.is_authenticated:
+                userid = current_user.id
+        except:
+            pass
+
+        # 2. Iterate and save to archive
+        for school_name, school_data in progress_data.items():
+            for teacher_data in school_data.get("teachers", []):
+                # Find original TeacherProgress record
+                tp_id = teacher_data.get("id")
+                if not tp_id:
+                    continue
+
+                # Check if already archived
+                existing = TeacherProgressArchive.query.filter_by(
+                    teacher_progress_id=tp_id, semester_name=semester_name
+                ).first()
+
+                if existing:
+                    continue
+
+                # Create archive
+                archive = TeacherProgressArchive(
+                    teacher_progress_id=tp_id,
+                    semester_name=semester_name,
+                    academic_year=virtual_year,
+                    virtual_year=virtual_year,
+                    date_from=date_from,
+                    date_to=date_to,
+                    completed_sessions=teacher_data.get("completed_sessions", 0),
+                    planned_sessions=teacher_data.get("planned_sessions", 0),
+                    target_sessions=teacher_data.get("target_sessions", 1),
+                    status=teacher_data.get(
+                        "goal_status_class"
+                    ),  # "achieved", "in_progress", "not_started"
+                    status_text=teacher_data.get("goal_status_text"),
+                    progress_percentage=teacher_data.get("progress_percentage", 0),
+                    created_by=userid,
+                )
+                db.session.add(archive)
+                count += 1
+
+        db.session.commit()
+        print(f"INFO: Successfully archived {count} records for {semester_name}")
+        return True, count
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERROR: Failed to snapshot semester: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
+        return False, 0

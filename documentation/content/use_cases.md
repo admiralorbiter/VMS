@@ -27,6 +27,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 | [UC-10](#uc-10) | Student Roster and Attendance | [US-601](user_stories#us-601), [US-602](user_stories#us-602), [US-603](user_stories#us-603) | [Test Pack 5](#test-pack-5) |
 | [UC-11](#uc-11) | Identify and Fill Presenter Gaps | [US-307](user_stories#us-307), [US-303](user_stories#us-303) | [Test Pack 3](#test-pack-3) |
 | [UC-12](#uc-12) | Generate Partner Reconciliation Report | [US-705](user_stories#us-705) | [Test Pack 6](#test-pack-6) |
+| [UC-13](#uc-13) | Semester Progress Rollover | [US-509](user_stories#us-509) | [Test Pack 1](#test-pack-1) |
 
 ---
 
@@ -230,6 +231,22 @@ Use cases describe complete workflows that span multiple systems and features. T
  - **Requirements**: [FR-REPORTING-407](requirements#fr-reporting-407), [FR-REPORTING-408](requirements#fr-reporting-408)
  - **User Stories**: [US-705](user_stories#us-705)
  - **Test Coverage**: [Test Pack 6](test_packs/test_pack_6)
+
+---
+
+ ## <a id="uc-13"></a>UC-13: Semester Progress Rollover (Polaris)
+
+ **Workflow:**
+ 1. System detects semester boundary date (January 1 or June 30)
+ 2. System archives current semester's progress data (status, counts, dates per teacher)
+ 3. System resets all teacher progress statuses to "Not Started"
+ 4. System logs the operation with timestamp and affected counts
+ 5. District dashboards now show fresh semester data
+
+ **Related:**
+ - **Requirements**: [FR-DISTRICT-540](requirements#fr-district-540), [FR-DISTRICT-541](requirements#fr-district-541), [FR-DISTRICT-542](requirements#fr-district-542), [FR-DISTRICT-543](requirements#fr-district-543)
+ - **User Stories**: [US-509](user_stories#us-509)
+ - **Test Coverage**: [Test Pack 1](test_packs/test_pack_1)
 
 ---
 
