@@ -123,33 +123,65 @@ Rows invalid: F
 
 **Run Import:**
 
-1. Go to **Virtual → Teacher Progress → Google Sheets**
-2. Select district: **Kansas City Kansas Public Schools** (only district supported)
-3. Select academic year
-4. Click **Import** for configured Google Sheet
-5. Review import summary
+ 1. **Navigate to Import Interface:**
+    - Go to the District Dashboard.
+    - Click **Manage Google Sheets & Import Data**.
 
-**Expected Output:**
+    ![Manage Google Sheets Button](content/images/teacher_import/manage_sheets.png)
 
-```
-Teachers imported: N
-Teachers created: A
-Teachers updated: B
-Rows skipped: C
-```
+ 2. **Review Instructions & Year:**
+    - Select the **Virtual Year** (e.g., 2025-2026).
+    - Review the data format guide at the top of the page.
 
-**Note:** Import replaces all TeacherProgress records for the academic year. Previous data is deleted before importing new data.
+    ![Import Instructions](content/images/teacher_import/import_instructions.png)
 
-**Post-Import:**
+ 3. **Add Google Sheet:**
+    - Click **Add Google Sheet**.
+    - In the modal:
+      - Select **District** (e.g., Kansas City Kansas Public Schools).
+      - Select **Virtual Year**.
+      - Enter a **Sheet Name** (e.g. "KCK Teachers 25-26").
+      - Paste the **Google Sheet ID**.
+    - Click **Add Sheet**.
 
-- Teachers automatically matched to Teacher records by email (if exists)
-- Unmatched teachers can be manually matched via admin interface: `/virtual/usage/match-teacher-progress`
-- Teachers become eligible for magic link access
+    ![Add Sheet Modal](content/images/teacher_import/add_sheet_modal.png)
 
-**Implementation:**
-- Route: `routes/virtual/usage.py` `/usage/district/<district_name>/teacher-progress/google-sheets/<int:sheet_id>/import`
-- Model: `models/teacher_progress.py` `TeacherProgress`
-- Reference: [Field Mappings - Teacher Roster Import](field_mappings#4-teacher-roster-import)
+ 4. **Run Import:**
+    - Find your sheet in the list.
+    - Click the green **Import** button.
+    - Wait for the success message confirming added/updated records.
+
+    ![Sheet List with Import Button](content/images/teacher_import/sheet_list_import.png)
+
+ **Post-Import: Teacher Matching**
+
+ After importing, you must link the imported roster names to VMS Teacher records.
+
+ 1. Click **Match Teachers** (purple button) or the link in the instruction banner.
+ 2. **Auto-Matching:**
+    - Click **Run Auto-Match** to match by Email (Exact) and Name (Fuzzy).
+ 3. **Manual Matching:**
+    - Check **Show unmatched only**.
+    - For each unmatched teacher, select the correct VMS account from the dropdown.
+    - Click **Match**.
+
+ ![Teacher Matching Interface](content/images/teacher_import/match_interface.png)
+
+ **Expected Output:**
+
+ ```
+ Teachers imported: N
+ Teachers created: A
+ Teachers updated: B
+ Rows skipped: C
+ ```
+
+ **Note:** Import replaces all TeacherProgress records for the academic year. Previous data is deleted before importing new data.
+
+ **Implementation:**
+ - Route: `routes/virtual/usage.py` `/usage/district/<district_name>/teacher-progress/google-sheets/<int:sheet_id>/import`
+ - Model: `models/teacher_progress.py` `TeacherProgress`
+ - Reference: [Field Mappings - Teacher Roster Import](field_mappings#4-teacher-roster-import)
 
 ## Playbook C: Virtual Session Import (Google Sheets)
 

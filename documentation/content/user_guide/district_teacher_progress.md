@@ -41,27 +41,13 @@ Create a Google Sheet with the following columns (headers are recommended but no
 
 *Note: Ensure the sheet is accessible to the system service account or publicly viewable (depending on configuration).*
 
-#### 2. Importing the Roster
-1.  Navigate to the District Dashboard.
-2.  Click **"Manage Google Sheets"** (or similar import action).
-3.  Click **"Add Google Sheet"**.
-4.  Select the **District** (if global admin) or verify your district is pre-selected.
-5.  Enter the **Sheet ID** (from the Google Sheet URL).
-6.  Click **Add**.
-7.  Once added, click **Import** to pull the teacher records.
+#### 2. Importing the Roster & Matching
+ Teacher data is imported and matched by internal VMS administrators.
 
-#### 3. Teacher Matching
-After import, "TeacherProgress" records exist but may not be linked to VMS "Teacher" accounts. Linking them enables the detail view.
+ > [!NOTE]
+ > **Internal Staff:** Please refer to the [Teacher Roster Import Playbook](import_playbook#playbook-b-teacher-roster-import) for detailed instructions on importing rosters and running the matching process.
 
--   **Auto-Matching**:
-    -   The system attempts to match by **Email** (Exact) then **Name** (Fuzzy/Similar).
-    -   Run this immediately after import via the **"Match Teachers"** interface.
--   **Manual Matching**:
-    -   Go to **"Match Teachers"**.
-    -   Filter by **"Show Unmatched Only"**.
-    -   For each unmatched teacher, select the correct VMS Teacher record from the dropdown and click **Match**.
-
-*Reference: See [Teacher Progress Matching Guide](../guides/teacher_progress_matching.md) for technical details on the matching algorithm.*
+ Once imported, teachers appear in the list below. Matching ensures they are linked to their VMS user accounts for detailed reporting.
 
 ## 3. Teacher Magic Links
 
