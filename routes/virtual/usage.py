@@ -6476,12 +6476,21 @@ def load_usage_routes():
 
             # Perform Safe Import
             try:
+                # Look up tenant by district name for multi-tenant support
+                from models import Tenant
+
+                tenant = Tenant.query.filter(
+                    Tenant.district.has(name=district_name)
+                ).first()
+                tenant_id = tenant.id if tenant else None
+
                 import_log = import_roster(
                     district_name=district_name,
                     academic_year=sheet.academic_year,
                     teacher_data=validated_data,
                     user_id=current_user.id,
                     sheet_id=str(sheet_id),
+                    tenant_id=tenant_id,
                 )
 
                 flash(

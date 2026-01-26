@@ -30,6 +30,7 @@ const PAGE_MANIFEST = {
     'test-pack-5': 'test_packs/test_pack_5',
     'test-pack-6': 'test_packs/test_pack_6',
     'test-pack-7': 'test_packs/test_pack_7',
+    'test-pack-8': 'test_packs/test_pack_8',
     // User Guide
     'user-guide-index': 'user_guide/index',
     'user-guide-in-person-events': 'user_guide/in_person_events',
@@ -96,6 +97,9 @@ function init() {
     // Set up navigation event listeners
     setupNavigation();
 
+    // Set up nav toggle
+    setupNavToggle();
+
     // Handle initial page load
     handleRouting();
 
@@ -126,6 +130,29 @@ function setupNavigation() {
 }
 
 /**
+ * Set up nav toggle button for collapsing/expanding sidebar
+ */
+function setupNavToggle() {
+    const toggleBtn = document.getElementById('nav-toggle');
+    const layout = document.querySelector('.layout');
+
+    if (!toggleBtn || !layout) return;
+
+    // Restore saved state from localStorage
+    const isCollapsed = localStorage.getItem('navCollapsed') === 'true';
+    if (isCollapsed) {
+        layout.classList.add('nav-collapsed');
+    }
+
+    // Toggle on click
+    toggleBtn.addEventListener('click', () => {
+        layout.classList.toggle('nav-collapsed');
+        // Save state
+        localStorage.setItem('navCollapsed', layout.classList.contains('nav-collapsed'));
+    });
+}
+
+/**
  * Map test case number to test pack
  * @param {string} tcId - Test case ID (e.g., 'tc-100' or '100')
  * @returns {string|null} - Test pack page name or null
@@ -145,6 +172,7 @@ function getTestPackForTC(tcId) {
     if (tcNum >= 600 && tcNum <= 691) return 'test_packs/test_pack_5';
     if (tcNum >= 700 && tcNum <= 822) return 'test_packs/test_pack_6';
     if (tcNum >= 900 && tcNum <= 913) return 'test_packs/test_pack_7';
+    if (tcNum >= 800 && tcNum <= 899) return 'test_packs/test_pack_8';
 
     return null;
 }

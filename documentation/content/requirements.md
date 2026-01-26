@@ -325,8 +325,8 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-tenant-101"></a>**FR-TENANT-101** | PrepKC administrators shall be able to create new district tenants, provisioning isolated databases with schema and reference data. | *Phase 1* | [US-1001](user_stories#us-1001) |
-| <a id="fr-tenant-102"></a>**FR-TENANT-102** | PrepKC administrators shall be able to view, edit, and deactivate tenants via a tenant management interface. | *Phase 1* | [US-1001](user_stories#us-1001) |
+| <a id="fr-tenant-101"></a>**FR-TENANT-101** | PrepKC administrators shall be able to create new district tenants, provisioning isolated databases with schema and reference data. | [TC-801](test-pack-8#tc-801), [TC-806](test-pack-8#tc-806) | [US-1001](user_stories#us-1001) |
+| <a id="fr-tenant-102"></a>**FR-TENANT-102** | PrepKC administrators shall be able to view, edit, and deactivate tenants via a tenant management interface. | [TC-810](test-pack-8#tc-810), [TC-811](test-pack-8#tc-811), [TC-820](test-pack-8#tc-820), [TC-830](test-pack-8#tc-830) | [US-1001](user_stories#us-1001) |
 | <a id="fr-tenant-103"></a>**FR-TENANT-103** | The system shall route authenticated users to their tenant's database and enforce tenant-scoped access for all operations. | *Phase 1* | *Technical requirement* |
 | <a id="fr-tenant-104"></a>**FR-TENANT-104** | Reference data (schools, districts, skills, career types) shall be duplicated to each tenant database during provisioning. | *Phase 1* | *Technical requirement* |
 | <a id="fr-tenant-105"></a>**FR-TENANT-105** | PrepKC administrators shall be able to switch tenant context to support any tenant while maintaining audit trails. | *Phase 1* | [US-1002](user_stories#us-1002) |

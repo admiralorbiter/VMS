@@ -53,8 +53,51 @@ nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:3px}
 nav::-webkit-scrollbar-track{background:transparent}
 
 .nav-header{padding:0 20px 16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+.nav-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .nav-header h1{font-size:16px;font-weight:700;color:#fff;letter-spacing:-.3px}
 .nav-header .version{font-size:11px;color:rgba(255,255,255,.6);margin-top:4px}
+
+/* Nav Toggle Button */
+.nav-toggle{
+  background:rgba(255,255,255,.1);
+  border:none;
+  color:#fff;
+  width:28px;
+  height:28px;
+  border-radius:4px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .15s ease;
+  flex-shrink:0;
+}
+.nav-toggle:hover{background:rgba(255,255,255,.2)}
+.toggle-icon{font-size:12px;transition:transform .2s ease}
+
+/* Collapsed Nav State */
+.layout.nav-collapsed nav{
+  width:50px;
+  padding:20px 0;
+}
+.layout.nav-collapsed{grid-template-columns:50px 1fr}
+.layout.nav-collapsed .nav-header{padding:0 10px 16px}
+.layout.nav-collapsed .nav-header-top{justify-content:center}
+.layout.nav-collapsed .nav-header h1,
+.layout.nav-collapsed .nav-header .version,
+.layout.nav-collapsed .nav-section-title,
+.layout.nav-collapsed .nav-link span,
+.layout.nav-collapsed .badge{display:none}
+.layout.nav-collapsed .nav-link{
+  padding:10px;
+  justify-content:center;
+  border-left:none;
+}
+.layout.nav-collapsed .nav-link::before{
+  content:attr(data-icon);
+  font-size:16px;
+}
+.layout.nav-collapsed .toggle-icon{transform:rotate(180deg)}
 
 .nav-section{margin:16px 0}
 .nav-section-title{

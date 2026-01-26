@@ -169,6 +169,15 @@ class User(db.Model, UserMixin):
         db.String(20), default="global", nullable=False
     )  # 'global', 'district', 'school'
 
+    # Multi-tenant support (District Suite)
+    tenant_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tenant.id"),
+        nullable=True,
+        index=True,
+        comment="Tenant this user belongs to (null = PrepKC main)",
+    )
+
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.utcnow, nullable=False

@@ -105,6 +105,10 @@ class TeacherProgress(db.Model):
     district_name = Column(String(200), nullable=True)  # Nullable for legacy data
     last_import_id = Column(Integer, ForeignKey("roster_import_log.id"), nullable=True)
 
+    # [NEW] Multi-tenant support (District Suite)
+    tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=True, index=True)
+    tenant = relationship("Tenant", backref="teacher_progress_entries")
+
     def __init__(
         self,
         academic_year,

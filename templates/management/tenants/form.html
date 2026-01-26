@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('tenants.list_tenants') }}">Tenants</a></li>
+            <li class="breadcrumb-item active">{{ 'Edit' if tenant else 'Create' }}</li>
+        </ol>
+    </nav>
+
+    <h2 class="mb-4">{{ page_title }}</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="admin-card p-4">
+                <form method="POST"
+                    action="{{ url_for('tenants.update_tenant', tenant_id=tenant.id) if tenant else url_for('tenants.create_tenant') }}">
+
+                    <!-- Basic Information -->
+                    <h5 class="mb-3">Basic Information</h5>
+
+                    {% if not tenant %}
+                    <div class="mb-3">
+                        <label class="form-label" for="slug">Slug <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="slug" name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                            placeholder="e.g., kckps" required title="Lowercase letters, numbers, and hyphens only">
+                        <div class="form-text">URL-safe identifier. Used in portal URL: /virtual/<strong>slug</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label" for="name">Display Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name"
+                            value="{{ tenant.name if tenant else '' }}"
+                            placeholder="e.g., Kansas City Kansas Public Schools" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="district_id">Linked District (Optional)</label>
+                        <select class="form-select" id="district_id" name="district_id">
+                            <option value="">-- No linked district --</option>
+                            {% for district in districts %}
+                            <option value="{{ district.id }}" {% if tenant and tenant.district_id==district.id
+                                %}selected{% endif %}>
+                                {{ district.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Link to existing district for reference data synchronization</div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Feature Flags -->
+                    <h5 class="mb-3">Feature Flags</h5>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="events_enabled" name="events_enabled" {%
+                                if not tenant or tenant.is_feature_enabled('events') %}checked{% endif %}>
+                            <label class="form-check-label" for="events_enabled">
+                                <strong>Events Management</strong>
+                                <span class="text-muted">- Create and manage district events</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="volunteers_enabled"
+                                name="volunteers_enabled" {% if not tenant or tenant.is_feature_enabled('volunteers')
+                                %}checked{% endif %}>
+                            <label class="form-check-label" for="volunteers_enabled">
+                                <strong>Volunteer Management</strong>
+                                <span class="text-muted">- Manage volunteer pool and assignments</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="recruitment_enabled"
+                                name="recruitment_enabled" {% if tenant and tenant.is_feature_enabled('recruitment')
+                                %}checked{% endif %}>
+                            <label class="form-check-label" for="recruitment_enabled">
+                                <strong>Recruitment Dashboard</strong>
+                                <span class="text-muted">- Smart volunteer recommendations (Phase 4)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="prepkc_visibility_enabled"
+                                name="prepkc_visibility_enabled" {% if tenant and
+                                tenant.is_feature_enabled('prepkc_visibility') %}checked{% endif %}>
+                            <label class="form-check-label" for="prepkc_visibility_enabled">
+                                <strong>PrepKC Event Visibility</strong>
+                                <span class="text-muted">- View PrepKC events at district schools (Phase 5)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {% if tenant %}
+                    <hr class="my-4">
+
+                    <!-- Portal Settings -->
+                    <h5 class="mb-3">Portal Settings</h5>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="welcome_message">Welcome Message</label>
+                        <input type="text" class="form-control" id="welcome_message" name="welcome_message"
+                            value="{{ tenant.get_setting('portal', 'welcome_message', default='') }}"
+                            placeholder="e.g., Welcome to the KCK District Portal">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="teacher_login_label">Teacher Login Label</label>
+                            <input type="text" class="form-control" id="teacher_login_label" name="teacher_login_label"
+                                value="{{ tenant.get_setting('portal', 'teacher_login_label', default='Teacher Login') }}"
+                                placeholder="Teacher Login">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="staff_login_label">Staff Login Label</label>
+                            <input type="text" class="form-control" id="staff_login_label" name="staff_login_label"
+                                value="{{ tenant.get_setting('portal', 'staff_login_label', default='District Staff Login') }}"
+                                placeholder="District Staff Login">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- API Settings -->
+                    <h5 class="mb-3">API Settings</h5>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="allowed_origins">Allowed CORS Origins</label>
+                        <textarea class="form-control" id="allowed_origins" name="allowed_origins" rows="3"
+                            placeholder="https://www.kckps.org,https://kckps.org">{{ tenant.allowed_origins or '' }}</textarea>
+                        <div class="form-text">Comma-separated list of domains that can call the public event API</div>
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-4">
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{{ 'Save Changes' if tenant else 'Create Tenant' }}
+                        </button>
+                        <a href="{{ url_for('tenants.list_tenants') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            {% if tenant %}
+            <div class="admin-card p-4 mb-4">
+                <h6 class="mb-3">Tenant Info</h6>
+                <dl class="mb-0">
+                    <dt>Slug</dt>
+                    <dd><code>{{ tenant.slug }}</code></dd>
+                    <dt>Portal URL</dt>
+                    <dd><a href="/virtual/{{ tenant.slug }}" target="_blank">/virtual/{{ tenant.slug }}</a></dd>
+                    <dt>Status</dt>
+                    <dd>
+                        {% if tenant.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </dd>
+                    <dt>Created</dt>
+                    <dd>{{ tenant.created_at.strftime('%Y-%m-%d') if tenant.created_at else '-' }}</dd>
+                </dl>
+            </div>
+            {% endif %}
+
+            <div class="admin-card p-4">
+                <h6 class="mb-3">Help</h6>
+                <p class="small text-muted mb-0">
+                    <strong>Slug:</strong> Used in URLs. Cannot be changed after creation.<br><br>
+                    <strong>Feature Flags:</strong> Control which features are available to the district.
+                    Enable features as part of phased rollout.<br><br>
+                    <strong>Linked District:</strong> Optional connection to an existing District record for reference
+                    data.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

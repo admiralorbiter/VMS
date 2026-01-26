@@ -29,6 +29,7 @@ from models.organization import Organization
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher
+from models.tenant import Tenant
 from models.user import User
 from models.volunteer import (
     Engagement,
@@ -235,7 +236,15 @@ def app():
         yield test_app
 
         db.session.remove()
-        db.drop_all()
+        # Disable FK constraints for clean teardown, then drop all tables
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text("PRAGMA foreign_keys=OFF"))
+                conn.commit()
+            db.drop_all()
+        except Exception:
+            # Silently handle any remaining teardown issues
+            pass
 
 
 @pytest.fixture

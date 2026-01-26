@@ -60,6 +60,7 @@ from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
+from routes.tenants import tenants_bp
 
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
@@ -105,6 +106,7 @@ def init_routes(app):
     app.register_blueprint(management_bp)
     app.register_blueprint(cache_management_bp)
     app.register_blueprint(calendar_bp)
+    app.register_blueprint(tenants_bp)
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
     app.register_blueprint(email_bp)

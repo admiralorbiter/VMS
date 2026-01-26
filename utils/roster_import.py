@@ -73,7 +73,9 @@ def validate_import_data(df):
     return validated_rows, errors
 
 
-def import_roster(district_name, academic_year, teacher_data, user_id, sheet_id=None):
+def import_roster(
+    district_name, academic_year, teacher_data, user_id, sheet_id=None, tenant_id=None
+):
     """
     Import roster using merge/upsert strategy.
 
@@ -83,6 +85,7 @@ def import_roster(district_name, academic_year, teacher_data, user_id, sheet_id=
         teacher_data (list): List of validated teacher dictionaries
         user_id (int): ID of the user performing import
         sheet_id (str): Optional Google Sheet ID source
+        tenant_id (int): Optional tenant ID for multi-tenant support
 
     Returns:
         RosterImportLog: The log entry for this import
@@ -158,6 +161,7 @@ def import_roster(district_name, academic_year, teacher_data, user_id, sheet_id=
                 )
                 new_record.district_name = district_name
                 new_record.is_active = True
+                new_record.tenant_id = tenant_id  # Multi-tenant support
                 new_record.created_at = datetime.now(timezone.utc)
                 new_record.updated_at = datetime.now(timezone.utc)
 

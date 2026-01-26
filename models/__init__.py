@@ -68,6 +68,7 @@ from .sync_log import SyncLog
 from .teacher import Teacher
 from .teacher_progress import TeacherProgress
 from .teacher_progress_archive import TeacherProgressArchive
+from .tenant import Tenant
 
 # Import your models after db initialization
 from .user import User
@@ -116,6 +117,7 @@ __all__ = [
     "EmailTemplate",
     "EmailMessage",
     "EmailDeliveryAttempt",
+    "Tenant",
 ]
 
 # Eager-loading helper options
