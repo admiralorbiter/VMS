@@ -32,6 +32,24 @@
     flex-wrap: wrap;
 }
 
+.input-data-button {
+    background-color: var(--ucla-blue);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+}
+
+.input-data-button:hover {
+    background-color: var(--delft-blue);
+    text-decoration: none;
+}
+
 .back-link {
     color: var(--ucla-blue);
     text-decoration: none;
@@ -140,6 +158,10 @@
             <h1>Detailed Stats Breakdown {{ school_year }}</h1>
         </div>
         <div class="header-controls">
+            <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}" 
+               class="input-data-button">
+                <i class="fas fa-edit"></i> Input Data
+            </a>
             <div class="year-filter">
                 <form method="get" action="{{ url_for('report.district_year_end_breakdown') }}" id="yearForm">
                     <input type="hidden" name="host_filter" value="{{ host_filter }}">
