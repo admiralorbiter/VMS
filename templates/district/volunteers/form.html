@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if volunteer else 'Add' }} Volunteer{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_volunteers') }}">Volunteers</a></li>
+            <li class="breadcrumb-item active">{{ 'Edit' if volunteer else 'Add' }} Volunteer</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{{ 'edit' if volunteer else 'plus' }} me-2"></i>
+                        {{ 'Edit Volunteer' if volunteer else 'Add New Volunteer' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST"
+                        action="{{ url_for('district.update_volunteer', volunteer_id=volunteer.id) if volunteer else url_for('district.create_volunteer') }}">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" name="first_name" class="form-control" required
+                                    value="{{ volunteer.first_name if volunteer else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" name="last_name" class="form-control" required
+                                    value="{{ volunteer.last_name if volunteer else '' }}">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" name="email" class="form-control"
+                                    value="{{ volunteer.email if volunteer else '' }}">
+                                <div class="form-text">Used to identify existing volunteers</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" name="phone" class="form-control"
+                                    value="{{ volunteer.phone if volunteer else '' }}">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Organization</label>
+                                <input type="text" name="organization_name" class="form-control"
+                                    value="{{ volunteer.organization_name if volunteer else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Title/Position</label>
+                                <input type="text" name="title" class="form-control"
+                                    value="{{ volunteer.title if volunteer else '' }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea name="notes" class="form-control" rows="3"
+                                placeholder="District-specific notes about this volunteer...">{{ district_volunteer.notes if district_volunteer else '' }}</textarea>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('district.list_volunteers') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>{{ 'Save Changes' if volunteer else 'Add Volunteer' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Tips</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li class="mb-2">First and last name are required fields</li>
+                        <li class="mb-2">Email is used to match existing volunteers in the system</li>
+                        <li class="mb-2">If a volunteer with the same email exists, they will be linked to your district
+                        </li>
+                        <li>Notes are only visible within your district</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

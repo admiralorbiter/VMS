@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}{{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_volunteers') }}">Volunteers</a></li>
+            <li class="breadcrumb-item active">{{ volunteer.first_name }} {{ volunteer.last_name }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Profile Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Volunteer Profile
+                    </h5>
+                    <div>
+                        {% if district_volunteer.status == 'active' %}
+                        <span class="badge bg-success me-2">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary me-2">Inactive</span>
+                        {% endif %}
+                        <a href="{{ url_for('district.edit_volunteer', volunteer_id=volunteer.id) }}"
+                            class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>{{ volunteer.first_name }} {{ volunteer.last_name }}</h4>
+                            {% if volunteer.title %}
+                            <p class="text-muted mb-3">{{ volunteer.title }}</p>
+                            {% endif %}
+
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td class="text-muted" style="width: 120px;"><i
+                                            class="fas fa-envelope me-2"></i>Email</td>
+                                    <td>
+                                        {% if volunteer.email %}
+                                        <a href="mailto:{{ volunteer.email }}">{{ volunteer.email }}</a>
+                                        {% else %}
+                                        <span class="text-muted">Not provided</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="fas fa-phone me-2"></i>Phone</td>
+                                    <td>{{ volunteer.phone or 'Not provided' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="fas fa-building me-2"></i>Organization</td>
+                                    <td>{{ volunteer.organization_name or 'Not provided' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">District Info</h6>
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td class="text-muted" style="width: 120px;">Added</td>
+                                    <td>{{ district_volunteer.added_at.strftime('%b %d, %Y') if
+                                        district_volunteer.added_at else '-' }}</td>
+                                </tr>
+                                {% if district_volunteer.notes %}
+                                <tr>
+                                    <td class="text-muted align-top">Notes</td>
+                                    <td>{{ district_volunteer.notes }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event History -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Event History</h5>
+                </div>
+                <div class="card-body">
+                    {% if participations %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Date</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in participations %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('district.view_event', event_id=p.event_id) }}">
+                                            {{ p.event.title if p.event else 'Unknown Event' }}
+                                        </a>
+                                    </td>
+                                    <td>{{ p.event.start_date.strftime('%b %d, %Y') if p.event and p.event.start_date
+                                        else '-' }}</td>
+                                    <td>{{ p.participation_type|title if p.participation_type else '-' }}</td>
+                                    <td>
+                                        {% if p.status == 'invited' %}
+                                        <span class="badge bg-info">Invited</span>
+                                        {% elif p.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                        {% elif p.status == 'declined' %}
+                                        <span class="badge bg-secondary">Declined</span>
+                                        {% elif p.status == 'attended' %}
+                                        <span class="badge bg-primary">Attended</span>
+                                        {% elif p.status == 'no_show' %}
+                                        <span class="badge bg-danger">No Show</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">{{ p.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                        <p class="mb-0">No event participation history</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('district.edit_volunteer', volunteer_id=volunteer.id) }}"
+                            class="btn btn-outline-primary">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </a>
+
+                        <form method="POST"
+                            action="{{ url_for('district.toggle_volunteer_status', volunteer_id=volunteer.id) }}">
+                            {% if district_volunteer.status == 'active' %}
+                            <button type="submit" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-user-slash me-2"></i>Mark Inactive
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-outline-success w-100">
+                                <i class="fas fa-user-check me-2"></i>Reactivate
+                            </button>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Navigation -->
+            <a href="{{ url_for('district.list_volunteers') }}" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-arrow-left me-2"></i>Back to Volunteers
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

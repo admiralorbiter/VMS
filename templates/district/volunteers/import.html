@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Import Volunteers{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_volunteers') }}">Volunteers</a></li>
+            <li class="breadcrumb-item active">Import CSV</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file-import me-2"></i>Import Volunteers from CSV</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Step 1: Upload -->
+                    <div id="step-upload">
+                        <h6 class="mb-3">Step 1: Select File</h6>
+                        <div class="mb-3">
+                            <label class="form-label">CSV File</label>
+                            <input type="file" id="csv-file" class="form-control" accept=".csv,.txt">
+                            <div class="form-text">Upload a CSV file with volunteer data</div>
+                        </div>
+                        <button type="button" id="btn-preview" class="btn btn-primary" disabled>
+                            <i class="fas fa-eye me-1"></i>Preview Data
+                        </button>
+                    </div>
+
+                    <!-- Step 2: Map Columns -->
+                    <div id="step-mapping" style="display: none;">
+                        <h6 class="mb-3">Step 2: Map Columns</h6>
+                        <form method="POST" action="{{ url_for('district.process_import') }}"
+                            enctype="multipart/form-data">
+                            <input type="file" name="file" id="import-file" style="display: none;">
+
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Field</th>
+                                            <th>CSV Column</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>First Name <span class="text-danger">*</span></td>
+                                            <td><select name="map_first_name"
+                                                    class="form-select form-select-sm column-select"></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Last Name <span class="text-danger">*</span></td>
+                                            <td><select name="map_last_name"
+                                                    class="form-select form-select-sm column-select"></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Email</td>
+                                            <td><select name="map_email"
+                                                    class="form-select form-select-sm column-select"></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Phone</td>
+                                            <td><select name="map_phone"
+                                                    class="form-select form-select-sm column-select"></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Organization</td>
+                                            <td><select name="map_organization"
+                                                    class="form-select form-select-sm column-select"></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Title</td>
+                                            <td><select name="map_title"
+                                                    class="form-select form-select-sm column-select"></select></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-3">Preview (first 10 rows)</h6>
+                            <div id="preview-table" class="table-responsive mb-3"></div>
+
+                            <div class="d-flex justify-content-between">
+                                <button type="button" id="btn-back" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Change File
+                                </button>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check me-1"></i>Import Volunteers
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Import Tips</h6>
+                </div>
+                <div class="card-body small">
+                    <h6>Required Columns</h6>
+                    <ul>
+                        <li>First Name</li>
+                        <li>Last Name</li>
+                    </ul>
+
+                    <h6>Optional Columns</h6>
+                    <ul>
+                        <li>Email (used to match existing volunteers)</li>
+                        <li>Phone</li>
+                        <li>Organization</li>
+                        <li>Title/Position</li>
+                    </ul>
+
+                    <h6>Notes</h6>
+                    <ul class="mb-0">
+                        <li>File should be in CSV format</li>
+                        <li>First row should contain column headers</li>
+                        <li>Existing volunteers (matched by email) will be linked to your district</li>
+                        <li>Inactive volunteers will be reactivated</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const fileInput = document.getElementById('csv-file');
+        const btnPreview = document.getElementById('btn-preview');
+        const stepUpload = document.getElementById('step-upload');
+        const stepMapping = document.getElementById('step-mapping');
+        const btnBack = document.getElementById('btn-back');
+        const importFile = document.getElementById('import-file');
+
+        fileInput.addEventListener('change', function () {
+            btnPreview.disabled = !this.files.length;
+        });
+
+        btnPreview.addEventListener('click', async function () {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('{{ url_for("district.preview_import") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Populate column selects
+                const selects = document.querySelectorAll('.column-select');
+                selects.forEach(select => {
+                    select.innerHTML = '<option value="">-- Not mapped --</option>';
+                    data.columns.forEach(col => {
+                        select.innerHTML += `<option value="${col}">${col}</option>`;
+                    });
+                });
+
+                // Apply suggested mappings
+                const mappings = data.suggested_mappings;
+                if (mappings.first_name) document.querySelector('[name="map_first_name"]').value = mappings.first_name;
+                if (mappings.last_name) document.querySelector('[name="map_last_name"]').value = mappings.last_name;
+                if (mappings.email) document.querySelector('[name="map_email"]').value = mappings.email;
+                if (mappings.phone) document.querySelector('[name="map_phone"]').value = mappings.phone;
+                if (mappings.organization) document.querySelector('[name="map_organization"]').value = mappings.organization;
+                if (mappings.title) document.querySelector('[name="map_title"]').value = mappings.title;
+
+                // Show preview table
+                let tableHtml = '<table class="table table-sm table-bordered"><thead class="table-light"><tr>';
+                data.columns.forEach(col => {
+                    tableHtml += `<th>${col}</th>`;
+                });
+                tableHtml += '</tr></thead><tbody>';
+                data.preview_rows.forEach(row => {
+                    tableHtml += '<tr>';
+                    data.columns.forEach(col => {
+                        tableHtml += `<td>${row[col] || ''}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</tbody></table>';
+                document.getElementById('preview-table').innerHTML = tableHtml;
+
+                // Copy file to hidden input for form submission
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                importFile.files = dt.files;
+
+                // Show mapping step
+                stepUpload.style.display = 'none';
+                stepMapping.style.display = 'block';
+
+            } catch (error) {
+                alert('Error processing file: ' + error.message);
+            }
+        });
+
+        btnBack.addEventListener('click', function () {
+            stepMapping.style.display = 'none';
+            stepUpload.style.display = 'block';
+        });
+    });
+</script>
+{% endblock %}

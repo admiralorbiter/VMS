@@ -357,11 +357,11 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-selfserv-301"></a>**FR-SELFSERV-301** | District administrators shall be able to add, edit, and view volunteer profiles within their tenant. | *Phase 3* | [US-1103](user_stories#us-1103) |
-| <a id="fr-selfserv-302"></a>**FR-SELFSERV-302** | District administrators shall be able to import volunteers via CSV or Excel with field mapping and validation. | *Phase 3* | [US-1103](user_stories#us-1103) |
-| <a id="fr-selfserv-303"></a>**FR-SELFSERV-303** | District staff shall be able to search and filter volunteers by name, organization, skills, and career type within their tenant. | *Phase 3* | [US-1103](user_stories#us-1103) |
-| <a id="fr-selfserv-304"></a>**FR-SELFSERV-304** | District staff shall be able to assign volunteers to events with participation type and confirmation status tracking. | *Phase 3* | [US-1104](user_stories#us-1104) |
-| <a id="fr-selfserv-305"></a>**FR-SELFSERV-305** | Volunteer data shall be strictly isolated to the owning tenant with no cross-tenant visibility. | *Phase 3* | *Technical requirement* |
+| <a id="fr-selfserv-301"></a>**FR-SELFSERV-301** | District administrators shall be able to add, edit, and view volunteer profiles within their tenant. | [TC-1001](test-pack-8#tc-1001)–[TC-1008](test-pack-8#tc-1008) | [US-1103](user_stories#us-1103) |
+| <a id="fr-selfserv-302"></a>**FR-SELFSERV-302** | District administrators shall be able to import volunteers via CSV or Excel with field mapping and validation. | [TC-1010](test-pack-8#tc-1010)–[TC-1014](test-pack-8#tc-1014) | [US-1103](user_stories#us-1103) |
+| <a id="fr-selfserv-303"></a>**FR-SELFSERV-303** | District staff shall be able to search and filter volunteers by name, organization, skills, and career type within their tenant. | [TC-1020](test-pack-8#tc-1020)–[TC-1024](test-pack-8#tc-1024) | [US-1103](user_stories#us-1103) |
+| <a id="fr-selfserv-304"></a>**FR-SELFSERV-304** | District staff shall be able to assign volunteers to events with participation type and confirmation status tracking. | [TC-1030](test-pack-8#tc-1030)–[TC-1033](test-pack-8#tc-1033) | [US-1104](user_stories#us-1104) |
+| <a id="fr-selfserv-305"></a>**FR-SELFSERV-305** | Volunteer data shall be strictly isolated to the owning tenant with no cross-tenant visibility. | [TC-1040](test-pack-8#tc-1040)–[TC-1043](test-pack-8#tc-1043) | *Technical requirement* |
 
 ### District Recruitment Tools
 

@@ -218,6 +218,61 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
+## Phase 3: District Volunteers (FR-SELFSERV-301 to FR-SELFSERV-305)
+
+### U. Volunteer Profile Management (FR-SELFSERV-301)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1001"></a>**TC-1001** | List volunteers shows tenant volunteers | Only volunteers in current tenant shown | Automated | 2026-01-26 |
+| <a id="tc-1002"></a>**TC-1002** | Create volunteer with required fields | Volunteer and DistrictVolunteer created | Automated | 2026-01-26 |
+| <a id="tc-1003"></a>**TC-1003** | Create volunteer with email/phone | Email and Phone records created | Automated | 2026-01-26 |
+| <a id="tc-1004"></a>**TC-1004** | View volunteer profile | Shows contact info, org, district notes | Automated | 2026-01-26 |
+| <a id="tc-1005"></a>**TC-1005** | Edit volunteer updates fields | Changes persisted to database | Automated | 2026-01-26 |
+| <a id="tc-1006"></a>**TC-1006** | Toggle volunteer status | Active/Inactive status toggles | Automated | 2026-01-26 |
+| <a id="tc-1007"></a>**TC-1007** | Link existing volunteer by email | DistrictVolunteer association created | Automated | 2026-01-26 |
+| <a id="tc-1008"></a>**TC-1008** | Reactivate inactive volunteer | Status changes to active | Automated | 2026-01-26 |
+
+### V. CSV Import (FR-SELFSERV-302)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1010"></a>**TC-1010** | Preview import shows columns | Returns detected columns and suggested mappings | Automated | 2026-01-26 |
+| <a id="tc-1011"></a>**TC-1011** | Import creates new volunteers | Volunteers with Email/Phone records created | Automated | 2026-01-26 |
+| <a id="tc-1012"></a>**TC-1012** | Import links existing volunteers | Matching emails linked to tenant | Automated | 2026-01-26 |
+| <a id="tc-1013"></a>**TC-1013** | Import skips duplicate emails | Already-in-tenant volunteers skipped | Automated | 2026-01-26 |
+| <a id="tc-1014"></a>**TC-1014** | Import requires name fields | Rows without first/last name skipped | Automated | 2026-01-26 |
+
+### W. Volunteer Search (FR-SELFSERV-303)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1020"></a>**TC-1020** | Search by first name | Matching volunteers returned | Automated | 2026-01-26 |
+| <a id="tc-1021"></a>**TC-1021** | Search by last name | Matching volunteers returned | Automated | 2026-01-26 |
+| <a id="tc-1022"></a>**TC-1022** | Search by organization | Matching volunteers returned | Automated | 2026-01-26 |
+| <a id="tc-1023"></a>**TC-1023** | Filter by status | Active/Inactive volunteers filtered | Automated | 2026-01-26 |
+| <a id="tc-1024"></a>**TC-1024** | API search endpoint | Returns JSON for AJAX autocomplete | Automated | 2026-01-26 |
+
+### X. Event Assignment (FR-SELFSERV-304)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1030"></a>**TC-1030** | Assign volunteer to event | DistrictParticipation created with status | Manual | TBD |
+| <a id="tc-1031"></a>**TC-1031** | Confirm volunteer participation | Status changes to confirmed | Manual | TBD |
+| <a id="tc-1032"></a>**TC-1032** | Record attendance | Status changes to attended | Manual | TBD |
+| <a id="tc-1033"></a>**TC-1033** | View volunteer event history | Past participations shown on profile | Automated | 2026-01-26 |
+
+### Y. Tenant Isolation (FR-SELFSERV-305)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1040"></a>**TC-1040** | Cannot view other tenant volunteers | Returns 404 for wrong tenant | Automated | 2026-01-26 |
+| <a id="tc-1041"></a>**TC-1041** | Cannot edit other tenant volunteers | Returns 404 for wrong tenant | Automated | 2026-01-26 |
+| <a id="tc-1042"></a>**TC-1042** | Search scoped to tenant | Only current tenant volunteers searchable | Automated | 2026-01-26 |
+| <a id="tc-1043"></a>**TC-1043** | Import scoped to tenant | New volunteers associated with current tenant | Automated | 2026-01-26 |
+
+---
+
 > [!NOTE]
 > **Automated Test Files**
 > - `tests/unit/models/test_tenant.py` - Tenant model tests (10 tests)
@@ -226,8 +281,9 @@ District Suite tenant CRUD, configuration, and infrastructure
 > - `tests/integration/test_tenant_routes.py` - Tenant routes tests
 > - `tests/integration/test_district_events.py` - District event routes tests (including calendar)
 > - `tests/integration/test_public_api.py` - Public Event API tests
+> - `tests/integration/test_district_volunteers.py` - District volunteer routes tests
 
 ---
 
 *Last updated: 2026-01-26*
-*Version: 1.6 - Added Public Event API tests (TC-950-991)*
+*Version: 1.7 - Added Phase 3 District Volunteers tests (TC-1001-1043)*

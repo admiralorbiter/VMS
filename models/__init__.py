@@ -55,6 +55,8 @@ from .class_model import Class
 from .client_project_model import ClientProject
 from .contact import Contact
 from .district_model import District
+from .district_participation import DistrictParticipation
+from .district_volunteer import DistrictVolunteer
 from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
 from .event import Event, EventTeacher
 from .google_sheet import GoogleSheet
@@ -118,6 +120,8 @@ __all__ = [
     "EmailMessage",
     "EmailDeliveryAttempt",
     "Tenant",
+    "DistrictVolunteer",
+    "DistrictParticipation",
 ]
 
 # Eager-loading helper options
