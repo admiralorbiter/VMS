@@ -8,9 +8,12 @@ Requirements:
 - FR-SELFSERV-201: Create events with title, date, time, location, description, volunteer needs
 - FR-SELFSERV-202: Edit event details up until event completion
 - FR-SELFSERV-203: Cancel events with volunteer notification
+- FR-SELFSERV-204: Calendar view with month/week/day navigation
 
 Routes:
 - GET  /district/events              - List district events
+- GET  /district/events/calendar     - Calendar view (FR-SELFSERV-204)
+- GET  /district/events/calendar/api - Calendar events API
 - GET  /district/events/new          - New event form
 - POST /district/events              - Create event
 - GET  /district/events/<id>         - View event details
@@ -19,7 +22,7 @@ Routes:
 - POST /district/events/<id>/cancel  - Cancel event
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import (
@@ -27,6 +30,7 @@ from flask import (
     current_app,
     flash,
     g,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -373,3 +377,110 @@ def publish_event(event_id):
         current_app.logger.error(f"Error publishing event: {e}")
         flash("An error occurred while publishing the event.", "error")
         return redirect(url_for("district.view_event", event_id=event_id))
+
+
+# =============================================================================
+# Calendar Routes (FR-SELFSERV-204)
+# =============================================================================
+
+
+@district_bp.route("/events/calendar")
+@login_required
+@require_tenant_context
+def calendar_view():
+    """Display calendar view of district events (FR-SELFSERV-204)."""
+    return render_template(
+        "district/events/calendar.html",
+        page_title=f"Calendar - {g.tenant.name}",
+    )
+
+
+@district_bp.route("/events/calendar/api")
+@login_required
+@require_tenant_context
+def calendar_api():
+    """
+    API endpoint for FullCalendar to fetch tenant-scoped events.
+
+    Query Parameters:
+        start: Start date in ISO format (from FullCalendar)
+        end: End date in ISO format (from FullCalendar)
+
+    Returns:
+        JSON array of events compatible with FullCalendar
+    """
+    # Get date range from FullCalendar request
+    start = request.args.get("start")
+    end = request.args.get("end")
+
+    # Parse dates with fallback defaults
+    start_date = (
+        datetime.fromisoformat(start.replace("Z", ""))
+        if start
+        else datetime.now() - timedelta(days=365)
+    )
+    end_date = (
+        datetime.fromisoformat(end.replace("Z", ""))
+        if end
+        else datetime.now() + timedelta(days=365)
+    )
+
+    # Query events scoped to tenant and within date range
+    events = (
+        Event.query.filter(
+            Event.tenant_id == g.tenant_id,
+            Event.start_date <= end_date,
+            Event.start_date >= start_date - timedelta(days=31),  # Include overlapping
+        )
+        .order_by(Event.start_date)
+        .all()
+    )
+
+    # Status color mapping
+    color_map = {
+        EventStatus.COMPLETED: "#A0A0A0",  # Grey
+        EventStatus.CONFIRMED: "#28a745",  # Green
+        EventStatus.CANCELLED: "#dc3545",  # Red
+        EventStatus.REQUESTED: "#ffc107",  # Yellow
+        EventStatus.DRAFT: "#6c757d",  # Grey
+        EventStatus.PUBLISHED: "#007bff",  # Blue
+    }
+
+    # Transform to FullCalendar format
+    calendar_events = []
+    for event in events:
+        is_past = (
+            event.end_date < datetime.now(timezone.utc)
+            if event.end_date
+            else event.start_date < datetime.now(timezone.utc)
+        )
+
+        calendar_events.append(
+            {
+                "id": event.id,
+                "title": event.title,
+                "start": event.start_date.isoformat() if event.start_date else None,
+                "end": (
+                    (
+                        event.end_date or event.start_date + timedelta(hours=1)
+                    ).isoformat()
+                    if event.start_date
+                    else None
+                ),
+                "color": color_map.get(event.status, "#6c757d"),
+                "className": "past-event" if is_past else "",
+                "url": url_for("district.view_event", event_id=event.id),
+                "extendedProps": {
+                    "location": event.location or "N/A",
+                    "type": event.type.value if event.type else "N/A",
+                    "status": event.status.value if event.status else "N/A",
+                    "description": event.description or "No description",
+                    "volunteer_count": event.volunteer_count,
+                    "volunteers_needed": event.volunteers_needed or 0,
+                    "format": event.format.value if event.format else "N/A",
+                    "is_past": is_past,
+                },
+            }
+        )
+
+    return jsonify(calendar_events)

@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<style>
+    .calendar-container {
+        padding: 20px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    #calendar {
+        min-height: 600px;
+    }
+
+    .fc-event {
+        cursor: pointer;
+    }
+
+    .past-event {
+        opacity: 0.6;
+    }
+
+    .fc-toolbar-title {
+        font-size: 1.5rem !important;
+    }
+
+    /* Legend styles */
+    .calendar-legend {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.85rem;
+    }
+
+    .legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_events') }}">Events</a></li>
+            <li class="breadcrumb-item active">Calendar</li>
+        </ol>
+    </nav>
+
+    <div class="calendar-container">
+        <div class="calendar-header">
+            <h2><i class="fas fa-calendar-alt me-2"></i>Event Calendar</h2>
+            <div>
+                <a href="{{ url_for('district.list_events') }}" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-list me-1"></i>List View
+                </a>
+                <a href="{{ url_for('district.new_event') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>New Event
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Legend -->
+        <div class="calendar-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #6c757d;"></div>
+                <span>Draft</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #007bff;"></div>
+                <span>Published</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #28a745;"></div>
+                <span>Confirmed</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #A0A0A0;"></div>
+                <span>Completed</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc3545;"></div>
+                <span>Cancelled</span>
+            </div>
+        </div>
+
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<!-- Event Details Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Event Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="event-details">
+                    <p><strong>Title:</strong> <span id="eventTitle"></span></p>
+                    <p><strong>Date:</strong> <span id="eventDate"></span></p>
+                    <p><strong>Time:</strong> <span id="eventTime"></span></p>
+                    <p><strong>Location:</strong> <span id="eventLocation"></span></p>
+                    <p><strong>Type:</strong> <span id="eventType"></span></p>
+                    <p><strong>Status:</strong> <span id="eventStatus"></span></p>
+                    <p><strong>Volunteers:</strong> <span id="eventVolunteers"></span></p>
+                    <p><strong>Description:</strong> <span id="eventDescription"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="viewEventBtn" class="btn btn-primary">View Details</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('calendar');
+        const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+            },
+            // Tenant-scoped events API
+            events: '{{ url_for("district.calendar_api") }}',
+
+            eventClick: function (info) {
+                info.jsEvent.preventDefault();
+
+                // Populate modal
+                document.getElementById('eventTitle').textContent = info.event.title;
+                document.getElementById('eventDate').textContent = info.event.start.toLocaleDateString();
+                document.getElementById('eventTime').textContent = info.event.start.toLocaleTimeString();
+                document.getElementById('eventLocation').textContent = info.event.extendedProps.location || 'N/A';
+                document.getElementById('eventType').textContent = info.event.extendedProps.type || 'N/A';
+                document.getElementById('eventStatus').textContent = info.event.extendedProps.status || 'N/A';
+                document.getElementById('eventVolunteers').textContent =
+                    info.event.extendedProps.volunteer_count + '/' +
+                    (info.event.extendedProps.volunteers_needed || 'N/A');
+                document.getElementById('eventDescription').textContent =
+                    info.event.extendedProps.description || 'No description';
+
+                // Set view details link
+                document.getElementById('viewEventBtn').href = info.event.url;
+
+                eventModal.show();
+            },
+
+            eventDidMount: function (info) {
+                // Add styling for cancelled events
+                if (info.event.extendedProps.status === 'Cancelled') {
+                    info.el.classList.add('cancelled-event');
+                    info.el.style.textDecoration = 'line-through';
+                }
+
+                // Add tooltip
+                new bootstrap.Tooltip(info.el, {
+                    title: `${info.event.title}\nStatus: ${info.event.extendedProps.status}\nLocation: ${info.event.extendedProps.location}`,
+                    placement: 'top',
+                    trigger: 'hover',
+                    container: 'body'
+                });
+            }
+        });
+
+        calendar.render();
+    });
+</script>
+{% endblock %}

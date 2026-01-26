@@ -349,7 +349,7 @@ Each requirement links to:
 | <a id="fr-selfserv-201"></a>**FR-SELFSERV-201** | District administrators/coordinators shall be able to create events with title, date, time, location, description, and volunteer needs. | [TC-901](test-pack-8#tc-901)–[TC-904](test-pack-8#tc-904) | [US-1101](user_stories#us-1101) |
 | <a id="fr-selfserv-202"></a>**FR-SELFSERV-202** | District administrators/coordinators shall be able to edit event details up until event completion. | [TC-910](test-pack-8#tc-910)–[TC-912](test-pack-8#tc-912) | [US-1101](user_stories#us-1101) |
 | <a id="fr-selfserv-203"></a>**FR-SELFSERV-203** | District administrators/coordinators shall be able to cancel events with optional reason; notifications sent to signed-up volunteers. | [TC-920](test-pack-8#tc-920), [TC-921](test-pack-8#tc-921) | [US-1101](user_stories#us-1101) |
-| <a id="fr-selfserv-204"></a>**FR-SELFSERV-204** | The system shall provide a calendar view of district events with month/week/day navigation. | *Phase 2 (pending)* | [US-1102](user_stories#us-1102) |
+| <a id="fr-selfserv-204"></a>**FR-SELFSERV-204** | The system shall provide a calendar view of district events with month/week/day navigation. | ✅ Implemented | [US-1102](user_stories#us-1102) |
 | <a id="fr-selfserv-205"></a>**FR-SELFSERV-205** | The system shall provide a searchable, sortable list view of district events with filtering by status and date range. | [TC-930](test-pack-8#tc-930), [TC-931](test-pack-8#tc-931) | [US-1102](user_stories#us-1102) |
 | <a id="fr-selfserv-206"></a>**FR-SELFSERV-206** | District events shall track lifecycle status: Draft, Confirmed, Published, Completed, Cancelled. | [TC-903](test-pack-8#tc-903), [TC-904](test-pack-8#tc-904) | *Technical requirement* |
 

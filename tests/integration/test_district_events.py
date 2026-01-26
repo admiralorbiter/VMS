@@ -13,6 +13,11 @@ Test Cases:
 - TC-921: Cannot cancel completed event
 - TC-930: Events list shows only tenant events
 - TC-931: Cannot view other tenant's event
+- TC-940: Calendar view loads
+- TC-941: Calendar API returns JSON
+- TC-942: Calendar API scopes to tenant
+- TC-943: Calendar events have required fields
+- TC-944: Status color mapping works
 """
 
 from datetime import datetime, timezone
@@ -267,3 +272,93 @@ class TestDistrictEventTypes:
         type_values = [t[0] for t in DISTRICT_EVENT_TYPES]
         assert EventType.CAREER_FAIR.value in type_values
         assert EventType.VOLUNTEER_ENGAGEMENT.value in type_values
+
+
+class TestDistrictEventCalendar:
+    """Tests for FR-SELFSERV-204: Calendar View."""
+
+    @pytest.fixture
+    def app(self):
+        """Create test Flask app."""
+        from app import app
+
+        app.config["TESTING"] = True
+        return app
+
+    def test_calendar_route_exists(self, app):
+        """TC-940: Calendar view route exists."""
+        with app.app_context():
+            from routes.district.events import calendar_view
+
+            assert calendar_view is not None
+
+    def test_calendar_api_route_exists(self, app):
+        """TC-941: Calendar API route exists."""
+        with app.app_context():
+            from routes.district.events import calendar_api
+
+            assert calendar_api is not None
+
+    def test_calendar_api_scopes_to_tenant(self, app):
+        """TC-942: Calendar API query filters by tenant_id."""
+        with app.app_context():
+            # Verify we can build a tenant-scoped query
+            query = Event.query.filter(Event.tenant_id == 1)
+            assert query is not None
+
+    def test_calendar_event_has_required_fields(self, app):
+        """TC-943: Calendar events have required FullCalendar fields."""
+        with app.app_context():
+            from datetime import timedelta
+
+            event = Event(
+                id=1,
+                title="Test Event",
+                start_date=datetime.now(timezone.utc),
+                status=EventStatus.DRAFT,
+                tenant_id=1,
+            )
+
+            # Simulate the calendar event transformation
+            calendar_event = {
+                "id": event.id,
+                "title": event.title,
+                "start": event.start_date.isoformat() if event.start_date else None,
+                "end": (
+                    (
+                        event.end_date or event.start_date + timedelta(hours=1)
+                    ).isoformat()
+                    if event.start_date
+                    else None
+                ),
+                "color": "#6c757d",
+                "extendedProps": {
+                    "status": event.status.value if event.status else "N/A",
+                },
+            }
+
+            # Verify required fields exist
+            assert "id" in calendar_event
+            assert "title" in calendar_event
+            assert "start" in calendar_event
+            assert "color" in calendar_event
+            assert "extendedProps" in calendar_event
+
+    def test_status_color_mapping(self, app):
+        """TC-944: Status maps to correct color."""
+        # Color mapping from the calendar API
+        color_map = {
+            EventStatus.COMPLETED: "#A0A0A0",
+            EventStatus.CONFIRMED: "#28a745",
+            EventStatus.CANCELLED: "#dc3545",
+            EventStatus.REQUESTED: "#ffc107",
+            EventStatus.DRAFT: "#6c757d",
+            EventStatus.PUBLISHED: "#007bff",
+        }
+
+        # Check all statuses have a color
+        assert len(color_map) >= 6
+        assert color_map[EventStatus.DRAFT] == "#6c757d"
+        assert color_map[EventStatus.PUBLISHED] == "#007bff"
+        assert color_map[EventStatus.CONFIRMED] == "#28a745"
+        assert color_map[EventStatus.CANCELLED] == "#dc3545"

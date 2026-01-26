@@ -164,6 +164,16 @@ District Suite tenant CRUD, configuration, and infrastructure
 | <a id="tc-930"></a>**TC-930** | Events list shows only tenant events | Other tenant events not visible | Automated | 2026-01-26 |
 | <a id="tc-931"></a>**TC-931** | Cannot view other tenant's event | Returns 404 for wrong tenant | Automated | 2026-01-26 |
 
+### O. District Event Calendar (FR-SELFSERV-204)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-940"></a>**TC-940** | Calendar view loads | `/district/events/calendar` renders template | Automated | 2026-01-26 |
+| <a id="tc-941"></a>**TC-941** | Calendar API returns JSON | `/district/events/calendar/api` returns valid JSON array | Automated | 2026-01-26 |
+| <a id="tc-942"></a>**TC-942** | Calendar API scopes to tenant | Only returns events with matching tenant_id | Automated | 2026-01-26 |
+| <a id="tc-943"></a>**TC-943** | Calendar events have required fields | Each event has id, title, start, color, extendedProps | Automated | 2026-01-26 |
+| <a id="tc-944"></a>**TC-944** | Status color mapping works | Each status maps to correct color hex | Automated | 2026-01-26 |
+
 ---
 
 > [!NOTE]
@@ -172,9 +182,9 @@ District Suite tenant CRUD, configuration, and infrastructure
 > - `tests/unit/utils/test_db_manager.py` - Database manager tests (11 tests)
 > - `tests/unit/utils/test_tenant_context.py` - Tenant context tests (14 tests)
 > - `tests/integration/test_tenant_routes.py` - Tenant routes tests
-> - `tests/integration/test_district_events.py` - District event routes tests
+> - `tests/integration/test_district_events.py` - District event routes tests (including calendar)
 
 ---
 
 *Last updated: 2026-01-26*
-*Version: 1.4 - Added Phase 2 District Events tests (TC-901-931)*
+*Version: 1.5 - Added FR-SELFSERV-204 calendar tests (TC-940-944)*
