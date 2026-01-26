@@ -395,7 +395,68 @@
             </tr>
         </tbody>
     </table>
-    {% else %}
+    {% endif %}
+
+    <!-- Manual Input Data Section -->
+    {% if breakdown_data and (manual_inputs_overall or manual_inputs_by_district) %}
+    <div style="margin-top: 3rem;">
+        <h2 style="color: var(--ucla-blue); margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--ucla-blue);">
+            Manual Input Data
+        </h2>
+        <table class="breakdown-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th class="overall-column">Overall</th>
+                    {% for district_name in breakdown_data.keys() %}
+                    <th class="district-column">{{ district_name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Math Relays -->
+                {% if manual_inputs_overall.get('math_relays') is not none or manual_inputs_by_district %}
+                <tr>
+                    <td class="metric-name">Students Participated in Math Relays</td>
+                    <td class="overall-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_overall.get('math_relays', 0) }}</span>
+                        </div>
+                    </td>
+                    {% for district_name, breakdown in breakdown_data.items() %}
+                    <td class="district-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get('math_relays', 0) }}</span>
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+
+                <!-- Data Science -->
+                {% if manual_inputs_overall.get('data_science') is not none or manual_inputs_by_district %}
+                <tr>
+                    <td class="metric-name">Students Participated in Data Science</td>
+                    <td class="overall-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_overall.get('data_science', 0) }}</span>
+                        </div>
+                    </td>
+                    {% for district_name, breakdown in breakdown_data.items() %}
+                    <td class="district-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get('data_science', 0) }}</span>
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if not breakdown_data %}
     <div class="no-data">
         <p>No breakdown data available for the selected school year.</p>
         <p>Please refresh the data on the main district year-end report page.</p>
