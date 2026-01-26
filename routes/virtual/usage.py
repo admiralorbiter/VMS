@@ -5815,7 +5815,11 @@ def load_usage_routes():
         today = datetime.now()
         current_vy = get_current_virtual_year()
 
-        if selected_virtual_year == current_vy:
+        # Defensive stripping to ensure match
+        selected_vy_clean = str(selected_virtual_year).strip()
+        current_vy_clean = str(current_vy).strip()
+
+        if selected_vy_clean == current_vy_clean:
             # Check which semester we are in
             # Spring: Jan - Jun
             if 1 <= today.month <= 6:
@@ -5836,26 +5840,45 @@ def load_usage_routes():
         # Handle date parameters
         date_from_str = request.args.get("date_from")
         date_to_str = request.args.get("date_to")
+        view_mode_param = request.args.get("view", "live")
+
+        # Start with calculated defaults (which are semester-based for current year)
         date_from = default_date_from
         date_to = default_date_to
 
-        if date_from_str:
-            try:
-                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
-                # Relaxed validation to allow semester ranges
-                # Just ensure it's somewhat reasonably near the virtual year
-                vy_start, vy_end = get_virtual_year_dates(selected_virtual_year)
-                # Expand bounds slightly or just trust user input if it parses
-                date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
-            except ValueError:
-                pass
+        # Only override with URL params if they are explicitly provided AND valid
+        user_provided_dates = date_from_str is not None or date_to_str is not None
 
-        if date_to_str:
-            try:
-                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
-                date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
-            except ValueError:
-                pass
+        if user_provided_dates:
+            if date_from_str:
+                try:
+                    parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
+                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
+                except ValueError:
+                    pass
+
+            if date_to_str:
+                try:
+                    parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
+                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
+                except ValueError:
+                    pass
+
+            # CRITICAL FIX: If viewing current year live data and the URL params
+            # represent a FULL YEAR range (not semester), reset to semester defaults.
+            # This handles the case where user navigates away and back with stale params.
+            if view_mode_param == "live" and selected_vy_clean == current_vy_clean:
+                # Check if the provided dates are the full virtual year (Aug 1 - Jul 31)
+                vy_start, vy_end = get_virtual_year_dates(selected_virtual_year)
+                is_full_year = (
+                    date_from.month == vy_start.month
+                    and date_from.day == vy_start.day
+                    and date_to.month == vy_end.month
+                    and date_to.day == vy_end.day
+                )
+                if is_full_year:
+                    date_from = default_date_from
+                    date_to = default_date_to
 
         if date_from > date_to:
             date_from = default_date_from
