@@ -31,11 +31,11 @@ Exports + ad hoc queries + access control
 
 ### B. Organization Dashboard
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-720"></a>**TC-720** | Org totals | TechCorp highest |
-| <a id="tc-721"></a>**TC-721** | Unique org count | Correct count |
-| <a id="tc-722"></a>**TC-722** | Org drilldown | Lists volunteers correctly |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-720"></a>**TC-720** | Org totals | TechCorp highest | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-721"></a>**TC-721** | Unique org count | Correct count | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-722"></a>**TC-722** | Org drilldown | Lists volunteers correctly | Automated (Polaris) | 2026-01-25 |
 
 ### C. District Impact Dashboard
 
