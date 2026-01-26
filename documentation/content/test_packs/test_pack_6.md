@@ -22,12 +22,12 @@ Exports + ad hoc queries + access control
 
 ### A. Volunteer Thank-You Dashboard
 
-| TC | Description | Expected |
-|----|-------------|----------|
-| <a id="tc-700"></a>**TC-700** | Leaderboard by hours | Victor > Jordan > Casey > Ella > Sam |
-| <a id="tc-701"></a>**TC-701** | Leaderboard by events | Ranked by event count |
-| <a id="tc-702"></a>**TC-702** | Tie handling | Consistent tie-breaker |
-| <a id="tc-703"></a>**TC-703** | Time range filter | Rankings update |
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-700"></a>**TC-700** | Leaderboard by hours | Victor > Jordan > Casey > Ella > Sam | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-701"></a>**TC-701** | Leaderboard by events | Ranked by event count | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-702"></a>**TC-702** | Tie handling | Consistent tie-breaker | Automated (Polaris) | 2026-01-25 |
+| <a id="tc-703"></a>**TC-703** | Time range filter | Rankings update | Automated (Polaris) | 2026-01-25 | Time range filter | Rankings update |
 
 ### B. Organization Dashboard
 
