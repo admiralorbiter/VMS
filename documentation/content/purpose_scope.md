@@ -115,6 +115,35 @@ The system includes the following functional domains, each defined by functional
 
 **Related Requirements:** [FR-EMAIL-801](requirements#fr-email-801) through [FR-EMAIL-808](requirements#fr-email-808)
 
+#### 7.9 🏛️ Tenant Infrastructure (District Suite)
+- Multi-tenant database isolation (SQLite per tenant)
+- Tenant provisioning and lifecycle management
+- Reference data duplication to tenant databases
+- Cross-tenant administrative access for PrepKC staff
+- Feature flag management per tenant
+- API key generation and management
+
+**Related Requirements:** [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+
+#### 7.10 🔧 District Self-Service (District Suite)
+- District event creation, editing, and cancellation
+- Event calendar and list views for district staff
+- District volunteer pool management and import
+- Volunteer-to-event assignment and participation tracking
+- Recruitment dashboard with volunteer recommendations
+- Public signup forms for district events
+- Read-only visibility of PrepKC events at district schools
+
+**Related Requirements:** [FR-SELFSERV-201](requirements#fr-selfserv-201) through [FR-SELFSERV-503](requirements#fr-selfserv-503)
+
+#### 7.11 🌐 Public Event API (District Suite)
+- REST API for district website event embedding
+- API key authentication per tenant
+- Rate limiting and CORS configuration
+- Event listing and detail endpoints
+
+**Related Requirements:** [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108)
+
 ### Out of Scope
 
 The following capabilities are **explicitly excluded** from the current system scope:
@@ -172,6 +201,9 @@ Polaris integrates with core systems to provide a unified experience.
 - **Student attendance**: Owned by Salesforce (aggregated in Polaris)
 - **Communication logs**: Owned by Salesforce (synced to Polaris)
 - **Volunteer identity**: Owned by Polaris (normalized email is primary key)
+- **District-created events**: Owned by tenant's Polaris instance **(District Suite)**
+- **District volunteer pools**: Owned by tenant's Polaris instance **(District Suite)**
+- **Tenant configuration**: Owned by main Polaris instance **(District Suite)**
 
 **Reference:** [Field Mappings](field_mappings) for detailed field ownership and mapping specifications.
 
@@ -197,6 +229,16 @@ Polaris integrates with core systems to provide a unified experience.
 - **Use Cases**: Sign up for in-person, virtual, or DIA events
 - **Access Scope**: Signup forms only (no account or dashboard access)
 
+### District Administrators (District Suite)
+- **District Admin Role**: Full access within their tenant's Polaris instance
+- **Use Cases**: Create and manage events, manage volunteer pool, configure settings, manage users
+- **Access Scope**: All features within their tenant only
+
+### District Coordinators (District Suite)
+- **District Coordinator Role**: Event and volunteer management within their tenant
+- **Use Cases**: Create events, assign volunteers, track participation
+- **Access Scope**: Event and volunteer features within their tenant only
+
 ## Related Documentation
 
 This document provides the foundational understanding of system purpose and boundaries. For detailed information, see:
@@ -209,6 +251,10 @@ This document provides the foundational understanding of system purpose and boun
 - **[Data Dictionary](data_dictionary)** - Canonical entity definitions and field specifications
 - **[Field Mappings](field_mappings)** - Cross-system data flow specifications
 - **[Integration Contracts](contracts)** - API specifications and integration boundaries
+- **[API Reference](api_reference)** - Public event API for district website integration **(District Suite)**
+- **[District Suite Phases](district_suite_phases)** - Development roadmap for multi-tenant features **(District Suite)**
+- **[Tenant Management Guide](user_guide/tenant_management)** - PrepKC admin guide for tenant lifecycle **(District Suite)**
+- **[District Self-Service Guide](user_guide/district_self_service)** - District user guide **(District Suite)**
 
 ## Document Status
 
@@ -220,4 +266,4 @@ This document provides the foundational understanding of system purpose and boun
 ---
 
 *Last updated: January 2026*
-*Version: 1.1*
+*Version: 1.2*

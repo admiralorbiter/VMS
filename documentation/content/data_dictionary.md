@@ -394,6 +394,82 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 
 **Usage**: Used as authoritative list for progress tracking and magic-link eligibility. See [FR-DISTRICT-524](requirements#fr-district-524) and [US-504](user_stories#us-504).
 
+## Entity: Tenant (District Suite)
+
+**Multi-tenant registry for district platforms**
+
+**Table**: `tenant` (in main database only)
+
+> [!NOTE]
+> **District Suite** entity. Tenants represent district platforms with isolated databases and users.
+
+| Field | Type | Source | Sensitivity | Notes |
+|-------|------|--------|-------------|-------|
+| `id` | Integer | POL | Internal | Primary key |
+| `slug` | String(50) | POL | Internal | Required; unique; URL-safe identifier (e.g., "kckps"); indexed |
+| `name` | String(255) | POL | Internal | Required; display name (e.g., "KCKPS") |
+| `district_id` | Integer (FK to district.id) | POL | Internal | Optional; link to existing District record |
+| `is_active` | Boolean | POL | Internal | Default: True; deactivated tenants cannot be accessed |
+| `settings` | JSON | POL | Internal | Tenant-specific configuration (feature flags, branding) |
+| `api_key_hash` | String(255) | POL | Internal | Hashed API key for public event API |
+| `api_key_created_at` | DateTime(timezone=True) | POL | Internal | When API key was last generated |
+| `database_path` | String(500) | POL | Internal | Path to tenant's SQLite database file |
+| `allowed_origins` | Text | POL | Internal | Comma-separated list of allowed CORS origins |
+| `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
+| `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
+| `created_by` | Integer (FK to users.id) | POL | Internal | PrepKC admin who created tenant |
+
+**Relationships**:
+- Many-to-one with `District` (via `district_id`, optional)
+- One-to-many with `TenantUser` (via `tenant_id`)
+
+**Settings JSON Structure**:
+```json
+{
+  "features": {
+    "events_enabled": true,
+    "volunteers_enabled": true,
+    "recruitment_enabled": false,
+    "prepkc_visibility_enabled": false
+  },
+  "branding": {
+    "primary_color": "#1976d2",
+    "logo_url": null
+  }
+}
+```
+
+**Reference:** [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+
+## Entity: TenantUser (District Suite)
+
+**Users scoped to a specific tenant**
+
+**Table**: `tenant_user` (in tenant database)
+
+> [!NOTE]
+> TenantUser is stored in each tenant's database and represents district staff with access to that tenant only.
+
+| Field | Type | Source | Sensitivity | Notes |
+|-------|------|--------|-------------|-------|
+| `id` | Integer | POL | Internal | Primary key |
+| `email` | String(255) | POL | Sensitive | Required; unique within tenant; login identifier |
+| `password_hash` | String(255) | POL | Internal | Hashed password |
+| `first_name` | String(100) | POL | Sensitive | Required |
+| `last_name` | String(100) | POL | Sensitive | Required |
+| `role` | Enum(TenantRole) | POL | Internal | district_admin, district_coordinator, district_viewer |
+| `is_active` | Boolean | POL | Internal | Default: True |
+| `last_login_at` | DateTime(timezone=True) | POL | Internal | Tracks login history |
+| `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
+| `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
+
+**TenantRole Enum**:
+- `district_admin` - Full access to tenant features
+- `district_coordinator` - Event and volunteer management
+- `district_viewer` - Read-only access to dashboards
+
+**Reference:** [FR-TENANT-103](requirements#fr-tenant-103)
+
 ## Controlled Vocabularies
 
 Managed in one place and validated everywhere. All enums are defined in `models/contact.py` and `models/event.py`.
@@ -490,6 +566,15 @@ Managed in one place and validated everywhere. All enums are defined in `models/
 **Sensitivity**: Internal
 **Values**: `COMPLETED`, `CONFIRMED`, `CANCELLED`, `REQUESTED`, `DRAFT`, `PUBLISHED`, `NO_SHOW`, `SIMULCAST`, `COUNT`
 
+### Event Source (District Suite)
+
+**Enum**: `EventSource`
+**Sensitivity**: Internal
+**Values**:
+- `salesforce` ("salesforce") - Synced from Salesforce (PrepKC events)
+- `polaris_prepkc` ("polaris_prepkc") - Created in Polaris by PrepKC staff
+- `polaris_district` ("polaris_district") - Created in Polaris by district staff
+
 ### Attendance Status
 
 **Enum**: `AttendanceStatus` (for EventAttendance)
@@ -505,6 +590,15 @@ Managed in one place and validated everywhere. All enums are defined in `models/
 **Sensitivity**: Internal
 **Values**: `"Volunteer"` (default), `"Presenter"`, and other role types
 
+### Tenant Role (District Suite)
+
+**Enum**: `TenantRole`
+**Sensitivity**: Internal
+**Values**:
+- `district_admin` ("district_admin") - Full tenant access
+- `district_coordinator` ("district_coordinator") - Event/volunteer management
+- `district_viewer` ("district_viewer") - Read-only dashboard access
+
 ### Volunteer Skills
 
 **Table**: `skill`
@@ -519,4 +613,4 @@ Managed in one place and validated everywhere. All enums are defined in `models/
 ---
 
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*

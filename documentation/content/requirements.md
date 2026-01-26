@@ -18,6 +18,9 @@ Jump to requirements by domain:
 - 🎓 [Student Attendance](#student-roster-and-attendance) (FR-STUDENT-xxx)
 - 📧 [Email System](#email-system-management) (FR-EMAIL-xxx)
 - 🛡️ [Data & Operations](#data-integrity--operations) (FR-DATA-xxx, Sync & Imports)
+- 🏛️ [Tenant Infrastructure](#tenant-infrastructure) (FR-TENANT-xxx) *District Suite*
+- 🔧 [District Self-Service](#district-self-service) (FR-SELFSERV-xxx) *District Suite*
+- 🌐 [Public Event API](#public-event-api) (FR-API-xxx) *District Suite*
 
 <details>
 <summary><strong>📋 Requirement ID Format & Conventions</strong> (for contributors)</summary>
@@ -42,6 +45,9 @@ Functional requirements use stable IDs: `FR-{DOMAIN}-{NNN}`
 - `DISTRICT` - District and teacher progress
 - `STUDENT` - Student roster and attendance
 - `EMAIL` - Email system management
+- `TENANT` - Multi-tenant infrastructure *(District Suite)*
+- `SELFSERV` - District self-service features *(District Suite)*
+- `API` - Public event API *(District Suite)*
 
 </details>
 
@@ -308,6 +314,93 @@ Each requirement links to:
 | <a id="fr-inperson-130"></a>**FR-INPERSON-130** | The system shall distinguish "no events to sync" from "event sync failure" (visibility into data completeness). | [TC-200](test-pack-7#tc-200) | *Technical requirement* |
 | <a id="fr-inperson-131"></a>**FR-INPERSON-131** | Sync status indicators shall show last successful sync time, record counts, and any pending errors. | [TC-220](test-pack-7#tc-220) | *Technical requirement* |
 
+## <a id="tenant-infrastructure"></a>7.10 Tenant Infrastructure
+
+**Multi-Tenant Platform (District Suite)**
+
+> [!NOTE]
+> **District Suite** extends Polaris from a single-tenant system to a multi-tenant platform. Each district operates in an isolated environment with its own database, users, and data.
+
+### Tenant Management
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-tenant-101"></a>**FR-TENANT-101** | PrepKC administrators shall be able to create new district tenants, provisioning isolated databases with schema and reference data. | *Phase 1* | [US-1001](user_stories#us-1001) |
+| <a id="fr-tenant-102"></a>**FR-TENANT-102** | PrepKC administrators shall be able to view, edit, and deactivate tenants via a tenant management interface. | *Phase 1* | [US-1001](user_stories#us-1001) |
+| <a id="fr-tenant-103"></a>**FR-TENANT-103** | The system shall route authenticated users to their tenant's database and enforce tenant-scoped access for all operations. | *Phase 1* | *Technical requirement* |
+| <a id="fr-tenant-104"></a>**FR-TENANT-104** | Reference data (schools, districts, skills, career types) shall be duplicated to each tenant database during provisioning. | *Phase 1* | *Technical requirement* |
+| <a id="fr-tenant-105"></a>**FR-TENANT-105** | PrepKC administrators shall be able to switch tenant context to support any tenant while maintaining audit trails. | *Phase 1* | [US-1002](user_stories#us-1002) |
+| <a id="fr-tenant-106"></a>**FR-TENANT-106** | Tenant databases shall use separate SQLite files with tenant identifier in filename (e.g., `polaris_kckps.db`). | *Phase 1* | *Technical requirement* |
+| <a id="fr-tenant-107"></a>**FR-TENANT-107** | The system shall support feature flags per tenant to enable/disable specific capabilities during phased rollout. | *Phase 1* | *Technical requirement* |
+
+---
+
+## <a id="district-self-service"></a>7.11 District Self-Service
+
+**District Event & Volunteer Management (District Suite)**
+
+> [!NOTE]
+> District Self-Service enables partner districts to manage their own events and volunteers without PrepKC staff involvement, while maintaining strict data isolation.
+
+### District Event Management
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-selfserv-201"></a>**FR-SELFSERV-201** | District administrators/coordinators shall be able to create events with title, date, time, location, description, and volunteer needs. | *Phase 2* | [US-1101](user_stories#us-1101) |
+| <a id="fr-selfserv-202"></a>**FR-SELFSERV-202** | District administrators/coordinators shall be able to edit event details up until event completion. | *Phase 2* | [US-1101](user_stories#us-1101) |
+| <a id="fr-selfserv-203"></a>**FR-SELFSERV-203** | District administrators/coordinators shall be able to cancel events with optional reason; notifications sent to signed-up volunteers. | *Phase 2* | [US-1101](user_stories#us-1101) |
+| <a id="fr-selfserv-204"></a>**FR-SELFSERV-204** | The system shall provide a calendar view of district events with month/week/day navigation. | *Phase 2* | [US-1102](user_stories#us-1102) |
+| <a id="fr-selfserv-205"></a>**FR-SELFSERV-205** | The system shall provide a searchable, sortable list view of district events with filtering by status and date range. | *Phase 2* | [US-1102](user_stories#us-1102) |
+| <a id="fr-selfserv-206"></a>**FR-SELFSERV-206** | District events shall track lifecycle status: Draft, Confirmed, Published, Completed, Cancelled. | *Phase 2* | *Technical requirement* |
+
+### District Volunteer Management
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-selfserv-301"></a>**FR-SELFSERV-301** | District administrators shall be able to add, edit, and view volunteer profiles within their tenant. | *Phase 3* | [US-1103](user_stories#us-1103) |
+| <a id="fr-selfserv-302"></a>**FR-SELFSERV-302** | District administrators shall be able to import volunteers via CSV or Excel with field mapping and validation. | *Phase 3* | [US-1103](user_stories#us-1103) |
+| <a id="fr-selfserv-303"></a>**FR-SELFSERV-303** | District staff shall be able to search and filter volunteers by name, organization, skills, and career type within their tenant. | *Phase 3* | [US-1103](user_stories#us-1103) |
+| <a id="fr-selfserv-304"></a>**FR-SELFSERV-304** | District staff shall be able to assign volunteers to events with participation type and confirmation status tracking. | *Phase 3* | [US-1104](user_stories#us-1104) |
+| <a id="fr-selfserv-305"></a>**FR-SELFSERV-305** | Volunteer data shall be strictly isolated to the owning tenant with no cross-tenant visibility. | *Phase 3* | *Technical requirement* |
+
+### District Recruitment Tools
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-selfserv-401"></a>**FR-SELFSERV-401** | The system shall provide a recruitment dashboard showing events needing volunteers with urgency indicators. | *Phase 4* | [US-1105](user_stories#us-1105) |
+| <a id="fr-selfserv-402"></a>**FR-SELFSERV-402** | The system shall rank volunteer candidates using scoring based on participation history, skills match, and location. | *Phase 4* | [US-1105](user_stories#us-1105) |
+| <a id="fr-selfserv-403"></a>**FR-SELFSERV-403** | District staff shall be able to log outreach attempts and track outcomes (No Response, Interested, Declined, Confirmed). | *Phase 4* | [US-1105](user_stories#us-1105) |
+| <a id="fr-selfserv-404"></a>**FR-SELFSERV-404** | The system shall provide public signup forms for district events that create volunteer records and send confirmation emails. | *Phase 4* | [US-1106](user_stories#us-1106) |
+| <a id="fr-selfserv-405"></a>**FR-SELFSERV-405** | Public signup shall attach calendar invites to confirmation emails with event details. | *Phase 4* | [US-1106](user_stories#us-1106) |
+
+### PrepKC Event Visibility
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-selfserv-501"></a>**FR-SELFSERV-501** | District users shall be able to view PrepKC events occurring at their schools (read-only). | *Phase 5* | [US-1107](user_stories#us-1107) |
+| <a id="fr-selfserv-502"></a>**FR-SELFSERV-502** | PrepKC events shall appear on the district calendar with distinct styling indicating PrepKC ownership. | *Phase 5* | [US-1107](user_stories#us-1107) |
+| <a id="fr-selfserv-503"></a>**FR-SELFSERV-503** | The system shall provide aggregate statistics for PrepKC events at district schools (events count, students reached, volunteer hours). | *Phase 5* | [US-1107](user_stories#us-1107) |
+
+---
+
+## <a id="public-event-api"></a>7.12 Public Event API
+
+**District Website Integration (District Suite)**
+
+> [!NOTE]
+> The Public Event API enables districts to embed their event listings on their own websites. The API is read-only and authenticated via tenant-specific API keys.
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-api-101"></a>**FR-API-101** | The system shall provide a REST endpoint `GET /api/v1/district/{tenant}/events` returning published events for the tenant. | *Phase 2* | [US-1201](user_stories#us-1201) |
+| <a id="fr-api-102"></a>**FR-API-102** | The system shall provide a REST endpoint `GET /api/v1/district/{tenant}/events/{slug}` returning single event details. | *Phase 2* | [US-1201](user_stories#us-1201) |
+| <a id="fr-api-103"></a>**FR-API-103** | API requests shall be authenticated via tenant-specific API keys passed in the `X-API-Key` header. | *Phase 2* | *Technical requirement* |
+| <a id="fr-api-104"></a>**FR-API-104** | The API shall enforce rate limits: 60 requests/minute, 1000 requests/hour, 10000 requests/day per API key. | *Phase 2* | *Technical requirement* |
+| <a id="fr-api-105"></a>**FR-API-105** | The API shall support CORS to allow embedding on district websites. | *Phase 2* | *Technical requirement* |
+| <a id="fr-api-106"></a>**FR-API-106** | District administrators shall be able to rotate their API key via the tenant settings interface. | *Phase 2* | [US-1202](user_stories#us-1202) |
+| <a id="fr-api-107"></a>**FR-API-107** | API responses shall use JSON format with consistent envelope structure including success status, data payload, and pagination. | *Phase 2* | *Technical requirement* |
+| <a id="fr-api-108"></a>**FR-API-108** | Event objects in API responses shall include: id, title, description, event_type, date, times, location, volunteers_needed, signup_url. | *Phase 2* | [US-1201](user_stories#us-1201) |
+
 ## Traceability Matrix
 
 This section provides a comprehensive view of the relationships between Functional Requirements (FR) and User Stories (US).
@@ -384,16 +477,34 @@ This section provides a comprehensive view of the relationships between Function
 | FR-OPS-906 | *Operational requirement* | Granular Categorization |
 | FR-OPS-907 | *Technical requirement* | Auto-Admin Provisioning |
 | FR-INPERSON-108, 110-133 | *Technical requirements* | Infrastructure/sync operations (Moved from In-Person) |
+| **Tenant Infrastructure (District Suite)** | | |
+| FR-TENANT-101, 102 | [US-1001](user_stories#us-1001) | Tenant provisioning |
+| FR-TENANT-105 | [US-1002](user_stories#us-1002) | Cross-tenant support access |
+| FR-TENANT-103, 104, 106, 107 | *Technical requirements* | Tenant isolation, feature flags |
+| **District Self-Service (District Suite)** | | |
+| FR-SELFSERV-201, 202, 203 | [US-1101](user_stories#us-1101) | District event management |
+| FR-SELFSERV-204, 205 | [US-1102](user_stories#us-1102) | Event calendar and list views |
+| FR-SELFSERV-301, 302, 303 | [US-1103](user_stories#us-1103) | Volunteer management |
+| FR-SELFSERV-304 | [US-1104](user_stories#us-1104) | Event-volunteer assignment |
+| FR-SELFSERV-401, 402, 403 | [US-1105](user_stories#us-1105) | Recruitment tools |
+| FR-SELFSERV-404, 405 | [US-1106](user_stories#us-1106) | Public signup forms |
+| FR-SELFSERV-501, 502, 503 | [US-1107](user_stories#us-1107) | PrepKC event visibility |
+| FR-SELFSERV-206, 305 | *Technical requirements* | Lifecycle status, data isolation |
+| **Public Event API (District Suite)** | | |
+| FR-API-101, 102, 108 | [US-1201](user_stories#us-1201) | Event API endpoints |
+| FR-API-106 | [US-1202](user_stories#us-1202) | API key rotation |
+| FR-API-103, 104, 105, 107 | *Technical requirements* | Auth, rate limiting, CORS |
 
 ### Coverage Summary
 
-- **Total FRs**: 101 (89 existing + 12 new)
-- **FRs with User Stories**: 50 (50%)
-- **Technical/Infrastructure FRs** (appropriately without US): 51 (50%)
-- **New Requirements Added**:
-  - Email System: FR-EMAIL-801 through 808 (8 requirements)
-  - Data Tracker: FR-DISTRICT-525 through 530 (6 requirements)
-- **All User Stories Now Have Requirements**: All 34 user stories (US-101 through US-803) now have corresponding functional requirements
+- **Total FRs**: 129 (101 existing + 28 District Suite)
+- **FRs with User Stories**: 62 (48%)
+- **Technical/Infrastructure FRs** (appropriately without US): 67 (52%)
+- **New Requirements Added (District Suite)**:
+  - Tenant Infrastructure: FR-TENANT-101 through 107 (7 requirements)
+  - District Self-Service: FR-SELFSERV-201 through 503 (15 requirements)
+  - Public Event API: FR-API-101 through 108 (8 requirements)
+- **All User Stories Now Have Requirements**: All 46 user stories (US-101 through US-1202) now have corresponding functional requirements
 
 ### US → FR Mapping
 
@@ -440,6 +551,18 @@ This section provides a comprehensive view of the relationships between Function
 | US-801 | FR-EMAIL-801 |
 | US-802 | FR-EMAIL-802 |
 | US-803 | FR-EMAIL-803 |
+| **District Suite** | |
+| US-1001 | FR-TENANT-101, 102 |
+| US-1002 | FR-TENANT-105 |
+| US-1101 | FR-SELFSERV-201, 202, 203 |
+| US-1102 | FR-SELFSERV-204, 205 |
+| US-1103 | FR-SELFSERV-301, 302, 303 |
+| US-1104 | FR-SELFSERV-304 |
+| US-1105 | FR-SELFSERV-401, 402, 403 |
+| US-1106 | FR-SELFSERV-404, 405 |
+| US-1107 | FR-SELFSERV-501, 502, 503 |
+| US-1201 | FR-API-101, 102, 108 |
+| US-1202 | FR-API-106 |
 
 ---
 

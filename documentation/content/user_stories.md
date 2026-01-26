@@ -633,7 +633,159 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given TeacherProgress entries exist, when I run auto-match, then the system matches by email (primary) or fuzzy name.
 - Given auto-match leaves unmatched entries, when I view the matching interface, then I can manually select and match.
 
+## Epic 10: Tenant Management (District Suite)
+
+> [!NOTE]
+> **District Suite** stories define capabilities for the multi-tenant platform expansion. These are planned for phased implementation.
+
+### <a id="us-1001"></a>US-1001: Create and configure district tenant
+
+**As** a PrepKC administrator, **I want** to create and configure new district tenants, **So that** partner districts can operate in isolated environments.
+
+**Related Requirements:** [FR-TENANT-101](requirements#fr-tenant-101), [FR-TENANT-102](requirements#fr-tenant-102)
+
+**Related Use Cases:** [UC-14](use_cases#uc-14)
+
+**Acceptance Criteria:**
+
+- Given I am a PrepKC admin, when I create a new tenant, then a new isolated database is provisioned with schema and reference data.
+- Given a tenant exists, when I access the tenant management interface, then I can view and edit tenant settings.
+- Given a tenant has issues, when I deactivate it, then users can no longer access that tenant.
+
+### <a id="us-1002"></a>US-1002: Switch tenant context for support
+
+**As** a PrepKC administrator, **I want** to switch to a district's tenant context, **So that** I can provide support and troubleshoot issues.
+
+**Related Requirements:** [FR-TENANT-105](requirements#fr-tenant-105)
+
+**Acceptance Criteria:**
+
+- Given I am a PrepKC admin, when I select a tenant from the switcher, then I operate within that tenant's context.
+- Given I switch tenants, then my actions are logged with my identity and the target tenant for audit purposes.
+- Given I am in a tenant context, then I see that tenant's data and can navigate their features.
+
+## Epic 11: District Self-Service (District Suite)
+
+### <a id="us-1101"></a>US-1101: District admin creates and manages events
+
+**As** a district administrator, **I want** to create and manage events for my district, **So that** we can run volunteer engagement without PrepKC staff involvement.
+
+**Related Requirements:** [FR-SELFSERV-201](requirements#fr-selfserv-201), [FR-SELFSERV-202](requirements#fr-selfserv-202), [FR-SELFSERV-203](requirements#fr-selfserv-203)
+
+**Related Use Cases:** [UC-15](use_cases#uc-15)
+
+**Acceptance Criteria:**
+
+- Given I am a district admin, when I create an event with required fields, then it is saved to my district's database.
+- Given an event exists, when I edit it, then changes persist and are visible to my district's users.
+- Given I cancel an event, then signed-up volunteers receive notification emails.
+
+### <a id="us-1102"></a>US-1102: District admin manages event calendar
+
+**As** a district administrator, **I want** to view my district's events in calendar and list formats, **So that** I can plan and track volunteer activities.
+
+**Related Requirements:** [FR-SELFSERV-204](requirements#fr-selfserv-204), [FR-SELFSERV-205](requirements#fr-selfserv-205)
+
+**Acceptance Criteria:**
+
+- Given I access the calendar view, then I see my district's events in month/week/day format.
+- Given I access the list view, then I can search, sort, and filter events by status and date.
+
+### <a id="us-1103"></a>US-1103: District admin imports and manages volunteers
+
+**As** a district administrator, **I want** to build and manage my district's volunteer pool, **So that** we have volunteers to recruit for our events.
+
+**Related Requirements:** [FR-SELFSERV-301](requirements#fr-selfserv-301), [FR-SELFSERV-302](requirements#fr-selfserv-302), [FR-SELFSERV-303](requirements#fr-selfserv-303)
+
+**Related Use Cases:** [UC-16](use_cases#uc-16)
+
+**Acceptance Criteria:**
+
+- Given I am a district admin, when I add a volunteer, then they are saved to my district's database.
+- Given I upload a CSV/Excel file, when I import it, then volunteers are created with validation and error reporting.
+- Given volunteers exist, when I search by name/org/skills, then results are scoped to my district only.
+
+### <a id="us-1104"></a>US-1104: District admin assigns volunteers to events
+
+**As** a district administrator, **I want** to assign volunteers to my district's events, **So that** I can track who is participating.
+
+**Related Requirements:** [FR-SELFSERV-304](requirements#fr-selfserv-304)
+
+**Related Use Cases:** [UC-15](use_cases#uc-15)
+
+**Acceptance Criteria:**
+
+- Given an event exists, when I assign a volunteer, then they appear on the event roster.
+- Given a volunteer is assigned, then I can track their confirmation status (Invited, Confirmed, Declined).
+
+### <a id="us-1105"></a>US-1105: District admin uses recruitment dashboard
+
+**As** a district administrator, **I want** to use recruitment tools to fill volunteer gaps, **So that** I can proactively ensure events are staffed.
+
+**Related Requirements:** [FR-SELFSERV-401](requirements#fr-selfserv-401), [FR-SELFSERV-402](requirements#fr-selfserv-402), [FR-SELFSERV-403](requirements#fr-selfserv-403)
+
+**Related Use Cases:** [UC-16](use_cases#uc-16)
+
+**Acceptance Criteria:**
+
+- Given I access the recruitment dashboard, then I see events needing volunteers with urgency indicators.
+- Given I view volunteer recommendations, then they are ranked by fit (history, skills, location).
+- Given I conduct outreach, when I log it, then the attempt and outcome are recorded.
+
+### <a id="us-1106"></a>US-1106: Volunteer signs up via district form
+
+**As** a volunteer, **I want** to sign up for district events via a public form, **So that** I can participate without creating an account.
+
+**Related Requirements:** [FR-SELFSERV-404](requirements#fr-selfserv-404), [FR-SELFSERV-405](requirements#fr-selfserv-405)
+
+**Acceptance Criteria:**
+
+- Given I access a district's public signup form, when I submit my information, then I am registered for the event.
+- Given successful signup, then I receive a confirmation email with calendar invite.
+- Given I complete signup, then my information is added to the district's volunteer pool.
+
+### <a id="us-1107"></a>US-1107: District user views PrepKC events
+
+**As** a district user, **I want** to see PrepKC events happening at my schools (read-only), **So that** I am aware of all volunteer activities in my district.
+
+**Related Requirements:** [FR-SELFSERV-501](requirements#fr-selfserv-501), [FR-SELFSERV-502](requirements#fr-selfserv-502), [FR-SELFSERV-503](requirements#fr-selfserv-503)
+
+**Related Use Cases:** [UC-18](use_cases#uc-18)
+
+**Acceptance Criteria:**
+
+- Given I view my district calendar, then PrepKC events at my schools appear with distinct styling.
+- Given I view event details, then I can see PrepKC event information but cannot edit.
+- Given I access statistics, then I see aggregate metrics for PrepKC events at my schools.
+
+## Epic 12: Public Event API (District Suite)
+
+### <a id="us-1201"></a>US-1201: District embeds events on website
+
+**As** a district IT staff member, **I want** to embed my district's event listings on our website, **So that** community members can see volunteer opportunities.
+
+**Related Requirements:** [FR-API-101](requirements#fr-api-101), [FR-API-102](requirements#fr-api-102), [FR-API-108](requirements#fr-api-108)
+
+**Related Use Cases:** [UC-17](use_cases#uc-17)
+
+**Acceptance Criteria:**
+
+- Given I have my district's API key, when I call the events endpoint, then I receive published events in JSON format.
+- Given I call the event detail endpoint, then I receive full event information including signup URL.
+- Given I make API calls from my website, then CORS allows the requests.
+
+### <a id="us-1202"></a>US-1202: District rotates API key
+
+**As** a district administrator, **I want** to rotate my API key, **So that** I can maintain security if a key is compromised.
+
+**Related Requirements:** [FR-API-106](requirements#fr-api-106)
+
+**Acceptance Criteria:**
+
+- Given I access tenant settings, when I click "Rotate API Key", then a new key is generated.
+- Given a new key is generated, then the old key immediately stops working.
+
 ---
 
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*

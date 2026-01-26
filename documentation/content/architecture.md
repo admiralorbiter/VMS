@@ -365,20 +365,175 @@ graph LR
 
 **Reference:** [Getting Started - System URLs](getting_started#system-urls-and-locations)
 
+---
+
+## Multi-Tenancy Architecture (District Suite)
+
+> [!NOTE]
+> **District Suite** extends Polaris to support multiple district tenants, each with isolated data and users. This section documents the architectural decisions for the multi-tenant platform.
+
+### Tenant Isolation Strategy
+
+**Database-per-Tenant Model:**
+- Each tenant has a dedicated SQLite database file
+- Naming convention: `polaris_{tenant_slug}.db` (e.g., `polaris_kckps.db`)
+- Main database (`polaris.db`) stores tenant registry and PrepKC-only data
+- No cross-tenant data access at the database level
+
+```mermaid
+graph TB
+    subgraph "Main Polaris Instance"
+        MAIN_DB[(polaris.db)]
+        TENANT_REG[Tenant Registry]
+    end
+
+    subgraph "Tenant Databases"
+        KCKPS[(polaris_kckps.db)]
+        DIST2[(polaris_district2.db)]
+        DIST3[(polaris_district3.db)]
+    end
+
+    MAIN_DB --> TENANT_REG
+    TENANT_REG --> KCKPS
+    TENANT_REG --> DIST2
+    TENANT_REG --> DIST3
+```
+
+### Tenant-Aware Request Routing
+
+| Step | Description |
+|------|-------------|
+| 1 | User authenticates (login or API key) |
+| 2 | System identifies tenant from user or API key |
+| 3 | `g.tenant` set in Flask context |
+| 4 | Database connection routed to tenant's SQLite file |
+| 5 | All queries scoped to tenant's database |
+
+**Implementation:**
+- Middleware: `before_request` handler sets tenant context
+- Database binding: SQLAlchemy session uses tenant-specific connect string
+- Logout/session end: Clears tenant context
+
+### Shared vs. Tenant-Specific Data
+
+| Data Type | Location | Shared? | Notes |
+|-----------|----------|---------|-------|
+| Schools, Districts | Both | Copied on provision | Reference data duplicated to tenant DB |
+| Skills, Career Types | Both | Copied on provision | Reference data duplicated |
+| Volunteers | Tenant DB | No | Strictly tenant-isolated |
+| Events (district-created) | Tenant DB | No | Strictly tenant-isolated |
+| Events (PrepKC) | Main DB | Read-only to tenants | Phase 5 visibility |
+| Users | Both | No | Main DB for PrepKC users, tenant DB for district users |
+
+### Tenant Provisioning
+
+**Workflow:**
+1. PrepKC admin creates tenant in main database
+2. System creates new SQLite database file
+3. System runs Alembic migrations on new database
+4. System copies reference data (schools, skills, career types)
+5. System creates initial admin user
+6. System generates API key
+
+**Reference:** [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+
+---
+
+## Public Event API Architecture (District Suite)
+
+> [!NOTE]
+> The Public Event API enables districts to embed their event listings on external websites. The API is read-only and tenant-scoped.
+
+### API Overview
+
+| Aspect | Specification |
+|--------|---------------|
+| Base URL | `/api/v1/district/{tenant_slug}` |
+| Authentication | API Key in `X-API-Key` header |
+| Format | JSON |
+| Methods | GET only (read-only API) |
+
+### Endpoints
+
+| Endpoint | Description | Response |
+|----------|-------------|----------|
+| `GET /events` | List published events | Paginated event array |
+| `GET /events/{slug}` | Single event details | Event object |
+
+### Authentication & Security
+
+**API Key Management:**
+- Each tenant has one API key
+- Key stored hashed in tenant record
+- Key can be rotated by tenant admin
+- Previous key immediately invalidated on rotation
+
+**Request Flow:**
+```
+Request → Extract X-API-Key → Hash and lookup → Validate tenant → Return data
+```
+
+### Rate Limiting
+
+| Limit Type | Threshold | Window |
+|------------|-----------|--------|
+| Per-minute | 60 requests | 1 minute |
+| Per-hour | 1,000 requests | 1 hour |
+| Per-day | 10,000 requests | 24 hours |
+
+**Exceeded Response:**
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded",
+  "retry_after": 60
+}
+```
+
+### CORS Configuration
+
+- Origins: Allowed origins configured per tenant (or `*` for public)
+- Methods: `GET, OPTIONS`
+- Headers: `X-API-Key, Content-Type`
+
+### Response Envelope
+
+All responses follow consistent structure:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 45
+  }
+}
+```
+
+**Reference:** [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108)
+
+---
+
 ## Related Requirements
 
 - [FR-INPERSON-108](requirements#fr-inperson-108): Scheduled daily imports
 - [FR-INPERSON-110](requirements#fr-inperson-110): Batch processing for large datasets
 - [FR-RECRUIT-305](requirements#fr-recruit-305): Communication history from Salesforce
 - [FR-DISTRICT-501](requirements#fr-district-501): District viewer access
+- [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107): Tenant infrastructure
+- [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108): Public API
 
 ## Related User Stories
 
 - [US-102](user_stories#us-102): Toggle publish visibility
 - [US-104](user_stories#us-104): Link events to districts
 - [US-404](user_stories#us-404): View communication history
+- [US-1001](user_stories#us-1001): Create and configure district tenant
+- [US-1201](user_stories#us-1201): District embeds events on website
 
 ---
 
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*

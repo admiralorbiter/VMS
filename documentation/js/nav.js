@@ -60,6 +60,7 @@ const PAGE_MANIFEST = {
     'contract-d': 'contract_d',
     'metrics-bible': 'metrics_bible',
     'api-reference': 'api_reference',
+    'district-suite-phases': 'district_suite_phases',
     // Security
     'rbac-matrix': 'rbac_matrix',
     'privacy-data-handling': 'privacy_data_handling',
@@ -70,7 +71,9 @@ const PAGE_MANIFEST = {
     'smoke-tests': 'smoke_tests',
     'daily-import-scripts': 'daily_import_scripts',
     'runbook': 'runbook',
-    'user-guide-public-signup': 'user_guide/public_signup'
+    'user-guide-public-signup': 'user_guide/public_signup',
+    'user-guide-tenant-management': 'user_guide/tenant_management',
+    'user-guide-district-self-service': 'user_guide/district_self_service'
 };
 
 // State - track current loaded page to distinguish page nav from anchor scrolling

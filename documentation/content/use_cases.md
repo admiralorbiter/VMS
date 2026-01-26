@@ -28,6 +28,12 @@ Use cases describe complete workflows that span multiple systems and features. T
 | [UC-11](#uc-11) | Identify and Fill Presenter Gaps | [US-307](user_stories#us-307), [US-303](user_stories#us-303) | [Test Pack 3](#test-pack-3) |
 | [UC-12](#uc-12) | Generate Partner Reconciliation Report | [US-705](user_stories#us-705) | [Test Pack 6](#test-pack-6) |
 | [UC-13](#uc-13) | Semester Progress Rollover | [US-509](user_stories#us-509) | [Test Pack 1](#test-pack-1) |
+| **District Suite** | | | |
+| [UC-14](#uc-14) | Onboard New District Tenant | [US-1001](user_stories#us-1001), [US-1002](user_stories#us-1002) | *Phase 1* |
+| [UC-15](#uc-15) | District Creates and Manages Event | [US-1101](user_stories#us-1101), [US-1102](user_stories#us-1102), [US-1104](user_stories#us-1104) | *Phase 2* |
+| [UC-16](#uc-16) | District Recruits Volunteers | [US-1103](user_stories#us-1103), [US-1105](user_stories#us-1105) | *Phase 3-4* |
+| [UC-17](#uc-17) | District Website Integrates Event Feed | [US-1201](user_stories#us-1201), [US-1202](user_stories#us-1202) | *Phase 2* |
+| [UC-18](#uc-18) | District Views PrepKC Events | [US-1107](user_stories#us-1107) | *Phase 5* |
 
 ---
 
@@ -250,5 +256,116 @@ Use cases describe complete workflows that span multiple systems and features. T
 
 ---
 
+## District Suite Use Cases
+
+> [!NOTE]
+> The following use cases are part of the **District Suite** multi-tenancy expansion. They are planned for phased implementation.
+
+## <a id="uc-14"></a>UC-14: Onboard New District Tenant (PrepKC Admin)
+
+**Workflow:**
+1. PrepKC administrator accesses tenant management interface
+2. Creates new tenant with district name and settings
+3. System provisions isolated database with schema
+4. System copies reference data (schools, skills, career types)
+5. Admin creates initial district admin user account
+6. Admin generates API key for district
+7. Admin configures feature flags for phased rollout
+8. District admin receives welcome email with login credentials
+
+**Related:**
+- **Requirements**: [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+- **User Stories**: [US-1001](user_stories#us-1001), [US-1002](user_stories#us-1002)
+- **Test Coverage**: *Phase 1*
+
+---
+
+## <a id="uc-15"></a>UC-15: District Creates and Manages Event (District Admin)
+
+**Workflow:**
+1. District admin logs into their tenant's instance
+2. Navigates to Events → Create New Event
+3. Enters event details: title, date, time, location, description, volunteer needs
+4. Saves event (status: Draft)
+5. Optionally assigns volunteers from their pool
+6. Publishes event (status: Published) to make available on API
+7. Views event in calendar or list view
+8. After event completion, marks as Completed
+
+**Alternative Flow - Cancellation:**
+1. Admin selects existing event and clicks Cancel
+2. Optionally enters cancellation reason
+3. System sends cancellation emails to signed-up volunteers
+4. Event status changes to Cancelled
+
+**Related:**
+- **Requirements**: [FR-SELFSERV-201](requirements#fr-selfserv-201) through [FR-SELFSERV-206](requirements#fr-selfserv-206)
+- **User Stories**: [US-1101](user_stories#us-1101), [US-1102](user_stories#us-1102), [US-1104](user_stories#us-1104)
+- **Test Coverage**: *Phase 2*
+
+---
+
+## <a id="uc-16"></a>UC-16: District Recruits Volunteers (District Admin)
+
+**Workflow:**
+1. District admin views recruitment dashboard
+2. Sees events needing volunteers with urgency indicators
+3. Selects an event to fill
+4. Views volunteer recommendations ranked by fit
+5. Searches for additional volunteers by criteria
+6. Selects volunteer and initiates outreach (email)
+7. Logs outreach attempt with notes
+8. Updates outcome when volunteer responds
+9. Assigns confirmed volunteer to event
+
+**Alternative Flow - Import Volunteers:**
+1. Admin navigates to Volunteers → Import
+2. Uploads CSV/Excel file
+3. Maps columns to volunteer fields
+4. Reviews validation results
+5. Confirms import; volunteers added to pool
+
+**Related:**
+- **Requirements**: [FR-SELFSERV-301](requirements#fr-selfserv-301) through [FR-SELFSERV-403](requirements#fr-selfserv-403)
+- **User Stories**: [US-1103](user_stories#us-1103), [US-1105](user_stories#us-1105)
+- **Test Coverage**: *Phase 3-4*
+
+---
+
+## <a id="uc-17"></a>UC-17: District Website Integrates Event Feed (District IT)
+
+**Workflow:**
+1. District IT staff accesses tenant settings
+2. Copies API key and endpoint URL
+3. Implements JavaScript on district website to call API
+4. API returns published events in JSON format
+5. Website renders event cards with signup links
+6. Community members click to sign up via public form
+7. (Optional) IT staff rotates API key periodically
+
+**Related:**
+- **Requirements**: [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108)
+- **User Stories**: [US-1201](user_stories#us-1201), [US-1202](user_stories#us-1202)
+- **Test Coverage**: *Phase 2*
+
+---
+
+## <a id="uc-18"></a>UC-18: District Views PrepKC Events (District User)
+
+**Workflow:**
+1. District user logs into their tenant
+2. Views district calendar
+3. Calendar shows district events and PrepKC events (distinct styling)
+4. User clicks on a PrepKC event
+5. Views event details (read-only)
+6. User accesses statistics to see PrepKC impact at their schools
+
+**Related:**
+- **Requirements**: [FR-SELFSERV-501](requirements#fr-selfserv-501), [FR-SELFSERV-502](requirements#fr-selfserv-502), [FR-SELFSERV-503](requirements#fr-selfserv-503)
+- **User Stories**: [US-1107](user_stories#us-1107)
+- **Test Coverage**: *Phase 5*
+
+---
+
 *Last updated: January 2026*
-*Version: 1.0*
+*Version: 1.1*
