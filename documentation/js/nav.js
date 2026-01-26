@@ -49,6 +49,7 @@ const PAGE_MANIFEST = {
     'reports-ad-hoc': 'reports/ad_hoc',
     // Technical
     'architecture': 'architecture',
+    'codebase-structure': 'codebase_structure',
     'data-dictionary': 'data_dictionary',
     'field-mappings': 'field_mappings',
     'field-mappings': 'field_mappings',

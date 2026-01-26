@@ -28,6 +28,8 @@ This documentation covers the integrated system for managing K–12 student conn
   Quality attributes and system constraints
 - 🏗️ **[Architecture](architecture)**
   System context, integration flows, and source-of-truth ownership
+- 📁 **[Codebase Structure](codebase_structure)**
+  Directory layout, module responsibilities, and naming conventions
 - 📊 **[Data Dictionary](data_dictionary)**
   Canonical entity definitions, field specs, and sensitivity levels
 - 🔗 **[Field Mappings](field_mappings)**
