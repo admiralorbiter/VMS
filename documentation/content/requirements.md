@@ -392,14 +392,14 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-api-101"></a>**FR-API-101** | The system shall provide a REST endpoint `GET /api/v1/district/{tenant}/events` returning published events for the tenant. | *Phase 2* | [US-1201](user_stories#us-1201) |
-| <a id="fr-api-102"></a>**FR-API-102** | The system shall provide a REST endpoint `GET /api/v1/district/{tenant}/events/{slug}` returning single event details. | *Phase 2* | [US-1201](user_stories#us-1201) |
-| <a id="fr-api-103"></a>**FR-API-103** | API requests shall be authenticated via tenant-specific API keys passed in the `X-API-Key` header. | *Phase 2* | *Technical requirement* |
-| <a id="fr-api-104"></a>**FR-API-104** | The API shall enforce rate limits: 60 requests/minute, 1000 requests/hour, 10000 requests/day per API key. | *Phase 2* | *Technical requirement* |
-| <a id="fr-api-105"></a>**FR-API-105** | The API shall support CORS to allow embedding on district websites. | *Phase 2* | *Technical requirement* |
-| <a id="fr-api-106"></a>**FR-API-106** | District administrators shall be able to rotate their API key via the tenant settings interface. | *Phase 2* | [US-1202](user_stories#us-1202) |
-| <a id="fr-api-107"></a>**FR-API-107** | API responses shall use JSON format with consistent envelope structure including success status, data payload, and pagination. | *Phase 2* | *Technical requirement* |
-| <a id="fr-api-108"></a>**FR-API-108** | Event objects in API responses shall include: id, title, description, event_type, date, times, location, volunteers_needed, signup_url. | *Phase 2* | [US-1201](user_stories#us-1201) |
+| <a id="fr-api-101"></a>**FR-API-101** | The system shall provide a REST endpoint `GET /api/v1/district/{tenant}/events` returning published events for the tenant. | [TC-950](test-pack-8#tc-950)–[TC-952](test-pack-8#tc-952) | [US-1201](user_stories#us-1201) |
+| <a id="fr-api-102"></a>**FR-API-102** | The system shall provide a REST endpoint `GET /api/v1/district/{tenant}/events/{slug}` returning single event details. | [TC-951](test-pack-8#tc-951) | [US-1201](user_stories#us-1201) |
+| <a id="fr-api-103"></a>**FR-API-103** | API requests shall be authenticated via tenant-specific API keys passed in the `X-API-Key` header. | [TC-960](test-pack-8#tc-960)–[TC-962](test-pack-8#tc-962) | *Technical requirement* |
+| <a id="fr-api-104"></a>**FR-API-104** | The API shall enforce rate limits: 60 requests/minute, 1000 requests/hour, 10000 requests/day per API key. | [TC-970](test-pack-8#tc-970), [TC-971](test-pack-8#tc-971) | *Technical requirement* |
+| <a id="fr-api-105"></a>**FR-API-105** | The API shall support CORS to allow embedding on district websites. | ✅ Implemented | *Technical requirement* |
+| <a id="fr-api-106"></a>**FR-API-106** | District administrators shall be able to rotate their API key via the tenant settings interface. | [TC-990](test-pack-8#tc-990), [TC-991](test-pack-8#tc-991) | [US-1202](user_stories#us-1202) |
+| <a id="fr-api-107"></a>**FR-API-107** | API responses shall use JSON format with consistent envelope structure including success status, data payload, and pagination. | [TC-980](test-pack-8#tc-980), [TC-982](test-pack-8#tc-982) | *Technical requirement* |
+| <a id="fr-api-108"></a>**FR-API-108** | Event objects in API responses shall include: id, title, description, event_type, date, times, location, volunteers_needed, signup_url. | [TC-981](test-pack-8#tc-981) | [US-1201](user_stories#us-1201) |
 
 ## Traceability Matrix
 

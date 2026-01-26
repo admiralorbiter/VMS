@@ -44,6 +44,8 @@ Usage:
 
 from flask import render_template
 
+# District Suite Phase 2 - Public Event API (FR-API-101 to FR-API-108)
+from routes.api.public_events import public_api_bp
 from routes.attendance.routes import attendance
 from routes.auth.api import api_bp
 from routes.auth.routes import auth_bp
@@ -119,6 +121,7 @@ def init_routes(app):
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(api_bp, url_prefix="/api/v1")
+    app.register_blueprint(public_api_bp)  # District Suite Public API
 
     @app.route("/")
     def index():

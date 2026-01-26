@@ -176,6 +176,48 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
+## Phase 2: Public Event API (FR-API-101 to FR-API-108)
+
+### P. API Endpoints (FR-API-101, FR-API-102)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-950"></a>**TC-950** | List events endpoint exists | GET `/api/v1/district/{tenant}/events` returns JSON | Automated | 2026-01-26 |
+| <a id="tc-951"></a>**TC-951** | Get event endpoint exists | GET `/api/v1/district/{tenant}/events/{id}` returns event | Automated | 2026-01-26 |
+| <a id="tc-952"></a>**TC-952** | Only published events returned | Draft/Cancelled events not in response | Automated | 2026-01-26 |
+
+### Q. API Authentication (FR-API-103)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-960"></a>**TC-960** | Missing API key returns 401 | Error: MISSING_API_KEY | Automated | 2026-01-26 |
+| <a id="tc-961"></a>**TC-961** | Invalid API key returns 401 | Error: INVALID_API_KEY | Automated | 2026-01-26 |
+| <a id="tc-962"></a>**TC-962** | Valid API key returns data | Success response with events | Automated | 2026-01-26 |
+
+### R. Rate Limiting (FR-API-104)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-970"></a>**TC-970** | Rate limiter tracks requests | Count increments per request | Automated | 2026-01-26 |
+| <a id="tc-971"></a>**TC-971** | Exceeded limit returns 429 | Error: RATE_LIMIT_EXCEEDED with Retry-After | Automated | 2026-01-26 |
+
+### S. Response Format (FR-API-107, FR-API-108)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-980"></a>**TC-980** | Response has envelope structure | Contains success, data, pagination, meta | Automated | 2026-01-26 |
+| <a id="tc-981"></a>**TC-981** | Event object has required fields | id, title, description, event_type, date, location, etc. | Automated | 2026-01-26 |
+| <a id="tc-982"></a>**TC-982** | Pagination works correctly | page, per_page, total_items, has_next, has_prev | Automated | 2026-01-26 |
+
+### T. API Key Management (FR-API-106)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-990"></a>**TC-990** | Generate API key | New key returned, hash stored | Automated | 2026-01-26 |
+| <a id="tc-991"></a>**TC-991** | Rotate API key | Old key invalidated, new key works | Automated | 2026-01-26 |
+
+---
+
 > [!NOTE]
 > **Automated Test Files**
 > - `tests/unit/models/test_tenant.py` - Tenant model tests (10 tests)
@@ -183,8 +225,9 @@ District Suite tenant CRUD, configuration, and infrastructure
 > - `tests/unit/utils/test_tenant_context.py` - Tenant context tests (14 tests)
 > - `tests/integration/test_tenant_routes.py` - Tenant routes tests
 > - `tests/integration/test_district_events.py` - District event routes tests (including calendar)
+> - `tests/integration/test_public_api.py` - Public Event API tests
 
 ---
 
 *Last updated: 2026-01-26*
-*Version: 1.5 - Added FR-SELFSERV-204 calendar tests (TC-940-944)*
+*Version: 1.6 - Added Public Event API tests (TC-950-991)*
