@@ -12,6 +12,7 @@ import pytest
 from models import db
 from models.roster_import_log import RosterImportLog
 from models.teacher_progress import TeacherProgress
+from models.user import User
 from utils.roster_import import import_roster
 
 
@@ -20,13 +21,15 @@ def clean_db():
     """Clean up TeacherProgress and RosterImportLog tables."""
     TeacherProgress.query.delete()
     RosterImportLog.query.delete()
+    # Ensure no lingering data affects tests
     db.session.commit()
     yield
     db.session.rollback()
 
 
-def test_new_teacher_import_tc030(app, clean_db):
+def test_new_teacher_import_tc030(app, clean_db, test_admin):
     """TC-030: New teacher appears with Not Started status."""
+    print(f"DEBUG: Using Admin ID: {test_admin.id}")
     with app.app_context():
         # Setup import data
         roster_data = [
@@ -44,7 +47,7 @@ def test_new_teacher_import_tc030(app, clean_db):
             district_name="Test District",
             academic_year="2025-2026",
             teacher_data=roster_data,
-            user_id=1,
+            user_id=test_admin.id,
         )
 
         # Verify log
@@ -62,7 +65,7 @@ def test_new_teacher_import_tc030(app, clean_db):
         assert status["status"] == "not_started"
 
 
-def test_removed_teacher_soft_delete_tc031(app, clean_db):
+def test_removed_teacher_soft_delete_tc031(app, clean_db, test_admin):
     """TC-031: Removed teacher behavior (Soft Delete)."""
     with app.app_context():
         # 1. Initial Import
@@ -82,7 +85,7 @@ def test_removed_teacher_soft_delete_tc031(app, clean_db):
                 "is_active": True,
             },
         ]
-        import_roster("Test District", "2025-2026", roster_data_1, 1)
+        import_roster("Test District", "2025-2026", roster_data_1, test_admin.id)
 
         # Verify both exist
         assert TeacherProgress.query.count() == 2
@@ -97,7 +100,7 @@ def test_removed_teacher_soft_delete_tc031(app, clean_db):
                 "is_active": True,
             }
         ]
-        log = import_roster("Test District", "2025-2026", roster_data_2, 1)
+        log = import_roster("Test District", "2025-2026", roster_data_2, test_admin.id)
 
         # Verify log
         assert log.records_deactivated == 1
@@ -114,7 +117,7 @@ def test_removed_teacher_soft_delete_tc031(app, clean_db):
         assert stay_teacher.is_active is True
 
 
-def test_roster_update_merge(app, clean_db):
+def test_roster_update_merge(app, clean_db, test_admin):
     """Verify updates to existing records (Merge)."""
     with app.app_context():
         # 1. Initial Import
@@ -127,7 +130,7 @@ def test_roster_update_merge(app, clean_db):
                 "is_active": True,
             }
         ]
-        import_roster("Test District", "2025-2026", roster_data, 1)
+        import_roster("Test District", "2025-2026", roster_data, test_admin.id)
 
         # 2. Update Import
         roster_data_update = [
@@ -139,7 +142,9 @@ def test_roster_update_merge(app, clean_db):
                 "is_active": True,
             }
         ]
-        log = import_roster("Test District", "2025-2026", roster_data_update, 1)
+        log = import_roster(
+            "Test District", "2025-2026", roster_data_update, test_admin.id
+        )
 
         # Verify log
         assert log.records_updated == 1
