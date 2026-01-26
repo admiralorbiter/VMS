@@ -100,6 +100,11 @@ class TeacherProgress(db.Model):
     # Relationship to Teacher model
     teacher = relationship("Teacher", backref="teacher_progress_entries")
 
+    # [NEW] Fields for roster import refactoring
+    is_active = Column(db.Boolean, default=True, nullable=False)
+    district_name = Column(String(200), nullable=True)  # Nullable for legacy data
+    last_import_id = Column(Integer, ForeignKey("roster_import_log.id"), nullable=True)
+
     def __init__(
         self,
         academic_year,
@@ -124,7 +129,11 @@ class TeacherProgress(db.Model):
             grade: Grade level (optional)
             target_sessions: Target number of sessions (default: 1)
             created_by: User ID who created this record
+            created_by: User ID who created this record
             teacher_id: ID of matched Teacher record (optional)
+            is_active: Whether the teacher is active (default: True)
+            district_name: Name of the district (optional)
+            last_import_id: ID of the import log (optional)
         """
         self.academic_year = academic_year
         self.virtual_year = virtual_year
@@ -135,6 +144,9 @@ class TeacherProgress(db.Model):
         self.target_sessions = target_sessions
         self.created_by = created_by
         self.teacher_id = teacher_id
+        self.is_active = True  # Default to active
+        self.district_name = None
+        self.last_import_id = None
 
     def get_progress_status(self, completed_sessions=0, planned_sessions=0):
         """
@@ -202,6 +214,8 @@ class TeacherProgress(db.Model):
                 self.updated_at.isoformat() if self.updated_at is not None else None
             ),
             "created_by": self.created_by,
+            "is_active": self.is_active,
+            "district_name": self.district_name,
         }
 
     def __repr__(self):

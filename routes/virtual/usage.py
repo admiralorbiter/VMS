@@ -5864,21 +5864,41 @@ def load_usage_routes():
                 )
             )
 
+        from models.district_model import District
+
         virtual_year = request.args.get("year", get_current_virtual_year())
 
-        # Get all Google Sheets for teacher progress tracking for this year
-        sheets = (
-            GoogleSheet.query.filter_by(
-                academic_year=virtual_year, purpose="teacher_progress_tracking"
-            )
-            .order_by(GoogleSheet.sheet_name)
-            .all()
+        # Get all available districts for the dropdown
+        districts = District.query.order_by(District.name).all()
+
+        # Get Google Sheets for teacher progress tracking for this year
+        # Filter by current district or global (None)
+        # Assuming we want to show sheets created for this district specifically
+        sheets_query = GoogleSheet.query.filter_by(
+            academic_year=virtual_year, purpose="teacher_progress_tracking"
         )
+
+        # If we are in a specific district context, filter for that district or global
+        # (For now, matching exact name. In future, might want complex logic)
+        # Note: We check if district_name matches.
+
+        sheets = sheets_query.order_by(GoogleSheet.sheet_name).all()
+        # Filter in python to support legacy None/Global sheets + specific district sheets
+        # or update query to use OR condition if supported easily,
+        # but filter_by doesn't support OR. Using simple list comprehension for safety or just showing all for now if safe.
+        # Strict scoping: Show sheets matching district_name OR district_name is None
+
+        filtered_sheets = [
+            s
+            for s in sheets
+            if s.district_name == district_name or s.district_name is None
+        ]
 
         return render_template(
             "virtual/virtual_teacher_progress_google_sheets.html",
-            sheets=sheets,
+            sheets=filtered_sheets,
             district_name=district_name,
+            districts=districts,  # Pass districts to template
             virtual_year=virtual_year,
             virtual_year_options=generate_school_year_options(),
         )
@@ -5943,6 +5963,8 @@ def load_usage_routes():
                     )
                 )
 
+            district_name_form = request.form.get("district_name")  # Get from dropdown
+
             # Create new Google Sheet record
             new_sheet = GoogleSheet(
                 academic_year=virtual_year,
@@ -5950,6 +5972,7 @@ def load_usage_routes():
                 sheet_id=sheet_id,
                 sheet_name=sheet_name,
                 created_by=current_user.id,
+                district_name=district_name_form if district_name_form else None,
             )
 
             db.session.add(new_sheet)
@@ -6078,35 +6101,50 @@ def load_usage_routes():
                 ):
                     sample_teachers.append(teacher_data)
 
-            # Clear existing data for this academic year
-            from models import TeacherProgress
+            # Validate Import Data
+            from utils.roster_import import import_roster, validate_import_data
 
-            TeacherProgress.query.filter_by(
-                academic_year=sheet.academic_year, virtual_year=sheet.academic_year
-            ).delete()
+            # Convert list of dicts to DataFrame for validation function compatibility
+            # (or refactor validation to accept list of dicts - for now, reusing the logic)
+            validation_df = pd.DataFrame(sample_teachers)
+            validated_data, errors = validate_import_data(validation_df)
 
-            # Import new data
-            imported_count = 0
-            for teacher_data in sample_teachers:
-                teacher_progress = TeacherProgress(
-                    academic_year=sheet.academic_year,
-                    virtual_year=sheet.academic_year,
-                    building=teacher_data["building"],
-                    name=teacher_data["name"],
-                    email=teacher_data["email"],
-                    grade=teacher_data["grade"],
-                    target_sessions=1,  # Default target of 1 session
-                    created_by=current_user.id,
+            if errors:
+                flash(
+                    f"Data Validation Errors found ({len(errors)}). Import cancelled.",
+                    "error",
                 )
-                db.session.add(teacher_progress)
-                imported_count += 1
+                # In real UI, we might show the list of errors
+                return redirect(
+                    url_for(
+                        "virtual.virtual_teacher_progress_google_sheets",
+                        district_name=district_name,
+                        year=sheet.academic_year,
+                    )
+                )
 
-            db.session.commit()
+            # Perform Safe Import
+            try:
+                import_log = import_roster(
+                    district_name=district_name,
+                    academic_year=sheet.academic_year,
+                    teacher_data=validated_data,
+                    user_id=current_user.id,
+                    sheet_id=str(sheet_id),
+                )
 
-            flash(
-                f"Successfully imported {imported_count} teachers from '{sheet.sheet_name}' for {sheet.academic_year}.",
-                "success",
-            )
+                flash(
+                    f"Import successful! Added: {import_log.records_added}, "
+                    f"Updated: {import_log.records_updated}, "
+                    f"Deactivated: {import_log.records_deactivated}",
+                    "success",
+                )
+            except Exception as e:
+                flash(f"System Error during import: {str(e)}", "error")
+                return redirect(url_for("virtual.virtual_usage"))
+
+            # Logic below (db.session.commit) is now handled by import_roster logic
+            # db.session.commit()
 
             return redirect(
                 url_for(

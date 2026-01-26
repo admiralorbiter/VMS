@@ -399,6 +399,8 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given a teacher is in the roster, then they are eligible for magic-link access using their email.
 - Given the same roster is imported again, then the import is idempotent (updates existing, adds new, handles removed teachers per policy).
 
+
+
 ### <a id="us-505"></a>US-505: Teacher can request magic link and verify data
 
 **As** a teacher, **I want** to request a magic link using my email, **So that** I can view my progress and verify it.
@@ -604,6 +606,17 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I view my dashboard, then I see my upcoming sessions (scheduled virtual sessions).
 - Given I identify incorrect data, then I can flag it with a note to internal staff.
 - Given I view my data, then I can only see my own sessions (no access to other teachers' data).
+
+### <a id="us-508"></a>US-508: Match imported teachers to database records
+
+**As** internal staff, **I want** to match imported TeacherProgress entries to actual Teacher records, **So that** clicking a teacher links to their detail page.
+
+**Related Requirements:** [FR-DISTRICT-531](requirements#fr-district-531)
+
+**Acceptance Criteria:**
+
+- Given TeacherProgress entries exist, when I run auto-match, then the system matches by email (primary) or fuzzy name.
+- Given auto-match leaves unmatched entries, when I view the matching interface, then I can manually select and match.
 
 ---
 

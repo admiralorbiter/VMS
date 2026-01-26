@@ -30,9 +30,38 @@ Users can be scoped to specific districts.
 -   **Not Started**: No signups and no completed sessions.
 
 ### Roster Import & Matching
-Teacher data is imported from district rosters (CSV/Google Sheets).
--   **Auto-Matching**: The system attempts to link imported rows to database records by Email (primary) or Fuzzy Name Match (secondary).
--   **Manual Matching**: Admins can resolve unmatched teachers at `/virtual/usage/district/.../matching`.
+Teacher data is imported from district rosters via Google Sheets. This process ensures the "Teacher Progress" list matches the actual district staff.
+
+#### 1. Preparing the Google Sheet
+Create a Google Sheet with the following columns (headers are recommended but not strictly required if order matches, but best practice is to follow standard format):
+-   **Building** (School Name)
+-   **Name** (Teacher Name)
+-   **Email** (District Email)
+-   **Grade** (Optional)
+
+*Note: Ensure the sheet is accessible to the system service account or publicly viewable (depending on configuration).*
+
+#### 2. Importing the Roster
+1.  Navigate to the District Dashboard.
+2.  Click **"Manage Google Sheets"** (or similar import action).
+3.  Click **"Add Google Sheet"**.
+4.  Select the **District** (if global admin) or verify your district is pre-selected.
+5.  Enter the **Sheet ID** (from the Google Sheet URL).
+6.  Click **Add**.
+7.  Once added, click **Import** to pull the teacher records.
+
+#### 3. Teacher Matching
+After import, "TeacherProgress" records exist but may not be linked to VMS "Teacher" accounts. Linking them enables the detail view.
+
+-   **Auto-Matching**:
+    -   The system attempts to match by **Email** (Exact) then **Name** (Fuzzy/Similar).
+    -   Run this immediately after import via the **"Match Teachers"** interface.
+-   **Manual Matching**:
+    -   Go to **"Match Teachers"**.
+    -   Filter by **"Show Unmatched Only"**.
+    -   For each unmatched teacher, select the correct VMS Teacher record from the dropdown and click **Match**.
+
+*Reference: See [Teacher Progress Matching Guide](../guides/teacher_progress_matching.md) for technical details on the matching algorithm.*
 
 ## 3. Teacher Magic Links
 

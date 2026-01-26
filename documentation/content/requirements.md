@@ -199,7 +199,9 @@ Each requirement links to:
 | <a id="fr-district-521"></a>**FR-DISTRICT-521** | The system shall enforce role-based access for Admin, User, District Viewer, and Teacher. | [TC-002](#tc-002) | [US-501](user_stories#us-501), [US-505](user_stories#us-505) |
 | <a id="fr-district-522"></a>**FR-DISTRICT-522** | District Viewer users shall only access data scoped to their district. | [TC-002](#tc-002) | [US-501](user_stories#us-501) |
 | <a id="fr-district-523"></a>**FR-DISTRICT-523** | Teacher magic-link access shall be scoped to a single teacher identity matched by email from the imported district roster. | [TC-003](#tc-003), [TC-024](#tc-024) | [US-505](user_stories#us-505) |
-| <a id="fr-district-524"></a>**FR-DISTRICT-524** | The system shall support importing a district-provided teacher roster (minimum: teacher name, email, grade; school if available) and use it as the authoritative list for progress tracking and magic-link eligibility. | [TC-020](#tc-020), [TC-030](#tc-030)–[TC-031](#tc-031) | [US-504](user_stories#us-504) |
+| <a id="fr-district-524"></a>**FR-DISTRICT-524** | The system shall support importing a district-provided teacher roster (minimum: teacher name, email, grade; school if available) using merge/upsert strategy. Removed teachers are soft-deleted. | [TC-030](#tc-030), [TC-031](#tc-031) | [US-504](user_stories#us-504) |
+| <a id="fr-district-531"></a>**FR-DISTRICT-531** | The system shall provide automatic and manual matching of imported TeacherProgress entries to Teacher database records using email (primary) and fuzzy name matching (secondary). | *TBD* | [US-508](user_stories#us-508) |
+| <a id="fr-district-532"></a>**FR-DISTRICT-532** | The system shall allow Google Sheets for teacher progress tracking to be scoped to a specific district. | *TBD* | *Technical requirement* |
 
 ## <a id="student-roster-and-attendance"></a>7.7 Student Roster and Attendance
 
@@ -345,6 +347,7 @@ This section provides a comprehensive view of the relationships between Function
 | FR-DISTRICT-503 | [US-502](user_stories#us-502) | Drilldown |
 | FR-DISTRICT-502, 508 | [US-503](user_stories#us-503) | Status computation |
 | FR-DISTRICT-524 | [US-504](user_stories#us-504) | Roster import |
+| FR-DISTRICT-531 | [US-508](user_stories#us-508) | Teacher matching |
 | FR-DISTRICT-505, 506, 507, 508, 521, 523 | [US-505](user_stories#us-505) | Teacher magic link |
 | FR-DISTRICT-525, 526 | [US-506](user_stories#us-506), [US-507](user_stories#us-507) | Data tracker features |
 | FR-DISTRICT-504 | *Near-term* | Automated reminders |
@@ -414,6 +417,7 @@ This section provides a comprehensive view of the relationships between Function
 | US-505 | FR-DISTRICT-505, 506, 507, 508, 521, 523 |
 | US-506 | FR-DISTRICT-525 |
 | US-507 | FR-DISTRICT-526, 527 |
+| US-508 | FR-DISTRICT-531 |
 | US-601 | FR-STUDENT-601 |
 | US-602 | FR-STUDENT-602 |
 | US-603 | FR-STUDENT-603, 604 |

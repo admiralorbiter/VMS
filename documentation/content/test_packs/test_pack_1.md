@@ -58,8 +58,11 @@ Teacher magic links + progress status validation
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-030"></a>**TC-030** | New teacher appears | Count increases, shows Not Started | Manual | TBD |
-| <a id="tc-031"></a>**TC-031** | Removed teacher behavior | Consistent with chosen policy | Manual | TBD |
+| <a id="tc-030"></a>**TC-030** | New teacher appears | Count increases, shows Not Started | Automated | 2026-01-25 |
+| <a id="tc-031"></a>**TC-031** | Removed teacher behavior | Consistent with chosen policy (Soft Delete) | Automated | 2026-01-25 |
+| <a id="tc-032"></a>**TC-032** | Auto-match by email | Teacher matched to DB record by exact email | Automated | 2026-01-25 |
+| <a id="tc-033"></a>**TC-033** | Auto-match by fuzzy name | Teacher matched by name if email differs (85%+) | Automated | 2026-01-25 |
+| <a id="tc-034"></a>**TC-034** | Manual match | Admin can manually link unmatched teacher | Manual | 2026-01-25 |
 
 ---
 

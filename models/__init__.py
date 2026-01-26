@@ -61,6 +61,7 @@ from .google_sheet import GoogleSheet
 from .history import History
 from .organization import Organization
 from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
+from .roster_import_log import RosterImportLog
 from .school_model import School
 from .student import Student
 from .sync_log import SyncLog
@@ -94,6 +95,7 @@ __all__ = [
     "School",
     "Teacher",
     "TeacherProgress",
+    "RosterImportLog",
     "Student",
     "SyncLog",
     "History",
