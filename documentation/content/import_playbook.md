@@ -571,9 +571,9 @@ Errors: D
 6. Schools
 7. Classes
 8. Teachers
-9. Student Participations
-10. Students (chunked)
-11. Sync Unaffiliated Events
+9. Sync Unaffiliated Events
+
+**Note:** Student imports (Students, Student Participations) are **excluded** from the automated script due to dataset size. They must be run manually via the Admin Import interface (see [D3: Student Import](#d3-student-import)).
 
 **Usage:**
 

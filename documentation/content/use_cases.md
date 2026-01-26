@@ -174,15 +174,21 @@ Use cases describe complete workflows that span multiple systems and features. T
 
 ## <a id="uc-10"></a>UC-10: Student Roster and Attendance (Salesforce-driven)
 
+> [!NOTE]
+> **Current Implementation:** Student rostering and attendance is managed in **Salesforce** and synced to Polaris for reporting. Future enhancements may add additional attendance capture methods directly in Polaris.
+
 **Workflow:**
-1. Staff associates students to events (roster)
-2. Staff updates attendance after event
-3. Polaris reporting uses student attendance for district/school impact totals
+1. Staff associates students to events (roster) **in Salesforce**
+2. Staff updates attendance after event **in Salesforce**
+3. Periodic manual import syncs student data to Polaris (see [Playbook D3: Student Import](import_playbook#d3-student-import))
+4. Polaris reporting uses synced student attendance for district/school impact totals
+
+**Virtual Events:** Virtual events do not track individual students. Student reach is estimated at **25 students per session** for reporting purposes.
 
 **Related:**
-- **Requirements**: [FR-STUDENT-601](requirements#fr-student-601) through [FR-STUDENT-604](requirements#fr-student-604)
+- **Requirements**: [FR-STUDENT-601](requirements#fr-student-601) through [FR-STUDENT-605](requirements#fr-student-605)
 - **User Stories**: [US-601](user_stories#us-601), [US-602](user_stories#us-602), [US-603](user_stories#us-603)
-- **Test Coverage**: [Test Pack 5](#test-pack-5)
+- **Test Coverage**: [Test Pack 5](#test-pack-5) (reporting), [Test Pack 7](test_packs/test_pack_7) (sync verification)
 
 ---
 

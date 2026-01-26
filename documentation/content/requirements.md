@@ -205,14 +205,18 @@ Each requirement links to:
 
 ## <a id="student-roster-and-attendance"></a>7.7 Student Roster and Attendance
 
-**Salesforce + Polaris Reporting**
+**Salesforce (Source) → Polaris (Reporting)**
+
+> [!NOTE]
+> **Current Implementation:** Student rostering and attendance is managed in **Salesforce** and synced to Polaris via periodic manual imports. Future enhancements may add additional attendance capture methods directly in Polaris.
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-student-601"></a>**FR-STUDENT-601** | The system shall support associating students with events (student roster). | [TC-600](#tc-600)–[TC-603](#tc-603) | [US-601](user_stories#us-601) |
-| <a id="fr-student-602"></a>**FR-STUDENT-602** | The system shall support recording student attendance status per student-event participation. | [TC-610](#tc-610)–[TC-613](#tc-613) | [US-602](user_stories#us-602) |
+| <a id="fr-student-601"></a>**FR-STUDENT-601** | The system shall support associating students with events (student roster). **Source: Salesforce → Synced to Polaris.** | [TC-600](#tc-600)–[TC-603](#tc-603) | [US-601](user_stories#us-601) |
+| <a id="fr-student-602"></a>**FR-STUDENT-602** | The system shall support recording student attendance status per student-event participation. **Source: Salesforce → Synced to Polaris.** | [TC-610](#tc-610)–[TC-613](#tc-613) | [US-602](user_stories#us-602) |
 | <a id="fr-student-603"></a>**FR-STUDENT-603** | Polaris reporting shall use student attendance to compute unique students reached and other impact metrics by school and district. | [TC-620](#tc-620)–[TC-624](#tc-624) | [US-603](user_stories#us-603) |
 | <a id="fr-student-604"></a>**FR-STUDENT-604** | Reporting users shall be able to view student reach metrics by district, school, event type, and date range. | | [US-603](user_stories#us-603) |
+| <a id="fr-student-605"></a>**FR-STUDENT-605** | For virtual events, the system shall estimate student reach at **25 students per session** for reporting purposes (individual students are not tracked). | *Implicit in reporting* | *Technical requirement* |
 
 ## <a id="email-system-management"></a>7.8 Email System Management
 
@@ -352,9 +356,10 @@ This section provides a comprehensive view of the relationships between Function
 | FR-DISTRICT-525, 526 | [US-506](user_stories#us-506), [US-507](user_stories#us-507) | Data tracker features |
 | FR-DISTRICT-504 | *Near-term* | Automated reminders |
 | **Student Roster** | | |
-| FR-STUDENT-601 | [US-601](user_stories#us-601) | Roster creation |
-| FR-STUDENT-602 | [US-602](user_stories#us-602) | Attendance recording |
+| FR-STUDENT-601 | [US-601](user_stories#us-601) | Roster creation (Salesforce) |
+| FR-STUDENT-602 | [US-602](user_stories#us-602) | Attendance recording (Salesforce) |
 | FR-STUDENT-603, 604 | [US-603](user_stories#us-603) | Reporting metrics |
+| FR-STUDENT-605 | *Technical requirement* | Virtual event student estimation (×25) |
 | **Email System** | | |
 | FR-EMAIL-801 | [US-801](user_stories#us-801) | Template management |
 | FR-EMAIL-802 | [US-802](user_stories#us-802) | Delivery monitoring |
