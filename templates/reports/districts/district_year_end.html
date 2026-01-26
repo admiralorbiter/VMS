@@ -359,16 +359,47 @@ function toggleDistrictCard(districtId) {
     const districtCard = schoolsSection.closest('.district-card');
     
     if (schoolsSection.classList.contains('collapsed')) {
+        // Expand
+        schoolsSection.style.height = '0';
         schoolsSection.classList.remove('collapsed');
         schoolsSection.classList.add('expanded');
+        
+        // Calculate actual height
+        const height = schoolsSection.scrollHeight;
+        schoolsSection.style.height = height + 'px';
+        
+        // Animate icon with transform
+        toggleIcon.style.transform = 'rotate(90deg)';
         toggleIcon.classList.remove('fa-chevron-right');
         toggleIcon.classList.add('fa-chevron-down');
+        
+        // Expand card with transition
         districtCard.classList.add('expanded');
+        
+        // Clean up after animation
+        setTimeout(() => {
+            if (schoolsSection.classList.contains('expanded')) {
+                schoolsSection.style.height = 'auto';
+            }
+        }, 400);
     } else {
+        // Collapse
+        const height = schoolsSection.scrollHeight;
+        schoolsSection.style.height = height + 'px';
+        
+        // Force reflow
+        schoolsSection.offsetHeight;
+        
+        schoolsSection.style.height = '0';
         schoolsSection.classList.remove('expanded');
         schoolsSection.classList.add('collapsed');
+        
+        // Animate icon back
+        toggleIcon.style.transform = 'rotate(0deg)';
         toggleIcon.classList.remove('fa-chevron-down');
         toggleIcon.classList.add('fa-chevron-right');
+        
+        // Collapse card
         districtCard.classList.remove('expanded');
     }
 }
