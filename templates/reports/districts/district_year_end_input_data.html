@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Input District Data - Year-End Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<style>
+.input-data-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.input-data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.back-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.back-link:hover {
+    background-color: rgba(70, 117, 153, 0.1);
+    text-decoration: none;
+}
+
+.data-type-selector {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.data-type-selector h2 {
+    margin-top: 0;
+    color: var(--ucla-blue);
+    margin-bottom: 1rem;
+}
+
+.data-type-options {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.data-type-option {
+    flex: 1;
+    min-width: 200px;
+    padding: 1.5rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.data-type-option:hover {
+    border-color: var(--ucla-blue);
+    background-color: rgba(70, 117, 153, 0.05);
+}
+
+.data-type-option h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--ucla-blue);
+}
+
+.data-type-option p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="input-data-container">
+    <div class="input-data-header">
+        <div>
+            <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Breakdown
+            </a>
+            <h1>Input District Data - {{ school_year[:2] }}-{{ school_year[2:] }} School Year</h1>
+        </div>
+    </div>
+
+    <div class="data-type-selector">
+        <h2>Select Data Type to Enter</h2>
+        <div class="data-type-options">
+            <div class="data-type-option" onclick="selectDataType('math_relays')">
+                <h3>Math Relays</h3>
+                <p>Enter Math Relays participation numbers</p>
+            </div>
+            <div class="data-type-option" onclick="selectDataType('data_science')">
+                <h3>Data Science</h3>
+                <p>Enter Data Science participation numbers</p>
+            </div>
+        </div>
+    </div>
+
+    <form method="get" action="{{ url_for('report.district_year_end_input_data') }}" id="dataTypeForm" style="display: none;">
+        <input type="hidden" name="school_year" value="{{ school_year }}">
+        <input type="hidden" name="host_filter" value="{{ host_filter }}">
+        <input type="hidden" name="data_type" id="selectedDataType">
+    </form>
+
+    <script>
+        function selectDataType(type) {
+            document.getElementById('selectedDataType').value = type;
+            document.getElementById('dataTypeForm').submit();
+        }
+    </script>
+</div>
+{% endblock %}
+

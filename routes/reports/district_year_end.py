@@ -1314,6 +1314,28 @@ def load_routes(bp):
             host_filter=host_filter,
         )
 
+    @bp.route("/reports/district/year-end/input-data", methods=["GET"])
+    @login_required
+    def district_year_end_input_data():
+        """Handle manual input of district data for Year-End reports"""
+        # Get parameters
+        school_year = request.args.get("school_year", get_current_school_year())
+        host_filter = request.args.get("host_filter", "all")
+        data_type = request.args.get("data_type")
+        
+        # Generate list of school years
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()
+        
+        return render_template(
+            "reports/districts/district_year_end_input_data.html",
+            school_year=school_year,
+            host_filter=host_filter,
+            data_type=data_type,
+            school_years=school_years,
+        )
+
 
 def generate_schools_by_level_data(district, events):
     """Generate schools data organized by level (High, Middle, Elementary, Other)
