@@ -327,6 +327,26 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
+                        {% if event.status.value in ['Published', 'Confirmed'] %}
+                        <!-- Public Signup Link -->
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm" id="signup-link"
+                                value="{{ url_for('district.public_signup_form', slug=tenant.slug, event_id=event.id, _external=True) }}"
+                                readonly>
+                            <button class="btn btn-outline-primary btn-sm" type="button" onclick="copySignupLink()"
+                                title="Copy signup link">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <a href="{{ url_for('district.public_signup_form', slug=tenant.slug, event_id=event.id) }}"
+                            class="btn btn-primary btn-sm mb-2" target="_blank">
+                            <i class="fas fa-external-link-alt me-2"></i>View Signup Page
+                        </a>
+                        {% else %}
+                        <div class="alert alert-info mb-2 py-2 small">
+                            <i class="fas fa-info-circle me-1"></i>Publish the event to enable public signups.
+                        </div>
+                        {% endif %}
                         <a href="{{ url_for('district.list_events') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Events
                         </a>
@@ -400,5 +420,23 @@
             }
         });
     });
+
+    // Copy signup link to clipboard
+    function copySignupLink() {
+        const linkInput = document.getElementById('signup-link');
+        if (linkInput) {
+            navigator.clipboard.writeText(linkInput.value).then(function () {
+                // Show temporary feedback
+                const btn = linkInput.nextElementSibling;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(function () {
+                    btn.innerHTML = originalHtml;
+                }, 1500);
+            });
+        }
+    }
+    // Make function globally available
+    window.copySignupLink = copySignupLink;
 </script>
 {% endblock %}

@@ -302,6 +302,17 @@ District Suite tenant CRUD, configuration, and infrastructure
 | <a id="tc-1122"></a>**TC-1122** | View outreach history | Shows all attempts for volunteer/event | Automated | 2026-01-26 |
 | <a id="tc-1123"></a>**TC-1123** | Confirmed outcome adds to roster | Auto-creates DistrictParticipation | Automated | 2026-01-26 |
 
+### Public Signup Forms (FR-SELFSERV-404, FR-SELFSERV-405)
+
+| ID | Test Case | Expected Result | Type | Last Verified |
+|----|-----------|-----------------|------|---------------|
+| <a id="tc-1130"></a>**TC-1130** | Public signup form loads | Form displays for published event | Automated | 2026-01-26 |
+| <a id="tc-1131"></a>**TC-1131** | Signup creates volunteer + participation | New volunteer and DistrictParticipation created | Automated | 2026-01-26 |
+| <a id="tc-1132"></a>**TC-1132** | Existing volunteer reused by email | Volunteer matched by email, not duplicated | Automated | 2026-01-26 |
+| <a id="tc-1133"></a>**TC-1133** | Confirmation email with ICS | Email sent with calendar attachment | Automated | 2026-01-26 |
+| <a id="tc-1134"></a>**TC-1134** | ICS contains correct event details | ICS file has title, date, location | Automated | 2026-01-26 |
+| <a id="tc-1135"></a>**TC-1135** | Signup rejected for non-published events | Draft/cancelled events block signup | Automated | 2026-01-26 |
+
 ---
 
 > [!NOTE]
@@ -314,6 +325,7 @@ District Suite tenant CRUD, configuration, and infrastructure
 > - `tests/integration/test_public_api.py` - Public Event API tests
 > - `tests/integration/test_district_volunteers.py` - District volunteer routes tests
 > - `tests/integration/test_district_recruitment.py` - District recruitment routes tests
+> - `tests/integration/test_district_signup.py` - Public signup routes tests (8 tests)
 
 ---
 

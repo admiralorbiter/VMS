@@ -238,6 +238,7 @@ def view_event(event_id):
         "district/events/detail.html",
         event=event,
         roster=roster,
+        tenant=g.tenant,
         EventStatus=EventStatus,
         page_title=event.title,
     )

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Event Header -->
+            <div class="card mb-4 border-0 bg-primary text-white">
+                <div class="card-body text-center py-4">
+                    <h1 class="h3 mb-2">{{ event.title }}</h1>
+                    {% if event.start_date %}
+                    <p class="mb-0">
+                        <i class="bi bi-calendar-event me-2"></i>
+                        {{ event.start_date.strftime('%A, %B %d, %Y at %I:%M %p') }}
+                    </p>
+                    {% endif %}
+                    {% if event.location %}
+                    <p class="mb-0 mt-2">
+                        <i class="bi bi-geo-alt me-2"></i>{{ event.location }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if is_full %}
+            <!-- Event Full Message -->
+            <div class="alert alert-warning text-center">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Event Full</h4>
+                <p class="mb-0">This event has reached its volunteer capacity. Please check back later or contact the
+                    organizer.</p>
+            </div>
+            {% else %}
+            <!-- Signup Form -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h2 class="h5 mb-0">Volunteer Signup</h2>
+                    {% if spots_remaining is not none %}
+                    <small class="text-muted">{{ spots_remaining }} spot{{ 's' if spots_remaining != 1 else '' }}
+                        remaining</small>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div
+                        class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST"
+                        action="{{ url_for('district.public_signup_submit', slug=tenant.slug, event_id=event.id) }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address <span
+                                    class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="form-text">We'll send a confirmation with calendar invite to this address.</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="organization" class="form-label">Organization</label>
+                                <input type="text" class="form-control" id="organization" name="organization"
+                                    placeholder="Company or school name">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"
+                                placeholder="Any special requirements or comments?"></textarea>
+                        </div>
+
+                        <!-- Event Details Summary -->
+                        {% if event.description %}
+                        <div class="bg-light p-3 rounded mb-4">
+                            <h6 class="mb-2">About This Event</h6>
+                            <p class="mb-0 small text-muted">{{ event.description }}</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check2-circle me-2"></i>Sign Up for This Event
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Footer -->
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    Powered by {{ tenant.name or 'PrepKC' }}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
