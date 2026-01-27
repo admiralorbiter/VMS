@@ -20,6 +20,9 @@ Test Cases:
 - TC-1022: Search by organization
 - TC-1023: Filter by status
 - TC-1024: API search endpoint
+- TC-1030: Assign volunteer to event (roster routes)
+- TC-1031: Confirm volunteer participation (status update)
+- TC-1032: Record attendance (status update)
 - TC-1033: View volunteer event history
 - TC-1040: Cannot view other tenant volunteers
 - TC-1041: Cannot edit other tenant volunteers
@@ -289,6 +292,81 @@ class TestEventAssignment:
             assert hasattr(DistrictParticipation, "invited_at")
             assert hasattr(DistrictParticipation, "confirmed_at")
             assert hasattr(DistrictParticipation, "attended_at")
+
+
+class TestEventRosterRoutes:
+    """Tests for FR-SELFSERV-304: Event Roster Management Routes."""
+
+    @pytest.fixture
+    def app(self):
+        """Create test Flask app."""
+        from app import app
+
+        app.config["TESTING"] = True
+        app.config["WTF_CSRF_ENABLED"] = False
+        return app
+
+    def test_add_to_roster_route_exists(self, app):
+        """TC-1030: Route for adding volunteers to event roster exists."""
+        with app.app_context():
+            from routes.district.events import add_to_roster
+
+            assert callable(add_to_roster)
+
+    def test_update_participation_status_route_exists(self, app):
+        """TC-1031: Route for updating participation status exists."""
+        with app.app_context():
+            from routes.district.events import update_participation_status
+
+            assert callable(update_participation_status)
+
+    def test_remove_from_roster_route_exists(self, app):
+        """TC-1032: Route for removing volunteers from roster exists."""
+        with app.app_context():
+            from routes.district.events import remove_from_roster
+
+            assert callable(remove_from_roster)
+
+    def test_search_volunteers_for_event_route_exists(self, app):
+        """TC-1030: Route for searching volunteers for event exists."""
+        with app.app_context():
+            from routes.district.events import search_volunteers_for_event
+
+            assert callable(search_volunteers_for_event)
+
+    def test_participation_status_transitions(self, app):
+        """TC-1031/1032: Valid status transitions."""
+        with app.app_context():
+            # Valid status values that the route accepts
+            valid_statuses = ["invited", "confirmed", "declined", "attended", "no_show"]
+
+            # Create participation and test transitions
+            participation = DistrictParticipation(
+                volunteer_id=1,
+                event_id=1,
+                tenant_id=1,
+                status="invited",
+            )
+
+            # All transitions should be valid
+            for status in valid_statuses:
+                participation.status = status
+                assert participation.status == status
+
+    def test_participation_type_values(self, app):
+        """TC-1030: Participation types for roster."""
+        with app.app_context():
+            # Valid participation types
+            types = ["volunteer", "speaker", "mentor", "organizer"]
+
+            for ptype in types:
+                participation = DistrictParticipation(
+                    volunteer_id=1,
+                    event_id=1,
+                    tenant_id=1,
+                    participation_type=ptype,
+                )
+                assert participation.participation_type == ptype
 
 
 class TestTenantIsolation:

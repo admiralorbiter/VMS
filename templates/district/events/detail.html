@@ -104,7 +104,7 @@
                             <strong>Volunteers Needed</strong>
                             <p class="mb-0">
                                 {% if event.volunteers_needed %}
-                                {{ event.volunteer_count or 0 }} of {{ event.volunteers_needed }} signed up
+                                {{ roster|length }} of {{ event.volunteers_needed }} assigned
                                 {% else %}
                                 Not specified
                                 {% endif %}
@@ -122,33 +122,180 @@
                 </div>
             </div>
 
-            <!-- Volunteers Card -->
+            <!-- Volunteers Roster Card -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Volunteers</h5>
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Event Roster</h5>
+                    <span class="badge bg-primary">{{ roster|length }} Assigned</span>
                 </div>
                 <div class="card-body">
-                    {% if event.volunteers %}
+                    <!-- Add Volunteer Form -->
+                    {% if event.status.value not in ['Completed', 'Cancelled'] %}
+                    <div class="mb-4">
+                        <form method="POST" action="{{ url_for('district.add_to_roster', event_id=event.id) }}"
+                            class="row g-2">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="volunteer-search"
+                                        placeholder="Search volunteers by name..." autocomplete="off">
+                                    <input type="hidden" name="volunteer_id" id="volunteer-id">
+                                </div>
+                                <div id="volunteer-results" class="list-group position-absolute"
+                                    style="z-index:1000; display:none; max-width: 400px;"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <select name="participation_type" class="form-select">
+                                    <option value="volunteer">Volunteer</option>
+                                    <option value="speaker">Speaker</option>
+                                    <option value="mentor">Mentor</option>
+                                    <option value="organizer">Organizer</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100" id="add-volunteer-btn" disabled>
+                                    <i class="fas fa-plus me-1"></i>Add
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <!-- Roster Table -->
+                    {% if roster %}
                     <div class="table-responsive">
-                        <table class="table table-sm mb-0">
-                            <thead>
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Name</th>
+                                    <th>Volunteer</th>
+                                    <th>Type</th>
                                     <th>Status</th>
+                                    <th>Assigned</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for volunteer in event.volunteers %}
+                                {% for p in roster %}
                                 <tr>
-                                    <td>{{ volunteer.first_name }} {{ volunteer.last_name }}</td>
-                                    <td><span class="badge bg-success">Signed Up</span></td>
+                                    <td>
+                                        <a href="{{ url_for('district.view_volunteer', volunteer_id=p.volunteer_id) }}">
+                                            {{ p.volunteer.first_name }} {{ p.volunteer.last_name }}
+                                        </a>
+                                        {% if p.volunteer.organization_name %}
+                                        <br><small class="text-muted">{{ p.volunteer.organization_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ p.participation_type|title if p.participation_type else 'Volunteer' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if p.status == 'invited' %}
+                                        <span class="badge bg-secondary">Invited</span>
+                                        {% elif p.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                        {% elif p.status == 'declined' %}
+                                        <span class="badge bg-danger">Declined</span>
+                                        {% elif p.status == 'attended' %}
+                                        <span class="badge bg-info">Attended</span>
+                                        {% elif p.status == 'no_show' %}
+                                        <span class="badge bg-warning text-dark">No Show</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">{{ p.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ p.invited_at.strftime('%b %d') if p.invited_at else '-' }}
+                                        </small>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if event.status.value not in ['Completed', 'Cancelled'] %}
+                                        <div class="btn-group btn-group-sm">
+                                            <!-- Status Dropdown -->
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                                                    type="button" data-bs-toggle="dropdown">
+                                                    Status
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="invited">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-envelope me-2"></i>Invited
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="confirmed">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-check me-2 text-success"></i>Confirmed
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="declined">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-times me-2 text-danger"></i>Declined
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="attended">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-user-check me-2 text-info"></i>Attended
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="no_show">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-user-times me-2 text-warning"></i>No
+                                                                Show
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <!-- Remove Button -->
+                                            {% if p.status != 'attended' %}
+                                            <form method="POST"
+                                                action="{{ url_for('district.remove_from_roster', event_id=event.id, participation_id=p.id) }}"
+                                                class="d-inline ms-1">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    onclick="return confirm('Remove this volunteer from the roster?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted mb-0">No volunteers have signed up yet.</p>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No volunteers have been assigned yet. Use the search above to add volunteers.
+                    </p>
                     {% endif %}
                 </div>
             </div>
@@ -189,4 +336,69 @@
         </div>
     </div>
 </div>
+
+<!-- Volunteer Search Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('volunteer-search');
+        const volunteerIdInput = document.getElementById('volunteer-id');
+        const resultsDiv = document.getElementById('volunteer-results');
+        const addBtn = document.getElementById('add-volunteer-btn');
+
+        if (!searchInput) return;
+
+        let searchTimeout;
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.trim();
+
+            clearTimeout(searchTimeout);
+            volunteerIdInput.value = '';
+            addBtn.disabled = true;
+
+            if (query.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(function () {
+                fetch(`{{ url_for('district.search_volunteers_for_event', event_id=event.id) }}?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        resultsDiv.innerHTML = '';
+                        if (data.length === 0) {
+                            resultsDiv.innerHTML = '<div class="list-group-item text-muted">No volunteers found</div>';
+                        } else {
+                            data.forEach(v => {
+                                const item = document.createElement('a');
+                                item.href = '#';
+                                item.className = 'list-group-item list-group-item-action';
+                                item.innerHTML = `
+                                <strong>${v.name}</strong>
+                                ${v.organization ? '<br><small class="text-muted">' + v.organization + '</small>' : ''}
+                                ${v.email ? '<br><small class="text-muted">' + v.email + '</small>' : ''}
+                            `;
+                                item.addEventListener('click', function (e) {
+                                    e.preventDefault();
+                                    searchInput.value = v.name;
+                                    volunteerIdInput.value = v.id;
+                                    addBtn.disabled = false;
+                                    resultsDiv.style.display = 'none';
+                                });
+                                resultsDiv.appendChild(item);
+                            });
+                        }
+                        resultsDiv.style.display = 'block';
+                    });
+            }, 300);
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.style.display = 'none';
+            }
+        });
+    });
+</script>
 {% endblock %}

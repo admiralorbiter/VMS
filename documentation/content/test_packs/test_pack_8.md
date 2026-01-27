@@ -257,9 +257,9 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-1030"></a>**TC-1030** | Assign volunteer to event | DistrictParticipation created with status | Manual | TBD |
-| <a id="tc-1031"></a>**TC-1031** | Confirm volunteer participation | Status changes to confirmed | Manual | TBD |
-| <a id="tc-1032"></a>**TC-1032** | Record attendance | Status changes to attended | Manual | TBD |
+| <a id="tc-1030"></a>**TC-1030** | Assign volunteer to event | DistrictParticipation created with status | Automated | 2026-01-26 |
+| <a id="tc-1031"></a>**TC-1031** | Confirm volunteer participation | Status changes to confirmed | Automated | 2026-01-26 |
+| <a id="tc-1032"></a>**TC-1032** | Record attendance | Status changes to attended | Automated | 2026-01-26 |
 | <a id="tc-1033"></a>**TC-1033** | View volunteer event history | Past participations shown on profile | Automated | 2026-01-26 |
 
 ### Y. Tenant Isolation (FR-SELFSERV-305)

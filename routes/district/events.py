@@ -39,7 +39,10 @@ from flask import (
 from flask_login import current_user, login_required
 
 from models import db
+from models.district_participation import DistrictParticipation
+from models.district_volunteer import DistrictVolunteer
 from models.event import Event, EventFormat, EventStatus, EventType
+from models.volunteer import Volunteer
 from routes.district import district_bp
 
 # District event types (simplified subset)
@@ -218,14 +221,23 @@ def create_event():
 @login_required
 @require_tenant_context
 def view_event(event_id):
-    """View event details."""
+    """View event details with volunteer roster."""
     event = Event.query.filter(
         Event.id == event_id, Event.tenant_id == g.tenant_id
     ).first_or_404()
 
+    # Get roster (district participations) for this event
+    roster = (
+        DistrictParticipation.query.filter_by(event_id=event_id, tenant_id=g.tenant_id)
+        .join(Volunteer, Volunteer.id == DistrictParticipation.volunteer_id)
+        .order_by(DistrictParticipation.invited_at.desc())
+        .all()
+    )
+
     return render_template(
         "district/events/detail.html",
         event=event,
+        roster=roster,
         EventStatus=EventStatus,
         page_title=event.title,
     )
@@ -484,3 +496,212 @@ def calendar_api():
         )
 
     return jsonify(calendar_events)
+
+
+# =============================================================================
+# Event Roster Management Routes (FR-SELFSERV-304)
+# =============================================================================
+
+
+@district_bp.route("/events/<int:event_id>/roster/add", methods=["POST"])
+@login_required
+@require_district_admin
+def add_to_roster(event_id):
+    """
+    Assign a volunteer to an event roster.
+
+    FR-SELFSERV-304: Assign volunteers with participation type and status tracking
+    """
+    # Verify event belongs to tenant
+    event = Event.query.filter(
+        Event.id == event_id, Event.tenant_id == g.tenant_id
+    ).first_or_404()
+
+    # Check event is not completed or cancelled
+    if event.status in [EventStatus.COMPLETED, EventStatus.CANCELLED]:
+        flash("Cannot add volunteers to completed or cancelled events.", "warning")
+        return redirect(url_for("district.view_event", event_id=event_id))
+
+    volunteer_id = request.form.get("volunteer_id", type=int)
+    if not volunteer_id:
+        flash("Please select a volunteer.", "error")
+        return redirect(url_for("district.view_event", event_id=event_id))
+
+    # Verify volunteer is in this tenant's pool
+    district_vol = DistrictVolunteer.query.filter_by(
+        volunteer_id=volunteer_id, tenant_id=g.tenant_id
+    ).first()
+
+    if not district_vol:
+        flash("Volunteer not found in your district.", "error")
+        return redirect(url_for("district.view_event", event_id=event_id))
+
+    # Check if already assigned
+    existing = DistrictParticipation.query.filter_by(
+        volunteer_id=volunteer_id, event_id=event_id, tenant_id=g.tenant_id
+    ).first()
+
+    if existing:
+        flash("Volunteer is already assigned to this event.", "warning")
+        return redirect(url_for("district.view_event", event_id=event_id))
+
+    try:
+        # Create participation record
+        participation = DistrictParticipation(
+            volunteer_id=volunteer_id,
+            event_id=event_id,
+            tenant_id=g.tenant_id,
+            status="invited",
+            participation_type=request.form.get("participation_type", "volunteer"),
+            invited_by=current_user.id,
+            invited_at=datetime.now(timezone.utc),
+            notes=request.form.get("notes", "").strip() or None,
+        )
+        db.session.add(participation)
+        db.session.commit()
+
+        volunteer = Volunteer.query.get(volunteer_id)
+        flash(
+            f"Added {volunteer.first_name} {volunteer.last_name} to the event roster.",
+            "success",
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error adding to roster: {e}")
+        flash("An error occurred while adding the volunteer.", "error")
+
+    return redirect(url_for("district.view_event", event_id=event_id))
+
+
+@district_bp.route(
+    "/events/<int:event_id>/roster/<int:participation_id>/status", methods=["POST"]
+)
+@login_required
+@require_district_admin
+def update_participation_status(event_id, participation_id):
+    """
+    Update a volunteer's participation status.
+
+    FR-SELFSERV-304: Track confirmation status (Invited, Confirmed, Declined, Attended)
+    """
+    participation = DistrictParticipation.query.filter_by(
+        id=participation_id, event_id=event_id, tenant_id=g.tenant_id
+    ).first_or_404()
+
+    new_status = request.form.get("status")
+    valid_statuses = ["invited", "confirmed", "declined", "attended", "no_show"]
+
+    if new_status not in valid_statuses:
+        flash("Invalid status.", "error")
+        return redirect(url_for("district.view_event", event_id=event_id))
+
+    try:
+        old_status = participation.status
+        participation.status = new_status
+
+        # Update timestamp based on new status
+        now = datetime.now(timezone.utc)
+        if new_status == "confirmed" and not participation.confirmed_at:
+            participation.confirmed_at = now
+        elif new_status == "attended" and not participation.attended_at:
+            participation.attended_at = now
+
+        db.session.commit()
+
+        volunteer = Volunteer.query.get(participation.volunteer_id)
+        flash(
+            f"Updated {volunteer.first_name} {volunteer.last_name}'s status to {new_status}.",
+            "success",
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating participation status: {e}")
+        flash("An error occurred while updating the status.", "error")
+
+    return redirect(url_for("district.view_event", event_id=event_id))
+
+
+@district_bp.route(
+    "/events/<int:event_id>/roster/<int:participation_id>/remove", methods=["POST"]
+)
+@login_required
+@require_district_admin
+def remove_from_roster(event_id, participation_id):
+    """Remove a volunteer from the event roster."""
+    participation = DistrictParticipation.query.filter_by(
+        id=participation_id, event_id=event_id, tenant_id=g.tenant_id
+    ).first_or_404()
+
+    # Don't allow removal of attended volunteers
+    if participation.status == "attended":
+        flash("Cannot remove volunteers who have already attended.", "warning")
+        return redirect(url_for("district.view_event", event_id=event_id))
+
+    try:
+        volunteer = Volunteer.query.get(participation.volunteer_id)
+        name = f"{volunteer.first_name} {volunteer.last_name}"
+
+        db.session.delete(participation)
+        db.session.commit()
+
+        flash(f"Removed {name} from the event roster.", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error removing from roster: {e}")
+        flash("An error occurred.", "error")
+
+    return redirect(url_for("district.view_event", event_id=event_id))
+
+
+@district_bp.route("/events/<int:event_id>/roster/search")
+@login_required
+@require_tenant_context
+def search_volunteers_for_event(event_id):
+    """
+    Search volunteers in tenant pool for assignment to event.
+
+    Returns JSON for AJAX autocomplete.
+    """
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify([])
+
+    # Get volunteers in this tenant who are NOT already on this event's roster
+    existing_volunteer_ids = (
+        db.session.query(DistrictParticipation.volunteer_id)
+        .filter_by(event_id=event_id, tenant_id=g.tenant_id)
+        .subquery()
+    )
+
+    results = (
+        Volunteer.query.join(
+            DistrictVolunteer, DistrictVolunteer.volunteer_id == Volunteer.id
+        )
+        .filter(
+            DistrictVolunteer.tenant_id == g.tenant_id,
+            DistrictVolunteer.status == "active",
+            Volunteer.id.notin_(existing_volunteer_ids),
+            db.or_(
+                Volunteer.first_name.ilike(f"%{query}%"),
+                Volunteer.last_name.ilike(f"%{query}%"),
+                Volunteer.organization_name.ilike(f"%{query}%"),
+            ),
+        )
+        .limit(10)
+        .all()
+    )
+
+    return jsonify(
+        [
+            {
+                "id": v.id,
+                "name": f"{v.first_name} {v.last_name}",
+                "email": v.primary_email,
+                "organization": v.organization_name,
+            }
+            for v in results
+        ]
+    )
