@@ -63,6 +63,7 @@ from .google_sheet import GoogleSheet
 from .history import History
 from .organization import Organization
 from .outreach import OutreachAttempt
+from .recruitment_note import RecruitmentNote, RecruitmentOutcome
 from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
 from .roster_import_log import RosterImportLog
 from .school_model import School
@@ -123,6 +124,9 @@ __all__ = [
     "Tenant",
     "DistrictVolunteer",
     "DistrictParticipation",
+    "RecruitmentNote",
+    "RecruitmentOutcome",
+    "OutreachAttempt",
 ]
 
 # Eager-loading helper options

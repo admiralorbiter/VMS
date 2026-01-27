@@ -149,6 +149,96 @@
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Recruitment Notes Section (FR-RECRUIT-306) -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Recruitment Notes</h5>
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#addNoteForm" aria-expanded="false">
+                        <i class="fas fa-plus me-1"></i>Add Note
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Add Note Form (collapsed by default) -->
+                    <div class="collapse mb-3" id="addNoteForm">
+                        <form method="POST"
+                            action="{{ url_for('district.create_recruitment_note', volunteer_id=volunteer.id) }}"
+                            id="recruitmentNoteForm">
+                            <div class="mb-3">
+                                <label for="noteText" class="form-label">Note</label>
+                                <textarea class="form-control" id="noteText" name="note" rows="3"
+                                    placeholder="Enter recruitment note..." required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="noteOutcome" class="form-label">Outcome</label>
+                                <select class="form-select" id="noteOutcome" name="outcome">
+                                    {% for value, label in recruitment_outcome_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Save Note
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse"
+                                    data-bs-target="#addNoteForm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Notes Timeline -->
+                    {% if recruitment_notes %}
+                    <div class="recruitment-notes-timeline" id="notesTimeline">
+                        {% for note in recruitment_notes %}
+                        <div class="note-item border-start border-3 ps-3 mb-3
+                                    {% if note.outcome == 'accepted' %}border-success
+                                    {% elif note.outcome == 'declined' %}border-danger
+                                    {% elif note.outcome == 'follow_up' %}border-warning
+                                    {% elif note.outcome == 'interested' %}border-info
+                                    {% else %}border-secondary{% endif %}" data-note-id="{{ note.id }}">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <div>
+                                    <span class="badge
+                                        {% if note.outcome == 'accepted' %}bg-success
+                                        {% elif note.outcome == 'declined' %}bg-danger
+                                        {% elif note.outcome == 'follow_up' %}bg-warning text-dark
+                                        {% elif note.outcome == 'interested' %}bg-info
+                                        {% else %}bg-secondary{% endif %}">
+                                        {% for val, label in recruitment_outcome_choices %}
+                                        {% if val == note.outcome %}{{ label }}{% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <small class="text-muted ms-2">
+                                        {{ note.created_at.strftime('%b %d, %Y at %I:%M %p') if note.created_at else '-'
+                                        }}
+                                        {% if note.created_by_user %}
+                                        by {{ note.created_by_user.name or note.created_by_user.email }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-note-btn"
+                                    data-note-id="{{ note.id }}" data-volunteer-id="{{ volunteer.id }}"
+                                    title="Delete note">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                            <p class="mb-0">{{ note.note }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted" id="noNotesMessage">
+                        <i class="fas fa-sticky-note fa-2x mb-2"></i>
+                        <p class="mb-0">No recruitment notes yet</p>
+                        <small>Click "Add Note" to record recruitment activities</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-4">
@@ -187,4 +277,83 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Note Confirmation Modal -->
+<div class="modal fade" id="deleteNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this recruitment note?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteNote">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Delete note functionality
+    document.addEventListener('DOMContentLoaded', function () {
+        let noteIdToDelete = null;
+        let volunteerIdForDelete = null;
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteNoteModal'));
+
+        // Attach click handlers to delete buttons
+        document.querySelectorAll('.delete-note-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                noteIdToDelete = this.dataset.noteId;
+                volunteerIdForDelete = this.dataset.volunteerId;
+                deleteModal.show();
+            });
+        });
+
+        // Handle confirm delete
+        document.getElementById('confirmDeleteNote').addEventListener('click', function () {
+            if (noteIdToDelete && volunteerIdForDelete) {
+                fetch(`/district/volunteers/${volunteerIdForDelete}/notes/${noteIdToDelete}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove the note from DOM
+                            const noteElement = document.querySelector(`[data-note-id="${noteIdToDelete}"]`);
+                            if (noteElement) {
+                                noteElement.remove();
+                            }
+                            // Show empty message if no notes left
+                            const timeline = document.getElementById('notesTimeline');
+                            if (timeline && timeline.children.length === 0) {
+                                timeline.innerHTML = `
+                            <div class="text-center py-4 text-muted" id="noNotesMessage">
+                                <i class="fas fa-sticky-note fa-2x mb-2"></i>
+                                <p class="mb-0">No recruitment notes yet</p>
+                                <small>Click "Add Note" to record recruitment activities</small>
+                            </div>
+                        `;
+                            }
+                        } else {
+                            alert('Error deleting note: ' + (data.error || 'Unknown error'));
+                        }
+                        deleteModal.hide();
+                    })
+                    .catch(error => {
+                        alert('Error deleting note');
+                        deleteModal.hide();
+                    });
+            }
+        });
+    });
+</script>
 {% endblock %}

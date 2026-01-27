@@ -36,6 +36,7 @@ from models import db
 from models.contact import Contact, Email, Phone
 from models.district_participation import DistrictParticipation
 from models.district_volunteer import DistrictVolunteer
+from models.recruitment_note import RecruitmentNote
 from models.volunteer import Volunteer
 from routes.district import district_bp
 
@@ -388,11 +389,16 @@ def view_volunteer(volunteer_id):
         .all()
     )
 
+    # Get recruitment notes (FR-RECRUIT-306)
+    recruitment_notes = RecruitmentNote.get_for_volunteer(volunteer_id, g.tenant_id)
+
     return render_template(
         "district/volunteers/view.html",
         volunteer=volunteer,
         district_volunteer=district_vol,
         participations=participations,
+        recruitment_notes=recruitment_notes,
+        recruitment_outcome_choices=RecruitmentNote.OUTCOME_CHOICES,
     )
 
 
@@ -747,3 +753,127 @@ def search_volunteers_api():
             for v in results
         ]
     )
+
+
+# =============================================================================
+# Recruitment Notes Routes (FR-RECRUIT-306 / US-403)
+# =============================================================================
+
+
+@district_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["POST"])
+@login_required
+@require_tenant_context
+def create_recruitment_note(volunteer_id):
+    """
+    Create a recruitment note for a volunteer.
+
+    FR-RECRUIT-306: Record recruitment notes and outcomes
+    TC-380: Note saved and displayed
+    TC-381: Outcome recorded correctly
+    """
+    # Verify volunteer belongs to tenant
+    DistrictVolunteer.query.filter_by(
+        volunteer_id=volunteer_id,
+        tenant_id=g.tenant_id,
+    ).first_or_404()
+
+    try:
+        note_text = request.form.get("note", "").strip()
+        outcome = request.form.get("outcome", "no_outcome")
+
+        if not note_text:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return (
+                    jsonify({"success": False, "error": "Note text is required"}),
+                    400,
+                )
+            flash("Note text is required.", "error")
+            return redirect(
+                url_for("district.view_volunteer", volunteer_id=volunteer_id)
+            )
+
+        recruitment_note = RecruitmentNote.create_note(
+            volunteer_id=volunteer_id,
+            tenant_id=g.tenant_id,
+            note=note_text,
+            outcome=outcome,
+            created_by=current_user.id,
+        )
+
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify(
+                {
+                    "success": True,
+                    "note": recruitment_note.to_dict(),
+                }
+            )
+
+        flash("Recruitment note added successfully.", "success")
+        return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
+
+    except Exception as e:
+        db.session.rollback()
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": False, "error": str(e)}), 500
+        flash(f"Error adding note: {str(e)}", "error")
+        return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
+
+
+@district_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["GET"])
+@login_required
+@require_tenant_context
+def get_recruitment_notes(volunteer_id):
+    """
+    Get all recruitment notes for a volunteer as JSON.
+
+    FR-RECRUIT-306: View recruitment history in chronological order
+    """
+    # Verify volunteer belongs to tenant
+    DistrictVolunteer.query.filter_by(
+        volunteer_id=volunteer_id,
+        tenant_id=g.tenant_id,
+    ).first_or_404()
+
+    notes = RecruitmentNote.get_for_volunteer(volunteer_id, g.tenant_id)
+
+    return jsonify(
+        {
+            "success": True,
+            "notes": [note.to_dict() for note in notes],
+        }
+    )
+
+
+@district_bp.route(
+    "/volunteers/<int:volunteer_id>/notes/<int:note_id>", methods=["DELETE"]
+)
+@login_required
+@require_tenant_context
+def delete_recruitment_note(volunteer_id, note_id):
+    """
+    Delete a recruitment note.
+
+    FR-RECRUIT-306: Manage recruitment notes
+    """
+    # Verify volunteer belongs to tenant
+    DistrictVolunteer.query.filter_by(
+        volunteer_id=volunteer_id,
+        tenant_id=g.tenant_id,
+    ).first_or_404()
+
+    # Get and verify note belongs to volunteer and tenant
+    note = RecruitmentNote.query.filter_by(
+        id=note_id,
+        volunteer_id=volunteer_id,
+        tenant_id=g.tenant_id,
+    ).first_or_404()
+
+    try:
+        db.session.delete(note)
+        db.session.commit()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500

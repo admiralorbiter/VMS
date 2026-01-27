@@ -62,6 +62,7 @@ from models.contact import (
 from models.event import Event
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
+from models.recruitment_note import RecruitmentNote
 from models.volunteer import (
     ConnectorData,
     ConnectorSubscriptionEnum,
@@ -774,6 +775,13 @@ def view_volunteer(id):
     for vol_org in volunteer.volunteer_organizations:
         org_relationships[vol_org.organization_id] = vol_org
 
+    # Get recruitment notes for this volunteer
+    recruitment_notes = (
+        RecruitmentNote.query.filter_by(volunteer_id=id)
+        .order_by(RecruitmentNote.created_at.desc())
+        .all()
+    )
+
     return render_template(
         "volunteers/view.html",
         volunteer=volunteer,
@@ -782,6 +790,7 @@ def view_volunteer(id):
         participation_stats=participation_stats,
         histories=histories,
         org_relationships=org_relationships,
+        recruitment_notes=recruitment_notes,
         now=datetime.now(),
     )
 
@@ -2258,3 +2267,61 @@ def get_organizations_json(volunteer_id):
         return jsonify(organizations_data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# =============================================================================
+# Recruitment Notes Routes (Global Volunteer Notes)
+# =============================================================================
+
+
+@volunteers_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["POST"])
+@login_required
+@global_users_only
+def add_volunteer_note(volunteer_id):
+    """Add a recruitment note to a volunteer."""
+    volunteer = db.session.get(Volunteer, volunteer_id)
+    if not volunteer:
+        abort(404)
+
+    note_text = request.form.get("note", "").strip()
+    outcome = request.form.get("outcome", "general")
+
+    if not note_text:
+        flash("Note text is required.", "error")
+        return redirect(url_for("volunteers.view_volunteer", id=volunteer_id))
+
+    try:
+        note = RecruitmentNote(
+            volunteer_id=volunteer_id,
+            note=note_text,
+            outcome=outcome,
+            created_by=current_user.id,
+        )
+        db.session.add(note)
+        db.session.commit()
+        flash("Note added successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error adding note: {str(e)}", "error")
+
+    return redirect(url_for("volunteers.view_volunteer", id=volunteer_id))
+
+
+@volunteers_bp.route(
+    "/volunteers/<int:volunteer_id>/notes/<int:note_id>", methods=["DELETE"]
+)
+@login_required
+@global_users_only
+def delete_volunteer_note(volunteer_id, note_id):
+    """Delete a recruitment note."""
+    note = db.session.get(RecruitmentNote, note_id)
+    if not note or note.volunteer_id != volunteer_id:
+        return jsonify({"success": False, "message": "Note not found"}), 404
+
+    try:
+        db.session.delete(note)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Note deleted"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500

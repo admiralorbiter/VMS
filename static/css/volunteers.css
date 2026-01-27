@@ -3789,3 +3789,155 @@ main {
 .connector-checkbox:checked ~ .connector-checkbox-text i {
     color: #764ba2;
 }
+
+/* =============================================================================
+   Recruitment Notes Card Styles
+   ============================================================================= */
+
+.recruitment-notes-card {
+    grid-column: span 2;
+}
+
+.recruitment-notes-card .note-form {
+    margin-bottom: 1rem;
+}
+
+.recruitment-notes-card .form-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.recruitment-notes-card textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.notes-timeline {
+    border-left: 3px solid var(--non-photo-blue);
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+}
+
+.note-item {
+    background: rgba(158, 216, 219, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--ucla-blue);
+    position: relative;
+}
+
+.note-item::before {
+    content: '';
+    position: absolute;
+    left: -1.5rem;
+    top: 1.25rem;
+    width: 10px;
+    height: 10px;
+    background: var(--ucla-blue);
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.note-outcome {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.note-outcome.outcome-general {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.note-outcome.outcome-interested {
+    background: #d4edda;
+    color: #155724;
+}
+
+.note-outcome.outcome-not_interested {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.note-outcome.outcome-callback {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.note-outcome.outcome-no_answer {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.note-outcome.outcome-left_message {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.note-outcome.outcome-scheduled {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.note-date {
+    font-size: 0.75rem;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.note-content {
+    color: var(--delft-blue);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    white-space: pre-wrap;
+}
+
+.note-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.note-author {
+    font-size: 0.75rem;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.delete-note-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.no-notes-message {
+    text-align: center;
+    padding: 2rem;
+}
+
+.no-notes-message i {
+    display: block;
+    margin-bottom: 0.5rem;
+}
