@@ -115,11 +115,16 @@ class TestResponseFormat:
     def test_event_response_has_required_fields(self, app):
         """TC-981: Event object has required fields."""
         from datetime import datetime, timezone
+        from unittest.mock import patch
 
+        from models import db
         from models.event import Event, EventStatus, EventType
         from routes.api.public_events import build_event_response
 
         with app.app_context():
+            # Create tables for the test
+            db.create_all()
+
             event = Event(
                 id=1,
                 title="Test Event",
@@ -131,7 +136,9 @@ class TestResponseFormat:
                 status=EventStatus.PUBLISHED,
             )
 
-            response = build_event_response(event)
+            # Mock volunteer_count to avoid database query on event_volunteers table
+            with patch.object(type(event), "volunteer_count", property(lambda self: 0)):
+                response = build_event_response(event)
 
             # Check required fields (FR-API-108)
             assert "id" in response

@@ -28,7 +28,8 @@ class TestTenantDatabaseManager:
     @pytest.fixture
     def mock_main_db(self, temp_instance_dir):
         """Create a mock main database with schema and reference data."""
-        main_db_path = os.path.join(temp_instance_dir, "polaris.db")
+        # Use your_database.db to match TenantDatabaseManager.get_main_db_path()
+        main_db_path = os.path.join(temp_instance_dir, "your_database.db")
 
         conn = sqlite3.connect(main_db_path)
         cursor = conn.cursor()
