@@ -343,7 +343,7 @@ class Tenant(db.Model):
             "staff_login_description": portal.get(
                 "staff_login_description", "View district-wide progress and analytics"
             ),
-            "teacher_login_url": f"/virtual/{self.slug}/teacher/select",
+            "teacher_login_url": f"/virtual/{self.slug}/teacher/request-link",
             "staff_login_url": "/login",
         }
 
