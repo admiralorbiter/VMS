@@ -62,6 +62,7 @@ from .event import Event, EventTeacher
 from .google_sheet import GoogleSheet
 from .history import History
 from .organization import Organization
+from .outreach import OutreachAttempt
 from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
 from .roster_import_log import RosterImportLog
 from .school_model import School

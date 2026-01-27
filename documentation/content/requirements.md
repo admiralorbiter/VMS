@@ -367,9 +367,9 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-selfserv-401"></a>**FR-SELFSERV-401** | The system shall provide a recruitment dashboard showing events needing volunteers with urgency indicators. | *Phase 4* | [US-1105](user_stories#us-1105) |
-| <a id="fr-selfserv-402"></a>**FR-SELFSERV-402** | The system shall rank volunteer candidates using scoring based on participation history, skills match, and location. | *Phase 4* | [US-1105](user_stories#us-1105) |
-| <a id="fr-selfserv-403"></a>**FR-SELFSERV-403** | District staff shall be able to log outreach attempts and track outcomes (No Response, Interested, Declined, Confirmed). | *Phase 4* | [US-1105](user_stories#us-1105) |
+| <a id="fr-selfserv-401"></a>**FR-SELFSERV-401** | The system shall provide a recruitment dashboard showing events needing volunteers with urgency indicators. | [TC-1101](test-pack-8#tc-1101)–[TC-1104](test-pack-8#tc-1104) | [US-1105](user_stories#us-1105) |
+| <a id="fr-selfserv-402"></a>**FR-SELFSERV-402** | The system shall rank volunteer candidates using scoring based on participation history, skills match, and location. | [TC-1110](test-pack-8#tc-1110)–[TC-1113](test-pack-8#tc-1113) | [US-1105](user_stories#us-1105) |
+| <a id="fr-selfserv-403"></a>**FR-SELFSERV-403** | District staff shall be able to log outreach attempts and track outcomes (No Response, Interested, Declined, Confirmed). | [TC-1120](test-pack-8#tc-1120)–[TC-1123](test-pack-8#tc-1123) | [US-1105](user_stories#us-1105) |
 | <a id="fr-selfserv-404"></a>**FR-SELFSERV-404** | The system shall provide public signup forms for district events that create volunteer records and send confirmation emails. | *Phase 4* | [US-1106](user_stories#us-1106) |
 | <a id="fr-selfserv-405"></a>**FR-SELFSERV-405** | Public signup shall attach calendar invites to confirmation emails with event details. | *Phase 4* | [US-1106](user_stories#us-1106) |
 

@@ -273,6 +273,37 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
+## Phase 4: District Recruitment
+
+### Z. Recruitment Dashboard (FR-SELFSERV-401)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1101"></a>**TC-1101** | Dashboard shows events needing volunteers | Lists events where confirmed < needed | Automated | 2026-01-26 |
+| <a id="tc-1102"></a>**TC-1102** | Events sorted by urgency | Critical first, then warning, then on-track | Automated | 2026-01-26 |
+| <a id="tc-1103"></a>**TC-1103** | Urgency calculation | Critical: <3 days & <50% filled | Automated | 2026-01-26 |
+| <a id="tc-1104"></a>**TC-1104** | Fill rate progress bar | Shows confirmed/needed visually | Manual | - |
+
+### AA. Volunteer Matching (FR-SELFSERV-402)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1110"></a>**TC-1110** | Candidates ranked by score | Higher scores appear first | Automated | 2026-01-26 |
+| <a id="tc-1111"></a>**TC-1111** | Score includes history | Past attendance increases score | Automated | 2026-01-26 |
+| <a id="tc-1112"></a>**TC-1112** | Score includes recency | Recent activity increases score | Automated | 2026-01-26 |
+| <a id="tc-1113"></a>**TC-1113** | Score transparency | Breakdown shown to admin | Manual | - |
+
+### AB. Outreach Tracking (FR-SELFSERV-403)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1120"></a>**TC-1120** | Log outreach attempt | OutreachAttempt created with method | Automated | 2026-01-26 |
+| <a id="tc-1121"></a>**TC-1121** | Track outcomes | No Response, Interested, Declined, Confirmed | Automated | 2026-01-26 |
+| <a id="tc-1122"></a>**TC-1122** | View outreach history | Shows all attempts for volunteer/event | Automated | 2026-01-26 |
+| <a id="tc-1123"></a>**TC-1123** | Confirmed outcome adds to roster | Auto-creates DistrictParticipation | Automated | 2026-01-26 |
+
+---
+
 > [!NOTE]
 > **Automated Test Files**
 > - `tests/unit/models/test_tenant.py` - Tenant model tests (10 tests)
@@ -282,8 +313,9 @@ District Suite tenant CRUD, configuration, and infrastructure
 > - `tests/integration/test_district_events.py` - District event routes tests (including calendar)
 > - `tests/integration/test_public_api.py` - Public Event API tests
 > - `tests/integration/test_district_volunteers.py` - District volunteer routes tests
+> - `tests/integration/test_district_recruitment.py` - District recruitment routes tests
 
 ---
 
 *Last updated: 2026-01-26*
-*Version: 1.7 - Added Phase 3 District Volunteers tests (TC-1001-1043)*
+*Version: 1.8 - Added Phase 4 District Recruitment tests (TC-1101-1123)*
