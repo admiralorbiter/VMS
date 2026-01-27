@@ -66,10 +66,10 @@ Search + communication history + sync health
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-380"></a>**TC-380** | Record recruitment note | Note saved and displayed | Manual | TBD |
-| <a id="tc-381"></a>**TC-381** | Note outcome tracking | Outcome recorded correctly | Manual | TBD |
+| <a id="tc-380"></a>**TC-380** | Record recruitment note | Note saved and displayed | Automated | 2026-01-27 |
+| <a id="tc-381"></a>**TC-381** | Note outcome tracking | Outcome recorded correctly | Automated | 2026-01-27 |
 
 ---
 
 *Last updated: January 2026*
-*Version: 1.1*
+*Version: 1.2*
