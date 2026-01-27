@@ -48,11 +48,12 @@ Teacher magic links + progress status validation
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-020"></a>**TC-020** | Request for roster teacher | Email received with link | Manual | TBD |
-| <a id="tc-021"></a>**TC-021** | Request for unknown email | Generic response (no roster leak) | Manual | TBD |
-| <a id="tc-022"></a>**TC-022** | Link shows correct data | Alice sees Achieved status | Manual | TBD |
-| <a id="tc-023"></a>**TC-023** | Flag submission | Flag stored, visible to staff | Manual | TBD |
-| <a id="tc-024"></a>**TC-024** | Single-teacher scope | URL tampering fails | Manual | TBD |
+| <a id="tc-020"></a>**TC-020** | Request for roster teacher | Email received with link | Automated | 2026-01-27 |
+| <a id="tc-021"></a>**TC-021** | Request for unknown email | Generic response (no roster leak) | Automated | 2026-01-27 |
+| <a id="tc-022"></a>**TC-022** | Link shows correct data | Alice sees Achieved status | Automated | 2026-01-27 |
+| <a id="tc-023"></a>**TC-023** | Flag submission | Flag stored, visible to staff | Automated | 2026-01-27 |
+| <a id="tc-024"></a>**TC-024** | Single-teacher scope | URL tampering fails | Automated | 2026-01-27 |
+
 
 ### D. Roster Import
 

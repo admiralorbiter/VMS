@@ -61,6 +61,7 @@ from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
 from .event import Event, EventTeacher
 from .google_sheet import GoogleSheet
 from .history import History
+from .magic_link import MagicLink
 from .organization import Organization
 from .outreach import OutreachAttempt
 from .recruitment_note import RecruitmentNote, RecruitmentOutcome
@@ -127,6 +128,7 @@ __all__ = [
     "RecruitmentNote",
     "RecruitmentOutcome",
     "OutreachAttempt",
+    "MagicLink",
 ]
 
 # Eager-loading helper options

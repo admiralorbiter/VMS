@@ -53,7 +53,7 @@ DISTRICT_PORTALS = {
         "teacher_login_description": "Access your virtual session progress and resources",
         "staff_login_label": "District Staff Login",
         "staff_login_description": "View district-wide progress and analytics",
-        "teacher_login_url": "/virtual/kck/teacher/select",
+        "teacher_login_url": "/virtual/kck/teacher/request-link",
         "staff_login_url": "/login",
     },
 }
