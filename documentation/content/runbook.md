@@ -236,7 +236,7 @@ Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestam
 - Save for comparison
 
 **Step 3: Compare headers to mapping contract**
-- Review [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris) for expected columns
+- Review [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris) for expected columns
 - Compare new export headers to expected columns
 - Identify missing, renamed, or new columns
 
@@ -256,7 +256,7 @@ Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestam
 
 **Reference:**
 - [Import Playbook - Column Change Procedure](import_playbook#column-change-procedure)
-- [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
+- [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 - Implementation: `routes/virtual/routes.py` `/virtual/import-sheet`
 
 ## Runbook 10.4: Calendar Invites Not Sending

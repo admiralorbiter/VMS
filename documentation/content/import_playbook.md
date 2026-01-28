@@ -95,7 +95,7 @@ Rows invalid: F
 **Implementation:**
 - Route: `routes/virtual/routes.py` `/virtual/import-sheet`
 - Validation: `validate_csv_row()` function
-- Reference: [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
+- Reference: [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 
 ## Playbook B: Teacher Roster Import
 

@@ -43,7 +43,7 @@ This documentation covers the integrated system for managing K–12 student conn
 - 🔌 **[Integration Contracts](contracts)**
   API specs for SF↔VT, Website, Gmail sync, Pathful import
 - 🧪 **[Test Packs](#test-packs)**
-  Comprehensive test cases for all major workflows (6 packs)
+  Comprehensive test cases for all major workflows (8 packs)
 - 📈 **Reports**
   Reporting documentation and available report types
 - 🚀 **[Deployment](deployment)**

@@ -6,7 +6,7 @@
 
 - Step-by-step procedures in [Import Playbook - Pathful Import](import_playbook#playbook-a-pathful-export--polaris-via-virtual-session-import)
 - Teacher progress definitions in [Metrics Bible - Teacher Progress Statuses](metrics_bible#teacher-progress-statuses)
-- Field mappings: [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
+- Field mappings: [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 - Architecture: [Architecture - Pathful → Polaris](architecture#pathful--polaris)
 - Use Cases: [UC-5](use_cases#uc-5)
 
@@ -37,7 +37,7 @@ Import Pathful export files to update teacher session attendance/signups, drivin
 | Teacher name | ⛔️ | Optional |
 | Presenter email | ⛔️ | Optional |
 
-**Reference:** [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris) for detailed column mappings
+**Reference:** [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris) for detailed column mappings
 
 ## Idempotency
 
@@ -91,7 +91,7 @@ After import, Polaris must report:
 ## Related Documentation
 
 - [Import Playbook - Pathful Import](import_playbook#playbook-a-pathful-export--polaris-via-virtual-session-import)
-- [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
+- [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 - [Architecture - Pathful → Polaris](architecture#pathful--polaris)
 - [Metrics Bible - Teacher Progress Statuses](metrics_bible#teacher-progress-statuses)
 - [Use Cases - UC-5](use_cases#uc-5)

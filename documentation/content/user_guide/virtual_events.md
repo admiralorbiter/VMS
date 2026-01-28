@@ -7,16 +7,16 @@ This guide covers the lifecycle of virtual events in Polaris, including creation
 Virtual events are managed directly in Polaris (unlike In-Person events which sync from Salesforce).
 
 1.  Navigate to **Virtual** in the main menu.
-    ![Create Session Step 1](content/user_guide/images/create_virtual_session_step1.png)
+    ![Create Session Step 1](images/create_virtual_session_step1.png)
 2.  Click **"New Session"**.
 3.  Fill in details: Title, Date/Time, School, District.
-    ![Create Session Step 2](content/user_guide/images/create_virtual_session_step2.png)
+    ![Create Session Step 2](images/create_virtual_session_step2.png)
 4.  **Tag Teachers**: Search/select teachers to associate them with the event.
-    ![Create Session Step 3](content/user_guide/images/create_virtual_session_step3.png)
+    ![Create Session Step 3](images/create_virtual_session_step3.png)
     *   **Quick Create**: If the teacher is not found, click **"Quick Create Teacher"**. Enter the First Name, Last Name, and School, then click **"Save & Add"**. The teacher will be created and added immediately. You can remove the blank search row if it is no longer needed.
-    ![Quick Create Teacher](content/user_guide/images/quick_create_teacher.png)
+    ![Quick Create Teacher](images/quick_create_teacher.png)
 5.  **Tag Presenters**: Search/select volunteers acting as presenters.
-    ![Create Session Step 4](content/user_guide/images/create_virtual_session_step4.png)
+    ![Create Session Step 4](images/create_virtual_session_step4.png)
     *   **Quick Create**: If the presenter is not found, click **"Quick Create Presenter"**. Enter the required details and click **"Save & Add"** to create and link them immediately.
 6.  Click **"Create Session"**.
 

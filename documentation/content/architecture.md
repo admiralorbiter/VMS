@@ -121,7 +121,7 @@ Unmatched Pathful teachers are flagged, not auto-created. Roster name beats Path
 - TeacherProgress is authoritative list
 - Pathful imports match to TeacherProgress by email
 - Unmatched teachers flagged, not auto-created
-- Reference: [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
+- Reference: [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 
 ### R4 — Teacher progress: Derived from Pathful
 
@@ -268,7 +268,7 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 **Implementation:**
 - Route: `routes/virtual/routes.py` `/virtual/import-sheet`
 - Contract: [Contract D: Pathful Export → Polaris](contract_d)
-- Reference: [Field Mappings - Pathful Export](field_mappings#3-pathful-export--polaris)
+- Reference: [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 - Reference: [Import Playbook - Pathful Import](import_playbook#playbook-a-pathful-export--polaris-via-virtual-session-import)
 
 ### Gmail Add-on → Salesforce → Polaris

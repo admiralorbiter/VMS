@@ -6,7 +6,7 @@ This guide assists staff in finding, vetting, and managing volunteers for events
 
 The Volunteer Directory is the primary interface for browsing and filtering the volunteer database.
 
-![Volunteer Directory](content/images/vol_directory.png)
+![Volunteer Directory](images/vol_directory.png)
 
 ### Key Features
 -   **Access**: Click `Volunteers` in the top navigation.
@@ -26,7 +26,7 @@ The Volunteer Directory is the primary interface for browsing and filtering the 
 
 The Recruitment Search tool allows for powerful, multi-criteria searches to find the perfect candidates for specific opportunities.
 
-![Advanced Search](content/images/adv_search.png)
+![Advanced Search](images/adv_search.png)
 
 ### Search Fields & Capabilities
 
@@ -72,10 +72,10 @@ Ensure you have the [Salesforce Chrome Extension](https://chromewebstore.google.
 ### How to Log an Email
 1.  Open the email you want to log in Gmail.
 2.  Click the Salesforce icon in the browser extension bar (top right).
-    ![Salesforce Extension Icon](content/user_guide/images/gmail_extension_bar.png)
+    ![Salesforce Extension Icon](images/gmail_extension_bar.png)
 3.  The Salesforce side panel will open. It attempts to match the email sender/recipient to a Salesforce record.
 4.  If the record is found, click **Log Now**.
-    ![Log Email Pane](content/user_guide/images/gmail_log_pane.png)
+    ![Log Email Pane](images/gmail_log_pane.png)
 5.  If not found, use the search bar in the pane to find the correct contact.
 
 > [!TIP]
