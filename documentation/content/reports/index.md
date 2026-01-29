@@ -6,7 +6,7 @@ This section covers the reporting capabilities of the VMS, ranging from standard
 
 <div class="quick-nav-grid">
   <div class="qn-card">
-    <a href="#reports-index-volunteer-engagement" class="qn-card-link">
+    <a href="#reports-volunteer-engagement" class="qn-card-link">
       <div class="qn-icon">🎗️</div>
       <div class="qn-body">
         <div class="qn-title">Volunteer Engagement</div>
@@ -16,7 +16,7 @@ This section covers the reporting capabilities of the VMS, ranging from standard
   </div>
 
   <div class="qn-card">
-    <a href="#reports-index-partner-match" class="qn-card-link">
+    <a href="#reports-partner-match" class="qn-card-link">
       <div class="qn-icon">🤝</div>
       <div class="qn-body">
         <div class="qn-title">Partner Reconciliation</div>
@@ -26,7 +26,7 @@ This section covers the reporting capabilities of the VMS, ranging from standard
   </div>
 
   <div class="qn-card">
-    <a href="#reports-index-impact" class="qn-card-link">
+    <a href="#reports-impact" class="qn-card-link">
       <div class="qn-icon">📈</div>
       <div class="qn-body">
         <div class="qn-title">Impact & KPIs</div>
@@ -35,8 +35,8 @@ This section covers the reporting capabilities of the VMS, ranging from standard
     </a>
   </div>
 
-    <div class="qn-card">
-    <a href="#reports-index-ad-hoc" class="qn-card-link">
+  <div class="qn-card">
+    <a href="#reports-ad-hoc" class="qn-card-link">
       <div class="qn-icon">🔎</div>
       <div class="qn-body">
         <div class="qn-title">Ad Hoc Queries</div>
@@ -45,3 +45,8 @@ This section covers the reporting capabilities of the VMS, ranging from standard
     </a>
   </div>
 </div>
+
+---
+
+*Last updated: January 2026*
+*Version: 1.0*

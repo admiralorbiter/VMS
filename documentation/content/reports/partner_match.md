@@ -37,3 +37,8 @@ This guide addresses the following scopes:
 | **User Stories** | [US-705](user_stories#us-705) |
 | **Requirements** | [FR-REPORTING-407](requirements#fr-reporting-407), [FR-REPORTING-408](requirements#fr-reporting-408) |
 | **Code** | `routes.reports.kctaa_special.kctaa_report` |
+
+---
+
+*Last updated: January 2026*
+*Version: 1.0*

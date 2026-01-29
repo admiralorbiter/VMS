@@ -2,9 +2,34 @@
 
 **Business intent organized by epic with acceptance criteria**
 
+---
+
+## Quick Navigation
+
+| Epic | Description | Stories |
+|------|-------------|:-------:|
+| [Epic 1](#epic-1) | In-Person Events (Salesforce → VolunTeach → Website) | 5 |
+| [Epic 2](#epic-2) | Public Volunteer Signup + Confirmation + Calendar Invite | 3 |
+| [Epic 3](#epic-3) | Virtual Events in Polaris + Pathful Data Ingest | 9 |
+| [Epic 4](#epic-4) | Volunteer Recruitment (Search + History + Communication Logs) | 6 |
+| [Epic 5](#epic-5) | District Progress Dashboards + Teacher Magic Links | 6 |
+| [Epic 6](#epic-6) | Student Roster + Attendance | 3 |
+| [Epic 7](#epic-7) | Reporting + Exports + Ad Hoc Queries | 5 |
+| [Epic 8](#epic-8) | Email System Management | 3 |
+| [Epic 9](#epic-9) | Data Tracker Features | 3 |
+| [Epic 10](#epic-10) | Tenant Management (District Suite) | 4 |
+| [Epic 11](#epic-11) | District Self-Service (District Suite) | 7 |
+| [Epic 12](#epic-12) | Public Event API (District Suite) | 2 |
+
+---
+
 ## Structure
 
 Each story follows: **As [role], I want [capability], So that [benefit]**. Acceptance criteria define "done."
+
+---
+
+<a id="epic-1"></a>
 
 ## Epic 1: In-Person Events (Salesforce → VolunTeach → Website)
 
@@ -83,6 +108,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given an event is visible on a page, then it shows at minimum: volunteer slots needed, slots filled, date/time, school, description/type.
 - Given a signup occurs, when I refresh the listing, then "slots filled" reflects the new signup.
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-2"></a>
+
 ## Epic 2: Public Volunteer Signup + Confirmation + Calendar Invite
 
 ### <a id="us-201"></a>US-201: Volunteer can sign up without an account
@@ -124,6 +155,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given a successful signup, then a confirmation email is sent to the submitted email.
 - Given a successful signup, then a calendar invite is sent to the submitted email.
 - Given the Salesforce event has location details, then the calendar invite includes the correct location/map details.
+
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-3"></a>
 
 ## Epic 3: Virtual Events in Polaris + Pathful Data Ingest
 
@@ -259,6 +296,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I submit the new presenter, then the record is created locally in Polaris and immediately linked to the session.
 - The new volunteer is flagged as "Created in Polaris" (not synced from Salesforce).
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-4"></a>
+
 ## Epic 4: Volunteer Recruitment (Search + History + Communication Logs)
 
 ### <a id="us-401"></a>US-401: Search volunteers with advanced filters
@@ -341,6 +384,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I view recruitment search, then candidates are ranked by score (highest first).
 - Given I add "Custom Keywords", then candidates matching those keywords get a higher score.
 - The system explains *why* a candidate matched (e.g., "Matched on Title: Engineer").
+
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-5"></a>
 
 ## Epic 5: District Progress Dashboards + Teacher Magic Links
 
@@ -432,6 +481,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given archived data exists, then staff can view historical semester summaries.
 - Given the reset completes, then a log entry records the operation details.
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-6"></a>
+
 ## Epic 6: Student Roster + Attendance
 
 ### <a id="us-601"></a>US-601: Staff can roster students to events
@@ -471,6 +526,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 **Acceptance Criteria:**
 
 - Given attended records, then unique students reached matches the defined computation rules for district/school.
+
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-7"></a>
 
 ## Epic 7: Reporting + Exports + Ad Hoc Queries
 
@@ -553,6 +614,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given names are slightly different (e.g., "Rob" vs "Robert"), then the system identifies them as "Fuzzy Matches".
 - I can export the reconciled list showing which partners are active volunteers.
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-8"></a>
+
 ## Epic 8: Email System Management
 
 ### <a id="us-801"></a>US-801: Manage email templates
@@ -593,6 +660,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given email delivery is disabled globally, when I attempt to send, then the email is queued but not delivered.
 - Given I send an email, then the system creates a message record in the outbox before attempting delivery.
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-9"></a>
+
 ## Epic 9: Data Tracker Features
 
 ### <a id="us-506"></a>US-506: District users can flag data issues
@@ -632,6 +705,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 - Given TeacherProgress entries exist, when I run auto-match, then the system matches by email (primary) or fuzzy name.
 - Given auto-match leaves unmatched entries, when I view the matching interface, then I can manually select and match.
+
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-10"></a>
 
 ## Epic 10: Tenant Management (District Suite)
 
@@ -694,6 +773,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I edit a user, then I can change their role or deactivate their account.
 - Given a user logs in, then they see navigation appropriate to their role and my tenant's enabled features.
 - Given a user with "User" role logs in, they see read-only dashboards and reports, but cannot modify data.
+
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-11"></a>
 
 ## Epic 11: District Self-Service (District Suite)
 
@@ -789,6 +874,12 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I view event details, then I can see PrepKC event information but cannot edit.
 - Given I access statistics, then I see aggregate metrics for PrepKC events at my schools.
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
+<a id="epic-12"></a>
+
 ## Epic 12: Public Event API (District Suite)
 
 ### <a id="us-1201"></a>US-1201: District embeds events on website
@@ -816,7 +907,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I access tenant settings, when I click "Rotate API Key", then a new key is generated.
 - Given a new key is generated, then the old key immediately stops working.
 
+[↑ Back to Quick Navigation](#quick-navigation)
+
 ---
 
 *Last updated: January 2026*
-*Version: 1.1*
+*Version: 1.2*

@@ -70,7 +70,7 @@ This documentation follows a **requirements → design → test** traceability c
 | Contracts | **[Contracts Overview](contracts)**, **[Contract A](contract_a)**, **[Contract B](contract_b)**, **[Contract C](contract_c)**, **[Contract D](contract_d)** | Integration boundaries and behaviors |
 | Operations | **[Import Playbook](import_playbook)**, **[Monitoring](monitoring)**, **[Runbook](runbook)**, **[Smoke Tests](smoke_tests)**, **[Deployment](deployment)** | How to operate and troubleshoot |
 | Security | **[Privacy & Data Handling](privacy_data_handling)**, **[Audit Requirements](audit_requirements)** | Security, privacy, and compliance |
-| Testing | **[Test Packs Overview](test_packs/index)**, **[Test Pack 1](test_packs/test_pack_1)**, **[Test Pack 2](test_packs/test_pack_2)**, **[Test Pack 3](test_packs/test_pack_3)**, **[Test Pack 4](test_packs/test_pack_4)**, **[Test Pack 5](test_packs/test_pack_5)**, **[Test Pack 6](test_packs/test_pack_6)** | Verify requirements are met |
+| Testing | **[Test Packs Overview](test_packs/index)**, **[Test Pack 1](test_packs/test_pack_1)**, **[Test Pack 2](test_packs/test_pack_2)**, **[Test Pack 3](test_packs/test_pack_3)**, **[Test Pack 4](test_packs/test_pack_4)**, **[Test Pack 5](test_packs/test_pack_5)**, **[Test Pack 6](test_packs/test_pack_6)**, **[Test Pack 7](test_packs/test_pack_7)**, **[Test Pack 8](test_packs/test_pack_8)** | Verify requirements are met |
 
 ## Core Systems
 

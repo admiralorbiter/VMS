@@ -95,3 +95,8 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
     </a>
   </div>
 </div>
+
+---
+
+*Last updated: January 2026*
+*Version: 1.0*

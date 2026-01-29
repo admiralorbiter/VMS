@@ -186,7 +186,8 @@ function handleRouting() {
     // If no hash but pathname indicates a specific page, convert pathname to hash
     if (!hash && window.location.pathname.startsWith('/docs/')) {
         const pathname = window.location.pathname.replace('/docs/', '').replace(/\/$/, '');
-        if (pathname && pathname !== 'docs' && pathname !== '') {
+        // Ignore index.html - it's the entry point, not a page to load
+        if (pathname && pathname !== 'docs' && pathname !== '' && pathname !== 'index.html') {
             // Convert pathname to hash format (e.g., 'user_stories' -> 'user-stories')
             const hashFromPath = pathname.replace(/_/g, '-');
             // Update URL with hash without triggering navigation
