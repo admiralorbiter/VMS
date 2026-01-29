@@ -268,14 +268,19 @@ Use cases describe complete workflows that span multiple systems and features. T
 2. Creates new tenant with district name and settings
 3. System provisions isolated database with schema
 4. System copies reference data (schools, skills, career types)
-5. Admin creates initial district admin user account
-6. Admin generates API key for district
-7. Admin configures feature flags for phased rollout
-8. District admin receives welcome email with login credentials
+5. **Admin creates initial district admin user account:**
+   - Enters username, email, temporary password
+   - Selects role (typically Tenant Admin for first user)
+   - System creates user with `tenant_id` assignment
+6. **Optionally creates additional users with different roles** (Admin, Coordinator, User)
+7. Admin generates API key for district
+8. Admin configures feature flags for phased rollout
+9. District admin receives welcome email with login credentials
+10. **District admin can now create additional users within their tenant** (see [UC-19](#uc-19))
 
 **Related:**
-- **Requirements**: [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
-- **User Stories**: [US-1001](user_stories#us-1001), [US-1002](user_stories#us-1002)
+- **Requirements**: [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-112](requirements#fr-tenant-112)
+- **User Stories**: [US-1001](user_stories#us-1001), [US-1002](user_stories#us-1002), [US-1003](user_stories#us-1003)
 - **Test Coverage**: *Phase 1*
 
 ---
@@ -367,5 +372,31 @@ Use cases describe complete workflows that span multiple systems and features. T
 
 ---
 
+## <a id="uc-19"></a>UC-19: Tenant Admin Manages Users (District Admin)
+
+**Workflow:**
+1. Tenant admin logs into their tenant's instance
+2. Navigates to Settings → User Management
+3. Views list of users in their tenant
+4. Clicks "Add User" to create new user
+5. Enters user details: username, email, password, role
+6. Selects role from: Tenant Admin, Coordinator, User
+7. Saves user; system creates account with tenant assignment
+8. New user receives welcome email with login instructions
+9. Admin can edit user details, change roles, or deactivate accounts as needed
+
+**Alternative Flow - Deactivation:**
+1. Admin selects user from list
+2. Clicks "Deactivate"
+3. User can no longer log in but data is retained
+4. Admin can reactivate if needed
+
+**Related:**
+- **Requirements**: [FR-TENANT-109](requirements#fr-tenant-109), [FR-TENANT-110](requirements#fr-tenant-110), [FR-TENANT-112](requirements#fr-tenant-112)
+- **User Stories**: [US-1004](user_stories#us-1004)
+- **Test Coverage**: *TBD*
+
+---
+
 *Last updated: January 2026*
-*Version: 1.1*
+*Version: 1.2*

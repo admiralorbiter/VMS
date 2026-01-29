@@ -333,7 +333,18 @@ Each requirement links to:
 | <a id="fr-tenant-106"></a>**FR-TENANT-106** | Tenant databases shall use separate SQLite files with tenant identifier in filename (e.g., `polaris_kckps.db`). | [TC-860](test-pack-8#tc-860)–[TC-865](test-pack-8#tc-865) | *Technical requirement* |
 | <a id="fr-tenant-107"></a>**FR-TENANT-107** | The system shall support feature flags per tenant to enable/disable specific capabilities during phased rollout. | [TC-806](test-pack-8#tc-806), [TC-822](test-pack-8#tc-822), [TC-880](test-pack-8#tc-880)–[TC-882](test-pack-8#tc-882) | *Technical requirement* |
 
+### Tenant User Management
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-tenant-108"></a>**FR-TENANT-108** | Polaris administrators shall be able to create, edit, and deactivate user accounts for any tenant via the tenant management interface. | *TBD* | [US-1003](user_stories#us-1003) |
+| <a id="fr-tenant-109"></a>**FR-TENANT-109** | Tenant administrators shall be able to create, edit, and deactivate user accounts within their own tenant. | *TBD* | [US-1004](user_stories#us-1004) |
+| <a id="fr-tenant-110"></a>**FR-TENANT-110** | The system shall support a tenant role hierarchy: Tenant Admin (full tenant access), Tenant Coordinator (event/volunteer management), and Tenant User (read-only dashboard access). | *TBD* | [US-1004](user_stories#us-1004) |
+| <a id="fr-tenant-111"></a>**FR-TENANT-111** | Tenant user passwords shall be securely hashed using the same mechanism as Polaris users, with support for password reset via email. | *TBD* | *Technical requirement* |
+| <a id="fr-tenant-112"></a>**FR-TENANT-112** | Tenant users shall see a navigation menu scoped to their tenant's enabled features, without access to Polaris administrative functions. | *TBD* | [US-1004](user_stories#us-1004) |
+
 ---
+
 
 ## <a id="district-self-service"></a>7.11 District Self-Service
 
@@ -480,7 +491,9 @@ This section provides a comprehensive view of the relationships between Function
 | **Tenant Infrastructure (District Suite)** | | |
 | FR-TENANT-101, 102 | [US-1001](user_stories#us-1001) | Tenant provisioning |
 | FR-TENANT-105 | [US-1002](user_stories#us-1002) | Cross-tenant support access |
-| FR-TENANT-103, 104, 106, 107 | *Technical requirements* | Tenant isolation, feature flags |
+| FR-TENANT-108 | [US-1003](user_stories#us-1003) | PrepKC admin creates tenant users |
+| FR-TENANT-109, 110, 112 | [US-1004](user_stories#us-1004) | Tenant admin manages users |
+| FR-TENANT-103, 104, 106, 107, 111 | *Technical requirements* | Tenant isolation, feature flags, security |
 | **District Self-Service (District Suite)** | | |
 | FR-SELFSERV-201, 202, 203 | [US-1101](user_stories#us-1101) | District event management |
 | FR-SELFSERV-204, 205 | [US-1102](user_stories#us-1102) | Event calendar and list views |
@@ -497,14 +510,14 @@ This section provides a comprehensive view of the relationships between Function
 
 ### Coverage Summary
 
-- **Total FRs**: 129 (101 existing + 28 District Suite)
-- **FRs with User Stories**: 62 (48%)
-- **Technical/Infrastructure FRs** (appropriately without US): 67 (52%)
+- **Total FRs**: 134 (101 existing + 33 District Suite)
+- **FRs with User Stories**: 66 (49%)
+- **Technical/Infrastructure FRs** (appropriately without US): 68 (51%)
 - **New Requirements Added (District Suite)**:
-  - Tenant Infrastructure: FR-TENANT-101 through 107 (7 requirements)
+  - Tenant Infrastructure: FR-TENANT-101 through 112 (12 requirements)
   - District Self-Service: FR-SELFSERV-201 through 503 (15 requirements)
   - Public Event API: FR-API-101 through 108 (8 requirements)
-- **All User Stories Now Have Requirements**: All 46 user stories (US-101 through US-1202) now have corresponding functional requirements
+- **All User Stories Now Have Requirements**: All 48 user stories (US-101 through US-1202) now have corresponding functional requirements
 
 ### US → FR Mapping
 
@@ -554,6 +567,8 @@ This section provides a comprehensive view of the relationships between Function
 | **District Suite** | |
 | US-1001 | FR-TENANT-101, 102 |
 | US-1002 | FR-TENANT-105 |
+| US-1003 | FR-TENANT-108 |
+| US-1004 | FR-TENANT-109, 110, 112 |
 | US-1101 | FR-SELFSERV-201, 202, 203 |
 | US-1102 | FR-SELFSERV-204, 205 |
 | US-1103 | FR-SELFSERV-301, 302, 303 |

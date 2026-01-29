@@ -664,6 +664,37 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I switch tenants, then my actions are logged with my identity and the target tenant for audit purposes.
 - Given I am in a tenant context, then I see that tenant's data and can navigate their features.
 
+### <a id="us-1003"></a>US-1003: Polaris admin creates tenant users
+
+**As** a Polaris administrator, **I want** to create user accounts for district tenants, **So that** district staff can access their tenant's features.
+
+**Related Requirements:** [FR-TENANT-108](requirements#fr-tenant-108)
+
+**Related Use Cases:** [UC-14](use_cases#uc-14)
+
+**Acceptance Criteria:**
+
+- Given I view a tenant's details, when I click "Add User", then I see a user creation form.
+- Given I fill in valid user details (username, email, password, role), when I submit, then the user is created and assigned to that tenant.
+- Given I create a user, then they have options for role selection: Tenant Admin, Coordinator, or User.
+- Given the new user logs in, then they access only their assigned tenant's data.
+
+### <a id="us-1004"></a>US-1004: Tenant admin manages users within tenant
+
+**As** a tenant administrator, **I want** to create and manage user accounts for my organization, **So that** my colleagues can access our district's features based on their roles.
+
+**Related Requirements:** [FR-TENANT-109](requirements#fr-tenant-109), [FR-TENANT-110](requirements#fr-tenant-110), [FR-TENANT-112](requirements#fr-tenant-112)
+
+**Related Use Cases:** [UC-19](use_cases#uc-19)
+
+**Acceptance Criteria:**
+
+- Given I am a tenant admin, when I access User Management, then I see only users in my tenant.
+- Given I create a new user, then I can assign them a role: Admin, Coordinator, or User.
+- Given I edit a user, then I can change their role or deactivate their account.
+- Given a user logs in, then they see navigation appropriate to their role and my tenant's enabled features.
+- Given a user with "User" role logs in, they see read-only dashboards and reports, but cannot modify data.
+
 ## Epic 11: District Self-Service (District Suite)
 
 ### <a id="us-1101"></a>US-1101: District admin creates and manages events
