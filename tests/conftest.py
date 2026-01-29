@@ -29,6 +29,7 @@ from models.organization import Organization
 from models.school_model import School
 from models.student import Student
 from models.teacher import Teacher
+from models.tenant import Tenant
 from models.user import User
 from models.volunteer import (
     Engagement,
@@ -170,7 +171,7 @@ def mock_template_rendering(app):
 @pytest.fixture
 def app():
     # Create a fresh Flask app instance for testing
-    test_app = Flask(__name__, template_folder='../templates')
+    test_app = Flask(__name__, template_folder="../templates")
     test_app.config.from_object(TestingConfig)
 
     # Initialize extensions
@@ -189,6 +190,40 @@ def app():
 
     init_routes(test_app)
 
+    # Register custom Jinja2 filters (same as in app.py)
+    import json
+
+    from utils import format_event_type_for_badge, short_date
+
+    test_app.jinja_env.filters["short_date"] = short_date
+    test_app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
+
+    def from_json_filter(json_string):
+        """Custom Jinja2 filter to parse JSON strings."""
+        if not json_string or json_string == "None" or json_string == "null":
+            return []
+        try:
+            if isinstance(json_string, str):
+                return json.loads(json_string)
+            return json_string
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    test_app.jinja_env.filters["from_json"] = from_json_filter
+
+    # Add SecurityLevel context processor (mirrors app.py)
+    from models.user import SecurityLevel
+
+    @test_app.context_processor
+    def inject_security_levels():
+        return {
+            "SecurityLevel": SecurityLevel,
+            "USER": SecurityLevel.USER,
+            "SUPERVISOR": SecurityLevel.SUPERVISOR,
+            "MANAGER": SecurityLevel.MANAGER,
+            "ADMIN": SecurityLevel.ADMIN,
+        }
+
     with test_app.app_context():
         # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax
         with db.engine.connect() as conn:
@@ -201,7 +236,15 @@ def app():
         yield test_app
 
         db.session.remove()
-        db.drop_all()
+        # Disable FK constraints for clean teardown, then drop all tables
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text("PRAGMA foreign_keys=OFF"))
+                conn.commit()
+            db.drop_all()
+        except Exception:
+            # Silently handle any remaining teardown issues
+            pass
 
 
 @pytest.fixture
@@ -243,6 +286,29 @@ def test_admin(app):
     db.session.add(admin)
     db.session.commit()
     return admin
+
+
+@pytest.fixture
+def test_district_user(app):
+    """Create a district-scoped user for testing"""
+    import json
+
+    user = User(
+        username="districtuser",
+        email="district@example.com",
+        password_hash=generate_password_hash("password123"),
+        first_name="District",
+        last_name="User",
+        is_admin=False,
+        scope_type="district",
+        allowed_districts=json.dumps(["Kansas City Kansas Public Schools"]),
+    )
+    with app.app_context():
+        db.session.add(user)
+        db.session.commit()
+        yield user
+        db.session.delete(user)
+        db.session.commit()
 
 
 @pytest.fixture

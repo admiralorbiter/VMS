@@ -6,425 +6,426 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
 <style>
-.google-sheets-container {
-    max-width: 98vw;
-    margin: 0 auto;
-    padding: 8px 8px 20px 8px;
-}
+    .google-sheets-container {
+        max-width: 98vw;
+        margin: 0 auto;
+        padding: 8px 8px 20px 8px;
+    }
 
-.district-header {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    padding: 30px;
-    border-radius: 10px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
+    .district-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 
-.back-link {
-    color: white;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
-    font-weight: 500;
-}
+    .back-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        font-weight: 500;
+    }
 
-.back-link:hover {
-    color: #f0f0f0;
-    text-decoration: underline;
-}
+    .back-link:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
 
-.district-title {
-    margin: 0 0 10px 0;
-    font-size: 2.5em;
-    font-weight: 700;
-}
+    .district-title {
+        margin: 0 0 10px 0;
+        font-size: 2.5em;
+        font-weight: 700;
+    }
 
-.district-subtitle {
-    margin: 0;
-    opacity: 0.9;
-    font-size: 1.1em;
-}
+    .district-subtitle {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1.1em;
+    }
 
-.instructions-section {
-    background: #e8f5e8;
-    border: 1px solid #c3e6c3;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 30px;
-    color: #155724;
-}
+    .instructions-section {
+        background: #e8f5e8;
+        border: 1px solid #c3e6c3;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        color: #155724;
+    }
 
-.instructions-section h3 {
-    margin: 0 0 15px 0;
-    color: #155724;
-    font-size: 1.2em;
-}
+    .instructions-section h3 {
+        margin: 0 0 15px 0;
+        color: #155724;
+        font-size: 1.2em;
+    }
 
-.instructions-section ol {
-    margin: 0;
-    padding-left: 20px;
-}
+    .instructions-section ol {
+        margin: 0;
+        padding-left: 20px;
+    }
 
-.instructions-section li {
-    margin-bottom: 8px;
-    line-height: 1.5;
-}
+    .instructions-section li {
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
 
-.data-format {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 15px 0;
-    font-family: monospace;
-    font-size: 0.9em;
-}
+    .data-format {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+        font-family: monospace;
+        font-size: 0.9em;
+    }
 
-.filters-section {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 30px;
-}
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
 
-.filters-form {
-    display: flex;
-    gap: 15px;
-    align-items: end;
-    flex-wrap: wrap;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 200px;
-}
-
-.filter-group label {
-    font-weight: 600;
-    color: #333;
-    font-size: 0.9em;
-}
-
-.filter-group select {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.filter-btn {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-    white-space: nowrap;
-    font-size: 14px;
-    transition: all 0.2s ease;
-    background: #28a745;
-    color: white;
-    height: fit-content;
-}
-
-.filter-btn:hover {
-    background: #218838;
-    color: white;
-    text-decoration: none;
-}
-
-.sheets-section {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    margin-bottom: 30px;
-}
-
-.sheets-header {
-    background: #f8f9fa;
-    padding: 20px;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.sheets-title {
-    margin: 0;
-    font-size: 1.3em;
-    font-weight: 600;
-    color: #333;
-}
-
-.add-sheet-btn {
-    background: #007bff;
-    color: white;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.add-sheet-btn:hover {
-    background: #0056b3;
-    color: white;
-    text-decoration: none;
-}
-
-.sheets-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.sheets-table th {
-    background: #f8f9fa;
-    padding: 15px;
-    text-align: left;
-    font-weight: 600;
-    color: #495057;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.sheets-table td {
-    padding: 15px;
-    border-bottom: 1px solid #dee2e6;
-    vertical-align: middle;
-}
-
-.sheet-name {
-    font-weight: 500;
-    color: #333;
-}
-
-.sheet-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.action-btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.2s ease;
-}
-
-.import-btn {
-    background: #28a745;
-    color: white;
-}
-
-.import-btn:hover {
-    background: #218838;
-    color: white;
-    text-decoration: none;
-}
-
-.view-btn {
-    background: #17a2b8;
-    color: white;
-}
-
-.view-btn:hover {
-    background: #138496;
-    color: white;
-    text-decoration: none;
-}
-
-.delete-btn {
-    background: #dc3545;
-    color: white;
-}
-
-.delete-btn:hover {
-    background: #c82333;
-    color: white;
-    text-decoration: none;
-}
-
-.no-sheets {
-    text-align: center;
-    padding: 60px 20px;
-    color: #666;
-    font-size: 1.1em;
-    background: white;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 5% auto;
-    padding: 0;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-    background: #f8f9fa;
-    padding: 20px;
-    border-bottom: 1px solid #dee2e6;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-title {
-    margin: 0;
-    font-size: 1.2em;
-    font-weight: 600;
-    color: #333;
-}
-
-.close {
-    color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.close:hover {
-    color: #000;
-}
-
-.modal-body {
-    padding: 20px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-    color: #333;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-.modal-footer {
-    padding: 20px;
-    border-top: 1px solid #dee2e6;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.btn {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-    color: white;
-    text-decoration: none;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #545b62;
-    color: white;
-    text-decoration: none;
-}
-
-@media (max-width: 768px) {
     .filters-form {
-        flex-direction: column;
-        align-items: stretch;
+        display: flex;
+        gap: 15px;
+        align-items: end;
+        flex-wrap: wrap;
     }
 
     .filter-group {
-        min-width: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9em;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .filter-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+        white-space: nowrap;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        background: #28a745;
+        color: white;
+        height: fit-content;
+    }
+
+    .filter-btn:hover {
+        background: #218838;
+        color: white;
+        text-decoration: none;
+    }
+
+    .sheets-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 30px;
     }
 
     .sheets-header {
-        flex-direction: column;
-        align-items: stretch;
+        background: #f8f9fa;
+        padding: 20px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .sheets-title {
+        margin: 0;
+        font-size: 1.3em;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .add-sheet-btn {
+        background: #007bff;
+        color: white;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .add-sheet-btn:hover {
+        background: #0056b3;
+        color: white;
+        text-decoration: none;
+    }
+
+    .sheets-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .sheets-table th {
+        background: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .sheets-table td {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+
+    .sheet-name {
+        font-weight: 500;
+        color: #333;
     }
 
     .sheet-actions {
-        justify-content: center;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .import-btn {
+        background: #28a745;
+        color: white;
+    }
+
+    .import-btn:hover {
+        background: #218838;
+        color: white;
+        text-decoration: none;
+    }
+
+    .view-btn {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .view-btn:hover {
+        background: #138496;
+        color: white;
+        text-decoration: none;
+    }
+
+    .delete-btn {
+        background: #dc3545;
+        color: white;
+    }
+
+    .delete-btn:hover {
+        background: #c82333;
+        color: white;
+        text-decoration: none;
+    }
+
+    .no-sheets {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+        font-size: 1.1em;
+        background: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
     }
 
     .modal-content {
-        width: 95%;
-        margin: 10% auto;
+        background-color: white;
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-}
+
+    .modal-header {
+        background: #f8f9fa;
+        padding: 20px;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 1.2em;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .close:hover {
+        color: #000;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .modal-footer {
+        padding: 20px;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #545b62;
+        color: white;
+        text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-group {
+            min-width: auto;
+        }
+
+        .sheets-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .sheet-actions {
+            justify-content: center;
+        }
+
+        .modal-content {
+            width: 95%;
+            margin: 10% auto;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="google-sheets-container">
     <div class="district-header">
-        <a href="{{ url_for('virtual.virtual_district_teacher_progress', district_name=district_name, year=virtual_year) }}" class="back-link">
+        <a href="{{ url_for('virtual.virtual_district_teacher_progress', district_name=district_name, year=virtual_year) }}"
+            class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Teacher Progress
         </a>
         <h1 class="district-title">{{ district_name }}</h1>
@@ -438,10 +439,10 @@
             <li>Create a Google Sheet with teacher data in the following format:</li>
         </ol>
         <div class="data-format">
-Building | Name | Email | Grade
-Banneker | Tahra Arnold | tahra.arnold@kckps.org | K
-Banneker | Ada Rivas Moreno | ada.rivasmoreno@kckps.org | K
-Caruthers | Kenley Childs | kenley.childs@kckps.org | K
+            Building | Name | Email | Grade
+            Banneker | Tahra Arnold | tahra.arnold@kckps.org | K
+            Banneker | Ada Rivas Moreno | ada.rivasmoreno@kckps.org | K
+            Caruthers | Kenley Childs | kenley.childs@kckps.org | K
         </div>
         <ol start="2">
             <li>Make sure the sheet is publicly viewable or shared with the system</li>
@@ -450,10 +451,22 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
             <li>Click "Import Data" to fetch and process the teacher information</li>
         </ol>
 
-        <div style="background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin: 15px 0; color: #0c5460; font-size: 0.9em;">
-            <strong><i class="fas fa-info-circle"></i> Critical:</strong> Teacher names must match connector sessions exactly.
+        <div
+            style="background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin: 15px 0; color: #0c5460; font-size: 0.9em;">
+            <strong><i class="fas fa-info-circle"></i> Critical:</strong> Teacher names must match connector sessions
+            exactly.
             Use consistent formatting (e.g., "Jennifer M. Johnson" not "Jen Johnson").
             The system handles minor variations but consistency ensures accurate tracking.
+        </div>
+
+        <div
+            style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 15px 0; color: #856404;">
+            <strong><i class="fas fa-link"></i> Teacher Matching:</strong> After importing teacher data, you need to
+            match imported teachers to actual Teacher records in the database.
+            <a href="{{ url_for('virtual.virtual_teacher_progress_matching', district_name=district_name, year=virtual_year) }}"
+                style="color: #856404; font-weight: 600; text-decoration: underline; margin-left: 10px;">
+                <i class="fas fa-external-link-alt"></i> Go to Teacher Matching Interface
+            </a>
         </div>
     </div>
 
@@ -464,9 +477,10 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
                 <label for="year">Virtual Year:</label>
                 <select id="year" name="year" onchange="this.form.submit()">
                     {% for virtual_year_option in virtual_year_options %}
-                        <option value="{{ virtual_year_option }}" {% if virtual_year_option == virtual_year %}selected{% endif %}>
-                            {{ virtual_year_option }}
-                        </option>
+                    <option value="{{ virtual_year_option }}" {% if virtual_year_option==virtual_year %}selected{% endif
+                        %}>
+                        {{ virtual_year_option }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -477,56 +491,69 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
     <div class="sheets-section">
         <div class="sheets-header">
             <h2 class="sheets-title">Teacher Progress Google Sheets</h2>
-            <button class="add-sheet-btn" onclick="openModal()">
-                <i class="fas fa-plus"></i> Add Google Sheet
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="{{ url_for('virtual.virtual_teacher_progress_matching', district_name=district_name, year=virtual_year) }}"
+                    class="action-btn" style="background: #6f42c1; color: white;">
+                    <i class="fas fa-link"></i> Match Teachers
+                </a>
+                <button class="add-sheet-btn" onclick="openModal()">
+                    <i class="fas fa-plus"></i> Add Google Sheet
+                </button>
+            </div>
         </div>
 
         {% if sheets %}
-            <table class="sheets-table">
-                <thead>
-                    <tr>
-                        <th>Sheet Name</th>
-                        <th>Academic Year</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sheet in sheets %}
-                    <tr>
-                        <td class="sheet-name">{{ sheet.sheet_name }}</td>
-                        <td>{{ sheet.academic_year }}</td>
-                        <td>{{ sheet.created_at.strftime('%Y-%m-%d %H:%M') if sheet.created_at else 'N/A' }}</td>
-                        <td>
-                            <div class="sheet-actions">
-                                <form method="POST" action="{{ url_for('virtual.import_teacher_progress_data', district_name=district_name, sheet_id=sheet.id) }}" style="display: inline;">
-                                    <button type="submit" class="action-btn import-btn" onclick="return confirm('Import teacher data from this sheet?')">
-                                        <i class="fas fa-download"></i> Import
-                                    </button>
-                                </form>
-                                <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit" target="_blank" class="action-btn view-btn">
-                                    <i class="fas fa-external-link-alt"></i> View
-                                </a>
-                                <form method="POST" action="{{ url_for('virtual.delete_teacher_progress_google_sheet', district_name=district_name, sheet_id=sheet.id) }}" style="display: inline;">
-                                    <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete this Google Sheet configuration?')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <table class="sheets-table">
+            <thead>
+                <tr>
+                    <th>Sheet Name</th>
+                    <th>Academic Year</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sheet in sheets %}
+                <tr>
+                    <td class="sheet-name">{{ sheet.sheet_name }}</td>
+                    <td>{{ sheet.academic_year }}</td>
+                    <td>{{ sheet.created_at.strftime('%Y-%m-%d %H:%M') if sheet.created_at else 'N/A' }}</td>
+                    <td>
+                        <div class="sheet-actions">
+                            <form method="POST"
+                                action="{{ url_for('virtual.import_teacher_progress_data', district_name=district_name, sheet_id=sheet.id) }}"
+                                style="display: inline;">
+                                <button type="submit" class="action-btn import-btn"
+                                    onclick="return confirm('Import teacher data from this sheet?')">
+                                    <i class="fas fa-download"></i> Import
+                                </button>
+                            </form>
+                            <a href="https://docs.google.com/spreadsheets/d/{{ sheet.decrypted_sheet_id }}/edit"
+                                target="_blank" class="action-btn view-btn">
+                                <i class="fas fa-external-link-alt"></i> View
+                            </a>
+                            <form method="POST"
+                                action="{{ url_for('virtual.delete_teacher_progress_google_sheet', district_name=district_name, sheet_id=sheet.id) }}"
+                                style="display: inline;">
+                                <button type="submit" class="action-btn delete-btn"
+                                    onclick="return confirm('Delete this Google Sheet configuration?')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         {% else %}
-            <div class="no-sheets">
-                No Google Sheets configured for teacher progress tracking in {{ virtual_year }}.
-                <br><br>
-                <button class="add-sheet-btn" onclick="openModal()">
-                    <i class="fas fa-plus"></i> Add Your First Google Sheet
-                </button>
-            </div>
+        <div class="no-sheets">
+            No Google Sheets configured for teacher progress tracking in {{ virtual_year }}.
+            <br><br>
+            <button class="add-sheet-btn" onclick="openModal()">
+                <i class="fas fa-plus"></i> Add Your First Google Sheet
+            </button>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -538,25 +565,43 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
             <h3 class="modal-title">Add Google Sheet for Teacher Progress</h3>
             <span class="close" onclick="closeModal()">&times;</span>
         </div>
-        <form method="POST" action="{{ url_for('virtual.create_teacher_progress_google_sheet', district_name=district_name) }}">
+        <form method="POST"
+            action="{{ url_for('virtual.create_teacher_progress_google_sheet', district_name=district_name) }}">
             <div class="modal-body">
+                <div class="form-group">
+                    <label for="district_name">District:</label>
+                    <select id="district_name" name="district_name">
+                        <option value="">-- All Districts / Global --</option>
+                        {% for district in districts %}
+                        <option value="{{ district.name }}" {% if district.name==district_name %}selected{% endif %}>
+                            {{ district.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: #666; font-size: 0.85em; margin-top: 4px; display: block;">
+                        Associate sheet with a specific district or leave generic.
+                    </small>
+                </div>
                 <div class="form-group">
                     <label for="virtual_year">Virtual Year:</label>
                     <select id="virtual_year" name="virtual_year" required>
                         {% for virtual_year_option in virtual_year_options %}
-                            <option value="{{ virtual_year_option }}" {% if virtual_year_option == virtual_year %}selected{% endif %}>
-                                {{ virtual_year_option }}
-                            </option>
+                        <option value="{{ virtual_year_option }}" {% if virtual_year_option==virtual_year %}selected{%
+                            endif %}>
+                            {{ virtual_year_option }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="sheet_name">Sheet Name:</label>
-                    <input type="text" id="sheet_name" name="sheet_name" placeholder="e.g., Teacher Progress 2024-2025" required>
+                    <input type="text" id="sheet_name" name="sheet_name" placeholder="e.g., Teacher Progress 2024-2025"
+                        required>
                 </div>
                 <div class="form-group">
                     <label for="sheet_id">Google Sheet ID:</label>
-                    <input type="text" id="sheet_id" name="sheet_id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" required>
+                    <input type="text" id="sheet_id" name="sheet_id"
+                        placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" required>
                     <small style="color: #666; font-size: 0.9em; margin-top: 5px; display: block;">
                         Copy the ID from the Google Sheets URL (the long string after /d/ and before /edit)
                     </small>
@@ -571,20 +616,20 @@ Caruthers | Kenley Childs | kenley.childs@kckps.org | K
 </div>
 
 <script>
-function openModal() {
-    document.getElementById('addSheetModal').style.display = 'block';
-}
-
-function closeModal() {
-    document.getElementById('addSheetModal').style.display = 'none';
-}
-
-// Close modal when clicking outside of it
-window.onclick = function(event) {
-    const modal = document.getElementById('addSheetModal');
-    if (event.target == modal) {
-        closeModal();
+    function openModal() {
+        document.getElementById('addSheetModal').style.display = 'block';
     }
-}
+
+    function closeModal() {
+        document.getElementById('addSheetModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside of it
+    window.onclick = function (event) {
+        const modal = document.getElementById('addSheetModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
 </script>
 {% endblock %}

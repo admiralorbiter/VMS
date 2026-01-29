@@ -28,7 +28,16 @@ def setup_db(app):
         yield
         db.session.rollback()  # Rollback to savepoint
         db.session.remove()
-        db.drop_all()
+        # Disable foreign key checks for SQLite before dropping tables
+        if "sqlite" in str(db.engine.url):
+            db.session.execute(db.text("PRAGMA foreign_keys=OFF"))
+        try:
+            db.drop_all()
+        except Exception:
+            # If drop_all fails, try to recreate and drop
+            pass
+        if "sqlite" in str(db.engine.url):
+            db.session.execute(db.text("PRAGMA foreign_keys=ON"))
 
 
 @pytest.fixture

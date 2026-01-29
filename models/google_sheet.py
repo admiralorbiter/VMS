@@ -132,6 +132,9 @@ class GoogleSheet(db.Model):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     created_by = Column(Integer, db.ForeignKey("users.id"))
+    district_name = Column(
+        String(200), nullable=True
+    )  # For scoping sheets to districts
 
     # Note: Unique constraint is handled at database level with partial index
     # Virtual sessions: Only one sheet per academic year (enforced by partial unique index)
@@ -147,6 +150,7 @@ class GoogleSheet(db.Model):
         created_by=None,
         purpose="district_reports",
         sheet_name=None,
+        district_name=None,
     ):
         """
         Initialize a new Google Sheet configuration.
@@ -162,7 +166,9 @@ class GoogleSheet(db.Model):
         self.purpose = purpose
         self.sheet_id = sheet_id  # Store as plain text
         self.sheet_name = sheet_name
+        self.sheet_name = sheet_name
         self.created_by = created_by
+        self.district_name = district_name
 
     @property
     def decrypted_sheet_id(self):
@@ -206,7 +212,9 @@ class GoogleSheet(db.Model):
                 self.updated_at.isoformat() if self.updated_at is not None else None
             ),
             "created_by": self.created_by,
+            "created_by": self.created_by,
             "creator_name": self.creator.username if self.creator else None,
+            "district_name": self.district_name,
         }
 
     def __repr__(self):

@@ -28,7 +28,8 @@ Dependencies:
 """
 
 import io
-from datetime import date, datetime, timedelta
+import json
+from datetime import date, datetime, timedelta, timezone
 
 import openpyxl
 from flask import (
@@ -62,6 +63,7 @@ from models.event import (
 )
 from models.school_model import School
 from models.student import Student
+from models.sync_log import SyncLog, SyncStatus
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.decorators import global_users_only
@@ -75,6 +77,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
+from utils.cache_refresh_scheduler import refresh_all_caches
 
 
 def safe_parse_delivery_hours(value):
@@ -1072,6 +1075,7 @@ def import_events_from_salesforce():
         JSON response with import results and statistics
     """
     try:
+        started_at = datetime.now(timezone.utc)
         print("Fetching data from Salesforce...")
         success_count = 0
         error_count = 0
@@ -1226,10 +1230,50 @@ def import_events_from_salesforce():
             if len(actual_errors) > 5:
                 print(f"  ... and {len(actual_errors) - 5} more errors")
 
+        # Trigger cache refresh if any data was processed
+        if success_count > 0 or participant_success > 0:
+            print(f"\nData updated. Triggering full cache refresh...")
+            try:
+                refresh_all_caches()
+                print("Cache refresh triggered successfully.")
+            except Exception as e:
+                print(f"Warning: Cache refresh failed: {e}")
+
+        # Record sync log
+        try:
+            total_records = total_events + len(participant_rows)
+            # Determine status based on errors
+            sync_status = SyncStatus.SUCCESS.value
+            if error_count + participant_error > 0:
+                if success_count + participant_success > 0:
+                    sync_status = SyncStatus.PARTIAL.value
+                else:
+                    sync_status = SyncStatus.FAILED.value
+
+            sync_log = SyncLog(
+                sync_type="events_and_participants",
+                started_at=started_at,
+                completed_at=datetime.now(timezone.utc),
+                status=sync_status,
+                records_processed=success_count + participant_success,
+                records_failed=error_count + participant_error,
+                records_skipped=skipped_count,
+                error_details=(
+                    json.dumps(actual_errors[:100]) if actual_errors else None
+                ),
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as e:
+            print(f"Warning: Failed to record sync log: {e}")
+
         return jsonify(
             {
                 "success": True,
                 "message": f"Import completed successfully",
+                "processed_count": success_count + participant_success,
+                "error_count": error_count + participant_error,
+                "skipped_count": skipped_count,
                 "events_processed": success_count,
                 "events_skipped": skipped_count,
                 "participants_processed": participant_success,
@@ -1242,6 +1286,24 @@ def import_events_from_salesforce():
 
     except SalesforceAuthenticationFailed:
         print("Error: Failed to authenticate with Salesforce")
+        # Record failure log
+        try:
+            sync_log = SyncLog(
+                sync_type="events_and_participants",
+                started_at=(
+                    started_at
+                    if "started_at" in locals()
+                    else datetime.now(timezone.utc)
+                ),
+                completed_at=datetime.now(timezone.utc),
+                status=SyncStatus.FAILED.value,
+                error_message="Failed to authenticate with Salesforce",
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record error sync log: {log_e}")
+
         return (
             jsonify(
                 {"success": False, "message": "Failed to authenticate with Salesforce"}
@@ -1251,6 +1313,24 @@ def import_events_from_salesforce():
     except Exception as e:
         db.session.rollback()
         print(f"Error: {str(e)}")
+        # Record general failure log
+        try:
+            sync_log = SyncLog(
+                sync_type="events_and_participants",
+                started_at=(
+                    started_at
+                    if "started_at" in locals()
+                    else datetime.now(timezone.utc)
+                ),
+                completed_at=datetime.now(timezone.utc),
+                status=SyncStatus.FAILED.value,
+                error_message=str(e),
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record general failure sync log: {log_e}")
+
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1268,6 +1348,7 @@ def sync_student_participants():
         JSON response with sync results and statistics
     """
     try:
+        started_at = datetime.now(timezone.utc)
         print("Fetching student participation data from Salesforce...")
         success_count = 0
         error_count = 0
@@ -1326,10 +1407,35 @@ def sync_student_participants():
             if len(errors) > 10:
                 print(f"... and {len(errors) - 10} more errors")
 
+        # Record sync log
+        try:
+            sync_status = SyncStatus.SUCCESS.value
+            if error_count > 0:
+                if success_count > 0:
+                    sync_status = SyncStatus.PARTIAL.value
+                else:
+                    sync_status = SyncStatus.FAILED.value
+
+            sync_log = SyncLog(
+                sync_type="student_participants",
+                started_at=started_at,
+                completed_at=datetime.now(timezone.utc),
+                status=sync_status,
+                records_processed=success_count,
+                records_failed=error_count,
+                error_details=json.dumps(errors[:100]) if errors else None,
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as e:
+            print(f"Warning: Failed to record sync log: {e}")
+
         return jsonify(
             {
                 "success": True,
                 "message": f"Processed {success_count} student participations with {error_count} errors.",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "successCount": success_count,
                 "errorCount": error_count,
                 "errors": errors,
@@ -1338,6 +1444,24 @@ def sync_student_participants():
 
     except SalesforceAuthenticationFailed:
         print("Error: Failed to authenticate with Salesforce")
+        # Record failure log
+        try:
+            sync_log = SyncLog(
+                sync_type="student_participants",
+                started_at=(
+                    started_at
+                    if "started_at" in locals()
+                    else datetime.now(timezone.utc)
+                ),
+                completed_at=datetime.now(timezone.utc),
+                status=SyncStatus.FAILED.value,
+                error_message="Failed to authenticate with Salesforce",
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record error sync log: {log_e}")
+
         return (
             jsonify(
                 {"success": False, "message": "Failed to authenticate with Salesforce"}
@@ -1347,6 +1471,24 @@ def sync_student_participants():
     except Exception as e:
         db.session.rollback()
         print(f"Error in sync_student_participants: {str(e)}")
+        # Record failure log
+        try:
+            sync_log = SyncLog(
+                sync_type="student_participants",
+                started_at=(
+                    started_at
+                    if "started_at" in locals()
+                    else datetime.now(timezone.utc)
+                ),
+                completed_at=datetime.now(timezone.utc),
+                status=SyncStatus.FAILED.value,
+                error_message=str(e),
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record failure sync log: {log_e}")
+
         return jsonify({"success": False, "error": str(e)}), 500
 
 

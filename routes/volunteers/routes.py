@@ -62,6 +62,7 @@ from models.contact import (
 from models.event import Event
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
+from models.recruitment_note import RecruitmentNote
 from models.volunteer import (
     ConnectorData,
     ConnectorSubscriptionEnum,
@@ -372,6 +373,7 @@ def volunteers():
                 Volunteer.organization_name.ilike(search_term),
                 Volunteer.title.ilike(search_term),
                 Volunteer.department.ilike(search_term),
+                Volunteer.industry.ilike(search_term),
                 # Search related organization fields
                 Organization.name.ilike(search_term),
                 VolunteerOrganization.role.ilike(search_term),
@@ -387,7 +389,20 @@ def volunteers():
         query = query.join(Volunteer.skills).filter(Skill.name.ilike(search_term))
 
     if current_filters.get("local_status"):
-        query = query.filter(Volunteer.local_status == current_filters["local_status"])
+        status_val = current_filters["local_status"]
+        # Map frontend values to Enum keys
+        if status_val == "true":
+            status_val = "local"
+        elif status_val == "false":
+            status_val = "non_local"
+
+        try:
+            status_enum = LocalStatusEnum[status_val]
+            query = query.filter(Volunteer.local_status == status_enum)
+        except KeyError:
+            # If invalid status provided, return no results (or ignore)
+            # Returning no results is safer for filtering
+            query = query.filter(db.false())
 
     if current_filters.get("connector_only"):
         query = query.filter(
@@ -760,6 +775,13 @@ def view_volunteer(id):
     for vol_org in volunteer.volunteer_organizations:
         org_relationships[vol_org.organization_id] = vol_org
 
+    # Get recruitment notes for this volunteer
+    recruitment_notes = (
+        RecruitmentNote.query.filter_by(volunteer_id=id)
+        .order_by(RecruitmentNote.created_at.desc())
+        .all()
+    )
+
     return render_template(
         "volunteers/view.html",
         volunteer=volunteer,
@@ -768,6 +790,7 @@ def view_volunteer(id):
         participation_stats=participation_stats,
         histories=histories,
         org_relationships=org_relationships,
+        recruitment_notes=recruitment_notes,
         now=datetime.now(),
     )
 
@@ -1951,6 +1974,8 @@ def import_from_salesforce():
                 {
                     "success": True,
                     "message": f"Successfully processed {success_count} volunteers (Created: {created_count}, Updated: {updated_count}) with {error_count} errors",
+                    "processed_count": success_count,
+                    "error_count": error_count,
                 }
             )
         except Exception as e:
@@ -2242,3 +2267,61 @@ def get_organizations_json(volunteer_id):
         return jsonify(organizations_data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# =============================================================================
+# Recruitment Notes Routes (Global Volunteer Notes)
+# =============================================================================
+
+
+@volunteers_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["POST"])
+@login_required
+@global_users_only
+def add_volunteer_note(volunteer_id):
+    """Add a recruitment note to a volunteer."""
+    volunteer = db.session.get(Volunteer, volunteer_id)
+    if not volunteer:
+        abort(404)
+
+    note_text = request.form.get("note", "").strip()
+    outcome = request.form.get("outcome", "general")
+
+    if not note_text:
+        flash("Note text is required.", "error")
+        return redirect(url_for("volunteers.view_volunteer", id=volunteer_id))
+
+    try:
+        note = RecruitmentNote(
+            volunteer_id=volunteer_id,
+            note=note_text,
+            outcome=outcome,
+            created_by=current_user.id,
+        )
+        db.session.add(note)
+        db.session.commit()
+        flash("Note added successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error adding note: {str(e)}", "error")
+
+    return redirect(url_for("volunteers.view_volunteer", id=volunteer_id))
+
+
+@volunteers_bp.route(
+    "/volunteers/<int:volunteer_id>/notes/<int:note_id>", methods=["DELETE"]
+)
+@login_required
+@global_users_only
+def delete_volunteer_note(volunteer_id, note_id):
+    """Delete a recruitment note."""
+    note = db.session.get(RecruitmentNote, note_id)
+    if not note or note.volunteer_id != volunteer_id:
+        return jsonify({"success": False, "message": "Note not found"}), 404
+
+    try:
+        db.session.delete(note)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Note deleted"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500

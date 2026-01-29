@@ -199,6 +199,8 @@ def import_teachers_from_salesforce():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} teachers with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )

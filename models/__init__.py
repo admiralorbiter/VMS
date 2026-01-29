@@ -55,9 +55,13 @@ from .class_model import Class
 from .client_project_model import ClientProject
 from .contact import Contact
 from .district_model import District
+from .district_participation import DistrictParticipation
+from .district_volunteer import DistrictVolunteer
+from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
 from .event import Event, EventTeacher
 from .google_sheet import GoogleSheet
 from .history import History
+from .magic_link import MagicLink
 from .organization import Organization
 from .reports import (
     DistrictEngagementReport,
@@ -67,8 +71,11 @@ from .reports import (
 )
 from .school_model import School
 from .student import Student
+from .sync_log import SyncLog
 from .teacher import Teacher
 from .teacher_progress import TeacherProgress
+from .teacher_progress_archive import TeacherProgressArchive
+from .tenant import Tenant
 
 # Import your models after db initialization
 from .user import User
@@ -97,7 +104,11 @@ __all__ = [
     "School",
     "Teacher",
     "TeacherProgress",
+    "TeacherProgressArchive",
+    "TeacherProgressArchive",
+    "RosterImportLog",
     "Student",
+    "SyncLog",
     "History",
     "EventAttendanceDetail",
     "BugReport",
@@ -111,6 +122,16 @@ __all__ = [
     "ValidationResult",
     "ValidationMetric",
     "ValidationHistory",
+    "EmailTemplate",
+    "EmailMessage",
+    "EmailDeliveryAttempt",
+    "Tenant",
+    "DistrictVolunteer",
+    "DistrictParticipation",
+    "RecruitmentNote",
+    "RecruitmentOutcome",
+    "OutreachAttempt",
+    "MagicLink",
 ]
 
 # Eager-loading helper options

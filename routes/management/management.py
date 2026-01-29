@@ -94,7 +94,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -117,6 +117,7 @@ from models.reports import (
     VirtualSessionReportCache,
 )
 from models.school_model import School
+from models.sync_log import SyncLog, SyncStatus
 from models.user import SecurityLevel, User
 from routes.decorators import global_users_only
 from routes.reports.common import get_school_year_date_range
@@ -198,11 +199,49 @@ def admin():
         .order_by(GoogleSheet.academic_year.desc())
         .all()
     ]
+
+    # Get latest sync logs for status indicators (TC-220)
+    latest_sync = SyncLog.get_latest_by_type("events_and_participants")
+    latest_student_sync = SyncLog.get_latest_by_type("student_participants")
+    latest_overall_sync = SyncLog.get_recent_logs(limit=1)
+    latest_overall_sync = latest_overall_sync[0] if latest_overall_sync else None
+
     return render_template(
         "management/admin.html",
         users=users,
         districts=districts,
         sheet_years=sheet_years,
+        latest_sync=latest_sync,
+        latest_student_sync=latest_student_sync,
+        latest_overall_sync=latest_overall_sync,
+    )
+
+
+@management_bp.route("/admin/sync-logs")
+@login_required
+def view_sync_logs():
+    """
+    Display historical sync logs.
+
+    Permission Requirements:
+        - Admin access required
+    """
+    if not current_user.is_admin:
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("management.admin"))
+
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+    pagination = SyncLog.query.order_by(SyncLog.started_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    logs = pagination.items
+
+    return render_template(
+        "management/sync_logs.html",
+        logs=logs,
+        pagination=pagination,
+        title="Sync History",
     )
 
 
@@ -358,6 +397,7 @@ def scan_student_participation_duplicates():
 
 
 @management_bp.route("/admin/dedupe-student-participations", methods=["POST"])
+@management_bp.route("/dedupe-student-participations", methods=["POST"])
 @login_required
 def dedupe_student_participations():
     """
@@ -567,6 +607,8 @@ def import_classes():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} classes with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )
@@ -1110,6 +1152,8 @@ def import_schools():
             {
                 "success": True,
                 "message": f"Successfully processed {district_success} districts and {school_success} schools",
+                "processed_count": district_success + school_success,
+                "error_count": len(district_errors) + len(school_errors),
                 "district_errors": district_errors,
                 "school_errors": school_errors,
                 "level_update": (
@@ -1195,6 +1239,8 @@ def import_districts():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} districts with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )
@@ -1331,10 +1377,55 @@ def bug_reports():
         flash("Access denied. Admin privileges required.", "error")
         return redirect(url_for("index"))
 
-    # Get all bug reports, newest first
-    reports = BugReport.query.order_by(BugReport.created_at.desc()).all()
+    # Get filter parameters
+    status_filter = request.args.get("status", "all")  # all, open, resolved
+    type_filter = request.args.get("type", "all")  # all, bug, data_error, other
+    search_query = request.args.get("search", "").strip()
+
+    # Start with base query
+    query = BugReport.query
+
+    # Apply status filter
+    if status_filter == "open":
+        query = query.filter(BugReport.resolved == False)
+    elif status_filter == "resolved":
+        query = query.filter(BugReport.resolved == True)
+
+    # Apply type filter
+    if type_filter == "bug":
+        query = query.filter(BugReport.type == BugReportType.BUG)
+    elif type_filter == "data_error":
+        query = query.filter(BugReport.type == BugReportType.DATA_ERROR)
+    elif type_filter == "other":
+        query = query.filter(BugReport.type == BugReportType.OTHER)
+
+    # Apply search filter
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                BugReport.description.ilike(search_term),
+                BugReport.page_title.ilike(search_term),
+                BugReport.page_url.ilike(search_term),
+            )
+        )
+
+    # Order by newest first
+    reports = query.order_by(BugReport.created_at.desc()).all()
+
+    # Separate open and resolved reports for template
+    open_reports = [r for r in reports if not r.resolved]
+    resolved_reports = [r for r in reports if r.resolved]
+
     return render_template(
-        "management/bug_reports.html", reports=reports, BugReportType=BugReportType
+        "management/bug_reports.html",
+        reports=reports,
+        open_reports=open_reports,
+        resolved_reports=resolved_reports,
+        BugReportType=BugReportType,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        search_query=search_query,
     )
 
 
@@ -1352,6 +1443,15 @@ def resolve_bug_report(report_id):
         report.resolution_notes = request.form.get("notes", "")
 
         db.session.commit()
+
+        # If HTMX request, return redirect response
+        if request.headers.get("HX-Request"):
+            from flask import make_response
+
+            response = make_response()
+            response.headers["HX-Redirect"] = url_for("management.bug_reports")
+            return response
+
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -1383,7 +1483,10 @@ def get_resolve_form(report_id):
     if not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
-    return render_template("management/resolve_form.html", report_id=report_id)
+    report = BugReport.query.get_or_404(report_id)
+    return render_template(
+        "management/resolve_form.html", report_id=report_id, report=report
+    )
 
 
 @management_bp.route("/management/update-school-levels", methods=["POST"])
@@ -1440,6 +1543,8 @@ def update_school_levels():
             {
                 "success": True,
                 "message": f"Successfully updated {success_count} schools with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
                 "errors": errors,
             }
         )

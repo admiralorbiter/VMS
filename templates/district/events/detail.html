@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_events') }}">Events</a></li>
+            <li class="breadcrumb-item active">{{ event.title }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1">{{ event.title }}</h2>
+            <div>
+                {% if event.status.value == 'Draft' %}
+                <span class="badge bg-secondary">Draft</span>
+                {% elif event.status.value == 'Published' %}
+                <span class="badge bg-primary">Published</span>
+                {% elif event.status.value == 'Confirmed' %}
+                <span class="badge bg-success">Confirmed</span>
+                {% elif event.status.value == 'Completed' %}
+                <span class="badge bg-info">Completed</span>
+                {% elif event.status.value == 'Cancelled' %}
+                <span class="badge bg-danger">Cancelled</span>
+                {% else %}
+                <span class="badge bg-light text-dark">{{ event.status.value }}</span>
+                {% endif %}
+
+                <span class="badge bg-light text-dark ms-1">
+                    <i class="fas fa-{{ 'video' if event.format.value == 'virtual' else 'building' }} me-1"></i>
+                    {{ 'Virtual' if event.format.value == 'virtual' else 'In Person' }}
+                </span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            {% if event.status.value == 'Draft' %}
+            <form method="POST" action="{{ url_for('district.publish_event', event_id=event.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-success" onclick="return confirm('Publish this event?')">
+                    <i class="fas fa-check me-2"></i>Publish
+                </button>
+            </form>
+            {% endif %}
+
+            {% if event.status.value not in ['Completed', 'Cancelled'] %}
+            <a href="{{ url_for('district.edit_event', event_id=event.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-2"></i>Edit
+            </a>
+            <form method="POST" action="{{ url_for('district.cancel_event', event_id=event.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-outline-danger"
+                    onclick="return confirm('Cancel this event? This cannot be undone.')">
+                    <i class="fas fa-times me-2"></i>Cancel Event
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Event Details Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Event Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <strong>Date & Time</strong>
+                            <p class="mb-0">
+                                {{ event.start_date.strftime('%B %d, %Y') if event.start_date else '-' }}
+                                <br>
+                                {{ event.start_date.strftime('%I:%M %p') if event.start_date else '' }}
+                                {% if event.end_date %}
+                                - {{ event.end_date.strftime('%I:%M %p') }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Location</strong>
+                            <p class="mb-0">{{ event.location or 'Not specified' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Event Type</strong>
+                            <p class="mb-0">{{ event.type.value.replace('_', ' ').title() }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Volunteers Needed</strong>
+                            <p class="mb-0">
+                                {% if event.volunteers_needed %}
+                                {{ roster|length }} of {{ event.volunteers_needed }} assigned
+                                {% else %}
+                                Not specified
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if event.description %}
+                    <hr>
+                    <div>
+                        <strong>Description</strong>
+                        <p class="mb-0 mt-2">{{ event.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Volunteers Roster Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Event Roster</h5>
+                    <span class="badge bg-primary">{{ roster|length }} Assigned</span>
+                </div>
+                <div class="card-body">
+                    <!-- Add Volunteer Form -->
+                    {% if event.status.value not in ['Completed', 'Cancelled'] %}
+                    <div class="mb-4">
+                        <form method="POST" action="{{ url_for('district.add_to_roster', event_id=event.id) }}"
+                            class="row g-2">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="volunteer-search"
+                                        placeholder="Search volunteers by name..." autocomplete="off">
+                                    <input type="hidden" name="volunteer_id" id="volunteer-id">
+                                </div>
+                                <div id="volunteer-results" class="list-group position-absolute"
+                                    style="z-index:1000; display:none; max-width: 400px;"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <select name="participation_type" class="form-select">
+                                    <option value="volunteer">Volunteer</option>
+                                    <option value="speaker">Speaker</option>
+                                    <option value="mentor">Mentor</option>
+                                    <option value="organizer">Organizer</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100" id="add-volunteer-btn" disabled>
+                                    <i class="fas fa-plus me-1"></i>Add
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <!-- Roster Table -->
+                    {% if roster %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Volunteer</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Assigned</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in roster %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('district.view_volunteer', volunteer_id=p.volunteer_id) }}">
+                                            {{ p.volunteer.first_name }} {{ p.volunteer.last_name }}
+                                        </a>
+                                        {% if p.volunteer.organization_name %}
+                                        <br><small class="text-muted">{{ p.volunteer.organization_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ p.participation_type|title if p.participation_type else 'Volunteer' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if p.status == 'invited' %}
+                                        <span class="badge bg-secondary">Invited</span>
+                                        {% elif p.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                        {% elif p.status == 'declined' %}
+                                        <span class="badge bg-danger">Declined</span>
+                                        {% elif p.status == 'attended' %}
+                                        <span class="badge bg-info">Attended</span>
+                                        {% elif p.status == 'no_show' %}
+                                        <span class="badge bg-warning text-dark">No Show</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">{{ p.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ p.invited_at.strftime('%b %d') if p.invited_at else '-' }}
+                                        </small>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if event.status.value not in ['Completed', 'Cancelled'] %}
+                                        <div class="btn-group btn-group-sm">
+                                            <!-- Status Dropdown -->
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                                                    type="button" data-bs-toggle="dropdown">
+                                                    Status
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="invited">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-envelope me-2"></i>Invited
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="confirmed">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-check me-2 text-success"></i>Confirmed
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="declined">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-times me-2 text-danger"></i>Declined
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="attended">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-user-check me-2 text-info"></i>Attended
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('district.update_participation_status', event_id=event.id, participation_id=p.id) }}">
+                                                            <input type="hidden" name="status" value="no_show">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-user-times me-2 text-warning"></i>No
+                                                                Show
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <!-- Remove Button -->
+                                            {% if p.status != 'attended' %}
+                                            <form method="POST"
+                                                action="{{ url_for('district.remove_from_roster', event_id=event.id, participation_id=p.id) }}"
+                                                class="d-inline ms-1">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    onclick="return confirm('Remove this volunteer from the roster?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No volunteers have been assigned yet. Use the search above to add volunteers.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Info</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        <dt>Created</dt>
+                        <dd>{{ event.created_at.strftime('%b %d, %Y %I:%M %p') if event.created_at else '-' }}</dd>
+
+                        <dt>Last Updated</dt>
+                        <dd class="mb-0">{{ event.updated_at.strftime('%b %d, %Y %I:%M %p') if event.updated_at else '-'
+                            }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if event.status.value in ['Published', 'Confirmed'] %}
+                        <!-- Public Signup Link -->
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control form-control-sm" id="signup-link"
+                                value="{{ url_for('district.public_signup_form', slug=tenant.slug, event_id=event.id, _external=True) }}"
+                                readonly>
+                            <button class="btn btn-outline-primary btn-sm" type="button" onclick="copySignupLink()"
+                                title="Copy signup link">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <a href="{{ url_for('district.public_signup_form', slug=tenant.slug, event_id=event.id) }}"
+                            class="btn btn-primary btn-sm mb-2" target="_blank">
+                            <i class="fas fa-external-link-alt me-2"></i>View Signup Page
+                        </a>
+                        {% else %}
+                        <div class="alert alert-info mb-2 py-2 small">
+                            <i class="fas fa-info-circle me-1"></i>Publish the event to enable public signups.
+                        </div>
+                        {% endif %}
+                        <a href="{{ url_for('district.list_events') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Events
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Volunteer Search Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('volunteer-search');
+        const volunteerIdInput = document.getElementById('volunteer-id');
+        const resultsDiv = document.getElementById('volunteer-results');
+        const addBtn = document.getElementById('add-volunteer-btn');
+
+        if (!searchInput) return;
+
+        let searchTimeout;
+
+        searchInput.addEventListener('input', function () {
+            const query = this.value.trim();
+
+            clearTimeout(searchTimeout);
+            volunteerIdInput.value = '';
+            addBtn.disabled = true;
+
+            if (query.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(function () {
+                fetch(`{{ url_for('district.search_volunteers_for_event', event_id=event.id) }}?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        resultsDiv.innerHTML = '';
+                        if (data.length === 0) {
+                            resultsDiv.innerHTML = '<div class="list-group-item text-muted">No volunteers found</div>';
+                        } else {
+                            data.forEach(v => {
+                                const item = document.createElement('a');
+                                item.href = '#';
+                                item.className = 'list-group-item list-group-item-action';
+                                item.innerHTML = `
+                                <strong>${v.name}</strong>
+                                ${v.organization ? '<br><small class="text-muted">' + v.organization + '</small>' : ''}
+                                ${v.email ? '<br><small class="text-muted">' + v.email + '</small>' : ''}
+                            `;
+                                item.addEventListener('click', function (e) {
+                                    e.preventDefault();
+                                    searchInput.value = v.name;
+                                    volunteerIdInput.value = v.id;
+                                    addBtn.disabled = false;
+                                    resultsDiv.style.display = 'none';
+                                });
+                                resultsDiv.appendChild(item);
+                            });
+                        }
+                        resultsDiv.style.display = 'block';
+                    });
+            }, 300);
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.style.display = 'none';
+            }
+        });
+    });
+
+    // Copy signup link to clipboard
+    function copySignupLink() {
+        const linkInput = document.getElementById('signup-link');
+        if (linkInput) {
+            navigator.clipboard.writeText(linkInput.value).then(function () {
+                // Show temporary feedback
+                const btn = linkInput.nextElementSibling;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(function () {
+                    btn.innerHTML = originalHtml;
+                }, 1500);
+            });
+        }
+    }
+    // Make function globally available
+    window.copySignupLink = copySignupLink;
+</script>
+{% endblock %}

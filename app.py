@@ -74,6 +74,32 @@ def inject_security_levels():
     }
 
 
+# Tenant context middleware (FR-TENANT-103)
+@app.before_request
+def set_tenant_context():
+    """Set tenant context from authenticated user or admin override."""
+    from flask import g
+
+    from utils.tenant_context import init_tenant_context
+
+    # Initialize tenant context for this request
+    init_tenant_context()
+
+
+# Add tenant context to template context (FR-TENANT-105)
+@app.context_processor
+def inject_tenant_context():
+    """Make tenant context available in all templates."""
+    from flask import g, session
+
+    from utils.tenant_context import get_current_tenant, is_admin_viewing_as_tenant
+
+    return {
+        "current_tenant": get_current_tenant(),
+        "is_admin_viewing_as_tenant": is_admin_viewing_as_tenant(),
+    }
+
+
 # Initialize routes
 init_routes(app)
 
@@ -99,8 +125,20 @@ def from_json_filter(json_string):
 app.jinja_env.filters["from_json"] = from_json_filter
 
 
+@app.route("/docs/")
+@app.route("/docs")
+def documentation_index():
+    """Serve the documentation home page"""
+    return send_from_directory("documentation", "index.html")
+
+
 @app.route("/docs/<path:filename>")
 def documentation(filename):
+    """Serve documentation assets"""
+    # If the filename doesn't contain a dot (no extension), it's likely a frontend route
+    # Let the frontend handle it by serving index.html
+    if "." not in filename or filename.endswith("/"):
+        return send_from_directory("documentation", "index.html")
     return send_from_directory("documentation", filename)
 
 

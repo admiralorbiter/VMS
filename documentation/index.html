@@ -1,68 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Management System - Documentation</title>
+    <title>VMS Documentation</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- FontAwesome for icons -->
-    <script src="https://kit.fontawesome.com/052a51df03.js" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <div class="container">
-        <nav class="sidebar">
-            <!-- Navigation will be loaded dynamically -->
-        </nav>
-        <main class="main-content">
-            <div class="hero">
-                <div class="hero-title">Welcome to the Volunteer Management System Documentation</div>
-                <div class="hero-desc">Your complete guide to using, managing, and getting the most out of the VMS platform.</div>
+    <div class="layout">
+        <!-- Navigation Sidebar -->
+        <nav>
+            <div class="nav-header">
+                <div class="nav-header-top">
+                    <h1>VMS Documentation</h1>
+                    <button id="nav-toggle" class="nav-toggle" title="Toggle sidebar">
+                        <span class="toggle-icon">◀</span>
+                    </button>
+                </div>
+                <div class="version">v1.0</div>
             </div>
-            <!-- Common Questions Section -->
-            <section class="common-questions" style="margin: 2rem 0; padding: 1.5rem; background: #f8fffc; border-radius: 12px; border: 1px solid #cceeee;">
-                <h2 style="margin-bottom: 1rem; color: #1a3d5d;">Common Questions</h2>
-                <details style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #b0e0e6; background: #fff;">
-                    <summary style="font-size: 1.1rem; font-weight: bold; color: #205080; cursor: pointer; padding: 0.7rem 1rem; outline: none;">How do I change my password?</summary>
-                    <div style="padding: 1rem 1.5rem 1.2rem 1.5rem;">
-                        <ol style="margin-left: 1.2rem;">
-                            <li>Go to the <strong>Admin Dashboard</strong> (requires appropriate permissions).</li>
-                            <li>Find the <strong>Change Password</strong> section.</li>
-                            <li>Enter your new password and confirm it.</li>
-                            <li>Click the <strong>Change Password</strong> button.</li>
-                        </ol>
-                        <div style="margin-top: 1rem;">
-                            <img src="img/change-password.png" alt="Change Password UI" style="max-width: 600px; width: 100%; border: 1px solid #b0e0e6; border-radius: 8px; box-shadow: 0 2px 8px #e0f7fa;">
-                        </div>
-                        <p style="margin-top: 0.5rem; color: #555; font-size: 0.98rem;">You can find this section in the Admin Dashboard page (<code>admin.html</code> template).</p>
-                    </div>
-                </details>
-                <details style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #b0e0e6; background: #fff;">
-                    <summary style="font-size: 1.1rem; font-weight: bold; color: #205080; cursor: pointer; padding: 0.7rem 1rem; outline: none; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #27a6e5; border-radius: 8px; margin-right: 0.5rem;">
-                            <i class="fa-solid fa-cloud" style="color: white; font-size: 1.3rem;"></i>
-                        </span>
-                        What does the blue cloud button mean?
-                    </summary>
-                    <div style="padding: 1rem 1.5rem 1.2rem 1.5rem;">
-                        <p style="margin-bottom: 1rem;">This button is a quick link to the volunteer's record in Salesforce. Clicking it will open the corresponding Salesforce contact page in a new tab. You may see this button on volunteer profile pages and other areas where Salesforce integration is available.</p>
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #27a6e5; border-radius: 12px; box-shadow: 0 2px 4px #e0e0e0;">
-                                <i class="fa-solid fa-cloud" style="color: white; font-size: 2rem;"></i>
-                            </span>
-                            <span style="color: #555; font-size: 1rem;">Salesforce Link</span>
-                        </div>
-                        <p style="margin-top: 0.7rem; color: #888; font-size: 0.95rem;">If you have access, clicking this button will take you directly to the Salesforce record for more details or updates.</p>
-                    </div>
-                </details>
-            </section>
-            <div class="feature-grid">
-                <a class="feature-card" href="reports.html">
-                    <div class="feature-title">Reports</div>
-                    <div class="feature-desc">Generate, filter, and export reports for insights and analysis.</div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="#getting-started" class="nav-link" data-page="getting_started">
+                    Overview
                 </a>
+                <a href="#purpose-scope" class="nav-link" data-page="purpose_scope">
+                    Purpose & Scope
+                </a>
+                <a href="#glossary" class="nav-link" data-page="glossary">
+                    Glossary
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Requirements</div>
+                <a href="#requirements" class="nav-link" data-page="requirements">
+                    Functional Requirements
+                </a>
+                <a href="#user-stories" class="nav-link" data-page="user_stories">
+                    User Stories
+                </a>
+                <a href="#use-cases" class="nav-link" data-page="use_cases">
+                    Use Cases
+                </a>
+                <a href="#non-functional-requirements" class="nav-link" data-page="non_functional_requirements">
+                    Non-Functional Requirements
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Testing</div>
+                <a href="#test-packs" class="nav-link" data-page="test_packs/index">
+                    Test Packs Overview
+                </a>
+                <a href="#test-pack-1" class="nav-link" data-page="test_packs/test_pack_1">
+                    Test Pack 1: District Progress
+                </a>
+                <a href="#test-pack-2" class="nav-link" data-page="test_packs/test_pack_2">
+                    Test Pack 2: In-Person Events
+                </a>
+                <a href="#test-pack-3" class="nav-link" data-page="test_packs/test_pack_3">
+                    Test Pack 3: Virtual Events
+                </a>
+                <a href="#test-pack-4" class="nav-link" data-page="test_packs/test_pack_4">
+                    Test Pack 4: Volunteer Recruitment
+                </a>
+                <a href="#test-pack-5" class="nav-link" data-page="test_packs/test_pack_5">
+                    Test Pack 5: Student Attendance
+                </a>
+                <a href="#test-pack-6" class="nav-link" data-page="test_packs/test_pack_6">
+                    Test Pack 6: Reporting
+                </a>
+                <a href="#test-pack-7" class="nav-link" data-page="test_packs/test_pack_7">
+                    Test Pack 7: Data Integrity & Operations
+                </a>
+                <a href="#test-pack-8" class="nav-link" data-page="test_packs/test_pack_8">
+                    Test Pack 8: Tenant Management
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">User Guide</div>
+                <a href="#user-guide-index" class="nav-link" data-page="user_guide/index">
+                    User Guide Overview
+                </a>
+                <a href="#user-guide-in-person-events" class="nav-link" data-page="user_guide/in_person_events">
+                    In-Person Events
+                </a>
+                <a href="#user-guide-virtual-events" class="nav-link" data-page="user_guide/virtual_events">
+                    Virtual Events
+                </a>
+                <a href="#user-guide-volunteer-recruitment" class="nav-link"
+                    data-page="user_guide/volunteer_recruitment">
+                    Volunteer Recruitment
+                </a>
+                <a href="#user-guide-district-teacher-progress" class="nav-link"
+                    data-page="user_guide/district_teacher_progress">
+                    District & Teacher Progress
+                </a>
+                <a href="#user-guide-student-management" class="nav-link" data-page="user_guide/student_management">
+                    Student Management
+                </a>
+                <a href="#user-guide-reporting" class="nav-link" data-page="user_guide/reporting">
+                    Reporting
+                </a>
+                <a href="#user-guide-email-system" class="nav-link" data-page="user_guide/email_system">
+                    Email System
+                </a>
+                <a href="#user-guide-data-tracker" class="nav-link" data-page="user_guide/data_tracker">
+                    Data Tracker
+                </a>
+                <a href="#import-playbook" class="nav-link" data-page="import_playbook">
+                    Import Playbook
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reports</div>
+                <a href="#reports-index" class="nav-link" data-page="reports/index">
+                    Reports Overview
+                </a>
+                <a href="#reports-impact" class="nav-link" data-page="reports/impact">
+                    Impact & KPIs
+                </a>
+                <a href="#reports-volunteer-engagement" class="nav-link" data-page="reports/volunteer_engagement">
+                    Volunteer Engagement
+                </a>
+                <a href="#reports-partner-match" class="nav-link" data-page="reports/partner_match">
+                    Partner Match
+                </a>
+                <a href="#reports-ad-hoc" class="nav-link" data-page="reports/ad_hoc">
+                    Ad Hoc Queries
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technical</div>
+                <a href="#architecture" class="nav-link" data-page="architecture">
+                    System Architecture
+                </a>
+                <a href="#codebase-structure" class="nav-link" data-page="codebase_structure">
+                    Codebase Structure
+                </a>
+                <a href="#data-dictionary" class="nav-link" data-page="data_dictionary">
+                    Data Dictionary
+                </a>
+                <a href="#field-mappings" class="nav-link" data-page="field_mappings">
+                    Field Mappings
+                </a>
+                <a href="#contracts" class="nav-link" data-page="contracts">
+                    Integration Contracts
+                </a>
+                <a href="#metrics-bible" class="nav-link" data-page="metrics_bible">
+                    Metrics Bible
+                </a>
+                <a href="#api-reference" class="nav-link" data-page="api_reference">
+                    API Reference
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">District Suite</div>
+                <a href="#district-suite-phases" class="nav-link" data-page="district_suite_phases">
+                    Development Phases
+                </a>
+                <a href="#user-guide-tenant-management" class="nav-link" data-page="user_guide/tenant_management">
+                    Tenant Management Guide
+                </a>
+                <a href="#user-guide-district-self-service" class="nav-link"
+                    data-page="user_guide/district_self_service">
+                    District Self-Service Guide
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="#rbac-matrix" class="nav-link" data-page="rbac_matrix">
+                    RBAC Matrix
+                </a>
+                <a href="#privacy-data-handling" class="nav-link" data-page="privacy_data_handling">
+                    Privacy & Data Handling
+                </a>
+                <a href="#audit-requirements" class="nav-link" data-page="audit_requirements">
+                    Audit Requirements
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Operations</div>
+                <a href="#deployment" class="nav-link" data-page="deployment">
+                    Deployment Guide
+                </a>
+                <a href="#monitoring" class="nav-link" data-page="monitoring">
+                    Monitoring and Alert
+                </a>
+                <a href="#smoke-tests" class="nav-link" data-page="smoke_tests">
+                    Smoke Tests
+                </a>
+                <a href="#daily-import-scripts" class="nav-link" data-page="daily_import_scripts">
+                    Daily Import Scripts
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main>
+            <div id="content">
+                <!-- Content will be loaded here dynamically -->
+                <section class="loading">
+                    <h1>Loading...</h1>
+                    <p>Please wait while the documentation loads.</p>
+                </section>
             </div>
         </main>
     </div>
+
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <!-- Mermaid Diagram Support -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+        window.a me    </script>
     <script src="js/nav.js"></script>
 </body>
+
 </html>

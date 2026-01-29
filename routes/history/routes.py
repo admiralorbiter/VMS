@@ -834,6 +834,9 @@ def import_history_from_salesforce():
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} history records",
+                "processed_count": success_count,
+                "error_count": error_count,
+                "skipped_count": skipped_count,
                 "stats": {
                     "success": success_count,
                     "errors": error_count,

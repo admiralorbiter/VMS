@@ -44,12 +44,18 @@ Usage:
 
 from flask import render_template
 
+# District Suite Phase 2 - Public Event API (FR-API-101 to FR-API-108)
+from routes.api.public_events import public_api_bp
 from routes.attendance.routes import attendance
 from routes.auth.api import api_bp
 from routes.auth.routes import auth_bp
 from routes.bug_reports.routes import bug_reports_bp
 from routes.calendar.routes import calendar_bp
 from routes.client_projects.routes import client_projects_bp
+
+# District Suite Phase 2 - District Event Management
+from routes.district import district_bp
+from routes.email.routes import email_bp
 from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
@@ -59,6 +65,7 @@ from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
+from routes.tenants import tenants_bp
 
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
@@ -104,13 +111,17 @@ def init_routes(app):
     app.register_blueprint(management_bp)
     app.register_blueprint(cache_management_bp)
     app.register_blueprint(calendar_bp)
+    app.register_blueprint(tenants_bp)
+    app.register_blueprint(district_bp)  # District Suite Phase 2
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
+    app.register_blueprint(email_bp)
 
     app.register_blueprint(pathway_events_bp)
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(api_bp, url_prefix="/api/v1")
+    app.register_blueprint(public_api_bp)  # District Suite Public API
 
     @app.route("/")
     def index():

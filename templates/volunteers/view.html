@@ -98,7 +98,8 @@ Last Updated: 2024
                         <div class="alert alert-info" role="alert">
                             <i class="fas fa-chart-line"></i> <strong>Excluded from Reports</strong>
                             <p class="mb-0 mt-1">This volunteer is excluded from all reports and statistics.</p>
-                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="toggleExcludeFromReports({{ volunteer.id }}, false)">
+                            <button class="btn btn-sm btn-outline-primary mt-2"
+                                onclick="toggleExcludeFromReports({{ volunteer.id }}, false)">
                                 <i class="fas fa-eye"></i> Include in Reports
                             </button>
                         </div>
@@ -106,7 +107,8 @@ Last Updated: 2024
                         <div class="alert alert-warning" role="alert">
                             <i class="fas fa-chart-line"></i> <strong>Included in Reports</strong>
                             <p class="mb-0 mt-1">This volunteer is included in all reports and statistics.</p>
-                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="toggleExcludeFromReports({{ volunteer.id }}, true)">
+                            <button class="btn btn-sm btn-outline-danger mt-2"
+                                onclick="toggleExcludeFromReports({{ volunteer.id }}, true)">
                                 <i class="fas fa-eye-slash"></i> Exclude from Reports
                             </button>
                         </div>
@@ -118,7 +120,9 @@ Last Updated: 2024
                 {# Basic volunteer information #}
                 <div class="info-group">
                     <label>Full Name</label>
-                    <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{ volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if volunteer.suffix else '' }}</p>
+                    <p>{{ volunteer.salutation.value if volunteer.salutation else '' }} {{ volunteer.first_name }} {{
+                        volunteer.middle_name|default('') }} {{ volunteer.last_name }} {{ volunteer.suffix.value if
+                        volunteer.suffix else '' }}</p>
                 </div>
 
                 {% if volunteer.title %}
@@ -133,33 +137,39 @@ Last Updated: 2024
                     <label>Local Status</label>
                     <div class="local-status-container-prominent">
                         <div class="local-status-display-prominent" id="local-status-display-prominent">
-                            <span class="status-badge-large {{ volunteer.local_status.name if volunteer.local_status else 'unknown' }}">
+                            <span
+                                class="status-badge-large {{ volunteer.local_status.name if volunteer.local_status else 'unknown' }}">
                                 {% if volunteer.local_status and volunteer.local_status.name == 'local' %}
-                                    <i class="fa-solid fa-check-circle"></i>
-                                    <span>Local</span>
+                                <i class="fa-solid fa-check-circle"></i>
+                                <span>Local</span>
                                 {% elif volunteer.local_status and volunteer.local_status.name == 'partial' %}
-                                    <i class="fa-solid fa-adjust"></i>
-                                    <span>Partial</span>
+                                <i class="fa-solid fa-adjust"></i>
+                                <span>Partial</span>
                                 {% elif volunteer.local_status and volunteer.local_status.name == 'non_local' %}
-                                    <i class="fa-solid fa-times-circle"></i>
-                                    <span>Non-Local</span>
+                                <i class="fa-solid fa-times-circle"></i>
+                                <span>Non-Local</span>
                                 {% else %}
-                                    <i class="fa-solid fa-question-circle"></i>
-                                    <span>Unknown</span>
+                                <i class="fa-solid fa-question-circle"></i>
+                                <span>Unknown</span>
                                 {% endif %}
                             </span>
                         </div>
-                        <select id="local-status-select-prominent" class="local-status-select-prominent" onchange="updateLocalStatus({{ volunteer.id }}, this.value)">
-                            <option value="local" {% if volunteer.local_status and volunteer.local_status.name == 'local' %}selected{% endif %}>
+                        <select id="local-status-select-prominent" class="local-status-select-prominent"
+                            onchange="updateLocalStatus({{ volunteer.id }}, this.value)">
+                            <option value="local" {% if volunteer.local_status and volunteer.local_status.name=='local'
+                                %}selected{% endif %}>
                                 Local
                             </option>
-                            <option value="partial" {% if volunteer.local_status and volunteer.local_status.name == 'partial' %}selected{% endif %}>
+                            <option value="partial" {% if volunteer.local_status and
+                                volunteer.local_status.name=='partial' %}selected{% endif %}>
                                 Partial
                             </option>
-                            <option value="non_local" {% if volunteer.local_status and volunteer.local_status.name == 'non_local' %}selected{% endif %}>
+                            <option value="non_local" {% if volunteer.local_status and
+                                volunteer.local_status.name=='non_local' %}selected{% endif %}>
                                 Non-Local
                             </option>
-                            <option value="unknown" {% if not volunteer.local_status or volunteer.local_status.name == 'unknown' %}selected{% endif %}>
+                            <option value="unknown" {% if not volunteer.local_status or
+                                volunteer.local_status.name=='unknown' %}selected{% endif %}>
                                 Unknown
                             </option>
                         </select>
@@ -174,19 +184,19 @@ Last Updated: 2024
                         <div class="gender-badge {{ volunteer.gender.value if volunteer.gender else 'unknown' }}">
                             {# Gender-specific icons for visual identification #}
                             {% if volunteer.gender.value == 'Male' %}
-                                <i class="fa-solid fa-mars"></i>
+                            <i class="fa-solid fa-mars"></i>
                             {% elif volunteer.gender.value == 'Female' %}
-                                <i class="fa-solid fa-venus"></i>
+                            <i class="fa-solid fa-venus"></i>
                             {% elif volunteer.gender.value == 'Non-binary' %}
-                                <i class="fa-solid fa-venus-mars"></i>
+                            <i class="fa-solid fa-venus-mars"></i>
                             {% elif volunteer.gender.value == 'Genderfluid' %}
-                                <i class="fa-solid fa-transgender-alt"></i>
+                            <i class="fa-solid fa-transgender-alt"></i>
                             {% elif volunteer.gender.value == 'Agender' %}
-                                <i class="fa-solid fa-genderless"></i>
+                            <i class="fa-solid fa-genderless"></i>
                             {% elif volunteer.gender.value == 'Transgender' %}
-                                <i class="fa-solid fa-transgender"></i>
+                            <i class="fa-solid fa-transgender"></i>
                             {% else %}
-                                <i class="fa-solid fa-circle-question"></i>
+                            <i class="fa-solid fa-circle-question"></i>
                             {% endif %}
                             <span>{{ volunteer.gender.value if volunteer.gender else 'Not Specified' }}</span>
                         </div>
@@ -199,7 +209,8 @@ Last Updated: 2024
                         <label>Race/Ethnicity</label>
                         <div class="ethnicity-badge">
                             <i class="fa-solid fa-users"></i>
-                            <span>{{ volunteer.race_ethnicity.replace('_', ' ').title() if volunteer.race_ethnicity else 'Not Specified' }}</span>
+                            <span>{{ volunteer.race_ethnicity.replace('_', ' ').title() if volunteer.race_ethnicity else
+                                'Not Specified' }}</span>
                         </div>
                     </div>
                     {% endif %}
@@ -271,34 +282,34 @@ Last Updated: 2024
             <div class="card-content">
                 {# Organization affiliations #}
                 {% if volunteer.organizations %}
-                    <div class="info-group">
-                        <label>Organizations</label>
-                        <div class="organizations-list">
-                            {% for org in volunteer.organizations %}
-                                <div class="organization-item">
-                                    <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-name">
-                                        {{ org.name }}
-                                    </a>
-                                    {% set vol_org = org_relationships[org.id] %}
-                                    {% if vol_org and (vol_org.role or vol_org.status) %}
-                                        <div class="org-details">
-                                            {% if vol_org.role %}
-                                                <span class="org-role">{{ vol_org.role }}</span>
-                                            {% endif %}
-                                            {% if vol_org.status %}
-                                                <span class="org-status">{{ vol_org.status }}</span>
-                                            {% endif %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            {% endfor %}
+                <div class="info-group">
+                    <label>Organizations</label>
+                    <div class="organizations-list">
+                        {% for org in volunteer.organizations %}
+                        <div class="organization-item">
+                            <a href="{{ url_for('organizations.view_organization', id=org.id) }}" class="org-name">
+                                {{ org.name }}
+                            </a>
+                            {% set vol_org = org_relationships[org.id] %}
+                            {% if vol_org and (vol_org.role or vol_org.status) %}
+                            <div class="org-details">
+                                {% if vol_org.role %}
+                                <span class="org-role">{{ vol_org.role }}</span>
+                                {% endif %}
+                                {% if vol_org.status %}
+                                <span class="org-status">{{ vol_org.status }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                         </div>
+                        {% endfor %}
                     </div>
+                </div>
                 {% elif volunteer.organization_name %}
-                    <div class="info-group">
-                        <label>Organization</label>
-                        <p class="org-name">{{ volunteer.organization_name }}</p>
-                    </div>
+                <div class="info-group">
+                    <label>Organization</label>
+                    <p class="org-name">{{ volunteer.organization_name }}</p>
+                </div>
                 {% endif %}
 
                 <div class="demographics-row">
@@ -313,7 +324,8 @@ Last Updated: 2024
                 </div>
 
                 {# Email Activity #}
-                {% if volunteer.last_email_date or volunteer.last_non_internal_email_date or volunteer.last_mailchimp_activity_date %}
+                {% if volunteer.last_email_date or volunteer.last_non_internal_email_date or
+                volunteer.last_mailchimp_activity_date %}
                 <div class="info-group">
                     <label>Email Activity</label>
                     <div class="mailchimp-info">
@@ -322,7 +334,8 @@ Last Updated: 2024
                         <div class="activity-date">
                             <i class="fa-solid fa-envelope"></i>
                             <span>Last: {{ volunteer.last_email_date.strftime('%b %d, %Y') }}</span>
-                            <div class="days-ago {{ 'recent' if days_since_email <= 30 else 'moderate' if days_since_email <= 90 else 'old' }}">
+                            <div
+                                class="days-ago {{ 'recent' if days_since_email <= 30 else 'moderate' if days_since_email <= 90 else 'old' }}">
                                 {{ days_since_email }}d ago
                             </div>
                         </div>
@@ -348,7 +361,8 @@ Last Updated: 2024
                         </div>
                         <div class="stat-content">
                             <label>First</label>
-                            <p>{{ volunteer.first_volunteer_date.strftime('%m/%d/%y') if volunteer.first_volunteer_date else 'N/A' }}</p>
+                            <p>{{ volunteer.first_volunteer_date.strftime('%m/%d/%y') if volunteer.first_volunteer_date
+                                else 'N/A' }}</p>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -357,7 +371,8 @@ Last Updated: 2024
                         </div>
                         <div class="stat-content">
                             <label>Last</label>
-                            <p>{{ volunteer.last_volunteer_date.strftime('%m/%d/%y') if volunteer.last_volunteer_date else 'N/A' }}</p>
+                            <p>{{ volunteer.last_volunteer_date.strftime('%m/%d/%y') if volunteer.last_volunteer_date
+                                else 'N/A' }}</p>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -366,7 +381,8 @@ Last Updated: 2024
                         </div>
                         <div class="stat-content">
                             <label>Activity</label>
-                            <p>{{ volunteer.last_activity_date.strftime('%m/%d/%y') if volunteer.last_activity_date else 'Never' }}</p>
+                            <p>{{ volunteer.last_activity_date.strftime('%m/%d/%y') if volunteer.last_activity_date else
+                                'Never' }}</p>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -396,9 +412,9 @@ Last Updated: 2024
                     <label>Interests</label>
                     <div class="skills-list">
                         {% for interest in volunteer.interests.split(';') %}
-                            {% if interest.strip() %}
-                            <span class="skill-badge interest">{{ interest.strip() }}</span>
-                            {% endif %}
+                        {% if interest.strip() %}
+                        <span class="skill-badge interest">{{ interest.strip() }}</span>
+                        {% endif %}
                         {% endfor %}
                     </div>
                 </div>
@@ -429,7 +445,8 @@ Last Updated: 2024
                     <div class="info-group">
                         <label>Status</label>
                         <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
-                            {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription }}
+                            {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription
+                            }}
                         </span>
                     </div>
                     {% endif %}
@@ -452,7 +469,8 @@ Last Updated: 2024
                     {% if volunteer.connector.last_update_date %}
                     <div class="info-group">
                         <label>Last Update</label>
-                        <p>{{ volunteer.connector.last_update_date.strftime('%m/%d/%y') if volunteer.connector.last_update_date else 'N/A' }}</p>
+                        <p>{{ volunteer.connector.last_update_date.strftime('%m/%d/%y') if
+                            volunteer.connector.last_update_date else 'N/A' }}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -470,8 +488,7 @@ Last Updated: 2024
                     <label>Connector Profile</label>
                     <div class="connector-profile-link">
                         <a href="https://prepkc.nepris.com/app/user/{{ volunteer.connector.user_auth_id }}"
-                           target="_blank"
-                           class="btn btn-outline-primary btn-sm">
+                            target="_blank" class="btn btn-outline-primary btn-sm">
                             <i class="fa-solid fa-external-link-alt"></i>
                             View Profile
                         </a>
@@ -489,11 +506,99 @@ Last Updated: 2024
         </div>
         {% endif %}
 
+        {# Recruitment Notes Card #}
+        <div class="profile-card recruitment-notes-card">
+            <div class="card-header">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <h2>Recruitment Notes ({{ recruitment_notes|length if recruitment_notes else 0 }})</h2>
+            </div>
+            <div class="card-content">
+                {# Add Note Form #}
+                <form action="{{ url_for('volunteers.add_volunteer_note', volunteer_id=volunteer.id) }}" method="POST"
+                    class="note-form">
+                    <div class="form-group">
+                        <textarea name="note" id="note-text" class="form-control"
+                            placeholder="Add a recruitment note..." rows="3" required></textarea>
+                    </div>
+                    <div class="form-row mt-2">
+                        <div class="form-group" style="flex: 1;">
+                            <select name="outcome" id="note-outcome" class="form-control">
+                                <option value="general">General Note</option>
+                                <option value="interested">Interested</option>
+                                <option value="not_interested">Not Interested</option>
+                                <option value="callback">Callback Requested</option>
+                                <option value="no_answer">No Answer</option>
+                                <option value="left_message">Left Message</option>
+                                <option value="scheduled">Scheduled</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-plus"></i> Add Note
+                        </button>
+                    </div>
+                </form>
+
+                {# Notes Timeline #}
+                {% if recruitment_notes %}
+                <div class="notes-timeline mt-4">
+                    {% for note in recruitment_notes %}
+                    <div class="note-item" data-note-id="{{ note.id }}">
+                        <div class="note-header">
+                            <span class="note-outcome outcome-{{ note.outcome }}">
+                                {% if note.outcome == 'interested' %}
+                                <i class="fa-solid fa-thumbs-up"></i>
+                                {% elif note.outcome == 'not_interested' %}
+                                <i class="fa-solid fa-thumbs-down"></i>
+                                {% elif note.outcome == 'callback' %}
+                                <i class="fa-solid fa-phone-arrow-up-right"></i>
+                                {% elif note.outcome == 'no_answer' %}
+                                <i class="fa-solid fa-phone-slash"></i>
+                                {% elif note.outcome == 'left_message' %}
+                                <i class="fa-solid fa-voicemail"></i>
+                                {% elif note.outcome == 'scheduled' %}
+                                <i class="fa-solid fa-calendar-check"></i>
+                                {% else %}
+                                <i class="fa-solid fa-note-sticky"></i>
+                                {% endif %}
+                                {{ note.outcome_label }}
+                            </span>
+                            <span class="note-date">
+                                <i class="fa-regular fa-clock"></i>
+                                {{ note.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                            </span>
+                        </div>
+                        <div class="note-content">
+                            {{ note.note }}
+                        </div>
+                        <div class="note-footer">
+                            <span class="note-author">
+                                <i class="fa-solid fa-user"></i>
+                                {{ note.created_by_user.first_name if note.created_by_user else 'Unknown' }}
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-note-btn"
+                                onclick="deleteRecruitmentNote({{ volunteer.id }}, {{ note.id }})">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-notes-message mt-3">
+                    <i class="fa-solid fa-clipboard fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No recruitment notes yet. Add one above!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         {# Event Participation History - Compact #}
         <div class="profile-card participation-card">
             <div class="card-header">
                 <i class="fa-solid fa-calendar-check"></i>
-                <h2>Event Participation ({{ participation_stats['Attended']|length + participation_stats['No-Show']|length + participation_stats['Cancelled']|length + participation_stats['Scheduled']|length }} total)</h2>
+                <h2>Event Participation ({{ participation_stats['Attended']|length +
+                    participation_stats['No-Show']|length + participation_stats['Cancelled']|length +
+                    participation_stats['Scheduled']|length }} total)</h2>
             </div>
             <div class="card-content">
                 <div class="participation-tabs">
@@ -516,11 +621,47 @@ Last Updated: 2024
                 </div>
 
                 {% for status, events in participation_stats.items() %}
-                <div class="event-list" data-status="{{ status }}" {% if not loop.first %}style="display: none;"{% endif %}>
+                <div class="event-list" data-status="{{ status }}" {% if not loop.first %}style="display: none;" {%
+                    endif %}>
                     {% if events %}
-                        <div class="event-items-container">
-                            {% for event in events[:5] %}  {# Show only first 5 events initially #}
-                            <div class="event-item event-item-initial">
+                    <div class="event-items-container">
+                        {% for event in events[:5] %} {# Show only first 5 events initially #}
+                        <div class="event-item event-item-initial">
+                            <div class="event-date">
+                                <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
+                                <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
+                            </div>
+                            <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
+                                <div class="event-title">{{ event.event.title }}</div>
+                                <div class="event-details">
+                                    <span class="event-type-badge {{ event.event.type|replace('_', '-') }}">
+                                        {% if event.event.type == 'virtual_session' %}
+                                        <i class="fa-solid fa-video"></i> Virtual
+                                        {% elif event.event.type == 'in_person' %}
+                                        <i class="fa-solid fa-user-group"></i> In-Person
+                                        {% else %}
+                                        <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', '
+                                        ').title() }}
+                                        {% endif %}
+                                    </span>
+                                    <!-- Debug: Show the actual status being used -->
+                                    <span class="debug-status"
+                                        style="font-size: 0.7em; color: #666; margin-left: 0.5rem;">
+                                        ({{ status }})
+                                    </span>
+                                </div>
+                            </a>
+                            {% if event.delivery_hours %}
+                            <div class="event-hours">{{ event.delivery_hours }}h</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        {% if events|length > 5 %}
+                        {# Hidden events that will be shown when expanded #}
+                        <div class="event-items-hidden" style="display: none;">
+                            {% for event in events[5:] %} {# Show remaining events #}
+                            <div class="event-item event-item-additional">
                                 <div class="event-date">
                                     <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
                                     <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
@@ -530,15 +671,17 @@ Last Updated: 2024
                                     <div class="event-details">
                                         <span class="event-type-badge {{ event.event.type|replace('_', '-') }}">
                                             {% if event.event.type == 'virtual_session' %}
-                                                <i class="fa-solid fa-video"></i> Virtual
+                                            <i class="fa-solid fa-video"></i> Virtual
                                             {% elif event.event.type == 'in_person' %}
-                                                <i class="fa-solid fa-user-group"></i> In-Person
+                                            <i class="fa-solid fa-user-group"></i> In-Person
                                             {% else %}
-                                                <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
+                                            <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', '
+                                            ').title() }}
                                             {% endif %}
                                         </span>
                                         <!-- Debug: Show the actual status being used -->
-                                        <span class="debug-status" style="font-size: 0.7em; color: #666; margin-left: 0.5rem;">
+                                        <span class="debug-status"
+                                            style="font-size: 0.7em; color: #666; margin-left: 0.5rem;">
                                             ({{ status }})
                                         </span>
                                     </div>
@@ -548,49 +691,16 @@ Last Updated: 2024
                                 {% endif %}
                             </div>
                             {% endfor %}
-
-                            {% if events|length > 5 %}
-                            {# Hidden events that will be shown when expanded #}
-                            <div class="event-items-hidden" style="display: none;">
-                                {% for event in events[5:] %}  {# Show remaining events #}
-                                <div class="event-item event-item-additional">
-                                    <div class="event-date">
-                                        <div class="event-date-day">{{ event.date.strftime('%d') }}</div>
-                                        <div class="event-date-month">{{ event.date.strftime('%b %Y') }}</div>
-                                    </div>
-                                    <a href="{{ url_for('events.view_event', id=event.event.id) }}" class="event-info">
-                                        <div class="event-title">{{ event.event.title }}</div>
-                                        <div class="event-details">
-                                            <span class="event-type-badge {{ event.event.type|replace('_', '-') }}">
-                                                {% if event.event.type == 'virtual_session' %}
-                                                    <i class="fa-solid fa-video"></i> Virtual
-                                                {% elif event.event.type == 'in_person' %}
-                                                    <i class="fa-solid fa-user-group"></i> In-Person
-                                                {% else %}
-                                                    <i class="fa-solid fa-calendar-day"></i> {{ event.event.type.replace('_', ' ').title() }}
-                                                {% endif %}
-                                            </span>
-                                            <!-- Debug: Show the actual status being used -->
-                                            <span class="debug-status" style="font-size: 0.7em; color: #666; margin-left: 0.5rem;">
-                                                ({{ status }})
-                                            </span>
-                                        </div>
-                                    </a>
-                                    {% if event.delivery_hours %}
-                                    <div class="event-hours">{{ event.delivery_hours }}h</div>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
-
-                            <button class="show-more-btn" onclick="toggleEventExpansion('{{ status }}', this)">
-                                <i class="fa-solid fa-chevron-down"></i>
-                                Show {{ events|length - 5 }} more events
-                            </button>
-                            {% endif %}
                         </div>
+
+                        <button class="show-more-btn" onclick="toggleEventExpansion('{{ status }}', this)">
+                            <i class="fa-solid fa-chevron-down"></i>
+                            Show {{ events|length - 5 }} more events
+                        </button>
+                        {% endif %}
+                    </div>
                     {% else %}
-                        <p class="no-events">No {{ status.lower() }} events found.</p>
+                    <p class="no-events">No {{ status.lower() }} events found.</p>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -613,113 +723,116 @@ Last Updated: 2024
     <div class="history-section-content" id="history-content" style="display: none;">
         <div class="history-container">
             {% if histories and histories|length > 0 %}
-                <div class="history-filters">
-                    <div class="history-filter active" data-type="all">
-                        <i class="fa-solid fa-list"></i>
-                        <span>All ({{ histories|length }})</span>
-                    </div>
-                    <div class="history-filter" data-type="Email">
-                        <i class="fa-solid fa-envelope"></i>
-                        <span>Email</span>
-                    </div>
-                    <div class="history-filter" data-type="Call">
-                        <i class="fa-solid fa-phone"></i>
-                        <span>Call</span>
-                    </div>
-                    <div class="history-filter" data-type="Meeting">
-                        <i class="fa-solid fa-handshake"></i>
-                        <span>Meeting</span>
-                    </div>
+            <div class="history-filters">
+                <div class="history-filter active" data-type="all">
+                    <i class="fa-solid fa-list"></i>
+                    <span>All ({{ histories|length }})</span>
                 </div>
+                <div class="history-filter" data-type="Email">
+                    <i class="fa-solid fa-envelope"></i>
+                    <span>Email</span>
+                </div>
+                <div class="history-filter" data-type="Call">
+                    <i class="fa-solid fa-phone"></i>
+                    <span>Call</span>
+                </div>
+                <div class="history-filter" data-type="Meeting">
+                    <i class="fa-solid fa-handshake"></i>
+                    <span>Meeting</span>
+                </div>
+            </div>
 
-                <div class="history-timeline">
-                    {% for history in histories %}
-                    {% set inferred_type = history.activity_type or (history.summary.split(':')[0] if history.summary and ':' in history.summary else 'Other') %}
-                    <div class="history-item" data-type="{{ inferred_type }}">
-                        <div class="history-header">
-                            <span class="history-date">
-                                <i class="fa-regular fa-calendar"></i>
-                                {{ history.activity_date.strftime('%m/%d/%y') if history.activity_date else 'N/A' }}
-                            </span>
-                            <span class="history-status">
-                                {{ history.activity_status }}
-                            </span>
-                        </div>
-                        {% if history.summary %}
-                        <div class="history-summary">{{ history.summary }}</div>
-                        {% endif %}
-                        {% if history.description and history.activity_type == 'Email' %}
-                        <div class="history-email-content">
-                            <div class="email-preview" onclick="toggleEmailContent(this)">
-                                <div class="email-preview-header">
-                                    <div class="email-preview-icon">
-                                        <i class="fa-solid fa-envelope"></i>
-                                    </div>
-                                    <div class="email-preview-info">
-                                        {% set email_lines = history.description.split('\n') %}
-                                        {% set subject_line = '' %}
-                                        {% set to_line = '' %}
-                                        {% for line in email_lines[:5] %}
-                                            {% if line.strip().startswith('Subject:') %}
-                                                {% set subject_line = line.strip()[8:].strip() %}
-                                            {% elif line.strip().startswith('To:') %}
-                                                {% set to_line = line.strip()[3:].strip() %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        <h4 class="email-preview-subject">{{ subject_line or 'No Subject' }}</h4>
-                                        <p class="email-preview-meta">
-                                            <i class="fa-solid fa-user"></i> {{ to_line or 'Unknown Recipient' }}
-                                            <span style="margin-left: 1rem;">
-                                                <i class="fa-solid fa-clock"></i> {{ history.activity_date.strftime('%m/%d/%Y at %I:%M %p') if history.activity_date else 'Unknown Date' }}
-                                            </span>
-                                        </p>
-                                    </div>
+            <div class="history-timeline">
+                {% for history in histories %}
+                {% set inferred_type = history.activity_type or (history.summary.split(':')[0] if history.summary and
+                ':' in history.summary else 'Other') %}
+                <div class="history-item" data-type="{{ inferred_type }}">
+                    <div class="history-header">
+                        <span class="history-date">
+                            <i class="fa-regular fa-calendar"></i>
+                            {{ history.activity_date.strftime('%m/%d/%y') if history.activity_date else 'N/A' }}
+                        </span>
+                        <span class="history-status">
+                            {{ history.activity_status }}
+                        </span>
+                    </div>
+                    {% if history.summary %}
+                    <div class="history-summary">{{ history.summary }}</div>
+                    {% endif %}
+                    {% if history.description and history.activity_type == 'Email' %}
+                    <div class="history-email-content">
+                        <div class="email-preview" onclick="toggleEmailContent(this)">
+                            <div class="email-preview-header">
+                                <div class="email-preview-icon">
+                                    <i class="fa-solid fa-envelope"></i>
                                 </div>
-                                <div class="email-preview-text">
-                                    {% set preview_text = history.description[:200] %}
-                                    {{ preview_text }}{% if history.description|length > 200 %}...{% endif %}
+                                <div class="email-preview-info">
+                                    {% set email_lines = history.description.split('\n') %}
+                                    {% set subject_line = '' %}
+                                    {% set to_line = '' %}
+                                    {% for line in email_lines[:5] %}
+                                    {% if line.strip().startswith('Subject:') %}
+                                    {% set subject_line = line.strip()[8:].strip() %}
+                                    {% elif line.strip().startswith('To:') %}
+                                    {% set to_line = line.strip()[3:].strip() %}
+                                    {% endif %}
+                                    {% endfor %}
+                                    <h4 class="email-preview-subject">{{ subject_line or 'No Subject' }}</h4>
+                                    <p class="email-preview-meta">
+                                        <i class="fa-solid fa-user"></i> {{ to_line or 'Unknown Recipient' }}
+                                        <span style="margin-left: 1rem;">
+                                            <i class="fa-solid fa-clock"></i> {{
+                                            history.activity_date.strftime('%m/%d/%Y at %I:%M %p') if
+                                            history.activity_date else 'Unknown Date' }}
+                                        </span>
+                                    </p>
                                 </div>
                             </div>
-                            {% if history.description|length > 300 %}
-                            <button class="email-toggle-btn" onclick="toggleEmailContent(this)">
-                                <i class="fa-solid fa-chevron-down"></i> Show Full Email
-                            </button>
-                            <div class="full-email-content" style="display: none;">
-                                <div class="email-content-container">
-                                    <div class="email-body">
-                                        <div class="email-simple-content">
-                                            {{ history.description | replace('\n', '<br>') | safe }}
-                                        </div>
+                            <div class="email-preview-text">
+                                {% set preview_text = history.description[:200] %}
+                                {{ preview_text }}{% if history.description|length > 200 %}...{% endif %}
+                            </div>
+                        </div>
+                        {% if history.description|length > 300 %}
+                        <button class="email-toggle-btn" onclick="toggleEmailContent(this)">
+                            <i class="fa-solid fa-chevron-down"></i> Show Full Email
+                        </button>
+                        <div class="full-email-content" style="display: none;">
+                            <div class="email-content-container">
+                                <div class="email-body">
+                                    <div class="email-simple-content">
+                                        {{ history.description | replace('\n', '<br>') | safe }}
                                     </div>
                                 </div>
-                                <div class="email-actions">
-                                    <button class="email-action-btn">
-                                        <i class="fa-solid fa-reply"></i> Reply
-                                    </button>
-                                    <button class="email-action-btn">
-                                        <i class="fa-solid fa-share"></i> Forward
-                                    </button>
-                                    <button class="email-toggle-btn secondary" onclick="toggleEmailContent(this)">
-                                        <i class="fa-solid fa-chevron-up"></i> Show Less
-                                    </button>
-                                </div>
                             </div>
-                            {% endif %}
+                            <div class="email-actions">
+                                <button class="email-action-btn">
+                                    <i class="fa-solid fa-reply"></i> Reply
+                                </button>
+                                <button class="email-action-btn">
+                                    <i class="fa-solid fa-share"></i> Forward
+                                </button>
+                                <button class="email-toggle-btn secondary" onclick="toggleEmailContent(this)">
+                                    <i class="fa-solid fa-chevron-up"></i> Show Less
+                                </button>
+                            </div>
                         </div>
-                        {% elif history.description %}
-                        <div class="history-description">{{ history.description }}</div>
                         {% endif %}
                     </div>
-                    {% endfor %}
+                    {% elif history.description %}
+                    <div class="history-description">{{ history.description }}</div>
+                    {% endif %}
                 </div>
+                {% endfor %}
+            </div>
             {% else %}
-                <div class="no-history-message">
-                    <div class="text-center py-4">
-                        <i class="fa-solid fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No communication history found for this volunteer.</p>
-                        <p class="text-muted small">History records will appear here when communications are logged.</p>
-                    </div>
+            <div class="no-history-message">
+                <div class="text-center py-4">
+                    <i class="fa-solid fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No communication history found for this volunteer.</p>
+                    <p class="text-muted small">History records will appear here when communications are logged.</p>
                 </div>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -732,99 +845,140 @@ Last Updated: 2024
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/volunteers.js') }}"></script>
 <script>
-function toggleExcludeFromReports(volunteerId, exclude) {
-    fetch(`/volunteers/toggle-exclude-reports/${volunteerId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            exclude_from_reports: exclude
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Reload the page to show the updated status
-            window.location.reload();
-        } else {
-            alert('Error updating volunteer status: ' + data.message);
+    // Recruitment Notes Management
+    function deleteRecruitmentNote(volunteerId, noteId) {
+        if (!confirm('Are you sure you want to delete this note?')) {
+            return;
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating volunteer status');
-    });
-}
 
-function updateLocalStatus(volunteerId, newStatus) {
-    // Show loading state
-    const select = document.getElementById('local-status-select-prominent');
-    const display = document.getElementById('local-status-display-prominent');
-    const originalValue = select.value;
-
-    // Disable select during update
-    select.disabled = true;
-    display.innerHTML = '<span class="status-badge-large loading"><i class="fa-solid fa-spinner fa-spin"></i> Updating...</span>';
-
-    fetch(`/volunteers/update-local-status/${volunteerId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            local_status: newStatus
+        fetch(`/volunteers/${volunteerId}/notes/${noteId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update the display with new status
-            updateLocalStatusDisplay(newStatus);
-            // Show success message briefly
-            showStatusMessage('Local status updated successfully!', 'success');
-        } else {
-            // Revert select to original value
-            select.value = originalValue;
-            alert('Error updating local status: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        // Revert select to original value
-        select.value = originalValue;
-        alert('Error updating local status');
-    })
-    .finally(() => {
-        // Re-enable select
-        select.disabled = false;
-    });
-}
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove the note element from DOM
+                    const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+                    if (noteElement) {
+                        noteElement.remove();
+                    }
+                    // Update the note count in the header
+                    const header = document.querySelector('.recruitment-notes-card .card-header h2');
+                    if (header) {
+                        const currentText = header.textContent;
+                        const match = currentText.match(/\((\d+)\)/);
+                        if (match) {
+                            const newCount = parseInt(match[1]) - 1;
+                            header.textContent = currentText.replace(/\(\d+\)/, `(${newCount})`);
+                        }
+                    }
+                    showStatusMessage('Note deleted successfully!', 'success');
+                } else {
+                    alert('Error deleting note: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting note');
+            });
+    }
 
-function updateLocalStatusDisplay(status) {
-    const display = document.getElementById('local-status-display-prominent');
-    const statusMap = {
-        'local': { icon: 'fa-check-circle', text: 'Local', class: 'local' },
-        'partial': { icon: 'fa-adjust', text: 'Partial', class: 'partial' },
-        'non_local': { icon: 'fa-times-circle', text: 'Non-Local', class: 'non_local' },
-        'unknown': { icon: 'fa-question-circle', text: 'Unknown', class: 'unknown' }
-    };
+    function toggleExcludeFromReports(volunteerId, exclude) {
+        fetch(`/volunteers/toggle-exclude-reports/${volunteerId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                exclude_from_reports: exclude
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show the updated status
+                    window.location.reload();
+                } else {
+                    alert('Error updating volunteer status: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating volunteer status');
+            });
+    }
 
-    const statusInfo = statusMap[status] || statusMap['unknown'];
-    display.innerHTML = `
+    function updateLocalStatus(volunteerId, newStatus) {
+        // Show loading state
+        const select = document.getElementById('local-status-select-prominent');
+        const display = document.getElementById('local-status-display-prominent');
+        const originalValue = select.value;
+
+        // Disable select during update
+        select.disabled = true;
+        display.innerHTML = '<span class="status-badge-large loading"><i class="fa-solid fa-spinner fa-spin"></i> Updating...</span>';
+
+        fetch(`/volunteers/update-local-status/${volunteerId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                local_status: newStatus
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the display with new status
+                    updateLocalStatusDisplay(newStatus);
+                    // Show success message briefly
+                    showStatusMessage('Local status updated successfully!', 'success');
+                } else {
+                    // Revert select to original value
+                    select.value = originalValue;
+                    alert('Error updating local status: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Revert select to original value
+                select.value = originalValue;
+                alert('Error updating local status');
+            })
+            .finally(() => {
+                // Re-enable select
+                select.disabled = false;
+            });
+    }
+
+    function updateLocalStatusDisplay(status) {
+        const display = document.getElementById('local-status-display-prominent');
+        const statusMap = {
+            'local': { icon: 'fa-check-circle', text: 'Local', class: 'local' },
+            'partial': { icon: 'fa-adjust', text: 'Partial', class: 'partial' },
+            'non_local': { icon: 'fa-times-circle', text: 'Non-Local', class: 'non_local' },
+            'unknown': { icon: 'fa-question-circle', text: 'Unknown', class: 'unknown' }
+        };
+
+        const statusInfo = statusMap[status] || statusMap['unknown'];
+        display.innerHTML = `
         <span class="status-badge-large ${statusInfo.class}">
             <i class="fa-solid ${statusInfo.icon}"></i>
             <span>${statusInfo.text}</span>
         </span>
     `;
-}
+    }
 
-function showStatusMessage(message, type) {
-    // Create a temporary message element
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `status-message ${type}`;
-    messageDiv.innerHTML = `<i class="fa-solid fa-check-circle"></i> ${message}`;
-    messageDiv.style.cssText = `
+    function showStatusMessage(message, type) {
+        // Create a temporary message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `status-message ${type}`;
+        messageDiv.innerHTML = `<i class="fa-solid fa-check-circle"></i> ${message}`;
+        messageDiv.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
@@ -838,180 +992,180 @@ function showStatusMessage(message, type) {
         border: 1px solid ${type === 'success' ? '#c3e6cb' : '#f5c6cb'};
     `;
 
-    document.body.appendChild(messageDiv);
+        document.body.appendChild(messageDiv);
 
-    // Remove after 3 seconds
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.parentNode.removeChild(messageDiv);
-        }
-    }, 3000);
-}
-
-function toggleExcludeControls() {
-    const excludeControls = document.getElementById('exclude-controls');
-    const adminControls = document.querySelector('.admin-controls');
-    const toggleButton = adminControls.querySelector('button');
-
-    if (excludeControls.style.display === 'none' || excludeControls.style.display === '') {
-        excludeControls.style.display = 'block';
-        toggleButton.innerHTML = '<i class="fas fa-xmark"></i> Hide Admin Controls';
-        toggleButton.classList.remove('btn-outline-secondary');
-        toggleButton.classList.add('btn-outline-danger');
-    } else {
-        excludeControls.style.display = 'none';
-        toggleButton.innerHTML = '<i class="fas fa-cog"></i> Admin: Manage Report Exclusion';
-        toggleButton.classList.remove('btn-outline-danger');
-        toggleButton.classList.add('btn-outline-secondary');
-    }
-}
-
-function toggleEmailContent(element) {
-    const historyItem = element.closest('.history-item');
-    const fullContent = historyItem.querySelector('.full-email-content');
-    const preview = historyItem.querySelector('.email-preview');
-    const toggleButton = historyItem.querySelector('.email-toggle-btn:not(.secondary)');
-    const showLessButton = historyItem.querySelector('.email-toggle-btn.secondary');
-
-    if (fullContent && fullContent.style.display === 'none' || fullContent.style.display === '') {
-        // Show full content
-        fullContent.style.display = 'block';
-        preview.style.display = 'none';
-        if (toggleButton) toggleButton.style.display = 'none';
-        if (showLessButton) showLessButton.style.display = 'inline-flex';
-
-        // Add smooth animation
-        fullContent.style.opacity = '0';
-        fullContent.style.transform = 'translateY(-10px)';
+        // Remove after 3 seconds
         setTimeout(() => {
-            fullContent.style.transition = 'all 0.3s ease';
-            fullContent.style.opacity = '1';
-            fullContent.style.transform = 'translateY(0)';
-        }, 10);
-    } else {
-        // Hide full content
-        if (fullContent) {
-            fullContent.style.transition = 'all 0.3s ease';
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 3000);
+    }
+
+    function toggleExcludeControls() {
+        const excludeControls = document.getElementById('exclude-controls');
+        const adminControls = document.querySelector('.admin-controls');
+        const toggleButton = adminControls.querySelector('button');
+
+        if (excludeControls.style.display === 'none' || excludeControls.style.display === '') {
+            excludeControls.style.display = 'block';
+            toggleButton.innerHTML = '<i class="fas fa-xmark"></i> Hide Admin Controls';
+            toggleButton.classList.remove('btn-outline-secondary');
+            toggleButton.classList.add('btn-outline-danger');
+        } else {
+            excludeControls.style.display = 'none';
+            toggleButton.innerHTML = '<i class="fas fa-cog"></i> Admin: Manage Report Exclusion';
+            toggleButton.classList.remove('btn-outline-danger');
+            toggleButton.classList.add('btn-outline-secondary');
+        }
+    }
+
+    function toggleEmailContent(element) {
+        const historyItem = element.closest('.history-item');
+        const fullContent = historyItem.querySelector('.full-email-content');
+        const preview = historyItem.querySelector('.email-preview');
+        const toggleButton = historyItem.querySelector('.email-toggle-btn:not(.secondary)');
+        const showLessButton = historyItem.querySelector('.email-toggle-btn.secondary');
+
+        if (fullContent && fullContent.style.display === 'none' || fullContent.style.display === '') {
+            // Show full content
+            fullContent.style.display = 'block';
+            preview.style.display = 'none';
+            if (toggleButton) toggleButton.style.display = 'none';
+            if (showLessButton) showLessButton.style.display = 'inline-flex';
+
+            // Add smooth animation
             fullContent.style.opacity = '0';
             fullContent.style.transform = 'translateY(-10px)';
             setTimeout(() => {
-                fullContent.style.display = 'none';
-                preview.style.display = 'block';
-                if (toggleButton) toggleButton.style.display = 'inline-flex';
-                if (showLessButton) showLessButton.style.display = 'none';
-            }, 300);
-        }
-    }
-}
-
-function toggleHistorySection() {
-    const content = document.getElementById('history-content');
-    const icon = document.getElementById('history-toggle-icon');
-
-    if (content && icon) {
-        if (content.style.display === 'none') {
-            content.style.display = 'block';
-            icon.className = 'fa-solid fa-chevron-up';
+                fullContent.style.transition = 'all 0.3s ease';
+                fullContent.style.opacity = '1';
+                fullContent.style.transform = 'translateY(0)';
+            }, 10);
         } else {
-            content.style.display = 'none';
-            icon.className = 'fa-solid fa-chevron-down';
-        }
-    }
-}
-
-function updateFilterCounts(activeFilter = 'all') {
-    console.log('updateFilterCounts called with filter:', activeFilter);
-    const historyItems = document.querySelectorAll('.history-item');
-    const filters = document.querySelectorAll('.history-filter');
-
-    console.log('Found history items:', historyItems.length);
-    console.log('Found filters:', filters.length);
-
-    // Count visible items for each type
-    const counts = {
-        'all': historyItems.length,
-        'Email': 0,
-        'Call': 0,
-        'Meeting': 0
-    };
-
-    historyItems.forEach(item => {
-        const type = item.dataset.type;
-        console.log('History item type:', type);
-        // Handle both exact matches and inferred types
-        if (counts.hasOwnProperty(type)) {
-            counts[type]++;
-        } else if (type && type.includes('Email')) {
-            counts['Email']++;
-        } else if (type && type.includes('Call')) {
-            counts['Call']++;
-        } else if (type && type.includes('Meeting')) {
-            counts['Meeting']++;
-        }
-    });
-
-    console.log('Counts:', counts);
-
-    // Update filter labels
-    filters.forEach(filter => {
-        const type = filter.dataset.type;
-        const count = counts[type] || 0;
-        const span = filter.querySelector('span');
-        if (span) {
-            if (type === 'all') {
-                span.textContent = `All (${count})`;
-            } else {
-                span.textContent = `${type} (${count})`;
+            // Hide full content
+            if (fullContent) {
+                fullContent.style.transition = 'all 0.3s ease';
+                fullContent.style.opacity = '0';
+                fullContent.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    fullContent.style.display = 'none';
+                    preview.style.display = 'block';
+                    if (toggleButton) toggleButton.style.display = 'inline-flex';
+                    if (showLessButton) showLessButton.style.display = 'none';
+                }, 300);
             }
         }
-    });
-}
+    }
 
-// Initialize history filters when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing filters...');
-    const filters = document.querySelectorAll('.history-filter');
-    const historyItems = document.querySelectorAll('.history-item');
+    function toggleHistorySection() {
+        const content = document.getElementById('history-content');
+        const icon = document.getElementById('history-toggle-icon');
 
-    console.log('Found filters:', filters.length);
-    console.log('Found history items:', historyItems.length);
+        if (content && icon) {
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.className = 'fa-solid fa-chevron-up';
+            } else {
+                content.style.display = 'none';
+                icon.className = 'fa-solid fa-chevron-down';
+            }
+        }
+    }
 
-    // Initialize filter counts
-    updateFilterCounts();
+    function updateFilterCounts(activeFilter = 'all') {
+        console.log('updateFilterCounts called with filter:', activeFilter);
+        const historyItems = document.querySelectorAll('.history-item');
+        const filters = document.querySelectorAll('.history-filter');
 
-    filters.forEach(filter => {
-        filter.addEventListener('click', function() {
-            const filterType = this.dataset.type;
-            console.log('Filter clicked:', filterType);
+        console.log('Found history items:', historyItems.length);
+        console.log('Found filters:', filters.length);
 
-            // Update active filter
-            filters.forEach(f => f.classList.remove('active'));
-            this.classList.add('active');
+        // Count visible items for each type
+        const counts = {
+            'all': historyItems.length,
+            'Email': 0,
+            'Call': 0,
+            'Meeting': 0
+        };
 
-            // Filter history items
-            historyItems.forEach(item => {
-                const itemType = item.dataset.type;
-                let shouldShow = false;
+        historyItems.forEach(item => {
+            const type = item.dataset.type;
+            console.log('History item type:', type);
+            // Handle both exact matches and inferred types
+            if (counts.hasOwnProperty(type)) {
+                counts[type]++;
+            } else if (type && type.includes('Email')) {
+                counts['Email']++;
+            } else if (type && type.includes('Call')) {
+                counts['Call']++;
+            } else if (type && type.includes('Meeting')) {
+                counts['Meeting']++;
+            }
+        });
 
-                if (filterType === 'all') {
-                    shouldShow = true;
-                } else if (filterType === 'Email' && (itemType === 'Email' || itemType.includes('Email'))) {
-                    shouldShow = true;
-                } else if (filterType === 'Call' && (itemType === 'Call' || itemType.includes('Call'))) {
-                    shouldShow = true;
-                } else if (filterType === 'Meeting' && (itemType === 'Meeting' || itemType.includes('Meeting'))) {
-                    shouldShow = true;
-                } else if (itemType === filterType) {
-                    shouldShow = true;
+        console.log('Counts:', counts);
+
+        // Update filter labels
+        filters.forEach(filter => {
+            const type = filter.dataset.type;
+            const count = counts[type] || 0;
+            const span = filter.querySelector('span');
+            if (span) {
+                if (type === 'all') {
+                    span.textContent = `All (${count})`;
+                } else {
+                    span.textContent = `${type} (${count})`;
                 }
+            }
+        });
+    }
 
-                item.style.display = shouldShow ? 'block' : 'none';
+    // Initialize history filters when the page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded, initializing filters...');
+        const filters = document.querySelectorAll('.history-filter');
+        const historyItems = document.querySelectorAll('.history-item');
+
+        console.log('Found filters:', filters.length);
+        console.log('Found history items:', historyItems.length);
+
+        // Initialize filter counts
+        updateFilterCounts();
+
+        filters.forEach(filter => {
+            filter.addEventListener('click', function () {
+                const filterType = this.dataset.type;
+                console.log('Filter clicked:', filterType);
+
+                // Update active filter
+                filters.forEach(f => f.classList.remove('active'));
+                this.classList.add('active');
+
+                // Filter history items
+                historyItems.forEach(item => {
+                    const itemType = item.dataset.type;
+                    let shouldShow = false;
+
+                    if (filterType === 'all') {
+                        shouldShow = true;
+                    } else if (filterType === 'Email' && (itemType === 'Email' || itemType.includes('Email'))) {
+                        shouldShow = true;
+                    } else if (filterType === 'Call' && (itemType === 'Call' || itemType.includes('Call'))) {
+                        shouldShow = true;
+                    } else if (filterType === 'Meeting' && (itemType === 'Meeting' || itemType.includes('Meeting'))) {
+                        shouldShow = true;
+                    } else if (itemType === filterType) {
+                        shouldShow = true;
+                    }
+
+                    item.style.display = shouldShow ? 'block' : 'none';
+                });
+
+                // Update filter counts
+                updateFilterCounts(filterType);
             });
-
-            // Update filter counts
-            updateFilterCounts(filterType);
         });
     });
-});
 </script>
 {% endblock %}

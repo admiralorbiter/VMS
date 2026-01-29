@@ -1,0 +1,401 @@
+{# District Issue Reporter FAB Partial #}
+{#
+    Required template variables:
+    - district_name: District name
+    - current_filters: Dict with 'year', 'date_from', 'date_to' (or provide date_from, date_to, year directly)
+#}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/issue_report_fab.css') }}">
+
+{# Extract date values from current_filters if available, otherwise use direct variables #}
+{% set date_from = current_filters.date_from.strftime('%Y-%m-%d') if current_filters and current_filters.date_from else (date_from if date_from else '') %}
+{% set date_to = current_filters.date_to.strftime('%Y-%m-%d') if current_filters and current_filters.date_to else (date_to if date_to else '') %}
+{% set year = current_filters.year if current_filters and current_filters.year else (year if year else '') %}
+
+{# Floating Action Button #}
+<button class="issue-fab" id="issue-fab-btn" title="Report an Issue">
+    <i class="fas fa-exclamation-triangle"></i>
+</button>
+
+{# Modal #}
+<div class="issue-modal" id="issue-modal">
+    <div class="issue-modal-content">
+        <div class="issue-modal-header">
+            <h2>Report Data Issue</h2>
+            <button class="issue-modal-close" id="issue-modal-close">&times;</button>
+        </div>
+        <div class="issue-modal-body">
+            <form id="issue-report-form">
+                {# Issue Category #}
+                <div class="issue-form-group">
+                    <label for="issue-category">
+                        Issue Category <span class="required">*</span>
+                    </label>
+                    <select id="issue-category" name="category" required>
+                        <option value="">Select category...</option>
+                        <option value="missing">Missing Data</option>
+                        <option value="incorrect">Incorrect Data</option>
+                    </select>
+                </div>
+
+                {# Teacher Selection (Autocomplete) #}
+                <div class="issue-form-group">
+                    <label for="issue-teacher">
+                        Teacher <span class="required">*</span>
+                    </label>
+                    <div class="teacher-autocomplete-container">
+                        <input
+                            type="text"
+                            id="issue-teacher"
+                            name="teacher"
+                            placeholder="Start typing teacher name..."
+                            autocomplete="off"
+                            required
+                        />
+                        <input type="hidden" id="issue-teacher-id" name="teacher_id" />
+                        <div class="teacher-autocomplete-dropdown" id="teacher-autocomplete-dropdown"></div>
+                    </div>
+                    <input type="text" id="issue-teacher-name" name="teacher_name" style="display: none;" />
+                </div>
+
+                {# School (Auto-filled, editable) #}
+                <div class="issue-form-group">
+                    <label for="issue-school">School</label>
+                    <input
+                        type="text"
+                        id="issue-school"
+                        name="school_name"
+                        placeholder="Will be auto-filled from teacher selection"
+                        readonly
+                    />
+                </div>
+
+                {# Session Selection (Optional, populated after teacher selection) #}
+                <div class="issue-form-group" id="session-selection-group" style="display: none;">
+                    <label for="issue-session">Session (Optional)</label>
+                    <div class="session-selection" id="session-selection">
+                        <div class="issue-loading" id="session-loading" style="display: none;">
+                            <i class="fas fa-spinner"></i> Loading sessions...
+                        </div>
+                        <div id="session-options"></div>
+                        <div class="no-sessions" id="no-sessions" style="display: none;">
+                            No sessions found for this teacher in the selected date range.
+                        </div>
+                    </div>
+                </div>
+
+                {# Description #}
+                <div class="issue-form-group">
+                    <label for="issue-description">Additional Notes (Optional)</label>
+                    <textarea
+                        id="issue-description"
+                        name="description"
+                        placeholder="Provide any additional details about the issue..."
+                    ></textarea>
+                </div>
+
+                {# Hidden fields #}
+                <input type="hidden" id="issue-district-name" name="district_name" value="{{ district_name }}" />
+                <input type="hidden" id="issue-page-url" name="page_url" value="" />
+                <input type="hidden" id="issue-page-title" name="page_title" value="" />
+
+                {# Form Actions #}
+                <div class="issue-form-actions">
+                    <button type="button" class="issue-btn issue-btn-cancel" id="issue-cancel-btn">
+                        Cancel
+                    </button>
+                    <button type="submit" class="issue-btn issue-btn-submit" id="issue-submit-btn">
+                        <i class="fas fa-paper-plane"></i> Submit Issue
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // Elements
+    const fabBtn = document.getElementById('issue-fab-btn');
+    const modal = document.getElementById('issue-modal');
+    const closeBtn = document.getElementById('issue-modal-close');
+    const cancelBtn = document.getElementById('issue-cancel-btn');
+    const form = document.getElementById('issue-report-form');
+    const teacherInput = document.getElementById('issue-teacher');
+    const teacherIdInput = document.getElementById('issue-teacher-id');
+    const teacherNameInput = document.getElementById('issue-teacher-name');
+    const schoolInput = document.getElementById('issue-school');
+    const categorySelect = document.getElementById('issue-category');
+    const sessionGroup = document.getElementById('session-selection-group');
+    const sessionOptions = document.getElementById('session-options');
+    const sessionLoading = document.getElementById('session-loading');
+    const noSessions = document.getElementById('no-sessions');
+    const dropdown = document.getElementById('teacher-autocomplete-dropdown');
+    const districtName = document.getElementById('issue-district-name').value;
+    const pageUrlInput = document.getElementById('issue-page-url');
+    const pageTitleInput = document.getElementById('issue-page-title');
+    const submitBtn = document.getElementById('issue-submit-btn');
+
+    // Set page URL and title
+    pageUrlInput.value = window.location.href;
+    pageTitleInput.value = document.title || 'District Issue Report';
+
+    // Date range from template
+    const dateFrom = '{{ date_from }}';
+    const dateTo = '{{ date_to }}';
+
+    // State
+    let selectedTeacher = null;
+    let selectedSessionId = null;
+    let searchTimeout = null;
+
+    // Modal controls
+    function openModal() {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        resetForm();
+    }
+
+    function resetForm() {
+        form.reset();
+        selectedTeacher = null;
+        selectedSessionId = null;
+        teacherIdInput.value = '';
+        teacherNameInput.value = '';
+        schoolInput.value = '';
+        schoolInput.readOnly = true;
+        sessionGroup.style.display = 'none';
+        sessionOptions.innerHTML = '';
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+    }
+
+    // Event listeners
+    fabBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Teacher autocomplete
+    teacherInput.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            dropdown.classList.remove('show');
+            dropdown.innerHTML = '';
+            return;
+        }
+
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const virtualYear = '{{ year }}';
+            const districtName = '{{ district_name }}';
+
+            if (!virtualYear) {
+                console.error('Virtual year not available');
+                dropdown.classList.remove('show');
+                return;
+            }
+
+            fetch(`{{ url_for('virtual.search_teachers_for_issues') }}?q=${encodeURIComponent(query)}&virtual_year=${encodeURIComponent(virtualYear)}&district_name=${encodeURIComponent(districtName)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Search failed');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    dropdown.innerHTML = '';
+                    if (data.length === 0) {
+                        dropdown.classList.remove('show');
+                        return;
+                    }
+
+                    data.forEach(teacher => {
+                        const item = document.createElement('div');
+                        item.className = 'teacher-autocomplete-item';
+                        item.innerHTML = `
+                            <strong>${escapeHtml(teacher.name)}</strong>
+                            <small>${escapeHtml(teacher.school || 'No school')}${teacher.district ? ' • ' + escapeHtml(teacher.district) : ''}</small>
+                        `;
+                        item.addEventListener('click', () => {
+                            selectTeacher(teacher);
+                        });
+                        dropdown.appendChild(item);
+                    });
+
+                    dropdown.classList.add('show');
+                })
+                .catch(error => {
+                    console.error('Error searching teachers:', error);
+                });
+        }, 300);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!teacherInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+
+    function selectTeacher(teacher) {
+        selectedTeacher = teacher;
+        teacherInput.value = teacher.name;
+        teacherIdInput.value = teacher.id;
+        teacherNameInput.value = teacher.name;
+        schoolInput.value = teacher.school || '';
+        schoolInput.readOnly = false; // Allow editing
+        dropdown.classList.remove('show');
+
+        // Load sessions for this teacher
+        loadTeacherSessions(teacher.id);
+    }
+
+    function loadTeacherSessions(teacherId) {
+        sessionGroup.style.display = 'block';
+        sessionOptions.innerHTML = '';
+        sessionLoading.style.display = 'block';
+        noSessions.style.display = 'none';
+
+        const url = `{{ url_for('virtual.get_teacher_sessions') }}?teacher_id=${teacherId}&district_name=${encodeURIComponent(districtName)}&date_from=${dateFrom}&date_to=${dateTo}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                sessionLoading.style.display = 'none';
+
+                if (data.length === 0) {
+                    noSessions.style.display = 'block';
+                    return;
+                }
+
+                // Add "None" option
+                const noneOption = document.createElement('div');
+                noneOption.className = 'session-option';
+                noneOption.innerHTML = `
+                    <label>
+                        <input type="radio" name="session_id" value="" checked>
+                        <strong>No specific session</strong>
+                    </label>
+                `;
+                noneOption.addEventListener('click', function() {
+                    document.querySelectorAll('input[name="session_id"]').forEach(radio => {
+                        if (radio.value === '') radio.checked = true;
+                    });
+                    selectedSessionId = null;
+                });
+                sessionOptions.appendChild(noneOption);
+
+                // Add session options
+                data.forEach(session => {
+                    const option = document.createElement('div');
+                    option.className = 'session-option';
+                    option.innerHTML = `
+                        <label>
+                            <input type="radio" name="session_id" value="${session.id}">
+                            <strong>${escapeHtml(session.title)}</strong>
+                            <br>
+                            <small>${escapeHtml(session.date || '')}${session.time ? ' at ' + escapeHtml(session.time) : ''}</small>
+                        </label>
+                    `;
+                    option.addEventListener('click', function() {
+                        const radio = option.querySelector('input[type="radio"]');
+                        radio.checked = true;
+                        selectedSessionId = session.id;
+                    });
+                    sessionOptions.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading sessions:', error);
+                sessionLoading.style.display = 'none';
+                noSessions.style.display = 'block';
+                noSessions.textContent = 'Error loading sessions. Please try again.';
+            });
+    }
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Validation
+        if (!categorySelect.value) {
+            alert('Please select an issue category.');
+            return;
+        }
+
+        if (!teacherIdInput.value) {
+            alert('Please select a teacher.');
+            return;
+        }
+
+        // Get selected session
+        const sessionRadio = document.querySelector('input[name="session_id"]:checked');
+        const sessionId = sessionRadio && sessionRadio.value ? parseInt(sessionRadio.value) : null;
+
+        // Prepare form data
+        const formData = {
+            district_name: districtName,
+            teacher_id: parseInt(teacherIdInput.value),
+            school_name: schoolInput.value || '',
+            session_id: sessionId,
+            category: categorySelect.value,
+            description: document.getElementById('issue-description').value.trim(),
+            page_url: pageUrlInput.value,
+            page_title: pageTitleInput.value
+        };
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+        // Submit
+        fetch('{{ url_for("virtual.report_district_issue") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message || 'Issue reported successfully!');
+                closeModal();
+            } else {
+                alert(data.error || 'Error submitting issue. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Issue';
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting issue:', error);
+            alert('Error submitting issue. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Issue';
+        });
+    });
+
+    // Utility function
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+})();
+</script>

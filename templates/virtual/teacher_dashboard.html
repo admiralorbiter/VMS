@@ -1,0 +1,278 @@
+{#
+  Teacher Dashboard Template
+  ===========================
+
+  This template provides the teacher dashboard for viewing profile, past sessions,
+  upcoming sessions, and reporting issues.
+
+  Key Features:
+  - Teacher profile display
+  - Past sessions list
+  - Upcoming sessions list
+  - Issue reporting button and modal
+  - Responsive design
+
+  Template Variables:
+  - teacher: Teacher model object
+  - past_sessions: List of past session dictionaries
+  - upcoming_sessions: List of upcoming session dictionaries
+  - school_name: Name of teacher's school
+#}
+
+{% extends "base.html" %}
+
+{% block title %}{{ teacher.first_name }} {{ teacher.last_name }} - Teacher Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher_dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard-container">
+    <!-- Teacher Profile Header -->
+    <div class="teacher-header">
+        <div class="teacher-profile">
+            <div class="teacher-icon">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+            <div class="teacher-info">
+                <h1 class="teacher-name">{{ teacher.first_name }} {{ teacher.last_name }}</h1>
+                {% if school_name %}
+                <p class="teacher-school">
+                    <i class="fas fa-school"></i>
+                    {{ school_name }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        <button class="issue-button" onclick="openIssueModal()">
+            <i class="fas fa-flag"></i>
+            Report Issue
+        </button>
+    </div>
+
+    <!-- Sessions Section -->
+    <div class="sessions-section">
+        <!-- Upcoming Sessions -->
+        <div class="sessions-column">
+            <h2 class="sessions-title">
+                <i class="fas fa-calendar-alt"></i>
+                Upcoming Sessions
+            </h2>
+            {% if upcoming_sessions %}
+            <div class="sessions-list">
+                {% for session in upcoming_sessions %}
+                <div class="session-card upcoming">
+                    <div class="session-header">
+                        <h3 class="session-title">{{ session.title }}</h3>
+                        {% if session.is_simulcast %}
+                        <span class="simulcast-badge">Simulcast</span>
+                        {% endif %}
+                    </div>
+                    <div class="session-details">
+                        {% if session.date %}
+                        <div class="session-date">
+                            <i class="fas fa-calendar"></i>
+                            {{ session.date.strftime('%B %d, %Y') }}
+                        </div>
+                        {% endif %}
+                        {% if session.time %}
+                        <div class="session-time">
+                            <i class="fas fa-clock"></i>
+                            {{ session.time.strftime('%I:%M %p') }}
+                        </div>
+                        {% endif %}
+                        {% if session.topic_theme %}
+                        <div class="session-topic">
+                            <i class="fas fa-tag"></i>
+                            {{ session.topic_theme }}
+                        </div>
+                        {% endif %}
+                        {% if session.presenter_name %}
+                        <div class="session-presenter">
+                            <i class="fas fa-user-tie"></i>
+                            {{ session.presenter_name }}
+                            {% if session.presenter_org %}
+                            <span class="presenter-org">({{ session.presenter_org }})</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if session.session_link %}
+                        <div class="session-link">
+                            <a href="{{ session.session_link }}" target="_blank" class="session-link-btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                View Session
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="session-status">
+                        <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-sessions">
+                <i class="fas fa-calendar-times"></i>
+                <p>No upcoming sessions scheduled</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Past Sessions -->
+        <div class="sessions-column">
+            <h2 class="sessions-title">
+                <i class="fas fa-history"></i>
+                Past Sessions
+            </h2>
+            {% if past_sessions %}
+            <div class="sessions-list">
+                {% for session in past_sessions %}
+                <div class="session-card past">
+                    <div class="session-header">
+                        <h3 class="session-title">{{ session.title }}</h3>
+                        {% if session.is_simulcast %}
+                        <span class="simulcast-badge">Simulcast</span>
+                        {% endif %}
+                    </div>
+                    <div class="session-details">
+                        {% if session.date %}
+                        <div class="session-date">
+                            <i class="fas fa-calendar"></i>
+                            {{ session.date.strftime('%B %d, %Y') }}
+                        </div>
+                        {% endif %}
+                        {% if session.time %}
+                        <div class="session-time">
+                            <i class="fas fa-clock"></i>
+                            {{ session.time.strftime('%I:%M %p') }}
+                        </div>
+                        {% endif %}
+                        {% if session.topic_theme %}
+                        <div class="session-topic">
+                            <i class="fas fa-tag"></i>
+                            {{ session.topic_theme }}
+                        </div>
+                        {% endif %}
+                        {% if session.presenter_name %}
+                        <div class="session-presenter">
+                            <i class="fas fa-user-tie"></i>
+                            {{ session.presenter_name }}
+                            {% if session.presenter_org %}
+                            <span class="presenter-org">({{ session.presenter_org }})</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if session.session_link %}
+                        <div class="session-link">
+                            <a href="{{ session.session_link }}" target="_blank" class="session-link-btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                View Session
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="session-status">
+                        <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+                        {% if session.attendance_status %}
+                        <span class="attendance-badge">{{ session.attendance_status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-sessions">
+                <i class="fas fa-calendar-times"></i>
+                <p>No past sessions found</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Issue Reporting Modal -->
+<div id="issueModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Report Issue</h2>
+            <span class="close" onclick="closeIssueModal()">&times;</span>
+        </div>
+        <form id="issueForm" onsubmit="submitIssue(event)">
+            <div class="form-group">
+                <label for="issue_type">Issue Type *</label>
+                <select id="issue_type" name="issue_type" required>
+                    <option value="">Select issue type</option>
+                    <option value="teacher-related">Teacher-related</option>
+                    <option value="district-related">District-related</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="issue_category">Issue Category *</label>
+                <select id="issue_category" name="issue_category" required>
+                    <option value="">Select category</option>
+                    <option value="missing">Missing Data</option>
+                    <option value="incorrect">Incorrect Data</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="description">Description (Optional)</label>
+                <textarea id="description" name="description" rows="4" placeholder="Please provide additional details about the issue..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeIssueModal()">Cancel</button>
+                <button type="submit" class="btn-submit">Submit Issue</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openIssueModal() {
+    document.getElementById('issueModal').style.display = 'block';
+}
+
+function closeIssueModal() {
+    document.getElementById('issueModal').style.display = 'none';
+    document.getElementById('issueForm').reset();
+}
+
+function submitIssue(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('issueForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    fetch('{{ url_for("virtual.report_issue", teacher_id=teacher.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert(result.message);
+            closeIssueModal();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting the issue. Please try again.');
+    });
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('issueModal');
+    if (event.target == modal) {
+        closeIssueModal();
+    }
+}
+</script>
+{% endblock %}

@@ -635,6 +635,7 @@ def sync_unaffiliated_events():
                 "success": True,
                 "message": f"Processed {processed_count} unaffiliated events. Created: {created_count}, Updated: {updated_count}. Volunteer participations: {participant_success}. Student participations: {student_participant_success}.",
                 "processed_count": processed_count,
+                "error_count": len(errors),
                 "created_count": created_count,
                 "updated_count": updated_count,
                 "volunteer_participations": participant_success,

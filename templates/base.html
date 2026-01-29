@@ -1,45 +1,47 @@
 {#
-  Base Template - Main Layout Template
-  ===================================
+Base Template - Main Layout Template
+===================================
 
-  This is the primary base template that provides the common HTML structure
-  for all pages in the Volunteer Management System (VMS).
+This is the primary base template that provides the common HTML structure
+for all pages in the Volunteer Management System (VMS).
 
-  Key Features:
-  - Bootstrap 5.3.3 integration for responsive design
-  - FontAwesome icons for UI elements
-  - HTMX for dynamic content loading
-  - Hyperscript for enhanced interactivity
-  - Custom CSS and JS block extensions
-  - Navigation inclusion
-  - SEO-friendly meta tags
+Key Features:
+- Bootstrap 5.3.3 integration for responsive design
+- FontAwesome icons for UI elements
+- HTMX for dynamic content loading
+- Hyperscript for enhanced interactivity
+- Custom CSS and JS block extensions
+- Navigation inclusion
+- SEO-friendly meta tags
 
-  Template Blocks:
-  - title: Page title (defaults to "VMS")
-  - extra_css: Additional CSS files or styles
-  - content: Main page content
-  - extra_js: Additional JavaScript files or scripts
+Template Blocks:
+- title: Page title (defaults to "VMS")
+- extra_css: Additional CSS files or styles
+- content: Main page content
+- extra_js: Additional JavaScript files or scripts
 
-  Dependencies:
-  - Bootstrap CSS and JS (CDN)
-  - FontAwesome Kit (CDN)
-  - HTMX library (CDN)
-  - Hyperscript library (CDN)
-  - Custom nav.js for navigation functionality
-  - Custom style.css for global styling
+Dependencies:
+- Bootstrap CSS and JS (CDN)
+- FontAwesome Kit (CDN)
+- HTMX library (CDN)
+- Hyperscript library (CDN)
+- Custom nav.js for navigation functionality
+- Custom style.css for global styling
 
-  Usage:
-  {% extends "base.html" %}
-  {% block title %}Page Title{% endblock %}
-  {% block content %}Page content here{% endblock %}
+Usage:
+{% extends "base.html" %}
+{% block title %}Page Title{% endblock %}
+{% block content %}Page content here{% endblock %}
 #}
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}VMS{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/event_type_colors.css') }}">
     <script src="https://kit.fontawesome.com/052a51df03.js" crossorigin="anonymous"></script>
@@ -47,14 +49,20 @@
     <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
     {% block extra_css %}{% endblock %}
 </head>
+
 <body>
+    {# Tenant context banner for admin override (FR-TENANT-105) #}
+    {% include 'includes/tenant_context_indicator.html' %}
     {% include 'nav.html' %}
     <main>
         {% block content %}
         {% endblock %}
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/nav.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

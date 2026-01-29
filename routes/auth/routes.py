@@ -96,7 +96,7 @@ def login():
                     if first_district:
                         return redirect(
                             url_for(
-                                "report.virtual_district_teacher_progress",
+                                "virtual.virtual_district_teacher_progress",
                                 district_name=first_district,
                                 year="2025-2026",
                                 date_from="2025-08-01",
@@ -129,24 +129,6 @@ def logout():
     return redirect(url_for("index"))  # Update to use main blueprint
 
 
-@auth_bp.route("/admin")
-@login_required
-def admin():
-    """
-    Admin panel for user management.
-
-    Displays all users in the system for administrative management.
-    Requires user to be logged in.
-
-    Returns:
-        Rendered admin template with user list
-    """
-    users = User.query.all()
-    return render_template(
-        "management/admin.html", users=users, SecurityLevel=SecurityLevel
-    )
-
-
 @auth_bp.route("/admin/users", methods=["POST"])
 @login_required
 def create_user():
@@ -174,7 +156,7 @@ def create_user():
     """
     if not current_user.is_admin:
         flash("Permission denied", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     username = request.form.get("username")
     email = request.form.get("email")
@@ -185,15 +167,15 @@ def create_user():
 
     if not all([username, email, password, security_level is not None]):
         flash("All fields are required", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     if User.query.filter_by(username=username).first():
         flash("Username already exists", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     if User.query.filter_by(email=email).first():
         flash("Email already exists", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     # For admin users (security_level 3), allow creating any valid security level
     # For non-admin users, ensure they can only create users with lower security levels
@@ -201,7 +183,7 @@ def create_user():
         not current_user.is_admin and security_level >= current_user.security_level
     ):
         flash("Invalid security level or insufficient permissions", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     import json
 
@@ -222,7 +204,7 @@ def create_user():
         db.session.rollback()
         flash(f"Error creating user: {str(e)}", "danger")
 
-    return redirect(url_for("auth.admin"))
+    return redirect(url_for("management.admin"))
 
 
 @auth_bp.route("/admin/users/<int:id>", methods=["DELETE"])
@@ -286,12 +268,12 @@ def change_password():
     # Verify all fields are provided
     if not all([new_password, confirm_password]):
         flash("Both password fields are required", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     # Verify new passwords match
     if new_password != confirm_password:
         flash("New passwords do not match", "danger")
-        return redirect(url_for("auth.admin"))
+        return redirect(url_for("management.admin"))
 
     try:
         # Update password
@@ -302,4 +284,4 @@ def change_password():
         db.session.rollback()
         flash(f"Error updating password: {str(e)}", "danger")
 
-    return redirect(url_for("auth.admin"))
+    return redirect(url_for("management.admin"))

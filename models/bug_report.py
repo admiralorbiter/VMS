@@ -147,8 +147,8 @@ class BugReport(db.Model):
     )  # Store which page it was reported from
     page_title = db.Column(db.String(200))  # Store the page title for better context
 
-    # User who submitted the report
-    submitted_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # User who submitted the report (nullable for anonymous submissions like magic links)
+    submitted_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     submitted_by = db.relationship(
         "User",
         foreign_keys=[submitted_by_id],

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Template: {{ template.purpose_key }} - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.template-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.detail-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.template-preview {
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    padding: 1rem;
+    background: #f9fafb;
+    margin-top: 1rem;
+}
+
+.email-nav a:hover:not([style*="background"]) {
+    background: #f3f4f6;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="template-detail-container">
+    <!-- Navigation Bar -->
+    <nav class="email-nav" style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('email.email_overview') }}" style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-home"></i> Overview
+            </a>
+            <span style="color: #d1d5db;">|</span>
+            <a href="{{ url_for('email.email_templates') }}" style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-inbox"></i> Outbox
+            </a>
+            <a href="{{ url_for('email.email_attempts') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-paper-plane"></i> Delivery Attempts
+            </a>
+            <a href="{{ url_for('email.email_settings') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </nav>
+
+    <h1>Template: {{ template.purpose_key }} v{{ template.version }}</h1>
+
+    <div class="detail-section">
+        <h3>Template Information</h3>
+        <p><strong>Name:</strong> {{ template.name }}</p>
+        {% if template.description %}
+        <p><strong>Description:</strong> {{ template.description }}</p>
+        {% endif %}
+        <p><strong>Status:</strong> {% if template.is_active %}Active{% else %}Inactive{% endif %}</p>
+    </div>
+
+    <div class="detail-section">
+        <h3>Subject Template</h3>
+        <div class="template-preview">
+            <pre>{{ template.subject_template }}</pre>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <h3>Text Template</h3>
+        <div class="template-preview">
+            <pre>{{ template.text_template }}</pre>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <h3>HTML Template</h3>
+        <div class="template-preview">
+            <pre>{{ template.html_template }}</pre>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <h3>Preview with Sample Data</h3>
+        <div class="template-preview">
+            <strong>Subject:</strong> {{ template.subject_template|replace('{{user_name}}', sample_context.user_name)|replace('{{district_name}}', sample_context.district_name) }}
+            <hr>
+            <strong>Text:</strong>
+            <pre>{{ template.text_template|replace('{{user_name}}', sample_context.user_name)|replace('{{district_name}}', sample_context.district_name) }}</pre>
+            <hr>
+            <strong>HTML:</strong>
+            <div style="border: 1px solid #e5e7eb; padding: 1rem; background: white;">
+                {{ template.html_template|replace('{{user_name}}', sample_context.user_name)|replace('{{district_name}}', sample_context.district_name)|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

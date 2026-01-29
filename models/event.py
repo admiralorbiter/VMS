@@ -366,10 +366,10 @@ class EventStatus(str, Enum):
             status_str (str): Raw status string from external source
 
         Returns:
-            EventStatus: Mapped enum value, defaults to DRAFT if unknown
+            EventStatus: Mapped enum value, defaults to REQUESTED if unknown
         """
         if not status_str:
-            return cls.DRAFT
+            return cls.REQUESTED
 
         status_str = status_str.lower().strip()
         status_mapping = {
@@ -395,7 +395,7 @@ class EventStatus(str, Enum):
             "industry chat": cls.CONFIRMED,
         }
 
-        return status_mapping.get(status_str, cls.DRAFT)
+        return status_mapping.get(status_str, cls.REQUESTED)
 
 
 class Event(db.Model):
@@ -523,6 +523,12 @@ class Event(db.Model):
         nullable=False,
     )
 
+    # Multi-tenant support (FR-SELFSERV-201)
+    # NULL = PrepKC event, non-NULL = district tenant event
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenant.id"), nullable=True, index=True
+    )
+
     # Relationships
     volunteers = db.relationship(
         "Volunteer",
@@ -571,6 +577,9 @@ class Event(db.Model):
         uselist=False,
         cascade="all, delete-orphan",
     )
+
+    # Tenant relationship for multi-tenant support
+    tenant = db.relationship("Tenant", backref=db.backref("events", lazy="dynamic"))
 
     # TODO: Consider adding validation methods:
     # - Ensure end_date is after start_date
@@ -1081,10 +1090,16 @@ class EventStudentParticipation(db.Model):
 
     # Relationships (optional but helpful)
     event = db.relationship(
-        "Event", backref=db.backref("student_participations", lazy="dynamic")
+        "Event",
+        backref=db.backref(
+            "student_participations", lazy="dynamic", cascade="all, delete-orphan"
+        ),
     )
     student = db.relationship(
-        "Student", backref=db.backref("event_participations", lazy="dynamic")
+        "Student",
+        backref=db.backref(
+            "event_participations", lazy="dynamic", cascade="all, delete-orphan"
+        ),
     )
 
     # Enforce uniqueness for a given event/student pair

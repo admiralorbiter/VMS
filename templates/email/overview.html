@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Email Management - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+.email-overview-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--delft-blue);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.stat-card .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--ucla-blue);
+    margin: 0;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.status-badge.enabled {
+    background-color: #10b981;
+    color: white;
+}
+
+.status-badge.disabled {
+    background-color: var(--poppy);
+    color: white;
+}
+
+.status-badge.warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.quick-link-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quick-link-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    text-decoration: none;
+    color: inherit;
+}
+
+.quick-link-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--ucla-blue);
+    font-size: 1.1rem;
+}
+
+.quick-link-card p {
+    margin: 0;
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="email-overview-container">
+    <div class="section-header">
+        <h1>Email Management</h1>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Delivery Status</h3>
+            <p class="stat-value">
+                {% if delivery_enabled %}
+                    <span class="status-badge enabled">Enabled</span>
+                {% else %}
+                    <span class="status-badge disabled">Disabled</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Queued Messages</h3>
+            <p class="stat-value">{{ queued_count }}</p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Failed (24h)</h3>
+            <p class="stat-value">{{ failed_count }}</p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Sent Today</h3>
+            <p class="stat-value">{{ sent_today }}</p>
+        </div>
+    </div>
+
+    <!-- Safety Status -->
+    <div class="stat-card" style="margin-bottom: 2rem;">
+        <h3>Safety Configuration</h3>
+        <div style="margin-top: 1rem;">
+            <p><strong>Environment:</strong> {% if is_production %}Production{% else %}Non-Production{% endif %}</p>
+            <p><strong>Allowlist Active:</strong>
+                {% if allowlist_active %}
+                    <span class="status-badge warning">Active</span>
+                {% else %}
+                    <span class="status-badge enabled">Not Required</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Recent Failures -->
+    {% if recent_failures %}
+    <div class="stat-card">
+        <h3>Recent Failures (Last 24h)</h3>
+        <ul style="margin-top: 1rem; padding-left: 1.5rem;">
+            {% for attempt in recent_failures %}
+            <li style="margin-bottom: 0.5rem;">
+                <a href="{{ url_for('email.email_message_detail', message_id=attempt.message_id) }}">
+                    Message #{{ attempt.message_id }}
+                </a>
+                - {{ attempt.error_message or 'Unknown error' }}
+                <small>({{ attempt.attempted_at.strftime('%Y-%m-%d %H:%M') if attempt.attempted_at else 'N/A' }})</small>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Quick Links -->
+    <div class="quick-links">
+        <a href="{{ url_for('email.email_templates') }}" class="quick-link-card">
+            <h4><i class="fas fa-file-alt"></i> Templates</h4>
+            <p>Manage email templates</p>
+        </a>
+
+        <a href="{{ url_for('email.email_outbox') }}" class="quick-link-card">
+            <h4><i class="fas fa-inbox"></i> Outbox</h4>
+            <p>View and manage email messages</p>
+        </a>
+
+        <a href="{{ url_for('email.email_attempts') }}" class="quick-link-card">
+            <h4><i class="fas fa-paper-plane"></i> Delivery Attempts</h4>
+            <p>Track delivery attempts</p>
+        </a>
+
+        <a href="{{ url_for('email.email_settings') }}" class="quick-link-card">
+            <h4><i class="fas fa-cog"></i> Settings</h4>
+            <p>Email configuration and safety</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

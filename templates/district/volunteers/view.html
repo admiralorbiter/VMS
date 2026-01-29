@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}{{ volunteer.first_name }} {{ volunteer.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.list_volunteers') }}">Volunteers</a></li>
+            <li class="breadcrumb-item active">{{ volunteer.first_name }} {{ volunteer.last_name }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Profile Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Volunteer Profile
+                    </h5>
+                    <div>
+                        {% if district_volunteer.status == 'active' %}
+                        <span class="badge bg-success me-2">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary me-2">Inactive</span>
+                        {% endif %}
+                        <a href="{{ url_for('district.edit_volunteer', volunteer_id=volunteer.id) }}"
+                            class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>{{ volunteer.first_name }} {{ volunteer.last_name }}</h4>
+                            {% if volunteer.title %}
+                            <p class="text-muted mb-3">{{ volunteer.title }}</p>
+                            {% endif %}
+
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td class="text-muted" style="width: 120px;"><i
+                                            class="fas fa-envelope me-2"></i>Email</td>
+                                    <td>
+                                        {% if volunteer.email %}
+                                        <a href="mailto:{{ volunteer.email }}">{{ volunteer.email }}</a>
+                                        {% else %}
+                                        <span class="text-muted">Not provided</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="fas fa-phone me-2"></i>Phone</td>
+                                    <td>{{ volunteer.phone or 'Not provided' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted"><i class="fas fa-building me-2"></i>Organization</td>
+                                    <td>{{ volunteer.organization_name or 'Not provided' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">District Info</h6>
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td class="text-muted" style="width: 120px;">Added</td>
+                                    <td>{{ district_volunteer.added_at.strftime('%b %d, %Y') if
+                                        district_volunteer.added_at else '-' }}</td>
+                                </tr>
+                                {% if district_volunteer.notes %}
+                                <tr>
+                                    <td class="text-muted align-top">Notes</td>
+                                    <td>{{ district_volunteer.notes }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event History -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Event History</h5>
+                </div>
+                <div class="card-body">
+                    {% if participations %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Date</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in participations %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('district.view_event', event_id=p.event_id) }}">
+                                            {{ p.event.title if p.event else 'Unknown Event' }}
+                                        </a>
+                                    </td>
+                                    <td>{{ p.event.start_date.strftime('%b %d, %Y') if p.event and p.event.start_date
+                                        else '-' }}</td>
+                                    <td>{{ p.participation_type|title if p.participation_type else '-' }}</td>
+                                    <td>
+                                        {% if p.status == 'invited' %}
+                                        <span class="badge bg-info">Invited</span>
+                                        {% elif p.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                        {% elif p.status == 'declined' %}
+                                        <span class="badge bg-secondary">Declined</span>
+                                        {% elif p.status == 'attended' %}
+                                        <span class="badge bg-primary">Attended</span>
+                                        {% elif p.status == 'no_show' %}
+                                        <span class="badge bg-danger">No Show</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">{{ p.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                        <p class="mb-0">No event participation history</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recruitment Notes Section (FR-RECRUIT-306) -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Recruitment Notes</h5>
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#addNoteForm" aria-expanded="false">
+                        <i class="fas fa-plus me-1"></i>Add Note
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Add Note Form (collapsed by default) -->
+                    <div class="collapse mb-3" id="addNoteForm">
+                        <form method="POST"
+                            action="{{ url_for('district.create_recruitment_note', volunteer_id=volunteer.id) }}"
+                            id="recruitmentNoteForm">
+                            <div class="mb-3">
+                                <label for="noteText" class="form-label">Note</label>
+                                <textarea class="form-control" id="noteText" name="note" rows="3"
+                                    placeholder="Enter recruitment note..." required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="noteOutcome" class="form-label">Outcome</label>
+                                <select class="form-select" id="noteOutcome" name="outcome">
+                                    {% for value, label in recruitment_outcome_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Save Note
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-toggle="collapse"
+                                    data-bs-target="#addNoteForm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Notes Timeline -->
+                    {% if recruitment_notes %}
+                    <div class="recruitment-notes-timeline" id="notesTimeline">
+                        {% for note in recruitment_notes %}
+                        <div class="note-item border-start border-3 ps-3 mb-3
+                                    {% if note.outcome == 'accepted' %}border-success
+                                    {% elif note.outcome == 'declined' %}border-danger
+                                    {% elif note.outcome == 'follow_up' %}border-warning
+                                    {% elif note.outcome == 'interested' %}border-info
+                                    {% else %}border-secondary{% endif %}" data-note-id="{{ note.id }}">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <div>
+                                    <span class="badge
+                                        {% if note.outcome == 'accepted' %}bg-success
+                                        {% elif note.outcome == 'declined' %}bg-danger
+                                        {% elif note.outcome == 'follow_up' %}bg-warning text-dark
+                                        {% elif note.outcome == 'interested' %}bg-info
+                                        {% else %}bg-secondary{% endif %}">
+                                        {% for val, label in recruitment_outcome_choices %}
+                                        {% if val == note.outcome %}{{ label }}{% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <small class="text-muted ms-2">
+                                        {{ note.created_at.strftime('%b %d, %Y at %I:%M %p') if note.created_at else '-'
+                                        }}
+                                        {% if note.created_by_user %}
+                                        by {{ note.created_by_user.name or note.created_by_user.email }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-note-btn"
+                                    data-note-id="{{ note.id }}" data-volunteer-id="{{ volunteer.id }}"
+                                    title="Delete note">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                            <p class="mb-0">{{ note.note }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted" id="noNotesMessage">
+                        <i class="fas fa-sticky-note fa-2x mb-2"></i>
+                        <p class="mb-0">No recruitment notes yet</p>
+                        <small>Click "Add Note" to record recruitment activities</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('district.edit_volunteer', volunteer_id=volunteer.id) }}"
+                            class="btn btn-outline-primary">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </a>
+
+                        <form method="POST"
+                            action="{{ url_for('district.toggle_volunteer_status', volunteer_id=volunteer.id) }}">
+                            {% if district_volunteer.status == 'active' %}
+                            <button type="submit" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-user-slash me-2"></i>Mark Inactive
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-outline-success w-100">
+                                <i class="fas fa-user-check me-2"></i>Reactivate
+                            </button>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Navigation -->
+            <a href="{{ url_for('district.list_volunteers') }}" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-arrow-left me-2"></i>Back to Volunteers
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Note Confirmation Modal -->
+<div class="modal fade" id="deleteNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this recruitment note?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteNote">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Delete note functionality
+    document.addEventListener('DOMContentLoaded', function () {
+        let noteIdToDelete = null;
+        let volunteerIdForDelete = null;
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteNoteModal'));
+
+        // Attach click handlers to delete buttons
+        document.querySelectorAll('.delete-note-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                noteIdToDelete = this.dataset.noteId;
+                volunteerIdForDelete = this.dataset.volunteerId;
+                deleteModal.show();
+            });
+        });
+
+        // Handle confirm delete
+        document.getElementById('confirmDeleteNote').addEventListener('click', function () {
+            if (noteIdToDelete && volunteerIdForDelete) {
+                fetch(`/district/volunteers/${volunteerIdForDelete}/notes/${noteIdToDelete}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove the note from DOM
+                            const noteElement = document.querySelector(`[data-note-id="${noteIdToDelete}"]`);
+                            if (noteElement) {
+                                noteElement.remove();
+                            }
+                            // Show empty message if no notes left
+                            const timeline = document.getElementById('notesTimeline');
+                            if (timeline && timeline.children.length === 0) {
+                                timeline.innerHTML = `
+                            <div class="text-center py-4 text-muted" id="noNotesMessage">
+                                <i class="fas fa-sticky-note fa-2x mb-2"></i>
+                                <p class="mb-0">No recruitment notes yet</p>
+                                <small>Click "Add Note" to record recruitment activities</small>
+                            </div>
+                        `;
+                            }
+                        } else {
+                            alert('Error deleting note: ' + (data.error || 'Unknown error'));
+                        }
+                        deleteModal.hide();
+                    })
+                    .catch(error => {
+                        alert('Error deleting note');
+                        deleteModal.hide();
+                    });
+            }
+        });
+    });
+</script>
+{% endblock %}

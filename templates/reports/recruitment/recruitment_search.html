@@ -20,17 +20,15 @@
                 <div class="col-md-8">
                     <div class="form-group">
                         <label for="search">Search Volunteers</label>
-                        <input type="text"
-                               id="search"
-                               name="search"
-                               class="form-control"
-                               value="{{ search_query }}"
-                               placeholder="Try searching: tech edu (finds volunteers in technology and education)">
+                        <input type="text" id="search" name="search" class="form-control" value="{{ search_query }}"
+                            placeholder="Try searching: tech edu (finds volunteers in technology and education)">
                         <div class="search-hint">
                             {% if search_mode == 'wide' %}
-                            <i class="fas fa-info-circle"></i> Wide Search: Shows volunteers matching any term (e.g., "tech edu" finds people in technology OR education)
+                            <i class="fas fa-info-circle"></i> Wide Search: Shows volunteers matching any term (e.g.,
+                            "tech edu" finds people in technology OR education)
                             {% else %}
-                            <i class="fas fa-info-circle"></i> Narrow Search: Shows only volunteers matching all terms (e.g., "tech edu" finds people in both technology AND education)
+                            <i class="fas fa-info-circle"></i> Narrow Search: Shows only volunteers matching all terms
+                            (e.g., "tech edu" finds people in both technology AND education)
                             {% endif %}
                         </div>
                     </div>
@@ -40,17 +38,13 @@
                         <label class="d-block">Search Mode</label>
                         <div class="btn-group btn-group-toggle" data-toggle="buttons">
                             <label class="btn btn-outline-primary {% if search_mode == 'wide' %}active{% endif %}">
-                                <input type="radio"
-                                       name="search_mode"
-                                       value="wide"
-                                       {% if search_mode == 'wide' %}checked{% endif %}>
+                                <input type="radio" name="search_mode" value="wide" {% if search_mode=='wide'
+                                    %}checked{% endif %}>
                                 Wide Search
                             </label>
                             <label class="btn btn-outline-primary {% if search_mode == 'narrow' %}active{% endif %}">
-                                <input type="radio"
-                                       name="search_mode"
-                                       value="narrow"
-                                       {% if search_mode == 'narrow' %}checked{% endif %}>
+                                <input type="radio" name="search_mode" value="narrow" {% if search_mode=='narrow'
+                                    %}checked{% endif %}>
                                 Narrow Search
                             </label>
                             {% if connector_only %}
@@ -69,16 +63,18 @@
                                         search=search_query,
                                         search_mode=search_mode,
                                         sort=sort_by,
-                                        order=order) }}"
-                       class="btn connector-filter-btn active ml-2" title="Remove connector filter">
+                                        order=order) }}" class="btn connector-filter-btn active ml-2"
+                        title="Remove connector filter">
                         <i class="fa-solid fa-plug"></i> Show All Volunteers
                     </a>
                     {% else %}
-                    <button type="submit" name="connector_only" value="1" class="btn connector-filter-btn ml-2" title="Show only volunteers with connector profiles">
+                    <button type="submit" name="connector_only" value="1" class="btn connector-filter-btn ml-2"
+                        title="Show only volunteers with connector profiles">
                         <i class="fa-solid fa-plug"></i> Connector Only
                     </button>
                     {% endif %}
-                    <button type="button" id="toggleSearchFields" class="btn btn-outline-info ml-2" title="Show/hide search field explanations">
+                    <button type="button" id="toggleSearchFields" class="btn btn-outline-info ml-2"
+                        title="Show/hide search field explanations">
                         <i class="fas fa-info-circle"></i> Search Help
                     </button>
                 </div>
@@ -127,7 +123,8 @@
                     <h6><i class="fas fa-lightbulb"></i> Search Tips</h6>
                     <ul class="search-fields-list">
                         <li><strong>Wide Search:</strong> "tech edu" finds volunteers in technology OR education</li>
-                        <li><strong>Narrow Search:</strong> "tech edu" finds volunteers in BOTH technology AND education</li>
+                        <li><strong>Narrow Search:</strong> "tech edu" finds volunteers in BOTH technology AND education
+                        </li>
                         <li><strong>Partial Matches:</strong> "prog" will find "programming", "programmer", etc.</li>
                         <li><strong>Multiple Terms:</strong> Use spaces to separate different search concepts</li>
                     </ul>
@@ -146,8 +143,7 @@
                                 search=search_query,
                                 search_mode=search_mode,
                                 sort=sort_by,
-                                order=order) }}"
-               class="remove-filter-link">Remove filter</a>
+                                order=order) }}" class="remove-filter-link">Remove filter</a>
         </div>
         {% endif %}
         <table class="table recruitment-table">
@@ -159,11 +155,10 @@
                                            sort='name',
                                            order='desc' if sort_by == 'name' and order == 'asc' else 'asc',
                                            search_mode=search_mode,
-                                           connector_only=connector_only) }}"
-                                               class="text-dark">
+                                           connector_only=connector_only) }}" class="text-dark">
                             Name
                             {% if sort_by == 'name' %}
-                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
                             {% endif %}
                         </a>
                     </th>
@@ -173,11 +168,10 @@
                                            sort='organization',
                                            order='desc' if sort_by == 'organization' and order == 'asc' else 'asc',
                                            search_mode=search_mode,
-                                           connector_only=connector_only) }}"
-                                               class="text-dark">
+                                           connector_only=connector_only) }}" class="text-dark">
                             Organization/Affiliation
                             {% if sort_by == 'organization' %}
-                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
                             {% endif %}
                         </a>
                     </th>
@@ -188,11 +182,10 @@
                                            sort='last_email',
                                            order='desc' if sort_by == 'last_email' and order == 'asc' else 'asc',
                                            search_mode=search_mode,
-                                           connector_only=connector_only) }}"
-                                               class="text-dark">
+                                           connector_only=connector_only) }}" class="text-dark">
                             Last Non-Internal Email
                             {% if sort_by == 'last_email' %}
-                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
                             {% endif %}
                         </a>
                     </th>
@@ -202,11 +195,10 @@
                                            sort='last_volunteer',
                                            order='desc' if sort_by == 'last_volunteer' and order == 'asc' else 'asc',
                                            search_mode=search_mode,
-                                           connector_only=connector_only) }}"
-                                               class="text-dark">
+                                           connector_only=connector_only) }}" class="text-dark">
                             Last Volunteer Date
                             {% if sort_by == 'last_volunteer' %}
-                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
                             {% endif %}
                         </a>
                     </th>
@@ -216,11 +208,10 @@
                                            sort='times_volunteered',
                                            order='desc' if sort_by == 'times_volunteered' and order == 'asc' else 'asc',
                                            search_mode=search_mode,
-                                           connector_only=connector_only) }}"
-                                               class="text-dark">
+                                           connector_only=connector_only) }}" class="text-dark">
                             # of Times Volunteered
                             {% if sort_by == 'times_volunteered' %}
-                                <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
+                            <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }}"></i>
                             {% endif %}
                         </a>
                     </th>
@@ -234,18 +225,14 @@
                             {{ volunteer.full_name }}
                         </a>
                         {% if volunteer.salesforce_contact_url %}
-                        <a href="{{ volunteer.salesforce_contact_url }}"
-                           class="btn btn-sm action-btn salesforce-btn"
-                           target="_blank"
-                           title="Salesforce Contact">
+                        <a href="{{ volunteer.salesforce_contact_url }}" class="btn btn-sm action-btn salesforce-btn"
+                            target="_blank" title="Salesforce Contact">
                             <i class="fa-solid fa-cloud"></i>
                         </a>
                         {% endif %}
                         {% if volunteer.connector and volunteer.connector.connector_profile_url %}
                         <a href="{{ volunteer.connector.connector_profile_url }}"
-                           class="btn btn-sm action-btn connector-btn"
-                           target="_blank"
-                           title="Connector Profile">
+                            class="btn btn-sm action-btn connector-btn" target="_blank" title="Connector Profile">
                             <i class="fa-solid fa-plug"></i>
                         </a>
                         {% endif %}
@@ -264,9 +251,19 @@
                         <span class="skill-badge">{{ skill.name }}</span>
                         {% endfor %}
                     </td>
-                    <td>{{ volunteer.last_non_internal_email_date.strftime('%Y-%m-%d') if volunteer.last_non_internal_email_date }}</td>
+                    <td>{{ volunteer.last_non_internal_email_date.strftime('%Y-%m-%d') if
+                        volunteer.last_non_internal_email_date }}</td>
                     <td>{{ volunteer.last_volunteer_date.strftime('%Y-%m-%d') if volunteer.last_volunteer_date }}</td>
                     <td>{{ volunteer.total_times_volunteered }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="fas fa-search fa-2x mb-3"></i>
+                            <p class="mb-0">No volunteers found matching your search criteria.</p>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -280,8 +277,7 @@
             <ul class="pagination justify-content-center">
                 {% if pagination.has_prev %}
                 <li class="page-item">
-                    <a class="page-link"
-                       href="{{ url_for('report.recruitment_search',
+                    <a class="page-link" href="{{ url_for('report.recruitment_search',
                                         page=pagination.prev_num,
                                         search=search_query,
                                         sort=sort_by,
@@ -294,30 +290,28 @@
                 {% endif %}
 
                 {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
-                    {% if page_num %}
-                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                            <a class="page-link"
-                               href="{{ url_for('report.recruitment_search',
+                {% if page_num %}
+                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('report.recruitment_search',
                                                 page=page_num,
                                                 search=search_query,
                                                 sort=sort_by,
                                                 order=order,
                                                 search_mode=search_mode,
                                                 connector_only=connector_only) }}">
-                                {{ page_num }}
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                    {% endif %}
+                        {{ page_num }}
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
                 {% endfor %}
 
                 {% if pagination.has_next %}
                 <li class="page-item">
-                    <a class="page-link"
-                       href="{{ url_for('report.recruitment_search',
+                    <a class="page-link" href="{{ url_for('report.recruitment_search',
                                         page=pagination.next_num,
                                         search=search_query,
                                         sort=sort_by,
@@ -339,39 +333,39 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const toggleButton = document.getElementById('toggleSearchFields');
-    const searchFieldsInfo = document.getElementById('searchFieldsInfo');
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleButton = document.getElementById('toggleSearchFields');
+        const searchFieldsInfo = document.getElementById('searchFieldsInfo');
 
-    // Initially hide the section
-    searchFieldsInfo.classList.add('d-none');
+        // Initially hide the section
+        searchFieldsInfo.classList.add('d-none');
 
-    toggleButton.addEventListener('click', function() {
-        if (searchFieldsInfo.classList.contains('d-none')) {
-            // Show the section
-            searchFieldsInfo.classList.remove('d-none');
-            // Add a small delay to ensure the element is visible before adding the show class
-            setTimeout(() => {
-                searchFieldsInfo.classList.add('show');
-            }, 10);
+        toggleButton.addEventListener('click', function () {
+            if (searchFieldsInfo.classList.contains('d-none')) {
+                // Show the section
+                searchFieldsInfo.classList.remove('d-none');
+                // Add a small delay to ensure the element is visible before adding the show class
+                setTimeout(() => {
+                    searchFieldsInfo.classList.add('show');
+                }, 10);
 
-            toggleButton.innerHTML = '<i class="fas fa-times-circle"></i> Hide Help';
-            toggleButton.classList.remove('btn-outline-info');
-            toggleButton.classList.add('btn-info');
-        } else {
-            // Hide the section
-            searchFieldsInfo.classList.remove('show');
-            // Wait for the transition to complete before hiding
-            setTimeout(() => {
-                searchFieldsInfo.classList.add('d-none');
-            }, 300);
+                toggleButton.innerHTML = '<i class="fas fa-times-circle"></i> Hide Help';
+                toggleButton.classList.remove('btn-outline-info');
+                toggleButton.classList.add('btn-info');
+            } else {
+                // Hide the section
+                searchFieldsInfo.classList.remove('show');
+                // Wait for the transition to complete before hiding
+                setTimeout(() => {
+                    searchFieldsInfo.classList.add('d-none');
+                }, 300);
 
-            toggleButton.innerHTML = '<i class="fas fa-info-circle"></i> Search Help';
-            toggleButton.classList.remove('btn-info');
-            toggleButton.classList.add('btn-outline-info');
-        }
+                toggleButton.innerHTML = '<i class="fas fa-info-circle"></i> Search Help';
+                toggleButton.classList.remove('btn-info');
+                toggleButton.classList.add('btn-outline-info');
+            }
+        });
     });
-});
 </script>
 
 {% endblock %}

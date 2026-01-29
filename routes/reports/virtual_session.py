@@ -4635,7 +4635,7 @@ def load_routes(bp):
             flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
-                    "report.virtual_district_teacher_progress",
+                    "virtual.virtual_district_teacher_progress",
                     district_name=district_name,
                 )
             )
@@ -4680,7 +4680,7 @@ def load_routes(bp):
             flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
-                    "report.virtual_district_teacher_progress",
+                    "virtual.virtual_district_teacher_progress",
                     district_name=district_name,
                 )
             )
@@ -4775,7 +4775,7 @@ def load_routes(bp):
             flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
-                    "report.virtual_district_teacher_progress",
+                    "virtual.virtual_district_teacher_progress",
                     district_name=district_name,
                 )
             )
@@ -4962,7 +4962,7 @@ def load_routes(bp):
             flash("No teacher progress data available for export.", "warning")
             return redirect(
                 url_for(
-                    "report.virtual_district_teacher_progress",
+                    "virtual.virtual_district_teacher_progress",
                     district_name=district_name,
                 )
             )
@@ -5008,7 +5008,7 @@ def load_routes(bp):
             flash("Access denied for district-scoped accounts.", "error")
             return redirect(
                 url_for(
-                    "report.virtual_district_teacher_progress",
+                    "virtual.virtual_district_teacher_progress",
                     district_name=district_name,
                 )
             )

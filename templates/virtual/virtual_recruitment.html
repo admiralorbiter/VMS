@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Virtual Sessions Presenter Recruitment{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+<style>
+.recruitment-container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.page-title {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 2em;
+    font-weight: 600;
+}
+
+.page-subtitle {
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+}
+
+.filters-section {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+    font-size: 0.9em;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.filter-btn, .reset-btn, .recruitment-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn {
+    background: #007bff;
+    color: white;
+}
+
+.filter-btn:hover {
+    background: #0056b3;
+    color: white;
+}
+
+.reset-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #c82333;
+    color: white;
+}
+
+.recruitment-btn {
+    background: #28a745;
+    color: white;
+}
+
+.recruitment-btn:hover {
+    background: #218838;
+    color: white;
+    text-decoration: none;
+}
+
+.events-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summary-stat {
+    text-align: center;
+}
+
+.summary-stat .number {
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.summary-stat .label {
+    font-size: 0.9em;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.events-table-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.events-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.events-table thead {
+    background: #f8f9fa;
+}
+
+.events-table th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.events-table td {
+    padding: 15px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+    background-color: #f8f9fa;
+}
+
+.badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.badge-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.badge-warning {
+    background: #ffc107;
+    color: #333;
+}
+
+.badge-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.875em;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+    color: white;
+    text-decoration: none;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 4em;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    font-size: 1.1em;
+}
+
+@media (max-width: 768px) {
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+
+    .events-summary {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .events-table {
+        font-size: 0.85em;
+    }
+
+    .events-table th,
+    .events-table td {
+        padding: 10px 8px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recruitment-container">
+    <h1 class="page-title">Virtual Sessions Presenter Recruitment</h1>
+    <p class="page-subtitle">Upcoming virtual events needing presenters</p>
+
+    <!-- Filter Section -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            <div class="filter-group">
+                <label for="year">Academic Year:</label>
+                <select id="year" name="year">
+                    {% for school_year in filter_options.school_years %}
+                        <option value="{{ school_year }}" {% if school_year == current_filters.year %}selected{% endif %}>
+                            {{ school_year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="date_from">Date From:</label>
+                <input type="date" id="date_from" name="date_from"
+                       value="{{ current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from }}">
+            </div>
+
+            <div class="filter-group">
+                <label for="date_to">Date To:</label>
+                <input type="date" id="date_to" name="date_to"
+                       value="{{ current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to }}">
+            </div>
+
+            <div class="filter-group">
+                <label for="district">District:</label>
+                <select id="district" name="district">
+                    <option value="">All Districts</option>
+                    {% for district in filter_options.districts %}
+                    <option value="{{ district.id }}"
+                            {% if district.id == current_filters.district %}selected{% endif %}>
+                        {{ district.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="school">School:</label>
+                <select id="school" name="school">
+                    <option value="">All Schools</option>
+                    {% for school in filter_options.schools %}
+                    <option value="{{ school.id }}"
+                            {% if school.id == current_filters.school %}selected{% endif %}>
+                        {{ school.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="search">Search:</label>
+                <input type="text" id="search" name="search"
+                       placeholder="Event title or teacher..."
+                       value="{{ current_filters.search or '' }}">
+            </div>
+
+            <div class="filter-actions" style="grid-column: 1 / -1;">
+                <button type="submit" class="filter-btn">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+                <a href="{{ url_for('virtual.virtual_recruitment') }}" class="reset-btn">
+                    <i class="fas fa-redo"></i> Reset
+                </a>
+                <a href="{{ url_for('volunteers.volunteers') }}" class="recruitment-btn">
+                    <i class="fas fa-user-plus"></i> Find Volunteers
+                </a>
+                <a href="{{ url_for('virtual.virtual_usage') }}" class="btn btn-secondary" style="background: #6c757d; color: white; padding: 10px 16px; text-decoration: none; border-radius: 5px;">
+                    <i class="fas fa-chart-bar"></i> Back to Usage Report
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Events Summary -->
+    <div class="events-summary">
+        <div class="summary-stat">
+            <div class="number">{{ event_count }}</div>
+            <div class="label">Events Needing Presenters</div>
+        </div>
+    </div>
+
+    <!-- Events Table -->
+    <div class="events-table-container">
+        {% if events %}
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th>Event Title</th>
+                    <th>Date & Time</th>
+                    <th>School</th>
+                    <th>District</th>
+                    <th style="text-align: center;">Teachers</th>
+                    <th style="text-align: center;">Days Until</th>
+                    <th style="text-align: center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr class="clickable-row" data-event-id="{{ event.id }}">
+                    <td><strong>{{ event.title }}</strong></td>
+                    <td>{{ event.formatted_date }}</td>
+                    <td>{{ event.school_name }}</td>
+                    <td>{{ event.district_name }}</td>
+                    <td style="text-align: center;">
+                        {% if event.teacher_count > 0 %}
+                            <span class="badge" style="background: #28a745; color: white;">{{ event.teacher_count }}</span>
+                        {% else %}
+                            <span class="badge" style="background: #6c757d; color: white;">0</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="badge {% if event.days_until <= 7 %}badge-danger{% elif event.days_until <= 14 %}badge-warning{% else %}badge-info{% endif %}">
+                            {{ event.days_until }} days
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <a href="{{ url_for('events.view_event', id=event.id) }}"
+                           class="btn btn-sm btn-primary"
+                           onclick="event.stopPropagation();">
+                            <i class="fas fa-edit"></i> Edit Event
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h3>Great news!</h3>
+            <p>All upcoming virtual sessions have presenters assigned.</p>
+            <p style="margin-top: 20px;">
+                <a href="{{ url_for('virtual.virtual_usage') }}" class="recruitment-btn">
+                    <i class="fas fa-chart-bar"></i> View Usage Report
+                </a>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Allow clicking entire row to navigate to event edit page
+document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', function(e) {
+        // Don't trigger if clicking a link or button
+        if (!e.target.closest('a') && !e.target.closest('button')) {
+            const eventId = this.dataset.eventId;
+            window.location.href = `/events/view/${eventId}`;
+        }
+    });
+});
+</script>
+{% endblock %}

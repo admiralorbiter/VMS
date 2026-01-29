@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('tenants.list_tenants') }}">Tenants</a></li>
+            <li class="breadcrumb-item active">{{ tenant.name }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">{{ tenant.name }}</h2>
+            <span class="text-muted">Slug: <code>{{ tenant.slug }}</code></span>
+        </div>
+        <div class="d-flex gap-2">
+            {# FR-TENANT-105: Admin context switching #}
+            {% if tenant.is_active and not is_admin_viewing_as_tenant %}
+            <form method="POST" action="{{ url_for('tenants.switch_tenant_context', tenant_id=tenant.id) }}"
+                class="d-inline">
+                <button type="submit" class="btn btn-outline-success"
+                    onclick="return confirm('Switch to view as {{ tenant.name }}?')">
+                    <i class="fas fa-user-shield me-2"></i>View as Tenant
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('tenants.edit_tenant', tenant_id=tenant.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-2"></i>Edit Settings
+            </a>
+            <form method="POST" action="{{ url_for('tenants.toggle_active', tenant_id=tenant.id) }}" class="d-inline">
+                {% if tenant.is_active %}
+                <button type="submit" class="btn btn-outline-warning"
+                    onclick="return confirm('Deactivate this tenant? Users will no longer be able to access it.')">
+                    <i class="fas fa-pause me-2"></i>Deactivate
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-outline-success">
+                    <i class="fas fa-play me-2"></i>Activate
+                </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Status Card -->
+            <div class="admin-card p-4 mb-4">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="h3 mb-0">
+                            {% if tenant.is_active %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i></span>
+                            {% else %}
+                            <span class="text-secondary"><i class="fas fa-pause-circle"></i></span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">Status</small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="h3 mb-0">{{ users|length }}</div>
+                        <small class="text-muted">Users</small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="h3 mb-0">
+                            {% if tenant.api_key_hash %}
+                            <span class="text-success"><i class="fas fa-key"></i></span>
+                            {% else %}
+                            <span class="text-warning"><i class="fas fa-key"></i></span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">API Key</small>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="h3 mb-0">
+                            {{ tenant.get_setting('features', default={})|select|list|length }}
+                        </div>
+                        <small class="text-muted">Features</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Flags -->
+            <div class="admin-card p-4 mb-4">
+                <h5 class="mb-3">Feature Flags</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <td><strong>Events Management</strong></td>
+                                <td class="text-end">
+                                    {% if tenant.is_feature_enabled('events') %}
+                                    <span class="badge bg-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Volunteer Management</strong></td>
+                                <td class="text-end">
+                                    {% if tenant.is_feature_enabled('volunteers') %}
+                                    <span class="badge bg-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Recruitment Dashboard</strong> <span class="text-muted">(Phase 4)</span>
+                                </td>
+                                <td class="text-end">
+                                    {% if tenant.is_feature_enabled('recruitment') %}
+                                    <span class="badge bg-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>PrepKC Event Visibility</strong> <span class="text-muted">(Phase 5)</span>
+                                </td>
+                                <td class="text-end">
+                                    {% if tenant.is_feature_enabled('prepkc_visibility') %}
+                                    <span class="badge bg-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Users -->
+            <div class="admin-card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Tenant Users</h5>
+                    <!-- Future: Add user button -->
+                </div>
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.is_admin %}
+                                    <span class="badge bg-danger">Admin</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">User</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No users assigned to this tenant yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- API Key Management -->
+            <div class="admin-card p-4 mb-4">
+                <h6 class="mb-3">API Key</h6>
+                {% if tenant.api_key_hash %}
+                <p class="text-success mb-2">
+                    <i class="fas fa-check-circle me-2"></i>API key is configured
+                </p>
+                <small class="text-muted d-block mb-3">
+                    Generated: {{ tenant.api_key_created_at.strftime('%Y-%m-%d %H:%M') if tenant.api_key_created_at else
+                    'Unknown' }}
+                </small>
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ url_for('tenants.generate_api_key', tenant_id=tenant.id) }}"
+                        class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                            onclick="return confirm('Generate a new API key? The current key will be invalidated immediately.')">
+                            <i class="fas fa-sync me-1"></i>Rotate
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('tenants.revoke_api_key', tenant_id=tenant.id) }}"
+                        class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Revoke the API key? The district website integration will stop working.')">
+                            <i class="fas fa-times me-1"></i>Revoke
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <p class="text-muted mb-3">No API key configured.</p>
+                <form method="POST" action="{{ url_for('tenants.generate_api_key', tenant_id=tenant.id) }}">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-key me-2"></i>Generate API Key
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+            <!-- Portal Info -->
+            <div class="admin-card p-4 mb-4">
+                <h6 class="mb-3">Portal Access</h6>
+                <dl class="mb-0">
+                    <dt>Portal URL</dt>
+                    <dd>
+                        <a href="/virtual/{{ tenant.slug }}" target="_blank" class="text-break">
+                            /virtual/{{ tenant.slug }}
+                            <i class="fas fa-external-link-alt ms-1 small"></i>
+                        </a>
+                    </dd>
+                    {% if tenant.allowed_origins %}
+                    <dt>Allowed Origins</dt>
+                    <dd class="text-break small">{{ tenant.allowed_origins }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+
+            <!-- Linked District -->
+            <div class="admin-card p-4">
+                <h6 class="mb-3">Linked District</h6>
+                {% if tenant.district %}
+                <p class="mb-1"><strong>{{ tenant.district.name }}</strong></p>
+                <small class="text-muted">Code: {{ tenant.district.district_code or '-' }}</small>
+                {% else %}
+                <p class="text-muted mb-0">No linked district</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

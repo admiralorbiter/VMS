@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.recruitment_dashboard') }}">Recruitment</a></li>
+            <li class="breadcrumb-item active">{{ event.title }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="d-flex align-items-start">
+                <div>
+                    <h2 class="mb-1">{{ event.title }}</h2>
+                    <p class="text-muted mb-2">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ event.start_date.strftime('%B %d, %Y at %I:%M %p') if event.start_date else 'TBD' }}
+                        <span class="mx-2">|</span>
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        {{ event.location or 'TBD' }}
+                    </p>
+                    <div>
+                        {% if urgency_level == 'critical' %}
+                        <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Critical - Urgent
+                            Recruitment Needed</span>
+                        {% elif urgency_level == 'warning' %}
+                        <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-circle me-1"></i>Needs
+                            Attention</span>
+                        {% else %}
+                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>On Track</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="mb-0 text-success">{{ confirmed }}</h4>
+                            <small>Confirmed</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="mb-0 text-warning">{{ invited }}</h4>
+                            <small>Invited</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="mb-0 text-muted">{{ event.volunteers_needed or 0 }}</h4>
+                            <small>Needed</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height: 10px;">
+                        <div class="progress-bar bg-success"
+                            style="width: {{ (confirmed / event.volunteers_needed * 100)|int if event.volunteers_needed else 0 }}%;">
+                        </div>
+                        <div class="progress-bar bg-warning"
+                            style="width: {{ (invited / event.volunteers_needed * 100)|int if event.volunteers_needed else 0 }}%;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Candidates List -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Recommended Volunteers</h5>
+                    <span class="badge bg-primary">{{ candidates|length }} candidates</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if candidates %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Score</th>
+                                    <th>Volunteer</th>
+                                    <th>Match Reasons</th>
+                                    <th>Outreach</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in candidates %}
+                                <tr>
+                                    <td>
+                                        <span class="badge fs-6
+                                            {% if c.score >= 70 %}bg-success
+                                            {% elif c.score >= 40 %}bg-warning text-dark
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ c.score }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('district.view_volunteer', volunteer_id=c.volunteer.id) }}">
+                                            <strong>{{ c.volunteer.first_name }} {{ c.volunteer.last_name }}</strong>
+                                        </a>
+                                        {% if c.volunteer.organization_name %}
+                                        <br><small class="text-muted">{{ c.volunteer.organization_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td style="max-width: 250px;">
+                                        {% for reason in c.reasons[:3] %}
+                                        <span class="badge bg-light text-dark me-1 mb-1">{{ reason }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if c.last_outreach %}
+                                        <span class="badge
+                                            {% if c.last_outreach.outcome == 'confirmed' %}bg-success
+                                            {% elif c.last_outreach.outcome == 'interested' %}bg-info
+                                            {% elif c.last_outreach.outcome == 'declined' %}bg-danger
+                                            {% elif c.last_outreach.outcome == 'no_response' %}bg-secondary
+                                            {% else %}bg-warning text-dark{% endif %}">
+                                            {{ c.last_outreach.outcome|title }}
+                                        </span>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ c.last_outreach.attempted_at.strftime('%b %d') if
+                                            c.last_outreach.attempted_at else '' }}
+                                        </small>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal" data-bs-target="#outreachModal"
+                                            data-volunteer-id="{{ c.volunteer.id }}"
+                                            data-volunteer-name="{{ c.volunteer.first_name }} {{ c.volunteer.last_name }}">
+                                            <i class="fas fa-phone me-1"></i>Log Outreach
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No volunteers available in your district pool.</p>
+                        <a href="{{ url_for('district.create_volunteer') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Volunteers
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Recent Outreach -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-history me-2"></i>Recent Outreach</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if outreach_history %}
+                    <ul class="list-group list-group-flush">
+                        {% for o in outreach_history[:10] %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ o.volunteer.first_name }} {{ o.volunteer.last_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i
+                                            class="fas fa-{{ 'envelope' if o.method == 'email' else 'phone' if o.method == 'phone' else 'comment' if o.method == 'text' else 'user' }} me-1"></i>
+                                        {{ o.method|title }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge
+                                        {% if o.outcome == 'confirmed' %}bg-success
+                                        {% elif o.outcome == 'interested' %}bg-info
+                                        {% elif o.outcome == 'declined' %}bg-danger
+                                        {% elif o.outcome == 'no_response' %}bg-secondary
+                                        {% else %}bg-warning text-dark{% endif %}">
+                                        {{ o.outcome|title }}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">{{ o.attempted_at.strftime('%b %d') if o.attempted_at else
+                                        '' }}</small>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <small class="text-muted">No outreach logged yet</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('district.view_event', event_id=event.id) }}"
+                            class="btn btn-outline-primary">
+                            <i class="fas fa-calendar me-2"></i>View Event Details
+                        </a>
+                        <a href="{{ url_for('district.recruitment_dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Outreach Modal -->
+<div class="modal fade" id="outreachModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('district.log_outreach') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Log Outreach</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="event_id" value="{{ event.id }}">
+                    <input type="hidden" name="volunteer_id" id="modal-volunteer-id">
+
+                    <p class="mb-3">
+                        Contacting: <strong id="modal-volunteer-name"></strong>
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Contact Method</label>
+                        <select name="method" class="form-select" required>
+                            <option value="email">📧 Email</option>
+                            <option value="phone">📞 Phone Call</option>
+                            <option value="text">💬 Text Message</option>
+                            <option value="in_person">👤 In Person</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Outcome</label>
+                        <select name="outcome" class="form-select" required>
+                            <option value="pending">⏳ Pending (awaiting response)</option>
+                            <option value="no_response">❌ No Response</option>
+                            <option value="interested">👍 Interested</option>
+                            <option value="declined">👎 Declined</option>
+                            <option value="confirmed">✅ Confirmed</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes (optional)</label>
+                        <textarea name="notes" class="form-control" rows="2"
+                            placeholder="Any relevant details..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Outreach
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const outreachModal = document.getElementById('outreachModal');
+        if (outreachModal) {
+            outreachModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const volunteerId = button.getAttribute('data-volunteer-id');
+                const volunteerName = button.getAttribute('data-volunteer-name');
+
+                document.getElementById('modal-volunteer-id').value = volunteerId;
+                document.getElementById('modal-volunteer-name').textContent = volunteerName;
+            });
+        }
+    });
+</script>
+{% endblock %}

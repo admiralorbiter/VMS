@@ -1,0 +1,168 @@
+/*
+District Portal Landing Page Styles
+===================================
+
+Styling for the district portal landing page with two login option cards.
+Uses the existing color palette from style.css for consistency.
+*/
+
+.district-portal-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* Header Section */
+.district-header {
+    background: linear-gradient(135deg, var(--ucla-blue) 0%, var(--delft-blue) 100%);
+    color: var(--mint-green);
+    padding: 3rem 2rem;
+    border-radius: 10px;
+    margin-bottom: 3rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.district-title {
+    margin: 0 0 1rem 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--mint-green);
+}
+
+.district-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.2rem;
+    color: var(--mint-green);
+}
+
+/* Login Options Container */
+.login-options-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+/* Login Card */
+.login-card {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.login-card-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--ucla-blue);
+}
+
+.teacher-card .login-card-icon {
+    color: var(--ucla-blue);
+}
+
+.staff-card .login-card-icon {
+    color: var(--delft-blue);
+}
+
+.login-card-title {
+    margin: 0 0 1rem 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--delft-blue);
+}
+
+.login-card-description {
+    margin: 0 0 2rem 0;
+    color: var(--text-secondary, #6b7280);
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+/* Login Button */
+.login-card-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 2rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    max-width: 250px;
+}
+
+.teacher-button {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+}
+
+.teacher-button:hover {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+    transform: scale(1.05);
+}
+
+.staff-button {
+    background-color: var(--delft-blue);
+    color: var(--mint-green);
+}
+
+.staff-button:hover {
+    background-color: var(--ucla-blue);
+    color: var(--mint-green);
+    transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .district-portal-container {
+        padding: 1rem 0.5rem;
+    }
+
+    .district-header {
+        padding: 2rem 1.5rem;
+    }
+
+    .district-title {
+        font-size: 2rem;
+    }
+
+    .district-subtitle {
+        font-size: 1rem;
+    }
+
+    .login-options-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .login-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .login-card-icon {
+        font-size: 3rem;
+    }
+
+    .login-card-title {
+        font-size: 1.5rem;
+    }
+}

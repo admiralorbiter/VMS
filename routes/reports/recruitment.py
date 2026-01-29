@@ -242,6 +242,13 @@ def load_routes(bp):
                             Organization.name.ilike(f"%{term}%"),
                             Skill.name.ilike(f"%{term}%"),
                             Event.title.ilike(f"%{term}%"),
+                            # Enhanced search fields
+                            Volunteer.title.ilike(f"%{term}%"),
+                            Volunteer.industry.ilike(f"%{term}%"),
+                            db.cast(Volunteer.local_status, db.String).ilike(
+                                f"%{term}%"
+                            ),
+                            db.cast(Event.type, db.String).ilike(f"%{term}%"),
                         )
                     )
                 query = query.filter(db.or_(*search_conditions))
@@ -255,6 +262,13 @@ def load_routes(bp):
                             Organization.name.ilike(f"%{term}%"),
                             Skill.name.ilike(f"%{term}%"),
                             Event.title.ilike(f"%{term}%"),
+                            # Enhanced search fields
+                            Volunteer.title.ilike(f"%{term}%"),
+                            Volunteer.industry.ilike(f"%{term}%"),
+                            db.cast(Volunteer.local_status, db.String).ilike(
+                                f"%{term}%"
+                            ),
+                            db.cast(Event.type, db.String).ilike(f"%{term}%"),
                         )
                     )
 
@@ -292,6 +306,11 @@ def load_routes(bp):
                 db.session.query(
                     EventParticipation.volunteer_id,
                     db.func.count(EventParticipation.id).label("volunteer_count"),
+                )
+                .filter(
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed"]
+                    )
                 )
                 .group_by(EventParticipation.volunteer_id)
                 .subquery()
