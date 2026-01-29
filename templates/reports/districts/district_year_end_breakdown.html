@@ -32,6 +32,24 @@
     flex-wrap: wrap;
 }
 
+.input-data-button {
+    background-color: var(--ucla-blue);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+}
+
+.input-data-button:hover {
+    background-color: var(--delft-blue);
+    text-decoration: none;
+}
+
 .back-link {
     color: var(--ucla-blue);
     text-decoration: none;
@@ -117,6 +135,12 @@
     font-weight: 600;
 }
 
+/* Override for header cells - keep blue background with white text for visibility */
+.breakdown-table thead th.overall-column {
+    background-color: var(--ucla-blue);
+    color: white;
+}
+
 .district-column {
     text-align: center;
 }
@@ -140,6 +164,10 @@
             <h1>Detailed Stats Breakdown {{ school_year }}</h1>
         </div>
         <div class="header-controls">
+            <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}" 
+               class="input-data-button">
+                <i class="fas fa-edit"></i> Input Data
+            </a>
             <div class="year-filter">
                 <form method="get" action="{{ url_for('report.district_year_end_breakdown') }}" id="yearForm">
                     <input type="hidden" name="host_filter" value="{{ host_filter }}">
@@ -373,7 +401,68 @@
             </tr>
         </tbody>
     </table>
-    {% else %}
+    {% endif %}
+
+    <!-- Manual Input Data Section -->
+    {% if breakdown_data and (manual_inputs_overall or manual_inputs_by_district) %}
+    <div style="margin-top: 3rem;">
+        <h2 style="color: var(--ucla-blue); margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--ucla-blue);">
+            Manual Input Data
+        </h2>
+        <table class="breakdown-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th class="overall-column">Overall</th>
+                    {% for district_name in breakdown_data.keys() %}
+                    <th class="district-column">{{ district_name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Math Relays -->
+                {% if manual_inputs_overall.get('math_relays') is not none or manual_inputs_by_district %}
+                <tr>
+                    <td class="metric-name">Students Participated in Math Relays</td>
+                    <td class="overall-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_overall.get('math_relays', 0) }}</span>
+                        </div>
+                    </td>
+                    {% for district_name, breakdown in breakdown_data.items() %}
+                    <td class="district-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get('math_relays', 0) }}</span>
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+
+                <!-- Data Science -->
+                {% if manual_inputs_overall.get('data_science') is not none or manual_inputs_by_district %}
+                <tr>
+                    <td class="metric-name">Students Participated in Data Science</td>
+                    <td class="overall-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_overall.get('data_science', 0) }}</span>
+                        </div>
+                    </td>
+                    {% for district_name, breakdown in breakdown_data.items() %}
+                    <td class="district-column">
+                        <div class="metric-value">
+                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get('data_science', 0) }}</span>
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if not breakdown_data %}
     <div class="no-data">
         <p>No breakdown data available for the selected school year.</p>
         <p>Please refresh the data on the main district year-end report page.</p>

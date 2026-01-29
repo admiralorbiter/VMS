@@ -63,10 +63,12 @@ from .google_sheet import GoogleSheet
 from .history import History
 from .magic_link import MagicLink
 from .organization import Organization
-from .outreach import OutreachAttempt
-from .recruitment_note import RecruitmentNote, RecruitmentOutcome
-from .reports import DistrictEngagementReport, DistrictYearEndReport, OrganizationReport
-from .roster_import_log import RosterImportLog
+from .reports import (
+    DistrictEngagementReport,
+    DistrictManualInput,
+    DistrictYearEndReport,
+    OrganizationReport,
+)
 from .school_model import School
 from .student import Student
 from .sync_log import SyncLog
@@ -114,6 +116,7 @@ __all__ = [
     "ClientProject",
     "DistrictYearEndReport",
     "DistrictEngagementReport",
+    "DistrictManualInput",
     "OrganizationReport",
     "ValidationRun",
     "ValidationResult",

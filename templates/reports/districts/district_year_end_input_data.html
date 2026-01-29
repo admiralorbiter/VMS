@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Input District Data - Year-End Report{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<style>
+.input-data-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.input-data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.back-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.back-link:hover {
+    background-color: rgba(70, 117, 153, 0.1);
+    text-decoration: none;
+}
+
+.data-type-selector {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.data-type-selector h2 {
+    margin-top: 0;
+    color: var(--ucla-blue);
+    margin-bottom: 1rem;
+}
+
+.data-type-options {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.data-type-option {
+    flex: 1;
+    min-width: 200px;
+    padding: 1.5rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.data-type-option:hover {
+    border-color: var(--ucla-blue);
+    background-color: rgba(70, 117, 153, 0.05);
+}
+
+.data-type-option h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--ucla-blue);
+}
+
+.data-type-option p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.district-input-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.district-input-form h2 {
+    margin-top: 0;
+    color: var(--ucla-blue);
+    margin-bottom: 1.5rem;
+}
+
+.district-input-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+}
+
+.district-input-table thead {
+    background: var(--ucla-blue);
+    color: white;
+}
+
+.district-input-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+}
+
+.district-input-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.district-input-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.district-name {
+    font-weight: 600;
+    color: #495057;
+}
+
+.value-input {
+    width: 150px;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.value-input:focus {
+    outline: none;
+    border-color: var(--ucla-blue);
+    box-shadow: 0 0 0 2px rgba(70, 117, 153, 0.25);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: var(--ucla-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--delft-blue);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="input-data-container">
+    <div class="input-data-header">
+        <div>
+            <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Breakdown
+            </a>
+            <h1>Input District Data - {{ school_year[:2] }}-{{ school_year[2:] }} School Year</h1>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else ('warning' if category == 'warning' else 'success') }}" style="padding: 1rem; border-radius: 4px; margin-bottom: 1rem; background-color: {% if category == 'error' %}#f8d7da{% elif category == 'warning' %}#fff3cd{% else %}#d4edda{% endif %}; color: {% if category == 'error' %}#721c24{% elif category == 'warning' %}#856404{% else %}#155724{% endif %}; border: 1px solid {% if category == 'error' %}#f5c6cb{% elif category == 'warning' %}#ffeaa7{% else %}#c3e6cb{% endif %};">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if not data_type %}
+    <!-- Step A: Data Type Selection -->
+    <div class="data-type-selector">
+        <h2>Select Data Type to Enter</h2>
+        <div class="data-type-options">
+            {% for data_type_key, data_type_info in data_types.items() %}
+            <div class="data-type-option" onclick="selectDataType('{{ data_type_key }}')">
+                <h3>{{ data_type_info.display_name }}</h3>
+                <p>{{ data_type_info.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <form method="get" action="{{ url_for('report.district_year_end_input_data') }}" id="dataTypeForm" style="display: none;">
+        <input type="hidden" name="school_year" value="{{ school_year }}">
+        <input type="hidden" name="host_filter" value="{{ host_filter }}">
+        <input type="hidden" name="data_type" id="selectedDataType">
+    </form>
+
+    <script>
+        function selectDataType(type) {
+            document.getElementById('selectedDataType').value = type;
+            document.getElementById('dataTypeForm').submit();
+        }
+    </script>
+    {% else %}
+    <!-- Step B: District Input Form -->
+    <div class="district-input-form">
+        <h2>{{ data_type_display }}</h2>
+        <form method="post" action="{{ url_for('report.district_year_end_input_data') }}">
+            <input type="hidden" name="school_year" value="{{ school_year }}">
+            <input type="hidden" name="host_filter" value="{{ host_filter }}">
+            <input type="hidden" name="data_type" value="{{ data_type }}">
+            
+            <table class="district-input-table">
+                <thead>
+                    <tr>
+                        <th>District Name</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for district in districts %}
+                    <tr>
+                        <td class="district-name">{{ district.name }}</td>
+                        <td>
+                            <input 
+                                type="number" 
+                                name="district_{{ district.id }}" 
+                                value="{{ saved_values.get(district.id, 0) if saved_values.get(district.id, 0) > 0 else '' }}" 
+                                min="0" 
+                                step="1"
+                                class="value-input"
+                                placeholder="0"
+                            >
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="form-actions">
+                <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}" class="btn btn-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Values
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

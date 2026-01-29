@@ -630,3 +630,64 @@ class DIAEventsReportCache(db.Model):
 
     def __repr__(self):
         return f"<DIAEventsReportCache updated={self.last_updated}>"
+
+
+class DistrictManualInput(db.Model):
+    """
+    Model for storing manually entered district-level data for Year-End reports.
+    
+    This model stores values like Math Relays and Data Science participation
+    that are entered manually by staff and need to appear in Year-End reports.
+    
+    Database Table:
+        district_manual_inputs - Stores manual district data entries
+    
+    Key Features:
+        - District-specific manual data entry
+        - School year organization
+        - Host filter support for multi-host environments
+        - Data type categorization (math_relays, data_science, etc.)
+        - Automatic timestamp tracking
+        - Unique constraints to prevent duplicate entries
+    
+    Relationships:
+        - Many-to-one with District model
+    
+    Data Organization:
+        - district_id: Links to specific district (Integer, matches District.id)
+        - school_year: Academic year (e.g., "2425" for 2024-2025)
+        - host_filter: Host environment filter ("all", "prep-kc", etc.)
+        - data_type: Type of data (e.g., "math_relays", "data_science")
+        - value: Numeric value entered by staff (Integer, 0-30000 range)
+    
+    Performance Features:
+        - Indexed fields for fast queries
+        - Unique constraint prevents duplicate entries
+        - Efficient lookups by district, year, filter, and type
+    """
+    
+    __tablename__ = "district_manual_inputs"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    district_id = db.Column(db.Integer, db.ForeignKey("district.id"), nullable=False, index=True)
+    school_year = db.Column(db.String(4), nullable=False, index=True)
+    host_filter = db.Column(db.String(20), default="all", nullable=False, index=True)
+    data_type = db.Column(db.String(50), nullable=False, index=True)
+    value = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    district = db.relationship("District", backref="manual_inputs")
+    
+    __table_args__ = (
+        db.UniqueConstraint(
+            "district_id",
+            "school_year",
+            "host_filter",
+            "data_type",
+            name="uix_district_year_host_datatype",
+        ),
+    )
+    
+    def __repr__(self):
+        return f"<DistrictManualInput district={self.district_id} year={self.school_year} type={self.data_type} value={self.value}>"

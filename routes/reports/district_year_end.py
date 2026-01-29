@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 import pytz
 import xlsxwriter
-from flask import Blueprint, jsonify, render_template, request, send_file
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from models import db
@@ -18,7 +18,7 @@ from models.event import (
 )
 from models.google_sheet import GoogleSheet
 from models.organization import Organization, VolunteerOrganization
-from models.reports import DistrictYearEndReport
+from models.reports import DistrictManualInput, DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation
@@ -1300,6 +1300,27 @@ def load_routes(bp):
                 # If parsing fails, show no districts
                 breakdown_data = {}
 
+        # Fetch manual inputs for this school year and host filter
+        manual_inputs = DistrictManualInput.query.filter_by(
+            school_year=school_year,
+            host_filter=host_filter
+        ).all()
+        
+        # Organize manual inputs by district and data type
+        manual_inputs_by_district = {}
+        for mi in manual_inputs:
+            if mi.district and mi.district.name not in manual_inputs_by_district:
+                manual_inputs_by_district[mi.district.name] = {}
+            if mi.district:
+                manual_inputs_by_district[mi.district.name][mi.data_type] = mi.value
+        
+        # Calculate overall totals for manual inputs
+        manual_inputs_overall = {}
+        for mi in manual_inputs:
+            if mi.data_type not in manual_inputs_overall:
+                manual_inputs_overall[mi.data_type] = 0
+            manual_inputs_overall[mi.data_type] += mi.value
+
         # Generate list of school years (from 2020-21 to current+1)
         current_year = int(get_current_school_year()[:2])
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
@@ -1312,6 +1333,186 @@ def load_routes(bp):
             school_year=school_year,
             school_years=school_years,
             host_filter=host_filter,
+            manual_inputs_by_district=manual_inputs_by_district,
+            manual_inputs_overall=manual_inputs_overall,
+        )
+
+    @bp.route("/reports/district/year-end/input-data", methods=["GET", "POST"])
+    @login_required
+    def district_year_end_input_data():
+        """Handle manual input of district data for Year-End reports"""
+        
+        # Data type definitions (extensible for future types)
+        DATA_TYPES = {
+            "math_relays": {
+                "display_name": "Math Relays",
+                "description": "Enter Math Relays participation numbers"
+            },
+            "data_science": {
+                "display_name": "Data Science",
+                "description": "Enter Data Science participation numbers"
+            }
+        }
+        
+        # Get parameters
+        school_year = request.args.get("school_year") or request.form.get("school_year") or get_current_school_year()
+        host_filter = request.args.get("host_filter") or request.form.get("host_filter") or "all"
+        data_type = request.args.get("data_type") or request.form.get("data_type")
+        
+        # Handle POST (save data)
+        if request.method == "POST":
+            try:
+                data_type = request.form.get("data_type")
+                if not data_type:
+                    flash("Data type is required", "error")
+                    return redirect(url_for("report.district_year_end_input_data", 
+                                          school_year=school_year, 
+                                          host_filter=host_filter))
+                
+                # Get all districts that appear in the Year-End report for this year/filter
+                cached_reports = DistrictYearEndReport.query.filter_by(
+                    school_year=school_year, host_filter=host_filter
+                ).all()
+                
+                district_ids = {report.district_id for report in cached_reports if report.district_id}
+                
+                # Process each district value from the form
+                saved_count = 0
+                errors = []
+                
+                for district_id_str in district_ids:
+                    try:
+                        # Handle both string and integer district IDs
+                        if isinstance(district_id_str, str):
+                            try:
+                                district_id = int(district_id_str)
+                            except ValueError:
+                                # If it's a string ID (like Salesforce ID), skip it
+                                continue
+                        else:
+                            district_id = district_id_str
+                        
+                        form_key = f"district_{district_id}"
+                        value_str = request.form.get(form_key, "0")
+                        
+                        # Validate and convert to integer (default empty to 0)
+                        try:
+                            if value_str == "" or value_str is None:
+                                value = 0
+                            else:
+                                value = int(value_str)
+                            
+                            # Ensure non-negative
+                            if value < 0:
+                                value = 0
+                                errors.append(f"District {district_id}: Negative value converted to 0")
+                        except (ValueError, TypeError):
+                            value = 0
+                            errors.append(f"District {district_id}: Invalid value converted to 0")
+                        
+                        # Get or create the manual input record
+                        manual_input = DistrictManualInput.query.filter_by(
+                            district_id=district_id,
+                            school_year=school_year,
+                            host_filter=host_filter,
+                            data_type=data_type
+                        ).first()
+                        
+                        if manual_input:
+                            # Update existing
+                            manual_input.value = value
+                        else:
+                            # Create new
+                            manual_input = DistrictManualInput(
+                                district_id=district_id,
+                                school_year=school_year,
+                                host_filter=host_filter,
+                                data_type=data_type,
+                                value=value
+                            )
+                            db.session.add(manual_input)
+                        
+                        saved_count += 1
+                    except Exception as e:
+                        # Skip districts that can't be processed
+                        errors.append(f"District {district_id_str}: {str(e)}")
+                        continue
+                
+                db.session.commit()
+                
+                # Show success message with any warnings
+                if errors:
+                    flash(f"Saved {saved_count} district values for {DATA_TYPES.get(data_type, {}).get('display_name', data_type)}. Warnings: {'; '.join(errors)}", "warning")
+                else:
+                    flash(f"Successfully saved {saved_count} district values for {DATA_TYPES.get(data_type, {}).get('display_name', data_type)}", "success")
+                
+                # Redirect back to show the form with saved values
+                return redirect(url_for("report.district_year_end_input_data",
+                                      school_year=school_year,
+                                      host_filter=host_filter,
+                                      data_type=data_type))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error saving data: {str(e)}", "error")
+                return redirect(url_for("report.district_year_end_input_data",
+                                      school_year=school_year,
+                                      host_filter=host_filter,
+                                      data_type=data_type))
+        
+        # Handle GET (display form)
+        # Get districts from cached reports (same logic as breakdown page)
+        cached_reports = DistrictYearEndReport.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).all()
+        
+        districts = [report.district for report in cached_reports if report.district]
+        
+        # Filter districts based on user scope (same logic as breakdown page)
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                districts = [d for d in districts if d.name in allowed_districts]
+            except (json.JSONDecodeError, TypeError):
+                districts = []
+        
+        # Get saved values if data_type is selected
+        saved_values = {}
+        data_type_display = None
+        
+        if data_type:
+            data_type_info = DATA_TYPES.get(data_type, {})
+            data_type_display = data_type_info.get("display_name", data_type.replace("_", " ").title())
+            
+            # Fetch saved values from database
+            manual_inputs = DistrictManualInput.query.filter_by(
+                school_year=school_year,
+                host_filter=host_filter,
+                data_type=data_type
+            ).all()
+            
+            saved_values = {mi.district_id: mi.value for mi in manual_inputs}
+        
+        # Generate list of school years
+        current_year = int(get_current_school_year()[:2])
+        school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
+        school_years.reverse()
+        
+        return render_template(
+            "reports/districts/district_year_end_input_data.html",
+            districts=districts,
+            school_year=school_year,
+            host_filter=host_filter,
+            data_type=data_type,
+            data_type_display=data_type_display,
+            data_types=DATA_TYPES,
+            saved_values=saved_values,
+            school_years=school_years,
         )
 
 
