@@ -63,6 +63,8 @@ from .google_sheet import GoogleSheet
 from .history import History
 from .magic_link import MagicLink
 from .organization import Organization
+from .outreach import OutreachAttempt
+from .recruitment_note import RecruitmentNote
 from .reports import (
     DistrictEngagementReport,
     DistrictManualInput,
