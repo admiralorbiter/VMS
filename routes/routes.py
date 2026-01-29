@@ -65,7 +65,7 @@ from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
-from routes.tenants import tenants_bp
+from routes.tenants import tenant_users_bp, tenants_bp
 
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
@@ -112,6 +112,7 @@ def init_routes(app):
     app.register_blueprint(cache_management_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(tenants_bp)
+    app.register_blueprint(tenant_users_bp)  # Tenant user management
     app.register_blueprint(district_bp)  # District Suite Phase 2
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
@@ -128,9 +129,16 @@ def init_routes(app):
         """
         Main application index route.
 
-        Returns:
-            Rendered index template for the application homepage
+        Redirects tenant users to their district dashboard.
+        Returns Polaris homepage for non-tenant users.
         """
+        from flask import redirect, url_for
+        from flask_login import current_user
+
+        # Redirect tenant users to their district dashboard (FR-TENANT-112)
+        if current_user.is_authenticated and current_user.tenant_id:
+            return redirect(url_for("district.list_events"))
+
         return render_template("index.html")
 
     @app.template_filter("format_date")

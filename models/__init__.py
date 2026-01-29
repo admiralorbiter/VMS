@@ -69,6 +69,7 @@ from .reports import (
     DistrictYearEndReport,
     OrganizationReport,
 )
+from .roster_import_log import RosterImportLog  # Must be before TeacherProgress
 from .school_model import School
 from .student import Student
 from .sync_log import SyncLog
@@ -78,7 +79,7 @@ from .teacher_progress_archive import TeacherProgressArchive
 from .tenant import Tenant
 
 # Import your models after db initialization
-from .user import User
+from .user import SecurityLevel, TenantRole, User
 
 # Import validation models
 from .validation import (
@@ -93,6 +94,8 @@ from .volunteer import Volunteer
 __all__ = [
     "db",
     "User",
+    "SecurityLevel",
+    "TenantRole",
     "Volunteer",
     "GoogleSheet",
     "AuditLog",

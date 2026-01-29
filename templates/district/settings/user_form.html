@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('district.settings') }}">Settings</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('district.user_list') }}">Users</a></li>
+            <li class="breadcrumb-item active">{{ 'Edit User' if user else 'Add User' }}</li>
+        </ol>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="admin-card p-4">
+                <h4 class="mb-4">
+                    <i class="fas fa-user-plus me-2"></i>
+                    {{ 'Edit User' if user else 'Add New User' }}
+                </h4>
+
+                <form method="POST"
+                    action="{{ url_for('district.update_user', user_id=user.id) if user else url_for('district.create_user') }}">
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username"
+                            value="{{ user.username if user else '' }}" required>
+                        <div class="form-text">Must be unique across all users.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email"
+                            value="{{ user.email if user else '' }}" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">
+                                Password {% if not user %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            <input type="password" class="form-control" id="password" name="password" minlength="8"
+                                {{ 'required' if not user else '' }}>
+                            {% if user %}
+                            <div class="form-text">Leave blank to keep current password.</div>
+                            {% else %}
+                            <div class="form-text">Minimum 8 characters.</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">
+                                Confirm Password {% if not user %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                                minlength="8" {{ 'required' if not user else '' }}>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="tenant_role" class="form-label">Role <span class="text-danger">*</span></label>
+                        <select class="form-select" id="tenant_role" name="tenant_role" required>
+                            {% for role in roles %}
+                            <option value="{{ role }}" {{ 'selected' if user and user.tenant_role==role else '' }}>
+                                {% if role == 'admin' %}
+                                Admin - Full access, can manage users
+                                {% elif role == 'coordinator' %}
+                                Coordinator - Manage events and volunteers
+                                {% else %}
+                                User - View dashboards and reports
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {{ 'checked'
+                                if not user or user.is_active else '' }}>
+                            <label class="form-check-label" for="is_active">
+                                <strong>Active</strong>
+                                <span class="text-muted ms-2">User can log in when active</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{{ 'Update User' if user else 'Create User' }}
+                        </button>
+                        <a href="{{ url_for('district.user_list') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

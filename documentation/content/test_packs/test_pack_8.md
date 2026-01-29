@@ -6,10 +6,14 @@ District Suite tenant CRUD, configuration, and infrastructure
 > **Coverage**
 > - [FR-TENANT-101](requirements#fr-tenant-101) (Create tenants)
 > - [FR-TENANT-102](requirements#fr-tenant-102) (View/Edit/Deactivate)
-> - [FR-TENANT-103](requirements#fr-tenant-103) (Database routing) *Pending Phase 2*
+> - [FR-TENANT-103](requirements#fr-tenant-103) (Database routing)
 > - [FR-TENANT-104](requirements#fr-tenant-104) (Reference data provisioning)
 > - [FR-TENANT-106](requirements#fr-tenant-106) (Separate SQLite files)
 > - [FR-TENANT-107](requirements#fr-tenant-107) (Feature flags)
+> - [FR-TENANT-108](requirements#fr-tenant-108) (Polaris admin creates tenant users)
+> - [FR-TENANT-109](requirements#fr-tenant-109) (Tenant admin manages users)
+> - [FR-TENANT-110](requirements#fr-tenant-110) (Role hierarchy)
+> - [FR-TENANT-112](requirements#fr-tenant-112) (Tenant navigation isolation)
 
 > [!TIP]
 > **Automated Tests**: `tests/unit/models/test_tenant.py` (10 tests), `tests/unit/utils/test_db_manager.py` (11 tests), `tests/integration/test_tenant_routes.py` (15 tests)
@@ -131,9 +135,43 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
+## Phase 1.5: Tenant User Management (FR-TENANT-108 to FR-TENANT-112)
+
+### K. Polaris Admin Creates Tenant Users (FR-TENANT-108)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1200"></a>**TC-1200** | Create tenant user form loads | Form shows username, email, password, role | Integration | 2026-01-29 |
+| <a id="tc-1201"></a>**TC-1201** | Create tenant user | User created with tenant_id and tenant_role | Integration | 2026-01-29 |
+| <a id="tc-1202"></a>**TC-1202** | Tenant user can log in | User authenticates and sees tenant nav | Integration | 2026-01-29 |
+| <a id="tc-1203"></a>**TC-1203** | Edit tenant user | Username, email, role updated | Integration | 2026-01-29 |
+| <a id="tc-1204"></a>**TC-1204** | Deactivate tenant user | is_active set to False, user cannot login | Integration | 2026-01-29 |
+| <a id="tc-1205"></a>**TC-1205** | Reactivate tenant user | is_active set to True, user can login | Integration | 2026-01-29 |
+
+### L. Tenant Admin Self-Service (FR-TENANT-109)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1210"></a>**TC-1210** | Tenant admin sees user management | Settings > Manage Users visible | Integration | 2026-01-29 |
+| <a id="tc-1211"></a>**TC-1211** | Tenant admin creates user | User created in same tenant | Integration | 2026-01-29 |
+| <a id="tc-1212"></a>**TC-1212** | Tenant admin edits user | User details updated | Integration | 2026-01-29 |
+| <a id="tc-1213"></a>**TC-1213** | Tenant admin deactivates user | Target user cannot login | Integration | 2026-01-29 |
+| <a id="tc-1214"></a>**TC-1214** | Cannot deactivate self | Error: "Cannot deactivate your own account" | Integration | 2026-01-29 |
+| <a id="tc-1215"></a>**TC-1215** | Tenant coordinator cannot access | Returns 403 or redirect | Integration | 2026-01-29 |
+
+### M. Tenant Navigation Isolation (FR-TENANT-112)
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1216"></a>**TC-1216** | Tenant user sees tenant nav only | Events, Volunteers, Recruitment, Settings links only | Integration | 2026-01-29 |
+| <a id="tc-1217"></a>**TC-1217** | No Polaris admin links | Volunteers, Orgs, Virtual not visible | Integration | 2026-01-29 |
+| <a id="tc-1218"></a>**TC-1218** | Index redirects to district | Tenant user redirected to /district/events | Integration | 2026-01-29 |
+
+---
+
 ## Phase 2: District Events (FR-SELFSERV-201, 202, 203)
 
-### K. District Event Creation (FR-SELFSERV-201)
+### N. District Event Creation (FR-SELFSERV-201)
 
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
@@ -321,6 +359,7 @@ District Suite tenant CRUD, configuration, and infrastructure
 > - `tests/unit/utils/test_db_manager.py` - Database manager tests (11 tests)
 > - `tests/unit/utils/test_tenant_context.py` - Tenant context tests (14 tests)
 > - `tests/integration/test_tenant_routes.py` - Tenant routes tests
+> - `tests/integration/test_tenant_user_management.py` - Tenant user management tests (20 tests)
 > - `tests/integration/test_district_events.py` - District event routes tests (including calendar)
 > - `tests/integration/test_public_api.py` - Public Event API tests
 > - `tests/integration/test_district_volunteers.py` - District volunteer routes tests
@@ -329,5 +368,5 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
-*Last updated: 2026-01-26*
-*Version: 1.8 - Added Phase 4 District Recruitment tests (TC-1101-1123)*
+*Last updated: 2026-01-29*
+*Version: 1.9 - Added Tenant User Management tests (TC-1200-1218)*

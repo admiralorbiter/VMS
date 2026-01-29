@@ -337,11 +337,11 @@ Each requirement links to:
 
 | ID | Requirement | Test Coverage | Related User Stories |
 |----|-------------|---------------|----------------------|
-| <a id="fr-tenant-108"></a>**FR-TENANT-108** | Polaris administrators shall be able to create, edit, and deactivate user accounts for any tenant via the tenant management interface. | *TBD* | [US-1003](user_stories#us-1003) |
-| <a id="fr-tenant-109"></a>**FR-TENANT-109** | Tenant administrators shall be able to create, edit, and deactivate user accounts within their own tenant. | *TBD* | [US-1004](user_stories#us-1004) |
-| <a id="fr-tenant-110"></a>**FR-TENANT-110** | The system shall support a tenant role hierarchy: Tenant Admin (full tenant access), Tenant Coordinator (event/volunteer management), and Tenant User (read-only dashboard access). | *TBD* | [US-1004](user_stories#us-1004) |
-| <a id="fr-tenant-111"></a>**FR-TENANT-111** | Tenant user passwords shall be securely hashed using the same mechanism as Polaris users, with support for password reset via email. | *TBD* | *Technical requirement* |
-| <a id="fr-tenant-112"></a>**FR-TENANT-112** | Tenant users shall see a navigation menu scoped to their tenant's enabled features, without access to Polaris administrative functions. | *TBD* | [US-1004](user_stories#us-1004) |
+| <a id="fr-tenant-108"></a>**FR-TENANT-108** | Polaris administrators shall be able to create, edit, and deactivate user accounts for any tenant via the tenant management interface. | [TC-1200](test-pack-8#tc-1200)–[TC-1205](test-pack-8#tc-1205) | [US-1003](user_stories#us-1003) |
+| <a id="fr-tenant-109"></a>**FR-TENANT-109** | Tenant administrators shall be able to create, edit, and deactivate user accounts within their own tenant. | [TC-1210](test-pack-8#tc-1210)–[TC-1215](test-pack-8#tc-1215) | [US-1004](user_stories#us-1004) |
+| <a id="fr-tenant-110"></a>**FR-TENANT-110** | The system shall support a tenant role hierarchy: Tenant Admin (full tenant access), Tenant Coordinator (event/volunteer management), and Tenant User (read-only dashboard access). | [TC-1201](test-pack-8#tc-1201), [TC-1215](test-pack-8#tc-1215) | [US-1004](user_stories#us-1004) |
+| <a id="fr-tenant-111"></a>**FR-TENANT-111** | Tenant user passwords shall be securely hashed using the same mechanism as Polaris users, with support for password reset via email. | [TC-1202](test-pack-8#tc-1202) | *Technical requirement* |
+| <a id="fr-tenant-112"></a>**FR-TENANT-112** | Tenant users shall see a navigation menu scoped to their tenant's enabled features, without access to Polaris administrative functions. | [TC-1216](test-pack-8#tc-1216)–[TC-1218](test-pack-8#tc-1218) | [US-1004](user_stories#us-1004) |
 
 ---
 

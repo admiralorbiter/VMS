@@ -79,6 +79,25 @@ class SecurityLevel(IntEnum):
     ADMIN = 3  # Full system access
 
 
+class TenantRole:
+    """
+    Role within a tenant (distinct from global security level).
+
+    These roles apply only to users with a tenant_id set:
+    - ADMIN: Full tenant access, can manage tenant users
+    - COORDINATOR: Manage events/volunteers, no user management
+    - USER: Read-only dashboards and reports
+
+    FR-TENANT-110: Tenant role hierarchy
+    """
+
+    ADMIN = "admin"
+    COORDINATOR = "coordinator"
+    USER = "user"
+
+    CHOICES = [ADMIN, COORDINATOR, USER]
+
+
 # User model
 class User(db.Model, UserMixin):
     """
@@ -178,6 +197,21 @@ class User(db.Model, UserMixin):
         comment="Tenant this user belongs to (null = PrepKC main)",
     )
 
+    # Tenant role (FR-TENANT-110) - only applicable when tenant_id is set
+    tenant_role = db.Column(
+        db.String(20),
+        nullable=True,
+        comment="Role within tenant: admin, coordinator, user",
+    )
+
+    # Soft deactivation for tenant users (FR-TENANT-108, FR-TENANT-109)
+    is_active = db.Column(
+        db.Boolean,
+        default=True,
+        nullable=False,
+        comment="Whether user can log in (soft delete)",
+    )
+
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -241,6 +275,26 @@ class User(db.Model, UserMixin):
     def is_school_scoped(self):
         """Check if user has school-level scope restrictions."""
         return self.scope_type == "school"
+
+    @property
+    def is_tenant_admin(self):
+        """Check if user is an admin within their tenant (FR-TENANT-109)."""
+        return self.tenant_id is not None and self.tenant_role == TenantRole.ADMIN
+
+    @property
+    def is_tenant_coordinator(self):
+        """Check if user is a coordinator within their tenant."""
+        return self.tenant_id is not None and self.tenant_role == TenantRole.COORDINATOR
+
+    @property
+    def is_tenant_user(self):
+        """Check if user is a basic user within their tenant (read-only)."""
+        return self.tenant_id is not None and self.tenant_role == TenantRole.USER
+
+    @property
+    def can_manage_tenant_users(self):
+        """Check if user can create/edit tenant users (FR-TENANT-108, FR-TENANT-109)."""
+        return self.is_admin or self.is_tenant_admin
 
     def can_view_district(self, district_name):
         """

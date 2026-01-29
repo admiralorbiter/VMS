@@ -68,8 +68,15 @@ def is_admin_viewing_as_tenant() -> bool:
     Check if current user is an admin viewing as a different tenant.
 
     Returns:
-        True if admin has switched tenant context
+        True if authenticated admin has switched tenant context
     """
+    from flask_login import current_user
+
+    # Must be authenticated and be an admin to show override banner
+    if not current_user.is_authenticated:
+        return False
+    if not current_user.is_admin:
+        return False
     return bool(session.get("admin_tenant_override"))
 
 
