@@ -353,3 +353,182 @@ class PathfulUnmatchedRecord(db.Model):
 
     def __repr__(self):
         return f"<PathfulUnmatchedRecord {self.id}: {self.unmatched_type} row {self.row_number}>"
+
+
+class PathfulUserProfile(db.Model):
+    """
+    Stores user profile data from Pathful User Report imports.
+
+    Links Pathful user accounts to Polaris TeacherProgress or Volunteer records
+    via the pathful_user_id. Provides enrichment data including email, school,
+    activity metrics, and job information.
+
+    Database Table:
+        pathful_user_profile - Stores Pathful user profiles
+
+    Key Features:
+        - Links to existing pathful_user_id in TeacherProgress/Volunteer
+        - Stores contact info (email, location)
+        - Tracks Pathful activity metrics (login count, last session)
+        - Supports both Educator and Professional roles
+
+    Usage Example:
+        profile = PathfulUserProfile(
+            pathful_user_id="12345",
+            signup_role="Educator",
+            name="Jane Smith",
+            login_email="jane@school.edu"
+        )
+    """
+
+    __tablename__ = "pathful_user_profile"
+
+    id = Column(Integer, primary_key=True)
+
+    # Core identity - links to TeacherProgress.pathful_user_id or Volunteer.pathful_user_id
+    pathful_user_id = Column(String(50), unique=True, nullable=False, index=True)
+    signup_role = Column(String(20), nullable=False)  # Educator, Professional
+
+    # Name and contact
+    name = Column(String(255))
+    login_email = Column(String(255), index=True)
+    notification_email = Column(String(255))
+
+    # Organization
+    school = Column(String(255))
+    district_or_company = Column(String(255))
+    job_title = Column(String(255))
+    grade_cluster = Column(String(100))
+
+    # Skills and affiliations
+    skills = Column(Text)
+    affiliations = Column(Text)
+
+    # Location
+    city = Column(String(100))
+    state = Column(String(50))
+    postal_code = Column(String(20))
+
+    # Pathful activity metrics
+    join_date = Column(DateTime)
+    last_login_date = Column(DateTime)
+    login_count = Column(Integer, default=0)
+    days_logged_in_last_30 = Column(Integer, default=0)
+    last_session_date = Column(DateTime)
+
+    # Subscription info
+    subscription_type = Column(String(100))
+    subscription_name = Column(String(255))
+
+    # Import tracking
+    import_log_id = Column(Integer, ForeignKey("pathful_import_log.id"))
+    import_log = relationship("PathfulImportLog")
+
+    # Links to resolved Polaris records (set when matched/linked)
+    teacher_progress_id = Column(Integer, ForeignKey("teacher_progress.id"))
+    volunteer_id = Column(Integer, ForeignKey("volunteer.id"))
+
+    teacher_progress = relationship(
+        "TeacherProgress", foreign_keys=[teacher_progress_id]
+    )
+    volunteer = relationship("Volunteer", foreign_keys=[volunteer_id])
+
+    # Timestamps
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    def __init__(
+        self,
+        pathful_user_id,
+        signup_role,
+        name=None,
+        login_email=None,
+        import_log_id=None,
+        **kwargs,
+    ):
+        """
+        Initialize a Pathful user profile.
+
+        Args:
+            pathful_user_id: Unique Pathful user ID (UserAuthId)
+            signup_role: User role (Educator or Professional)
+            name: User's full name
+            login_email: User's login email address
+            import_log_id: FK to parent import log
+            **kwargs: Additional profile fields
+        """
+        self.pathful_user_id = pathful_user_id
+        self.signup_role = signup_role
+        self.name = name
+        self.login_email = login_email
+        self.import_log_id = import_log_id
+
+        # Set additional fields from kwargs
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+
+    @property
+    def is_linked(self):
+        """Check if this profile is linked to a Polaris record."""
+        return self.teacher_progress_id is not None or self.volunteer_id is not None
+
+    @property
+    def linked_record_type(self):
+        """Return the type of linked record, if any."""
+        if self.teacher_progress_id:
+            return "teacher_progress"
+        elif self.volunteer_id:
+            return "volunteer"
+        return None
+
+    def link_to_teacher_progress(self, teacher_progress_id):
+        """Link this profile to a TeacherProgress record."""
+        self.teacher_progress_id = teacher_progress_id
+        self.volunteer_id = None  # Clear any volunteer link
+
+    def link_to_volunteer(self, volunteer_id):
+        """Link this profile to a Volunteer record."""
+        self.volunteer_id = volunteer_id
+        self.teacher_progress_id = None  # Clear any teacher link
+
+    def to_dict(self):
+        """Convert to dictionary for API responses."""
+        return {
+            "id": self.id,
+            "pathful_user_id": self.pathful_user_id,
+            "signup_role": self.signup_role,
+            "name": self.name,
+            "login_email": self.login_email,
+            "notification_email": self.notification_email,
+            "school": self.school,
+            "district_or_company": self.district_or_company,
+            "job_title": self.job_title,
+            "grade_cluster": self.grade_cluster,
+            "city": self.city,
+            "state": self.state,
+            "postal_code": self.postal_code,
+            "join_date": self.join_date.isoformat() if self.join_date else None,
+            "last_login_date": (
+                self.last_login_date.isoformat() if self.last_login_date else None
+            ),
+            "login_count": self.login_count,
+            "last_session_date": (
+                self.last_session_date.isoformat() if self.last_session_date else None
+            ),
+            "is_linked": self.is_linked,
+            "linked_record_type": self.linked_record_type,
+            "teacher_progress_id": self.teacher_progress_id,
+            "volunteer_id": self.volunteer_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f"<PathfulUserProfile {self.id}: {self.name} ({self.signup_role})>"

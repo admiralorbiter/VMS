@@ -45,6 +45,7 @@ from models.pathful_import import (
     PathfulImportLog,
     PathfulImportType,
     PathfulUnmatchedRecord,
+    PathfulUserProfile,
     ResolutionStatus,
     UnmatchedType,
 )
@@ -1110,3 +1111,407 @@ def load_pathful_routes():
                 "data": data,
             }
         )
+
+    # =============================================================================
+    # USER REPORT IMPORT ROUTES
+    # =============================================================================
+
+    # Required columns for User Report import
+    REQUIRED_USER_REPORT_COLUMNS = [
+        "UserAuthId",
+        "SignUpRole",
+        "Name",
+    ]
+
+    OPTIONAL_USER_REPORT_COLUMNS = [
+        "LoginEmail",
+        "NotificationEmail",
+        "School",
+        "District or Company",
+        "JobTitle",
+        "GradeCluster",
+        "Skills",
+        "City",
+        "State",
+        "PostalCode",
+        "JoinDate",
+        "LastLoginDate",
+        "LoginCount",
+        "CountOfDaysLoggedInLast30Days",
+        "LastSessionDate",
+        "ActiveSubscriptionType",
+        "ActiveSubscriptionName",
+        "Affiliations",
+    ]
+
+    def parse_user_report_date(date_value):
+        """Parse date from User Report, handling various formats."""
+        if date_value is None or (
+            isinstance(date_value, float) and pd.isna(date_value)
+        ):
+            return None
+
+        if hasattr(date_value, "to_pydatetime"):
+            try:
+                result = date_value.to_pydatetime()
+                if pd.isna(result):
+                    return None
+                return result
+            except Exception:
+                return None
+
+        if isinstance(date_value, datetime):
+            return date_value
+
+        date_str = str(date_value).strip()
+        if date_str.lower() in ("nat", "nan", "none", ""):
+            return None
+
+        # Try common date formats
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S"]:
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+
+        return None
+
+    @virtual_bp.route("/pathful/import-users", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def pathful_import_users():
+        """Import User Report from Pathful export."""
+        if request.method == "GET":
+            # Get recent User Report imports
+            recent_imports = (
+                PathfulImportLog.query.filter_by(
+                    import_type=PathfulImportType.USER_REPORT
+                )
+                .order_by(PathfulImportLog.started_at.desc())
+                .limit(5)
+                .all()
+            )
+
+            # Get profile statistics
+            total_profiles = PathfulUserProfile.query.count()
+            linked_count = PathfulUserProfile.query.filter(
+                db.or_(
+                    PathfulUserProfile.teacher_progress_id.isnot(None),
+                    PathfulUserProfile.volunteer_id.isnot(None),
+                )
+            ).count()
+
+            return render_template(
+                "virtual/pathful_import_users.html",
+                recent_imports=recent_imports,
+                total_profiles=total_profiles,
+                linked_count=linked_count,
+            )
+
+        # POST - Process file upload
+        if "file" not in request.files:
+            flash("No file uploaded", "error")
+            return redirect(url_for("virtual.pathful_import_users"))
+
+        file = request.files["file"]
+        if file.filename == "":
+            flash("No file selected", "error")
+            return redirect(url_for("virtual.pathful_import_users"))
+
+        if not file.filename.endswith((".xlsx", ".xls")):
+            flash(
+                "Invalid file format. Please upload an Excel file (.xlsx or .xls)",
+                "error",
+            )
+            return redirect(url_for("virtual.pathful_import_users"))
+
+        # Create import log
+        import_log = PathfulImportLog(
+            filename=secure_filename(file.filename),
+            import_type=PathfulImportType.USER_REPORT,
+            imported_by=current_user.id if current_user.is_authenticated else None,
+        )
+        db.session.add(import_log)
+        db.session.commit()
+
+        try:
+            # Read Excel file
+            df = pd.read_excel(file)
+
+            # Validate required columns
+            missing_columns = [
+                col for col in REQUIRED_USER_REPORT_COLUMNS if col not in df.columns
+            ]
+            if missing_columns:
+                flash(
+                    f"Missing required columns: {', '.join(missing_columns)}", "error"
+                )
+                import_log.error_count = 1
+                import_log.error_details = f"Missing columns: {missing_columns}"
+                import_log.mark_complete()
+                db.session.commit()
+                return redirect(url_for("virtual.pathful_import_users"))
+
+            import_log.total_rows = len(df)
+
+            # Process rows
+            created_count = 0
+            updated_count = 0
+            linked_count = 0
+            skipped_count = 0
+            errors = []
+
+            for idx, row in df.iterrows():
+                try:
+                    signup_role = str(row.get("SignUpRole", "")).strip()
+
+                    # Skip students and parents
+                    if signup_role not in ["Educator", "Professional"]:
+                        skipped_count += 1
+                        continue
+
+                    pathful_user_id = str(row.get("UserAuthId", "")).strip()
+                    if not pathful_user_id or pathful_user_id == "nan":
+                        skipped_count += 1
+                        continue
+
+                    # Check for existing profile
+                    existing = PathfulUserProfile.query.filter_by(
+                        pathful_user_id=pathful_user_id
+                    ).first()
+
+                    if existing:
+                        # Update existing profile
+                        profile = existing
+                        updated_count += 1
+                    else:
+                        # Create new profile
+                        profile = PathfulUserProfile(
+                            pathful_user_id=pathful_user_id,
+                            signup_role=signup_role,
+                            import_log_id=import_log.id,
+                        )
+                        db.session.add(profile)
+                        created_count += 1
+
+                    # Update profile fields
+                    profile.signup_role = signup_role
+                    profile.name = str(row.get("Name", "")).strip() or None
+                    profile.login_email = str(row.get("LoginEmail", "")).strip() or None
+                    profile.notification_email = (
+                        str(row.get("NotificationEmail", "")).strip() or None
+                    )
+                    profile.school = str(row.get("School", "")).strip() or None
+                    profile.district_or_company = (
+                        str(row.get("District or Company", "")).strip() or None
+                    )
+                    profile.job_title = str(row.get("JobTitle", "")).strip() or None
+                    profile.grade_cluster = (
+                        str(row.get("GradeCluster", "")).strip() or None
+                    )
+
+                    # Skills and affiliations
+                    skills = row.get("Skills", "")
+                    if pd.notna(skills):
+                        profile.skills = str(skills).strip() or None
+                    affiliations = row.get("Affiliations", "")
+                    if pd.notna(affiliations):
+                        profile.affiliations = str(affiliations).strip() or None
+
+                    # Location
+                    profile.city = str(row.get("City", "")).strip() or None
+                    profile.state = str(row.get("State", "")).strip() or None
+                    profile.postal_code = str(row.get("PostalCode", "")).strip() or None
+
+                    # Parse dates
+                    profile.join_date = parse_user_report_date(row.get("JoinDate"))
+                    profile.last_login_date = parse_user_report_date(
+                        row.get("LastLoginDate")
+                    )
+                    profile.last_session_date = parse_user_report_date(
+                        row.get("LastSessionDate")
+                    )
+
+                    # Activity metrics
+                    login_count = row.get("LoginCount")
+                    if pd.notna(login_count):
+                        try:
+                            profile.login_count = int(login_count)
+                        except (ValueError, TypeError):
+                            pass
+
+                    days_30 = row.get("CountOfDaysLoggedInLast30Days")
+                    if pd.notna(days_30):
+                        try:
+                            profile.days_logged_in_last_30 = int(days_30)
+                        except (ValueError, TypeError):
+                            pass
+
+                    # Subscription
+                    profile.subscription_type = (
+                        str(row.get("ActiveSubscriptionType", "")).strip() or None
+                    )
+                    profile.subscription_name = (
+                        str(row.get("ActiveSubscriptionName", "")).strip() or None
+                    )
+
+                    # Auto-link to existing pathful_user_id records
+                    if not profile.is_linked:
+                        if signup_role == "Educator":
+                            # Try to find TeacherProgress with this pathful_user_id
+                            teacher_progress = TeacherProgress.query.filter_by(
+                                pathful_user_id=pathful_user_id
+                            ).first()
+                            if teacher_progress:
+                                profile.link_to_teacher_progress(teacher_progress.id)
+                                linked_count += 1
+                        elif signup_role == "Professional":
+                            # Try to find Volunteer with this pathful_user_id
+                            volunteer = Volunteer.query.filter_by(
+                                pathful_user_id=pathful_user_id
+                            ).first()
+                            if volunteer:
+                                profile.link_to_volunteer(volunteer.id)
+                                linked_count += 1
+
+                except Exception as e:
+                    errors.append(f"Row {idx + 2}: {str(e)}")
+                    continue
+
+            # Update import log
+            import_log.processed_rows = created_count + updated_count
+            import_log.skipped_rows = skipped_count
+            import_log.created_teachers = (
+                created_count  # Repurposing for profiles created
+            )
+            import_log.matched_teachers = (
+                updated_count  # Repurposing for profiles updated
+            )
+            import_log.error_count = len(errors)
+            if errors:
+                import_log.error_details = "\n".join(errors[:50])  # Limit to 50 errors
+            import_log.mark_complete()
+
+            db.session.commit()
+
+            flash(
+                f"User Report imported successfully: {created_count} created, "
+                f"{updated_count} updated, {linked_count} auto-linked, "
+                f"{skipped_count} skipped (students/parents)",
+                "success",
+            )
+            return redirect(url_for("virtual.pathful_users"))
+
+        except Exception as e:
+            db.session.rollback()
+            import_log.error_count = 1
+            import_log.error_details = str(e)
+            import_log.mark_complete()
+            db.session.commit()
+
+            current_app.logger.error(f"User Report import failed: {str(e)}")
+            flash(f"Import failed: {str(e)}", "error")
+            return redirect(url_for("virtual.pathful_import_users"))
+
+    @virtual_bp.route("/pathful/users")
+    @login_required
+    @admin_required
+    def pathful_users():
+        """View all imported Pathful user profiles."""
+        page = request.args.get("page", 1, type=int)
+        per_page = 50
+        role_filter = request.args.get("role", "")
+        link_filter = request.args.get("linked", "")
+        search = request.args.get("search", "").strip()
+
+        query = PathfulUserProfile.query
+
+        # Apply filters
+        if role_filter:
+            query = query.filter(PathfulUserProfile.signup_role == role_filter)
+
+        if link_filter == "linked":
+            query = query.filter(
+                db.or_(
+                    PathfulUserProfile.teacher_progress_id.isnot(None),
+                    PathfulUserProfile.volunteer_id.isnot(None),
+                )
+            )
+        elif link_filter == "unlinked":
+            query = query.filter(
+                PathfulUserProfile.teacher_progress_id.is_(None),
+                PathfulUserProfile.volunteer_id.is_(None),
+            )
+
+        if search:
+            query = query.filter(
+                db.or_(
+                    PathfulUserProfile.name.ilike(f"%{search}%"),
+                    PathfulUserProfile.login_email.ilike(f"%{search}%"),
+                    PathfulUserProfile.school.ilike(f"%{search}%"),
+                    PathfulUserProfile.pathful_user_id.ilike(f"%{search}%"),
+                )
+            )
+
+        query = query.order_by(PathfulUserProfile.name)
+        profiles = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        # Get counts for filter badges
+        total_count = PathfulUserProfile.query.count()
+        educator_count = PathfulUserProfile.query.filter_by(
+            signup_role="Educator"
+        ).count()
+        professional_count = PathfulUserProfile.query.filter_by(
+            signup_role="Professional"
+        ).count()
+        linked_count = PathfulUserProfile.query.filter(
+            db.or_(
+                PathfulUserProfile.teacher_progress_id.isnot(None),
+                PathfulUserProfile.volunteer_id.isnot(None),
+            )
+        ).count()
+
+        return render_template(
+            "virtual/pathful_users.html",
+            profiles=profiles,
+            total_count=total_count,
+            educator_count=educator_count,
+            professional_count=professional_count,
+            linked_count=linked_count,
+            filters={
+                "role": role_filter,
+                "linked": link_filter,
+                "search": search,
+            },
+        )
+
+    @virtual_bp.route("/api/pathful/users/<int:profile_id>/link", methods=["POST"])
+    @login_required
+    @admin_required
+    def api_link_pathful_user(profile_id):
+        """Manually link a Pathful user profile to a Polaris record."""
+        profile = PathfulUserProfile.query.get_or_404(profile_id)
+        data = request.get_json()
+
+        link_type = data.get("link_type")  # 'teacher_progress' or 'volunteer'
+        record_id = data.get("record_id")
+
+        if not link_type or not record_id:
+            return (
+                jsonify({"success": False, "error": "Missing link_type or record_id"}),
+                400,
+            )
+
+        try:
+            if link_type == "teacher_progress":
+                profile.link_to_teacher_progress(record_id)
+            elif link_type == "volunteer":
+                profile.link_to_volunteer(record_id)
+            else:
+                return jsonify({"success": False, "error": "Invalid link_type"}), 400
+
+            db.session.commit()
+            return jsonify({"success": True, "profile": profile.to_dict()})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"success": False, "error": str(e)}), 500
