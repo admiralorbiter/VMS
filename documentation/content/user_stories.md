@@ -10,7 +10,7 @@
 |------|-------------|:-------:|
 | [Epic 1](#epic-1) | In-Person Events (Salesforce → VolunTeach → Website) | 5 |
 | [Epic 2](#epic-2) | Public Volunteer Signup + Confirmation + Calendar Invite | 3 |
-| [Epic 3](#epic-3) | Virtual Events in Polaris + Pathful Data Ingest | 9 |
+| [Epic 3](#epic-3) | Virtual Events in Polaris + Pathful Data Ingest + Data Management | 12 |
 | [Epic 4](#epic-4) | Volunteer Recruitment (Search + History + Communication Logs) | 6 |
 | [Epic 5](#epic-5) | District Progress Dashboards + Teacher Magic Links | 6 |
 | [Epic 6](#epic-6) | Student Roster + Attendance | 3 |
@@ -214,12 +214,15 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **Related Use Cases:** [UC-5](use_cases#uc-5)
 
+**Related Stories (Post-Import):** [US-310](user_stories#us-310), [US-311](user_stories#us-311), [US-312](user_stories#us-312)
+
 **Acceptance Criteria:**
 
 - Given a Pathful export with valid rows, when I import it, then Polaris creates/updates participation records without duplicates.
 - Given the same file is imported twice, then the import is idempotent (no duplicates; updates only).
 - Given rows reference unknown teachers or events, then those rows are flagged as unmatched.
 - Given required columns are missing, then the import fails with a clear missing-columns message.
+- Given import completes successfully, then events are scanned for data issues (missing teachers, missing presenters, cancelled without reason) and flagged per [FR-VIRTUAL-224](requirements#fr-virtual-224) through [FR-VIRTUAL-228](requirements#fr-virtual-228).
 
 ### <a id="us-305"></a>US-305: Track local vs non-local volunteers
 
@@ -298,6 +301,53 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I select "Add New Presenter", then I can enter First Name, Last Name, and Organization (required) and Email (optional).
 - Given I submit the new presenter, then the record is created locally in Polaris and immediately linked to the session.
 - The new volunteer is flagged as "Created in Polaris" (not synced from Salesforce).
+
+### <a id="us-310"></a>US-310: District Admin Reviews Virtual Session Data
+
+**As** a district administrator, **I want** to review and correct virtual session data for schools in my district, **So that** I can ensure accurate progress tracking and reporting without waiting for PrepKC staff.
+
+**Related Requirements:** [FR-VIRTUAL-224](requirements#fr-virtual-224), [FR-VIRTUAL-225](requirements#fr-virtual-225), [FR-VIRTUAL-226](requirements#fr-virtual-226), [FR-VIRTUAL-228](requirements#fr-virtual-228), [FR-VIRTUAL-229](requirements#fr-virtual-229), [FR-VIRTUAL-230](requirements#fr-virtual-230)
+
+**Related Use Cases:** [UC-5](use_cases#uc-5), [UC-20](use_cases#uc-20)
+
+**Acceptance Criteria:**
+
+- Given I am a district admin, when I access the virtual events view, then I see only events at schools within my district(s).
+- Given an event has auto-flagged issues (missing teacher, missing presenter, draft with past date), then those flags are visible in my view.
+- Given I have edit access to an event, when I tag a teacher or presenter, then the change is saved and the corresponding flag is resolved.
+- Given I cannot find a teacher in search, then I can "Quick Create" a new teacher record locally.
+- Given I edit an event, then my changes are logged with my user identity and role.
+
+### <a id="us-311"></a>US-311: Set Cancellation Reasons for Virtual Sessions
+
+**As** staff or a district administrator, **I want** to record why a virtual session was cancelled using predefined reasons, **So that** we can identify patterns and report accurately on session outcomes.
+
+**Related Requirements:** [FR-VIRTUAL-227](requirements#fr-virtual-227), [FR-VIRTUAL-228](requirements#fr-virtual-228), [FR-VIRTUAL-231](requirements#fr-virtual-231)
+
+**Related Use Cases:** [UC-5](use_cases#uc-5), [UC-20](use_cases#uc-20)
+
+**Acceptance Criteria:**
+
+- Given a virtual event has status=Cancelled, when I edit it, then I see a dropdown to select a cancellation reason.
+- Given the cancellation reasons, then they include: Weather/Snow Day, Presenter Cancelled, Teacher Cancelled, School Conflict, Technical Issues, Low Enrollment, Scheduling Error, Other.
+- Given I select "Other", then I must provide explanatory notes.
+- Given I set a cancellation reason, then the corresponding "needs reason" flag is resolved.
+- Given I am a district admin, then I can set cancellation reasons only for events in my district scope.
+
+### <a id="us-312"></a>US-312: View Audit Trail for Virtual Event Changes
+
+**As** PrepKC staff, **I want** to view a complete audit trail of changes to virtual events, **So that** I can track who made edits, when, and what was changed for accountability and troubleshooting.
+
+**Related Requirements:** [FR-VIRTUAL-232](requirements#fr-virtual-232), [FR-VIRTUAL-233](requirements#fr-virtual-233)
+
+**Related Use Cases:** [UC-5](use_cases#uc-5)
+
+**Acceptance Criteria:**
+
+- Given changes are made to a virtual event (tagging, status change, cancellation reason), then an audit log entry is created capturing: user identity, user role, timestamp, action type, old value, new value.
+- Given I view an event's audit history, then I see all changes in chronological order.
+- Given I filter the audit log by user, district, or date range, then results match those criteria.
+- Given I view the audit log, then I can distinguish between staff edits, district admin edits, and system/import changes.
 
 [↑ Back to Quick Navigation](#quick-navigation)
 

@@ -137,7 +137,7 @@ Each requirement links to:
 | <a id="fr-virtual-202"></a>**FR-VIRTUAL-202** | Polaris shall allow staff to search for and tag teachers using locally synced Salesforce-linked teacher records. | [TC-202](test-pack-3#tc-202), [TC-204](test-pack-3#tc-204) | [US-302](user_stories#us-302) |
 | <a id="fr-virtual-203"></a>**FR-VIRTUAL-203** | Polaris shall allow staff to search for and tag presenters/volunteers using locally synced Salesforce-linked records. | [TC-203](test-pack-3#tc-203), [TC-204](test-pack-3#tc-204) | [US-303](user_stories#us-303) |
 | <a id="fr-virtual-204"></a>**FR-VIRTUAL-204** | The system shall support importing 2–4 years of historical virtual event data from Google Sheets, preserving event–teacher relationships and multi-line mapping. *(Note: Implemented via Pathful direct import per US-304 consolidation)* | [TC-270](#tc-270)–[TC-275](#tc-275) | [US-306](user_stories#us-306) |
-| <a id="fr-virtual-206"></a>**FR-VIRTUAL-206** | Polaris shall ingest Pathful export data to update virtual attendance and participation tracking. | [TC-250](#tc-250)–[TC-260](#tc-260) | [US-304](user_stories#us-304) |
+| <a id="fr-virtual-206"></a>**FR-VIRTUAL-206** | Polaris shall ingest Pathful export data to update virtual attendance and participation tracking, triggering post-import data quality checks (see [FR-VIRTUAL-224](requirements#fr-virtual-224)–[FR-VIRTUAL-228](requirements#fr-virtual-228)). | [TC-250](#tc-250)–[TC-260](#tc-260) | [US-304](user_stories#us-304) |
 | <a id="fr-virtual-207"></a>**FR-VIRTUAL-207** | The system should support automation to pull Pathful exports and load them into Polaris. *Near-term* | [TC-280](#tc-280) | *Near-term* |
 | <a id="fr-virtual-208"></a>**FR-VIRTUAL-208** | The system shall track whether a virtual volunteer is local vs non-local. | [TC-230](#tc-230)–[TC-232](#tc-232) | [US-305](user_stories#us-305) |
 | <a id="fr-virtual-209"></a>**FR-VIRTUAL-209** | The system should support sending automated communications that connect local volunteers. *Near-term* | [TC-281](#tc-281) | *Near-term* |
@@ -155,6 +155,21 @@ Each requirement links to:
 | <a id="fr-virtual-221"></a>**FR-VIRTUAL-221** | Historical virtual import shall preserve event-participant relationships and maintain data integrity. | [TC-211](test-pack-2#tc-211) | *Technical requirement* |
 | <a id="fr-virtual-222"></a>**FR-VIRTUAL-222** | The system shall allow creation of new **teacher records** locally in Polaris during virtual session creation if the teacher is not found in search. | [TC-206](test-pack-3#tc-206) | [US-308](user_stories#us-308) |
 | <a id="fr-virtual-223"></a>**FR-VIRTUAL-223** | The system shall allow creation of new **presenter/volunteer records** locally in Polaris during virtual session creation if the presenter is not found in search. | [TC-207](test-pack-3#tc-207) | [US-309](user_stories#us-309) |
+
+### Post-Import Data Management (Phase D)
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-virtual-224"></a>**FR-VIRTUAL-224** | The system shall automatically flag imported virtual events that have status=Draft and session_date < current date. | [TC-285](test-pack-3#tc-285) | [US-310](user_stories#us-310) |
+| <a id="fr-virtual-225"></a>**FR-VIRTUAL-225** | The system shall automatically flag imported virtual events that have no teacher tagged. | [TC-286](test-pack-3#tc-286) | [US-310](user_stories#us-310) |
+| <a id="fr-virtual-226"></a>**FR-VIRTUAL-226** | The system shall automatically flag completed virtual events that have no presenter assigned. | [TC-287](test-pack-3#tc-287) | [US-310](user_stories#us-310) |
+| <a id="fr-virtual-227"></a>**FR-VIRTUAL-227** | The system shall support recording cancellation reasons for cancelled virtual sessions using predefined codes (Weather, Presenter Cancelled, Teacher Cancelled, School Conflict, Technical Issues, Low Enrollment, Scheduling Error, Other). | [TC-288](test-pack-3#tc-288), [TC-289](test-pack-3#tc-289) | [US-311](user_stories#us-311) |
+| <a id="fr-virtual-228"></a>**FR-VIRTUAL-228** | The system shall automatically flag cancelled virtual events that do not have a cancellation reason set. | [TC-290](test-pack-3#tc-290) | [US-310](user_stories#us-310) |
+| <a id="fr-virtual-229"></a>**FR-VIRTUAL-229** | District administrators shall be able to view virtual events scoped to schools within their district(s). | [TC-291](test-pack-3#tc-291) | [US-310](user_stories#us-310) |
+| <a id="fr-virtual-230"></a>**FR-VIRTUAL-230** | District administrators shall be able to tag/untag teachers and presenters on virtual events within their district scope. | [TC-292](test-pack-3#tc-292), [TC-293](test-pack-3#tc-293) | [US-310](user_stories#us-310) |
+| <a id="fr-virtual-231"></a>**FR-VIRTUAL-231** | District administrators shall be able to set cancellation reasons on virtual events within their district scope. | [TC-294](test-pack-3#tc-294) | [US-311](user_stories#us-311) |
+| <a id="fr-virtual-232"></a>**FR-VIRTUAL-232** | The system shall log all changes to virtual event data including: user identity, user role, timestamp, action type, field changed, old value, and new value. | [TC-295](test-pack-3#tc-295) | [US-312](user_stories#us-312) |
+| <a id="fr-virtual-233"></a>**FR-VIRTUAL-233** | Staff shall be able to view audit logs for virtual events filtered by event, user, district, or date range. | [TC-296](test-pack-3#tc-296), [TC-297](test-pack-3#tc-297) | [US-312](user_stories#us-312) |
 
 ## <a id="volunteer-search-recruitment--communication-history"></a>7.4 Volunteer Search, Recruitment & Communication History
 

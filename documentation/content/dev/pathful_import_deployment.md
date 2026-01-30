@@ -354,6 +354,120 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
+### Phase D: Post-Import Data Management Features
+
+**Priority:** HIGH — Enables data quality management workflow
+**Timeline:** February 2026
+**Dependency:** Phases 1-3 complete
+**Status:** 📋 PLANNED
+
+> [!INFO]
+> **Phase Purpose**
+>
+> This phase adds the tooling needed to manage virtual session data after Pathful import. It enables staff and district admins to flag issues, make corrections, set cancellation reasons, and verify data accuracy — all with full audit logging.
+
+#### D-1: Auto-Flagging System
+
+**Priority:** HIGH
+**Dependency:** None (builds on existing import)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `EventFlag` model | Flag type enum, resolution tracking | 📋 Planned |
+| Implement flag scanner | Auto-flag after import completes | 📋 Planned |
+| Create flag queue UI | `/virtual/flags` with filtering | 📋 Planned |
+
+**Flag Types:**
+- `NEEDS_ATTENTION` — Draft events with past session dates
+- `MISSING_TEACHER` — Events without teacher tags
+- `MISSING_PRESENTER` — Completed events without presenter
+- `NEEDS_REASON` — Cancelled events without cancellation reason
+
+**Reference:** [DEC-007](pathful_import_recommendations#dec-007)
+
+---
+
+#### D-2: Cancellation Reasons
+
+**Priority:** HIGH
+**Dependency:** D-1 complete
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Add `CancellationReason` enum | 8 predefined reasons + OTHER | 📋 Planned |
+| Add Event model fields | `cancellation_reason`, `cancellation_notes` | 📋 Planned |
+| Update event edit UI | Reason dropdown for cancelled events | 📋 Planned |
+| Validation logic | Notes required when reason=OTHER | 📋 Planned |
+
+**Reason Codes:** WEATHER, PRESENTER_CANCELLED, TEACHER_CANCELLED, SCHOOL_CONFLICT, TECHNICAL_ISSUES, LOW_ENROLLMENT, SCHEDULING_ERROR, OTHER
+
+**Reference:** [DEC-008](pathful_import_recommendations#dec-008), [Cancellation Reasons Reference](user_guide/cancellation_reasons)
+
+---
+
+#### D-3: District Admin Access
+
+**Priority:** HIGH
+**Dependency:** D-1, D-2 complete
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Implement scoped queries | Filter events by user's districts | 📋 Planned |
+| Add edit permissions | Can edit within scope only | 📋 Planned |
+| Update event list UI | District admin sees scoped view | 📋 Planned |
+| Update flag queue | District admin sees their flags | 📋 Planned |
+
+**Editable by District Admin:**
+- ✅ Tag/untag teachers and presenters
+- ✅ Set cancellation reasons
+- ✅ Change status: Draft → Cancelled only
+- ❌ Cannot edit Pathful-owned fields (title, date, students)
+
+**Reference:** [DEC-009](pathful_import_recommendations#dec-009)
+
+---
+
+#### D-4: Audit Logging
+
+**Priority:** MEDIUM (implement alongside D-3)
+**Dependency:** D-3 started
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `VirtualEventAuditLog` model | Comprehensive change tracking | 📋 Planned |
+| Integrate with edit actions | Log on every change | 📋 Planned |
+| Create audit view UI | `/virtual/audit/*` routes | 📋 Planned |
+
+**Logged Actions:** TEACHER_ADDED, TEACHER_REMOVED, PRESENTER_ADDED, PRESENTER_REMOVED, STATUS_CHANGED, CANCELLATION_REASON_SET, FLAG_RESOLVED, IMPORTED
+
+**Reference:** [DEC-010](pathful_import_recommendations#dec-010)
+
+---
+
+#### Phase D Rollout Checklist
+
+| Step | Action | Verification |
+|------|--------|--------------|
+| 1 | Run database migrations | Tables created |
+| 2 | Deploy flag scanner | Flags created on next import |
+| 3 | Deploy flag queue UI | Staff can view/resolve flags |
+| 4 | Deploy cancellation reasons | Can set reasons on cancelled events |
+| 5 | Create district_admin test user | User can log in |
+| 6 | Deploy scoped views | District admin sees only their data |
+| 7 | Deploy edit capabilities | District admin can make edits |
+| 8 | Verify audit logging | All edits logged |
+
+#### Phase D Success Criteria
+
+| Metric | Target |
+|--------|--------|
+| Flag resolution rate | >80% within 7 days |
+| Cancellation reason coverage | >95% of cancelled events |
+| District admin adoption | 100% of districts |
+| Audit completeness | 100% of edits logged |
+
+---
+
 ## Risk Register
 
 | Risk | Impact | Likelihood | Mitigation |

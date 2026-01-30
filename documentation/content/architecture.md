@@ -76,6 +76,11 @@ Public Signup (Form Assembly) ──API──► Salesforce ──Sync──► 
 | Volunteer identity | Polaris | — | Normalized email is primary key |
 | Volunteer demographics | Salesforce | Polaris | Race, gender, education, age |
 | Organization data | Salesforce | Polaris | Account records |
+| Virtual event session data | Pathful | Polaris (imported) | Title, session date, student counts, attendance status |
+| Virtual event relationships | Polaris | — | Teacher/presenter tags, cancellation reasons, flags |
+| Cancellation reasons | Polaris | — | Set by staff or district admin post-import |
+| Virtual event audit logs | Polaris | — | Change history, user actions |
+| District admin scope | Polaris | — | User-district assignments for access control |
 
 **VT-Owned Fields (preserved during SF sync):**
 
@@ -152,6 +157,22 @@ All timestamps stored as ISO-8601 with timezone. Default: America/Chicago.
 - Parsing: `parse_date()` function handles multiple formats
 - Storage: UTC in database, displayed in America/Chicago
 - Reference: [Field Mappings - Normalization Rules](field_mappings#normalization-rules-apply-everywhere)
+
+### R7 — Virtual event: Ownership split
+
+Pathful owns session data (title, date, student counts, attendance). Polaris owns relationship data (teacher/presenter tags, cancellation reasons).
+
+**Implementation:**
+- Pathful-owned fields: read-only in Polaris, updated only via import
+  - `Event.title`, `Event.session_date`, `Event.student_count`
+  - `EventTeacher.attendance_status`, `EventTeacher.signup_date`
+- Polaris-owned fields: editable by staff and district admins with scope
+  - `EventTeacher.teacher_id`, `EventVolunteer.volunteer_id` (tagging)
+  - `Event.cancellation_reason`, `Event.cancellation_notes`
+  - `VirtualEventAuditLog` entries
+- District admins can only edit Polaris-owned fields for events in their districts
+- All edits logged with user identity and role
+- Reference: [DEC-009: District Admin Access](dev/pathful_import_recommendations#dec-009)
 
 ## Sync Cadences
 
@@ -354,6 +375,43 @@ graph LR
     SF -->|Daily Sync| POL[Polaris]
 ```
 
+### Post-Import Data Management Flow
+
+```mermaid
+flowchart TB
+    subgraph "Phase 1: Import"
+        PATHFUL[Pathful Export] --> IMPORT[Polaris Import]
+        IMPORT --> CREATE[Create/Update Sessions]
+        IMPORT --> FLAG_UNMATCHED[Flag Unmatched Records]
+    end
+
+    subgraph "Phase 2: Auto-Flagging"
+        CREATE --> SCAN[Auto-Scan for Issues]
+        SCAN --> DRAFT_FLAG["NEEDS_ATTENTION<br/>Draft + Past Date"]
+        SCAN --> TEACHER_FLAG["MISSING_TEACHER<br/>No Teacher Tagged"]
+        SCAN --> PRESENTER_FLAG["MISSING_PRESENTER<br/>Completed + No Presenter"]
+        SCAN --> REASON_FLAG["NEEDS_REASON<br/>Cancelled + No Reason"]
+    end
+
+    subgraph "Phase 3: Review Queues"
+        DRAFT_FLAG --> STAFF_QUEUE[Staff Review Queue]
+        TEACHER_FLAG --> STAFF_QUEUE
+        PRESENTER_FLAG --> STAFF_QUEUE
+        REASON_FLAG --> STAFF_QUEUE
+        STAFF_QUEUE --> DISTRICT_QUEUE[District Admin Queue<br/>Scoped by District]
+    end
+
+    subgraph "Phase 4: Resolution"
+        DISTRICT_QUEUE --> TAG_TEACHER[Tag Teacher]
+        DISTRICT_QUEUE --> TAG_PRESENTER[Tag Presenter]
+        DISTRICT_QUEUE --> SET_REASON[Set Cancellation Reason]
+        TAG_TEACHER --> AUDIT[Audit Log]
+        TAG_PRESENTER --> AUDIT
+        SET_REASON --> AUDIT
+        AUDIT --> RESOLVE[Resolve Flag]
+    end
+```
+
 ## System URLs
 
 | System | URL | Purpose |
@@ -516,6 +574,64 @@ All responses follow consistent structure:
 
 ---
 
+## District Admin Access Architecture (Virtual Events)
+
+> [!NOTE]
+> This section documents the access control architecture for district administrators to review and correct virtual session data within their district scope.
+
+### Access Scoping
+
+| User Role | Scope | Access Level |
+|-----------|-------|-------------|
+| PrepKC Staff | Global | Full read/write on all virtual events |
+| PrepKC Admin | Global | Full read/write + audit log access |
+| District Admin | District-scoped | Read/write only on events at schools in assigned districts |
+| District Coordinator | District-scoped | Read-only access to events in assigned districts |
+
+### District-Event Relationship
+
+```mermaid
+flowchart LR
+    USER[District Admin] --> DISTRICT["District(s)<br/>Assigned to User"]
+    DISTRICT --> SCHOOL["Schools<br/>In District"]
+    SCHOOL --> EVENT["Events<br/>At School"]
+    EVENT --> EDIT["Editable Fields<br/>• Teacher tags<br/>• Presenter tags<br/>• Cancellation reason"]
+```
+
+### Permission Table
+
+| Field/Action | Staff | District Admin (scoped) | Notes |
+|--------------|-------|-------------------------|-------|
+| View event details | ✅ | ✅ (within district) | Title, date, students, status |
+| Tag/untag teachers | ✅ | ✅ (within district) | Polaris-owned field |
+| Tag/untag presenters | ✅ | ✅ (within district) | Polaris-owned field |
+| Set cancellation reason | ✅ | ✅ (within district) | Polaris-owned field |
+| Edit title/date | ✅ | ❌ | Pathful-owned fields |
+| Edit student counts | ✅ | ❌ | Pathful-owned fields |
+| View audit log | ✅ | ✅ (own entries only) | |
+| Export audit log | ✅ | ❌ | Staff-only |
+
+### Audit Logging
+
+All changes to virtual events are logged with:
+
+| Field | Description |
+|-------|-------------|
+| `user_id` | ID of user making change |
+| `user_role` | Role at time of change (staff/district_admin) |
+| `district_id` | District context (if district admin) |
+| `event_id` | Event being modified |
+| `action` | Action type (TAG_TEACHER, TAG_PRESENTER, SET_CANCELLATION_REASON, etc.) |
+| `field_changed` | Field that was modified |
+| `old_value` | Value before change |
+| `new_value` | Value after change |
+| `timestamp` | When change occurred |
+| `ip_address` | Client IP (for security audits) |
+
+**Reference:** [DEC-010: Audit Logging](dev/pathful_import_recommendations#dec-010)
+
+---
+
 ## Related Requirements
 
 - [FR-INPERSON-108](requirements#fr-inperson-108): Scheduled daily imports
@@ -524,6 +640,7 @@ All responses follow consistent structure:
 - [FR-DISTRICT-501](requirements#fr-district-501): District viewer access
 - [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107): Tenant infrastructure
 - [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108): Public API
+- [FR-VIRTUAL-224](requirements#fr-virtual-224) through [FR-VIRTUAL-233](requirements#fr-virtual-233): Post-import data management (Phase D)
 
 ## Related User Stories
 
@@ -532,6 +649,9 @@ All responses follow consistent structure:
 - [US-404](user_stories#us-404): View communication history
 - [US-1001](user_stories#us-1001): Create and configure district tenant
 - [US-1201](user_stories#us-1201): District embeds events on website
+- [US-310](user_stories#us-310): District admin reviews virtual session data
+- [US-311](user_stories#us-311): Set cancellation reasons
+- [US-312](user_stories#us-312): View audit trail
 
 ---
 

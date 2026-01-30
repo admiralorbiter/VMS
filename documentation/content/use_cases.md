@@ -19,7 +19,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 | [UC-2](#uc-2) | Sync and Publish Event to Website | [US-102](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104) | [Test Pack 2](#test-pack-2) |
 | [UC-3](#uc-3) | Volunteer Signs Up (Public Website) | [US-201](user_stories#us-201), [US-203](user_stories#us-203) | [Test Pack 2](#test-pack-2) |
 | [UC-4](#uc-4) | Create Virtual Event (Polaris) | [US-301](user_stories#us-301), [US-302](user_stories#us-302), [US-303](user_stories#us-303) | [Test Pack 3](#test-pack-3) |
-| [UC-5](#uc-5) | Import Virtual Signup/Attendance | [US-304](user_stories#us-304) | [Test Pack 3](#test-pack-3) |
+| [UC-5](#uc-5) | Import and Manage Virtual Session Data | [US-304](user_stories#us-304), [US-310](user_stories#us-310), [US-311](user_stories#us-311), [US-312](user_stories#us-312) | [Test Pack 3](#test-pack-3) |
 | [UC-6](#uc-6) | Volunteer Recruitment & Intelligent Matching | [US-401](user_stories#us-401), [US-406](user_stories#us-406) | [Test Pack 4](#test-pack-4) |
 | [UC-7](#uc-7) | Reporting and Ad Hoc Queries | [US-701](user_stories#us-701) through [US-704](user_stories#us-704) | [Test Pack 6](#test-pack-6) |
 | [UC-8](#uc-8) | District Progress Dashboard | [US-501](user_stories#us-501), [US-502](user_stories#us-502), [US-503](user_stories#us-503) | [Test Pack 1](#test-pack-1) |
@@ -28,6 +28,7 @@ Use cases describe complete workflows that span multiple systems and features. T
 | [UC-11](#uc-11) | Identify and Fill Presenter Gaps | [US-307](user_stories#us-307), [US-303](user_stories#us-303) | [Test Pack 3](#test-pack-3) |
 | [UC-12](#uc-12) | Generate Partner Reconciliation Report | [US-705](user_stories#us-705) | [Test Pack 6](#test-pack-6) |
 | [UC-13](#uc-13) | Semester Progress Rollover | [US-509](user_stories#us-509) | [Test Pack 1](#test-pack-1) |
+| [UC-20](#uc-20) | District Admin Reviews Virtual Session Data | [US-310](user_stories#us-310), [US-311](user_stories#us-311) | [Test Pack 3](#test-pack-3) |
 | **District Suite** | | | |
 | [UC-14](#uc-14) | Onboard New District Tenant | [US-1001](user_stories#us-1001), [US-1002](user_stories#us-1002) | *Phase 1* |
 | [UC-15](#uc-15) | District Creates and Manages Event | [US-1101](user_stories#us-1101), [US-1102](user_stories#us-1102), [US-1104](user_stories#us-1104) | *Phase 2* |
@@ -102,19 +103,44 @@ Use cases describe complete workflows that span multiple systems and features. T
 
 ---
 
-## <a id="uc-5"></a>UC-5: Import Virtual Signup/Attendance (Pathful → Polaris)
+## <a id="uc-5"></a>UC-5: Import and Manage Virtual Session Data (Pathful → Polaris)
 
 **Workflow:**
-1. Export is obtained from Pathful (manual today; automated later)
-2. Polaris imports data and updates attendance/progress tracking fields
-3. District/teacher dashboards update accordingly
+
+**Phase 1: Import**
+1. Staff obtains export from Pathful (manual today; automated later)
+2. Staff uploads export to Polaris import interface
+3. Polaris validates columns and parses rows
+4. System creates/updates session records by composite key (idempotent)
+5. Unmatched teachers/events are flagged in `PathfulUnmatchedRecord` table
+6. Import summary displays: imported, updated, flagged counts
+
+**Phase 2: Post-Import Review**
+1. System auto-scans imported data for issues:
+   - Draft events with past session dates → `NEEDS_ATTENTION` flag
+   - Events missing teacher tags → `MISSING_TEACHER` flag
+   - Completed events missing presenter → `MISSING_PRESENTER` flag
+   - Cancelled events without reason → `NEEDS_REASON` flag
+2. Staff or district admin accesses flag queue (`/virtual/flags`)
+3. User resolves flags by:
+   - Tagging missing teachers/presenters
+   - Setting cancellation reasons
+   - Updating event status
+4. Flag is marked resolved with notes
+5. Audit log captures all changes
+
+**Alternative Flow - District Admin Access:**
+1. District admin logs in and accesses `/virtual/flags/district/<id>`
+2. Sees only flags for events at schools in their district
+3. Resolves flags within their scope
+4. Cannot edit Pathful-owned fields (title, date, student counts)
 
 **Related:**
-- **Requirements**: [FR-VIRTUAL-206](requirements#fr-virtual-206)
-- **User Stories**: [US-304](user_stories#us-304)
+- **Requirements**: [FR-VIRTUAL-206](requirements#fr-virtual-206), [FR-VIRTUAL-224](requirements#fr-virtual-224) through [FR-VIRTUAL-233](requirements#fr-virtual-233)
+- **User Stories**: [US-304](user_stories#us-304), [US-310](user_stories#us-310), [US-311](user_stories#us-311), [US-312](user_stories#us-312)
 - **Test Coverage**: [Test Pack 3](test_packs/test_pack_3)
 - **Contracts**: [Contract D](contract_d)
-- **Reference**: Import Playbooks
+- **Reference**: [Pathful Import Deployment](dev/pathful_import_deployment), [Pathful Import Recommendations](dev/pathful_import_recommendations)
 
 ---
 
@@ -255,6 +281,38 @@ Use cases describe complete workflows that span multiple systems and features. T
  - **Test Coverage**: [Test Pack 1](test_packs/test_pack_1)
 
 ---
+
+## <a id="uc-20"></a>UC-20: District Admin Reviews Virtual Session Data (Polaris)
+
+**Workflow:**
+1. District admin logs into Polaris
+2. Navigates to Virtual Events view (sees only events at schools in their district)
+3. Reviews flag queue showing issues needing attention
+4. For each flagged event:
+   - Views the issue (missing teacher, missing presenter, needs reason, etc.)
+   - Searches for and tags the appropriate teacher or presenter
+   - If teacher/presenter not found, uses "Quick Create" to add locally
+   - Sets cancellation reason if event is cancelled
+5. Flags are automatically resolved when issues are addressed
+6. All changes are logged in audit trail with user identity and role
+7. Staff can view audit log to track district admin activity
+
+**Preconditions:**
+- User has `district_admin` role
+- User is assigned to one or more districts
+- Events exist at schools within the user's districts
+
+**Postconditions:**
+- Flagged issues are resolved
+- Event data is corrected (teachers/presenters tagged, cancellation reasons set)
+- Audit trail captures all changes
+- District dashboards reflect updated data
+
+**Related:**
+- **Requirements**: [FR-VIRTUAL-229](requirements#fr-virtual-229), [FR-VIRTUAL-230](requirements#fr-virtual-230), [FR-VIRTUAL-231](requirements#fr-virtual-231)
+- **User Stories**: [US-310](user_stories#us-310), [US-311](user_stories#us-311)
+- **Test Coverage**: [Test Pack 3](test_packs/test_pack_3)
+- **Related Use Cases**: [UC-5](#uc-5) (Import and Manage Virtual Session Data)
 
 ## District Suite Use Cases
 

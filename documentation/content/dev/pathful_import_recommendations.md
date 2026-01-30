@@ -109,8 +109,8 @@ Where:
 
 ### DEC-003: Manual Corrections Workflow
 
-**Status:** DECISION REQUIRED
-**Date:** January 2026
+**Status:** DECIDED
+**Date:** January 2026 (Updated)
 
 #### Context
 
@@ -118,48 +118,34 @@ The legacy Google Sheets workflow allowed staff to manually correct data before 
 - Fix teacher name typos
 - Mark volunteers as local vs. non-local
 - Add missing information
+- Set cancellation reasons
 
 With direct Pathful import, these corrections need a new home.
 
-#### Options
+#### Decision
 
-| Option | Description | Pros | Cons |
-|--------|-------------|------|------|
-| **A. Edit in Polaris** | Staff edits teacher/volunteer records directly in Polaris after import | Clean source data; edits tracked; audit trail | Requires UI for edit fields |
-| **B. Edit in Pathful** | Staff corrects data in Pathful before export | Single source of truth | May not have Pathful edit access; corrections lost if re-exported |
-| **C. Corrections file** | Maintain spreadsheet of overrides applied post-import | Captures institutional knowledge; no Polaris UI changes | Another file to maintain; process complexity |
-| **D. Accept as-is** | Use Pathful data without corrections initially | Fast to implement; unblocks urgent need | Data quality may suffer |
+**Two-phase approach:**
 
-#### Recommendation
+| Phase | Approach | Status |
+|-------|----------|--------|
+| Phase 1 | Accept Pathful data as-is, flag issues for review | ✅ Implemented |
+| Phase 2 | Enable post-import editing in Polaris with audit trail | 🔄 In Progress |
 
-**Phase 1:** Implement Option D (accept as-is) to unblock urgent import need.
-**Phase 2:** Implement Option A (edit in Polaris) as follow-up enhancement.
+#### Phase 2 Specification
 
-#### Rationale
+Post-import data management will be handled in Polaris with:
 
-- Urgent need is restoring import capability, not perfecting data quality
-- Most Pathful data is likely correct; corrections are edge cases
-- Polaris-based editing provides audit trail and doesn't require external file management
-- Option C (corrections file) recreates the Google Sheets problem we're eliminating
+1. **Auto-flagging** of issues that need attention (see DEC-007)
+2. **Cancellation reasons** for sessions that didn't occur (see DEC-008)
+3. **District admin access** to edit their schools' data (see DEC-009)
+4. **Audit logging** of all changes (see DEC-010)
 
-#### Action Required
+#### Consequences
 
-> [!WARNING]
-> **Team Input Needed**
->
-> Confirm with team:
-> 1. What specific corrections were made in Google Sheets?
-> 2. What is the impact if those corrections are missing initially?
-> 3. Who needs to make corrections going forward?
-
-#### Follow-up Tasks (if Option A selected)
-
-| Task | Description |
-|------|-------------|
-| Add `is_local` field to Volunteer model | Boolean flag for local vs. non-local |
-| Add edit UI for teacher name corrections | Allow staff to override imported name |
-| Add edit UI for volunteer local status | Allow staff to set local flag |
-| Add correction audit log | Track who changed what and when |
+- Staff and district admins can correct data without external spreadsheets
+- All corrections have audit trail
+- Original Pathful data preserved (changes tracked separately)
+- Reports can show data provenance
 
 ---
 
@@ -285,15 +271,328 @@ Values:
 
 ---
 
+### DEC-007: Post-Import Data Management Workflow
+
+**Status:** RECOMMENDED
+**Date:** January 2026
+
+#### Context
+
+After Pathful import, data may need corrections or additional information:
+- Events imported as "Draft" but date has passed
+- Missing teacher/presenter assignments
+- Sessions that were cancelled need reasons documented
+- Teacher progress calculations need verification
+
+Currently there is no defined workflow for addressing these issues.
+
+#### Decision
+
+Implement a post-import data management workflow with auto-flagging and review queues.
+
+#### Specification
+
+**Auto-Flag Conditions:**
+
+| Condition | Flag Type | Assigned To |
+|-----------|-----------|-------------|
+| Event status = Draft AND session_date < today | `NEEDS_ATTENTION` | Staff |
+| Event has no teachers tagged | `MISSING_TEACHER` | District Admin |
+| Event has no presenter tagged | `MISSING_PRESENTER` | Staff |
+| Event status = Cancelled AND cancellation_reason is NULL | `NEEDS_REASON` | Staff |
+| Unmatched teacher in import | `UNMATCHED_TEACHER` | Staff (existing) |
+| Unmatched volunteer in import | `UNMATCHED_VOLUNTEER` | Staff (existing) |
+
+**Flag Model:**
+
+```python
+class EventFlag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    flag_type = db.Column(db.String(50), nullable=False)  # ENUM values above
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(50))  # 'system' or user_id
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    resolution_notes = db.Column(db.Text, nullable=True)
+```
+
+**Review Queue UI:**
+
+| View | Audience | Shows |
+|------|----------|-------|
+| `/virtual/flags/all` | Staff | All flags across all districts |
+| `/virtual/flags/district/<id>` | District Admin | Flags for their district only |
+| `/virtual/pathful/unmatched` | Staff | Unmatched records (existing) |
+
+#### Workflow
+
+```
+Import completes
+      ↓
+System scans for flag conditions
+      ↓
+Flags created automatically
+      ↓
+Staff/District Admin sees flag queue
+      ↓
+User resolves issue (edit event, tag teacher, set reason)
+      ↓
+Flag marked resolved with notes
+      ↓
+Audit log entry created
+```
+
+#### Consequences
+
+- Issues are visible immediately after import
+- Clear ownership of who should address each issue type
+- Resolution is tracked and auditable
+- Reports can exclude flagged/unresolved data if needed
+
+---
+
+### DEC-008: Cancellation Reason Tracking
+
+**Status:** RECOMMENDED
+**Date:** January 2026
+
+#### Context
+
+Virtual sessions are sometimes cancelled. Pathful shows status as "Cancelled" but doesn't capture why. Understanding cancellation reasons helps with:
+- Identifying patterns (e.g., frequent presenter cancellations)
+- Accurate reporting (exclude cancelled sessions appropriately)
+- Historical documentation
+
+#### Decision
+
+Add cancellation reason field to Event model with predefined options.
+
+#### Specification
+
+**Cancellation Reasons (ENUM):**
+
+| Value | Display Name | Description |
+|-------|--------------|-------------|
+| `WEATHER` | Weather / Snow Day | School closed due to weather |
+| `PRESENTER_CANCELLED` | Presenter Cancelled | Volunteer/presenter unable to attend |
+| `TEACHER_CANCELLED` | Teacher Cancelled | Teacher unable to host session |
+| `SCHOOL_CONFLICT` | School Conflict | Assembly, testing, or other school event |
+| `TECHNICAL_ISSUES` | Technical Issues | Platform or connectivity problems |
+| `LOW_ENROLLMENT` | Low Enrollment | Not enough student signups |
+| `SCHEDULING_ERROR` | Scheduling Error | Double-booked or incorrectly scheduled |
+| `OTHER` | Other | See notes for details |
+
+**Model Changes:**
+
+```python
+class CancellationReason(enum.Enum):
+    WEATHER = "Weather / Snow Day"
+    PRESENTER_CANCELLED = "Presenter Cancelled"
+    TEACHER_CANCELLED = "Teacher Cancelled"
+    SCHOOL_CONFLICT = "School Conflict"
+    TECHNICAL_ISSUES = "Technical Issues"
+    LOW_ENROLLMENT = "Low Enrollment"
+    SCHEDULING_ERROR = "Scheduling Error"
+    OTHER = "Other"
+
+# Add to Event model:
+cancellation_reason = db.Column(db.Enum(CancellationReason), nullable=True)
+cancellation_notes = db.Column(db.Text, nullable=True)  # Required if OTHER
+cancellation_set_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+cancellation_set_at = db.Column(db.DateTime, nullable=True)
+```
+
+**Business Rules:**
+
+1. `cancellation_reason` only valid when `status = CANCELLED`
+2. If `cancellation_reason = OTHER`, then `cancellation_notes` is required
+3. Setting cancellation reason creates audit log entry
+4. Auto-flag created if status is CANCELLED but reason is NULL
+
+#### Consequences
+
+- Standardized reasons enable reporting and pattern analysis
+- "Other" option with notes handles edge cases
+- Audit trail shows who set the reason and when
+
+---
+
+### DEC-009: District Admin Virtual Data Access
+
+**Status:** RECOMMENDED
+**Date:** January 2026
+
+#### Context
+
+District administrators need to help manage virtual session data for their schools:
+- Tag teachers to sessions
+- Tag presenters to sessions
+- Set cancellation reasons
+- Verify data accuracy for reports
+
+Currently only PrepKC staff can edit virtual event data.
+
+#### Decision
+
+Grant district admins scoped edit access to virtual events at their district's schools.
+
+#### Specification
+
+**Access Scope:**
+
+| User Role | Can View | Can Edit | Scope |
+|-----------|----------|----------|-------|
+| Staff (Admin/User) | All events | All events | Global |
+| District Admin | Their district's events | Their district's events | District-scoped |
+| District Viewer | Their district's events | None | Read-only |
+| Teacher | Their sessions only | None (flag only) | Self only |
+
+**Scoping Logic:**
+
+```python
+def get_district_events(user):
+    """Return events scoped to user's district(s)."""
+    if user.role in ['admin', 'user']:
+        return Event.query.filter_by(type=EventType.VIRTUAL_SESSION)
+
+    if user.role == 'district_admin':
+        # Get schools in user's district(s)
+        district_ids = [d.id for d in user.districts]
+        school_ids = School.query.filter(
+            School.district_id.in_(district_ids)
+        ).with_entities(School.id).all()
+
+        # Get events at those schools
+        return Event.query.filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.school_id.in_(school_ids)
+        )
+
+    return Event.query.filter(False)  # No access
+```
+
+**Editable Fields (District Admin):**
+
+| Field | Editable | Notes |
+|-------|----------|-------|
+| Teachers (tag/untag) | ✅ Yes | Can add/remove teacher associations |
+| Presenters (tag/untag) | ✅ Yes | Can add/remove presenter associations |
+| Cancellation reason | ✅ Yes | Can set/change reason |
+| Event status | ⚠️ Limited | Can change Draft→Cancelled only |
+| Event title | ❌ No | Owned by Pathful import |
+| Event date | ❌ No | Owned by Pathful import |
+| Student counts | ❌ No | Owned by Pathful import |
+
+**UI Changes:**
+
+1. Add district filter to `/virtual/pathful/events`
+2. Add "My District" view for district admins
+3. Edit buttons visible only for authorized events
+4. Audit log shows editor identity and role
+
+#### Consequences
+
+- District admins can self-serve data corrections
+- PrepKC staff workload reduced
+- All edits tracked with user identity
+- Original Pathful data preserved
+
+---
+
+### DEC-010: Audit Logging for Virtual Event Changes
+
+**Status:** RECOMMENDED
+**Date:** January 2026
+
+#### Context
+
+With multiple user types editing virtual event data (staff and district admins), we need to track:
+- Who made changes
+- What was changed
+- When changes occurred
+- Distinguish staff changes from district admin changes
+
+#### Decision
+
+Implement comprehensive audit logging for virtual event changes.
+
+#### Specification
+
+**Audit Log Model:**
+
+```python
+class VirtualEventAuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+
+    # Who
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_role = db.Column(db.String(50), nullable=False)  # admin, user, district_admin
+    user_district_id = db.Column(db.Integer, nullable=True)  # If district_admin
+
+    # What
+    action = db.Column(db.String(50), nullable=False)  # See action types below
+    field_name = db.Column(db.String(100), nullable=True)
+    old_value = db.Column(db.Text, nullable=True)
+    new_value = db.Column(db.Text, nullable=True)
+
+    # When
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Context
+    source = db.Column(db.String(50), default='manual')  # manual, import, system
+    notes = db.Column(db.Text, nullable=True)
+```
+
+**Action Types:**
+
+| Action | Description |
+|--------|-------------|
+| `TEACHER_ADDED` | Teacher tagged to event |
+| `TEACHER_REMOVED` | Teacher untagged from event |
+| `PRESENTER_ADDED` | Presenter tagged to event |
+| `PRESENTER_REMOVED` | Presenter untagged from event |
+| `STATUS_CHANGED` | Event status modified |
+| `CANCELLATION_REASON_SET` | Cancellation reason added/changed |
+| `FLAG_RESOLVED` | Event flag marked resolved |
+| `IMPORTED` | Event created/updated via import |
+
+**Audit Views:**
+
+| Route | Audience | Purpose |
+|-------|----------|---------|
+| `/virtual/audit/event/<id>` | Staff | Full history for one event |
+| `/virtual/audit/recent` | Staff | Recent changes across all events |
+| `/virtual/audit/district/<id>` | Staff | Changes by district admin users |
+| `/virtual/audit/user/<id>` | Staff | Changes by specific user |
+
+**Reporting Integration:**
+
+- Reports can filter by `source` to show only import data vs. manual edits
+- Reports can show "last modified by" for transparency
+- Discrepancy reports can compare original import values vs. current values
+
+#### Consequences
+
+- Full accountability for all changes
+- Can distinguish staff vs. district admin edits
+- Supports compliance and data quality audits
+- Enables rollback if incorrect changes made
+
+---
+
 ## Open Questions
 
 | # | Question | Owner | Status |
 |---|----------|-------|--------|
-| Q1 | What specific corrections were made in Google Sheets? | Team | OPEN |
+| Q1 | What specific corrections were made in Google Sheets? | Team | **CLOSED** — Captured in DEC-003, DEC-007, DEC-008 |
 | Q2 | What is acceptable unmatched teacher rate? | Team | OPEN |
 | Q3 | Who will run imports going forward? | Team | OPEN |
 | Q4 | Is Pathful API available for future automation? | Team | OPEN |
-| Q5 | What is the exact Pathful export column schema? | Dev | **CLOSED** - Analyzed Session Report (19 cols) and User Report (21 cols) |
+| Q5 | What is the exact Pathful export column schema? | Dev | **CLOSED** |
+| Q6 | Should district admins be notified of new flags? | Team | OPEN |
+| Q7 | What is the retention period for audit logs? | Team | OPEN |
 
 ---
 
