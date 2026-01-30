@@ -10,7 +10,7 @@ This document defines the phased deployment plan for replacing the legacy Google
 
 | User Story | Title | Status |
 |------------|-------|--------|
-| [US-304](user_stories#us-304) | Import Pathful export into Polaris | **Primary focus** |
+| [US-304](user_stories#us-304) | Import Pathful export into Polaris | ✅ **Phase 1 Complete** |
 | [US-306](user_stories#us-306) | Import historical virtual data from Google Sheets | Consolidated into US-304 |
 
 **Related Requirements:**
@@ -46,11 +46,11 @@ Pathful → Export → Polaris Import (direct)
 
 ## Deployment Phases
 
-### Phase 1: Pathful Import Implementation (US-304)
+### Phase 1: Pathful Import Implementation (US-304) ✅ COMPLETE
 
 **Priority:** CRITICAL — Replaces departed staff workflow
-**Timeline:** Week 1-2
-**Owner:** TBD
+**Timeline:** Week 1-2 (Completed January 2026)
+**Status:** ✅ COMPLETE
 
 #### 1.1 Data Discovery
 
@@ -119,16 +119,16 @@ Pathful → Export → Polaris Import (direct)
 
 #### 1.4 Validation Checklist
 
-**Pre-deployment validation:**
+**Pre-deployment validation:** ✅ All verified
 
-- [ ] Import route accepts Pathful CSV format
-- [ ] Missing columns produce clear error message listing missing columns
-- [ ] Valid rows create `EventTeacher` participation records
-- [ ] Existing records updated (not duplicated) on re-import
-- [ ] Unknown teachers flagged with actionable message
-- [ ] Unknown events flagged with actionable message
-- [ ] Import completes within acceptable time (<60s for typical file)
-- [ ] Audit log captures: timestamp, filename, user, rows processed, rows flagged
+- [x] Import route accepts Pathful Excel format
+- [x] Missing columns produce clear error message listing missing columns
+- [x] Valid rows create/update Event and TeacherProgress/Volunteer records
+- [x] Existing records updated (not duplicated) on re-import via pathful_session_id
+- [x] Unknown teachers flagged in PathfulUnmatchedRecord table
+- [x] Unknown events flagged with actionable message
+- [x] Import completes within acceptable time (<60s for typical file)
+- [x] Audit log captures: timestamp, filename, user, rows processed, rows flagged
 
 #### 1.5 Rollout
 
@@ -144,42 +144,136 @@ Pathful → Export → Polaris Import (direct)
 
 ---
 
-### Phase 2: Historical Data Load (US-306)
+### Phase A: UI Expansion — Imported Data Views ✅ IN PROGRESS
 
-**Priority:** HIGH — Completes reporting history
-**Timeline:** Week 3
+**Priority:** HIGH — Enables staff data verification
+**Timeline:** January 2026 (ongoing)
 **Dependency:** Phase 1 complete
 
-#### 2.1 Historical Load Strategy
+This phase expands the admin UI to provide comprehensive views of imported Pathful data without requiring database queries.
 
-The same import pipeline handles historical data. The only difference is the source file date range.
+#### Phase A-1: Imported Events List ✅ COMPLETE
 
-| Load | Date Range | Estimated Rows | Notes |
-|------|------------|----------------|-------|
-| Historical Year 1 | Aug 2022 - Jul 2023 | TBD | Oldest data |
-| Historical Year 2 | Aug 2023 - Jul 2024 | TBD | |
-| Historical Year 3 | Aug 2024 - Jul 2025 | TBD | Recent history |
-| Current | Aug 2025 - Present | TBD | Already loaded in Phase 1 |
+**Route:** `/virtual/pathful/events`
+**Status:** ✅ Deployed (January 29, 2026)
 
-#### 2.2 Historical Load Tasks
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Events table | Paginated list of all imported sessions | ✅ |
+| Summary cards | Total events, total students | ✅ |
+| Career cluster filter | Filter by career cluster | ✅ |
+| Status filter | Filter by event status | ✅ |
+| Search | Search by title, career cluster, Pathful ID | ✅ |
+| Event detail links | Click to view event details | ✅ |
 
-| # | Task | Notes |
-|---|------|-------|
-| 1 | Obtain historical Pathful exports | Request exports by date range |
-| 2 | Load Year 1 (oldest first) | Verify counts and teacher matching |
-| 3 | Load Year 2 | Verify idempotency with any overlap |
-| 4 | Load Year 3 | Verify idempotency with any overlap |
-| 5 | Validate teacher progress | Spot-check status calculations |
-| 6 | Validate reporting | Run district dashboards, verify metrics |
+**Implementation:**
+- [pathful_events.html](file:///c:/Users/admir/Github/VMS/templates/virtual/pathful_events.html)
+- [pathful_import.py#pathful_events](file:///c:/Users/admir/Github/VMS/routes/virtual/pathful_import.py)
 
-#### 2.3 Validation Checklist
+---
 
-- [ ] All historical years loaded
-- [ ] No duplicate events created
-- [ ] No duplicate participation records
-- [ ] Teacher progress statuses calculate correctly
-- [ ] District dashboards show complete history
-- [ ] Unmatched teacher count is acceptable (documented)
+#### Phase A-2: User Report Import ✅ COMPLETE
+
+**Routes:**
+- `/virtual/pathful/import-users` — Upload User Report
+- `/virtual/pathful/users` — View imported profiles
+- `/api/pathful/users/<id>/link` — Manual linking API
+
+**Status:** ✅ Deployed (January 30, 2026)
+
+**Key Features:**
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Excel upload | Upload User Report exports | ✅ |
+| Profile model | `PathfulUserProfile` with 20+ fields | ✅ |
+| Auto-linking | Links to TeacherProgress/Volunteer by `pathful_user_id` | ✅ |
+| Filtering | Filter by role (Educator/Professional), link status | ✅ |
+| Detail modals | View full profile data | ✅ |
+
+**Database Changes:**
+- New table: `pathful_user_profile`
+- Migration: `f2a1119853e6_add_pathful_user_profile_table.py`
+
+**Implementation:**
+- [PathfulUserProfile model](file:///c:/Users/admir/Github/VMS/models/pathful_import.py)
+- [pathful_import_users.html](file:///c:/Users/admir/Github/VMS/templates/virtual/pathful_import_users.html)
+- [pathful_users.html](file:///c:/Users/admir/Github/VMS/templates/virtual/pathful_users.html)
+
+---
+
+#### Phase A-3: Participants List ✅ COMPLETE
+
+**Route:** `/virtual/pathful/participants`
+**Status:** ✅ Deployed
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Participants table | List of matched educators & professionals | ✅ |
+| Role badges | Visual distinction (Educator/Professional) | ✅ |
+| Session count | Count of sessions per participant | ✅ |
+
+---
+
+#### Phase B: Enhanced Unmatched Record Resolution ✅ COMPLETE
+
+**Route:** `/virtual/pathful/unmatched`
+**Status:** ✅ Deployed (January 30, 2026)
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Email display | Show User Profile email in unmatched list | ✅ |
+| School display | Show school from User Profile | ✅ |
+| Match suggestions | Search TeacherProgress/Volunteer by email | ✅ |
+| Bulk resolution | Select multiple + batch ignore (max 100) | ✅ |
+| Summary stats | Pending/resolved/ignored counts | ✅ |
+| Pagination | 50 records per page | ✅ |
+
+**Implementation:**
+- [get_match_suggestions()](file:///c:/Users/admir/Github/VMS/routes/virtual/pathful_import.py) helper
+- [bulk_resolve_unmatched()](file:///c:/Users/admir/Github/VMS/routes/virtual/pathful_import.py) route
+- [pathful_unmatched.html](file:///c:/Users/admir/Github/VMS/templates/virtual/pathful_unmatched.html)
+
+---
+
+#### Phase C: Advanced Audit & Analytics — FUTURE
+
+**Priority:** LOW
+**Dependency:** Phases A-B complete
+
+| Feature | Description |
+|---------|-------------|
+| Import comparison | Compare imports to detect changes |
+| Trend analytics | Session counts over time |
+| Email-based linking | Use User Report emails for unmatched resolution |
+
+---
+
+### Phase 2: Historical Data Load (US-306) ✅ COMPLETE
+
+**Priority:** HIGH — Completes reporting history
+**Timeline:** Completed January 2026
+**Status:** ✅ COMPLETE — 4 years of historical data loaded
+
+#### 2.1 Historical Load Summary
+
+All historical Pathful exports have been loaded using the Phase 1 import pipeline.
+
+| Load | Date Range | Status |
+|------|------------|--------|
+| Historical Year 1 | Aug 2022 - Jul 2023 | ✅ Loaded |
+| Historical Year 2 | Aug 2023 - Jul 2024 | ✅ Loaded |
+| Historical Year 3 | Aug 2024 - Jul 2025 | ✅ Loaded |
+| Current | Aug 2025 - Present | ✅ Loaded |
+
+#### 2.2 Validation Checklist ✅
+
+- [x] All historical years loaded (4 years total)
+- [x] No duplicate events created (idempotent import)
+- [x] No duplicate participation records
+- [x] Teacher progress statuses calculate correctly
+- [x] District dashboards show complete history
+- [x] Unmatched records documented in PathfulUnmatchedRecord table
 
 ---
 
@@ -293,5 +387,5 @@ The same import pipeline handles historical data. The only difference is the sou
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: January 30, 2026*
+*Version: 2.1 — Added Phase B: Enhanced Unmatched Resolution*

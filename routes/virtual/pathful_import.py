@@ -762,13 +762,96 @@ def load_pathful_routes():
             imports=imports,
         )
 
+    def get_match_suggestions(unmatched_record, limit=5):
+        """
+        Get match suggestions for an unmatched record using User Profile email.
+        Returns dict with profile data and potential matches.
+        """
+        import json
+
+        result = {
+            "profile": None,
+            "email": None,
+            "school": None,
+            "teacher_matches": [],
+            "volunteer_matches": [],
+        }
+
+        # Extract pathful_user_id from raw_data
+        raw_data = unmatched_record.raw_data
+        if isinstance(raw_data, str):
+            try:
+                raw_data = json.loads(raw_data)
+            except:
+                return result
+
+        if not raw_data:
+            return result
+
+        pathful_user_id = str(
+            raw_data.get("User Auth Id") or raw_data.get("UserAuthId") or ""
+        )
+        if not pathful_user_id:
+            return result
+
+        # Look up User Profile
+        profile = PathfulUserProfile.query.filter_by(
+            pathful_user_id=pathful_user_id
+        ).first()
+        if not profile:
+            return result
+
+        result["profile"] = profile
+        result["email"] = profile.login_email
+        result["school"] = profile.school or profile.district_or_company
+
+        # Find potential matches by email
+        if profile.login_email:
+            email_lower = profile.login_email.lower()
+
+            # Search TeacherProgress
+            teacher_matches = (
+                TeacherProgress.query.filter(
+                    db.func.lower(TeacherProgress.email) == email_lower
+                )
+                .limit(limit)
+                .all()
+            )
+            result["teacher_matches"] = [
+                {"id": t.id, "name": t.name, "email": t.email} for t in teacher_matches
+            ]
+
+            # Search Volunteers - join with Email model
+            from models.contact import Email as ContactEmail
+
+            volunteer_matches = (
+                Volunteer.query.join(
+                    ContactEmail, Volunteer.id == ContactEmail.contact_id
+                )
+                .filter(db.func.lower(ContactEmail.email) == email_lower)
+                .limit(limit)
+                .all()
+            )
+            result["volunteer_matches"] = [
+                {
+                    "id": v.id,
+                    "name": f"{v.first_name} {v.last_name}".strip(),
+                    "email": v.primary_email or "",
+                }
+                for v in volunteer_matches
+            ]
+
+        return result
+
     @virtual_bp.route("/pathful/unmatched")
     @login_required
     @admin_required
     def pathful_unmatched():
-        """View and manage unmatched records."""
+        """View and manage unmatched records with enhanced suggestions."""
         status_filter = request.args.get("status", "pending")
         type_filter = request.args.get("type", "all")
+        page = request.args.get("page", 1, type=int)
+        per_page = 50
 
         query = PathfulUnmatchedRecord.query
 
@@ -780,13 +863,52 @@ def load_pathful_routes():
         if type_filter != "all":
             query = query.filter(PathfulUnmatchedRecord.unmatched_type == type_filter)
 
-        unmatched = query.order_by(PathfulUnmatchedRecord.created_at.desc()).all()
+        # Get summary counts
+        total_pending = PathfulUnmatchedRecord.query.filter_by(
+            resolution_status="pending"
+        ).count()
+        total_resolved = PathfulUnmatchedRecord.query.filter_by(
+            resolution_status="resolved"
+        ).count()
+        total_ignored = PathfulUnmatchedRecord.query.filter_by(
+            resolution_status="ignored"
+        ).count()
+
+        # Count by type (pending only)
+        teacher_pending = PathfulUnmatchedRecord.query.filter_by(
+            resolution_status="pending", unmatched_type="teacher"
+        ).count()
+        volunteer_pending = PathfulUnmatchedRecord.query.filter_by(
+            resolution_status="pending", unmatched_type="volunteer"
+        ).count()
+
+        # Paginate results
+        unmatched = query.order_by(PathfulUnmatchedRecord.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+
+        # Enrich with suggestions (only for displayed page)
+        enriched_records = []
+        for record in unmatched.items:
+            suggestions = get_match_suggestions(record)
+            enriched_records.append(
+                {
+                    "record": record,
+                    "suggestions": suggestions,
+                }
+            )
 
         return render_template(
             "virtual/pathful_unmatched.html",
             unmatched=unmatched,
+            enriched_records=enriched_records,
             status_filter=status_filter,
             type_filter=type_filter,
+            total_pending=total_pending,
+            total_resolved=total_resolved,
+            total_ignored=total_ignored,
+            teacher_pending=teacher_pending,
+            volunteer_pending=volunteer_pending,
         )
 
     @virtual_bp.route("/pathful/unmatched/<int:record_id>/resolve", methods=["POST"])
@@ -839,6 +961,48 @@ def load_pathful_routes():
                 flash("Record matched to volunteer.", "success")
 
         db.session.commit()
+        return redirect(url_for("virtual.pathful_unmatched"))
+
+    @virtual_bp.route("/pathful/unmatched/bulk-resolve", methods=["POST"])
+    @login_required
+    @admin_required
+    def bulk_resolve_unmatched():
+        """Bulk resolve multiple unmatched records."""
+        record_ids = request.form.getlist("record_ids")
+        action = request.form.get("action")
+        notes = request.form.get("notes", "Bulk action")
+
+        # Limit to 100 records per operation
+        if len(record_ids) > 100:
+            flash("Maximum 100 records can be processed at once.", "error")
+            return redirect(url_for("virtual.pathful_unmatched"))
+
+        if not record_ids:
+            flash("No records selected.", "warning")
+            return redirect(url_for("virtual.pathful_unmatched"))
+
+        resolved_count = 0
+
+        for record_id in record_ids:
+            try:
+                record = PathfulUnmatchedRecord.query.get(int(record_id))
+                if not record or record.resolution_status != "pending":
+                    continue
+
+                if action == "ignore":
+                    record.resolve(
+                        status=ResolutionStatus.IGNORED,
+                        notes=notes,
+                        resolved_by=current_user.id,
+                    )
+                    resolved_count += 1
+
+            except Exception as e:
+                current_app.logger.error(f"Error resolving record {record_id}: {e}")
+                continue
+
+        db.session.commit()
+        flash(f"Successfully resolved {resolved_count} records.", "success")
         return redirect(url_for("virtual.pathful_unmatched"))
 
     # API endpoints for AJAX operations
