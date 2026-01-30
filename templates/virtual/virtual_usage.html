@@ -387,10 +387,16 @@
                     class="export-btn" title="View Detailed Breakdown">
                     📈 Breakdown
                 </a>
-                <a href="{{ url_for('virtual.virtual_google_sheets', year=current_filters.year) }}" class="export-btn"
-                    title="Manage District Google Sheets">
-                    📋 Manage Sheets
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('virtual.pathful_import') }}" class="export-btn"
+                    title="Import data from Pathful exports" style="background: #7c4dff;">
+                    <i class="fas fa-upload"></i> Pathful Import
                 </a>
+                <a href="{{ url_for('virtual.pathful_events') }}" class="export-btn"
+                    title="View Pathful-imported events" style="background: #7c4dff;">
+                    <i class="fas fa-link"></i> Pathful Events
+                </a>
+                {% endif %}
                 {% if current_user.is_admin %}
                 <button type="button" class="export-btn new-session-btn" onclick="openCreateVirtualModal()">
                     ➕ New Session
@@ -433,11 +439,7 @@
                 </a>
                 {% endif %}
                 {% endif %}
-                {% if google_sheet_url %}
-                <a href="{{ google_sheet_url }}" target="_blank" class="export-btn" title="View Original Google Sheet">
-                    📄 View Sheet {{ current_filters.year }}
-                </a>
-                {% endif %}
+
             </div>
         </form>
     </div>
