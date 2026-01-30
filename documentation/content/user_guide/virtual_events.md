@@ -33,17 +33,28 @@ The **Presenter Recruitment View** helps identifying sessions that need voluntee
 
 ## 3. Importing Data
 
-### Pathful Import
-Polaris can ingest attendance data from Pathful exports.
-1.  Go to **Import > Pathful**.
-2.  Upload the CSV export.
-3.  System updates participation records (idempotent; safe to re-run).
+### Pathful Import (Recommended)
 
-### Historical Import
-Import past data (2-4 years) from Google Sheets archives.
-1.  Go to **Import > Historical**.
-2.  Select the Sheet/Year.
-3.  Run import.
+Polaris can ingest attendance data directly from Pathful exports. This is the primary method for importing virtual session data.
+
+📖 **See the full guide:** [Pathful Import Guide](pathful_import)
+
+**Quick Steps:**
+1. Go to **Virtual → Pathful Imports**
+2. Upload the Session Report (.xlsx)
+3. System creates sessions and matches participants
+
+> [!NOTE]
+> The Pathful direct import replaces the old Google Sheets workflow. You no longer need to manually reformat data.
+
+### Legacy: Historical Import (Deprecated)
+
+> [!WARNING]
+> The Google Sheets historical import is deprecated. Use Pathful direct import instead.
+
+~~Import past data (2-4 years) from Google Sheets archives.~~
+
+---
 
 ## Technical Scope & Traceability
 

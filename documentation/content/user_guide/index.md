@@ -26,6 +26,16 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
   </div>
 
   <div class="qn-card">
+    <a href="#user-guide-pathful-import" class="qn-card-link">
+      <div class="qn-icon">📥</div>
+      <div class="qn-body">
+        <div class="qn-title">Pathful Import</div>
+        <div class="qn-desc">Import session data, resolve unmatched records, and manage user profiles.</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="qn-card">
     <a href="#user-guide-volunteer-recruitment" class="qn-card-link">
       <div class="qn-icon">🔍</div>
       <div class="qn-body">
@@ -98,5 +108,5 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: January 30, 2026*
+*Version: 1.1 — Added Pathful Import guide*

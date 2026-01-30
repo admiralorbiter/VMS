@@ -8,18 +8,20 @@ Field mappings in [Field Mappings](field_mappings). Entity definitions in [Data 
 
 **Note:** These are operational procedures for running imports. For technical field mappings and data transformations, see [Field Mappings](field_mappings).
 
-## Playbook A: Pathful Export → Polaris (via Virtual Session Import)
+## Playbook A: Pathful Export → Polaris (Direct Import)
+
+> [!IMPORTANT]
+> **Updated January 2026**
+> This playbook has been updated to use the new **Pathful Direct Import** workflow. The legacy Google Sheets process is deprecated.
+>
+> 📖 **See:** [Pathful Import Guide](user_guide/pathful_import) for detailed user instructions.
 
 **Purpose:** Update teacher progress statuses (Achieved/In Progress/Not Started) and virtual participation records.
-
-**Implementation Note:** Pathful data is imported via the Virtual Session Google Sheets import process. The Google Sheet contains Pathful export data formatted for import.
 
 **Preconditions:**
 
 - Teacher roster for district(s) is up-to-date (see [Playbook B](#playbook-b-teacher-roster-import))
-- Virtual events mapped to Pathful IDs (via `Event.session_id`)
-- Know import window (semester/date range)
-- Google Sheet configured for virtual sessions in admin panel
+- Access to Pathful export files (.xlsx)
 
 **File Prep Checklist:**
 
@@ -183,9 +185,24 @@ Rows invalid: F
  - Model: `models/teacher_progress.py` `TeacherProgress`
  - Reference: [Field Mappings - Teacher Roster Import](field_mappings#4-teacher-roster-import)
 
-## Playbook C: Virtual Session Import (Google Sheets)
+## Playbook C: Virtual Session Import (Google Sheets) — DEPRECATED
 
-**Purpose:** Import virtual session data including teachers, presenters, and event details.
+> [!WARNING]
+> **DEPRECATED — January 2026**
+>
+> This workflow is deprecated. Use **Playbook A: Pathful Direct Import** instead.
+>
+> 📖 **New Workflow:** [Pathful Import Guide](user_guide/pathful_import)
+
+~~**Purpose:** Import virtual session data including teachers, presenters, and event details via Google Sheets.~~
+
+**Reason for Deprecation:**
+- Direct Pathful imports eliminate manual Google Sheets reformatting
+- Better data quality from source exports
+- Automated session matching by title + date
+
+<details>
+<summary>Legacy Documentation (Click to expand)</summary>
 
 **Required Columns:**
 
@@ -243,6 +260,8 @@ Warnings: F
 - Route: `routes/virtual/routes.py` `/virtual/import-sheet`
 - Validation: `validate_csv_row()` function in `routes/virtual/routes.py`
 - Google Sheet: Configured via `GoogleSheet` model (purpose = "virtual_sessions")
+
+</details>
 
 ## Playbook D: Salesforce Imports
 

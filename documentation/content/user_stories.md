@@ -235,6 +235,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 ### <a id="us-306"></a>US-306: Import historical virtual data from Google Sheets
 
+> [!NOTE]
+> **Consolidated into US-304** — Historical data import via Pathful direct export (contains 2-4 years of data). See [Pathful Import Deployment](dev/pathful_import_deployment) for details.
+
 **As** internal staff, **I want** to import 2–4 years of historical virtual events from Google Sheets, **So that** our reporting and history are complete.
 
 **Related Requirements:** [FR-VIRTUAL-204](requirements#fr-virtual-204)

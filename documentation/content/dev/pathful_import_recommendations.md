@@ -368,15 +368,19 @@ During rollback window:
 
 When Google Sheets workflow is fully deprecated:
 
-- [ ] Final Google Sheets data archived
-- [ ] Archive location documented
-- [ ] Archive set to read-only
-- [ ] Old import code removed or clearly marked deprecated
-- [ ] Staff trained on new process
-- [ ] Documentation updated (Architecture, Field Mappings, User Guide)
-- [ ] US-306 closed with reference to Pathful implementation
+- [ ] Final Google Sheets data archived *(User Action)*
+- [ ] Archive location documented *(User Action)*
+- [ ] Archive set to read-only *(User Action)*
+- [x] Old import code marked deprecated (Playbook C marked deprecated in import_playbook.md)
+- [ ] Staff trained on new process *(User Action)*
+- [x] Documentation updated (Architecture, Field Mappings, User Guide)
+  - Updated: `user_guide/pathful_import.md` (new)
+  - Updated: `user_guide/virtual_events.md`
+  - Updated: `import_playbook.md` (Playbook A, C)
+  - Updated: `dev/pathful_import_deployment.md`
+- [x] US-306 consolidated into US-304 (Pathful direct import)
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: January 30, 2026*
+*Version: 1.1 — Deprecation checklist updated*
