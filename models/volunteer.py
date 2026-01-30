@@ -281,6 +281,11 @@ class Volunteer(Contact):
         Enum(VolunteerStatus), default=VolunteerStatus.ACTIVE, index=True
     )
 
+    # Pathful integration (US-304, US-306)
+    pathful_user_id = db.Column(
+        String(100), nullable=True, index=True
+    )  # User Auth Id from Pathful exports for professional/presenter matching
+
     # Relationship definitions
     # Note: @declared_attr is used to define these relationships dynamically during class creation
 

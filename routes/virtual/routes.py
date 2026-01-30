@@ -168,6 +168,18 @@ except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass
 
+# Register Pathful Import routes under the Virtual blueprint.
+# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
+try:
+    from routes.virtual.pathful_import import (
+        load_pathful_routes as _load_pathful_routes,
+    )
+
+    _load_pathful_routes()
+except Exception:
+    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
+    pass
+
 
 @virtual_bp.route("/virtual")
 def virtual():

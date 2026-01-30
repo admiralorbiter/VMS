@@ -109,6 +109,11 @@ class TeacherProgress(db.Model):
     tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=True, index=True)
     tenant = relationship("Tenant", backref="teacher_progress_entries")
 
+    # [NEW] Pathful integration (US-304, US-306)
+    pathful_user_id = Column(
+        String(100), nullable=True, index=True
+    )  # User Auth Id from Pathful exports
+
     def __init__(
         self,
         academic_year,

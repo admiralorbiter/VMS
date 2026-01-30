@@ -500,6 +500,21 @@ class Event(db.Model):
         db.String(255)
     )  # Store original status string for detailed analysis
 
+    # Pathful integration fields (US-304, US-306)
+    pathful_session_id = db.Column(
+        db.String(100), unique=True, nullable=True, index=True
+    )  # Unique session ID from Pathful exports
+    career_cluster = db.Column(db.String(255), nullable=True)  # Career cluster category
+    import_source = db.Column(
+        db.String(50), nullable=True
+    )  # Data provenance: 'pathful_direct', 'google_sheet', 'salesforce', 'manual'
+    registered_student_count = db.Column(
+        db.Integer, default=0
+    )  # Student registration count from Pathful
+    attended_student_count = db.Column(
+        db.Integer, default=0
+    )  # Actual student attendance from Pathful
+
     # Participant details - Consider moving to separate tables for better normalization
     educators = db.Column(
         db.Text
