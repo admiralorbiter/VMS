@@ -567,6 +567,26 @@ main {
     background-color: #0089bd;
 }
 
+/* Pathful Integration Card */
+.event-card.pathful-info {
+    background: #f8f5ff;
+    border: 1.5px solid #7c4dff;
+    box-shadow: 0 2px 8px rgba(124, 77, 255, 0.1);
+}
+
+.event-card.pathful-info .card-header {
+    background-color: #7c4dff;
+    color: white;
+}
+
+.event-card.pathful-info .info-item label {
+    color: #5e35b1;
+}
+
+.event-card.pathful-info .info-item p {
+    color: var(--delft-blue);
+}
+
 /* Event Description and Additional Info */
 .event-description,
 .additional-content {

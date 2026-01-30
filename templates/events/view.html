@@ -227,6 +227,50 @@
         </div>
         {% endif %}
 
+        {# Pathful Integration Card - Shown for Pathful-imported events #}
+        {% if event.pathful_session_id %}
+        <div class="event-card pathful-info">
+            <div class="card-header">
+                <i class="fa-solid fa-link"></i>
+                <h2>Pathful Integration</h2>
+            </div>
+            <div class="card-content">
+                <div class="info-grid compact">
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-fingerprint"></i> Session ID</label>
+                        <p>{{ event.pathful_session_id }}</p>
+                    </div>
+                    {% if event.import_source %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-database"></i> Import Source</label>
+                        <p>{{ event.import_source|replace('_', ' ')|title }}</p>
+                    </div>
+                    {% endif %}
+                    {% if event.career_cluster %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-briefcase"></i> Career Cluster</label>
+                        <p>{{ event.career_cluster }}</p>
+                    </div>
+                    {% endif %}
+                    {% if event.registered_student_count or event.attended_student_count %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-users"></i> Student Attendance</label>
+                        <p>
+                            {% if event.attended_student_count %}
+                                <strong>{{ event.attended_student_count }}</strong> attended
+                            {% endif %}
+                            {% if event.registered_student_count %}
+                                {% if event.attended_student_count %} / {% endif %}
+                                {{ event.registered_student_count }} registered
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         {# Description Card - Event description #}
         {% if event.description %}
         <div class="event-card description-info full-width collapsible-section">
