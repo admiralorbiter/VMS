@@ -1,5 +1,6 @@
 import difflib
 import io
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 import openpyxl
@@ -2349,8 +2350,8 @@ def load_usage_routes():
             date_from = default_date_from
             date_to = default_date_to
 
-        # Check if admin wants to see all districts
-        show_all_districts = request.args.get("show_all_districts", "0") == "1"
+        # Check if admin wants to see all districts (default: YES for Pathful data)
+        show_all_districts = request.args.get("show_all_districts", "1") == "1"
 
         current_filters = {
             "year": selected_virtual_year,  # Updated variable name
@@ -5519,7 +5520,15 @@ def load_usage_routes():
     @virtual_bp.route("/usage/google-sheets")
     @login_required
     def virtual_google_sheets():
-        """Manage Google Sheets for virtual district reports"""
+        """Manage Google Sheets for virtual district reports
+
+        DEPRECATED: This route is scheduled for removal. Use Pathful import instead.
+        """
+        logging.warning(
+            "DEPRECATED: /usage/google-sheets route accessed by user=%s. "
+            "This route is scheduled for removal.",
+            current_user.username if current_user.is_authenticated else "anonymous",
+        )
         virtual_year = request.args.get("year", get_current_virtual_year())
 
         # Get all Google Sheets for virtual district reports for this year
@@ -5554,7 +5563,14 @@ def load_usage_routes():
     @virtual_bp.route("/usage/google-sheets/create", methods=["POST"])
     @login_required
     def create_virtual_google_sheet():
-        """Create a new Google Sheet for virtual district reports"""
+        """Create a new Google Sheet for virtual district reports
+
+        DEPRECATED: This route is scheduled for removal.
+        """
+        logging.warning(
+            "DEPRECATED: Google Sheet create route accessed by user=%s",
+            current_user.username if current_user.is_authenticated else "anonymous",
+        )
         try:
             virtual_year = request.form.get("virtual_year")
             district_name = request.form.get("district_name")
@@ -5609,7 +5625,14 @@ def load_usage_routes():
     @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/update", methods=["POST"])
     @login_required
     def update_virtual_google_sheet(sheet_id):
-        """Update an existing Google Sheet"""
+        """Update an existing Google Sheet
+
+        DEPRECATED: This route is scheduled for removal.
+        """
+        logging.warning(
+            "DEPRECATED: Google Sheet update route accessed by user=%s",
+            current_user.username if current_user.is_authenticated else "anonymous",
+        )
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
 
@@ -5640,7 +5663,14 @@ def load_usage_routes():
     @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/delete", methods=["POST"])
     @login_required
     def delete_virtual_google_sheet(sheet_id):
-        """Delete a Google Sheet"""
+        """Delete a Google Sheet
+
+        DEPRECATED: This route is scheduled for removal.
+        """
+        logging.warning(
+            "DEPRECATED: Google Sheet delete route accessed by user=%s",
+            current_user.username if current_user.is_authenticated else "anonymous",
+        )
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
             virtual_year = sheet.academic_year

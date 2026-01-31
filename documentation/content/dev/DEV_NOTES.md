@@ -588,4 +588,43 @@ models/
 
 ---
 
+## Refactor Strategy (January 2026)
+
+### Hybrid Approach
+
+The virtual data refactor uses a hybrid approach:
+
+1. **Phase A: Backend Stabilization** — Add deprecation logging to legacy routes, update documentation
+2. **Phase B: Page-by-Page Refactor** — Verify each page works with Pathful data, extract district code as-you-go
+3. **Phase C: Final Cleanup** — Remove deprecated routes after verifying no usage
+
+### Key Insight
+
+The core data path (`compute_virtual_session_data` in `usage.py`) already reads from the database, **not** Google Sheets. The Google Sheets routes (lines 5519-6664) are **management** features for district reports, not data sources.
+
+### Deprecation Tracking
+
+All Google Sheets routes have been tagged with deprecation logging:
+
+```python
+logging.warning(
+    "DEPRECATED: /usage/google-sheets route accessed by user=%s. "
+    "This route is scheduled for removal.",
+    current_user.username
+)
+```
+
+Monitor logs for 30 days. If no access, safe to remove.
+
+### District Code Extraction (Phase B)
+
+When refactoring each page, extract district-specific logic to `routes/district/`:
+
+- `virtual_usage_district` → `routes/district/virtual_usage.py`
+- `virtual_district_teacher_breakdown` → `routes/district/teacher_breakdown.py`
+- `compute_virtual_session_district_data` → `services/district_virtual_service.py`
+
+---
+
 *Created: January 30, 2026*
+*Updated: January 31, 2026 — Added refactor strategy section*

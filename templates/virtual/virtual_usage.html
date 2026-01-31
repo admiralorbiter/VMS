@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Virtual Session Usage Report{% endblock %}
 
@@ -374,34 +374,33 @@
             <div class="filter-actions">
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ url_for('virtual.virtual_usage') }}" class="reset-btn">Reset</a>
-                {% if session_data %}
-                <a href="{{ url_for('virtual.virtual_usage', refresh=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
-                    class="export-btn" title="Refresh Data" style="background: #28a745;">
-                    🔄 Refresh
-                </a>
-                <a href="{{ url_for('virtual.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
-                    class="export-btn" title="Export to Excel">
-                    📊 Export
-                </a>
-                <a href="{{ url_for('virtual.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
-                    class="export-btn" title="View Detailed Breakdown">
-                    📈 Breakdown
-                </a>
+                {# Admin buttons - ALWAYS visible to admins #}
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('virtual.pathful_import') }}" class="export-btn"
-                    title="Import data from Pathful exports" style="background: #7c4dff;">
+                    title="Import from Pathful" style="background: #7c4dff;">
                     <i class="fas fa-upload"></i> Pathful Import
                 </a>
                 <a href="{{ url_for('virtual.pathful_events') }}" class="export-btn"
-                    title="View Pathful-imported events" style="background: #7c4dff;">
+                    title="View Pathful events" style="background: #7c4dff;">
                     <i class="fas fa-link"></i> Pathful Events
                 </a>
-                {% endif %}
-                {% if current_user.is_admin %}
                 <button type="button" class="export-btn new-session-btn" onclick="openCreateVirtualModal()">
-                    ➕ New Session
+                    + New Session
                 </button>
                 {% endif %}
+                {% if session_data %}
+                <a href="{{ url_for('virtual.virtual_usage', refresh=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
+                    class="export-btn" title="Refresh Data" style="background: #28a745;">
+                    ðŸ”„ Refresh
+                </a>
+                <a href="{{ url_for('virtual.virtual_usage_export') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
+                    class="export-btn" title="Export to Excel">
+                    ðŸ“Š Export
+                </a>
+                <a href="{{ url_for('virtual.virtual_breakdown', year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
+                    class="export-btn" title="View Detailed Breakdown">
+                    ðŸ“ˆ Breakdown
+                </a>
                 {% if current_user.is_admin or current_user.scope_type == 'global' %}
                 <a href="{{ url_for('virtual.virtual_recruitment') }}" class="export-btn"
                     title="View events needing presenters" style="background: #ffc107; color: #333;">
@@ -412,12 +411,12 @@
                 {% if request.args.get('show_all_districts') == '1' %}
                 <a href="{{ url_for('virtual.virtual_usage') }}{{ '?' + request.query_string.decode() if request.query_string else '' }}"
                     class="export-btn" title="Show Main Districts Only" style="background: #17a2b8;">
-                    🏠 Main Districts
+                    ðŸ  Main Districts
                 </a>
                 {% else %}
                 <a href="{{ url_for('virtual.virtual_usage', show_all_districts=1) }}{{ '&' + request.query_string.decode() if request.query_string else '' }}"
                     class="export-btn" title="Show All Districts" style="background: #6c757d;">
-                    🌐 All Districts
+                    ðŸŒ All Districts
                 </a>
                 {% endif %}
                 {% endif %}
@@ -428,14 +427,14 @@
                 <a href="{{ url_for('virtual.virtual_usage', **query_params) }}" class="export-btn"
                     title="Show all sessions as individual lines (one per teacher/presenter)"
                     style="background: #6c757d;">
-                    📋 Lines
+                    ðŸ“‹ Lines
                 </a>
                 {% else %}
                 {% set _ = query_params.update({'group_manual': '1'}) %}
                 <a href="{{ url_for('virtual.virtual_usage', **query_params) }}" class="export-btn"
                     title="Group sessions by title + date + time (combine multiple teachers/presenters)"
                     style="background: #6c757d;">
-                    📦 Group
+                    ðŸ“¦ Group
                 </a>
                 {% endif %}
                 {% endif %}
@@ -1089,9 +1088,9 @@
         {% if last_refreshed %}
         Data last refreshed: {{ last_refreshed.strftime('%B %d, %Y at %I:%M %p') }}
         {% if is_cached %}
-        <span style="color: #28a745; font-weight: bold;">● Cached</span>
+        <span style="color: #28a745; font-weight: bold;">â— Cached</span>
         {% else %}
-        <span style="color: #dc3545; font-weight: bold;">● Fresh</span>
+        <span style="color: #dc3545; font-weight: bold;">â— Fresh</span>
         {% endif %}
         {% else %}
         Data freshly loaded
@@ -1166,12 +1165,12 @@
                         <a href="{{ url_for('virtual.virtual_district_teacher_progress', district_name=district_name, year=current_filters.year, date_from=current_filters.date_from.strftime('%Y-%m-%d') if current_filters.date_from else '', date_to=current_filters.date_to.strftime('%Y-%m-%d') if current_filters.date_to else '') }}"
                             class="district-link" style="background: rgba(40, 167, 69, 0.3);"
                             title="Teacher Progress Tracking">
-                            📈 Progress</a>
+                            ðŸ“ˆ Progress</a>
                         {% endif %}
                         <a href="{{ url_for('virtual.get_district_google_sheet', district_name=district_name, year=current_filters.year) }}"
                             class="district-link" style="background: rgba(255, 255, 255, 0.1);"
                             title="View Google Sheet">
-                            📊 Sheet</a>
+                            ðŸ“Š Sheet</a>
                     </div>
                 </div>
                 <div class="district-stats">
@@ -1359,13 +1358,13 @@
                                 onclick="openEditVirtualModal({{ session.event_id }})"
                                 style="background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 0.8em; white-space: nowrap;"
                                 title="Edit this session">
-                                ✏️ Edit
+                                âœï¸ Edit
                             </button>
                             <button type="button" class="delete-session-btn"
                                 onclick="deleteVirtualSession({{ session.event_id }})"
                                 style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 0.8em; white-space: nowrap;"
                                 title="Delete this session">
-                                🗑️ Delete
+                                ðŸ—‘ï¸ Delete
                             </button>
                             {% endif %}
                             {% endif %}
@@ -1373,7 +1372,7 @@
                             <a href="{{ session.session_link }}" target="_blank" class="session-external-btn"
                                 style="background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; text-decoration: none; font-size: 0.8em; white-space: nowrap;"
                                 title="Go to session website">
-                                🔗 Link
+                                ðŸ”— Link
                             </a>
                             {% endif %}
                         </div>
@@ -1441,8 +1440,8 @@
                 _=args_p.update({'page': p}) %} <a href="?{{ args_p|urlencode }}"
                 class="page-btn{% if p == page %} active{% endif %}">{{ p }}</a>
                 {% elif p == 2 and page-window > 2 %}
-                <span class="page-ellipsis">…</span>
-                {% elif p == total-1 and page+window < total-1 %} <span class="page-ellipsis">…</span>
+                <span class="page-ellipsis">â€¦</span>
+                {% elif p == total-1 and page+window < total-1 %} <span class="page-ellipsis">â€¦</span>
                     {% endif %}
                     {% endfor %}
                     {# Next #}

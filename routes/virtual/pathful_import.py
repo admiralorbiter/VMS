@@ -603,12 +603,37 @@ def process_session_report_row(row, row_index, import_log, processed_events):
             )
             # If matched, we could link to event via EventTeacher here
 
+            # Store educator name on event (accumulate if multiple)
+            if name:
+                current_educators = set(
+                    filter(None, (event.educators or "").split("; "))
+                )
+                current_educators.add(name)
+                event.educators = "; ".join(sorted(current_educators))
+
+            # ONLY store district from Educator rows (Professional rows have company, not district)
+            if district_or_company and not event.district_partner:
+                event.district_partner = district_or_company
+
+            # Store school info from Educator rows
+            if school and school.upper() != "PREP-KC":  # Skip "PREP-KC" as school name
+                if not event.school:
+                    # Try to match school to existing School record
+                    school_record = School.query.filter(
+                        func.lower(School.name) == func.lower(school)
+                    ).first()
+                    if school_record:
+                        event.school = school_record.id
+                # Always store school name in location as fallback display
+                if not event.location:
+                    event.location = school
+
         elif signup_role == "professional":
             # Match volunteer
             volunteer = match_volunteer(
                 name=name,
                 email="",  # Session report doesn't have email
-                organization_name=district_or_company,
+                organization_name=district_or_company,  # This is their company/employer
                 pathful_user_id=user_auth_id,
                 import_log=import_log,
                 row_number=row_index,
@@ -617,6 +642,14 @@ def process_session_report_row(row, row_index, import_log, processed_events):
             # If matched, link volunteer to event
             if volunteer and volunteer not in event.volunteers:
                 event.volunteers.append(volunteer)
+
+            # Store professional name on event (accumulate if multiple)
+            if name:
+                current_professionals = set(
+                    filter(None, (event.professionals or "").split("; "))
+                )
+                current_professionals.add(name)
+                event.professionals = "; ".join(sorted(current_professionals))
 
         import_log.processed_rows += 1
         return True
@@ -1679,3 +1712,145 @@ def load_pathful_routes():
         except Exception as e:
             db.session.rollback()
             return jsonify({"success": False, "error": str(e)}), 500
+
+    # =============================================================================
+    # SIMPLIFIED VIRTUAL SESSIONS VIEW
+    # =============================================================================
+    # This is a clean, simple replacement for the complex /usage route.
+    # It directly queries Pathful-imported virtual sessions without legacy logic.
+
+    @virtual_bp.route("/sessions")
+    @login_required
+    def virtual_sessions():
+        """
+        Simplified Virtual Sessions view.
+
+        This replaces the complex /usage route with a clean, direct query
+        of Pathful-imported virtual session data.
+        """
+        from datetime import datetime
+
+        # Get filter parameters
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 50, type=int)
+
+        # Date range (default: current academic year Aug-Jul)
+        today = datetime.now()
+        if today.month >= 8:
+            default_start = datetime(today.year, 8, 1)
+            default_end = datetime(today.year + 1, 7, 31, 23, 59, 59)
+        else:
+            default_start = datetime(today.year - 1, 8, 1)
+            default_end = datetime(today.year, 7, 31, 23, 59, 59)
+
+        date_from_str = request.args.get("date_from")
+        date_to_str = request.args.get("date_to")
+
+        try:
+            date_from = (
+                datetime.strptime(date_from_str, "%Y-%m-%d")
+                if date_from_str
+                else default_start
+            )
+        except ValueError:
+            date_from = default_start
+
+        try:
+            date_to = (
+                datetime.strptime(date_to_str, "%Y-%m-%d").replace(
+                    hour=23, minute=59, second=59
+                )
+                if date_to_str
+                else default_end
+            )
+        except ValueError:
+            date_to = default_end
+
+        # Other filters
+        career_cluster = request.args.get("career_cluster", "")
+        status = request.args.get("status", "")
+        search = request.args.get("search", "")
+
+        # Base query - all virtual sessions
+        query = Event.query.filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        )
+
+        # Apply filters
+        if career_cluster:
+            query = query.filter(Event.career_cluster == career_cluster)
+
+        if status:
+            try:
+                status_enum = EventStatus(status)
+                query = query.filter(Event.status == status_enum)
+            except ValueError:
+                pass
+
+        if search:
+            query = query.filter(
+                db.or_(
+                    Event.title.ilike(f"%{search}%"),
+                    Event.career_cluster.ilike(f"%{search}%"),
+                    Event.pathful_session_id.ilike(f"%{search}%"),
+                )
+            )
+
+        # Order and paginate with eager loading for related data
+        from sqlalchemy.orm import joinedload
+
+        query = query.options(
+            joinedload(Event.school_obj),
+            joinedload(Event.volunteers),
+            joinedload(Event.teachers),
+        ).order_by(Event.start_date.desc())
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        # Get unique career clusters for filter dropdown
+        career_clusters = (
+            db.session.query(Event.career_cluster)
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.career_cluster.isnot(None),
+                Event.career_cluster != "",
+            )
+            .distinct()
+            .order_by(Event.career_cluster)
+            .all()
+        )
+        career_clusters = [c[0] for c in career_clusters]
+
+        # Get summary stats
+        total_sessions = Event.query.filter(
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        ).count()
+
+        total_students = (
+            db.session.query(func.sum(Event.registered_student_count))
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.start_date >= date_from,
+                Event.start_date <= date_to,
+            )
+            .scalar()
+            or 0
+        )
+
+        return render_template(
+            "virtual/virtual_sessions.html",
+            sessions=pagination,
+            career_clusters=career_clusters,
+            total_sessions=total_sessions,
+            total_students=total_students,
+            filters={
+                "date_from": date_from.strftime("%Y-%m-%d"),
+                "date_to": date_to.strftime("%Y-%m-%d"),
+                "career_cluster": career_cluster,
+                "status": status,
+                "search": search,
+            },
+        )
