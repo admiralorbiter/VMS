@@ -1768,6 +1768,7 @@ def load_pathful_routes():
 
         # Other filters
         career_cluster = request.args.get("career_cluster", "")
+        district = request.args.get("district", "")
         status = request.args.get("status", "")
         search = request.args.get("search", "")
 
@@ -1782,6 +1783,9 @@ def load_pathful_routes():
         if career_cluster:
             query = query.filter(Event.career_cluster == career_cluster)
 
+        if district:
+            query = query.filter(Event.district_partner == district)
+
         if status:
             try:
                 status_enum = EventStatus(status)
@@ -1790,10 +1794,15 @@ def load_pathful_routes():
                 pass
 
         if search:
+            # Search across multiple columns
             query = query.filter(
                 db.or_(
                     Event.title.ilike(f"%{search}%"),
                     Event.career_cluster.ilike(f"%{search}%"),
+                    Event.district_partner.ilike(f"%{search}%"),
+                    Event.location.ilike(f"%{search}%"),  # School name fallback
+                    Event.educators.ilike(f"%{search}%"),
+                    Event.professionals.ilike(f"%{search}%"),
                     Event.pathful_session_id.ilike(f"%{search}%"),
                 )
             )
@@ -1840,16 +1849,32 @@ def load_pathful_routes():
             or 0
         )
 
+        # Get unique districts for filter dropdown
+        districts = (
+            db.session.query(Event.district_partner)
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.district_partner.isnot(None),
+                Event.district_partner != "",
+            )
+            .distinct()
+            .order_by(Event.district_partner)
+            .all()
+        )
+        districts = [d[0] for d in districts]
+
         return render_template(
             "virtual/virtual_sessions.html",
             sessions=pagination,
             career_clusters=career_clusters,
+            districts=districts,
             total_sessions=total_sessions,
             total_students=total_students,
             filters={
                 "date_from": date_from.strftime("%Y-%m-%d"),
                 "date_to": date_to.strftime("%Y-%m-%d"),
                 "career_cluster": career_cluster,
+                "district": district,
                 "status": status,
                 "search": search,
             },
