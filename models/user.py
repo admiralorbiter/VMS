@@ -199,6 +199,11 @@ class User(db.Model, UserMixin):
         comment="Tenant this user belongs to (null = PrepKC main)",
     )
 
+    # Relationship to access tenant object
+    tenant = db.relationship(
+        "Tenant", backref="users", lazy="joined", foreign_keys=[tenant_id]
+    )
+
     # Tenant role (FR-TENANT-110) - only applicable when tenant_id is set
     tenant_role = db.Column(
         db.String(20),

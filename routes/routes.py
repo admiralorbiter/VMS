@@ -135,8 +135,13 @@ def init_routes(app):
         from flask import redirect, url_for
         from flask_login import current_user
 
+        from models import TenantRole
+
         # Redirect tenant users to their district dashboard (FR-TENANT-112)
         if current_user.is_authenticated and current_user.tenant_id:
+            # Virtual Admin users default to virtual sessions page
+            if current_user.tenant_role == TenantRole.VIRTUAL_ADMIN:
+                return redirect(url_for("district.virtual_sessions"))
             return redirect(url_for("district.list_events"))
 
         return render_template("index.html")

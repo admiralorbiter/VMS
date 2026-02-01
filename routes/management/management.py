@@ -1571,7 +1571,14 @@ def edit_user_form(user_id):
     if not current_user.can_manage_user(user) and current_user.id != user_id:
         return jsonify({"error": "Unauthorized to edit this user"}), 403
 
-    return render_template("management/user_edit_modal.html", user=user)
+    # Get all tenants for the dropdown (sorted by name)
+    from models.tenant import Tenant
+
+    tenants = Tenant.query.order_by(Tenant.name).all()
+
+    return render_template(
+        "management/user_edit_modal.html", user=user, tenants=tenants
+    )
 
 
 @management_bp.route("/management/users/<int:user_id>", methods=["PUT"])
@@ -1594,6 +1601,8 @@ def update_user(user_id):
     email = request.form.get("email")
     security_level = int(request.form.get("security_level", 0))
     new_password = request.form.get("new_password")
+    tenant_id = request.form.get("tenant_id")
+    tenant_id = int(tenant_id) if tenant_id else None
 
     # If not admin, restrict ability to escalate privileges
     if not current_user.is_admin and security_level > current_user.security_level:
@@ -1608,6 +1617,10 @@ def update_user(user_id):
     # Regular users should only be able to update their own security level if they're an admin
     if current_user.is_admin or current_user.security_level > user.security_level:
         user.security_level = security_level
+
+    # Only admins can change tenant affiliation
+    if current_user.is_admin:
+        user.tenant_id = tenant_id
 
     # Update password if provided
     if new_password:

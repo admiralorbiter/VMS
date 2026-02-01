@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Virtual Sessions - {{ district_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    main {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div
+    style="padding: 20px 30px; background: linear-gradient(180deg, #e8f4f8 0%, #f5f7fa 100%); min-height: calc(100vh - 60px);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h1 style="color: #2c3e50; margin: 0; font-size: 1.8em;">Virtual Sessions</h1>
+            {% if district_name %}
+            <p style="color: #7f8c8d; margin: 5px 0 0 0;">{{ district_name }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+    </div>
+    {% else %}
+
+    <!-- Summary Stats + Filters Row -->
+    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+        <div
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px 25px; border-radius: 10px; color: white; min-width: 140px; box-shadow: 0 4px 15px rgba(102,126,234,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_sessions }}</div>
+            <div style="opacity: 0.9; font-size: 0.85em;">Total Sessions</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 15px 25px; border-radius: 10px; color: white; min-width: 140px; box-shadow: 0 4px 15px rgba(17,153,142,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_students|int|default(0) }}</div>
+            <div style="opacity: 0.9; font-size: 0.85em;">Total Students</div>
+        </div>
+
+        <!-- Filters -->
+        <form method="GET"
+            style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1; justify-content: flex-end;">
+            <input type="date" name="date_from" value="{{ filters.date_from }}"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white;">
+            <input type="date" name="date_to" value="{{ filters.date_to }}"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white;">
+            <select name="career_cluster"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; max-width: 180px;">
+                <option value="">All Clusters</option>
+                {% for cluster in career_clusters %}
+                <option value="{{ cluster }}" {% if filters.career_cluster==cluster %}selected{% endif %}>{{ cluster }}
+                </option>
+                {% endfor %}
+            </select>
+            <select name="status"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white;">
+                <option value="">All Status</option>
+                <option value="Completed" {% if filters.status=='Completed' %}selected{% endif %}>Completed</option>
+                <option value="Confirmed" {% if filters.status=='Confirmed' %}selected{% endif %}>Confirmed</option>
+                <option value="Cancelled" {% if filters.status=='Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+            <input type="text" name="search" value="{{ filters.search }}" placeholder="Search..."
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 130px; background: white;">
+            <button type="submit"
+                style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-filter"></i>
+            </button>
+            <a href="{{ url_for('district.virtual_sessions') }}"
+                style="background: #e74c3c; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none;">
+                <i class="fas fa-times"></i>
+            </a>
+        </form>
+    </div>
+
+    <!-- Sessions Table -->
+    {% if sessions and sessions.items %}
+    <div style="background: white; border-radius: 10px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 1000px;">
+            <thead>
+                <tr style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white;">
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap;">Date</th>
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Title</th>
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">School</th>
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Cluster</th>
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Educators</th>
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Presenters</th>
+                    <th style="padding: 12px 10px; text-align: center; font-weight: 600;">Students</th>
+                    <th style="padding: 12px 10px; text-align: center; font-weight: 600;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in sessions.items %}
+                <tr style="border-bottom: 1px solid #eee; {% if loop.index is odd %}background: #fafafa;{% endif %}">
+                    <td style="padding: 10px; white-space: nowrap;">
+                        {% if session.start_date %}
+                        {{ session.start_date.strftime('%b %d, %Y') }}
+                        {% else %}
+                        <span style="color: #999;">No date</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px;">
+                        <strong>{{ session.title or 'Untitled' }}</strong>
+                        {% if session.pathful_session_id %}
+                        <div style="font-size: 0.75em; color: #999;">ID: {{ session.pathful_session_id }}</div>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px;">
+                        {{ session.school_obj.name if session.school_obj else session.location or '-' }}
+                    </td>
+                    <td style="padding: 10px;">
+                        {% if session.career_cluster %}
+                        <span style="background: #e8f4f8; padding: 3px 8px; border-radius: 4px; font-size: 0.85em;">
+                            {{ session.career_cluster }}
+                        </span>
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px; max-width: 200px;">
+                        {% if session.educators %}
+                        <span title="{{ session.educators }}">{{ session.educators[:50] }}{{ '...' if
+                            session.educators|length > 50 else '' }}</span>
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px; max-width: 200px;">
+                        {% if session.professionals %}
+                        <span title="{{ session.professionals }}">{{ session.professionals[:50] }}{{ '...' if
+                            session.professionals|length > 50 else '' }}</span>
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        {% if session.registered_student_count %}
+                        <span style="font-weight: 600;">{{ session.registered_student_count }}</span>
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px; text-align: center;">
+                        {% if session.status %}
+                        {% set status_colors = {
+                        'Completed': '#27ae60',
+                        'Confirmed': '#3498db',
+                        'Cancelled': '#e74c3c',
+                        'Pending': '#f39c12'
+                        } %}
+                        <span
+                            style="background: {{ status_colors.get(session.status.value, '#95a5a6') }}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 500;">
+                            {{ session.status.value if session.status else 'Unknown' }}
+                        </span>
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if sessions.pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 5px; margin-top: 20px;">
+        {% if sessions.has_prev %}
+        <a href="{{ url_for('district.virtual_sessions', page=sessions.prev_num, **filters) }}"
+            style="padding: 8px 14px; background: white; border: 1px solid #ddd; border-radius: 6px; text-decoration: none; color: #333;">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+        {% endif %}
+
+        <span style="padding: 8px 14px; background: #3498db; color: white; border-radius: 6px; font-weight: 600;">
+            {{ sessions.page }} / {{ sessions.pages }}
+        </span>
+
+        {% if sessions.has_next %}
+        <a href="{{ url_for('district.virtual_sessions', page=sessions.next_num, **filters) }}"
+            style="padding: 8px 14px; background: white; border: 1px solid #ddd; border-radius: 6px; text-decoration: none; color: #333;">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div
+        style="background: white; border-radius: 10px; padding: 60px; text-align: center; box-shadow: 0 2px 15px rgba(0,0,0,0.08);">
+        <i class="fas fa-calendar-times" style="font-size: 3em; color: #bdc3c7; margin-bottom: 15px;"></i>
+        <h3 style="color: #7f8c8d; margin: 0 0 10px 0;">No virtual sessions found</h3>
+        <p style="color: #95a5a6; margin: 0;">Try adjusting your filters or date range.</p>
+    </div>
+    {% endif %}
+
+    {% endif %}
+</div>
+{% endblock %}

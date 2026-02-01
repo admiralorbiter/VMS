@@ -924,6 +924,7 @@ JavaScript Integration:
                             <th>Username</th>
                             <th>Email</th>
                             <th>Security Level</th>
+                            <th>Tenant</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -944,6 +945,13 @@ JavaScript Integration:
                                 <span class="badge bg-primary">Manager</span>
                                 {% elif user.security_level == SecurityLevel.ADMIN %}
                                 <span class="badge bg-danger">Admin</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.tenant %}
+                                <span class="badge bg-success">{{ user.tenant.name }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             <td>{{ user.created_at|format_date }}</td>

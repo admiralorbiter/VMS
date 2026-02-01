@@ -19,4 +19,5 @@ from routes.district import settings  # noqa: F401, E402
 from routes.district import signup  # noqa: F401, E402
 from routes.district import teacher_dashboard  # noqa: F401, E402
 from routes.district import tenant_users  # noqa: F401, E402
+from routes.district import virtual_sessions  # noqa: F401, E402
 from routes.district import volunteers  # noqa: F401, E402

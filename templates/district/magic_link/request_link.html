@@ -175,7 +175,7 @@ Template Variables:
         </div>
     </div>
 
-    <a href="{{ url_for('virtual.district_portal_landing', district_slug=district_slug) }}" class="back-link">
+    <a href="{{ url_for('virtual.legacy_district_portal_landing', slug=district_slug) }}" class="back-link">
         <i class="fas fa-arrow-left"></i> Back to {{ district.short_name or district_slug|upper }} Portal
     </a>
 </div>
