@@ -144,26 +144,11 @@ except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass
 
-# Register District Portal routes under the Virtual blueprint.
-# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
+# Register Legacy Redirects for backward compatibility.
+# Redirects /virtual/<slug> URLs to new /district/<slug>/portal URLs.
+# NOTE: This replaces the old district_portal, magic_link, teacher_dashboard, and issues imports.
 try:
-    from routes.virtual import district_portal
-except Exception:
-    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
-    pass
-
-# Register Teacher Dashboard routes under the Virtual blueprint.
-# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
-try:
-    from routes.virtual import teacher_dashboard
-except Exception:
-    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
-    pass
-
-# Register District Issue Reporting routes under the Virtual blueprint.
-# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
-try:
-    from routes.virtual import issues
+    from routes.virtual import legacy_redirects  # noqa: F401
 except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass

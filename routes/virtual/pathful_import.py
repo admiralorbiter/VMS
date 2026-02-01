@@ -40,6 +40,7 @@ from sqlalchemy import func
 from werkzeug.utils import secure_filename
 
 from models import db
+from models.district_model import District
 from models.event import Event, EventFormat, EventStatus, EventType
 from models.pathful_import import (
     PathfulImportLog,
@@ -210,6 +211,68 @@ def safe_str(value):
     if pd.isna(value) or value is None:
         return ""
     return str(value).strip()
+
+
+def upsert_district(district_name):
+    """
+    Find or create a District record by name.
+
+    This ensures the District table is populated automatically during
+    Pathful imports, providing normalized district data.
+
+    Args:
+        district_name: Name of the district from Pathful data
+
+    Returns:
+        District: Found or created District instance
+    """
+    if not district_name:
+        return None
+
+    # Look for existing district by name (case-insensitive)
+    district = District.query.filter(
+        func.lower(District.name) == func.lower(district_name)
+    ).first()
+
+    if district:
+        return district
+
+    # Create new district
+    import re
+
+    # Generate district code from name
+    # Look for acronym in parentheses first
+    acronym_match = re.search(r"\(([A-Z]+)\)", district_name)
+    if acronym_match:
+        code = acronym_match.group(1)
+    else:
+        # Create code from first word
+        simplified = re.sub(
+            r"\s*(School District|Public Schools|Schools)$",
+            "",
+            district_name,
+            flags=re.IGNORECASE,
+        )
+        first_part = simplified.split(",")[0].strip()
+        code = re.sub(r"[^A-Z0-9-]", "", first_part.upper().replace(" ", "-"))[:20]
+
+    # Ensure code uniqueness
+    base_code = code
+    suffix = 1
+    while District.query.filter(District.district_code == code).first():
+        code = f"{base_code}-{suffix}"
+        suffix += 1
+
+    district = District(
+        name=district_name,
+        district_code=code,
+        salesforce_id=None,  # Virtual imports don't have Salesforce IDs
+    )
+    db.session.add(district)
+    db.session.flush()  # Get the ID
+
+    current_app.logger.info(f"Created new District: {district_name} (code={code})")
+    return district
 
 
 def serialize_row_for_json(row):
@@ -614,6 +677,10 @@ def process_session_report_row(row, row_index, import_log, processed_events):
             # ONLY store district from Educator rows (Professional rows have company, not district)
             if district_or_company and not event.district_partner:
                 event.district_partner = district_or_company
+                # Also upsert and link to District model for proper FK relationship
+                district_record = upsert_district(district_or_company)
+                if district_record and district_record not in event.districts:
+                    event.districts.append(district_record)
 
             # Store school info from Educator rows
             if school and school.upper() != "PREP-KC":  # Skip "PREP-KC" as school name

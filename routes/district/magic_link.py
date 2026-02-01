@@ -3,7 +3,7 @@ Magic Link Routes Module
 ========================
 
 This module provides routes for teacher magic link authentication in the
-Virtual District Data Tracker. Teachers can request a magic link via email
+District Data Tracker. Teachers can request a magic link via email
 to securely access their progress data without creating an account.
 
 Key Features:
@@ -13,10 +13,10 @@ Key Features:
 - Data correction flag submission (FR-DISTRICT-507)
 
 Main Endpoints:
-- GET  /virtual/<district>/teacher/request-link: Show request form
-- POST /virtual/<district>/teacher/request-link: Process request, send email
-- GET  /virtual/<district>/teacher/verify/<token>: Validate token, show dashboard
-- POST /virtual/<district>/teacher/flag-issue: Submit data correction flag
+- GET  /district/<slug>/teacher/request-link: Show request form
+- POST /district/<slug>/teacher/request-link: Process request, send email
+- GET  /district/<slug>/teacher/verify/<token>: Validate token, show dashboard
+- POST /district/<slug>/teacher/flag-issue: Submit data correction flag
 
 Security Considerations:
 - Generic responses prevent email enumeration (TC-021)
@@ -42,8 +42,8 @@ from models import db
 from models.bug_report import BugReport, BugReportType
 from models.magic_link import MagicLink
 from models.teacher_progress import TeacherProgress
-from routes.virtual.district_portal import RESERVED_SLUGS, get_district_portal
-from routes.virtual.routes import virtual_bp
+from routes.district import district_bp
+from routes.district.portal import RESERVED_SLUGS, get_district_portal
 
 
 def get_teacher_progress_sessions(teacher_progress):
@@ -118,35 +118,35 @@ def get_teacher_progress_sessions(teacher_progress):
     return past_sessions, upcoming_sessions, len(past_sessions), len(upcoming_sessions)
 
 
-@virtual_bp.route("/<district_slug>/teacher/request-link", methods=["GET"])
-def magic_link_request_form(district_slug: str):
+@district_bp.route("/<slug>/teacher/request-link", methods=["GET"])
+def magic_link_request_form(slug: str):
     """
     Display the magic link request form.
 
     Args:
-        district_slug: District slug from URL
+        slug: District slug from URL
 
     Returns:
         Rendered request form template
     """
-    if district_slug.lower() in RESERVED_SLUGS:
+    if slug.lower() in RESERVED_SLUGS:
         return redirect(url_for("virtual.virtual_usage"))
 
     try:
-        portal_config = get_district_portal(district_slug)
+        portal_config = get_district_portal(slug)
     except KeyError:
         flash("District not found.", "error")
         return redirect(url_for("main.index"))
 
     return render_template(
-        "virtual/magic_link/request_link.html",
+        "district/magic_link/request_link.html",
         district=portal_config,
-        district_slug=district_slug,
+        district_slug=slug,
     )
 
 
-@virtual_bp.route("/<district_slug>/teacher/request-link", methods=["POST"])
-def magic_link_request_submit(district_slug: str):
+@district_bp.route("/<slug>/teacher/request-link", methods=["POST"])
+def magic_link_request_submit(slug: str):
     """
     Process magic link request and send email.
 
@@ -154,16 +154,16 @@ def magic_link_request_submit(district_slug: str):
     to prevent email enumeration attacks.
 
     Args:
-        district_slug: District slug from URL
+        slug: District slug from URL
 
     Returns:
         Redirect to confirmation page
     """
-    if district_slug.lower() in RESERVED_SLUGS:
+    if slug.lower() in RESERVED_SLUGS:
         return redirect(url_for("virtual.virtual_usage"))
 
     try:
-        portal_config = get_district_portal(district_slug)
+        portal_config = get_district_portal(slug)
     except KeyError:
         flash("District not found.", "error")
         return redirect(url_for("main.index"))
@@ -172,9 +172,7 @@ def magic_link_request_submit(district_slug: str):
 
     if not email:
         flash("Please enter your email address.", "error")
-        return redirect(
-            url_for("virtual.magic_link_request_form", district_slug=district_slug)
-        )
+        return redirect(url_for("district.magic_link_request_form", slug=slug))
 
     # Always redirect to confirmation regardless of whether email exists
     # This prevents email enumeration (TC-021)
@@ -188,13 +186,13 @@ def magic_link_request_submit(district_slug: str):
     if teacher_progress:
         try:
             # Deactivate any existing links for this email
-            MagicLink.deactivate_for_email(email, district_slug)
+            MagicLink.deactivate_for_email(email, slug)
 
             # Create new magic link
             magic_link = MagicLink.create_for_teacher(
                 teacher_progress_id=teacher_progress.id,
                 email=email,
-                district_slug=district_slug,
+                district_slug=slug,
             )
             db.session.commit()
 
@@ -203,11 +201,11 @@ def magic_link_request_submit(district_slug: str):
                 email=email,
                 teacher_name=teacher_progress.name,
                 magic_link=magic_link,
-                district_name=portal_config.get("display_name", district_slug.upper()),
+                district_name=portal_config.get("display_name", slug.upper()),
             )
 
             current_app.logger.info(
-                f"Magic link created for {email} in district {district_slug}"
+                f"Magic link created for {email} in district {slug}"
             )
         except Exception as e:
             db.session.rollback()
@@ -215,42 +213,42 @@ def magic_link_request_submit(district_slug: str):
     else:
         # Log that email was not found (but don't reveal to user)
         current_app.logger.info(
-            f"Magic link requested for unknown email {email} in {district_slug}"
+            f"Magic link requested for unknown email {email} in {slug}"
         )
 
-    return redirect(url_for("virtual.magic_link_sent", district_slug=district_slug))
+    return redirect(url_for("district.magic_link_sent", slug=slug))
 
 
-@virtual_bp.route("/<district_slug>/teacher/link-sent")
-def magic_link_sent(district_slug: str):
+@district_bp.route("/<slug>/teacher/link-sent")
+def magic_link_sent(slug: str):
     """
     Display confirmation page after magic link request.
 
     Shows generic message regardless of whether email was found.
 
     Args:
-        district_slug: District slug from URL
+        slug: District slug from URL
 
     Returns:
         Rendered confirmation template
     """
-    if district_slug.lower() in RESERVED_SLUGS:
+    if slug.lower() in RESERVED_SLUGS:
         return redirect(url_for("virtual.virtual_usage"))
 
     try:
-        portal_config = get_district_portal(district_slug)
+        portal_config = get_district_portal(slug)
     except KeyError:
-        portal_config = {"display_name": district_slug.upper()}
+        portal_config = {"display_name": slug.upper()}
 
     return render_template(
-        "virtual/magic_link/link_sent.html",
+        "district/magic_link/link_sent.html",
         district=portal_config,
-        district_slug=district_slug,
+        district_slug=slug,
     )
 
 
-@virtual_bp.route("/<district_slug>/teacher/verify/<token>")
-def magic_link_verify(district_slug: str, token: str):
+@district_bp.route("/<slug>/teacher/verify/<token>")
+def magic_link_verify(slug: str, token: str):
     """
     Validate magic link token and display teacher dashboard.
 
@@ -258,17 +256,17 @@ def magic_link_verify(district_slug: str, token: str):
     Only shows data for the specific teacher (TC-022, FR-DISTRICT-506).
 
     Args:
-        district_slug: District slug from URL
+        slug: District slug from URL
         token: Magic link token
 
     Returns:
         Rendered teacher dashboard or redirect to request form
     """
-    if district_slug.lower() in RESERVED_SLUGS:
+    if slug.lower() in RESERVED_SLUGS:
         return redirect(url_for("virtual.virtual_usage"))
 
     try:
-        portal_config = get_district_portal(district_slug)
+        portal_config = get_district_portal(slug)
     except KeyError:
         flash("District not found.", "error")
         return redirect(url_for("main.index"))
@@ -281,24 +279,18 @@ def magic_link_verify(district_slug: str, token: str):
             "This link has expired or is invalid. Please request a new one.",
             "error",
         )
-        return redirect(
-            url_for("virtual.magic_link_request_form", district_slug=district_slug)
-        )
+        return redirect(url_for("district.magic_link_request_form", slug=slug))
 
     # Verify district matches
-    if magic_link.district_slug and magic_link.district_slug != district_slug:
+    if magic_link.district_slug and magic_link.district_slug != slug:
         flash("Invalid link for this district.", "error")
-        return redirect(
-            url_for("virtual.magic_link_request_form", district_slug=district_slug)
-        )
+        return redirect(url_for("district.magic_link_request_form", slug=slug))
 
     # Get teacher progress data
     teacher_progress = magic_link.teacher_progress
     if not teacher_progress:
         flash("Teacher record not found.", "error")
-        return redirect(
-            url_for("virtual.magic_link_request_form", district_slug=district_slug)
-        )
+        return redirect(url_for("district.magic_link_request_form", slug=slug))
 
     # Get session data
     past_sessions, upcoming_sessions, completed_count, planned_count = (
@@ -312,9 +304,9 @@ def magic_link_verify(district_slug: str, token: str):
     )
 
     return render_template(
-        "virtual/magic_link/teacher_view.html",
+        "district/magic_link/teacher_view.html",
         district=portal_config,
-        district_slug=district_slug,
+        district_slug=slug,
         teacher=teacher_progress,
         past_sessions=past_sessions,
         upcoming_sessions=upcoming_sessions,
@@ -323,8 +315,8 @@ def magic_link_verify(district_slug: str, token: str):
     )
 
 
-@virtual_bp.route("/<district_slug>/teacher/flag-issue", methods=["POST"])
-def magic_link_flag_issue(district_slug: str):
+@district_bp.route("/<slug>/teacher/flag-issue", methods=["POST"])
+def magic_link_flag_issue(slug: str):
     """
     Handle data correction flag submission from magic link session.
 
@@ -332,7 +324,7 @@ def magic_link_flag_issue(district_slug: str):
     Creates BugReport for staff follow-up (FR-DISTRICT-507, TC-023).
 
     Args:
-        district_slug: District slug from URL
+        slug: District slug from URL
 
     Returns:
         JSON response with success status
@@ -398,7 +390,7 @@ def magic_link_flag_issue(district_slug: str):
                 description=(
                     f"📧 Submitted via Teacher Magic Link\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"District: {district_slug.upper()}\n"
+                    f"District: {slug.upper()}\n"
                     f"Teacher: {teacher_progress.name}\n"
                     f"Email: {teacher_progress.email}\n"
                     f"Building: {teacher_progress.building}\n"
@@ -407,7 +399,7 @@ def magic_link_flag_issue(district_slug: str):
                     f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                     f"Description:\n{description}"
                 ),
-                page_url=f"/virtual/{district_slug}/teacher/verify/{token[:20]}...",
+                page_url=f"/district/{slug}/teacher/verify/{token[:20]}...",
                 page_title="Teacher Progress Dashboard (Magic Link)",
                 submitted_by_id=None,  # No authenticated user
             )

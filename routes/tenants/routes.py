@@ -103,7 +103,7 @@ def list_tenants():
 @admin_required
 def new_tenant():
     """Show new tenant form."""
-    from models import District
+    from models.district_model import District
 
     districts = District.query.order_by(District.name).all()
     return render_template(
@@ -119,8 +119,6 @@ def new_tenant():
 @admin_required
 def create_tenant():
     """Create a new tenant."""
-    from models import District
-
     slug = request.form.get("slug", "").strip().lower()
     name = request.form.get("name", "").strip()
     district_id = request.form.get("district_id", "").strip()
@@ -142,7 +140,7 @@ def create_tenant():
         flash("Name is required", "error")
         return redirect(url_for("tenants.new_tenant"))
 
-    # Create tenant
+    # Create tenant with proper District FK
     tenant = Tenant(
         slug=slug,
         name=name,
@@ -187,7 +185,7 @@ def view_tenant(tenant_id):
 @admin_required
 def edit_tenant(tenant_id):
     """Show edit tenant form."""
-    from models import District
+    from models.district_model import District
 
     tenant = Tenant.query.get_or_404(tenant_id)
     districts = District.query.order_by(District.name).all()
@@ -210,6 +208,7 @@ def update_tenant(tenant_id):
     # Update basic fields
     tenant.name = request.form.get("name", "").strip() or tenant.name
 
+    # Update district FK
     district_id = request.form.get("district_id", "").strip()
     tenant.district_id = int(district_id) if district_id else None
 

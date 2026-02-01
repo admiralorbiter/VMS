@@ -2,7 +2,7 @@
 Teacher Dashboard Routes Module
 ==============================
 
-This module provides the teacher dashboard functionality for the Virtual District
+This module provides the teacher dashboard functionality for the District
 Data Tracker. It allows teachers (or admins viewing as teachers) to see their
 profile, past sessions, upcoming sessions, and report issues.
 
@@ -14,21 +14,21 @@ Key Features:
 - Authentication bypass for admin access or direct teacher_id access
 
 Main Endpoints:
-- GET /virtual/kck/teacher/<teacher_id>: Teacher dashboard
-- POST /virtual/kck/teacher/<teacher_id>/report-issue: Issue reporting
+- GET /district/<slug>/teacher/select: Teacher selection (admin)
+- GET /district/<slug>/teacher/<teacher_id>: Teacher dashboard
+- POST /district/<slug>/teacher/<teacher_id>/report-issue: Issue reporting
 """
 
 from datetime import datetime, timezone
 
 from flask import flash, jsonify, render_template, request
 from flask_login import current_user
-from sqlalchemy import and_, or_
 
 from models import db
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.teacher import Teacher
-from routes.utils import admin_required
-from routes.virtual.routes import virtual_bp
+from routes.district import district_bp
+from routes.district.portal import RESERVED_SLUGS
 
 
 def get_teacher_sessions(teacher_id):
@@ -118,20 +118,22 @@ def get_teacher_sessions(teacher_id):
     return past_sessions, upcoming_sessions
 
 
-@virtual_bp.route("/kck/teacher/select")
-def teacher_select():
+@district_bp.route("/<slug>/teacher/select")
+def teacher_select(slug: str):
     """
     Teacher selection page for accessing teacher dashboard.
 
     For now, allows selecting a teacher to view their dashboard.
     In the future, this will be replaced with proper authentication.
 
+    Args:
+        slug: District slug from URL
+
     Returns:
         Rendered teacher selection template
     """
-    from flask import render_template
-
-    from models.teacher import Teacher
+    if slug.lower() in RESERVED_SLUGS:
+        return render_template("errors/404.html"), 404
 
     # Get list of teachers with virtual sessions
     teachers = (
@@ -144,11 +146,15 @@ def teacher_select():
         .all()
     )
 
-    return render_template("virtual/teacher_select.html", teachers=teachers)
+    return render_template(
+        "district/teacher_select.html",
+        teachers=teachers,
+        district_slug=slug,
+    )
 
 
-@virtual_bp.route("/kck/teacher/<int:teacher_id>")
-def teacher_dashboard(teacher_id):
+@district_bp.route("/<slug>/teacher/<int:teacher_id>")
+def teacher_dashboard(slug: str, teacher_id: int):
     """
     Display the teacher dashboard.
 
@@ -156,11 +162,15 @@ def teacher_dashboard(teacher_id):
     For now, allows admin access or direct access (bypass auth).
 
     Args:
+        slug: District slug from URL
         teacher_id: The teacher's database ID
 
     Returns:
         Rendered teacher dashboard template
     """
+    if slug.lower() in RESERVED_SLUGS:
+        return render_template("errors/404.html"), 404
+
     # Get teacher
     teacher = Teacher.query.get_or_404(teacher_id)
 
@@ -185,16 +195,17 @@ def teacher_dashboard(teacher_id):
             school_name = school.name
 
     return render_template(
-        "virtual/teacher_dashboard.html",
+        "district/teacher_dashboard.html",
         teacher=teacher,
         past_sessions=past_sessions,
         upcoming_sessions=upcoming_sessions,
         school_name=school_name,
+        district_slug=slug,
     )
 
 
-@virtual_bp.route("/kck/teacher/<int:teacher_id>/report-issue", methods=["POST"])
-def report_issue(teacher_id):
+@district_bp.route("/<slug>/teacher/<int:teacher_id>/report-issue", methods=["POST"])
+def report_issue(slug: str, teacher_id: int):
     """
     Handle issue reporting from teacher dashboard.
 
@@ -202,6 +213,7 @@ def report_issue(teacher_id):
     For now, uses simple logging or bug_reports model.
 
     Args:
+        slug: District slug from URL
         teacher_id: The teacher's database ID
 
     Returns:
@@ -253,9 +265,10 @@ def report_issue(teacher_id):
                         else BugReportType.OTHER
                     ),
                     description=f"Issue Type: {issue_type}\nCategory: {issue_category}\n"
+                    f"District: {slug.upper()}\n"
                     f"Teacher: {teacher.first_name} {teacher.last_name} (ID: {teacher_id})\n"
                     f"Description: {description}",
-                    page_url=f"/virtual/kck/teacher/{teacher_id}",
+                    page_url=f"/district/{slug}/teacher/{teacher_id}",
                     page_title="Teacher Dashboard",
                     submitted_by_id=submitted_by_id,
                 )

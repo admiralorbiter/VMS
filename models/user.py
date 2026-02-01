@@ -86,6 +86,7 @@ class TenantRole:
     These roles apply only to users with a tenant_id set:
     - ADMIN: Full tenant access, can manage tenant users
     - COORDINATOR: Manage events/volunteers, no user management
+    - VIRTUAL_ADMIN: View virtual session data, flag issues (no event management)
     - USER: Read-only dashboards and reports
 
     FR-TENANT-110: Tenant role hierarchy
@@ -93,9 +94,10 @@ class TenantRole:
 
     ADMIN = "admin"
     COORDINATOR = "coordinator"
+    VIRTUAL_ADMIN = "virtual_admin"
     USER = "user"
 
-    CHOICES = [ADMIN, COORDINATOR, USER]
+    CHOICES = [ADMIN, COORDINATOR, VIRTUAL_ADMIN, USER]
 
 
 # User model
@@ -292,9 +294,26 @@ class User(db.Model, UserMixin):
         return self.tenant_id is not None and self.tenant_role == TenantRole.USER
 
     @property
+    def is_virtual_admin(self):
+        """Check if user is a virtual admin within their tenant."""
+        return (
+            self.tenant_id is not None and self.tenant_role == TenantRole.VIRTUAL_ADMIN
+        )
+
+    @property
     def can_manage_tenant_users(self):
         """Check if user can create/edit tenant users (FR-TENANT-108, FR-TENANT-109)."""
         return self.is_admin or self.is_tenant_admin
+
+    @property
+    def can_view_virtual_data(self):
+        """Check if user can view virtual session data for their tenant."""
+        return (
+            self.is_admin
+            or self.is_tenant_admin
+            or self.is_tenant_coordinator
+            or self.is_virtual_admin
+        )
 
     def can_view_district(self, district_name):
         """

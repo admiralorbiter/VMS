@@ -2,8 +2,8 @@
 District Portal Routes Module
 ============================
 
-This module provides district-specific portal landing pages for the virtual
-feature. It now supports database-driven tenant configuration via the Tenant
+This module provides district-specific portal landing pages.
+It supports database-driven tenant configuration via the Tenant
 model (District Suite), with backward compatibility for legacy hardcoded config.
 
 Key Features:
@@ -13,9 +13,9 @@ Key Features:
 - District-specific branding and messaging from tenant settings
 
 Main Endpoints:
-- GET /virtual/<district_slug>: District portal landing page
+- GET /district/<slug>/portal: District portal landing page
 
-Tenant Configuration (New):
+Tenant Configuration:
 - Tenants are stored in the database with configurable settings
 - Feature flags control available functionality
 - API key support for district website integration
@@ -28,17 +28,17 @@ Legacy Support:
 from flask import abort, render_template
 
 from models import Tenant
-from routes.virtual.routes import virtual_bp
+from routes.district import district_bp
 
 # Reserved route names that cannot be used as district slugs
 RESERVED_SLUGS = {
-    "usage",
     "events",
-    "event",
-    "virtual",
-    "purge",
-    "import-sheet",
-    "google-sheets",
+    "volunteers",
+    "recruitment",
+    "settings",
+    "signup",
+    "users",
+    "calendar",
 }
 
 # Legacy District Portal Registry (backward compatibility)
@@ -53,7 +53,7 @@ DISTRICT_PORTALS = {
         "teacher_login_description": "Access your virtual session progress and resources",
         "staff_login_label": "District Staff Login",
         "staff_login_description": "View district-wide progress and analytics",
-        "teacher_login_url": "/virtual/kck/teacher/request-link",
+        "teacher_login_url": "/district/kck/teacher/request-link",
         "staff_login_url": "/login",
     },
 }
@@ -78,7 +78,10 @@ def get_district_portal(district_slug: str) -> dict:
     # Try database first (new Tenant model)
     tenant = Tenant.query.filter_by(slug=district_slug, is_active=True).first()
     if tenant:
-        return tenant.get_portal_config()
+        config = tenant.get_portal_config()
+        # Update URLs to new /district/ paths
+        config["teacher_login_url"] = f"/district/{district_slug}/teacher/request-link"
+        return config
 
     # Fall back to legacy registry for backward compatibility
     if district_slug in DISTRICT_PORTALS:
@@ -87,8 +90,8 @@ def get_district_portal(district_slug: str) -> dict:
     raise KeyError(f"District portal '{district_slug}' not found")
 
 
-@virtual_bp.route("/<district_slug>")
-def district_portal_landing(district_slug: str):
+@district_bp.route("/<slug>/portal")
+def portal_landing(slug: str):
     """
     Display the district portal landing page.
 
@@ -100,7 +103,7 @@ def district_portal_landing(district_slug: str):
     with fallback to the legacy DISTRICT_PORTALS dict.
 
     Args:
-        district_slug: The district slug from the URL (e.g., 'kck')
+        slug: The district slug from the URL (e.g., 'kck')
 
     Returns:
         Rendered district portal landing page template
@@ -109,15 +112,15 @@ def district_portal_landing(district_slug: str):
         404: If district slug is not found or is a reserved name
     """
     # Check if slug is reserved (should be handled by more specific routes, but safeguard)
-    if district_slug.lower() in RESERVED_SLUGS:
-        abort(404, description=f"Invalid district portal slug: '{district_slug}'")
+    if slug.lower() in RESERVED_SLUGS:
+        abort(404, description=f"Invalid district portal slug: '{slug}'")
 
     try:
-        portal_config = get_district_portal(district_slug)
+        portal_config = get_district_portal(slug)
     except KeyError:
-        abort(404, description=f"District portal '{district_slug}' not found")
+        abort(404, description=f"District portal '{slug}' not found")
 
     return render_template(
-        "virtual/district_portal/landing.html",
+        "district/portal/landing.html",
         district=portal_config,
     )

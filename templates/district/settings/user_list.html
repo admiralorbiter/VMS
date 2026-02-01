@@ -58,6 +58,8 @@
                             <span class="badge bg-danger">Admin</span>
                             {% elif user.tenant_role == 'coordinator' %}
                             <span class="badge bg-warning text-dark">Coordinator</span>
+                            {% elif user.tenant_role == 'virtual_admin' %}
+                            <span class="badge bg-info">Virtual Admin</span>
                             {% else %}
                             <span class="badge bg-primary">User</span>
                             {% endif %}
