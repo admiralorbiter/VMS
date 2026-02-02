@@ -35,26 +35,30 @@ from models.teacher_progress import TeacherProgress
 from models.teacher_progress_archive import TeacherProgressArchive
 from models.volunteer import EventParticipation, Volunteer
 from routes.decorators import district_scoped_required
+
+# Import shared helper functions from common module
+from routes.reports.common import (
+    generate_school_year_options,
+    get_current_school_year,
+    get_current_virtual_year,
+    get_school_year_date_range,
+    get_semester_dates,
+    get_virtual_year_dates,
+    is_cache_valid,
+)
 from routes.utils import admin_required
 
 # Import blueprint from virtual routes
 from routes.virtual.routes import virtual_bp
 
-# Import shared helper functions from common module
-from routes.reports.common import (
-    get_current_school_year,
-    get_school_year_date_range,
-    get_current_virtual_year,
-    get_virtual_year_dates,
-    get_semester_dates,
-    generate_school_year_options,
-    is_cache_valid,
-)
 
 # Alias for backward compatibility
 def get_school_year_dates(school_year: str) -> tuple:
     """Alias for get_school_year_date_range for backward compatibility."""
-    return get_school_year_date_range(school_year[:2] + school_year[-2:] if '-' in school_year else school_year)
+    return get_school_year_date_range(
+        school_year[:2] + school_year[-2:] if "-" in school_year else school_year
+    )
+
 
 # --- Cache Management Functions ---
 # Note: is_cache_valid is imported from routes.reports.common
@@ -5403,226 +5407,6 @@ def load_usage_routes():
             virtual_year_options=virtual_year_options,
             months=months,
         )
-
-    @virtual_bp.route("/usage/google-sheets")
-    @login_required
-    def virtual_google_sheets():
-        """Manage Google Sheets for virtual district reports
-
-        DEPRECATED: This route is scheduled for removal. Use Pathful import instead.
-        """
-        logging.warning(
-            "DEPRECATED: /usage/google-sheets route accessed by user=%s. "
-            "This route is scheduled for removal.",
-            current_user.username if current_user.is_authenticated else "anonymous",
-        )
-        virtual_year = request.args.get("year", get_current_virtual_year())
-
-        # Get all Google Sheets for virtual district reports for this year
-        sheets = (
-            GoogleSheet.query.filter_by(
-                academic_year=virtual_year, purpose="virtual_district_reports"
-            )
-            .order_by(GoogleSheet.sheet_name)
-            .all()
-        )
-
-        # Get only allowed districts for dropdown
-        allowed_district_names = {
-            "Hickman Mills School District",
-            "Grandview School District",
-            "Kansas City Kansas Public Schools",
-        }
-        districts = (
-            District.query.filter(District.name.in_(allowed_district_names))
-            .order_by(District.name)
-            .all()
-        )
-
-        return render_template(
-            "virtual/deprecated/google_sheets.html",
-            sheets=sheets,
-            districts=districts,
-            virtual_year=virtual_year,
-            virtual_year_options=generate_school_year_options(),
-        )
-
-    @virtual_bp.route("/usage/google-sheets/create", methods=["POST"])
-    @login_required
-    def create_virtual_google_sheet():
-        """Create a new Google Sheet for virtual district reports
-
-        DEPRECATED: This route is scheduled for removal.
-        """
-        logging.warning(
-            "DEPRECATED: Google Sheet create route accessed by user=%s",
-            current_user.username if current_user.is_authenticated else "anonymous",
-        )
-        try:
-            virtual_year = request.form.get("virtual_year")
-            district_name = request.form.get("district_name")
-            sheet_id = request.form.get("sheet_id")
-            sheet_name = request.form.get("sheet_name")
-
-            if not all([virtual_year, district_name, sheet_id, sheet_name]):
-                flash("All fields are required.", "error")
-                return redirect(
-                    url_for("virtual.virtual_google_sheets", year=virtual_year)
-                )
-
-            # Check if sheet already exists for this district and year
-            existing_sheet = GoogleSheet.query.filter_by(
-                academic_year=virtual_year,
-                purpose="virtual_district_reports",
-                sheet_name=sheet_name,
-            ).first()
-
-            if existing_sheet:
-                flash(
-                    f"A Google Sheet with this name already exists for {virtual_year}.",
-                    "error",
-                )
-                return redirect(
-                    url_for("virtual.virtual_google_sheets", year=virtual_year)
-                )
-
-            # Create new Google Sheet record
-            new_sheet = GoogleSheet(
-                academic_year=virtual_year,
-                purpose="virtual_district_reports",
-                sheet_id=sheet_id,
-                sheet_name=sheet_name,
-                created_by=current_user.id,
-            )
-
-            db.session.add(new_sheet)
-            db.session.commit()
-
-            flash(
-                f'Google Sheet "{sheet_name}" created successfully for {district_name}.',
-                "success",
-            )
-            return redirect(url_for("virtual.virtual_google_sheets", year=virtual_year))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error creating Google Sheet: {str(e)}", "error")
-            return redirect(url_for("virtual.virtual_google_sheets", year=virtual_year))
-
-    @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/update", methods=["POST"])
-    @login_required
-    def update_virtual_google_sheet(sheet_id):
-        """Update an existing Google Sheet
-
-        DEPRECATED: This route is scheduled for removal.
-        """
-        logging.warning(
-            "DEPRECATED: Google Sheet update route accessed by user=%s",
-            current_user.username if current_user.is_authenticated else "anonymous",
-        )
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-
-            sheet_url = request.form.get("sheet_id")
-            sheet_name = request.form.get("sheet_name")
-
-            if not all([sheet_url, sheet_name]):
-                flash("Sheet URL and name are required.", "error")
-                return redirect(
-                    url_for("virtual.virtual_google_sheets", year=sheet.academic_year)
-                )
-
-            sheet.update_sheet_id(sheet_url)
-            sheet.sheet_name = sheet_name
-
-            db.session.commit()
-
-            flash(f'Google Sheet "{sheet_name}" updated successfully.', "success")
-            return redirect(
-                url_for("virtual.virtual_google_sheets", year=sheet.academic_year)
-            )
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error updating Google Sheet: {str(e)}", "error")
-            return redirect(url_for("virtual.virtual_google_sheets"))
-
-    @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/delete", methods=["POST"])
-    @login_required
-    def delete_virtual_google_sheet(sheet_id):
-        """Delete a Google Sheet
-
-        DEPRECATED: This route is scheduled for removal.
-        """
-        logging.warning(
-            "DEPRECATED: Google Sheet delete route accessed by user=%s",
-            current_user.username if current_user.is_authenticated else "anonymous",
-        )
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-            virtual_year = sheet.academic_year
-            sheet_name = sheet.sheet_name
-
-            db.session.delete(sheet)
-            db.session.commit()
-
-            flash(f'Google Sheet "{sheet_name}" deleted successfully.', "success")
-            return redirect(url_for("virtual.virtual_google_sheets", year=virtual_year))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error deleting Google Sheet: {str(e)}", "error")
-            return redirect(url_for("virtual.virtual_google_sheets"))
-
-    @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/view")
-    @login_required
-    def view_virtual_google_sheet(sheet_id):
-        """Redirect to the Google Sheet"""
-        sheet = GoogleSheet.query.get_or_404(sheet_id)
-
-        if not sheet.decrypted_sheet_id:
-            flash("Google Sheet URL not available.", "error")
-            return redirect(
-                url_for("virtual.virtual_google_sheets", year=sheet.academic_year)
-            )
-
-        # Create Google Sheets URL
-        google_sheets_url = (
-            f"https://docs.google.com/spreadsheets/d/{sheet.decrypted_sheet_id}/edit"
-        )
-
-        return redirect(google_sheets_url)
-
-    @virtual_bp.route("/usage/district/<district_name>/google-sheet")
-    @login_required
-    @district_scoped_required
-    def get_district_google_sheet(district_name):
-        """Get Google Sheet for a specific district and year"""
-        virtual_year = request.args.get("year", get_current_virtual_year())
-
-        # Look for a sheet that matches this district in the name
-        sheet = GoogleSheet.query.filter(
-            GoogleSheet.academic_year == virtual_year,
-            GoogleSheet.purpose == "virtual_district_reports",
-            GoogleSheet.sheet_name.ilike(f"%{district_name}%"),
-        ).first()
-
-        if sheet:
-            return redirect(
-                url_for("virtual.view_virtual_google_sheet", sheet_id=sheet.id)
-            )
-        else:
-            flash(
-                f"No Google Sheet found for {district_name} in {virtual_year}.",
-                "warning",
-            )
-            return redirect(
-                url_for(
-                    "virtual.virtual_usage_district",
-                    district_name=district_name,
-                    year=virtual_year,
-                )
-            )
 
     @virtual_bp.route("/usage/usage/district/<district_name>/teachers")
     @login_required
