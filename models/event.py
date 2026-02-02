@@ -203,24 +203,31 @@ class EventType(str, Enum):
 
 class CancellationReason(str, Enum):
     """
-    Cancellation Reason Enumeration
+    Cancellation Reason Enumeration (DEC-008)
 
     Defines the possible reasons why an event might be cancelled.
-    Used for tracking and reporting on event cancellations.
+    Used for tracking and reporting on event cancellations, particularly
+    for virtual sessions imported from Pathful.
 
     Reasons:
-        - WEATHER: Weather-related cancellations
-        - LOW_ENROLLMENT: Insufficient participant registration
-        - INSTRUCTOR_UNAVAILABLE: Instructor unable to attend
-        - FACILITY_ISSUE: Problems with the event location
-        - OTHER: Miscellaneous cancellation reasons
+        - WEATHER: Weather / Snow Day - School closed due to weather
+        - PRESENTER_CANCELLED: Presenter Cancelled - Volunteer/presenter unable to attend
+        - TEACHER_CANCELLED: Teacher Cancelled - Teacher unable to host session
+        - SCHOOL_CONFLICT: School Conflict - Assembly, testing, or other school event
+        - TECHNICAL_ISSUES: Technical Issues - Platform or connectivity problems
+        - LOW_ENROLLMENT: Low Enrollment - Not enough student signups
+        - SCHEDULING_ERROR: Scheduling Error - Double-booked or incorrectly scheduled
+        - OTHER: Other - See notes for details
     """
 
-    WEATHER = "weather"
-    LOW_ENROLLMENT = "low_enrollment"
-    INSTRUCTOR_UNAVAILABLE = "instructor_unavailable"
-    FACILITY_ISSUE = "facility_issue"
-    OTHER = "other"
+    WEATHER = "Weather / Snow Day"
+    PRESENTER_CANCELLED = "Presenter Cancelled"
+    TEACHER_CANCELLED = "Teacher Cancelled"
+    SCHOOL_CONFLICT = "School Conflict"
+    TECHNICAL_ISSUES = "Technical Issues"
+    LOW_ENROLLMENT = "Low Enrollment"
+    SCHEDULING_ERROR = "Scheduling Error"
+    OTHER = "Other"
 
 
 class EventComment(db.Model):
@@ -471,6 +478,11 @@ class Event(db.Model):
         index=True,
     )
     cancellation_reason = db.Column(SQLAlchemyEnum(CancellationReason), nullable=True)
+    cancellation_notes = db.Column(db.Text, nullable=True)  # Required for OTHER
+    cancellation_set_by = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=True
+    )
+    cancellation_set_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Location and organizational details
     location = db.Column(db.String(255))
@@ -595,6 +607,16 @@ class Event(db.Model):
 
     # Tenant relationship for multi-tenant support
     tenant = db.relationship("Tenant", backref=db.backref("events", lazy="dynamic"))
+
+    # Relationship for cancellation tracking (DEC-008)
+    # NOTE: This relationship can cause issues with circular imports.
+    # The User model may need to be imported. For now, we just use
+    # the cancellation_set_by field directly and lookup the user when needed.
+    # cancellation_setter = db.relationship(
+    #     "User",
+    #     foreign_keys="Event.cancellation_set_by",
+    #     backref=db.backref("cancelled_events", lazy="dynamic"),
+    # )
 
     # TODO: Consider adding validation methods:
     # - Ensure end_date is after start_date
@@ -918,6 +940,61 @@ class Event(db.Model):
         """Validate event title"""
         if not self.title or not self.title.strip():
             raise ValueError("Event title cannot be empty")
+
+    def set_cancellation_reason(self, reason, notes=None, user_id=None):
+        """
+        Set cancellation reason with validation (DEC-008).
+
+        Business Rules:
+        1. Reason only valid when status = CANCELLED
+        2. If reason = OTHER, notes are required (min 10 chars)
+        3. Setting reason creates audit trail via set_by/set_at
+
+        Args:
+            reason: CancellationReason enum value or string
+            notes: Optional notes (required for OTHER reason)
+            user_id: ID of user setting the reason
+
+        Returns:
+            bool: True if successfully set
+
+        Raises:
+            ValueError: If validation fails
+        """
+        from datetime import datetime, timezone
+
+        # Validate status is CANCELLED
+        if self.status != EventStatus.CANCELLED:
+            raise ValueError(
+                "Cancellation reason can only be set when status is CANCELLED"
+            )
+
+        # Convert string to enum if needed
+        if isinstance(reason, str):
+            try:
+                reason = CancellationReason(reason)
+            except ValueError:
+                # Try matching by name
+                reason_upper = reason.upper().replace(" ", "_")
+                if hasattr(CancellationReason, reason_upper):
+                    reason = CancellationReason[reason_upper]
+                else:
+                    raise ValueError(f"Invalid cancellation reason: {reason}")
+
+        # Validate notes for OTHER
+        if reason == CancellationReason.OTHER:
+            if not notes or len(notes.strip()) < 10:
+                raise ValueError(
+                    "Notes are required (minimum 10 characters) when reason is 'Other'"
+                )
+
+        # Set the fields
+        self.cancellation_reason = reason
+        self.cancellation_notes = notes.strip() if notes else None
+        self.cancellation_set_by = user_id
+        self.cancellation_set_at = datetime.now(timezone.utc)
+
+        return True
 
     @property
     def is_at_capacity(self):

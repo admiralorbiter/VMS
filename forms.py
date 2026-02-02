@@ -19,7 +19,7 @@ from models.contact import (
     SalutationEnum,
     SuffixEnum,
 )
-from models.event import EventFormat, EventStatus, EventType
+from models.event import CancellationReason, EventFormat, EventStatus, EventType
 
 
 class LoginForm(FlaskForm):
@@ -92,4 +92,12 @@ class EventForm(FlaskForm):
     volunteers_needed = IntegerField(
         "Volunteers Needed", validators=[Optional(), NumberRange(min=0)], default=0
     )
+    # Cancellation reason fields (DEC-008)
+    cancellation_reason = SelectField(
+        "Cancellation Reason",
+        choices=[("", "Select Reason")]
+        + [(r.value, r.value) for r in CancellationReason],
+        validators=[Optional()],
+    )
+    cancellation_notes = TextAreaField("Cancellation Notes", validators=[Optional()])
     submit = SubmitField("Save Event")

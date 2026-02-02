@@ -891,6 +891,8 @@ def edit_event(id):
     Raises:
         404: If event not found
     """
+    from models.event import CancellationReason
+
     event = db.session.get(Event, id)
     if not event:
         abort(404)
@@ -909,6 +911,27 @@ def edit_event(id):
             event.type = EventType(form.type.data)
             event.format = EventFormat(form.format.data)
             event.status = EventStatus(form.status.data)
+
+            # Handle cancellation reason (DEC-008)
+            if event.status == EventStatus.CANCELLED:
+                reason_value = form.cancellation_reason.data
+                notes_value = form.cancellation_notes.data
+
+                if reason_value:
+                    try:
+                        event.set_cancellation_reason(
+                            reason=reason_value,
+                            notes=notes_value,
+                            user_id=current_user.id,
+                        )
+                    except ValueError as e:
+                        flash(str(e), "warning")
+            else:
+                # Clear cancellation fields if status is not CANCELLED
+                event.cancellation_reason = None
+                event.cancellation_notes = None
+                event.cancellation_set_by = None
+                event.cancellation_set_at = None
 
             print(f"Updated event: {event}")  # Debug
 
@@ -932,6 +955,11 @@ def edit_event(id):
             form.status.data = event.status.value if event.status else ""
             form.description.data = event.description
             form.volunteers_needed.data = event.volunteers_needed
+            # Pre-populate cancellation reason fields
+            form.cancellation_reason.data = (
+                event.cancellation_reason.value if event.cancellation_reason else ""
+            )
+            form.cancellation_notes.data = event.cancellation_notes or ""
 
         # Print form validation errors for debugging
         if request.method == "POST":

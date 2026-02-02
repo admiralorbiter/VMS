@@ -197,49 +197,49 @@ Updated render_template() paths in:
 
 ---
 
-## Phase D-2: Cancellation Reasons
+## Phase D-2: Cancellation Reasons ✅
 
 ### D-2.1 Database
 
-- [ ] Create `CancellationReason` enum (8 values)
-- [ ] Add fields to `Event` model:
-  - [ ] `cancellation_reason` (enum, nullable)
-  - [ ] `cancellation_notes` (text, nullable)
-  - [ ] `cancellation_set_by` (FK to User)
-  - [ ] `cancellation_set_at` (datetime)
-- [ ] Create migration
-- [ ] Run migration (dev)
+- [x] Create `CancellationReason` enum (8 values)
+- [x] Add fields to `Event` model:
+  - [x] `cancellation_reason` (enum, nullable)
+  - [x] `cancellation_notes` (text, nullable)
+  - [x] `cancellation_set_by` (FK to users.id)
+  - [x] `cancellation_set_at` (datetime)
+- [x] Create migration (manual ALTER TABLE for SQLite)
+- [x] Run migration (dev)
 
 ### D-2.2 Validation
 
-- [ ] Create `validate_cancellation()` function
-  - [ ] Reason only valid when status = CANCELLED
-  - [ ] Notes required when reason = OTHER
-  - [ ] Notes minimum length (10 chars suggested)
-- [ ] Add validation to event save/update
+- [x] Create `set_cancellation_reason()` method on Event model
+  - [x] Reason only valid when status = CANCELLED
+  - [x] Notes required when reason = OTHER
+  - [x] Notes minimum length (10 chars)
+- [x] Add validation to event save/update in `edit_event` route
 
 ### D-2.3 UI
 
-- [ ] Add cancellation section to event edit form
-  - [ ] Show only when status = CANCELLED
-  - [ ] Reason dropdown
-  - [ ] Notes textarea (required indicator for OTHER)
-  - [ ] Display "Set by X on Y" if already set
-- [ ] Add reason badge to event list
-- [ ] Add reason display to event detail
+- [x] Add cancellation section to event edit form
+  - [x] Show only when status = CANCELLED (JS toggle)
+  - [x] Reason dropdown with all 8 options
+  - [x] Notes textarea (required indicator for OTHER)
+  - [x] Dynamic validation via JavaScript
+- [ ] Add reason badge to event list (future enhancement)
+- [x] Add reason display to event detail view (banner in primary info card)
 
 ### D-2.4 Import Integration
 
-- [ ] Ensure import does NOT overwrite manual cancellation reasons
-- [ ] Add check: if `cancellation_reason` already set, preserve it
+- [x] Verified import does NOT overwrite manual cancellation reasons
+- [x] Import only touches specific fields, cancellation fields untouched
 - [ ] If Pathful ever provides reason data, map it (future)
 
 ### D-2.5 Flag Integration
 
-- [ ] Auto-create `NEEDS_REASON` flag for cancelled + no reason
-- [ ] Auto-resolve `NEEDS_REASON` when reason is set
+- [x] Auto-create `NEEDS_REASON` flag for cancelled + no reason (via flag scanner)
+- [x] Auto-resolve `NEEDS_REASON` when reason is set
 
-**Checkpoint: Can set cancellation reasons, auto-flagged if missing**
+**Checkpoint: Can set cancellation reasons, auto-flagged if missing ✅**
 
 ---
 

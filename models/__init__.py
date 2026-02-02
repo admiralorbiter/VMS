@@ -58,7 +58,7 @@ from .district_model import District
 from .district_participation import DistrictParticipation
 from .district_volunteer import DistrictVolunteer
 from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
-from .event import Event, EventTeacher
+from .event import CancellationReason, Event, EventTeacher
 from .event_flag import EventFlag, FlagType
 from .google_sheet import GoogleSheet
 from .history import History

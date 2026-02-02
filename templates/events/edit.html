@@ -1,28 +1,28 @@
 {#
-  Event Edit Template
-  ==================
+Event Edit Template
+==================
 
-  This template provides a form for editing existing events in the VMS system.
+This template provides a form for editing existing events in the VMS system.
 
-  Key Features:
-  - Pre-populated form with existing event data
-  - Form validation with error display
-  - Skills management with dynamic add/remove functionality
-  - Organized sections for basic info, event details, and skills
-  - FontAwesome icons for visual enhancement
-  - Responsive grid layout for form fields
-  - CSRF protection for security
+Key Features:
+- Pre-populated form with existing event data
+- Form validation with error display
+- Skills management with dynamic add/remove functionality
+- Organized sections for basic info, event details, and skills
+- FontAwesome icons for visual enhancement
+- Responsive grid layout for form fields
+- CSRF protection for security
 
-  Template Variables:
-  - form: EventForm instance with validation and field definitions
-  - event: Event object with current data to be edited
+Template Variables:
+- form: EventForm instance with validation and field definitions
+- event: Event object with current data to be edited
 
-  Form Sections:
-  1. Basic Information: Title, type, dates, location, format, status, volunteers needed
-  2. Event Details: Description field for detailed event information
-  3. Skills Required: Dynamic skills management with add/remove functionality
+Form Sections:
+1. Basic Information: Title, type, dates, location, format, status, volunteers needed
+2. Event Details: Description field for detailed event information
+3. Skills Required: Dynamic skills management with add/remove functionality
 
-  Security: CSRF token included for POST request protection
+Security: CSRF token included for POST request protection
 #}
 
 {% extends "base.html" %}
@@ -56,15 +56,15 @@
 
         {# Error display section - shows validation errors if form submission fails #}
         {% if form.errors %}
-            <div class="alert alert-danger">
-                <ul>
-                    {% for field, errors in form.errors.items() %}
-                        {% for error in errors %}
-                            <li>{{ field }}: {{ error }}</li>
-                        {% endfor %}
-                    {% endfor %}
-                </ul>
-            </div>
+        <div class="alert alert-danger">
+            <ul>
+                {% for field, errors in form.errors.items() %}
+                {% for error in errors %}
+                <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
         {% endif %}
 
         {# Section 1: Basic Event Information #}
@@ -145,6 +145,39 @@
                         {{ form.volunteers_needed(class="form-control", min="0") }}
                     </div>
                 </div>
+
+                {# Cancellation Reason Section - Only shown when status is CANCELLED #}
+                <div id="cancellation-section" class="form-group full-width" style="display: none;">
+                    <div
+                        style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 10px;">
+                        <h4 style="color: #856404; margin: 0 0 10px 0;">
+                            <i class="fa-solid fa-ban"></i> Cancellation Details
+                        </h4>
+                        <div class="form-grid" style="gap: 15px;">
+                            <div class="form-group">
+                                {{ form.cancellation_reason.label(class="form-label") }}
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-question-circle"></i>
+                                    {{ form.cancellation_reason(class="form-select", id="cancellation-reason") }}
+                                </div>
+                            </div>
+                            <div class="form-group" id="notes-group">
+                                {{ form.cancellation_notes.label(class="form-label") }}
+                                <span id="notes-required" style="color: #dc3545; display: none;"> (Required for
+                                    "Other")</span>
+                                <div class="input-wrapper">
+                                    {{ form.cancellation_notes(class="form-control", rows="2", placeholder="Enter reason
+                                    details...") }}
+                                </div>
+                            </div>
+                        </div>
+                        {% if event.cancellation_set_at %}
+                        <small style="color: #666; margin-top: 10px; display: block;">
+                            Set on {{ event.cancellation_set_at.strftime('%b %d, %Y at %I:%M %p') }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -171,7 +204,7 @@
                     {# Skills input group with add button #}
                     <div class="skill-input-group">
                         <input type="text" id="skill-input" class="form-control skill-input"
-                               placeholder="Enter a skill...">
+                            placeholder="Enter a skill...">
                         <button type="button" class="add-skill-btn" onclick="addSkill()">
                             <i class="fa-solid fa-plus"></i>
                         </button>
@@ -206,4 +239,35 @@
 {% block extra_js %}
 {# Include events-specific JavaScript for skills management functionality #}
 <script src="{{ url_for('static', filename='js/events.js') }}"></script>
+<script>
+    // Cancellation section visibility toggle
+    document.addEventListener('DOMContentLoaded', function () {
+        const statusField = document.querySelector('select[name="status"]');
+        const cancellationSection = document.getElementById('cancellation-section');
+        const reasonField = document.getElementById('cancellation-reason');
+        const notesRequired = document.getElementById('notes-required');
+
+        function toggleCancellationSection() {
+            if (statusField && cancellationSection) {
+                const isCancelled = statusField.value.toLowerCase() === 'cancelled';
+                cancellationSection.style.display = isCancelled ? 'block' : 'none';
+            }
+        }
+
+        function toggleNotesRequired() {
+            if (reasonField && notesRequired) {
+                const isOther = reasonField.value === 'Other';
+                notesRequired.style.display = isOther ? 'inline' : 'none';
+            }
+        }
+
+        // Initial state
+        toggleCancellationSection();
+        toggleNotesRequired();
+
+        // Listen for changes
+        if (statusField) statusField.addEventListener('change', toggleCancellationSection);
+        if (reasonField) reasonField.addEventListener('change', toggleNotesRequired);
+    });
+</script>
 {% endblock %}
