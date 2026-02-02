@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Event Flag Queue{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with Summary -->
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">📊 Flag Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="summary-stat">
+                        <span class="badge bg-danger fs-5">{{ summary.total }}</span>
+                        <span class="ms-2">Open Flags</span>
+                    </div>
+                    <hr>
+                    {% for flag_type, count in summary.by_type.items() %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-capitalize">{{ flag_type.replace('_', ' ') }}</span>
+                        <span class="badge bg-secondary">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">🔍 Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('virtual.flag_queue') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Flag Type</label>
+                            <select name="type" class="form-select form-select-sm">
+                                <option value="">All Types</option>
+                                {% for ft in flag_types %}
+                                <option value="{{ ft }}" {% if filters.type==ft %}selected{% endif %}>
+                                    {{ ft.replace('_', ' ').title() }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">District</label>
+                            <select name="district" class="form-select form-select-sm">
+                                <option value="">All Districts</option>
+                                {% for d in districts %}
+                                <option value="{{ d }}" {% if filters.district==d %}selected{% endif %}>{{ d }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" name="resolved" value="true" {% if
+                                filters.resolved %}checked{% endif %} id="showResolved">
+                            <label class="form-check-label" for="showResolved">Show Resolved</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">⚙️ Actions</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('virtual.run_flag_scan') }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                            🔄 Run Flag Scan
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>🚩 Event Flag Queue</h2>
+                <span class="text-muted">
+                    Showing {{ flags.items|length }} of {{ flags.total }} flags
+                </span>
+            </div>
+
+            {% if flags.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Flag Type</th>
+                            <th>Event</th>
+                            <th>District</th>
+                            <th>Event Date</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for flag in flags.items %}
+                        <tr class="{% if flag.is_resolved %}table-secondary{% endif %}">
+                            <td>
+                                <span class="badge
+                                    {% if flag.flag_type == 'needs_attention' %}bg-warning text-dark
+                                    {% elif flag.flag_type == 'missing_teacher' %}bg-info
+                                    {% elif flag.flag_type == 'missing_presenter' %}bg-primary
+                                    {% elif flag.flag_type == 'needs_reason' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ flag.flag_type_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('events.view_event', id=flag.event_id) }}" target="_blank">
+                                    {{ flag.event.title[:50] }}{% if flag.event.title|length > 50 %}...{% endif %}
+                                </a>
+                            </td>
+                            <td>{{ flag.event.district_partner or '-' }}</td>
+                            <td>
+                                {% if flag.event.start_date %}
+                                {{ flag.event.start_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ flag.event.status.value if flag.event.status else '-' }}</td>
+                            <td>{{ flag.created_at.strftime('%Y-%m-%d %H:%M') if flag.created_at else '-' }}</td>
+                            <td>
+                                {% if not flag.is_resolved %}
+                                <form method="post" action="{{ url_for('virtual.resolve_flag', flag_id=flag.id) }}"
+                                    class="d-inline">
+                                    <button type="submit" class="btn btn-success btn-sm" title="Mark as resolved">
+                                        ✓ Resolve
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted small">
+                                    Resolved {{ flag.resolved_at.strftime('%m/%d') if flag.resolved_at else '' }}
+                                    {% if flag.auto_resolved %}(auto){% endif %}
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if flags.pages > 1 %}
+            <nav aria-label="Flag pagination">
+                <ul class="pagination justify-content-center">
+                    {% if flags.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('virtual.flag_queue', page=flags.prev_num, **filters) }}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for p in flags.iter_pages() %}
+                    {% if p %}
+                    <li class="page-item {% if p == flags.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('virtual.flag_queue', page=p, **filters) }}">{{ p }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if flags.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('virtual.flag_queue', page=flags.next_num, **filters) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-success">
+                <h4>🎉 No open flags!</h4>
+                <p>All events are in good shape. Run a scan to check for new issues.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .summary-stat {
+        display: flex;
+        align-items: center;
+    }
+
+    .badge.fs-5 {
+        font-size: 1.1rem !important;
+    }
+</style>
+{% endblock %}

@@ -1857,3 +1857,109 @@ def load_pathful_routes():
                 "search": search,
             },
         )
+
+    # =========================================================================
+    # Flag Queue Routes (Phase D-1)
+    # =========================================================================
+
+    @virtual_bp.route("/flags")
+    @login_required
+    @admin_required
+    def flag_queue():
+        """
+        Display the flag queue for reviewing event issues.
+
+        Supports filtering by flag type, district, and resolution status.
+        """
+        from models.event_flag import EventFlag, FlagType
+        from services.flag_scanner import get_flag_summary
+
+        # Get filter parameters
+        flag_type = request.args.get("type", "")
+        district = request.args.get("district", "")
+        show_resolved = request.args.get("resolved", "false") == "true"
+        page = request.args.get("page", 1, type=int)
+        per_page = 50
+
+        # Build query
+        query = db.session.query(EventFlag).join(Event)
+
+        if not show_resolved:
+            query = query.filter(EventFlag.is_resolved == False)
+
+        if flag_type:
+            query = query.filter(EventFlag.flag_type == flag_type)
+
+        if district:
+            query = query.filter(Event.district_partner == district)
+
+        # Order by created date, newest first
+        query = query.order_by(EventFlag.created_at.desc())
+
+        # Paginate
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        # Get summary for sidebar
+        summary = get_flag_summary()
+
+        # Get unique districts for filter dropdown
+        districts = (
+            db.session.query(Event.district_partner)
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.district_partner.isnot(None),
+                Event.district_partner != "",
+            )
+            .distinct()
+            .order_by(Event.district_partner)
+            .all()
+        )
+        districts = [d[0] for d in districts]
+
+        return render_template(
+            "virtual/pathful/flags.html",
+            flags=pagination,
+            flag_types=FlagType.all_types(),
+            summary=summary,
+            districts=districts,
+            filters={
+                "type": flag_type,
+                "district": district,
+                "resolved": show_resolved,
+            },
+        )
+
+    @virtual_bp.route("/flags/<int:flag_id>/resolve", methods=["POST"])
+    @login_required
+    @admin_required
+    def resolve_flag(flag_id):
+        """Resolve a single flag with optional notes."""
+        from models.event_flag import EventFlag
+
+        flag = EventFlag.query.get_or_404(flag_id)
+
+        notes = request.form.get("notes", "")
+        flag.resolve(notes=notes, resolved_by=current_user.id)
+        db.session.commit()
+
+        flash(f"Flag resolved: {flag.flag_type_display}", "success")
+        return redirect(url_for("virtual.flag_queue"))
+
+    @virtual_bp.route("/flags/scan", methods=["POST"])
+    @login_required
+    @admin_required
+    def run_flag_scan():
+        """Manually trigger a flag scan on all virtual events."""
+        from services.flag_scanner import scan_and_create_flags
+
+        result = scan_and_create_flags(
+            created_by=current_user.id,
+            created_source="manual",
+        )
+
+        flash(
+            f"Scan complete: {result['created_count']} new flags created "
+            f"after scanning {result['scanned_count']} events.",
+            "success",
+        )
+        return redirect(url_for("virtual.flag_queue"))

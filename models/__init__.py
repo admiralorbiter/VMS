@@ -59,6 +59,7 @@ from .district_participation import DistrictParticipation
 from .district_volunteer import DistrictVolunteer
 from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
 from .event import Event, EventTeacher
+from .event_flag import EventFlag, FlagType
 from .google_sheet import GoogleSheet
 from .history import History
 from .magic_link import MagicLink
@@ -140,6 +141,8 @@ __all__ = [
     "MagicLink",
     "PathfulImportLog",
     "PathfulUnmatchedRecord",
+    "EventFlag",
+    "FlagType",
 ]
 
 # Eager-loading helper options
