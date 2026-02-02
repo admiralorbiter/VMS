@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required
 from sqlalchemy import func
 
-from models import db, eagerload_volunteer_bundle
+from models import db
 from models.contact import Email
 from models.event import Event, EventStatus, EventType
 from models.history import History
@@ -18,7 +18,6 @@ from models.volunteer import (
     Volunteer,
     VolunteerSkill,
 )
-from routes.reports.common import get_current_school_year
 
 # Blueprint is provided by parent reports package via load_routes
 volunteers_by_event_bp = Blueprint("volunteers_by_event", __name__)

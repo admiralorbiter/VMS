@@ -21,9 +21,8 @@ Related Documentation:
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from models import db
 

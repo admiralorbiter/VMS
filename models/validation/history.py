@@ -7,7 +7,7 @@ quality scores, and trends over time for advanced analytics and reporting.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from sqlalchemy import (
     JSON,

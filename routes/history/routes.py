@@ -66,8 +66,6 @@ Template Dependencies:
 - history/view.html: Individual history item template
 """
 
-import csv
-import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, flash, jsonify, render_template, request

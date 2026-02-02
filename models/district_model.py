@@ -56,8 +56,6 @@ Usage Examples:
     schools = district.schools
 """
 
-from sqlalchemy.sql import text
-
 from models import db
 
 

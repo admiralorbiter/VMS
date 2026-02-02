@@ -112,7 +112,6 @@ from sqlalchemy import String
 from sqlalchemy.orm import validates
 
 from models import db
-from models.attendance import EventAttendanceDetail
 from models.volunteer import EventParticipation
 
 # Define the association table first

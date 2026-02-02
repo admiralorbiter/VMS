@@ -47,30 +47,18 @@ Author: VMS Development Team
 Last Updated: 2024
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    or_,
-)
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declared_attr, relationship, validates
 
 from models import db
 from models.contact import (
     Contact,
-    ContactTypeEnum,
     EducationEnum,
     Enum,
     FormEnum,
     LocalStatusEnum,
-    RaceEthnicityEnum,
     SkillSourceEnum,
 )
 from models.history import History

@@ -60,7 +60,6 @@ from flask_login import current_user
 from models import db
 from models.audit_log import AuditLog
 from models.contact import ContactTypeEnum, Email
-from models.district_model import District
 from models.event import CancellationReason, EventFormat, EventType
 
 # District name mapping for Salesforce integration

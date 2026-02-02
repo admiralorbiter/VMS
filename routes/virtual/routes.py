@@ -97,40 +97,22 @@ Teacher Name Processing:
 - Status tracking per teacher
 """
 
-import csv
-import hashlib
-import os
-import re
-import traceback
 from datetime import datetime, timedelta, timezone
-from io import StringIO
-from os import getenv
-from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 import requests
 from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import login_required
-from requests.adapters import HTTPAdapter
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload  # Import for potential optimization if needed
 
-from models.contact import Contact, ContactTypeEnum, LocalStatusEnum, RaceEthnicityEnum
-from models.district_model import District
+from models.contact import LocalStatusEnum
 from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType, db
-from models.history import History
-from models.organization import Organization, VolunteerOrganization
-from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
-from routes.reports.common import DISTRICT_MAPPING
 from routes.reports.virtual_session import invalidate_virtual_session_caches
 from routes.utils import admin_required
-from routes.virtual.utils import (
-    generate_school_id,
-    get_or_create_district,
-    get_or_create_school,
-)
+from routes.virtual.utils import get_or_create_district, get_or_create_school
 
 virtual_bp = Blueprint("virtual", __name__, url_prefix="/virtual")
 

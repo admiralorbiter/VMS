@@ -1,32 +1,16 @@
-import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import pandas as pd
-import pytz
-import xlsxwriter
-from flask import jsonify, make_response, render_template, request, send_file
-from flask_login import current_user, login_required
-from sqlalchemy import any_, extract
+from flask_login import current_user
 
 from models import db
 from models.district_model import District
-from models.event import (
-    Event,
-    EventAttendance,
-    EventStatus,
-    EventStudentParticipation,
-    EventType,
-    event_districts,
-)
-from models.organization import Organization, VolunteerOrganization
+from models.event import Event, EventStatus, EventStudentParticipation, EventType
 from models.reports import DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
-from models.teacher import Teacher
 
 # from models.upcoming_events import UpcomingEvent  # Moved to microservice
-from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
 
 # District mapping configuration
 DISTRICT_MAPPING = {
@@ -160,6 +144,7 @@ def get_school_year_date_range(school_year):
 def get_current_virtual_year() -> str:
     """Determines the current virtual session year string (August 1st to July 31st)."""
     from datetime import date
+
     today = date.today()
     if today.month > 7 or (today.month == 7 and today.day == 31):  # After July 31st
         start_year = today.year
@@ -218,6 +203,7 @@ def get_semester_dates(virtual_year: str, semester_type: str) -> tuple:
 def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list:
     """Generates a list of school year strings for dropdowns."""
     from datetime import date
+
     if end_cal_year is None:
         end_cal_year = date.today().year + 1
 
@@ -244,7 +230,7 @@ def is_cache_valid(cache_record, max_age_hours=24):
     if not cache_record:
         return False
 
-    from datetime import timezone, timedelta
+    from datetime import timedelta, timezone
 
     # Convert to timezone-aware datetime if needed
     if cache_record.last_updated.tzinfo is None:
@@ -520,9 +506,10 @@ def generate_district_stats(school_year, host_filter="all"):
 def cache_district_stats(school_year, district_stats):
     """Save district statistics to the cache table"""
     import time
+
     max_retries = 3
     retry_delay = 0.5  # seconds
-    
+
     for district_name, stats in district_stats.items():
         district = District.query.filter_by(name=district_name).first()
         if district:
@@ -535,7 +522,7 @@ def cache_district_stats(school_year, district_stats):
             report.report_data = stats
             report.last_updated = datetime.utcnow()
             db.session.add(report)
-            
+
             # Commit after each district to avoid long-running transactions
             for attempt in range(max_retries):
                 try:
@@ -620,7 +607,6 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
     Returns:
         Dictionary with program breakdown metrics
     """
-    from models.event import EventTeacher
 
     start_date, end_date = get_school_year_date_range(school_year)
 

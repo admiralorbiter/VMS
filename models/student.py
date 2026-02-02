@@ -72,18 +72,11 @@ Usage Examples:
 """
 
 import pandas as pd
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy.orm import validates
 
 from models import db
-from models.contact import (
-    Contact,
-    ContactTypeEnum,
-    Email,
-    GenderEnum,
-    Phone,
-    RaceEthnicityEnum,
-)
+from models.contact import Contact, ContactTypeEnum, Email, GenderEnum, Phone
 
 
 class Student(Contact):

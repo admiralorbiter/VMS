@@ -15,13 +15,10 @@ Key Features:
 import io
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 import pandas as pd
-import requests
 
-from models import db
 from models.teacher_progress import TeacherProgress
 from utils.roster_import import import_roster, validate_import_data
 

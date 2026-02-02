@@ -643,5 +643,94 @@ When refactoring each page, extract district-specific logic to `routes/district/
 
 ---
 
+## Code Quality Tools
+
+### Finding Unused Code with Vulture
+
+[Vulture](https://github.com/jendrikseipp/vulture) finds dead/unused code in Python projects:
+
+```bash
+# Install
+pip install vulture
+
+# Run on main directories (80% confidence threshold recommended)
+vulture routes/ services/ models/ --min-confidence 80
+```
+
+**Common findings:**
+- Unused imports (safe to remove)
+- Unused variables (verify before removing)
+- Unused functions (may be called dynamically — check first)
+
+**Limitations:** Vulture uses static analysis. It can't detect:
+- Functions called via `getattr()` or string-based imports
+- Template-referenced routes (e.g., `url_for('route.name')`)
+- Test fixtures that appear unused
+
+### Removing Unused Imports with Autoflake
+
+[Autoflake](https://github.com/PyCQA/autoflake) automatically removes unused imports:
+
+```bash
+# Install
+pip install autoflake
+
+# Preview changes (dry run)
+autoflake --check --remove-all-unused-imports routes/ --recursive
+
+# Apply changes in-place
+autoflake --in-place --remove-all-unused-imports routes/ services/ models/ --recursive
+```
+
+**Caution:** Always run tests after autoflake. Some imports have side effects (e.g., registering models with SQLAlchemy).
+
+### Finding Deprecated Templates
+
+Check for templates that are no longer referenced:
+
+```bash
+# List all templates
+Get-ChildItem -Recurse templates/*.html | ForEach-Object { $_.Name }
+
+# Search for template references in Python
+grep -r "render_template" routes/ --include="*.py" | grep "template_name.html"
+```
+
+### Checking Route Coverage
+
+List all registered routes to compare against documentation:
+
+```python
+from app import create_app
+app = create_app()
+for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
+    print(f"{rule.endpoint}: {rule.rule}")
+```
+
+### Finding DEPRECATED Markers
+
+Search for code marked for future removal:
+
+```bash
+grep -r "DEPRECATED" routes/ services/ --include="*.py"
+grep -r "TODO\|FIXME\|HACK" routes/ --include="*.py"
+```
+
+### Import Tracing for Refactors
+
+When moving functions between modules, use grep to find all import statements:
+
+```bash
+# Find all imports of a specific function
+grep -r "from routes.virtual.routes import.*generate_school_id" --include="*.py"
+
+# Find all usages of a function
+grep -r "generate_school_id\(" --include="*.py"
+```
+
+**Feb 2026 Issue:** The `run_virtual_import_2025_26_standalone.py` script had outdated imports after utils functions were refactored to `routes/virtual/utils.py`. Tests caught this, but vulture wouldn't have — it was importing from the wrong location, not dead code.
+
+---
+
 *Created: January 30, 2026*
-*Updated: January 31, 2026 — Added refactor strategy section*
+*Updated: February 2, 2026 — Added Code Quality Tools section*

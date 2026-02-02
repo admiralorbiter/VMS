@@ -3,18 +3,15 @@ import math
 from datetime import datetime
 
 import pandas as pd
-import xlsxwriter
 from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required
-from sqlalchemy import extract
 from sqlalchemy.orm import aliased
 
 from models import db
-from models.attendance import EventAttendanceDetail
 from models.district_model import District
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.organization import Organization, VolunteerOrganization
-from models.reports import OrganizationDetailCache, OrganizationSummaryCache
+from models.reports import OrganizationSummaryCache
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer

@@ -1,5 +1,5 @@
 import io
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import openpyxl
 from flask import (
@@ -10,13 +10,11 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     url_for,
 )
 from flask_login import current_user, login_required
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from sqlalchemy import extract, func, or_
 from sqlalchemy.orm import joinedload
 
 from models import db
@@ -24,7 +22,6 @@ from models.contact import LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
-from models.organization import VolunteerOrganization
 from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCache
 from models.school_model import School
 from models.teacher import Teacher
@@ -38,7 +35,6 @@ virtual_bp = Blueprint("virtual", __name__)
 # Import shared helper functions from common module
 from routes.reports.common import (
     generate_school_year_options,
-    get_current_school_year,
     get_current_virtual_year,
     get_school_year_date_range,
     get_virtual_year_dates,
@@ -5023,9 +5019,8 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
     Returns:
         Dictionary with teacher progress data grouped by school
     """
-    from datetime import datetime, timezone
 
-    from models import Event, EventTeacher, School, Teacher, TeacherProgress
+    from models import Event, TeacherProgress
     from models.event import EventStatus, EventType
 
     # Get all teachers from the progress tracking table for this virtual year

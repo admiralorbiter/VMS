@@ -14,19 +14,14 @@ Key Features:
 - Contact information management
 """
 
-import pandas as pd
 from flask import Blueprint, jsonify, render_template, request
-from flask_login import current_user, login_required
+from flask_login import login_required
 from simple_salesforce.api import Salesforce
-from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
 from config import Config
 from models import db
-from models.contact import ContactTypeEnum, Email, GenderEnum, Phone
-from models.school_model import School
 from models.student import Student
 from routes.decorators import global_users_only
-from routes.utils import parse_date
 
 # Create Blueprint for student routes
 students_bp = Blueprint("students", __name__)

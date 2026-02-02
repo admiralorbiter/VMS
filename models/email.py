@@ -36,7 +36,7 @@ Safety Features:
 
 from datetime import datetime, timezone
 from enum import IntEnum
-from typing import Dict, List, Optional
+from typing import Dict
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship

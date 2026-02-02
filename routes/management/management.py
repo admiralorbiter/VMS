@@ -96,13 +96,11 @@ from flask_login import current_user, login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash
-from werkzeug.utils import secure_filename
 
 from config import Config
 from models import db
 from models.bug_report import BugReport, BugReportType
 from models.class_model import Class
-from models.client_project_model import ClientProject, ProjectStatus
 from models.district_model import District
 from models.event import EventType
 from models.google_sheet import GoogleSheet
@@ -113,11 +111,9 @@ from models.reports import (
     OrganizationSummaryCache,
     RecentVolunteersReportCache,
     RecruitmentCandidatesCache,
-    VirtualSessionDistrictCache,
-    VirtualSessionReportCache,
 )
 from models.school_model import School
-from models.sync_log import SyncLog, SyncStatus
+from models.sync_log import SyncLog
 from models.user import SecurityLevel, User
 from routes.decorators import global_users_only
 from routes.reports.common import get_school_year_date_range

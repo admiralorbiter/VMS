@@ -22,7 +22,7 @@ Related Documentation:
 - documentation/content/dev/pathful_import_recommendations.md
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from functools import wraps
 
 import pandas as pd
@@ -51,7 +51,6 @@ from models.pathful_import import (
     UnmatchedType,
 )
 from models.school_model import School
-from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
 from models.user import TenantRole
 from models.volunteer import Volunteer
@@ -60,7 +59,6 @@ from services.scoping import (
     is_staff_user,
     is_tenant_user,
     scope_events_query,
-    scope_flags_query,
 )
 
 # Constants

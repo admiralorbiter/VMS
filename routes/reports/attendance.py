@@ -1,20 +1,11 @@
 import math
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
-from sqlalchemy import and_, func
 
-from models import db
-from models.attendance import EventAttendanceDetail
 from models.district_model import District
-from models.event import (
-    Event,
-    EventAttendance,
-    EventStatus,
-    EventStudentParticipation,
-    EventType,
-)
+from models.event import Event, EventStatus, EventStudentParticipation
 from models.volunteer import EventParticipation
 
 # Create blueprint

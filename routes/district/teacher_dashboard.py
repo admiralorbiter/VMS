@@ -21,7 +21,7 @@ Main Endpoints:
 
 from datetime import datetime, timezone
 
-from flask import flash, jsonify, render_template, request
+from flask import jsonify, render_template, request
 from flask_login import current_user
 
 from models import db

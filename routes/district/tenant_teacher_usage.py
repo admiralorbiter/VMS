@@ -6,12 +6,10 @@ Routes for Virtual Admin to view teacher progress/usage dashboard.
 Shows which teachers have completed their virtual session goals.
 """
 
-from datetime import datetime
 from functools import wraps
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import func
 
 from models import db
 from models.teacher_progress import TeacherProgress

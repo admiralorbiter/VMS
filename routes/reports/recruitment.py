@@ -1680,7 +1680,6 @@ def load_routes(bp):
     @login_required
     def recruitment_candidates_csv():
         """CSV export of event-based candidates using the same scoring heuristics."""
-        from sqlalchemy import and_, or_
 
         event_id = request.args.get("event_id", type=int)
         limit = request.args.get("limit", 100, type=int)

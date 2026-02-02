@@ -10,16 +10,7 @@ FR-SELFSERV-405: Confirmation emails with calendar invites
 
 from datetime import datetime, timezone
 
-from flask import (
-    abort,
-    current_app,
-    flash,
-    g,
-    redirect,
-    render_template,
-    request,
-    url_for,
-)
+from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
 from models import db
 from models.district_participation import DistrictParticipation

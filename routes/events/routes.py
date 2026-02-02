@@ -896,7 +896,6 @@ def edit_event(id):
     - Staff/admin users can edit all events (all fields)
     - Tenant admins can edit their district's events (restricted fields)
     """
-    from models.event import CancellationReason
 
     event = db.session.get(Event, id)
     if not event:

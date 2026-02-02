@@ -77,11 +77,9 @@ Usage Examples:
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import event
 from sqlalchemy.orm import validates
 
 from models import db
-from models.utils import get_utc_now
 
 
 class HistoryType(Enum):

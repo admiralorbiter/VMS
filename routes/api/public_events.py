@@ -24,7 +24,6 @@ from functools import wraps
 from flask import Blueprint, g, jsonify, request
 from flask_cors import cross_origin
 
-from models import db
 from models.event import Event, EventStatus
 from models.tenant import Tenant
 

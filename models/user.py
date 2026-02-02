@@ -52,7 +52,6 @@ Database Schema:
 """
 
 import secrets
-import uuid
 from datetime import datetime, timedelta, timezone
 from enum import IntEnum
 

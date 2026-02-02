@@ -74,7 +74,7 @@ from datetime import date
 from enum import Enum as PyEnum
 
 from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import declared_attr, relationship
+from sqlalchemy.orm import relationship
 
 from models import db
 

@@ -43,9 +43,7 @@ Usage Examples:
     ).all()
 """
 
-from datetime import datetime, timezone
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 

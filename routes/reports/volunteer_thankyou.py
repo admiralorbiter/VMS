@@ -2,10 +2,8 @@ import io
 from datetime import datetime
 
 import pandas as pd
-import xlsxwriter
 from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required
-from sqlalchemy import extract
 
 from models import db
 from models.event import Event

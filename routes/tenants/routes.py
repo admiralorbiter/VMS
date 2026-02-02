@@ -29,7 +29,7 @@ Endpoints:
 import re
 from datetime import datetime, timezone
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import Tenant, User, db
@@ -306,7 +306,6 @@ def switch_tenant_context(tenant_id):
     Returns:
         Redirect to tenant view or tenant list
     """
-    from flask import current_app, session
 
     from utils.tenant_context import (
         clear_admin_tenant_override,

@@ -59,7 +59,6 @@ Usage Examples:
 
 import math
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from models import db

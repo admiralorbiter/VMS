@@ -68,9 +68,9 @@ Usage Examples:
     active_students = class_obj.get_active_students()
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
-from sqlalchemy import Index, text
+from sqlalchemy import Index
 from sqlalchemy.orm import relationship
 
 from models import db

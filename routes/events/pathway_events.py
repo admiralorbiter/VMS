@@ -28,7 +28,7 @@ from datetime import datetime  # Add datetime
 from flask import Blueprint, jsonify
 from flask_login import login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 
 from config import Config
 from models import db
@@ -56,7 +56,6 @@ from routes.events.routes import (
 
 # Import helpers from routes.utils
 from routes.utils import (
-    DISTRICT_MAPPINGS,
     map_cancellation_reason,
     map_event_format,
     map_session_type,

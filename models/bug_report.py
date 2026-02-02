@@ -62,7 +62,7 @@ Usage Examples:
     user_reports = user.bug_reports
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import IntEnum
 
 from . import db
