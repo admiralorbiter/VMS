@@ -506,7 +506,9 @@ def log_audit_action(action: str, resource_type: str, resource_id=None, metadata
         )
         db.session.add(entry)
         db.session.commit()
-    except Exception:
+        print(f"[AUDIT] Logged: {action} on {resource_type}:{resource_id}")  # Debug
+    except Exception as e:
         db.session.rollback()
+        # Log the error for debugging
+        print(f"[AUDIT ERROR] Failed to log {action}: {e}")
         # Avoid raising audit failures; keep non-blocking
-        pass

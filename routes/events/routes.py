@@ -917,6 +917,27 @@ def edit_event(id):
             print("Edit form validation successful")  # Debug
             print(f"Form data: {form.data}")  # Debug
 
+            # Phase D-4: Capture original values for audit logging (safely handle string or enum)
+            if event.status:
+                original_status = (
+                    event.status.value
+                    if hasattr(event.status, "value")
+                    else str(event.status)
+                )
+            else:
+                original_status = None
+            if event.cancellation_reason:
+                original_cancellation_reason = (
+                    event.cancellation_reason.value
+                    if hasattr(event.cancellation_reason, "value")
+                    else str(event.cancellation_reason)
+                )
+            else:
+                original_cancellation_reason = None
+            # Phase D-5: Capture original participant values
+            original_educators = event.educators or ""
+            original_professionals = event.professionals or ""
+
             # Update event from form data
             form.populate_obj(event)
 
@@ -949,12 +970,93 @@ def edit_event(id):
             print(f"Updated event: {event}")  # Debug
 
             db.session.commit()
+
+            # Phase D-4: Log changes for virtual sessions
+            # After commit, event attributes might be strings from DB, so check safely
+            event_type = (
+                event.type.value if hasattr(event.type, "value") else event.type
+            )
+            if (
+                event_type == "virtual_session"
+                or event.type == EventType.VIRTUAL_SESSION
+            ):
+                from services.audit_service import (
+                    log_cancellation_set,
+                    log_status_changed,
+                )
+
+                # Safely get status value (might be enum or string)
+                if event.status:
+                    new_status = (
+                        event.status.value
+                        if hasattr(event.status, "value")
+                        else str(event.status)
+                    )
+                else:
+                    new_status = None
+                # Handle cancellation_reason which might be enum or string after form.populate_obj
+                if event.cancellation_reason:
+                    new_cancellation_reason = (
+                        event.cancellation_reason.value
+                        if hasattr(event.cancellation_reason, "value")
+                        else str(event.cancellation_reason)
+                    )
+                else:
+                    new_cancellation_reason = None
+
+                # Log status change if it changed
+                if original_status != new_status:
+                    log_status_changed(event, original_status, new_status)
+
+                # Log cancellation reason if set
+                if new_cancellation_reason and (
+                    original_cancellation_reason != new_cancellation_reason
+                ):
+                    log_cancellation_set(
+                        event, new_cancellation_reason, event.cancellation_notes
+                    )
+
+                # Phase D-5: Log educator/professional changes
+                from services.audit_service import (
+                    VirtualSessionAction,
+                    log_virtual_session_change,
+                )
+
+                new_educators = event.educators or ""
+                new_professionals = event.professionals or ""
+
+                if original_educators != new_educators:
+                    log_virtual_session_change(
+                        event=event,
+                        action=VirtualSessionAction.TEACHER_TAGGED,
+                        field_name="educators",
+                        old_value=original_educators,
+                        new_value=new_educators,
+                    )
+
+                if original_professionals != new_professionals:
+                    log_virtual_session_change(
+                        event=event,
+                        action=VirtualSessionAction.PRESENTER_TAGGED,
+                        field_name="professionals",
+                        old_value=original_professionals,
+                        new_value=new_professionals,
+                    )
+
+                # Phase D-5: Auto-resolve flags after participant changes
+                from services.flag_scanner import check_and_auto_resolve_flags
+
+                check_and_auto_resolve_flags(event)
+
             flash("Event updated successfully!", "success")
             return redirect(url_for("events.view_event", id=event.id))
 
         except Exception as e:
             db.session.rollback()
+            import traceback
+
             print(f"Error updating event: {str(e)}")  # Debug
+            traceback.print_exc()  # Print full stack trace
             flash(f"Error updating event: {str(e)}", "danger")
     else:
         # Pre-populate form with event data for GET requests
@@ -973,6 +1075,9 @@ def edit_event(id):
                 event.cancellation_reason.value if event.cancellation_reason else ""
             )
             form.cancellation_notes.data = event.cancellation_notes or ""
+            # Phase D-5: Pre-populate participant fields
+            form.educators.data = event.educators or ""
+            form.professionals.data = event.professionals or ""
 
         # Print form validation errors for debugging
         if request.method == "POST":

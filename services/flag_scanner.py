@@ -219,7 +219,12 @@ def check_and_auto_resolve_flags(event: Event) -> List[EventFlag]:
             # Resolve if status is no longer Draft
             if event.status != EventStatus.DRAFT:
                 should_resolve = True
-                note = f"Status changed to {event.status.value}"
+                status_val = (
+                    event.status.value
+                    if hasattr(event.status, "value")
+                    else str(event.status)
+                )
+                note = f"Status changed to {status_val}"
 
         elif flag.flag_type == FlagType.MISSING_TEACHER:
             # Resolve if teacher now assigned
@@ -243,7 +248,12 @@ def check_and_auto_resolve_flags(event: Event) -> List[EventFlag]:
             # Resolve if cancellation reason now set
             if event.cancellation_reason:
                 should_resolve = True
-                note = f"Reason set: {event.cancellation_reason.value}"
+                reason_val = (
+                    event.cancellation_reason.value
+                    if hasattr(event.cancellation_reason, "value")
+                    else str(event.cancellation_reason)
+                )
+                note = f"Reason set: {reason_val}"
 
         if should_resolve:
             flag.resolve(notes=note, auto=True)

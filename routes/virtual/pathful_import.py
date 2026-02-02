@@ -870,6 +870,25 @@ def load_pathful_routes():
             import_log.mark_complete()
             db.session.commit()
 
+            # Phase D-4: Log import completion
+            from routes.utils import log_audit_action
+
+            log_audit_action(
+                action="pol.import.completed",
+                resource_type="pathful_import",
+                resource_id=import_log.id,
+                metadata={
+                    "import_type": "pathful_virtual_sessions",
+                    "counts": {
+                        "processed": import_log.processed_rows,
+                        "created": import_log.created_events,
+                        "updated": import_log.updated_events,
+                        "unmatched": import_log.unmatched_count,
+                    },
+                    "filename": getattr(file, "filename", "unknown"),
+                },
+            )
+
             # Success message with stats
             flash(
                 f"Import completed: {import_log.processed_rows} rows processed, "
@@ -2021,6 +2040,11 @@ def load_pathful_routes():
         notes = request.form.get("notes", "")
         flag.resolve(notes=notes, resolved_by=current_user.id)
         db.session.commit()
+
+        # Phase D-4: Log flag resolution
+        from services.audit_service import log_flag_resolved
+
+        log_flag_resolved(flag.event, flag.flag_type_display, resolution_notes=notes)
 
         flash(f"Flag resolved: {flag.flag_type_display}", "success")
         return redirect(url_for("virtual.flag_queue"))

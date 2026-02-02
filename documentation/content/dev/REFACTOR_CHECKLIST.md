@@ -311,65 +311,87 @@ Created `services/scoping.py` with:
 
 ## Phase D-4: Audit Logging
 
-### D-4.1 Database
+> **Implementation Note:** Extended the existing audit system (`models/audit_log.py` + `routes/utils.py:log_audit_action()`) instead of creating a parallel model. Follows `documentation/content/audit_requirements.md` naming conventions.
 
-- [ ] Create `AuditAction` enum
-  ```
-  TEACHER_ADDED, TEACHER_REMOVED
-  PRESENTER_ADDED, PRESENTER_REMOVED
-  STATUS_CHANGED
-  CANCELLATION_REASON_SET
-  FLAG_RESOLVED
-  IMPORTED, UPDATED_VIA_IMPORT
-  ```
-- [ ] Create `VirtualEventAuditLog` model
-  - [ ] `id`, `event_id`
-  - [ ] `user_id`, `user_role`, `user_district_id`
-  - [ ] `action`, `field_name`, `old_value`, `new_value`
-  - [ ] `created_at`, `source`, `notes`
-- [ ] Create migration
-- [ ] Run migration (dev)
+### D-4.1 Audit Service ✅
 
-### D-4.2 Logging Helper
+- [x] Create `VirtualSessionAction` enum in `services/audit_service.py`
+  - `teacher_tagged`, `teacher_untagged`
+  - `presenter_tagged`, `presenter_untagged`
+  - `status_changed`, `cancellation_set`
+  - `flag_resolved`, `flag_created`
+  - `imported`, `updated_via_import`, `field_updated`
+- [x] Create `log_virtual_session_change()` function
+  - Wraps `log_audit_action()` with virtual session context
+  - Includes user role and district in metadata
+  - Handles system/import user (user=None)
+- [x] Create convenience functions
+  - `log_teacher_tagged()`, `log_teacher_untagged()`
+  - `log_presenter_tagged()`, `log_presenter_untagged()`
+  - `log_status_changed()`, `log_cancellation_set()`
+  - `log_flag_resolved()`, `log_session_imported()`
 
-- [ ] Create `log_event_change()` function
-- [ ] Accept: event, action, user, field_name, old_value, new_value, source, notes
-- [ ] Auto-populate user_role, user_district_id from user object
-- [ ] Handle system/import user (user=None, role='system')
+### D-4.2 Logging Helper ✅
 
-### D-4.3 Integrate Logging
+- [x] Accept: event, action, user, field_name, old_value, new_value, source, notes
+- [x] Auto-populate user_role, user_district from user object
+- [x] Handle system/import user (user=None, role='system')
+- [x] Action naming: `pol.virtual.session.{action}`
 
-- [ ] Log on teacher tag: `TEACHER_ADDED`
-- [ ] Log on teacher untag: `TEACHER_REMOVED`
-- [ ] Log on presenter tag: `PRESENTER_ADDED`
-- [ ] Log on presenter untag: `PRESENTER_REMOVED`
-- [ ] Log on status change: `STATUS_CHANGED`
-- [ ] Log on cancellation reason set: `CANCELLATION_REASON_SET`
-- [ ] Log on flag resolve: `FLAG_RESOLVED`
-- [ ] Log on import create: `IMPORTED`
-- [ ] Log on import update: `UPDATED_VIA_IMPORT`
+### D-4.3 Integrate Logging ✅
 
-### D-4.4 Audit Views
+- [x] Log on status change: `pol.virtual.session.status_changed`
+- [x] Log on cancellation reason set: `pol.virtual.session.cancellation_set`
+- [x] Log on flag resolve: `pol.virtual.session.flag_resolved`
+- [x] Log on import complete: `pol.import.completed`
+- [ ] Log on teacher tag/untag (future: when tagging UI exists)
+- [ ] Log on presenter tag/untag (future: when tagging UI exists)
 
-- [ ] Create route: `GET /virtual/audit/event/<id>`
-  - [ ] Show all logs for specific event
-- [ ] Create route: `GET /virtual/audit/recent`
-  - [ ] Show recent logs (last 7 days default)
-  - [ ] Filter by date range
-- [ ] Add filters:
-  - [ ] By user
-  - [ ] By user role
-  - [ ] By district (for district admin changes)
-  - [ ] By action type
+### D-4.4 Audit Views (Optional, Deferred)
 
-### D-4.5 UI Integration
+- [ ] Create route: `GET /virtual/audit/event/<id>` - Show logs for event
+- [ ] Create route: `GET /virtual/audit/recent` - Recent changes
+- [x] Use existing `/admin/audit-logs` with action filter
 
-- [ ] Add audit log panel to event detail page
-  - [ ] Show recent changes
-  - [ ] Link to full history
-- [ ] Staff-only access to audit views
+### D-4.5 Verification
 
-**Checkpoint: All changes logged, audit views available**
+- [ ] Manual test: edit virtual session → verify log in `/admin/audit-logs`
+- [ ] Manual test: import data → verify log
+- [ ] Manual test: resolve flag → verify log
+
+**Checkpoint: Core audit logging in place, views via existing admin audit logs**
+
+---
+
+## Phase D-5: Teacher/Presenter Tagging UI ✅
+
+> Implemented Feb 2, 2026 - Manual tagging of teachers/presenters on virtual sessions
+
+### D-5.1 Form Updates ✅
+
+- [x] Add `educators` StringField to EventForm
+- [x] Add `professionals` StringField to EventForm
+- [x] Participants section on `edit.html` (only for Virtual Sessions)
+- [x] Pre-populate from model in GET handler
+- [x] Save to model in POST handler
+
+### D-5.2 Audit Logging ✅
+
+- [x] Log `pol.virtual.session.teacher_tagged` on educator changes
+- [x] Log `pol.virtual.session.presenter_tagged` on professional changes
+
+### D-5.3 Flag Integration ✅
+
+- [x] Call `check_and_auto_resolve_flags()` after save
+- [x] `MISSING_TEACHER` flags auto-resolve when educator added
+- [x] `MISSING_PRESENTER` flags auto-resolve when professional added
+
+### D-5.4 Permissions ✅
+
+- [x] `get_editable_fields()` includes `educators` and `professionals`
+- [x] District admins can edit these fields
+
+**Checkpoint: Manual tagging available, flags auto-resolve on tag**
 
 ---
 

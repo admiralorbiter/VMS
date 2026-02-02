@@ -52,7 +52,8 @@ Security: CSRF token included for POST request protection
         <div>
             <strong style="color: #1d4ed8;">District Admin Access</strong>
             <p style="margin: 4px 0 0 0; color: #1e40af; font-size: 0.9em;">
-                You can edit cancellation details for your district's events. Other fields are managed by PrepKC staff.
+                You can edit: status, cancellation details, teachers, and presenters. Other fields are managed by PrepKC
+                staff.
             </p>
         </div>
     </div>
@@ -218,6 +219,32 @@ Security: CSRF token included for POST request protection
                 </div>
             </div>
         </div>
+
+        {# Section 2.5: Participants - Teachers and Presenters (Phase D-5) #}
+        {% if event.type and event.type.value == 'Virtual Session' %}
+        <div class="form-section">
+            <h2 class="section-title">
+                <i class="fa-solid fa-users"></i>
+                Participants
+            </h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    {{ form.educators.label(class="form-label") }}
+                    <div class="input-wrapper">
+                        {{ form.educators(class="form-control", placeholder="Jane Doe; John Smith") }}
+                    </div>
+                    <small class="form-text text-muted">Semicolon-separated teacher names</small>
+                </div>
+                <div class="form-group">
+                    {{ form.professionals.label(class="form-label") }}
+                    <div class="input-wrapper">
+                        {{ form.professionals(class="form-control", placeholder="Presenter Name; Another Name") }}
+                    </div>
+                    <small class="form-text text-muted">Semicolon-separated presenter names</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         {# Section 3: Skills Management - Dynamic skills add/remove functionality #}
         <div class="form-section">

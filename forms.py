@@ -100,4 +100,17 @@ class EventForm(FlaskForm):
         validators=[Optional()],
     )
     cancellation_notes = TextAreaField("Cancellation Notes", validators=[Optional()])
+
+    # Participant tagging fields (Phase D-5)
+    educators = StringField(
+        "Teachers/Educators",
+        validators=[Optional()],
+        description="Semicolon-separated names (e.g., Jane Doe; John Smith)",
+    )
+    professionals = StringField(
+        "Presenters/Professionals",
+        validators=[Optional()],
+        description="Semicolon-separated names",
+    )
+
     submit = SubmitField("Save Event")
