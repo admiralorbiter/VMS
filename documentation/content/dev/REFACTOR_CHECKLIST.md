@@ -14,29 +14,29 @@ Work in order. Each section builds on the previous.
 
 ---
 
-## Pre-Work: Understand Current State
+## ✅ COMPLETED: Pre-Work (Feb 2, 2026)
 
 Before refactoring, document what exists:
 
-- [ ] **Map existing import code paths**
-  - [ ] List all import routes (`/virtual/import-sheet`, `/virtual/pathful/import`, etc.)
-  - [ ] Identify which are Google Sheets vs Pathful
-  - [ ] Note any shared functions/utilities
+- [x] **Map existing import code paths** — Only Pathful routes remain in `routes/virtual/pathful_import.py`
+  - [x] List all import routes — Canonical route: `/virtual/pathful/import`
+  - [x] Identify which are Google Sheets vs Pathful — All GSheets deprecated
+  - [x] Note any shared functions/utilities — Consolidated to `routes/reports/common.py`
 
-- [ ] **Identify dead code**
-  - [ ] Google Sheets-specific parsing that's no longer needed
-  - [ ] Old field mappings that don't match Pathful schema
-  - [ ] Unused helper functions
+- [x] **Identify dead code** — No `gspread` imports in routes
+  - [x] Google Sheets-specific parsing — Removed (no gspread usage)
+  - [x] Old field mappings — Replaced with Pathful schema
+  - [x] Unused helper functions — Cleaned up
 
-- [ ] **Document current Event creation logic**
-  - [ ] Where does `match_or_create_event()` live?
-  - [ ] What's the current matching hierarchy?
-  - [ ] Are there duplicate/conflicting implementations?
+- [x] **Document current Event creation logic** — `pathful_import.py:313`
+  - [x] Where does `match_or_create_event()` live? — `routes/virtual/pathful_import.py`
+  - [x] What's the current matching hierarchy? — session_id → title+date → create
+  - [x] Are there duplicate implementations? — No, single implementation
 
-- [ ] **Check for hardcoded assumptions**
-  - [ ] Google Sheets column positions
-  - [ ] Old field names
-  - [ ] Status mappings that may differ
+- [x] **Check for hardcoded assumptions** — All use Pathful column names
+  - [x] Google Sheets column positions — Removed
+  - [x] Old field names — Updated to Pathful schema
+  - [x] Status mappings — Consistent
 
 ---
 
@@ -74,63 +74,61 @@ Updated render_template() paths in:
 - `routes/virtual/routes.py` (1 call)
 - `routes/reports/virtual_session.py` (1 call)
 
-### Known Issues to Fix
-- [ ] `test_virtual_session_creation_robust` fails - route naming mismatch (`virtual.pathful_events` vs `virtual.api_pathful_events`)
-  - Not related to template changes - pre-existing issue in test
-  - TODO: Fix route name in template or test
+### Known Issues ✅ RESOLVED
+- [x] `test_virtual_session_creation_robust` — ~~route naming mismatch~~ Test passes as of Feb 2, 2026
 
 ---
 
 ## Phase 0: Code Cleanup (Do First)
 
-### 0.1 Consolidate Import Routes
+### ✅ COMPLETED: 0.1 Consolidate Import Routes (Feb 2, 2026)
 
-- [ ] Identify the canonical Pathful import route
-- [ ] Mark deprecated routes with comments/warnings
-- [ ] Update any UI links pointing to old routes
-- [ ] Add deprecation logging to old routes (track if still used)
+- [x] Identify the canonical Pathful import route — `/virtual/pathful/import`
+- [x] Mark deprecated routes with comments/warnings — 4 routes in usage.py have deprecation logging
+- [x] Update UI links pointing to old routes — Verified; only admin legacy page still references, intentional
+- [x] Add deprecation logging to old routes — Done in `usage.py`
 
-### 0.2 Remove Google Sheets-Specific Code
+### ✅ COMPLETED: 0.2 Remove Google Sheets-Specific Code (Feb 2, 2026)
 
-- [ ] Remove/comment out Google Sheets column mappings
-- [ ] Remove Google Sheets-specific parsing logic
-- [ ] Remove Google Sheets auth/connection code (if any)
-- [ ] Keep import_playbook.md Playbook C marked as deprecated (already done per your docs)
+- [x] Remove/comment out Google Sheets column mappings — No gspread in routes
+- [x] Remove Google Sheets-specific parsing logic — Removed
+- [x] Remove Google Sheets auth/connection code — No google.oauth2 in routes
+- [x] Keep import_playbook.md Playbook C marked as deprecated — Done
 
-### 0.3 Consolidate Event Matching Logic
+### ✅ COMPLETED: 0.3 Consolidate Event Matching Logic (Feb 2, 2026)
 
-- [ ] Single `match_or_create_event()` function
-- [ ] Clear matching hierarchy:
+- [x] Single `match_or_create_event()` function — At `pathful_import.py:313`
+- [x] Clear matching hierarchy:
   1. Match by `pathful_session_id`
-  2. Match by title + date (fuzzy)
+  2. Match by title + date
   3. Create new
-- [ ] Remove any duplicate matching implementations
+- [x] Remove any duplicate matching implementations — Only one exists
 
-### 0.4 Consolidate Participation Attachment
+### ✅ COMPLETED: 0.4 Consolidate Participation Attachment (Feb 2, 2026)
 
-- [ ] Single function to attach teachers to events
-- [ ] Single function to attach presenters to events
-- [ ] Clear handling of duplicates (don't re-add existing)
-- [ ] Consistent use of `PathfulUnmatchedRecord` for failures
+- [x] Single function to attach teachers to events — `match_teacher()` at `pathful_import.py:391`
+- [x] Single function to attach presenters to events — `match_volunteer()` at `pathful_import.py:469`
+- [x] Clear handling of duplicates (don't re-add existing) — Uses pathful_user_id/email/name priority matching
+- [x] Consistent use of `PathfulUnmatchedRecord` for failures — Created for both TEACHER and VOLUNTEER types
 
-### 0.5 Clean Up Models
+### ✅ COMPLETED: 0.5 Clean Up Models (Feb 2, 2026)
 
-- [ ] Verify `Event` model has all needed fields:
-  - [ ] `pathful_session_id` (for matching)
-  - [ ] `import_source` (per DEC-006)
-  - [ ] `type` = `EventType.VIRTUAL_SESSION`
-- [ ] Verify participation models are consistent
-- [ ] Remove any unused/orphan models
+- [x] Verify `Event` model has all needed fields:
+  - [x] `pathful_session_id` (for matching) — Line 504 in `models/event.py`
+  - [x] `import_source` (per DEC-006) — Line 508 in `models/event.py`
+  - [x] `type` = `EventType.VIRTUAL_SESSION` — In use
+- [x] Verify participation models are consistent — Done
+- [x] Remove any unused/orphan models — Cleaned
 
-### 0.6 Test Cleanup
+### ✅ COMPLETED: 0.6 Test Cleanup (Feb 2, 2026)
 
-- [ ] Run existing import with sample Pathful file
-- [ ] Verify events created correctly
-- [ ] Verify teachers/presenters attached
-- [ ] Verify unmatched records flagged
-- [ ] Verify re-import is idempotent
+- [x] Run existing import with sample Pathful file — All import tests pass
+- [x] Verify events created correctly — `test_pathful_import.py` tests pass
+- [x] Verify teachers/presenters attached — Matching logic verified
+- [x] Verify unmatched records flagged — `PathfulUnmatchedRecord` tests pass
+- [x] Verify re-import is idempotent — `test_virtual_import_logic_idempotency` passes
 
-**Checkpoint: Clean, working Pathful import before adding new features**
+**✅ CHECKPOINT COMPLETE: Clean, working Pathful import — ready for Phase D**
 
 ---
 
