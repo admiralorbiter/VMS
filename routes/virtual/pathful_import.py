@@ -772,7 +772,7 @@ def load_pathful_routes():
             )
 
             return render_template(
-                "virtual/pathful_import.html",
+                "virtual/pathful/import.html",
                 recent_imports=recent_imports,
             )
 
@@ -858,7 +858,7 @@ def load_pathful_routes():
         ).all()
 
         return render_template(
-            "virtual/pathful_import_history.html",
+            "virtual/pathful/import_history.html",
             imports=imports,
         )
 
@@ -999,7 +999,7 @@ def load_pathful_routes():
             )
 
         return render_template(
-            "virtual/pathful_unmatched.html",
+            "virtual/pathful/unmatched.html",
             unmatched=unmatched,
             enriched_records=enriched_records,
             status_filter=status_filter,
@@ -1151,7 +1151,7 @@ def load_pathful_routes():
         ).count()
 
         return render_template(
-            "virtual/pathful_import_detail.html",
+            "virtual/pathful/import_detail.html",
             import_log=import_log,
             unmatched_records=unmatched_records,
             unmatched_count=unmatched_count,
@@ -1200,7 +1200,7 @@ def load_pathful_routes():
         ).count()
 
         return render_template(
-            "virtual/pathful_participants.html",
+            "virtual/pathful/participants.html",
             participants=participants,
             tab=tab,
             total_count=total_count,
@@ -1377,7 +1377,7 @@ def load_pathful_routes():
             ).count()
 
             return render_template(
-                "virtual/pathful_import_users.html",
+                "virtual/pathful/import_users.html",
                 recent_imports=recent_imports,
                 total_profiles=total_profiles,
                 linked_count=linked_count,
@@ -1647,7 +1647,7 @@ def load_pathful_routes():
         ).count()
 
         return render_template(
-            "virtual/pathful_users.html",
+            "virtual/pathful/users.html",
             profiles=profiles,
             total_count=total_count,
             educator_count=educator_count,
@@ -1842,7 +1842,7 @@ def load_pathful_routes():
         districts = [d[0] for d in districts]
 
         return render_template(
-            "virtual/virtual_sessions.html",
+            "virtual/sessions.html",
             sessions=pagination,
             career_clusters=career_clusters,
             districts=districts,

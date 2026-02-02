@@ -35,97 +35,23 @@ from routes.utils import admin_required
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)
 
-# --- Helper Functions for School Year ---
+# Import shared helper functions from common module
+from routes.reports.common import (
+    get_current_school_year,
+    get_school_year_date_range,
+    get_current_virtual_year,
+    get_virtual_year_dates,
+    generate_school_year_options,
+    is_cache_valid,
+)
 
-
-def get_current_school_year() -> str:
-    """Determines the current school year string (e.g., '2024-2025')."""
-    today = date.today()
-    if today.month >= 6:  # School year starts in June
-        start_year = today.year
-    else:
-        start_year = today.year - 1
-    return f"{start_year}-{start_year + 1}"
-
-
-def get_school_year_dates(school_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given school year string."""
-    try:
-        start_year = int(school_year.split("-")[0])
-        end_year = start_year + 1
-        date_from = datetime(start_year, 6, 1, 0, 0, 0)
-        date_to = datetime(end_year, 5, 31, 23, 59, 59)
-        return date_from, date_to
-    except (ValueError, IndexError):
-        current_sy = get_current_school_year()
-        return get_school_year_dates(current_sy)
-
-
-def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list[str]:
-    """Generates a list of school year strings for dropdowns."""
-    if end_cal_year is None:
-        end_cal_year = date.today().year + 1
-
-    school_years = []
-    for year in range(end_cal_year, start_cal_year - 1, -1):
-        school_years.append(f"{year}-{year + 1}")
-    return school_years
-
-
-def get_current_virtual_year() -> str:
-    """Determines the current virtual session year string (August 1st to July 31st)."""
-    today = date.today()
-    if today.month > 7 or (today.month == 7 and today.day == 31):  # After July 31st
-        start_year = today.year
-    else:
-        start_year = today.year - 1
-    return f"{start_year}-{start_year + 1}"
-
-
-def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given virtual session year string (8/1 to 7/31)."""
-    try:
-        start_year = int(virtual_year.split("-")[0])
-        end_year = start_year + 1
-        date_from = datetime(start_year, 8, 1, 0, 0, 0)  # August 1st start
-        date_to = datetime(end_year, 7, 31, 23, 59, 59)  # July 31st end
-        return date_from, date_to
-    except (ValueError, IndexError):
-        current_vy = get_current_virtual_year()
-        return get_virtual_year_dates(current_vy)
-
-
-# --- End Helper Functions ---
+# Alias for backward compatibility
+def get_school_year_dates(school_year: str) -> tuple:
+    """Alias for get_school_year_date_range for backward compatibility."""
+    return get_school_year_date_range(school_year[:2] + school_year[-2:] if '-' in school_year else school_year)
 
 # --- Cache Management Functions ---
-
-
-def is_cache_valid(cache_record, max_age_hours=24):
-    """
-    Check if a cache record is still valid based on age.
-
-    Args:
-        cache_record: The cache record to check
-        max_age_hours: Maximum age in hours before cache is considered stale
-
-    Returns:
-        bool: True if cache is valid, False otherwise
-    """
-    if not cache_record:
-        return False
-
-    from datetime import datetime, timedelta, timezone
-
-    # Convert to timezone-aware datetime if needed
-    if cache_record.last_updated.tzinfo is None:
-        last_updated = cache_record.last_updated.replace(tzinfo=timezone.utc)
-    else:
-        last_updated = cache_record.last_updated
-
-    now = datetime.now(timezone.utc)
-    max_age = timedelta(hours=max_age_hours)
-
-    return (now - last_updated) < max_age
+# Note: is_cache_valid is imported from routes.reports.common
 
 
 def get_virtual_session_cache(virtual_year, date_from=None, date_to=None):
@@ -4277,7 +4203,7 @@ def load_routes(bp):
         )
 
         return render_template(
-            "reports/virtual/virtual_google_sheets.html",
+            "virtual/deprecated/google_sheets.html",
             sheets=sheets,
             districts=districts,
             virtual_year=virtual_year,

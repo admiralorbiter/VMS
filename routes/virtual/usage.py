@@ -40,137 +40,24 @@ from routes.utils import admin_required
 # Import blueprint from virtual routes
 from routes.virtual.routes import virtual_bp
 
-# --- Helper Functions for School Year ---
+# Import shared helper functions from common module
+from routes.reports.common import (
+    get_current_school_year,
+    get_school_year_date_range,
+    get_current_virtual_year,
+    get_virtual_year_dates,
+    get_semester_dates,
+    generate_school_year_options,
+    is_cache_valid,
+)
 
-
-def get_current_school_year() -> str:
-    """Determines the current school year string (e.g., '2024-2025')."""
-    today = date.today()
-    if today.month >= 6:  # School year starts in June
-        start_year = today.year
-    else:
-        start_year = today.year - 1
-    return f"{start_year}-{start_year + 1}"
-
-
-def get_school_year_dates(school_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given school year string."""
-    try:
-        start_year = int(school_year.split("-")[0])
-        end_year = start_year + 1
-        date_from = datetime(start_year, 6, 1, 0, 0, 0)
-        date_to = datetime(end_year, 5, 31, 23, 59, 59)
-        return date_from, date_to
-    except (ValueError, IndexError):
-        current_sy = get_current_school_year()
-        return get_school_year_dates(current_sy)
-
-
-def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list[str]:
-    """Generates a list of school year strings for dropdowns."""
-    if end_cal_year is None:
-        end_cal_year = date.today().year + 1
-
-    school_years = []
-    for year in range(end_cal_year, start_cal_year - 1, -1):
-        school_years.append(f"{year}-{year + 1}")
-    return school_years
-
-
-def get_current_virtual_year() -> str:
-    """Determines the current virtual session year string (August 1st to July 31st)."""
-    today = date.today()
-    if today.month > 7 or (today.month == 7 and today.day == 31):  # After July 31st
-        start_year = today.year
-    else:
-        start_year = today.year - 1
-    return f"{start_year}-{start_year + 1}"
-
-
-def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given virtual session year string (8/1 to 7/31)."""
-    try:
-        start_year = int(virtual_year.split("-")[0])
-        end_year = start_year + 1
-        date_from = datetime(start_year, 8, 1, 0, 0, 0)  # August 1st start
-        date_to = datetime(end_year, 7, 31, 23, 59, 59)  # July 31st end
-        return date_from, date_to
-    except (ValueError, IndexError):
-        current_vy = get_current_virtual_year()
-        return get_virtual_year_dates(current_vy)
-
-
-def get_semester_dates(
-    virtual_year: str, semester_type: str
-) -> tuple[datetime, datetime]:
-    """
-    Calculates start and end dates for specific semesters.
-
-    Args:
-        virtual_year: The virtual year string (e.g. "2024-2025")
-        semester_type: "Fall" or "Spring"
-
-    Returns:
-        tuple[datetime, datetime]: Start and end dates
-
-    Note:
-        Fall Semester: July 1 - Dec 31
-        Spring Semester: Jan 1 - Jun 30
-    """
-    try:
-        start_year = int(virtual_year.split("-")[0])
-        end_year = start_year + 1
-
-        if semester_type == "Fall":
-            # Fall is July 1 to Dec 31 of the start year
-            # Note: Virtual year technically starts Aug 1, but user requested 6/30 reset
-            # implying next semester starts 7/1.
-            return (
-                datetime(start_year, 7, 1, 0, 0, 0),
-                datetime(start_year, 12, 31, 23, 59, 59),
-            )
-        elif semester_type == "Spring":
-            # Spring is Jan 1 to June 30 of the end year
-            return (
-                datetime(end_year, 1, 1, 0, 0, 0),
-                datetime(end_year, 6, 30, 23, 59, 59),
-            )
-        return get_virtual_year_dates(virtual_year)
-    except (ValueError, IndexError):
-        return get_virtual_year_dates(virtual_year)
-
-
-# --- End Helper Functions ---
+# Alias for backward compatibility
+def get_school_year_dates(school_year: str) -> tuple:
+    """Alias for get_school_year_date_range for backward compatibility."""
+    return get_school_year_date_range(school_year[:2] + school_year[-2:] if '-' in school_year else school_year)
 
 # --- Cache Management Functions ---
-
-
-def is_cache_valid(cache_record, max_age_hours=24):
-    """
-    Check if a cache record is still valid based on age.
-
-    Args:
-        cache_record: The cache record to check
-        max_age_hours: Maximum age in hours before cache is considered stale
-
-    Returns:
-        bool: True if cache is valid, False otherwise
-    """
-    if not cache_record:
-        return False
-
-    from datetime import datetime, timedelta, timezone
-
-    # Convert to timezone-aware datetime if needed
-    if cache_record.last_updated.tzinfo is None:
-        last_updated = cache_record.last_updated.replace(tzinfo=timezone.utc)
-    else:
-        last_updated = cache_record.last_updated
-
-    now = datetime.now(timezone.utc)
-    max_age = timedelta(hours=max_age_hours)
-
-    return (now - last_updated) < max_age
+# Note: is_cache_valid is imported from routes.reports.common
 
 
 def get_virtual_session_cache(virtual_year, date_from=None, date_to=None):
@@ -2605,7 +2492,7 @@ def load_usage_routes():
                 )
 
                 return render_template(
-                    "virtual/virtual_usage.html",
+                    "virtual/usage/index.html",
                     session_data=session_data["paginated_data"],
                     filter_options=filter_options,
                     current_filters=current_filters,
@@ -2814,7 +2701,7 @@ def load_usage_routes():
         )
 
         return render_template(
-            "virtual/virtual_usage.html",
+            "virtual/usage/index.html",
             session_data=session_result["paginated_data"],
             filter_options=filter_options,
             current_filters=current_filters,
@@ -4071,7 +3958,7 @@ def load_usage_routes():
                     summary_stats = cached_data.summary_stats
 
                 return render_template(
-                    "virtual/virtual_usage_district.html",
+                    "virtual/usage/district.html",
                     district_name=district_name,
                     monthly_stats=monthly_stats,
                     current_filters=current_filters,
@@ -4128,7 +4015,7 @@ def load_usage_routes():
             last_refreshed = datetime.now(timezone.utc)
 
         return render_template(
-            "virtual/virtual_usage_district.html",
+            "virtual/usage/district.html",
             district_name=district_name,
             monthly_stats=monthly_stats,
             current_filters=current_filters,
@@ -5503,7 +5390,7 @@ def load_usage_routes():
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "virtual/virtual_breakdown.html",
+            "virtual/usage/breakdown.html",
             monthly_breakdown=monthly_breakdown,
             ytd_totals=ytd_totals,
             running_count=running_count,
@@ -5553,7 +5440,7 @@ def load_usage_routes():
         )
 
         return render_template(
-            "virtual/virtual_google_sheets.html",
+            "virtual/deprecated/google_sheets.html",
             sheets=sheets,
             districts=districts,
             virtual_year=virtual_year,
@@ -5807,7 +5694,7 @@ def load_usage_routes():
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "virtual/virtual_teacher_breakdown.html",
+            "virtual/teacher_progress/breakdown.html",
             district_name=district_name,
             teacher_school_breakdown=teacher_school_breakdown,
             current_filters=current_filters,
@@ -6076,7 +5963,7 @@ def load_usage_routes():
         )
 
         return render_template(
-            "virtual/virtual_teacher_progress.html",
+            "virtual/teacher_progress/index.html",
             district_name=district_name,
             teacher_progress_data=teacher_progress_data,
             current_filters=current_filters,
@@ -6276,7 +6163,7 @@ def load_usage_routes():
         ]
 
         return render_template(
-            "virtual/virtual_teacher_progress_google_sheets.html",
+            "virtual/deprecated/teacher_progress_google_sheets.html",
             sheets=filtered_sheets,
             district_name=district_name,
             districts=districts,  # Pass districts to template
@@ -6912,7 +6799,7 @@ def load_usage_routes():
         }
 
         return render_template(
-            "virtual/virtual_recruitment.html",
+            "virtual/recruitment.html",
             events=event_data,
             filter_options=filter_options,
             current_filters=current_filters,
@@ -6993,7 +6880,7 @@ def load_usage_routes():
         unmatched_entries = total_entries - matched_entries
 
         return render_template(
-            "virtual/virtual_teacher_progress_matching.html",
+            "virtual/teacher_progress/matching.html",
             district_name=district_name,
             teacher_progress_entries=teacher_progress_entries,
             teachers=teachers,

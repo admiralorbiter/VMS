@@ -177,7 +177,7 @@ def virtual():
     Returns:
         Rendered virtual sessions template
     """
-    return render_template("virtual/virtual.html")
+    return render_template("virtual/index.html")
 
 
 def split_teacher_names(teacher_name):

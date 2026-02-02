@@ -4,6 +4,23 @@
 
 ---
 
+## Recent Changes Log
+
+### Feb 1, 2026 — Code Organization Refactor
+Cleaned up routes and templates structure. See `REFACTOR_CHECKLIST.md` for full details.
+
+**Key changes:**
+- Deleted 5 empty route directories
+- Consolidated shared utilities to `routes/reports/common.py`
+- Reorganized `templates/virtual/` into subdirectories (pathful/, deprecated/, teacher_progress/, usage/)
+
+**TODO for next session:**
+1. Run `pytest tests/ -v` to verify all tests pass
+2. Fix `test_virtual_session_creation_robust` - route naming issue (`virtual.pathful_events` vs `virtual.api_pathful_events`)
+3. Review deprecated Google Sheets templates in `templates/virtual/deprecated/`
+
+---
+
 ## Architecture Principles
 
 ### Single Source of Truth Per Field

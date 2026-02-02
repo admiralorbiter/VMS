@@ -40,6 +40,47 @@ Before refactoring, document what exists:
 
 ---
 
+## ✅ COMPLETED: Code Organization (Feb 1, 2026)
+
+### Deleted Empty Route Directories
+- [x] `routes/job_board/` - deleted (empty)
+- [x] `routes/pathways/` - deleted (empty)
+- [x] `routes/playground/` - deleted (empty)
+- [x] `routes/quality/` - deleted (empty)
+- [x] `routes/upcoming_events/` - deleted (empty)
+
+### Consolidated Shared Utilities → `routes/reports/common.py`
+- [x] `get_current_virtual_year()` - moved from usage.py, virtual_session.py
+- [x] `get_virtual_year_dates()` - moved from usage.py, virtual_session.py
+- [x] `get_semester_dates()` - moved from usage.py
+- [x] `generate_school_year_options()` - moved from usage.py, virtual_session.py
+- [x] `is_cache_valid()` - moved from usage.py, virtual_session.py
+
+### Reorganized `templates/virtual/` (Phase 2.5)
+New structure:
+```
+templates/virtual/
+├── pathful/                   # Pathful import (7 files)
+├── deprecated/                # Google Sheets (2 files)
+├── teacher_progress/          # Teacher tracking (3 files)
+├── usage/                     # Usage reports (3 files)
+├── _district_issue_fab.html   # Shared partial
+├── index.html, sessions.html, recruitment.html
+```
+
+Updated render_template() paths in:
+- `routes/virtual/pathful_import.py` (7 calls)
+- `routes/virtual/usage.py` (11 calls)
+- `routes/virtual/routes.py` (1 call)
+- `routes/reports/virtual_session.py` (1 call)
+
+### Known Issues to Fix
+- [ ] `test_virtual_session_creation_robust` fails - route naming mismatch (`virtual.pathful_events` vs `virtual.api_pathful_events`)
+  - Not related to template changes - pre-existing issue in test
+  - TODO: Fix route name in template or test
+
+---
+
 ## Phase 0: Code Cleanup (Do First)
 
 ### 0.1 Consolidate Import Routes
