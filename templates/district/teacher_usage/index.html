@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+
+{% block title %}{{ district_name }} - Teacher Usage Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+<style>
+    .teacher-usage-container {
+        max-width: 98vw;
+        margin: 0 auto;
+        padding: 8px 8px 20px 8px;
+    }
+
+    .district-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .back-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
+
+    .district-title {
+        margin: 0 0 10px 0;
+        font-size: 2.5em;
+        font-weight: 700;
+    }
+
+    .district-subtitle {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1.1em;
+    }
+
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9em;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .filter-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #28a745;
+        color: white;
+    }
+
+    .filter-btn:hover {
+        background: #218838;
+    }
+
+    .reset-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #dc3545;
+        color: white;
+        text-decoration: none;
+    }
+
+    .reset-btn:hover {
+        background: #c82333;
+        color: white;
+    }
+
+    .export-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #28a745;
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .export-btn:hover {
+        background: #218838;
+        color: white;
+    }
+
+    /* Summary Stats */
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .stat-card.schools {
+        border-left: 4px solid #28a745;
+    }
+
+    .stat-card.teachers {
+        border-left: 4px solid #007bff;
+    }
+
+    .stat-card.achieved {
+        border-left: 4px solid #28a745;
+    }
+
+    .stat-card.in-progress {
+        border-left: 4px solid #ffd700;
+    }
+
+    .stat-card.not-started {
+        border-left: 4px solid #dc3545;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 2.5em;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .stat-value.green {
+        color: #28a745;
+    }
+
+    .stat-value.blue {
+        color: #007bff;
+    }
+
+    .stat-value.yellow {
+        color: #ffd700;
+    }
+
+    .stat-value.red {
+        color: #dc3545;
+    }
+
+    .stat-percentage {
+        display: block;
+        font-size: 1.1em;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* School Cards */
+    .school-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .school-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 4px solid #28a745;
+    }
+
+    .school-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .school-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .school-card-title {
+        margin: 0;
+        font-size: 1.2em;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .school-card-stats .stat-number {
+        display: block;
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #28a745;
+    }
+
+    .school-card-stats .stat-label {
+        font-size: 0.75em;
+    }
+
+    .progress-summary {
+        margin-bottom: 15px;
+    }
+
+    .progress-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .progress-bar-mini {
+        width: 60px;
+        height: 6px;
+        background: #e9ecef;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-right: 10px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-fill.achieved {
+        background: #28a745;
+    }
+
+    .progress-fill.in-progress {
+        background: #ffd700;
+    }
+
+    .progress-fill.not-started {
+        background: #dc3545;
+    }
+
+    .progress-info {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85em;
+    }
+
+    .progress-percentage {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .progress-label {
+        color: #28a745;
+    }
+
+    .progress-label.yellow {
+        color: #b8860b;
+    }
+
+    .progress-label.red {
+        color: #dc3545;
+    }
+
+    .school-card-footer {
+        text-align: center;
+        color: #28a745;
+        font-size: 0.85em;
+    }
+
+    /* School Detail View */
+    .school-detail {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .school-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .school-detail-header h2 {
+        margin: 0;
+        font-size: 1.3em;
+    }
+
+    .close-detail {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 1.2em;
+    }
+
+    .teacher-list {
+        padding: 20px;
+    }
+
+    .teacher-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .teacher-item:last-child {
+        border-bottom: none;
+    }
+
+    .teacher-info .teacher-name {
+        font-weight: 600;
+        color: #007bff;
+        margin-bottom: 3px;
+    }
+
+    .teacher-grade {
+        background: #e9ecef;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.8em;
+        margin-left: 8px;
+    }
+
+    .teacher-email {
+        font-size: 0.85em;
+        color: #666;
+    }
+
+    .teacher-progress {
+        text-align: right;
+    }
+
+    .progress-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 5px;
+    }
+
+    .progress-bar {
+        width: 80px;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-text {
+        font-size: 0.9em;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .goal-status {
+        font-size: 0.8em;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    .goal-status.achieved {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .goal-status.in_progress {
+        background: #ffd700;
+        color: #8b4513;
+    }
+
+    .goal-status.not_started {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+        font-size: 1.1em;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .no-data a {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+        }
+
+        .school-overview-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .teacher-item {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .teacher-progress {
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="teacher-usage-container">
+    <div class="district-header">
+        <a href="{{ url_for('district.virtual_sessions') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Virtual Sessions
+        </a>
+        <h1 class="district-title">{{ district_name }}</h1>
+        <p class="district-subtitle">Teacher Usage Dashboard - {{ academic_year }} - {{ 'Fall' if semester == 'fall'
+            else 'Spring' }} Semester</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            <div class="filter-group">
+                <label for="year">Academic Year:</label>
+                <select id="year" name="year">
+                    {% for year in year_options %}
+                    <option value="{{ year }}" {% if year==academic_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="semester">Semester:</label>
+                <select id="semester" name="semester">
+                    <option value="fall" {% if semester=='fall' %}selected{% endif %}>Fall (Aug-Dec)</option>
+                    <option value="spring" {% if semester=='spring' %}selected{% endif %}>Spring (Jan-Jul)</option>
+                </select>
+            </div>
+            <button type="submit" class="filter-btn">Apply</button>
+            <a href="{{ url_for('teacher_usage.index') }}" class="reset-btn">Reset</a>
+            {% if teacher_progress_data %}
+            <a href="{{ url_for('teacher_usage.export_excel', year=academic_year, semester=semester) }}"
+                class="export-btn">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if teacher_progress_data %}
+    <!-- Summary Stats -->
+    {% set total_teachers = teacher_progress_data.values() | map(attribute='total_teachers') | sum %}
+    {% set total_achieved = teacher_progress_data.values() | map(attribute='goals_achieved') | sum %}
+    {% set total_in_progress = teacher_progress_data.values() | map(attribute='goals_in_progress') | sum %}
+    {% set total_not_started = teacher_progress_data.values() | map(attribute='goals_not_started') | sum %}
+
+    <div class="summary-stats">
+        <div class="stat-card schools">
+            <span class="stat-value green">{{ teacher_progress_data|length }}</span>
+            <span class="stat-label">Schools</span>
+        </div>
+        <div class="stat-card teachers">
+            <span class="stat-value blue">{{ total_teachers }}</span>
+            <span class="stat-label">Total Teachers</span>
+        </div>
+        <div class="stat-card achieved">
+            <span class="stat-value green">{{ total_achieved }}</span>
+            <span class="stat-percentage green">
+                {{ "%.1f"|format((total_achieved / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{
+                total_achieved }}/{{ total_teachers }})
+            </span>
+            <span class="stat-label">Goals Achieved</span>
+        </div>
+        <div class="stat-card in-progress">
+            <span class="stat-value yellow">{{ total_in_progress }}</span>
+            <span class="stat-percentage" style="color: #b8860b;">
+                {{ "%.1f"|format((total_in_progress / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{
+                total_in_progress }}/{{ total_teachers }})
+            </span>
+            <span class="stat-label">In Progress</span>
+        </div>
+        <div class="stat-card not-started">
+            <span class="stat-value red">{{ total_not_started }}</span>
+            <span class="stat-percentage red">
+                {{ "%.1f"|format((total_not_started / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{
+                total_not_started }}/{{ total_teachers }})
+            </span>
+            <span class="stat-label">Not Started</span>
+        </div>
+    </div>
+
+    <!-- School Cards -->
+    <div class="school-overview-grid">
+        {% for school_name, school_data in teacher_progress_data.items() %}
+        <div class="school-card" onclick="toggleSchoolDetail('{{ school_name|replace(' ', '_')|replace('.', '_') }}')">
+            <div class="school-card-header">
+                <h3 class="school-card-title">{{ school_name }}</h3>
+                <div class="school-card-stats">
+                    <span class="stat-number">{{ school_data.total_teachers }}</span>
+                    <span class="stat-label">Teachers</span>
+                </div>
+            </div>
+
+            <div class="progress-summary">
+                <div class="progress-item">
+                    <div class="progress-bar-mini">
+                        <div class="progress-fill achieved"
+                            style="width: {{ (school_data.goals_achieved / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_achieved /
+                            school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{
+                            school_data.goals_achieved }}/{{ school_data.total_teachers }})</span>
+                        <span class="progress-label">Completed</span>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-bar-mini">
+                        <div class="progress-fill in-progress"
+                            style="width: {{ (school_data.goals_in_progress / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_in_progress /
+                            school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{
+                            school_data.goals_in_progress }}/{{ school_data.total_teachers }})</span>
+                        <span class="progress-label yellow">In Progress</span>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-bar-mini">
+                        <div class="progress-fill not-started"
+                            style="width: {{ (school_data.goals_not_started / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_not_started /
+                            school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{
+                            school_data.goals_not_started }}/{{ school_data.total_teachers }})</span>
+                        <span class="progress-label red">Not Started</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="school-card-footer">
+                <span class="click-hint">Click to view details</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- School Detail Views (Hidden by default) -->
+    {% for school_name, school_data in teacher_progress_data.items() %}
+    <div id="school-detail-{{ school_name|replace(' ', '_')|replace('.', '_') }}" class="school-detail"
+        style="display: none;">
+        <div class="school-detail-header">
+            <h2>{{ school_name }} - Teacher Details</h2>
+            <button class="close-detail"
+                onclick="toggleSchoolDetail('{{ school_name|replace(' ', '_')|replace('.', '_') }}')">×</button>
+        </div>
+        <div class="teacher-list">
+            {% for teacher in school_data.teachers %}
+            <div class="teacher-item">
+                <div class="teacher-info">
+                    <div class="teacher-name">
+                        {{ teacher.name }}
+                        {% if teacher.grade %}
+                        <span class="teacher-grade">Grade {{ teacher.grade }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="teacher-email">{{ teacher.email }}</div>
+                </div>
+                <div class="teacher-progress">
+                    <div class="progress-indicator">
+                        <div class="progress-bar">
+                            <div class="progress-fill {{ teacher.goal_status_class }}"
+                                style="width: {{ teacher.progress_percentage }}%"></div>
+                        </div>
+                        <div class="progress-text">{{ teacher.completed_sessions }}/{{ teacher.target_sessions }}</div>
+                    </div>
+                    <div class="goal-status {{ teacher.goal_status_class }}">
+                        {{ teacher.goal_status_text }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="no-data">
+        <h3>No Teachers Imported Yet</h3>
+        <p>Import your teacher roster to start tracking virtual session progress.</p>
+        <a href="{{ url_for('teacher_import.index') }}">
+            <i class="fas fa-upload"></i> Import Teachers
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function toggleSchoolDetail(schoolId) {
+        const detail = document.getElementById('school-detail-' + schoolId);
+        if (detail) {
+            if (detail.style.display === 'none') {
+                // Close all other details first
+                document.querySelectorAll('.school-detail').forEach(d => d.style.display = 'none');
+                detail.style.display = 'block';
+                detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                detail.style.display = 'none';
+            }
+        }
+    }
+</script>
+{% endblock %}
