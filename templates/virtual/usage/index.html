@@ -376,13 +376,13 @@
                 <a href="{{ url_for('virtual.virtual_usage') }}" class="reset-btn">Reset</a>
                 {# Admin buttons - ALWAYS visible to admins #}
                 {% if current_user.is_admin %}
-                <a href="{{ url_for('virtual.pathful_import') }}" class="export-btn"
-                    title="Import from Pathful" style="background: #7c4dff;">
+                <a href="{{ url_for('virtual.pathful_import') }}" class="export-btn" title="Import from Pathful"
+                    style="background: #7c4dff;">
                     <i class="fas fa-upload"></i> Pathful Import
                 </a>
-                <a href="{{ url_for('virtual.pathful_events') }}" class="export-btn"
-                    title="View Pathful events" style="background: #7c4dff;">
-                    <i class="fas fa-link"></i> Pathful Events
+                <a href="{{ url_for('virtual.pathful_import_history') }}" class="export-btn"
+                    title="View Pathful import history" style="background: #7c4dff;">
+                    <i class="fas fa-link"></i> Pathful History
                 </a>
                 <button type="button" class="export-btn new-session-btn" onclick="openCreateVirtualModal()">
                     + New Session

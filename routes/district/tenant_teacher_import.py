@@ -127,6 +127,18 @@ def index():
         .all()
     )
 
+    # Get schools for the tenant's district (for dropdown)
+    schools = []
+    if current_user.tenant_id:
+        from models.tenant import Tenant
+
+        tenant = Tenant.query.get(current_user.tenant_id)
+        if tenant and tenant.district:
+            schools = [s.name for s in tenant.district.schools.order_by("name").all()]
+
+    # Common grade options
+    grade_options = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+
     return render_template(
         "district/teacher_import/index.html",
         academic_year=academic_year,
@@ -134,6 +146,8 @@ def index():
         district_name=district_name,
         counts=counts,
         teachers=teachers,
+        schools=schools,
+        grade_options=grade_options,
     )
 
 
@@ -360,3 +374,73 @@ def download_template():
             "Content-Disposition": "attachment;filename=teacher_import_template.csv"
         },
     )
+
+
+@teacher_import_bp.route("/add", methods=["POST"])
+@login_required
+@virtual_admin_required
+def add_single_teacher():
+    """Add a single teacher via manual form entry."""
+    academic_year = request.form.get("academic_year", get_current_academic_year())
+    tenant_id = current_user.tenant_id
+    district_name = get_tenant_district_name()
+
+    # Get form fields
+    building = request.form.get("building", "").strip()
+    # Handle 'Other' option from dropdown
+    if building == "__other__":
+        building = request.form.get("building_other", "").strip()
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    grade = request.form.get("grade", "").strip() or None
+
+    # Validate required fields
+    errors = []
+    if not building:
+        errors.append("Building is required.")
+    if not name:
+        errors.append("Name is required.")
+    if not email:
+        errors.append("Email is required.")
+    elif "@" not in email:
+        errors.append("Please enter a valid email address.")
+
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return redirect(url_for("teacher_import.index", year=academic_year))
+
+    # Check for existing teacher with same email in this academic year
+    existing = TeacherProgress.query.filter_by(
+        email=email,
+        academic_year=academic_year,
+        tenant_id=tenant_id,
+    ).first()
+
+    if existing:
+        # Update existing teacher
+        existing.building = building
+        existing.name = name
+        existing.grade = grade
+        existing.is_active = True
+        db.session.commit()
+        flash(f"Updated existing teacher: {name}", "success")
+    else:
+        # Create new teacher
+        teacher = TeacherProgress(
+            academic_year=academic_year,
+            virtual_year=academic_year,
+            building=building,
+            name=name,
+            email=email,
+            grade=grade,
+            created_by=current_user.id,
+        )
+        teacher.tenant_id = tenant_id
+        teacher.district_name = district_name
+        teacher.is_active = True
+        db.session.add(teacher)
+        db.session.commit()
+        flash(f"Successfully added teacher: {name}", "success")
+
+    return redirect(url_for("teacher_import.index", year=academic_year))

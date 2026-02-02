@@ -483,6 +483,9 @@
                 <button class="import-tab" data-tab="google">
                     <i class="fab fa-google-drive"></i> Google Sheet
                 </button>
+                <button class="import-tab" data-tab="manual">
+                    <i class="fas fa-user-plus"></i> + Add Single
+                </button>
             </div>
 
             <!-- CSV Upload Tab -->
@@ -546,6 +549,50 @@
 
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-upload"></i> Import from Google Sheet
+                    </button>
+                </form>
+            </div>
+
+            <!-- Manual Single Teacher Tab -->
+            <div id="tab-manual" class="tab-content">
+                <div class="instructions">
+                    <h4><i class="fas fa-info-circle"></i> Add Single Teacher</h4>
+                    <p>Use this form to quickly add one or two teachers without preparing a file.</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('teacher_import.add_single_teacher') }}" id="manual-form">
+                    <input type="hidden" name="academic_year" value="{{ academic_year }}">
+
+                    <div class="form-group">
+                        <label for="building">Building / School <span style="color: #dc3545;">*</span></label>
+                        <input type="text" name="building" id="building" class="form-control" required
+                            placeholder="e.g., Lincoln Elementary">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="teacher_name">Teacher Name <span style="color: #dc3545;">*</span></label>
+                        <input type="text" name="name" id="teacher_name" class="form-control" required
+                            placeholder="e.g., John Smith">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="teacher_email">Email <span style="color: #dc3545;">*</span></label>
+                        <input type="email" name="email" id="teacher_email" class="form-control" required
+                            placeholder="e.g., john.smith@district.org">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="grade">Grade (optional)</label>
+                        <select name="grade" id="grade" class="form-control">
+                            <option value="">-- Select Grade --</option>
+                            {% for g in grade_options %}
+                            <option value="{{ g }}">{{ g }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Add Teacher
                     </button>
                 </form>
             </div>
