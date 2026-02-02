@@ -525,7 +525,7 @@ Template Variables:
         }
 
         try {
-            const response = await fetch('{{ url_for("virtual.magic_link_flag_issue", district_slug=district_slug) }}', {
+            const response = await fetch('{{ url_for("district.magic_link_flag_issue", slug=district_slug) }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

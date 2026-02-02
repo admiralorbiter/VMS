@@ -228,7 +228,7 @@ class MagicLink(db.Model):
             str: Full magic link URL
         """
         district = self.district_slug or "kck"
-        path = f"/virtual/{district}/teacher/verify/{self.token}"
+        path = f"/district/{district}/teacher/verify/{self.token}"
 
         if base_url:
             return f"{base_url.rstrip('/')}{path}"

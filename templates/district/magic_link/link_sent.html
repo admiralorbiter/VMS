@@ -145,11 +145,10 @@ Template Variables:
         </div>
 
         <div class="action-links">
-            <a href="{{ url_for('virtual.magic_link_request_form', district_slug=district_slug) }}"
-                class="secondary-btn">
+            <a href="{{ url_for('district.magic_link_request_form', slug=district_slug) }}" class="secondary-btn">
                 <i class="fas fa-redo"></i> Try Another Email
             </a>
-            <a href="{{ url_for('virtual.legacy_district_portal_landing', slug=district_slug) }}" class="primary-btn">
+            <a href="{{ url_for('district.portal_landing', slug=district_slug) }}" class="primary-btn">
                 <i class="fas fa-home"></i> Back to Portal
             </a>
         </div>

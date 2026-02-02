@@ -17,7 +17,7 @@
 | [Epic 7](#epic-7) | Reporting + Exports + Ad Hoc Queries | 5 |
 | [Epic 8](#epic-8) | Email System Management | 3 |
 | [Epic 9](#epic-9) | Data Tracker Features | 3 |
-| [Epic 10](#epic-10) | Tenant Management (District Suite) | 4 |
+| [Epic 10](#epic-10) | Tenant Management (District Suite) | 6 |
 | [Epic 11](#epic-11) | District Self-Service (District Suite) | 7 |
 | [Epic 12](#epic-12) | Public Event API (District Suite) | 2 |
 
@@ -827,6 +827,34 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given a user logs in, then they see navigation appropriate to their role and my tenant's enabled features.
 - Given a user with "User" role logs in, they see read-only dashboards and reports, but cannot modify data.
 
+### <a id="us-1005"></a>US-1005: Tenant admin imports teacher roster
+
+**As** a tenant administrator, **I want** to import my district's teacher roster, **So that** I can track teacher progress and enable teacher dashboard access.
+
+**Related Requirements:** [FR-TENANT-113](requirements#fr-tenant-113), [FR-TENANT-114](requirements#fr-tenant-114)
+
+**Related Use Cases:** [UC-14](use_cases#uc-14)
+
+**Acceptance Criteria:**
+
+- Given I am a tenant admin, when I access the Teacher Import page, then I can import teachers via CSV or Google Sheet URL.
+- Given I import a roster, then teachers are created with their school associations and email addresses.
+- Given a teacher already exists (by email), then their record is updated rather than duplicated.
+- Given the import completes, then I see a summary showing teachers created, updated, and any errors.
+
+### <a id="us-1006"></a>US-1006: Tenant admin views teacher usage dashboard
+
+**As** a tenant administrator, **I want** to view a dashboard showing how many virtual sessions each teacher has attended, **So that** I can monitor district-wide teacher engagement.
+
+**Related Requirements:** [FR-TENANT-115](requirements#fr-tenant-115), [FR-TENANT-116](requirements#fr-tenant-116), [FR-TENANT-117](requirements#fr-tenant-117)
+
+**Acceptance Criteria:**
+
+- Given I access the Teacher Usage Dashboard, then I see all teachers in my tenant with their session counts.
+- Given the dashboard displays, then teachers are grouped by building/school with aggregated totals.
+- Given I select a semester filter (Fall/Spring), then only sessions from that semester are counted.
+- Given I export the data, then I receive an Excel file with teacher names, schools, and session counts.
+
 [↑ Back to Quick Navigation](#quick-navigation)
 
 ---
@@ -964,5 +992,5 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.2*
+*Last updated: February 2026*
+*Version: 1.3*

@@ -6,7 +6,7 @@ Routes for Virtual Admin to view teacher progress/usage dashboard.
 Shows which teachers have completed their virtual session goals.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from functools import wraps
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
@@ -17,6 +17,15 @@ from models import db
 from models.teacher_progress import TeacherProgress
 from models.tenant import Tenant
 from models.user import TenantRole
+from services.academic_year_service import (
+    get_current_academic_year,
+    get_current_semester,
+    get_semester_dates,
+)
+from services.teacher_matching_service import (
+    build_teacher_alias_map,
+    count_sessions_for_teachers,
+)
 
 teacher_usage_bp = Blueprint(
     "teacher_usage", __name__, url_prefix="/district/teacher-usage"
@@ -56,20 +65,8 @@ def virtual_admin_required(f):
     return decorated_function
 
 
-def get_current_academic_year():
-    """Get current academic year based on date."""
-    today = datetime.now()
-    if today.month >= 8:
-        return f"{today.year}-{today.year + 1}"
-    return f"{today.year - 1}-{today.year}"
-
-
-def get_current_semester():
-    """Get current semester based on date (fall: Aug-Dec, spring: Jan-Jul)."""
-    today = datetime.now()
-    if today.month >= 8:
-        return "fall"
-    return "spring"
+# Note: get_current_academic_year and get_current_semester are imported from
+# services.academic_year_service
 
 
 def get_tenant_district_name():
@@ -114,39 +111,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         else:
             district_name = tenant.get_setting("linked_district_name")
 
-    if not district_name:
-        # Can't match without district - return empty progress
-        pass
-
-    # Build teacher name aliases for matching
-    # Keys are lowercase normalized names, values are teacher IDs
-    teacher_progress_map = {}  # teacher_id -> completed_count
-    teacher_alias_map = {}  # normalized_name -> teacher_id
-
-    for teacher in teachers:
-        teacher_progress_map[teacher.id] = 0
-
-        # Create name variations for matching
-        base_name = teacher.name.lower().strip()
-        normalized_name = base_name.replace("-", " ").replace(".", "").replace(",", "")
-
-        name_variations = [
-            base_name,
-            normalized_name,
-            base_name.replace(".", "").replace(",", "").strip(),
-        ]
-
-        # Add first + last name variation if different from stored name
-        parts = teacher.name.split()
-        if len(parts) > 1:
-            first_last = f"{parts[0]} {parts[-1]}".lower()
-            name_variations.append(first_last)
-            name_variations.append(first_last.replace("-", " "))
-
-        # Store aliases pointing to teacher id
-        for name_var in name_variations:
-            if name_var:
-                teacher_alias_map.setdefault(name_var, teacher.id)
+    # Build teacher name aliases using shared service
+    teacher_progress_map, teacher_alias_map = build_teacher_alias_map(teachers)
 
     # Query completed virtual sessions for this district
     events_query = Event.query.filter(
@@ -164,43 +130,10 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
 
     events = events_query.all()
 
-    # Match sessions to teachers using Event.educators field
-    for event in events:
-        if not event.educators:
-            continue
-
-        # Parse semicolon-separated educator names
-        educator_names = [
-            name.strip() for name in event.educators.split(";") if name.strip()
-        ]
-
-        for educator_name in educator_names:
-            educator_key = educator_name.lower().strip()
-            educator_key_normalized = (
-                educator_key.replace("-", " ").replace(".", "").replace(",", "")
-            )
-
-            # Try exact match first
-            teacher_id = teacher_alias_map.get(educator_key) or teacher_alias_map.get(
-                educator_key_normalized
-            )
-
-            if not teacher_id:
-                # Try flexible matching - look for partial matches
-                for name_key, alias_teacher_id in teacher_alias_map.items():
-                    name_key_normalized = name_key.replace("-", " ")
-                    # Check if either version matches (partial match)
-                    if (
-                        educator_key in name_key
-                        or name_key in educator_key
-                        or educator_key_normalized in name_key_normalized
-                        or name_key_normalized in educator_key_normalized
-                    ) and len(educator_key) > 3:
-                        teacher_id = alias_teacher_id
-                        break
-
-            if teacher_id and teacher_id in teacher_progress_map:
-                teacher_progress_map[teacher_id] += 1
+    # Match sessions to teachers using shared service
+    teacher_progress_map = count_sessions_for_teachers(
+        events, teacher_alias_map, teacher_progress_map
+    )
 
     # Aggregate by building
     building_data = {}
@@ -290,19 +223,8 @@ def index():
         sorted([y[0] for y in years], reverse=True) if years else [academic_year]
     )
 
-    # Calculate semester date range
-    # Academic year format: "2025-2026"
-    try:
-        start_year = int(academic_year.split("-")[0])
-    except (ValueError, IndexError):
-        start_year = datetime.now().year
-
-    if semester == "fall":
-        date_from = datetime(start_year, 8, 1)
-        date_to = datetime(start_year, 12, 31, 23, 59, 59)
-    else:  # spring
-        date_from = datetime(start_year + 1, 1, 1)
-        date_to = datetime(start_year + 1, 7, 31, 23, 59, 59)
+    # Calculate semester date range using shared service
+    date_from, date_to = get_semester_dates(academic_year, semester)
 
     # Compute progress data for this semester
     teacher_progress_data = compute_teacher_progress(
@@ -346,18 +268,8 @@ def export_excel():
         flash("No tenant assigned.", "error")
         return redirect(url_for("main.index"))
 
-    # Calculate semester date range
-    try:
-        start_year = int(academic_year.split("-")[0])
-    except (ValueError, IndexError):
-        start_year = datetime.now().year
-
-    if semester == "fall":
-        date_from = datetime(start_year, 8, 1)
-        date_to = datetime(start_year, 12, 31, 23, 59, 59)
-    else:  # spring
-        date_from = datetime(start_year + 1, 1, 1)
-        date_to = datetime(start_year + 1, 7, 31, 23, 59, 59)
+    # Calculate semester date range using shared service
+    date_from, date_to = get_semester_dates(academic_year, semester)
 
     # Get progress data
     teacher_progress_data = compute_teacher_progress(

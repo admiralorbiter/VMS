@@ -358,6 +358,16 @@ Each requirement links to:
 | <a id="fr-tenant-111"></a>**FR-TENANT-111** | Tenant user passwords shall be securely hashed using the same mechanism as Polaris users, with support for password reset via email. | [TC-1202](test-pack-8#tc-1202) | *Technical requirement* |
 | <a id="fr-tenant-112"></a>**FR-TENANT-112** | Tenant users shall see a navigation menu scoped to their tenant's enabled features, without access to Polaris administrative functions. | [TC-1216](test-pack-8#tc-1216)–[TC-1218](test-pack-8#tc-1218) | [US-1004](user_stories#us-1004) |
 
+### Tenant Teacher Management
+
+| ID | Requirement | Test Coverage | Related User Stories |
+|----|-------------|---------------|----------------------|
+| <a id="fr-tenant-113"></a>**FR-TENANT-113** | Tenant administrators shall be able to import teacher rosters via CSV file or Google Sheets URL with automatic school association. | *TBD* | [US-1005](user_stories#us-1005) |
+| <a id="fr-tenant-114"></a>**FR-TENANT-114** | Teacher roster import shall use upsert logic based on email address, updating existing records and creating new ones. | *TBD* | [US-1005](user_stories#us-1005) |
+| <a id="fr-tenant-115"></a>**FR-TENANT-115** | Tenant administrators shall be able to view a teacher usage dashboard showing virtual session counts per teacher, grouped by building. | *TBD* | [US-1006](user_stories#us-1006) |
+| <a id="fr-tenant-116"></a>**FR-TENANT-116** | The teacher usage dashboard shall support filtering by academic semester (Fall: Aug-Dec, Spring: Jan-May). | *TBD* | [US-1006](user_stories#us-1006) |
+| <a id="fr-tenant-117"></a>**FR-TENANT-117** | The teacher usage dashboard shall support Excel export with teacher names, schools, and session counts. | *TBD* | [US-1006](user_stories#us-1006) |
+
 ---
 
 
@@ -509,6 +519,8 @@ This section provides a comprehensive view of the relationships between Function
 | FR-TENANT-108 | [US-1003](user_stories#us-1003) | PrepKC admin creates tenant users |
 | FR-TENANT-109, 110, 112 | [US-1004](user_stories#us-1004) | Tenant admin manages users |
 | FR-TENANT-103, 104, 106, 107, 111 | *Technical requirements* | Tenant isolation, feature flags, security |
+| FR-TENANT-113, 114 | [US-1005](user_stories#us-1005) | Tenant teacher roster import |
+| FR-TENANT-115, 116, 117 | [US-1006](user_stories#us-1006) | Tenant teacher usage dashboard |
 | **District Self-Service (District Suite)** | | |
 | FR-SELFSERV-201, 202, 203 | [US-1101](user_stories#us-1101) | District event management |
 | FR-SELFSERV-204, 205 | [US-1102](user_stories#us-1102) | Event calendar and list views |
@@ -525,9 +537,9 @@ This section provides a comprehensive view of the relationships between Function
 
 ### Coverage Summary
 
-- **Total FRs**: 134 (101 existing + 33 District Suite)
-- **FRs with User Stories**: 66 (49%)
-- **Technical/Infrastructure FRs** (appropriately without US): 68 (51%)
+- **Total FRs**: 139 (101 existing + 33 District Suite + 5 Tenant Teacher Management)
+- **FRs with User Stories**: 71 (51%)
+- **Technical/Infrastructure FRs** (appropriately without US): 68 (49%)
 - **New Requirements Added (District Suite)**:
   - Tenant Infrastructure: FR-TENANT-101 through 112 (12 requirements)
   - District Self-Service: FR-SELFSERV-201 through 503 (15 requirements)
@@ -584,6 +596,8 @@ This section provides a comprehensive view of the relationships between Function
 | US-1002 | FR-TENANT-105 |
 | US-1003 | FR-TENANT-108 |
 | US-1004 | FR-TENANT-109, 110, 112 |
+| US-1005 | FR-TENANT-113, 114 |
+| US-1006 | FR-TENANT-115, 116, 117 |
 | US-1101 | FR-SELFSERV-201, 202, 203 |
 | US-1102 | FR-SELFSERV-204, 205 |
 | US-1103 | FR-SELFSERV-301, 302, 303 |
@@ -596,5 +610,5 @@ This section provides a comprehensive view of the relationships between Function
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: February 2026*
+*Version: 1.1*

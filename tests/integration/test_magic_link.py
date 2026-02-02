@@ -205,7 +205,7 @@ class TestMagicLinkModel:
             db.session.commit()
 
             url = magic_link.get_url("https://example.com")
-            assert url.startswith("https://example.com/virtual/kck/teacher/verify/")
+            assert url.startswith("https://example.com/district/kck/teacher/verify/")
             assert magic_link.token in url
 
 
@@ -238,7 +238,7 @@ class TestMagicLinkRoutes:
 
     def test_request_link_page_loads(self, client, app, db_session):
         """Test that request link page loads."""
-        response = client.get("/virtual/kck/teacher/request-link")
+        response = client.get("/district/kck/teacher/request-link")
         assert response.status_code == 200
         assert b"Request Access" in response.data or b"email" in response.data.lower()
 
@@ -257,9 +257,9 @@ class TestMagicLinkRoutes:
             db.session.commit()
 
         # Submit request
-        with patch("routes.virtual.magic_link._send_magic_link_email") as mock_send:
+        with patch("routes.district.magic_link._send_magic_link_email") as mock_send:
             response = client.post(
-                "/virtual/kck/teacher/request-link",
+                "/district/kck/teacher/request-link",
                 data={"email": "alice.teacher@kckps.org"},
                 follow_redirects=True,
             )
@@ -277,9 +277,9 @@ class TestMagicLinkRoutes:
 
     def test_request_link_unknown_email_generic_response(self, client, app, db_session):
         """TC-021: Request for unknown email shows generic response."""
-        with patch("routes.virtual.magic_link._send_magic_link_email") as mock_send:
+        with patch("routes.district.magic_link._send_magic_link_email") as mock_send:
             response = client.post(
-                "/virtual/kck/teacher/request-link",
+                "/district/kck/teacher/request-link",
                 data={"email": "unknown.person@example.com"},
                 follow_redirects=True,
             )
@@ -316,7 +316,7 @@ class TestMagicLinkRoutes:
             token = magic_link.token
 
         # Access via magic link
-        response = client.get(f"/virtual/kck/teacher/verify/{token}")
+        response = client.get(f"/district/kck/teacher/verify/{token}")
         assert response.status_code == 200
         assert b"Bob Teacher" in response.data
         assert b"Banneker Elementary" in response.data
@@ -324,7 +324,7 @@ class TestMagicLinkRoutes:
     def test_verify_invalid_token(self, client, app, db_session):
         """TC-024: Invalid token is rejected."""
         response = client.get(
-            "/virtual/kck/teacher/verify/invalid-token-12345",
+            "/district/kck/teacher/verify/invalid-token-12345",
             follow_redirects=True,
         )
         # Should redirect to request page with error
@@ -354,7 +354,7 @@ class TestMagicLinkRoutes:
 
         # Submit flag
         response = client.post(
-            "/virtual/kck/teacher/flag-issue",
+            "/district/kck/teacher/flag-issue",
             json={
                 "token": token,
                 "issue_type": "session-data",
@@ -372,7 +372,7 @@ class TestMagicLinkRoutes:
     def test_flag_issue_invalid_token(self, client, app, db_session):
         """Test that flag submission with invalid token fails."""
         response = client.post(
-            "/virtual/kck/teacher/flag-issue",
+            "/district/kck/teacher/flag-issue",
             json={
                 "token": "invalid-token",
                 "issue_type": "personal-info",

@@ -191,7 +191,7 @@ class TestTenantPortalAccess:
 
     def test_active_tenant_portal_works(self, client, test_tenant):
         """Test active tenant portal is accessible"""
-        response = client.get(f"/virtual/{test_tenant.slug}")
+        response = client.get(f"/district/{test_tenant.slug}/portal")
 
         # Should load or show template (not 404)
         # Note: May require login or show landing
@@ -199,14 +199,14 @@ class TestTenantPortalAccess:
 
     def test_inactive_tenant_portal_404(self, client, inactive_tenant):
         """TC-831: Deactivated tenant portal returns 404"""
-        response = client.get(f"/virtual/{inactive_tenant.slug}")
+        response = client.get(f"/district/{inactive_tenant.slug}/portal")
 
         # Should return 404 for inactive tenant
         assert response.status_code == 404
 
     def test_nonexistent_tenant_portal_404(self, client):
         """Test nonexistent tenant portal returns 404"""
-        response = client.get("/virtual/nonexistent-tenant-slug")
+        response = client.get("/district/nonexistent-tenant-slug/portal")
 
         # Should return 404
         assert response.status_code == 404

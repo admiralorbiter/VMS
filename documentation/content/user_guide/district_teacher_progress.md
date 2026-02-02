@@ -64,5 +64,14 @@ This guide addresses the following scopes:
 
 | Component | Items |
 |---|---|
-| **User Stories** | [US-501](user_stories#us-501), [US-502](user_stories#us-502), [US-503](user_stories#us-503), [US-504](user_stories#us-504), [US-505](user_stories#us-505) |
-| **Requirements** | [FR-DISTRICT-501](requirements#fr-district-501) through [FR-DISTRICT-524](requirements#fr-district-524) |
+| **User Stories** | [US-501](user_stories#us-501)–[US-505](user_stories#us-505), [US-1005](user_stories#us-1005), [US-1006](user_stories#us-1006) |
+| **Requirements** | [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-524](requirements#fr-district-524), [FR-TENANT-113](requirements#fr-tenant-113)–[FR-TENANT-117](requirements#fr-tenant-117) |
+
+---
+
+> [!TIP]
+> **Tenant Administrators**: For tenant-scoped teacher management (roster import and usage dashboards), see [Tenant Management Guide](tenant_management#teacher-roster-import).
+
+---
+
+*Last updated: February 2026*

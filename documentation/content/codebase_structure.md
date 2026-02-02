@@ -101,6 +101,8 @@ Flask blueprints organized by feature domain. Each subdirectory contains a `rout
 | `email/` | `email_bp` | Email templates and sending |
 | `bug_reports/` | `bug_reports_bp` | Issue reporting |
 | `client_projects/` | `client_projects_bp` | Client-connected projects |
+| `district/` | `district_bp` | Tenant teacher import, usage dashboard, magic links |
+| `tenants/` | `tenants_bp` | Tenant management (PrepKC admin) |
 | `quality/` | `quality_bp` | Data quality dashboards |
 
 ### Key Files in `routes/`
@@ -168,7 +170,18 @@ Shared utility modules used across the application.
 | `validation_base.py` | Base validation framework |
 | `validation_engine.py` | Data validation engine |
 | `validators/` | Field-level validators (email, phone, etc.) |
-| `services/` | Service layer classes |
+
+---
+
+## Services (`services/`)
+
+Service layer modules for business logic and shared utilities.
+
+| File | Purpose |
+|------|---------|
+| `teacher_import_service.py` | Teacher roster import logic (CSV/Google Sheets) |
+| `academic_year_service.py` | Academic year, semester, and date range calculations |
+| `teacher_matching_service.py` | Teacher name matching and session counting |
 
 ---
 
@@ -315,4 +328,4 @@ def admin_page():
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*

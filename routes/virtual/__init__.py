@@ -14,3 +14,6 @@ from routes.virtual.usage import load_usage_routes
 
 # Register usage routes with the virtual blueprint
 load_usage_routes()
+
+# Register district issue reporting routes
+from routes.virtual import issues  # noqa: F401, E402
