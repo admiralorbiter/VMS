@@ -243,52 +243,69 @@ Updated render_template() paths in:
 
 ---
 
-## Phase D-3: District Admin Access
+## Phase D-3: District Admin Access ✅ (2026-02-02)
 
-### D-3.1 Role Setup
+### D-3.1 Role Setup ✅
 
-- [ ] Add `district_admin` to role enum (if not exists)
-- [ ] Verify role hierarchy: admin > user > district_admin > district_viewer
-- [ ] Create test user with district_admin role
+- [x] Use existing `TenantRole.ADMIN` (no new role needed)
+  - Tenant users with `tenant_role = 'admin'` are district admins
+- [x] Role hierarchy: Staff > TenantRole.ADMIN > TenantRole.COORDINATOR > TenantRole.USER
+- [x] Test users can be created via tenant user management
 
-### D-3.2 Scoping Helpers
+### D-3.2 Scoping Helpers ✅
 
-- [ ] Create `get_user_district_ids(user)` helper
-- [ ] Create `get_user_school_ids(user)` helper
-- [ ] Create `scope_events_for_user(query, user)` helper
-- [ ] Create `can_edit_event(user, event)` helper
+Created `services/scoping.py` with:
+- [x] `get_user_district_name(user)` - gets tenant's linked district name
+- [x] `is_tenant_user(user)` - check if user is tenant-scoped
+- [x] `is_staff_user(user)` - check if user is PrepKC staff
+- [x] `can_view_event(user, event)` - view permission check
+- [x] `can_edit_event(user, event)` - edit permission check
+- [x] `get_editable_fields(user, event)` - field-level restrictions
+- [x] `scope_events_query(query, user)` - apply district filter to event queries
+- [x] `scope_flags_query(query, user)` - apply district filter to flag queries
 
-### D-3.3 Event List Scoping
+### D-3.3 Event List Scoping ✅
 
-- [ ] Update `/virtual/pathful/events` route
-  - [ ] Apply `scope_events_for_user()` to query
-- [ ] Verify district admin sees only their schools' events
-- [ ] Verify staff still sees all events
+- [x] Update `/virtual/sessions` route (`pathful_import.py`)
+  - [x] Added `admin_or_tenant_required` decorator
+  - [x] Apply `scope_events_query()` to main query
+  - [x] Scope summary stats for tenant users
+  - [x] Pass `is_tenant_user` and `user_district` to template
+- [x] Tenant admins see only their district's events
+- [x] Staff users see all events (unchanged)
 
-### D-3.4 Event Edit Permissions
+### D-3.4 Event Edit Permissions ✅
 
-- [ ] Update event edit route
-  - [ ] Check `can_edit_event()` before allowing edit
-  - [ ] Return 403 if not authorized
-- [ ] Hide edit buttons in UI for unauthorized events
-- [ ] Implement field-level restrictions:
-  - [ ] District admin CAN: tag teachers, tag presenters, set cancellation reason, Draft→Cancelled
-  - [ ] District admin CANNOT: edit title, date, student counts, other status changes
+- [x] Update event edit route (`routes/events/routes.py`)
+  - [x] Removed `@global_users_only` decorator
+  - [x] Added `can_edit_event()` permission check
+  - [x] Returns 403 if not authorized
+  - [x] Passes `editable_fields` to template
+- [x] Field-level restrictions implemented:
+  - [x] Tenant admin CAN: cancellation_reason, cancellation_notes, educators, professionals, status
+  - [x] Tenant admin CANNOT: title, dates, student counts, other core fields
+- [x] Edit template (`events/edit.html`) updated:
+  - [x] Added tenant notice banner
+  - [x] JavaScript disables non-editable fields
 
-### D-3.5 Flag Queue Scoping
+### D-3.5 Flag Queue Scoping ✅
 
-- [ ] Update `/virtual/flags` route
-  - [ ] If district_admin, filter to their schools' flags only
-- [ ] Verify district admin sees only their flags
-- [ ] Verify staff still sees all flags
+- [x] Update `/virtual/flags` route (`pathful_import.py`)
+  - [x] Changed from `@admin_required` to `@admin_or_tenant_required`
+  - [x] Filter query by `user_district` for tenant users
+  - [x] Scope flag summary stats
+  - [x] Pass tenant context to template
+- [x] Tenant admins see only their district's flags
+- [x] Staff users see all flags (unchanged)
 
-### D-3.6 UI Adjustments
+### D-3.6 UI Adjustments ✅
 
-- [ ] Add "My District" label/badge for district admin users
-- [ ] Show district filter (pre-selected for district admins)
-- [ ] Disable/hide fields district admin can't edit
+- [x] Added district badge in `sessions.html` header for tenant users
+- [x] District filter pre-selected for tenant users
+- [x] Disabled fields styled with gray background and "not-allowed" cursor
+- [x] Tenant users see "Review Flags" button (no Import button)
 
-**Checkpoint: District admins can edit their schools' events only**
+**Checkpoint: District admins can manage their schools' virtual session data** ✅
 
 ---
 

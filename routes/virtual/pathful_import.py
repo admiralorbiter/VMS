@@ -53,7 +53,15 @@ from models.pathful_import import (
 from models.school_model import School
 from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
+from models.user import TenantRole
 from models.volunteer import Volunteer
+from services.scoping import (
+    get_user_district_name,
+    is_staff_user,
+    is_tenant_user,
+    scope_events_query,
+    scope_flags_query,
+)
 
 # Constants
 REQUIRED_SESSION_COLUMNS = [
@@ -93,6 +101,37 @@ def admin_required(f):
             flash("Admin access required for Pathful imports.", "error")
             return redirect(url_for("index"))
         return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def admin_or_tenant_required(f):
+    """
+    Decorator to allow access for admins OR tenant admins/coordinators.
+
+    Phase D-3: District Admin Access (DEC-009)
+    """
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for("login"))
+
+        # Allow staff/admin users
+        if is_staff_user(current_user):
+            return f(*args, **kwargs)
+
+        # Allow tenant admin/coordinator
+        if is_tenant_user(current_user):
+            if current_user.tenant_role in [
+                TenantRole.ADMIN,
+                TenantRole.COORDINATOR,
+                TenantRole.VIRTUAL_ADMIN,
+            ]:
+                return f(*args, **kwargs)
+
+        flash("You do not have permission to access this page.", "error")
+        return redirect(url_for("index"))
 
     return decorated_function
 
@@ -1699,14 +1738,23 @@ def load_pathful_routes():
 
     @virtual_bp.route("/sessions")
     @login_required
+    @admin_or_tenant_required
     def virtual_sessions():
         """
         Simplified Virtual Sessions view.
 
         This replaces the complex /usage route with a clean, direct query
         of Pathful-imported virtual session data.
+
+        Phase D-3: District Admin Access (DEC-009)
+        - Staff/admin users see all sessions
+        - Tenant users see only their district's sessions
         """
         from datetime import datetime
+
+        # Determine user's district for scoping (Phase D-3)
+        user_district = get_user_district_name(current_user)
+        is_tenant = is_tenant_user(current_user)
 
         # Get filter parameters
         page = request.args.get("page", 1, type=int)
@@ -1756,6 +1804,9 @@ def load_pathful_routes():
             Event.start_date >= date_from,
             Event.start_date <= date_to,
         )
+
+        # Phase D-3: Apply tenant scoping for district admins
+        query = scope_events_query(query, current_user)
 
         # Apply filters
         if career_cluster:
@@ -1809,21 +1860,24 @@ def load_pathful_routes():
         )
         career_clusters = [c[0] for c in career_clusters]
 
-        # Get summary stats
-        total_sessions = Event.query.filter(
+        # Get summary stats (scoped for tenant users)
+        stats_query = Event.query.filter(
             Event.type == EventType.VIRTUAL_SESSION,
             Event.start_date >= date_from,
             Event.start_date <= date_to,
-        ).count()
+        )
+        stats_query = scope_events_query(stats_query, current_user)
+        total_sessions = stats_query.count()
 
         total_students = (
-            db.session.query(func.sum(Event.registered_student_count))
-            .filter(
-                Event.type == EventType.VIRTUAL_SESSION,
-                Event.start_date >= date_from,
-                Event.start_date <= date_to,
-            )
-            .scalar()
+            scope_events_query(
+                db.session.query(func.sum(Event.registered_student_count)).filter(
+                    Event.type == EventType.VIRTUAL_SESSION,
+                    Event.start_date >= date_from,
+                    Event.start_date <= date_to,
+                ),
+                current_user,
+            ).scalar()
             or 0
         )
 
@@ -1852,10 +1906,15 @@ def load_pathful_routes():
                 "date_from": date_from.strftime("%Y-%m-%d"),
                 "date_to": date_to.strftime("%Y-%m-%d"),
                 "career_cluster": career_cluster,
-                "district": district,
+                "district": district
+                or user_district
+                or "",  # Pre-select for tenant users
                 "status": status,
                 "search": search,
             },
+            # Phase D-3: Tenant context for UI adjustments
+            is_tenant_user=is_tenant,
+            user_district=user_district,
         )
 
     # =========================================================================
@@ -1864,15 +1923,23 @@ def load_pathful_routes():
 
     @virtual_bp.route("/flags")
     @login_required
-    @admin_required
+    @admin_or_tenant_required
     def flag_queue():
         """
         Display the flag queue for reviewing event issues.
 
         Supports filtering by flag type, district, and resolution status.
+
+        Phase D-3: District Admin Access (DEC-009)
+        - Staff/admin users see all flags
+        - Tenant users see only their district's flags
         """
         from models.event_flag import EventFlag, FlagType
         from services.flag_scanner import get_flag_summary
+
+        # Determine user's district for scoping (Phase D-3)
+        user_district = get_user_district_name(current_user)
+        is_tenant = is_tenant_user(current_user)
 
         # Get filter parameters
         flag_type = request.args.get("type", "")
@@ -1883,6 +1950,10 @@ def load_pathful_routes():
 
         # Build query
         query = db.session.query(EventFlag).join(Event)
+
+        # Phase D-3: Apply tenant scoping for district admins
+        if is_tenant and user_district:
+            query = query.filter(Event.district_partner == user_district)
 
         if not show_resolved:
             query = query.filter(EventFlag.is_resolved == False)
@@ -1899,22 +1970,26 @@ def load_pathful_routes():
         # Paginate
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
-        # Get summary for sidebar
-        summary = get_flag_summary()
+        # Get summary for sidebar (scoped for tenant users)
+        summary = get_flag_summary(district_id=user_district if is_tenant else None)
 
         # Get unique districts for filter dropdown
-        districts = (
-            db.session.query(Event.district_partner)
-            .filter(
-                Event.type == EventType.VIRTUAL_SESSION,
-                Event.district_partner.isnot(None),
-                Event.district_partner != "",
+        # For tenant users, only show their district
+        if is_tenant and user_district:
+            districts = [user_district]
+        else:
+            districts = (
+                db.session.query(Event.district_partner)
+                .filter(
+                    Event.type == EventType.VIRTUAL_SESSION,
+                    Event.district_partner.isnot(None),
+                    Event.district_partner != "",
+                )
+                .distinct()
+                .order_by(Event.district_partner)
+                .all()
             )
-            .distinct()
-            .order_by(Event.district_partner)
-            .all()
-        )
-        districts = [d[0] for d in districts]
+            districts = [d[0] for d in districts]
 
         return render_template(
             "virtual/pathful/flags.html",
@@ -1924,9 +1999,14 @@ def load_pathful_routes():
             districts=districts,
             filters={
                 "type": flag_type,
-                "district": district,
+                "district": district
+                or user_district
+                or "",  # Pre-select for tenant users
                 "resolved": show_resolved,
             },
+            # Phase D-3: Tenant context for UI adjustments
+            is_tenant_user=is_tenant,
+            user_district=user_district,
         )
 
     @virtual_bp.route("/flags/<int:flag_id>/resolve", methods=["POST"])

@@ -16,7 +16,15 @@
 <div
     style="padding: 20px 30px; background: linear-gradient(180deg, #e8f4f8 0%, #f5f7fa 100%); min-height: calc(100vh - 60px);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h1 style="color: #2c3e50; margin: 0; font-size: 1.8em;">Virtual Sessions</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <h1 style="color: #2c3e50; margin: 0; font-size: 1.8em;">Virtual Sessions</h1>
+            {% if is_tenant_user is defined and is_tenant_user and user_district %}
+            <span
+                style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85em; font-weight: 600;">
+                <i class="fa-solid fa-building-flag"></i> {{ user_district }}
+            </span>
+            {% endif %}
+        </div>
         {% if current_user.is_admin %}
         <div style="display: flex; gap: 10px;">
             <a href="{{ url_for('virtual.flag_queue') }}"

@@ -35,6 +35,30 @@ Security: CSRF token included for POST request protection
 {% endblock %}
 
 {% block content %}
+
+{# Phase D-3: Define macro for field editability check #}
+{% macro can_edit(field_name) %}
+{%- if editable_fields is defined and editable_fields != ['all'] -%}
+{%- if field_name in editable_fields -%}true{%- else -%}false{%- endif -%}
+{%- else -%}true{%- endif -%}
+{% endmacro %}
+
+{# Phase D-3: District Admin Notice Banner #}
+{% if is_tenant_user is defined and is_tenant_user %}
+<div
+    style="background: linear-gradient(135deg, #e0f2fe 0%, #bfdbfe 100%); border: 2px solid #3b82f6; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <i class="fa-solid fa-shield-halved" style="font-size: 1.5em; color: #1d4ed8;"></i>
+        <div>
+            <strong style="color: #1d4ed8;">District Admin Access</strong>
+            <p style="margin: 4px 0 0 0; color: #1e40af; font-size: 0.9em;">
+                You can edit cancellation details for your district's events. Other fields are managed by PrepKC staff.
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="events-container">
     {# Header section with title and navigation actions #}
     <div class="events-header">
@@ -268,6 +292,50 @@ Security: CSRF token included for POST request protection
         // Listen for changes
         if (statusField) statusField.addEventListener('change', toggleCancellationSection);
         if (reasonField) reasonField.addEventListener('change', toggleNotesRequired);
+
+        // Phase D-3: Apply field restrictions for tenant users
+        {% if is_tenant_user is defined and is_tenant_user and editable_fields is defined and editable_fields != ['all'] %}
+        const editableFields = {{ editable_fields | tojson
+    }};
+    const allFormInputs = document.querySelectorAll('.event-form input, .event-form select, .event-form textarea');
+    const disabledInputs = [];
+
+    allFormInputs.forEach(function (input) {
+        const fieldName = input.name;
+        // Skip CSRF token, submit buttons, and hidden inputs
+        if (fieldName === 'csrf_token') return;
+        if (input.type === 'submit' || input.type === 'button' || input.type === 'hidden') return;
+
+        // Check if field is editable
+        if (!editableFields.includes(fieldName) && fieldName) {
+            input.disabled = true;
+            input.style.backgroundColor = '#f3f4f6';
+            input.style.cursor = 'not-allowed';
+            input.title = 'This field is managed by PrepKC staff';
+            disabledInputs.push(input);
+        }
+    });
+
+    // Add visual indicator to disabled field groups
+    document.querySelectorAll('.event-form input:disabled, .event-form select:disabled').forEach(function (input) {
+        const formGroup = input.closest('.form-group');
+        if (formGroup) {
+            formGroup.style.opacity = '0.7';
+        }
+    });
+
+    // IMPORTANT: Re-enable disabled fields before form submission
+    // Disabled fields don't submit their values, so we need to enable them first
+    const form = document.querySelector('.event-form');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            // Re-enable all the fields we disabled so their values are submitted
+            disabledInputs.forEach(function (input) {
+                input.disabled = false;
+            });
+        });
+    }
+    {% endif %}
     });
 </script>
 {% endblock %}

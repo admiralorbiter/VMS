@@ -77,6 +77,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
+from services.scoping import can_edit_event, get_editable_fields, is_tenant_user
 from utils.cache_refresh_scheduler import refresh_all_caches
 
 
@@ -873,7 +874,6 @@ def view_event(id):
 
 @events_bp.route("/events/edit/<int:id>", methods=["GET", "POST"])
 @login_required
-@global_users_only
 def edit_event(id):
     """
     Edit an existing event
@@ -890,12 +890,25 @@ def edit_event(id):
 
     Raises:
         404: If event not found
+        403: If user doesn't have permission to edit this event
+
+    Phase D-3: District Admin Access (DEC-009)
+    - Staff/admin users can edit all events (all fields)
+    - Tenant admins can edit their district's events (restricted fields)
     """
     from models.event import CancellationReason
 
     event = db.session.get(Event, id)
     if not event:
         abort(404)
+
+    # Phase D-3: Check if user can edit this event
+    if not can_edit_event(current_user, event):
+        flash("You do not have permission to edit this event.", "error")
+        abort(403)
+
+    # Get list of editable fields for this user/event
+    editable_fields = get_editable_fields(current_user, event)
 
     form = EventForm()
 
@@ -968,7 +981,14 @@ def edit_event(id):
                 for error in errors:
                     flash(f"{field}: {error}", "danger")
 
-    return render_template("events/edit.html", event=event, form=form)
+    return render_template(
+        "events/edit.html",
+        event=event,
+        form=form,
+        # Phase D-3: Field-level restrictions for tenant users
+        editable_fields=editable_fields,
+        is_tenant_user=is_tenant_user(current_user),
+    )
 
 
 @events_bp.route("/events/purge", methods=["POST"])
