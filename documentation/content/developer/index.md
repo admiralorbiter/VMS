@@ -270,6 +270,7 @@ flask run --port 5051
 
 ### Resources
 
+- [Development Status Tracker](development-status-tracker) — FR-by-FR implementation status
 - [Codebase Structure](codebase-structure) — Detailed code organization
 - [CLI Reference](cli-reference) — Common commands
 - [Architecture](architecture) — System design
