@@ -58,12 +58,32 @@
 
 ---
 
+## Delta Sync (Incremental Import)
+
+| ID | Requirement | Test Coverage | Related Stories |
+|----|-------------|---------------|-----------------|
+| <a id="fr-delta-001"></a>**FR-DELTA-001** | The system shall provide a reusable `DeltaSyncHelper` service for managing incremental sync operations across all Salesforce imports. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-002"></a>**FR-DELTA-002** | The `sync_logs` table shall store `last_sync_watermark` (timestamp) and `is_delta_sync` (boolean) fields to track incremental sync state. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-003"></a>**FR-DELTA-003** | Event and participant imports shall support delta sync via `?delta=true` query parameter, querying only records where `LastModifiedDate > watermark`. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-004"></a>**FR-DELTA-004** | Volunteer imports shall support delta sync, fetching only volunteers modified since the last successful sync. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-005"></a>**FR-DELTA-005** | History imports (Tasks, EmailMessages) shall support delta sync for incremental communication history updates. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-006"></a>**FR-DELTA-006** | School and District imports shall support delta sync for incremental organizational data updates. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-007"></a>**FR-DELTA-007** | Teacher imports shall support delta sync, fetching only teachers modified since the last successful sync. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-008"></a>**FR-DELTA-008** | Student imports shall support delta sync within chunked processing, maintaining watermark tracking across chunks. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-009"></a>**FR-DELTA-009** | Organization imports shall support delta sync for incremental organization data updates. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-010"></a>**FR-DELTA-010** | Student participant syncs shall support delta sync for incremental participation record updates. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-011"></a>**FR-DELTA-011** | Delta sync shall apply a configurable safety buffer (default: 1 hour) to the watermark to prevent missing records modified during previous sync. | *Feb 2026* | *Technical* |
+| <a id="fr-delta-012"></a>**FR-DELTA-012** | If no previous watermark exists for a sync type, the system shall automatically fall back to a full sync. | *Feb 2026* | *Technical* |
+
+---
+
 ## Related Documentation
 
 - [Requirements Overview](requirements) — Summary and traceability matrix
 - [Deployment Guide](deployment) — Operational procedures
 - [Runbook](runbook) — Troubleshooting
+- [Import Playbook](import_playbook) — Delta sync usage guide
 
 ---
 
-*Last updated: February 2026 · Version 1.0*
+*Last updated: February 2026 · Version 2.0* — Added Delta Sync requirements

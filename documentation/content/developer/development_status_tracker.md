@@ -1,7 +1,7 @@
 # VMS Development Status Tracker
 
 **Last Updated:** February 2026  
-**Total Functional Requirements:** ~178
+**Total Functional Requirements:** ~188
 
 ---
 
@@ -28,7 +28,7 @@
 | [District Progress](#district-progress) | 18 | 9 | 0 | 8 | 1 |
 | [Student Roster](#student-roster) | 5 | 4 | 0 | 0 | 1 |
 | [Email System](#email-system) | 22 | 0 | 0 | 22 | 0 |
-| [Data & Operations](#data--operations) | 25 | 25 | 0 | 0 | 0 |
+| [Data & Operations](#data--operations) | 35 | 35 | 0 | 0 | 0 |
 | [District Suite](#district-suite) | 40 | 34 | 0 | 3 | 3 |
 
 ---
@@ -406,6 +406,21 @@
 | FR-INPERSON-125 | Log failed operations | ✅ | TC-201 |
 | FR-INPERSON-130 | Visibility into data completeness | ✅ | TC-200 |
 | FR-INPERSON-131 | Sync status indicators | ✅ | TC-220 |
+
+### Delta Sync (Incremental Import)
+
+| ID | Requirement | Status | Notes |
+|----|-------------|--------|-------|
+| FR-DELTA-001 | Delta sync service (`DeltaSyncHelper`) | ✅ | Feb 2026 |
+| FR-DELTA-002 | Watermark tracking in `sync_logs` | ✅ | Feb 2026 |
+| FR-DELTA-003 | Events delta sync | ✅ | Feb 2026 |
+| FR-DELTA-004 | Volunteers delta sync | ✅ | Feb 2026 |
+| FR-DELTA-005 | History delta sync | ✅ | Feb 2026 |
+| FR-DELTA-006 | Schools/Districts delta sync | ✅ | Feb 2026 |
+| FR-DELTA-007 | Teachers delta sync | ✅ | Feb 2026 |
+| FR-DELTA-008 | Students delta sync | ✅ | Feb 2026 |
+| FR-DELTA-009 | Organizations delta sync | ✅ | Feb 2026 |
+| FR-DELTA-010 | Student participants delta sync | ✅ | Feb 2026 |
 
 ---
 

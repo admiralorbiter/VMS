@@ -113,7 +113,24 @@ def import_teachers_from_salesforce():
         JSON response with import results and any errors
     """
     try:
-        print("Starting teacher import from Salesforce...")
+        from datetime import datetime, timezone as tz
+        started_at = datetime.now(tz.utc)
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('teachers')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching teachers modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Starting teacher import from Salesforce (FULL SYNC)...")
+        
         success_count = 0
         error_count = 0
         errors = []
@@ -126,14 +143,19 @@ def import_teachers_from_salesforce():
             domain="login",
         )
 
-        # Query for teachers with specific fields
+        # Query for teachers with specific fields and LastModifiedDate
         teacher_query = """
         SELECT Id, AccountId, FirstName, LastName, Email,
                npsp__Primary_Affiliation__c, Department, Gender__c,
-               Phone, Last_Email_Message__c, Last_Mailchimp_Email_Date__c
+               Phone, Last_Email_Message__c, Last_Mailchimp_Email_Date__c,
+               LastModifiedDate
         FROM Contact
         WHERE Contact_Type__c = 'Teacher'
         """
+        
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            teacher_query += delta_helper.build_date_filter(watermark)
 
         # Execute query and get results
         result = sf.query_all(teacher_query)
@@ -191,12 +213,35 @@ def import_teachers_from_salesforce():
             for error in errors:
                 print(f"  - {error}")
 
+        # Record sync log for delta sync tracking
+        try:
+            from models.sync_log import SyncLog, SyncStatus
+            sync_status = SyncStatus.SUCCESS.value
+            if error_count > 0:
+                sync_status = SyncStatus.PARTIAL.value if success_count > 0 else SyncStatus.FAILED.value
+            
+            sync_log = SyncLog(
+                sync_type="teachers",
+                started_at=started_at,
+                completed_at=datetime.now(tz.utc),
+                status=sync_status,
+                records_processed=success_count,
+                records_failed=error_count,
+                is_delta_sync=is_delta,
+                last_sync_watermark=datetime.now(tz.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record sync log: {log_e}")
+
         return jsonify(
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} teachers with {error_count} errors",
                 "processed_count": success_count,
                 "error_count": error_count,
+                "is_delta_sync": is_delta,
                 "errors": errors,
             }
         )

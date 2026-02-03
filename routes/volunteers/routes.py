@@ -1143,9 +1143,25 @@ def import_from_salesforce():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting volunteer import from Salesforce...")
+        from datetime import timezone as tz
+        started_at = datetime.now(tz.utc)
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('volunteers')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching volunteers modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Starting volunteer import from Salesforce (FULL SYNC)...")
 
-        # Define Salesforce query
+        # Define Salesforce query with LastModifiedDate for delta sync
         salesforce_query = """
         SELECT Id, AccountId, FirstName, LastName, MiddleName, Email,
                npe01__AlternateEmail__c, npe01__HomeEmail__c,
@@ -1178,10 +1194,15 @@ def import_from_salesforce():
                Connector_Profile_Link__c,
                Connector_Role__c,
                Connector_SignUp_Role__c,
-               Connector_User_ID__c
+               Connector_User_ID__c,
+               LastModifiedDate
         FROM Contact
         WHERE Contact_Type__c = 'Volunteer' or Contact_Type__c=''
         """
+        
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            salesforce_query += delta_helper.build_date_filter(watermark)
 
         # Connect to Salesforce
         sf = Salesforce(
@@ -1196,7 +1217,7 @@ def import_from_salesforce():
         sf_rows = result.get("records", [])
         total_records = len(sf_rows)
 
-        print(f"Found {total_records} records to process")
+        print(f"Found {total_records} records to process{' (delta)' if is_delta else ''}")
 
         success_count = 0
         error_count = 0
@@ -1966,12 +1987,36 @@ def import_from_salesforce():
         # Commit all successful changes
         try:
             db.session.commit()
+            
+            # Record sync log for delta sync tracking
+            try:
+                from models.sync_log import SyncLog, SyncStatus
+                sync_status = SyncStatus.SUCCESS.value
+                if error_count > 0:
+                    sync_status = SyncStatus.PARTIAL.value if success_count > 0 else SyncStatus.FAILED.value
+                
+                sync_log = SyncLog(
+                    sync_type="volunteers",
+                    started_at=started_at,
+                    completed_at=datetime.now(tz.utc),
+                    status=sync_status,
+                    records_processed=success_count,
+                    records_failed=error_count,
+                    is_delta_sync=is_delta,
+                    last_sync_watermark=datetime.now(tz.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
+                )
+                db.session.add(sync_log)
+                db.session.commit()
+            except Exception as log_e:
+                print(f"Warning: Failed to record sync log: {log_e}")
+            
             return jsonify(
                 {
                     "success": True,
                     "message": f"Successfully processed {success_count} volunteers (Created: {created_count}, Updated: {updated_count}) with {error_count} errors",
                     "processed_count": success_count,
                     "error_count": error_count,
+                    "is_delta_sync": is_delta,
                 }
             )
         except Exception as e:

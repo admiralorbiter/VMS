@@ -18,10 +18,10 @@ This document defines **what the system must do**. Each requirement is:
 | **District & Teacher Progress** | [District](requirements-district) | FR-DISTRICT | ~25 |
 | **Student Roster** | [Student](requirements-student) | FR-STUDENT | 5 |
 | **Email System** | [Email](requirements-email) | FR-EMAIL | ~22 |
-| **Data & Operations** | [Data/Ops](requirements-data-operations) | FR-DATA, FR-OPS | ~25 |
+| **Data & Operations** | [Data/Ops](requirements-data-operations) | FR-DATA, FR-OPS, FR-DELTA | ~37 |
 | **District Suite** | [District Suite](requirements-district-suite) | FR-TENANT, FR-SELFSERV, FR-API | ~40 |
 
-**Total: ~178 functional requirements**
+**Total: ~190 functional requirements**
 
 ---
 
@@ -75,6 +75,7 @@ Functional requirements use stable IDs: `FR-{DOMAIN}-{NNN}`
 | `EMAIL` | Email system management |
 | `DATA` | Data integrity |
 | `OPS` | Operations |
+| `DELTA` | Delta sync / incremental import |
 | `TENANT` | Multi-tenant infrastructure *(District Suite)* |
 | `SELFSERV` | District self-service *(District Suite)* |
 | `API` | Public event API *(District Suite)* |

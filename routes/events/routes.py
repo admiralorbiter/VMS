@@ -1228,7 +1228,22 @@ def import_events_from_salesforce():
     """
     try:
         started_at = datetime.now(timezone.utc)
-        print("Fetching data from Salesforce...")
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('events_and_participants')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching records modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Fetching data from Salesforce (FULL SYNC)...")
+        
         success_count = 0
         error_count = 0
         errors = []
@@ -1243,6 +1258,7 @@ def import_events_from_salesforce():
         )
 
         # First query: Get events
+        # Add LastModifiedDate to enable future delta syncs tracking
         events_query = """
         SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
             End_Date_and_Time__c, Session_Status__c, Location_Information__c,
@@ -1250,11 +1266,16 @@ def import_events_from_salesforce():
             District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
             Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
             Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
-            Session_Host__c
+            Session_Host__c, LastModifiedDate
         FROM Session__c
         WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
-        ORDER BY Start_Date_and_Time__c DESC
         """
+        
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            events_query += delta_helper.build_date_filter(watermark)
+        
+        events_query += " ORDER BY Start_Date_and_Time__c DESC"
 
         # Execute events query
         events_result = sf.query_all(events_query)
@@ -1323,6 +1344,7 @@ def import_events_from_salesforce():
                 )
 
         # Second query: Get participants
+        # Include LastModifiedDate for delta sync support
         participants_query = """
         SELECT
             Id,
@@ -1333,10 +1355,15 @@ def import_events_from_salesforce():
             Delivery_Hours__c,
             Age_Group__c,
             Email__c,
-            Title__c
+            Title__c,
+            LastModifiedDate
         FROM Session_Participant__c
         WHERE Participant_Type__c = 'Volunteer'
         """
+        
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            participants_query += delta_helper.build_date_filter(watermark)
 
         # Execute participants query
         participants_result = sf.query_all(participants_query)
@@ -1413,6 +1440,9 @@ def import_events_from_salesforce():
                 error_details=(
                     json.dumps(actual_errors[:100]) if actual_errors else None
                 ),
+                # Delta sync tracking - save watermark for future incremental syncs
+                is_delta_sync=is_delta,
+                last_sync_watermark=datetime.now(timezone.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
             )
             db.session.add(sync_log)
             db.session.commit()
@@ -1501,7 +1531,22 @@ def sync_student_participants():
     """
     try:
         started_at = datetime.now(timezone.utc)
-        print("Fetching student participation data from Salesforce...")
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('student_participants')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching student participations modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Fetching student participation data from Salesforce (FULL SYNC)...")
+        
         success_count = 0
         error_count = 0
         errors = []
@@ -1514,7 +1559,7 @@ def sync_student_participants():
             domain="login",
         )
 
-        # Query for Student participants
+        # Query for Student participants with LastModifiedDate for delta sync
         participants_query = """
         SELECT
             Id,
@@ -1525,11 +1570,17 @@ def sync_student_participants():
             Delivery_Hours__c,
             Age_Group__c,
             Email__c,
-            Title__c
+            Title__c,
+            LastModifiedDate
         FROM Session_Participant__c
         WHERE Participant_Type__c = 'Student'
-        ORDER BY Session__c, Name
         """
+        
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            participants_query += delta_helper.build_date_filter(watermark)
+        
+        participants_query += " ORDER BY Session__c, Name"
 
         # Execute participants query
         participants_result = sf.query_all(participants_query)
@@ -1576,6 +1627,9 @@ def sync_student_participants():
                 records_processed=success_count,
                 records_failed=error_count,
                 error_details=json.dumps(errors[:100]) if errors else None,
+                # Delta sync tracking
+                is_delta_sync=is_delta,
+                last_sync_watermark=datetime.now(timezone.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
             )
             db.session.add(sync_log)
             db.session.commit()

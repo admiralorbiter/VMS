@@ -1021,13 +1021,34 @@ def import_schools():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting school import process...")
+        from datetime import timezone as tz
+        started_at = datetime.now(tz.utc)
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('schools_and_districts')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching schools/districts modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Starting school import process (FULL SYNC)...")
+        
         # First, import districts
         district_query = """
-        SELECT Id, Name, School_Code_External_ID__c
+        SELECT Id, Name, School_Code_External_ID__c, LastModifiedDate
         FROM Account
         WHERE Type = 'School District'
         """
+        
+        # Add delta filter for districts
+        if is_delta and watermark:
+            district_query += delta_helper.build_date_filter(watermark)
 
         # Connect to Salesforce
         sf = Salesforce(
@@ -1083,10 +1104,14 @@ def import_schools():
 
         # Now proceed with school import
         school_query = """
-        SELECT Id, Name, ParentId, Connector_Account_Name__c, School_Code_External_ID__c
+        SELECT Id, Name, ParentId, Connector_Account_Name__c, School_Code_External_ID__c, LastModifiedDate
         FROM Account
         WHERE Type = 'School'
         """
+        
+        # Add delta filter for schools
+        if is_delta and watermark:
+            school_query += delta_helper.build_date_filter(watermark)
 
         # Execute school query
         school_result = sf.query_all(school_query)
@@ -1144,12 +1169,37 @@ def import_schools():
         # After successful school import, update school levels
         level_update_response = update_school_levels()
 
+        # Record sync log for delta sync tracking
+        try:
+            from models.sync_log import SyncLog, SyncStatus
+            total_success = district_success + school_success
+            total_errors = len(district_errors) + len(school_errors)
+            sync_status = SyncStatus.SUCCESS.value
+            if total_errors > 0:
+                sync_status = SyncStatus.PARTIAL.value if total_success > 0 else SyncStatus.FAILED.value
+            
+            sync_log = SyncLog(
+                sync_type="schools_and_districts",
+                started_at=started_at,
+                completed_at=datetime.now(tz.utc),
+                status=sync_status,
+                records_processed=total_success,
+                records_failed=total_errors,
+                is_delta_sync=is_delta,
+                last_sync_watermark=datetime.now(tz.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record sync log: {log_e}")
+
         return jsonify(
             {
                 "success": True,
                 "message": f"Successfully processed {district_success} districts and {school_success} schools",
                 "processed_count": district_success + school_success,
                 "error_count": len(district_errors) + len(school_errors),
+                "is_delta_sync": is_delta,
                 "district_errors": district_errors,
                 "school_errors": school_errors,
                 "level_update": (

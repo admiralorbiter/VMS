@@ -58,6 +58,10 @@ class SyncLog(db.Model):
     records_skipped = db.Column(db.Integer, default=0)
     error_message = db.Column(db.Text)
     error_details = db.Column(db.Text)  # JSON string for detailed errors
+    # Delta sync watermark - stores the timestamp to use as the baseline for next delta sync
+    last_sync_watermark = db.Column(db.DateTime(timezone=True))
+    # Track if this was a delta (incremental) or full sync
+    is_delta_sync = db.Column(db.Boolean, default=False)
 
     @property
     def duration_seconds(self):
@@ -103,3 +107,27 @@ class SyncLog(db.Model):
     def get_recent_logs(limit=10):
         """Get the most recent sync logs across all types."""
         return SyncLog.query.order_by(SyncLog.started_at.desc()).limit(limit).all()
+
+    @staticmethod
+    def get_last_successful_watermark(sync_type):
+        """
+        Get the LastModifiedDate watermark from the last successful sync.
+        
+        This is used for delta sync - the returned timestamp can be used
+        to filter Salesforce queries to only records modified after this time.
+        
+        Args:
+            sync_type: The type of sync (e.g., 'volunteers', 'events_and_participants')
+            
+        Returns:
+            datetime or None: The watermark timestamp, or None if no successful sync exists
+        """
+        log = (
+            SyncLog.query.filter_by(sync_type=sync_type)
+            .filter(SyncLog.status.in_([SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value]))
+            .filter(SyncLog.last_sync_watermark.isnot(None))
+            .order_by(SyncLog.started_at.desc())
+            .first()
+        )
+        return log.last_sync_watermark if log else None
+

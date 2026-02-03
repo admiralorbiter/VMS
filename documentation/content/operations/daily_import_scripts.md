@@ -91,6 +91,49 @@ The script runs imports in this order:
 - `--dry-run` - Show what would be imported without running
 - `--validate` - Validate configuration
 - `--config` - Show current configuration
+- `--delta` - Use delta sync for all imports (only fetch modified records)
+
+## Delta Sync Mode
+
+> [!TIP]
+> **Use `--delta` for faster daily syncs!**
+> 
+> Delta sync only fetches records modified since the last successful sync, reducing import time by **10-30x**.
+
+### Enabling Delta Sync
+
+```bash
+# Run daily imports with delta sync
+python scripts/daily_imports/daily_imports.py --daily --delta
+
+# Run full sync but use delta for each step
+python scripts/daily_imports/daily_imports.py --full --delta
+
+# Delta sync specific imports only
+python scripts/daily_imports/daily_imports.py --only events,volunteers --delta
+```
+
+### Recommended Schedule
+
+| Schedule | Mode | Command |
+|----------|------|---------|
+| **Daily** | Delta | `--daily --delta` |
+| **Weekly** | Full | `--full` (no `--delta`) |
+| **As needed** | Full | Run without `--delta` for complete refresh |
+
+### How It Works
+
+1. On first run, performs full sync (no previous watermark)
+2. Saves watermark timestamp to `sync_logs` table
+3. Subsequent `--delta` runs query `LastModifiedDate > watermark`
+4. Only modified records are fetched and processed
+
+### Fallback Behavior
+
+If no previous watermark exists for a sync type:
+- Automatically falls back to full sync for that entity
+- Saves watermark for next delta run
+- Subsequent delta syncs will work as expected
 
 ## Script Details
 

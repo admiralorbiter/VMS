@@ -577,7 +577,24 @@ def import_organizations_from_salesforce():
         JSON response with import statistics and error details
     """
     try:
-        print("Fetching organizations from Salesforce...")
+        from datetime import datetime, timezone as tz
+        started_at = datetime.now(tz.utc)
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('organizations')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching organizations modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Fetching organizations from Salesforce (FULL SYNC)...")
+        
         success_count = 0
         error_count = 0
         errors = []
@@ -590,16 +607,21 @@ def import_organizations_from_salesforce():
             domain="login",
         )
 
-        # Query organizations from Salesforce
+        # Query organizations from Salesforce with LastModifiedDate
         # Excludes household, school district, and school accounts
         org_query = """
         SELECT Id, Name, Type, Description, ParentId,
                BillingStreet, BillingCity, BillingState,
-               BillingPostalCode, BillingCountry, LastActivityDate
+               BillingPostalCode, BillingCountry, LastActivityDate, LastModifiedDate
         FROM Account
         WHERE Type NOT IN ('Household', 'School District', 'School')
-        ORDER BY Name ASC
         """
+        
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            org_query += delta_helper.build_date_filter(watermark)
+        
+        org_query += " ORDER BY Name ASC"
 
         # Execute the query and get results
         result = sf.query_all(org_query)
@@ -655,6 +677,28 @@ def import_organizations_from_salesforce():
             if len(errors) > 3:
                 print(f"... and {len(errors) - 3} more errors")
 
+        # Record sync log for delta sync tracking
+        try:
+            from models.sync_log import SyncLog, SyncStatus
+            sync_status = SyncStatus.SUCCESS.value
+            if error_count > 0:
+                sync_status = SyncStatus.PARTIAL.value if success_count > 0 else SyncStatus.FAILED.value
+            
+            sync_log = SyncLog(
+                sync_type="organizations",
+                started_at=started_at,
+                completed_at=datetime.now(tz.utc),
+                status=sync_status,
+                records_processed=success_count,
+                records_failed=error_count,
+                is_delta_sync=is_delta,
+                last_sync_watermark=datetime.now(tz.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record sync log: {log_e}")
+
         # Return JSON response with import results
         return jsonify(
             {
@@ -662,6 +706,7 @@ def import_organizations_from_salesforce():
                 "message": f"Successfully processed {success_count} organizations with {error_count} errors",
                 "processed_count": success_count,
                 "error_count": error_count,
+                "is_delta_sync": is_delta,
                 "errors": errors,
             }
         )

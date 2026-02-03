@@ -391,7 +391,24 @@ def import_history_from_salesforce():
         500: Import or database error
     """
     try:
-        print("Starting history import from Salesforce...")
+        from datetime import timezone as tz
+        started_at = datetime.now(tz.utc)
+        
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+        delta_helper = DeltaSyncHelper('history')
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info['actual_delta']
+        watermark = delta_info['watermark']
+        
+        if delta_info['requested_delta']:
+            if is_delta:
+                print(f"DELTA SYNC: Only fetching history modified after {delta_info['watermark_formatted']}")
+            else:
+                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+        else:
+            print("Starting history import from Salesforce (FULL SYNC)...")
+        
         success_count = 0
         error_count = 0
         errors = []
@@ -405,15 +422,19 @@ def import_history_from_salesforce():
             domain="login",
         )
 
-        # Query Task records (activities, calls, meetings)
+        # Query Task records (activities, calls, meetings) with LastModifiedDate
         task_query = """
             SELECT Id, Subject, Description, Type, Status,
-                   ActivityDate, WhoId, WhatId
+                   ActivityDate, WhoId, WhatId, LastModifiedDate
             FROM Task
             WHERE WhoId != null
         """
+        
+        # Add delta filter for Task records
+        if is_delta and watermark:
+            task_query += delta_helper.build_date_filter(watermark)
 
-        # Query EmailMessage records (emails)
+        # Query EmailMessage records (emails) - already has LastModifiedDate
         email_query = """
             SELECT Id, Subject, TextBody, HtmlBody, MessageDate, FromAddress,
                    ToAddress, CcAddress, BccAddress, RelatedToId, ParentId,
@@ -422,6 +443,10 @@ def import_history_from_salesforce():
             FROM EmailMessage
             WHERE RelatedToId != null
         """
+        
+        # Add delta filter for EmailMessage records
+        if is_delta and watermark:
+            email_query += delta_helper.build_date_filter(watermark)
 
         # Process Task records
         print("Processing Task records...")
@@ -828,6 +853,29 @@ def import_history_from_salesforce():
                     500,
                 )
 
+        # Record sync log for delta sync tracking
+        try:
+            from models.sync_log import SyncLog, SyncStatus
+            sync_status = SyncStatus.SUCCESS.value
+            if error_count > 0:
+                sync_status = SyncStatus.PARTIAL.value if success_count > 0 else SyncStatus.FAILED.value
+            
+            sync_log = SyncLog(
+                sync_type="history",
+                started_at=started_at,
+                completed_at=datetime.now(tz.utc),
+                status=sync_status,
+                records_processed=success_count,
+                records_failed=error_count,
+                records_skipped=skipped_count,
+                is_delta_sync=is_delta,
+                last_sync_watermark=datetime.now(tz.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record sync log: {log_e}")
+
         return jsonify(
             {
                 "success": True,
@@ -835,6 +883,7 @@ def import_history_from_salesforce():
                 "processed_count": success_count,
                 "error_count": error_count,
                 "skipped_count": skipped_count,
+                "is_delta_sync": is_delta,
                 "stats": {
                     "success": success_count,
                     "errors": error_count,
