@@ -7,7 +7,7 @@ Requirements:
 - FR-API-101: GET /api/v1/district/{tenant}/events - List published events
 - FR-API-102: GET /api/v1/district/{tenant}/events/{slug} - Event details
 - FR-API-103: API key authentication via X-API-Key header
-- FR-API-104: Rate limiting (60/min, 1000/hr, 10000/day)
+- FR-API-104: Rate limiting (60/min, 1000/hr, 10000/day) via Flask-Limiter
 - FR-API-105: CORS support for district websites
 - FR-API-106: API key rotation (via tenant settings)
 - FR-API-107: JSON envelope with success, data, pagination
@@ -26,58 +26,10 @@ from flask_cors import cross_origin
 
 from models.event import Event, EventStatus
 from models.tenant import Tenant
+from utils.rate_limiter import get_api_key_or_ip, limiter
 
 # Create public API blueprint
 public_api_bp = Blueprint("public_api", __name__, url_prefix="/api/v1/district")
-
-# Simple in-memory rate limiting (for production, use Redis)
-_rate_limit_store = {}
-
-
-def get_rate_limit_key(api_key, window):
-    """Get rate limit key for an API key and time window."""
-    now = datetime.now(timezone.utc)
-    if window == "minute":
-        bucket = now.strftime("%Y%m%d%H%M")
-    elif window == "hour":
-        bucket = now.strftime("%Y%m%d%H")
-    else:  # day
-        bucket = now.strftime("%Y%m%d")
-    return f"{api_key}:{window}:{bucket}"
-
-
-def check_rate_limit(api_key):
-    """
-    Check if request is within rate limits.
-
-    Limits (FR-API-104):
-    - 60 requests/minute
-    - 1000 requests/hour
-    - 10000 requests/day
-
-    Returns:
-        tuple: (allowed, error_message, retry_after_seconds)
-    """
-    limits = [
-        ("minute", 60, 60),
-        ("hour", 1000, 3600),
-        ("day", 10000, 86400),
-    ]
-
-    for window, limit, retry_after in limits:
-        key = get_rate_limit_key(api_key, window)
-        count = _rate_limit_store.get(key, 0)
-
-        if count >= limit:
-            return (
-                False,
-                f"Rate limit exceeded: {limit} requests per {window}",
-                retry_after,
-            )
-
-        _rate_limit_store[key] = count + 1
-
-    return True, None, None
 
 
 def require_api_key(f):
@@ -139,18 +91,6 @@ def require_api_key(f):
                 401,
             )
 
-        # Check rate limits (FR-API-104)
-        allowed, error_msg, retry_after = check_rate_limit(api_key)
-        if not allowed:
-            response = jsonify(
-                {
-                    "success": False,
-                    "error": {"code": "RATE_LIMIT_EXCEEDED", "message": error_msg},
-                }
-            )
-            response.headers["Retry-After"] = str(retry_after)
-            return response, 429
-
         # Set tenant in g for use in route
         g.api_tenant = tenant
 
@@ -195,6 +135,9 @@ def build_event_response(event):
 
 
 @public_api_bp.route("/<tenant_slug>/events", methods=["GET", "OPTIONS"])
+@limiter.limit(
+    "60 per minute; 1000 per hour; 10000 per day", key_func=get_api_key_or_ip
+)
 @cross_origin()  # FR-API-105: CORS support
 @require_api_key
 def list_events(tenant_slug):
@@ -278,6 +221,9 @@ def list_events(tenant_slug):
 
 
 @public_api_bp.route("/<tenant_slug>/events/<event_id>", methods=["GET", "OPTIONS"])
+@limiter.limit(
+    "60 per minute; 1000 per hour; 10000 per day", key_func=get_api_key_or_ip
+)
 @cross_origin()  # FR-API-105: CORS support
 @require_api_key
 def get_event(tenant_slug, event_id):
@@ -323,6 +269,9 @@ def get_event(tenant_slug, event_id):
 
 
 @public_api_bp.route("/<tenant_slug>/events/upcoming", methods=["GET", "OPTIONS"])
+@limiter.limit(
+    "60 per minute; 1000 per hour; 10000 per day", key_func=get_api_key_or_ip
+)
 @cross_origin()
 @require_api_key
 def list_upcoming_events(tenant_slug):

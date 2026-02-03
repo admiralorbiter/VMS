@@ -121,23 +121,78 @@ Configure these in PythonAnywhere Web tab > Static files section.
 ```bash
 FLASK_ENV=production
 DATABASE_URL=sqlite:///instance/vms.db
-SECRET_KEY=your-secret-key-here
+SECRET_KEY=your-secure-random-key-here  # REQUIRED - app will fail to start without this
 ```
 
-**Optional variables:**
+> [!CAUTION]
+> The application will **fail to start** in production if `SECRET_KEY` is not set or uses the default value. Generate a secure key with: `python -c "import secrets; print(secrets.token_hex(32))"`
+
+**Security & CORS variables:**
 ```bash
-# Salesforce Integration
+# CORS - comma-separated list of allowed origins (optional)
+# If not set, defaults to APP_BASE_URL
+CORS_ALLOWED_ORIGINS=https://polaris-prepkc.pythonanywhere.com
+
+# Application base URL (used for emails, redirects, CORS fallback)
+APP_BASE_URL=https://polaris-prepkc.pythonanywhere.com
+```
+
+**Logging variables:**
+```bash
+# Log level: DEBUG, INFO, WARNING, ERROR (default: INFO in production)
+LOG_LEVEL=INFO
+```
+
+**Salesforce Integration (optional):**
+```bash
 SF_USERNAME=your-salesforce-username
 SF_PASSWORD=your-salesforce-password
 SF_SECURITY_TOKEN=your-salesforce-security-token
+```
 
-# Session Configuration
+**Email Configuration (optional):**
+```bash
+MJ_APIKEY_PUBLIC=your-mailjet-public-key
+MJ_APIKEY_PRIVATE=your-mailjet-private-key
+MAIL_FROM=your-email@domain.com
+EMAIL_DELIVERY_ENABLED=true
+EMAIL_ALLOWLIST=email1@domain.com,email2@domain.com
+```
+
+**Session Configuration (optional):**
+```bash
 SESSION_COOKIE_NAME=vms_session
 REMEMBER_COOKIE_NAME=vms_remember
 SESSION_LIFETIME_SECONDS=28800
 ```
 
 **Reference:** `config/__init__.py` for all configuration options
+
+## Health Check Endpoint
+
+The application provides a `/health` endpoint for monitoring and load balancers:
+
+**Endpoint:** `GET /health`
+
+**Healthy Response (200):**
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "environment": "production"
+}
+```
+
+**Unhealthy Response (503):**
+```json
+{
+  "status": "unhealthy",
+  "database": "disconnected",
+  "error": "connection error details"
+}
+```
+
+**Usage:** Configure your monitoring service to poll `/health` periodically.
 
 ## Scheduled Tasks Setup
 
@@ -675,5 +730,5 @@ For issues with PythonAnywhere deployment:
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: February 2026*
+*Version: 1.1*

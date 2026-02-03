@@ -8,9 +8,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env file FIRST, before any other imports
 load_dotenv()
 
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS
 from flask_login import LoginManager
+from sqlalchemy import text
 
 from config import DevelopmentConfig, ProductionConfig
 from forms import LoginForm
@@ -21,18 +22,40 @@ from utils import format_event_type_for_badge, short_date
 from utils.cache_refresh_scheduler import start_cache_refresh_scheduler
 
 app = Flask(__name__)
-CORS(app)
 
 # Load configuration based on the environment
 flask_env = os.environ.get("FLASK_ENV", "development")
 
 if flask_env == "production":
     app.config.from_object(ProductionConfig)
+    # Enforce SECRET_KEY in production - fail fast if not set properly
+    if app.config.get("SECRET_KEY") == "dev-secret-key-change-in-production":
+        raise RuntimeError(
+            "CRITICAL: SECRET_KEY must be set in production. "
+            "Do not use the default development key."
+        )
 else:
     app.config.from_object(DevelopmentConfig)
 
+# Security: Request size limit (16MB max)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+
+# CORS configuration - restrict origins in production
+if flask_env == "production":
+    allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
+    if allowed_origins:
+        CORS(app, origins=allowed_origins)
+    else:
+        # Default to same-origin only in production if not specified
+        CORS(app, origins=[os.environ.get("APP_BASE_URL", "").rstrip("/")])
+else:
+    # Allow all origins in development
+    CORS(app)
+
 # Initialize extensions
 db.init_app(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "auth.login"  # Redirect to 'login' view if unauthorized
@@ -54,6 +77,16 @@ with app.app_context():
         existing_tables = inspector.get_table_names()
         print(f"Database initialization error: {e}")
         print(f"Existing tables: {existing_tables}")
+
+# Configure structured logging (JSON in production, readable in development)
+from utils.logging_config import configure_logging
+
+configure_logging(app)
+
+# Initialize rate limiter (Flask-Limiter)
+from utils.rate_limiter import init_rate_limiter
+
+init_rate_limiter(app)
 
 
 # User loader callback for Flask-Login
@@ -123,6 +156,77 @@ def from_json_filter(json_string):
 
 
 app.jinja_env.filters["from_json"] = from_json_filter
+
+
+# =============================================================================
+# Global Error Handlers (Production Hardening)
+# =============================================================================
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 Not Found errors."""
+    app.logger.warning(f"404 error: {request.url}")
+    return render_template("errors/404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 Internal Server errors."""
+    app.logger.error(f"500 error: {error}")
+    db.session.rollback()  # Rollback any failed transactions
+    return render_template("errors/500.html"), 500
+
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    """Handle 403 Forbidden errors."""
+    app.logger.warning(f"403 error: {request.url} - {error}")
+    return render_template("errors/403.html"), 403
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    """Handle 413 Request Entity Too Large errors."""
+    app.logger.warning(f"413 error: File too large - {request.url}")
+    return (
+        jsonify(
+            {
+                "error": "File too large",
+                "message": "The uploaded file exceeds the maximum allowed size (16MB).",
+            }
+        ),
+        413,
+    )
+
+
+# =============================================================================
+# Health Check Endpoint (For Monitoring & Load Balancers)
+# =============================================================================
+@app.route("/health")
+def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+
+    Returns:
+        200: System is healthy (database connected)
+        503: System is unhealthy (database connection failed)
+    """
+    try:
+        # Verify database connectivity
+        db.session.execute(text("SELECT 1"))
+        return (
+            jsonify(
+                {"status": "healthy", "database": "connected", "environment": flask_env}
+            ),
+            200,
+        )
+    except Exception as e:
+        app.logger.error(f"Health check failed: {e}")
+        return (
+            jsonify(
+                {"status": "unhealthy", "database": "disconnected", "error": str(e)}
+            ),
+            503,
+        )
 
 
 @app.route("/docs/")
