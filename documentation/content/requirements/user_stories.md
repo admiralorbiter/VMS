@@ -37,9 +37,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to create an in-person event record in Salesforce, **So that** it can be synced to VolunTeach and published as needed.
 
-**Related Requirements:** [FR-INPERSON-101](requirements#fr-inperson-101)
+**Related Requirements:** [FR-INPERSON-101](requirements-in-person#fr-inperson-101)
 
-**Related Use Cases:** [UC-1](use_cases#uc-1)
+**Related Use Cases:** [UC-1](use-cases#uc-1)
 
 **User Guide:** [In-Person Event Management](user_guide/in_person_events#creating-an-event-in-salesforce)
 
@@ -52,9 +52,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** events to sync from Salesforce into VolunTeach automatically and on-demand, **So that** the website list stays current.
 
-**Related Requirements:** [FR-INPERSON-102](requirements#fr-inperson-102), [FR-INPERSON-103](requirements#fr-inperson-103), [FR-INPERSON-123](requirements#fr-inperson-123)
+**Related Requirements:** [FR-INPERSON-102](requirements-in-person#fr-inperson-102), [FR-INPERSON-103](requirements-in-person#fr-inperson-103), [FR-INPERSON-123](requirements-in-person#fr-inperson-123)
 
-**Related Use Cases:** [UC-2](use_cases#uc-2)
+**Related Use Cases:** [UC-2](use-cases#uc-2)
 
 **User Guide:** [In-Person Event Management](user_guide/in_person_events#syncing-to-volunteach)
 
@@ -68,9 +68,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to toggle whether an event appears on the public in-person events page, **So that** orientations/internal events don't show publicly.
 
-**Related Requirements:** [FR-INPERSON-104](requirements#fr-inperson-104), [FR-INPERSON-105](requirements#fr-inperson-105)
+**Related Requirements:** [FR-INPERSON-104](requirements-in-person#fr-inperson-104), [FR-INPERSON-105](requirements-in-person#fr-inperson-105)
 
-**Related Use Cases:** [UC-2](use_cases#uc-2)
+**Related Use Cases:** [UC-2](use-cases#uc-2)
 
 **User Guide:** [In-Person Event Management](user_guide/in_person_events#managing-visibility)
 
@@ -85,9 +85,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to link an event to a district in VolunTeach, **So that** it appears on the district's website view.
 
-**Related Requirements:** [FR-INPERSON-107](requirements#fr-inperson-107), [FR-INPERSON-109](requirements#fr-inperson-109)
+**Related Requirements:** [FR-INPERSON-107](requirements-in-person#fr-inperson-107), [FR-INPERSON-109](requirements-in-person#fr-inperson-109)
 
-**Related Use Cases:** [UC-2](use_cases#uc-2)
+**Related Use Cases:** [UC-2](use-cases#uc-2)
 
 **User Guide:** [In-Person Event Management](user_guide/in_person_events#district-page-visibility)
 
@@ -101,7 +101,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a volunteer, **I want** to see key event information on the website listing, **So that** I can decide whether to sign up.
 
-**Related Requirements:** [FR-INPERSON-106](requirements#fr-inperson-106)
+**Related Requirements:** [FR-INPERSON-106](requirements-in-person#fr-inperson-106)
 
 **Acceptance Criteria:**
 
@@ -120,9 +120,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a volunteer, **I want** to sign up for an event without creating an account, **So that** I can register quickly.
 
-**Related Requirements:** [FR-SIGNUP-121](requirements#fr-signup-121), [FR-SIGNUP-122](requirements#fr-signup-122), [FR-SIGNUP-127](requirements#fr-signup-127)
+**Related Requirements:** [FR-SIGNUP-121](requirements-in-person#fr-signup-121), [FR-SIGNUP-122](requirements-in-person#fr-signup-122), [FR-SIGNUP-127](requirements-in-person#fr-signup-127)
 
-**Related Use Cases:** [UC-3](use_cases#uc-3)
+**Related Use Cases:** [UC-3](use-cases#uc-3)
 
 **User Guide:** [Public Signup Flow](#user-guide-public-signup)
 
@@ -135,7 +135,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** the signup form to collect standardized volunteer profile fields, **So that** we can recruit and report consistently.
 
-**Related Requirements:** [FR-SIGNUP-126](requirements#fr-signup-126), [FR-SIGNUP-127](requirements#fr-signup-127)
+**Related Requirements:** [FR-SIGNUP-126](requirements-in-person#fr-signup-126), [FR-SIGNUP-127](requirements-in-person#fr-signup-127)
 
 **Acceptance Criteria:**
 
@@ -146,9 +146,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a volunteer, **I want** an email confirmation and calendar invite, **So that** I have the details saved and reminders.
 
-**Related Requirements:** [FR-SIGNUP-123](requirements#fr-signup-123), [FR-SIGNUP-124](requirements#fr-signup-124), [FR-SIGNUP-125](requirements#fr-signup-125)
+**Related Requirements:** [FR-SIGNUP-123](requirements-in-person#fr-signup-123), [FR-SIGNUP-124](requirements-in-person#fr-signup-124), [FR-SIGNUP-125](requirements-in-person#fr-signup-125)
 
-**Related Use Cases:** [UC-3](use_cases#uc-3)
+**Related Use Cases:** [UC-3](use-cases#uc-3)
 
 **Acceptance Criteria:**
 
@@ -168,9 +168,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to create and edit virtual events in Polaris, **So that** we can manage sessions without Google Sheets.
 
-**Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201)
+**Related Requirements:** [FR-VIRTUAL-201](requirements-virtual#fr-virtual-201)
 
-**Related Use Cases:** [UC-4](use_cases#uc-4)
+**Related Use Cases:** [UC-4](use-cases#uc-4)
 
 **User Guide:** [Virtual Event Management](user_guide/virtual_events#1-creating-virtual-events)
 
@@ -183,9 +183,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to attach teachers to a virtual event via search, **So that** reporting and progress tracking are linked to real teacher records.
 
-**Related Requirements:** [FR-VIRTUAL-202](requirements#fr-virtual-202)
+**Related Requirements:** [FR-VIRTUAL-202](requirements-virtual#fr-virtual-202)
 
-**Related Use Cases:** [UC-4](use_cases#uc-4)
+**Related Use Cases:** [UC-4](use-cases#uc-4)
 
 **Acceptance Criteria:**
 
@@ -196,9 +196,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to search for and tag presenters/volunteers to a virtual event using Salesforce-linked records, **So that** events have assigned presenters and recruitment tracking is accurate.
 
-**Related Requirements:** [FR-VIRTUAL-203](requirements#fr-virtual-203)
+**Related Requirements:** [FR-VIRTUAL-203](requirements-virtual#fr-virtual-203)
 
-**Related Use Cases:** [UC-4](use_cases#uc-4), [UC-11](use_cases#uc-11)
+**Related Use Cases:** [UC-4](use-cases#uc-4), [UC-11](use-cases#uc-11)
 
 **Acceptance Criteria:**
 
@@ -210,11 +210,11 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to import Pathful signup/attendance data into Polaris, **So that** we can track attendance and teacher progress.
 
-**Related Requirements:** [FR-VIRTUAL-206](requirements#fr-virtual-206)
+**Related Requirements:** [FR-VIRTUAL-206](requirements-virtual#fr-virtual-206)
 
-**Related Use Cases:** [UC-5](use_cases#uc-5)
+**Related Use Cases:** [UC-5](use-cases#uc-5)
 
-**Related Stories (Post-Import):** [US-310](user_stories#us-310), [US-311](user_stories#us-311), [US-312](user_stories#us-312)
+**Related Stories (Post-Import):** [US-310](user-stories#us-310), [US-311](user-stories#us-311), [US-312](user-stories#us-312)
 
 **Acceptance Criteria:**
 
@@ -222,13 +222,13 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given the same file is imported twice, then the import is idempotent (no duplicates; updates only).
 - Given rows reference unknown teachers or events, then those rows are flagged as unmatched.
 - Given required columns are missing, then the import fails with a clear missing-columns message.
-- Given import completes successfully, then events are scanned for data issues (missing teachers, missing presenters, cancelled without reason) and flagged per [FR-VIRTUAL-224](requirements#fr-virtual-224) through [FR-VIRTUAL-228](requirements#fr-virtual-228).
+- Given import completes successfully, then events are scanned for data issues (missing teachers, missing presenters, cancelled without reason) and flagged per [FR-VIRTUAL-224](requirements-virtual#fr-virtual-224) through [FR-VIRTUAL-228](requirements-virtual#fr-virtual-228).
 
 ### <a id="us-305"></a>US-305: Track local vs non-local volunteers
 
 **As** internal staff, **I want** to track whether a virtual volunteer is local vs non-local, **So that** I can prioritize local volunteers for in-person opportunities and understand geographic reach.
 
-**Related Requirements:** [FR-VIRTUAL-208](requirements#fr-virtual-208)
+**Related Requirements:** [FR-VIRTUAL-208](requirements-virtual#fr-virtual-208)
 
 **Acceptance Criteria:**
 
@@ -243,7 +243,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to import 2–4 years of historical virtual events from Google Sheets, **So that** our reporting and history are complete.
 
-**Related Requirements:** [FR-VIRTUAL-204](requirements#fr-virtual-204)
+**Related Requirements:** [FR-VIRTUAL-204](requirements-virtual#fr-virtual-204)
 
 **Acceptance Criteria:**
 
@@ -254,9 +254,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff with global scope or admin privileges, **I want** to see a list of upcoming virtual events that don't have a presenter yet, **So that** I can proactively recruit volunteers and ensure all sessions are covered.
 
-**Related Requirements:** [FR-VIRTUAL-210](requirements#fr-virtual-210), [FR-VIRTUAL-211](requirements#fr-virtual-211), [FR-VIRTUAL-212](requirements#fr-virtual-212), [FR-VIRTUAL-213](requirements#fr-virtual-213), [FR-VIRTUAL-214](requirements#fr-virtual-214), [FR-VIRTUAL-215](requirements#fr-virtual-215), [FR-VIRTUAL-216](requirements#fr-virtual-216), [FR-VIRTUAL-217](requirements#fr-virtual-217), [FR-VIRTUAL-218](requirements#fr-virtual-218), [FR-VIRTUAL-219](requirements#fr-virtual-219)
+**Related Requirements:** [FR-VIRTUAL-210](requirements-virtual#fr-virtual-210), [FR-VIRTUAL-211](requirements-virtual#fr-virtual-211), [FR-VIRTUAL-212](requirements-virtual#fr-virtual-212), [FR-VIRTUAL-213](requirements-virtual#fr-virtual-213), [FR-VIRTUAL-214](requirements-virtual#fr-virtual-214), [FR-VIRTUAL-215](requirements-virtual#fr-virtual-215), [FR-VIRTUAL-216](requirements-virtual#fr-virtual-216), [FR-VIRTUAL-217](requirements-virtual#fr-virtual-217), [FR-VIRTUAL-218](requirements-virtual#fr-virtual-218), [FR-VIRTUAL-219](requirements-virtual#fr-virtual-219)
 
-**Related Use Cases:** [UC-11](use_cases#uc-11)
+**Related Use Cases:** [UC-11](use-cases#uc-11)
 
 **User Guide:** [Virtual Event Management](user_guide/virtual_events#2-presenter-recruitment)
 
@@ -276,9 +276,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to add a new teacher record directly from the virtual session creation form if they don't exist in search results, **So that** I can complete the event setup without navigating away.
 
-**Related Requirements:** [FR-VIRTUAL-222](requirements#fr-virtual-222)
+**Related Requirements:** [FR-VIRTUAL-222](requirements-virtual#fr-virtual-222)
 
-**Related Use Cases:** [UC-4](use_cases#uc-4)
+**Related Use Cases:** [UC-4](use-cases#uc-4)
 
 **Acceptance Criteria:**
 
@@ -291,9 +291,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to add a new presenter/volunteer record directly from the virtual session creation form if they don't exist in search results, **So that** I can tag non-synced or new volunteers immediately.
 
-**Related Requirements:** [FR-VIRTUAL-223](requirements#fr-virtual-223)
+**Related Requirements:** [FR-VIRTUAL-223](requirements-virtual#fr-virtual-223)
 
-**Related Use Cases:** [UC-4](use_cases#uc-4)
+**Related Use Cases:** [UC-4](use-cases#uc-4)
 
 **Acceptance Criteria:**
 
@@ -306,9 +306,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to review and correct virtual session data for schools in my district, **So that** I can ensure accurate progress tracking and reporting without waiting for PrepKC staff.
 
-**Related Requirements:** [FR-VIRTUAL-224](requirements#fr-virtual-224), [FR-VIRTUAL-225](requirements#fr-virtual-225), [FR-VIRTUAL-226](requirements#fr-virtual-226), [FR-VIRTUAL-228](requirements#fr-virtual-228), [FR-VIRTUAL-229](requirements#fr-virtual-229), [FR-VIRTUAL-230](requirements#fr-virtual-230)
+**Related Requirements:** [FR-VIRTUAL-224](requirements-virtual#fr-virtual-224), [FR-VIRTUAL-225](requirements-virtual#fr-virtual-225), [FR-VIRTUAL-226](requirements-virtual#fr-virtual-226), [FR-VIRTUAL-228](requirements-virtual#fr-virtual-228), [FR-VIRTUAL-229](requirements-virtual#fr-virtual-229), [FR-VIRTUAL-230](requirements-virtual#fr-virtual-230)
 
-**Related Use Cases:** [UC-5](use_cases#uc-5), [UC-20](use_cases#uc-20)
+**Related Use Cases:** [UC-5](use-cases#uc-5), [UC-20](use-cases#uc-20)
 
 **Acceptance Criteria:**
 
@@ -322,9 +322,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** staff or a district administrator, **I want** to record why a virtual session was cancelled using predefined reasons, **So that** we can identify patterns and report accurately on session outcomes.
 
-**Related Requirements:** [FR-VIRTUAL-227](requirements#fr-virtual-227), [FR-VIRTUAL-228](requirements#fr-virtual-228), [FR-VIRTUAL-231](requirements#fr-virtual-231)
+**Related Requirements:** [FR-VIRTUAL-227](requirements-virtual#fr-virtual-227), [FR-VIRTUAL-228](requirements-virtual#fr-virtual-228), [FR-VIRTUAL-231](requirements-virtual#fr-virtual-231)
 
-**Related Use Cases:** [UC-5](use_cases#uc-5), [UC-20](use_cases#uc-20)
+**Related Use Cases:** [UC-5](use-cases#uc-5), [UC-20](use-cases#uc-20)
 
 **Acceptance Criteria:**
 
@@ -338,9 +338,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** PrepKC staff, **I want** to view a complete audit trail of changes to virtual events, **So that** I can track who made edits, when, and what was changed for accountability and troubleshooting.
 
-**Related Requirements:** [FR-VIRTUAL-232](requirements#fr-virtual-232), [FR-VIRTUAL-233](requirements#fr-virtual-233)
+**Related Requirements:** [FR-VIRTUAL-232](requirements-virtual#fr-virtual-232), [FR-VIRTUAL-233](requirements-virtual#fr-virtual-233)
 
-**Related Use Cases:** [UC-5](use_cases#uc-5)
+**Related Use Cases:** [UC-5](use-cases#uc-5)
 
 **Acceptance Criteria:**
 
@@ -361,9 +361,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to search volunteers by name/org/skills/career/local, **So that** I can recruit the right people quickly.
 
-**Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301), [FR-RECRUIT-302](requirements#fr-recruit-302), [FR-RECRUIT-303](requirements#fr-recruit-303)
+**Related Requirements:** [FR-RECRUIT-301](requirements-recruitment#fr-recruit-301), [FR-RECRUIT-302](requirements-recruitment#fr-recruit-302), [FR-RECRUIT-303](requirements-recruitment#fr-recruit-303)
 
-**Related Use Cases:** [UC-6](use_cases#uc-6)
+**Related Use Cases:** [UC-6](use-cases#uc-6)
 
 **User Guide:** [Volunteer Recruitment](user_guide/volunteer_recruitment#1-volunteer-directory)
 
@@ -377,9 +377,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to see a volunteer's participation history including most recent volunteer date, **So that** I can understand their engagement level and prioritize outreach.
 
-**Related Requirements:** [FR-RECRUIT-304](requirements#fr-recruit-304)
+**Related Requirements:** [FR-RECRUIT-304](requirements-recruitment#fr-recruit-304)
 
-**Related Use Cases:** [UC-6](use_cases#uc-6)
+**Related Use Cases:** [UC-6](use-cases#uc-6)
 
 **Acceptance Criteria:**
 
@@ -391,7 +391,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to record recruitment notes and outcomes in Polaris, **So that** I can track outreach efforts and outcomes for future reference.
 
-**Related Requirements:** [FR-RECRUIT-306](requirements#fr-recruit-306)
+**Related Requirements:** [FR-RECRUIT-306](requirements-recruitment#fr-recruit-306)
 
 **Acceptance Criteria:**
 
@@ -403,9 +403,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to see communication history in Polaris sourced from Salesforce email logs, **So that** I know the latest outreach and context.
 
-**Related Requirements:** [FR-RECRUIT-305](requirements#fr-recruit-305), [FR-RECRUIT-308](requirements#fr-recruit-308)
+**Related Requirements:** [FR-RECRUIT-305](requirements-recruitment#fr-recruit-305), [FR-RECRUIT-308](requirements-recruitment#fr-recruit-308)
 
-**Related Use Cases:** [UC-6](use_cases#uc-6)
+**Related Use Cases:** [UC-6](use-cases#uc-6)
 
 **User Guide:** [Volunteer Recruitment](user_guide/volunteer_recruitment#4-logging-communication-salesforce-gmail-integration)
 
@@ -418,7 +418,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** Polaris to tell me whether comms are missing because none were logged vs sync failed, **So that** I can trust what I'm seeing.
 
-**Related Requirements:** [FR-RECRUIT-309](requirements#fr-recruit-309)
+**Related Requirements:** [FR-RECRUIT-309](requirements-recruitment#fr-recruit-309)
 
 **Acceptance Criteria:**
 
@@ -428,9 +428,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** the system to rank volunteers by relevance (keywords, history, location), **So that** I don't have to sift through hundreds of records manually.
 
-**Related Requirements:** [FR-RECRUIT-310](requirements#fr-recruit-310), [FR-RECRUIT-311](requirements#fr-recruit-311)
+**Related Requirements:** [FR-RECRUIT-310](requirements-recruitment#fr-recruit-310)–[FR-RECRUIT-336](requirements-recruitment#fr-recruit-336)
 
-**Related Use Cases:** [UC-6](use_cases#uc-6)
+**Related Use Cases:** [UC-6](use-cases#uc-6)
 
 **Acceptance Criteria:**
 
@@ -450,9 +450,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district viewer, **I want** to see my district's progress dashboard, **So that** I can track school/teacher completion.
 
-**Related Requirements:** [FR-DISTRICT-501](requirements#fr-district-501), [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-521](requirements#fr-district-521), [FR-DISTRICT-522](requirements#fr-district-522)
+**Related Requirements:** [FR-DISTRICT-501](requirements-district#fr-district-501), [FR-DISTRICT-502](requirements-district#fr-district-502), [FR-DISTRICT-521](requirements-district#fr-district-521), [FR-DISTRICT-522](requirements-district#fr-district-522)
 
-**Related Use Cases:** [UC-8](use_cases#uc-8)
+**Related Use Cases:** [UC-8](use-cases#uc-8)
 
 **User Guide:** [District & Teacher Progress](user_guide/district_teacher_progress#1-district-dashboard-access)
 
@@ -465,9 +465,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district viewer, **I want** to drill down to schools and teachers, **So that** I can see who needs support.
 
-**Related Requirements:** [FR-DISTRICT-503](requirements#fr-district-503)
+**Related Requirements:** [FR-DISTRICT-503](requirements-district#fr-district-503)
 
-**Related Use Cases:** [UC-8](use_cases#uc-8)
+**Related Use Cases:** [UC-8](use-cases#uc-8)
 
 **Acceptance Criteria:**
 
@@ -478,9 +478,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff and district viewers, **I want** the progress statuses to be computed consistently, **So that** reporting is trustworthy.
 
-**Related Requirements:** [FR-DISTRICT-502](requirements#fr-district-502), [FR-DISTRICT-508](requirements#fr-district-508)
+**Related Requirements:** [FR-DISTRICT-502](requirements-district#fr-district-502), [FR-DISTRICT-508](requirements-district#fr-district-508)
 
-**Related Use Cases:** [UC-8](use_cases#uc-8)
+**Related Use Cases:** [UC-8](use-cases#uc-8)
 
 **Acceptance Criteria:**
 
@@ -492,7 +492,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to import a district-provided teacher roster, **So that** the system can track progress and enable magic-link access for teachers.
 
-**Related Requirements:** [FR-DISTRICT-524](requirements#fr-district-524)
+**Related Requirements:** [FR-DISTRICT-524](requirements-district#fr-district-524)
 
 **Acceptance Criteria:**
 
@@ -507,9 +507,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a teacher, **I want** to request a magic link using my email, **So that** I can view my progress and verify it.
 
-**Related Requirements:** [FR-DISTRICT-505](requirements#fr-district-505), [FR-DISTRICT-506](requirements#fr-district-506), [FR-DISTRICT-507](requirements#fr-district-507), [FR-DISTRICT-508](requirements#fr-district-508), [FR-DISTRICT-521](requirements#fr-district-521), [FR-DISTRICT-523](requirements#fr-district-523)
+**Related Requirements:** [FR-DISTRICT-505](requirements-district#fr-district-505), [FR-DISTRICT-506](requirements-district#fr-district-506), [FR-DISTRICT-507](requirements-district#fr-district-507), [FR-DISTRICT-508](requirements-district#fr-district-508), [FR-DISTRICT-521](requirements-district#fr-district-521), [FR-DISTRICT-523](requirements-district#fr-district-523)
 
-**Related Use Cases:** [UC-9](use_cases#uc-9)
+**Related Use Cases:** [UC-9](use-cases#uc-9)
 
 **User Guide:** [District & Teacher Progress](user_guide/district_teacher_progress#3-teacher-magic-links)
 
@@ -523,9 +523,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** teacher progress to reset automatically at the start of each semester, **So that** each semester's participation is tracked independently and historical data is preserved.
 
-**Related Requirements:** [FR-DISTRICT-540](requirements#fr-district-540), [FR-DISTRICT-541](requirements#fr-district-541), [FR-DISTRICT-542](requirements#fr-district-542), [FR-DISTRICT-543](requirements#fr-district-543)
+**Related Requirements:** [FR-DISTRICT-540](requirements-district#fr-district-540), [FR-DISTRICT-541](requirements-district#fr-district-541), [FR-DISTRICT-542](requirements-district#fr-district-542), [FR-DISTRICT-543](requirements-district#fr-district-543)
 
-**Related Use Cases:** [UC-13](use_cases#uc-13)
+**Related Use Cases:** [UC-13](use-cases#uc-13)
 
 **Acceptance Criteria:**
 
@@ -546,9 +546,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to associate students with events, **So that** we can track reach and attendance.
 
-**Related Requirements:** [FR-STUDENT-601](requirements#fr-student-601)
+**Related Requirements:** [FR-STUDENT-601](requirements-student#fr-student-601)
 
-**Related Use Cases:** [UC-10](use_cases#uc-10)
+**Related Use Cases:** [UC-10](use-cases#uc-10)
 
 **User Guide:** [Student Roster & Attendance](user_guide/student_management#1-rostering-students)
 
@@ -560,9 +560,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to record attendance for rostered students, **So that** reports reflect real participation.
 
-**Related Requirements:** [FR-STUDENT-602](requirements#fr-student-602)
+**Related Requirements:** [FR-STUDENT-602](requirements-student#fr-student-602)
 
-**Related Use Cases:** [UC-10](use_cases#uc-10)
+**Related Use Cases:** [UC-10](use-cases#uc-10)
 
 **Acceptance Criteria:**
 
@@ -572,9 +572,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** reports to compute unique students reached using attendance, **So that** we can report impact accurately.
 
-**Related Requirements:** [FR-STUDENT-603](requirements#fr-student-603), [FR-STUDENT-604](requirements#fr-student-604)
+**Related Requirements:** [FR-STUDENT-603](requirements-student#fr-student-603), [FR-STUDENT-604](requirements-student#fr-student-604)
 
-**Related Use Cases:** [UC-10](use_cases#uc-10)
+**Related Use Cases:** [UC-10](use-cases#uc-10)
 
 **Acceptance Criteria:**
 
@@ -592,9 +592,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** volunteer thank-you dashboards, **So that** I can recognize top contributors.
 
-**Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401), [FR-REPORTING-406](requirements#fr-reporting-406)
+**Related Requirements:** [FR-REPORTING-401](requirements-reporting#fr-reporting-401), [FR-REPORTING-406](requirements-reporting#fr-reporting-406)
 
-**Related Use Cases:** [UC-7](use_cases#uc-7)
+**Related Use Cases:** [UC-7](use-cases#uc-7)
 
 **User Guide:** [Volunteer Engagement Reports](reports/volunteer_engagement)
 
@@ -607,9 +607,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** organization participation dashboards, **So that** I can recognize partner organizations.
 
-**Related Requirements:** [FR-REPORTING-402](requirements#fr-reporting-402), [FR-REPORTING-406](requirements#fr-reporting-406)
+**Related Requirements:** [FR-REPORTING-402](requirements-reporting#fr-reporting-402), [FR-REPORTING-406](requirements-reporting#fr-reporting-406)
 
-**Related Use Cases:** [UC-7](use_cases#uc-7)
+**Related Use Cases:** [UC-7](use-cases#uc-7)
 
 **User Guide:** [Impact & KPI Reports](reports/impact)
 
@@ -622,9 +622,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** district/school impact dashboards, **So that** I can complete district reporting and grants.
 
-**Related Requirements:** [FR-REPORTING-403](requirements#fr-reporting-403), [FR-REPORTING-404](requirements#fr-reporting-404), [FR-REPORTING-406](requirements#fr-reporting-406)
+**Related Requirements:** [FR-REPORTING-403](requirements-reporting#fr-reporting-403), [FR-REPORTING-404](requirements-reporting#fr-reporting-404), [FR-REPORTING-406](requirements-reporting#fr-reporting-406)
 
-**Related Use Cases:** [UC-7](use_cases#uc-7)
+**Related Use Cases:** [UC-7](use-cases#uc-7)
 
 **User Guide:** [Impact & KPI Reports](reports/impact)
 
@@ -638,9 +638,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** leadership/internal staff, **I want** to answer one-off questions with queries/reports, **So that** I can respond to partner and grant requests quickly.
 
-**Related Requirements:** [FR-REPORTING-405](requirements#fr-reporting-405), [FR-REPORTING-406](requirements#fr-reporting-406)
+**Related Requirements:** [FR-REPORTING-405](requirements-reporting#fr-reporting-405), [FR-REPORTING-406](requirements-reporting#fr-reporting-406)
 
-**Related Use Cases:** [UC-7](use_cases#uc-7)
+**Related Use Cases:** [UC-7](use-cases#uc-7)
 
 **User Guide:** [Ad Hoc Queries](reports/ad_hoc)
 
@@ -653,11 +653,10 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to match an external list of names against our database, **So that** I can report on partner member engagement even if they used different email addresses.
 
-**Related Requirements:** [FR-REPORTING-407](requirements#fr-reporting-407), [FR-REPORTING-408](requirements#fr-reporting-408)
+**Related Requirements:** [FR-REPORTING-407](requirements-reporting#fr-reporting-407), [FR-REPORTING-408](requirements-reporting#fr-reporting-408)
 
-**Related Use Cases:** [UC-12](use_cases#uc-12)
+**Related Use Cases:** [UC-12](use-cases#uc-12)
 
-**Related Use Cases:** [UC-12](use_cases#uc-12)
 
 **User Guide:** [Partner Reconciliation](reports/partner_match)
 
@@ -752,7 +751,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff, **I want** to match imported TeacherProgress entries to actual Teacher records, **So that** clicking a teacher links to their detail page.
 
-**Related Requirements:** [FR-DISTRICT-531](requirements#fr-district-531)
+**Related Requirements:** [FR-DISTRICT-531](requirements-district#fr-district-531)
 
 **Acceptance Criteria:**
 
@@ -774,9 +773,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a PrepKC administrator, **I want** to create and configure new district tenants, **So that** partner districts can operate in isolated environments.
 
-**Related Requirements:** [FR-TENANT-101](requirements#fr-tenant-101), [FR-TENANT-102](requirements#fr-tenant-102)
+**Related Requirements:** [FR-TENANT-101](requirements-district-suite#fr-tenant-101), [FR-TENANT-102](requirements-district-suite#fr-tenant-102)
 
-**Related Use Cases:** [UC-14](use_cases#uc-14)
+**Related Use Cases:** [UC-14](use-cases#uc-14)
 
 **Acceptance Criteria:**
 
@@ -788,7 +787,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a PrepKC administrator, **I want** to switch to a district's tenant context, **So that** I can provide support and troubleshoot issues.
 
-**Related Requirements:** [FR-TENANT-105](requirements#fr-tenant-105)
+**Related Requirements:** [FR-TENANT-105](requirements-district-suite#fr-tenant-105)
 
 **Acceptance Criteria:**
 
@@ -800,9 +799,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a Polaris administrator, **I want** to create user accounts for district tenants, **So that** district staff can access their tenant's features.
 
-**Related Requirements:** [FR-TENANT-108](requirements#fr-tenant-108)
+**Related Requirements:** [FR-TENANT-108](requirements-district-suite#fr-tenant-108)
 
-**Related Use Cases:** [UC-14](use_cases#uc-14)
+**Related Use Cases:** [UC-14](use-cases#uc-14)
 
 **Acceptance Criteria:**
 
@@ -815,9 +814,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a tenant administrator, **I want** to create and manage user accounts for my organization, **So that** my colleagues can access our district's features based on their roles.
 
-**Related Requirements:** [FR-TENANT-109](requirements#fr-tenant-109), [FR-TENANT-110](requirements#fr-tenant-110), [FR-TENANT-112](requirements#fr-tenant-112)
+**Related Requirements:** [FR-TENANT-109](requirements-district-suite#fr-tenant-109), [FR-TENANT-110](requirements-district-suite#fr-tenant-110), [FR-TENANT-112](requirements-district-suite#fr-tenant-112)
 
-**Related Use Cases:** [UC-19](use_cases#uc-19)
+**Related Use Cases:** [UC-19](use-cases#uc-19)
 
 **Acceptance Criteria:**
 
@@ -831,9 +830,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a tenant administrator, **I want** to import my district's teacher roster, **So that** I can track teacher progress and enable teacher dashboard access.
 
-**Related Requirements:** [FR-TENANT-113](requirements#fr-tenant-113), [FR-TENANT-114](requirements#fr-tenant-114)
+**Related Requirements:** [FR-TENANT-113](requirements-district-suite#fr-tenant-113), [FR-TENANT-114](requirements-district-suite#fr-tenant-114)
 
-**Related Use Cases:** [UC-14](use_cases#uc-14)
+**Related Use Cases:** [UC-14](use-cases#uc-14)
 
 **Acceptance Criteria:**
 
@@ -846,7 +845,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a tenant administrator, **I want** to view a dashboard showing how many virtual sessions each teacher has attended, **So that** I can monitor district-wide teacher engagement.
 
-**Related Requirements:** [FR-TENANT-115](requirements#fr-tenant-115), [FR-TENANT-116](requirements#fr-tenant-116), [FR-TENANT-117](requirements#fr-tenant-117)
+**Related Requirements:** [FR-TENANT-115](requirements-district-suite#fr-tenant-115), [FR-TENANT-116](requirements-district-suite#fr-tenant-116), [FR-TENANT-117](requirements-district-suite#fr-tenant-117)
 
 **Acceptance Criteria:**
 
@@ -867,9 +866,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to create and manage events for my district, **So that** we can run volunteer engagement without PrepKC staff involvement.
 
-**Related Requirements:** [FR-SELFSERV-201](requirements#fr-selfserv-201), [FR-SELFSERV-202](requirements#fr-selfserv-202), [FR-SELFSERV-203](requirements#fr-selfserv-203)
+**Related Requirements:** [FR-SELFSERV-201](requirements-district-suite#fr-selfserv-201), [FR-SELFSERV-202](requirements-district-suite#fr-selfserv-202), [FR-SELFSERV-203](requirements-district-suite#fr-selfserv-203)
 
-**Related Use Cases:** [UC-15](use_cases#uc-15)
+**Related Use Cases:** [UC-15](use-cases#uc-15)
 
 **Acceptance Criteria:**
 
@@ -881,7 +880,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to view my district's events in calendar and list formats, **So that** I can plan and track volunteer activities.
 
-**Related Requirements:** [FR-SELFSERV-204](requirements#fr-selfserv-204), [FR-SELFSERV-205](requirements#fr-selfserv-205)
+**Related Requirements:** [FR-SELFSERV-204](requirements-district-suite#fr-selfserv-204), [FR-SELFSERV-205](requirements-district-suite#fr-selfserv-205)
 
 **Acceptance Criteria:**
 
@@ -892,9 +891,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to build and manage my district's volunteer pool, **So that** we have volunteers to recruit for our events.
 
-**Related Requirements:** [FR-SELFSERV-301](requirements#fr-selfserv-301), [FR-SELFSERV-302](requirements#fr-selfserv-302), [FR-SELFSERV-303](requirements#fr-selfserv-303)
+**Related Requirements:** [FR-SELFSERV-301](requirements-district-suite#fr-selfserv-301), [FR-SELFSERV-302](requirements-district-suite#fr-selfserv-302), [FR-SELFSERV-303](requirements-district-suite#fr-selfserv-303)
 
-**Related Use Cases:** [UC-16](use_cases#uc-16)
+**Related Use Cases:** [UC-16](use-cases#uc-16)
 
 **Acceptance Criteria:**
 
@@ -906,9 +905,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to assign volunteers to my district's events, **So that** I can track who is participating.
 
-**Related Requirements:** [FR-SELFSERV-304](requirements#fr-selfserv-304)
+**Related Requirements:** [FR-SELFSERV-304](requirements-district-suite#fr-selfserv-304)
 
-**Related Use Cases:** [UC-15](use_cases#uc-15)
+**Related Use Cases:** [UC-15](use-cases#uc-15)
 
 **Acceptance Criteria:**
 
@@ -919,9 +918,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to use recruitment tools to fill volunteer gaps, **So that** I can proactively ensure events are staffed.
 
-**Related Requirements:** [FR-SELFSERV-401](requirements#fr-selfserv-401), [FR-SELFSERV-402](requirements#fr-selfserv-402), [FR-SELFSERV-403](requirements#fr-selfserv-403)
+**Related Requirements:** [FR-SELFSERV-401](requirements-district-suite#fr-selfserv-401), [FR-SELFSERV-402](requirements-district-suite#fr-selfserv-402), [FR-SELFSERV-403](requirements-district-suite#fr-selfserv-403)
 
-**Related Use Cases:** [UC-16](use_cases#uc-16)
+**Related Use Cases:** [UC-16](use-cases#uc-16)
 
 **Acceptance Criteria:**
 
@@ -933,7 +932,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a volunteer, **I want** to sign up for district events via a public form, **So that** I can participate without creating an account.
 
-**Related Requirements:** [FR-SELFSERV-404](requirements#fr-selfserv-404), [FR-SELFSERV-405](requirements#fr-selfserv-405)
+**Related Requirements:** [FR-SELFSERV-404](requirements-district-suite#fr-selfserv-404), [FR-SELFSERV-405](requirements-district-suite#fr-selfserv-405)
 
 **Acceptance Criteria:**
 
@@ -945,9 +944,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district user, **I want** to see PrepKC events happening at my schools (read-only), **So that** I am aware of all volunteer activities in my district.
 
-**Related Requirements:** [FR-SELFSERV-501](requirements#fr-selfserv-501), [FR-SELFSERV-502](requirements#fr-selfserv-502), [FR-SELFSERV-503](requirements#fr-selfserv-503)
+**Related Requirements:** [FR-SELFSERV-501](requirements-district-suite#fr-selfserv-501), [FR-SELFSERV-502](requirements-district-suite#fr-selfserv-502), [FR-SELFSERV-503](requirements-district-suite#fr-selfserv-503)
 
-**Related Use Cases:** [UC-18](use_cases#uc-18)
+**Related Use Cases:** [UC-18](use-cases#uc-18)
 
 **Acceptance Criteria:**
 
@@ -967,9 +966,9 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district IT staff member, **I want** to embed my district's event listings on our website, **So that** community members can see volunteer opportunities.
 
-**Related Requirements:** [FR-API-101](requirements#fr-api-101), [FR-API-102](requirements#fr-api-102), [FR-API-108](requirements#fr-api-108)
+**Related Requirements:** [FR-API-101](requirements-district-suite#fr-api-101), [FR-API-102](requirements-district-suite#fr-api-102), [FR-API-108](requirements-district-suite#fr-api-108)
 
-**Related Use Cases:** [UC-17](use_cases#uc-17)
+**Related Use Cases:** [UC-17](use-cases#uc-17)
 
 **Acceptance Criteria:**
 
@@ -981,7 +980,7 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** a district administrator, **I want** to rotate my API key, **So that** I can maintain security if a key is compromised.
 
-**Related Requirements:** [FR-API-106](requirements#fr-api-106)
+**Related Requirements:** [FR-API-106](requirements-district-suite#fr-api-106)
 
 **Acceptance Criteria:**
 
