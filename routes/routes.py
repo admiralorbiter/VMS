@@ -65,6 +65,7 @@ from routes.management.cache_management import cache_management_bp
 from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
+from routes.salesforce.routes import salesforce_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 from routes.tenants import tenant_users_bp, tenants_bp
@@ -121,6 +122,7 @@ def init_routes(app):
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
     app.register_blueprint(email_bp)
+    app.register_blueprint(salesforce_bp)  # Salesforce Import Dashboard
 
     app.register_blueprint(pathway_events_bp)
     app.register_blueprint(teachers_bp)

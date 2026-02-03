@@ -167,14 +167,15 @@ def process_volunteer_row(row, success_count, error_count, errors):
                 row.get("Volunteer_Skills__c", ""),
             )
 
-            # Update skills
-            for skill_name in skills:
-                skill = Skill.query.filter_by(name=skill_name).first()
-                if not skill:
-                    skill = Skill(name=skill_name)
-                    db.session.add(skill)
-                if skill not in volunteer.skills:
-                    volunteer.skills.append(skill)
+            # Update skills - use no_autoflush to prevent identity map warnings
+            with db.session.no_autoflush:
+                for skill_name in skills:
+                    skill = Skill.query.filter_by(name=skill_name).first()
+                    if not skill:
+                        skill = Skill(name=skill_name)
+                        db.session.add(skill)
+                    if skill not in volunteer.skills:
+                        volunteer.skills.append(skill)
 
         # Add this new section to handle times_volunteered
         if row.get("Number_of_Attended_Volunteer_Sessions__c"):
@@ -1144,20 +1145,26 @@ def import_from_salesforce():
 
     try:
         from datetime import timezone as tz
+
         started_at = datetime.now(tz.utc)
-        
+
         # Delta sync support - check if incremental sync requested
         from services.delta_sync_service import DeltaSyncHelper
-        delta_helper = DeltaSyncHelper('volunteers')
+
+        delta_helper = DeltaSyncHelper("volunteers")
         delta_info = delta_helper.get_delta_info(request.args)
-        is_delta = delta_info['actual_delta']
-        watermark = delta_info['watermark']
-        
-        if delta_info['requested_delta']:
+        is_delta = delta_info["actual_delta"]
+        watermark = delta_info["watermark"]
+
+        if delta_info["requested_delta"]:
             if is_delta:
-                print(f"DELTA SYNC: Only fetching volunteers modified after {delta_info['watermark_formatted']}")
+                print(
+                    f"DELTA SYNC: Only fetching volunteers modified after {delta_info['watermark_formatted']}"
+                )
             else:
-                print("DELTA SYNC requested but no previous watermark found - performing FULL SYNC")
+                print(
+                    "DELTA SYNC requested but no previous watermark found - performing FULL SYNC"
+                )
         else:
             print("Starting volunteer import from Salesforce (FULL SYNC)...")
 
@@ -1197,9 +1204,9 @@ def import_from_salesforce():
                Connector_User_ID__c,
                LastModifiedDate
         FROM Contact
-        WHERE Contact_Type__c = 'Volunteer' or Contact_Type__c=''
+        WHERE (Contact_Type__c = 'Volunteer' OR Contact_Type__c = '')
         """
-        
+
         # Add delta filter if using incremental sync
         if is_delta and watermark:
             salesforce_query += delta_helper.build_date_filter(watermark)
@@ -1217,7 +1224,9 @@ def import_from_salesforce():
         sf_rows = result.get("records", [])
         total_records = len(sf_rows)
 
-        print(f"Found {total_records} records to process{' (delta)' if is_delta else ''}")
+        print(
+            f"Found {total_records} records to process{' (delta)' if is_delta else ''}"
+        )
 
         success_count = 0
         error_count = 0
@@ -1590,14 +1599,15 @@ def import_from_salesforce():
                     if set(new_skills) != current_skills:
                         # Clear existing skills
                         volunteer.skills = []
-                        # Add new skills
-                        for skill_name in new_skills:
-                            skill = Skill.query.filter_by(name=skill_name).first()
-                            if not skill:
-                                skill = Skill(name=skill_name)
-                                db.session.add(skill)
-                            if skill not in volunteer.skills:
-                                volunteer.skills.append(skill)
+                        # Add new skills - use no_autoflush to prevent identity map warnings
+                        with db.session.no_autoflush:
+                            for skill_name in new_skills:
+                                skill = Skill.query.filter_by(name=skill_name).first()
+                                if not skill:
+                                    skill = Skill(name=skill_name)
+                                    db.session.add(skill)
+                                if skill not in volunteer.skills:
+                                    volunteer.skills.append(skill)
                         updates.append("skills")
 
                 # Handle times_volunteered
@@ -1645,7 +1655,7 @@ def import_from_salesforce():
                 }
 
                 # Get preferred email type
-                preferred_email = row.get("npe01__Preferred_Email__c", "").lower()
+                preferred_email = (row.get("npe01__Preferred_Email__c") or "").lower()
                 email_changes = False
 
                 # Process each email field
@@ -1716,7 +1726,7 @@ def import_from_salesforce():
                 }
 
                 # Get preferred phone type
-                preferred_phone = row.get("npe01__PreferredPhone__c", "").lower()
+                preferred_phone = (row.get("npe01__PreferredPhone__c") or "").lower()
                 phone_changes = False
 
                 # Process each phone field
@@ -1987,14 +1997,19 @@ def import_from_salesforce():
         # Commit all successful changes
         try:
             db.session.commit()
-            
+
             # Record sync log for delta sync tracking
             try:
                 from models.sync_log import SyncLog, SyncStatus
+
                 sync_status = SyncStatus.SUCCESS.value
                 if error_count > 0:
-                    sync_status = SyncStatus.PARTIAL.value if success_count > 0 else SyncStatus.FAILED.value
-                
+                    sync_status = (
+                        SyncStatus.PARTIAL.value
+                        if success_count > 0
+                        else SyncStatus.FAILED.value
+                    )
+
                 sync_log = SyncLog(
                     sync_type="volunteers",
                     started_at=started_at,
@@ -2003,13 +2018,18 @@ def import_from_salesforce():
                     records_processed=success_count,
                     records_failed=error_count,
                     is_delta_sync=is_delta,
-                    last_sync_watermark=datetime.now(tz.utc) if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value) else None,
+                    last_sync_watermark=(
+                        datetime.now(tz.utc)
+                        if sync_status
+                        in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
+                        else None
+                    ),
                 )
                 db.session.add(sync_log)
                 db.session.commit()
             except Exception as log_e:
                 print(f"Warning: Failed to record sync log: {log_e}")
-            
+
             return jsonify(
                 {
                     "success": True,
