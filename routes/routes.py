@@ -73,6 +73,7 @@ from routes.tenants import tenant_users_bp, tenants_bp
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
 from routes.volunteers.routes import volunteers_bp
+from routes.volunteers.salesforce_import import salesforce_import_bp
 
 
 def init_routes(app):
@@ -105,6 +106,7 @@ def init_routes(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(volunteers_bp)
+    app.register_blueprint(salesforce_import_bp)
     app.register_blueprint(organizations_bp)
     app.register_blueprint(events_bp)
 
