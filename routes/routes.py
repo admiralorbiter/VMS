@@ -66,6 +66,7 @@ from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
 from routes.salesforce.routes import salesforce_bp
+from routes.salesforce.volunteer_import import salesforce_import_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 from routes.tenants import tenant_users_bp, tenants_bp
@@ -73,7 +74,6 @@ from routes.tenants import tenant_users_bp, tenants_bp
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
 from routes.volunteers.routes import volunteers_bp
-from routes.volunteers.salesforce_import import salesforce_import_bp
 
 
 def init_routes(app):
