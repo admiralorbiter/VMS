@@ -1,6 +1,6 @@
 # Purpose and Scope
 
-> [!INFO]
+> [!NOTE]
 > **Executive Summary**
 >
 > **Polaris (VMS)** is the centralized hub for managing the volunteer lifecycle at PrepKC. It connects data from **Salesforce**, **VolunTeach**, and **Pathful** to provide a unified platform for event management, volunteer recruitment, and impact reporting.
@@ -9,11 +9,11 @@
 
 The Volunteer Management System (VMS), also known as **Polaris**, is an integrated system designed to manage K–12 student connections with career professionals through in-person and virtual events. The system serves as a centralized platform for volunteer data management, event tracking, recruitment, and reporting across multiple integrated systems.
 
-### 🎯 Mission Statement
+### Mission Statement
 
 Polaris enables educational organizations to efficiently connect students with career professionals by providing a unified system for managing volunteer events, tracking participation, monitoring district and teacher progress, and generating comprehensive impact reports.
 
-### ⭐ Primary Goals
+### Primary Goals
 
 - **Centralize volunteer data** from multiple sources (Salesforce, Pathful, Google Sheets, internal datasets)
 - **Streamline event management** for both in-person and virtual career events
@@ -22,21 +22,25 @@ Polaris enables educational organizations to efficiently connect students with c
 - **Provide comprehensive reporting** for grant reporting, district impact analysis, and volunteer recognition
 - **Support data-driven decisions** through analytics, dashboards, and ad hoc querying capabilities
 
-### 💎 Business Value
+### Business Value
 
-- **Operational Efficiency**: Reduces manual data entry and duplicate work across systems
-- **Visibility**: Provides real-time visibility into event status, volunteer participation, and district progress
-- **Compliance**: Supports grant reporting and district accountability requirements
-- **Engagement**: Enables proactive volunteer recruitment and relationship management
-- **Impact Measurement**: Tracks unique students reached, volunteer hours, and organizational engagement
+| Value | Description |
+|-------|-------------|
+| **Operational Efficiency** | Reduces manual data entry and duplicate work across systems |
+| **Visibility** | Provides real-time visibility into event status, volunteer participation, and district progress |
+| **Compliance** | Supports grant reporting and district accountability requirements |
+| **Engagement** | Enables proactive volunteer recruitment and relationship management |
+| **Impact Measurement** | Tracks unique students reached, volunteer hours, and organizational engagement |
+
+---
 
 ## Scope
 
 ### In Scope
 
-The system includes the following functional domains, each defined by functional requirements in [Requirements](requirements):
+The system includes the following functional domains, each defined by functional requirements in [Requirements](../requirements/index):
 
-#### 7.1 🏢 In-Person Event Management
+#### In-Person Event Management
 - Event creation and maintenance in Salesforce
 - Automated and manual synchronization from Salesforce to VolunTeach
 - Public website event listings with visibility controls
@@ -45,17 +49,17 @@ The system includes the following functional domains, each defined by functional
 - Event status management (Draft, Requested, Confirmed, Published, Completed, Cancelled)
 - Historical data import capabilities
 
-**Related Requirements:** [FR-INPERSON-101](requirements#fr-inperson-101) through [FR-INPERSON-133](requirements#fr-inperson-133)
+**Related Requirements:** [FR-INPERSON-101](../requirements/index#fr-inperson-101) through [FR-INPERSON-133](../requirements/index#fr-inperson-133)
 
-#### 7.2 ✍️ Public Volunteer Signup
+#### Public Volunteer Signup
 - Public volunteer signup forms (no authentication required)
 - Volunteer demographic data collection (name, email, organization, skills, demographics)
 - Automatic confirmation emails and calendar invites
 - Signup data storage for reporting and recruitment
 
-**Related Requirements:** [FR-SIGNUP-121](requirements#fr-signup-121) through [FR-SIGNUP-127](requirements#fr-signup-127)
+**Related Requirements:** [FR-SIGNUP-121](../requirements/index#fr-signup-121) through [FR-SIGNUP-127](../requirements/index#fr-signup-127)
 
-#### 7.3 💻 Virtual Events
+#### Virtual Events
 - Virtual event creation and management in Polaris
 - Teacher and presenter tagging for virtual sessions
 - Pathful export import for attendance and participation
@@ -63,9 +67,9 @@ The system includes the following functional domains, each defined by functional
 - Presenter recruitment view with urgency indicators
 - Local vs. non-local volunteer tracking
 
-**Related Requirements:** [FR-VIRTUAL-201](requirements#fr-virtual-201) through [FR-VIRTUAL-219](requirements#fr-virtual-219)
+**Related Requirements:** [FR-VIRTUAL-201](../requirements/index#fr-virtual-201) through [FR-VIRTUAL-219](../requirements/index#fr-virtual-219)
 
-#### 7.4 🔍 Volunteer Search & Intelligent Matching
+#### Volunteer Search & Intelligent Matching
 - Searchable volunteer database with filtering capabilities
 - **Algorithmic candidate ranking** (scoring by history, location, keywords)
 - **Custom keyword targeting** for precise skill matching
@@ -74,9 +78,9 @@ The system includes the following functional domains, each defined by functional
 - Recruitment notes and outcome tracking
 - Volunteer search by name, organization, role, skills, and career type
 
-**Related Requirements:** [FR-RECRUIT-301](requirements#fr-recruit-301) through [FR-RECRUIT-311](requirements#fr-recruit-311)
+**Related Requirements:** [FR-RECRUIT-301](../requirements/index#fr-recruit-301) through [FR-RECRUIT-311](../requirements/index#fr-recruit-311)
 
-#### 7.5 📊 Reporting and Dashboards
+#### Reporting and Dashboards
 - Volunteer thank-you dashboards (top volunteers by hours/events)
 - Organization participation reports
 - District/school impact dashboards
@@ -85,9 +89,9 @@ The system includes the following functional domains, each defined by functional
 - Ad hoc querying capabilities
 - Export functionality (CSV) for grant and district reporting
 
-**Related Requirements:** [FR-REPORTING-401](requirements#fr-reporting-401) through [FR-REPORTING-408](requirements#fr-reporting-408)
+**Related Requirements:** [FR-REPORTING-401](../requirements/index#fr-reporting-401) through [FR-REPORTING-408](../requirements/index#fr-reporting-408)
 
-#### 7.6 🏫 District and Teacher Progress
+#### District and Teacher Progress
 - District viewer authentication and access control
 - District dashboards with school and teacher drilldown
 - Teacher progress status computation (Achieved, In Progress, Not Started)
@@ -95,17 +99,17 @@ The system includes the following functional domains, each defined by functional
 - Teacher magic link self-service access
 - Teacher data flagging and issue reporting
 
-**Related Requirements:** [FR-DISTRICT-501](requirements#fr-district-501) through [FR-DISTRICT-530](requirements#fr-district-530)
+**Related Requirements:** [FR-DISTRICT-501](../requirements/index#fr-district-501) through [FR-DISTRICT-530](../requirements/index#fr-district-530)
 
-#### 7.7 🎓 Student Roster and Attendance
+#### Student Roster and Attendance
 - Student association with events (roster management)
 - Student attendance status tracking per event
 - Student reach metrics by district, school, event type, and date range
 - Integration with Salesforce student participation data
 
-**Related Requirements:** [FR-STUDENT-601](requirements#fr-student-601) through [FR-STUDENT-604](requirements#fr-student-604)
+**Related Requirements:** [FR-STUDENT-601](../requirements/index#fr-student-601) through [FR-STUDENT-604](../requirements/index#fr-student-604)
 
-#### 7.8 📧 Email System Management
+#### Email System Management
 - Email template creation and versioning
 - Email delivery monitoring and status tracking
 - Admin email sending with safety controls
@@ -113,9 +117,9 @@ The system includes the following functional domains, each defined by functional
 - Quality checks and delivery attempt tracking
 - Automatic bug report creation for failed deliveries
 
-**Related Requirements:** [FR-EMAIL-801](requirements#fr-email-801) through [FR-EMAIL-808](requirements#fr-email-808)
+**Related Requirements:** [FR-EMAIL-801](../requirements/index#fr-email-801) through [FR-EMAIL-808](../requirements/index#fr-email-808)
 
-#### 7.9 🏛️ Tenant Infrastructure (District Suite)
+#### Tenant Infrastructure (District Suite)
 - Multi-tenant database isolation (SQLite per tenant)
 - Tenant provisioning and lifecycle management
 - Reference data duplication to tenant databases
@@ -123,9 +127,9 @@ The system includes the following functional domains, each defined by functional
 - Feature flag management per tenant
 - API key generation and management
 
-**Related Requirements:** [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+**Related Requirements:** [FR-TENANT-101](../requirements/index#fr-tenant-101) through [FR-TENANT-107](../requirements/index#fr-tenant-107)
 
-#### 7.10 🔧 District Self-Service (District Suite)
+#### District Self-Service (District Suite)
 - District event creation, editing, and cancellation
 - Event calendar and list views for district staff
 - District volunteer pool management and import
@@ -134,15 +138,17 @@ The system includes the following functional domains, each defined by functional
 - Public signup forms for district events
 - Read-only visibility of PrepKC events at district schools
 
-**Related Requirements:** [FR-SELFSERV-201](requirements#fr-selfserv-201) through [FR-SELFSERV-503](requirements#fr-selfserv-503)
+**Related Requirements:** [FR-SELFSERV-201](../requirements/index#fr-selfserv-201) through [FR-SELFSERV-503](../requirements/index#fr-selfserv-503)
 
-#### 7.11 🌐 Public Event API (District Suite)
+#### Public Event API (District Suite)
 - REST API for district website event embedding
 - API key authentication per tenant
 - Rate limiting and CORS configuration
 - Event listing and detail endpoints
 
-**Related Requirements:** [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108)
+**Related Requirements:** [FR-API-101](../requirements/index#fr-api-101) through [FR-API-108](../requirements/index#fr-api-108)
+
+---
 
 ### Out of Scope
 
@@ -166,11 +172,13 @@ The following capabilities are **explicitly excluded** from the current system s
 
 #### Future Considerations (Near-Term)
 Some features are planned but not yet implemented:
-- **Automated reminder emails to teachers** based on progress status ([FR-DISTRICT-504](requirements#fr-district-504))
-- **Automated Pathful export pulling** and loading into Polaris ([FR-VIRTUAL-207](requirements#fr-virtual-207))
-- **Automated communications connecting local volunteers** ([FR-VIRTUAL-209](requirements#fr-virtual-209))
+- **Automated reminder emails to teachers** based on progress status
+- **Automated Pathful export pulling** and loading into Polaris
+- **Automated communications connecting local volunteers**
 
 These are marked as "near-term" in requirements and may be added to scope in future releases.
+
+---
 
 ## System Boundaries
 
@@ -180,83 +188,69 @@ Polaris integrates with core systems to provide a unified experience.
 
 ![VMS Data Flow Architecture](content/images/vms_architecture_optimized.png)
 
-**System Roles:**
-*   **Salesforce**: Core CRM, System of Record for In-Person Events.
-*   **VolunTeach**: Sync engine and publishing control for In-Person Events.
-*   **Polaris**: Core application for Virtual Events, Reporting, and District Dashboards.
-*   **Pathful**: Platform for Virtual Session hosting and attendance tracking.
+| System | Role |
+|--------|------|
+| **Salesforce** | Core CRM, System of Record for In-Person Events |
+| **VolunTeach** | Sync engine and publishing control for In-Person Events |
+| **Polaris** | Core application for Virtual Events, Reporting, and District Dashboards |
+| **Pathful** | Platform for Virtual Session hosting and attendance tracking |
 
-**Reference:** [System Architecture](architecture) for detailed integration flows and source-of-truth ownership.
+**Reference:** [System Architecture](../technical/architecture) for detailed integration flows and source-of-truth ownership.
 
 ### Source of Truth Ownership
 
 **Golden Rule:** Every field has exactly one owner. Downstream systems copy but never edit owned fields.
 
-- **In-person event core fields**: Owned by Salesforce (title, dates, location, status)
-- **In-person page visibility**: Owned by VolunTeach (`Event.inperson_page_visible`)
-- **District event linking**: Owned by VolunTeach (`Event.district_links[]`)
-- **Virtual event definition**: Owned by Polaris
-- **Virtual attendance/signup**: Owned by Pathful (imported to Polaris)
-- **Teacher roster**: Owned by Polaris (imported from district-provided rosters)
-- **Student attendance**: Owned by Salesforce (aggregated in Polaris)
-- **Communication logs**: Owned by Salesforce (synced to Polaris)
-- **Volunteer identity**: Owned by Polaris (normalized email is primary key)
-- **District-created events**: Owned by tenant's Polaris instance **(District Suite)**
-- **District volunteer pools**: Owned by tenant's Polaris instance **(District Suite)**
-- **Tenant configuration**: Owned by main Polaris instance **(District Suite)**
+| Data | Owner |
+|------|-------|
+| In-person event core fields | Salesforce (title, dates, location, status) |
+| In-person page visibility | VolunTeach (`Event.inperson_page_visible`) |
+| District event linking | VolunTeach (`Event.district_links[]`) |
+| Virtual event definition | Polaris |
+| Virtual attendance/signup | Pathful (imported to Polaris) |
+| Teacher roster | Polaris (imported from district-provided rosters) |
+| Student attendance | Salesforce (aggregated in Polaris) |
+| Communication logs | Salesforce (synced to Polaris) |
+| Volunteer identity | Polaris (normalized email is primary key) |
+| District-created events | Tenant's Polaris instance (District Suite) |
+| District volunteer pools | Tenant's Polaris instance (District Suite) |
+| Tenant configuration | Main Polaris instance (District Suite) |
 
-**Reference:** [Field Mappings](field_mappings) for detailed field ownership and mapping specifications.
+**Reference:** [Field Mappings](../technical/field_mappings) for detailed field ownership and mapping specifications.
+
+---
 
 ## Target Users
 
-### Internal Staff
-- **Admin Users**: Full system access, email template management, system configuration
-- **User Role**: Standard staff access to events, volunteers, reports, and dashboards
-- **Use Cases**: Event management, volunteer recruitment, report generation, district oversight
+| Role | Access | Use Cases |
+|------|--------|-----------|
+| **Admin Users** | Full system access | Email templates, system configuration, event management |
+| **User Role** | Standard staff access | Events, volunteers, reports, dashboards |
+| **District Viewer** | District-specific dashboards | Monitor progress, view teacher status, flag data issues |
+| **Teachers** | Magic link self-service | View session history, flag incorrect data |
+| **Volunteers (Public)** | Signup forms only | Sign up for events (no account required) |
+| **District Admin** (District Suite) | Full tenant access | Create events, manage volunteers, configure settings |
+| **District Coordinator** (District Suite) | Event/volunteer management | Create events, assign volunteers, track participation |
 
-### District Coordinators
-- **District Viewer Role**: Access to district-specific dashboards and teacher progress data
-- **Use Cases**: Monitor district progress, view teacher completion status, flag data issues
-- **Access Scope**: Limited to their assigned district(s)
-
-### Teachers
-- **Teacher Magic Link Access**: Self-service access via email-based magic link
-- **Use Cases**: View personal session history, flag incorrect data
-- **Access Scope**: Single teacher identity only (matched by email)
-
-### Volunteers (Public)
-- **Unauthenticated Access**: Public signup forms for events
-- **Use Cases**: Sign up for in-person, virtual, or DIA events
-- **Access Scope**: Signup forms only (no account or dashboard access)
-
-### District Administrators (District Suite)
-- **District Admin Role**: Full access within their tenant's Polaris instance
-- **Use Cases**: Create and manage events, manage volunteer pool, configure settings, manage users
-- **Access Scope**: All features within their tenant only
-
-### District Coordinators (District Suite)
-- **District Coordinator Role**: Event and volunteer management within their tenant
-- **Use Cases**: Create events, assign volunteers, track participation
-- **Access Scope**: Event and volunteer features within their tenant only
+---
 
 ## Related Documentation
 
-This document provides the foundational understanding of system purpose and boundaries. For detailed information, see:
+| Document | Description |
+|----------|-------------|
+| [Functional Requirements](../requirements/index) | FR-xxx specifications by domain |
+| [User Stories](../requirements/user_stories) | Business intent and acceptance criteria |
+| [Use Cases](../requirements/use_cases) | End-to-end workflows |
+| [System Architecture](../technical/architecture) | Integration flows and source-of-truth |
+| [Non-Functional Requirements](../requirements/non_functional) | Quality attributes and constraints |
+| [Data Dictionary](../technical/data_dictionary) | Entity definitions and field specs |
+| [Field Mappings](../technical/field_mappings) | Cross-system data flow |
+| [Integration Contracts](../technical/contracts/index) | API specifications |
+| [District Suite Phases](../district_suite/phases) | Multi-tenant development roadmap |
+| [Tenant Management Guide](../user_guide/tenant_management) | PrepKC admin guide for tenants |
+| [District Self-Service Guide](../user_guide/district_self_service) | District user guide |
 
-- **[Requirements](requirements)** - Complete functional requirements (FR-xxx) organized by domain
-- **[User Stories](user_stories)** - Business intent and acceptance criteria for each feature
-- **[Use Cases](use_cases)** - End-to-end workflows showing how users accomplish tasks
-- **[System Architecture](architecture)** - Integration flows, source-of-truth ownership, and system context
-- **[Non-Functional Requirements](non_functional_requirements)** - Quality attributes, constraints, and cross-cutting concerns
-- **[Data Dictionary](data_dictionary)** - Canonical entity definitions and field specifications
-- **[Field Mappings](field_mappings)** - Cross-system data flow specifications
-- **[Integration Contracts](contracts)** - API specifications and integration boundaries
-- **[API Reference](api_reference)** - Public event API for district website integration **(District Suite)**
-- **[District Suite Phases](district_suite_phases)** - Development roadmap for multi-tenant features **(District Suite)**
-- **[Tenant Management Guide](user_guide/tenant_management)** - PrepKC admin guide for tenant lifecycle **(District Suite)**
-- **[District Self-Service Guide](user_guide/district_self_service)** - District user guide **(District Suite)**
-
-## Document Status
+---
 
 > [!NOTE]
 > **Source of Truth**
@@ -265,5 +259,4 @@ This document provides the foundational understanding of system purpose and boun
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.2*
+*Last updated: February 2026 · Version 1.3*
