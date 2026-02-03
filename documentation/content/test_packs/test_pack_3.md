@@ -2,9 +2,9 @@
 
 Polaris creation + Pathful import + historical data
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-VIRTUAL-201](requirements#fr-virtual-201)–[FR-VIRTUAL-206](requirements#fr-virtual-206) (Virtual events; note 205 removed), [FR-VIRTUAL-208](requirements#fr-virtual-208) (Local/non-local), [FR-VIRTUAL-204](requirements#fr-virtual-204) (Historical import), [FR-VIRTUAL-210](requirements#fr-virtual-210)–[FR-VIRTUAL-219](requirements#fr-virtual-219) (Presenter recruitment)
+> [FR-VIRTUAL-201](requirements-virtual#fr-virtual-201)–[FR-VIRTUAL-206](requirements-virtual#fr-virtual-206) (Virtual events; note 205 removed), [FR-VIRTUAL-208](requirements-virtual#fr-virtual-208) (Local/non-local), [FR-VIRTUAL-204](requirements-virtual#fr-virtual-204) (Historical import), [FR-VIRTUAL-210](requirements-virtual#fr-virtual-210)–[FR-VIRTUAL-219](requirements-virtual#fr-virtual-219) (Presenter recruitment)
 
 ---
 
@@ -181,5 +181,5 @@ Polaris creation + Pathful import + historical data
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.1*

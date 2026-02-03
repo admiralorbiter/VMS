@@ -117,5 +117,5 @@ Log per sync run:
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*

@@ -392,7 +392,7 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 **Relationships**:
 - Many-to-one with `Teacher` (via `teacher_id`, optional)
 
-**Usage**: Used as authoritative list for progress tracking and magic-link eligibility. See [FR-DISTRICT-524](requirements#fr-district-524) and [US-504](user_stories#us-504).
+**Usage**: Used as authoritative list for progress tracking and magic-link eligibility. See [FR-DISTRICT-524](requirements-district#fr-district-524) and [US-504](user-stories#us-504).
 
 ## Entity: Tenant (District Suite)
 
@@ -439,7 +439,7 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 }
 ```
 
-**Reference:** [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+**Reference:** [FR-TENANT-101](requirements-district-suite#fr-tenant-101) through [FR-TENANT-107](requirements-district-suite#fr-tenant-107)
 
 ## Entity: TenantUser (District Suite)
 
@@ -468,7 +468,7 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 - `district_coordinator` - Event and volunteer management
 - `district_viewer` - Read-only access to dashboards
 
-**Reference:** [FR-TENANT-103](requirements#fr-tenant-103)
+**Reference:** [FR-TENANT-103](requirements-district-suite#fr-tenant-103)
 
 ## Controlled Vocabularies
 
@@ -612,5 +612,5 @@ Managed in one place and validated everywhere. All enums are defined in `models/
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.1*

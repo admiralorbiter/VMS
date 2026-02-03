@@ -2,9 +2,9 @@
 
 Search + communication history + sync health
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-RECRUIT-301](requirements#fr-recruit-301)–[FR-RECRUIT-306](requirements#fr-recruit-306) (Search + history), [FR-RECRUIT-308](requirements#fr-recruit-308)–[FR-RECRUIT-309](requirements#fr-recruit-309) (Comm sync + health UX)
+> [FR-RECRUIT-301](requirements-recruitment#fr-recruit-301)–[FR-RECRUIT-306](requirements-recruitment#fr-recruit-306) (Search + history), [FR-RECRUIT-308](requirements-recruitment#fr-recruit-308)–[FR-RECRUIT-309](requirements-recruitment#fr-recruit-309) (Comm sync + health UX)
 
 ---
 
@@ -71,5 +71,5 @@ Search + communication history + sync health
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.2*

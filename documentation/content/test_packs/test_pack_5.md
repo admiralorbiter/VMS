@@ -2,9 +2,9 @@
 
 Roster + attendance + impact metrics
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-STUDENT-601](requirements#fr-student-601)–[FR-STUDENT-604](requirements#fr-student-604) (Student roster + attendance + metrics)
+> [FR-STUDENT-601](requirements-student#fr-student-601)–[FR-STUDENT-604](requirements-student#fr-student-604) (Student roster + attendance + metrics)
 
 ---
 
@@ -80,5 +80,5 @@ Roster + attendance + impact metrics
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*

@@ -87,5 +87,5 @@ Integration contracts define the boundaries and behaviors for data exchange betw
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*

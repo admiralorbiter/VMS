@@ -260,7 +260,7 @@ Events are imported only if they meet ALL criteria:
 | `Virtual Year` | `TeacherProgress.virtual_year` | direct | ✅ | e.g., "2024-2025" |
 | `Target Sessions` | `TeacherProgress.target_sessions` | int, default: 1 | ⛔️ | Target number of sessions; default: 1 |
 
-**Usage**: Used as authoritative list for progress tracking and magic-link eligibility. See [FR-DISTRICT-524](requirements#fr-district-524) and [US-504](user_stories#us-504).
+**Usage**: Used as authoritative list for progress tracking and magic-link eligibility. See [FR-DISTRICT-524](requirements-district#fr-district-524) and [US-504](user-stories#us-504).
 
 **Matching to Teacher Records**: TeacherProgress entries can be matched to Teacher records via:
 - Automatic matching: By email (normalized lowercase)
@@ -272,5 +272,5 @@ Events are imported only if they meet ALL criteria:
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.2*

@@ -2,17 +2,35 @@
 
 **Integration flows and source-of-truth ownership**
 
+---
+
+## Quick Navigation
+
+| Section | Description |
+|---------|-------------|
+| [System Context](#system-context) | Core systems overview |
+| [Integration Diagram](#integration-diagram) | Visual data flow |
+| [Source of Truth Ownership](#source-of-truth-ownership) | Field ownership rules |
+| [Conflict Resolution Rules](#conflict-resolution-rules) | R1–R7 resolution logic |
+| [Sync Cadences](#sync-cadences) | Automation schedules |
+| [Integration Details](#integration-details) | Per-integration specs |
+| [Data Flow Diagrams](#data-flow-diagrams) | Mermaid diagrams |
+| [Multi-Tenancy Architecture](#multi-tenancy-architecture-district-suite) | Tenant isolation |
+| [Public Event API](#public-event-api-architecture-district-suite) | API specs |
+| [District Admin Access](#district-admin-access-architecture-virtual-events) | Permission model |
+
+---
+
 ## Source of Truth
 
 This document is authoritative for all integration design decisions. Any deviation requires documented exception.
 
 **Related Documentation:**
-- [Field Mappings](field_mappings) - Cross-system data flow specifications
-- [Integration Contracts](contracts) - Integration boundaries and behaviors
-- [Data Dictionary](data_dictionary) - Entity and field definitions
-- [Metrics Bible](metrics_bible) - Metric calculation definitions
-- [RBAC Matrix](rbac_matrix) - Role-based access control (Security section)
-- [Privacy & Data Handling](privacy_data_handling) - Data protection and retention policies (Security section)
+- [Field Mappings](field-mappings) — Cross-system data flow specifications
+- [Integration Contracts](contracts) — Integration boundaries and behaviors
+- [Data Dictionary](data-dictionary) — Entity and field definitions
+- [Metrics Bible](metrics-bible) — Metric calculation definitions
+- [Codebase Structure](codebase-structure) — Code organization and blueprints
 
 ## System Context
 
@@ -251,7 +269,7 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 **Implementation:**
 - Website: [https://prepkc.org/volunteer.html](https://prepkc.org/volunteer.html)
 - Contract: [Contract B: Website ↔ VolunTeach API](contract_b)
-- Reference: [User Stories - Event Publishing](user_stories#us-102), [US-103](user_stories#us-103), [US-104](user_stories#us-104)
+- Reference: [User Stories - Event Publishing](user-stories#us-102), [US-103](user-stories#us-103), [US-104](user-stories#us-104)
 
 ### Salesforce → Polaris
 
@@ -306,7 +324,7 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 - Route: `routes/history/routes.py` `/history/import-from-salesforce`
 - Source: Salesforce Task and EmailMessage records
 - Contract: [Contract C: Gmail Logging → Polaris](contract_c)
-- Reference: [User Stories - Communication History](user_stories#us-404)
+- Reference: [User Stories - Communication History](user-stories#us-404)
 
 ### Website → Polaris
 
@@ -493,7 +511,7 @@ graph TB
 5. System creates initial admin user
 6. System generates API key
 
-**Reference:** [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107)
+**Reference:** [FR-TENANT-101](requirements-district-suite#fr-tenant-101) through [FR-TENANT-107](requirements-district-suite#fr-tenant-107)
 
 ---
 
@@ -570,7 +588,7 @@ All responses follow consistent structure:
 }
 ```
 
-**Reference:** [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108)
+**Reference:** [FR-API-101](requirements-district-suite#fr-api-101) through [FR-API-108](requirements-district-suite#fr-api-108)
 
 ---
 
@@ -634,26 +652,26 @@ All changes to virtual events are logged with:
 
 ## Related Requirements
 
-- [FR-INPERSON-108](requirements#fr-inperson-108): Scheduled daily imports
-- [FR-INPERSON-110](requirements#fr-inperson-110): Batch processing for large datasets
-- [FR-RECRUIT-305](requirements#fr-recruit-305): Communication history from Salesforce
-- [FR-DISTRICT-501](requirements#fr-district-501): District viewer access
-- [FR-TENANT-101](requirements#fr-tenant-101) through [FR-TENANT-107](requirements#fr-tenant-107): Tenant infrastructure
-- [FR-API-101](requirements#fr-api-101) through [FR-API-108](requirements#fr-api-108): Public API
-- [FR-VIRTUAL-224](requirements#fr-virtual-224) through [FR-VIRTUAL-233](requirements#fr-virtual-233): Post-import data management (Phase D)
+- [FR-INPERSON-108](requirements-in-person#fr-inperson-108): Scheduled daily imports
+- [FR-INPERSON-110](requirements-in-person#fr-inperson-110): Batch processing for large datasets
+- [FR-RECRUIT-305](requirements-recruitment#fr-recruit-305): Communication history from Salesforce
+- [FR-DISTRICT-501](requirements-district#fr-district-501): District viewer access
+- [FR-TENANT-101](requirements-district-suite#fr-tenant-101) through [FR-TENANT-107](requirements-district-suite#fr-tenant-107): Tenant infrastructure
+- [FR-API-101](requirements-district-suite#fr-api-101) through [FR-API-108](requirements-district-suite#fr-api-108): Public API
+- [FR-VIRTUAL-224](requirements-virtual#fr-virtual-224) through [FR-VIRTUAL-233](requirements-virtual#fr-virtual-233): Post-import data management (Phase D)
 
 ## Related User Stories
 
-- [US-102](user_stories#us-102): Toggle publish visibility
-- [US-104](user_stories#us-104): Link events to districts
-- [US-404](user_stories#us-404): View communication history
-- [US-1001](user_stories#us-1001): Create and configure district tenant
-- [US-1201](user_stories#us-1201): District embeds events on website
-- [US-310](user_stories#us-310): District admin reviews virtual session data
-- [US-311](user_stories#us-311): Set cancellation reasons
-- [US-312](user_stories#us-312): View audit trail
+- [US-102](user-stories#us-102): Toggle publish visibility
+- [US-104](user-stories#us-104): Link events to districts
+- [US-404](user-stories#us-404): View communication history
+- [US-1001](user-stories#us-1001): Create and configure district tenant
+- [US-1201](user-stories#us-1201): District embeds events on website
+- [US-310](user-stories#us-310): District admin reviews virtual session data
+- [US-311](user-stories#us-311): Set cancellation reasons
+- [US-312](user-stories#us-312): View audit trail
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.1*

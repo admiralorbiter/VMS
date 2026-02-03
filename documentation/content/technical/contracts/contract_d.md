@@ -99,5 +99,5 @@ After import, Polaris must report:
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*

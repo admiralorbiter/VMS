@@ -2,9 +2,9 @@
 
 Teacher magic links + progress status validation
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-DISTRICT-501](requirements#fr-district-501)–[FR-DISTRICT-503](requirements#fr-district-503) (Dashboard), [FR-DISTRICT-508](requirements#fr-district-508) (Status definitions), [FR-DISTRICT-505](requirements#fr-district-505)–[FR-DISTRICT-507](requirements#fr-district-507) (Magic links), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-524](requirements#fr-district-524) (RBAC/Scoping), [FR-DISTRICT-540](requirements#fr-district-540)–[FR-DISTRICT-543](requirements#fr-district-543) (Semester Reset)
+> [FR-DISTRICT-501](requirements-district#fr-district-501)–[FR-DISTRICT-503](requirements-district#fr-district-503) (Dashboard), [FR-DISTRICT-508](requirements-district#fr-district-508) (Status definitions), [FR-DISTRICT-505](requirements-district#fr-district-505)–[FR-DISTRICT-507](requirements-district#fr-district-507) (Magic links), [FR-DISTRICT-521](requirements-district#fr-district-521)–[FR-DISTRICT-524](requirements-district#fr-district-524) (RBAC/Scoping), [FR-DISTRICT-540](requirements-district#fr-district-540)–[FR-DISTRICT-543](requirements-district#fr-district-543) (Semester Reset)
 
 ---
 
@@ -78,5 +78,5 @@ Teacher magic links + progress status validation
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.1*
