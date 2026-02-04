@@ -84,30 +84,36 @@ def import_schools():
         district_rows = district_result.get("records", [])
 
         district_success = 0
+        district_skipped = 0
         district_errors = []
 
         for row in district_rows:
+            # Use savepoint to isolate each record
             try:
-                existing_district = District.query.filter_by(
-                    salesforce_id=row["Id"]
-                ).first()
+                with db.session.begin_nested():
+                    existing_district = District.query.filter_by(
+                        salesforce_id=row["Id"]
+                    ).first()
 
-                if existing_district:
-                    existing_district.name = row["Name"]
-                    existing_district.district_code = row["School_Code_External_ID__c"]
-                else:
-                    new_district = District(
-                        salesforce_id=row["Id"],
-                        name=row["Name"],
-                        district_code=row["School_Code_External_ID__c"],
-                    )
-                    db.session.add(new_district)
+                    if existing_district:
+                        existing_district.name = row["Name"]
+                        existing_district.district_code = row[
+                            "School_Code_External_ID__c"
+                        ]
+                    else:
+                        new_district = District(
+                            salesforce_id=row["Id"],
+                            name=row["Name"],
+                            district_code=row["School_Code_External_ID__c"],
+                        )
+                        db.session.add(new_district)
 
-                district_success += 1
+                    district_success += 1
             except Exception as e:
-                district_errors.append(
-                    f"Error processing district {row.get('Name')}: {str(e)}"
-                )
+                district_skipped += 1
+                error_msg = f"SKIPPED: {row.get('Name', 'Unknown')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
+                district_errors.append(error_msg)
+                print(f"  ⚠ {error_msg}")
 
         db.session.commit()
 
@@ -129,37 +135,43 @@ def import_schools():
         school_rows = school_result.get("records", [])
 
         school_success = 0
+        school_skipped = 0
         school_errors = []
 
         for row in school_rows:
+            # Use savepoint to isolate each record
             try:
-                existing_school = School.query.filter_by(id=row["Id"]).first()
-                district = District.query.filter_by(
-                    salesforce_id=row["ParentId"]
-                ).first()
+                with db.session.begin_nested():
+                    existing_school = School.query.filter_by(id=row["Id"]).first()
+                    district = District.query.filter_by(
+                        salesforce_id=row["ParentId"]
+                    ).first()
 
-                if existing_school:
-                    existing_school.name = row["Name"]
-                    existing_school.district_id = district.id if district else None
-                    existing_school.salesforce_district_id = row["ParentId"]
-                    existing_school.normalized_name = row["Connector_Account_Name__c"]
-                    existing_school.school_code = row["School_Code_External_ID__c"]
-                else:
-                    new_school = School(
-                        id=row["Id"],
-                        name=row["Name"],
-                        district_id=district.id if district else None,
-                        salesforce_district_id=row["ParentId"],
-                        normalized_name=row["Connector_Account_Name__c"],
-                        school_code=row["School_Code_External_ID__c"],
-                    )
-                    db.session.add(new_school)
+                    if existing_school:
+                        existing_school.name = row["Name"]
+                        existing_school.district_id = district.id if district else None
+                        existing_school.salesforce_district_id = row["ParentId"]
+                        existing_school.normalized_name = row[
+                            "Connector_Account_Name__c"
+                        ]
+                        existing_school.school_code = row["School_Code_External_ID__c"]
+                    else:
+                        new_school = School(
+                            id=row["Id"],
+                            name=row["Name"],
+                            district_id=district.id if district else None,
+                            salesforce_district_id=row["ParentId"],
+                            normalized_name=row["Connector_Account_Name__c"],
+                            school_code=row["School_Code_External_ID__c"],
+                        )
+                        db.session.add(new_school)
 
-                school_success += 1
+                    school_success += 1
             except Exception as e:
-                school_errors.append(
-                    f"Error processing school {row.get('Name')}: {str(e)}"
-                )
+                school_skipped += 1
+                error_msg = f"SKIPPED: {row.get('Name', 'Unknown')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
+                school_errors.append(error_msg)
+                print(f"  ⚠ {error_msg}")
 
         db.session.commit()
 

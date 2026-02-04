@@ -90,50 +90,52 @@ def import_teachers_from_salesforce():
         result = safe_query_all(sf, teacher_query)
         teacher_rows = result.get("records", [])
 
-        # Process each teacher record
+        # Process each teacher record with savepoint recovery
+        skipped_count = 0
         for i, row in enumerate(teacher_rows):
+            # Use savepoint to isolate each record - failures won't roll back the batch
             try:
-                # Use the Teacher model's import method
-                teacher, is_new, error = Teacher.import_from_salesforce(row, db.session)
-
-                if error:
-                    error_count += 1
-                    errors.append(error)
-                    continue
-
-                # Flush to get ID (needed for contact info) without full commit
-                db.session.flush()
-
-                # Handle contact info using the teacher's method
-                try:
-                    success, error = teacher.update_contact_info(row, db.session)
-                    if not success:
-                        errors.append(error)
-                    else:
-                        success_count += 1
-
-                except Exception as e:
-                    db.session.rollback()
-                    error_count += 1
-                    errors.append(
-                        f"Error saving contact info for teacher {teacher.first_name} {teacher.last_name}: {str(e)}"
+                with db.session.begin_nested():
+                    # Use the Teacher model's import method
+                    teacher, is_new, error = Teacher.import_from_salesforce(
+                        row, db.session
                     )
 
-                # Batch commit every 50 records for performance and resumability
-                if (i + 1) % 50 == 0:
-                    try:
-                        db.session.commit()
-                        print(f"  → Committed teachers batch {(i+1) // 50}")
-                    except Exception as batch_e:
-                        db.session.rollback()
-                        print(f"  → Batch commit failed: {batch_e}")
+                    if error:
+                        # Raise to trigger savepoint rollback
+                        raise ValueError(error)
+
+                    # Flush to get ID (needed for contact info) without full commit
+                    db.session.flush()
+
+                    # Handle contact info using the teacher's method
+                    contact_success, contact_error = teacher.update_contact_info(
+                        row, db.session
+                    )
+                    if not contact_success:
+                        raise ValueError(contact_error)
+
+                    success_count += 1
 
             except Exception as e:
+                # Savepoint automatically rolled back - other records in batch preserved
                 error_count += 1
-                errors.append(
-                    f"Error processing teacher {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}"
-                )
+                skipped_count += 1
+                error_msg = f"SKIPPED: {row.get('FirstName', '')} {row.get('LastName', '')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
+                errors.append(error_msg)
+                print(f"  ⚠ {error_msg}")
                 continue
+
+            # Batch commit every 50 records for performance and resumability
+            if (i + 1) % 50 == 0:
+                try:
+                    db.session.commit()
+                    print(
+                        f"  → Committed teachers batch {(i+1) // 50} ({success_count} successful, {skipped_count} skipped)"
+                    )
+                except Exception as batch_e:
+                    db.session.rollback()
+                    print(f"  → Batch commit failed: {batch_e}")
 
         # Final commit for remaining records
         db.session.commit()
@@ -165,6 +167,7 @@ def import_teachers_from_salesforce():
                 status=sync_status,
                 records_processed=success_count,
                 records_failed=error_count,
+                records_skipped=skipped_count,
                 is_delta_sync=is_delta,
                 last_sync_watermark=(
                     datetime.now(tz.utc)
@@ -181,11 +184,12 @@ def import_teachers_from_salesforce():
         return jsonify(
             {
                 "success": True,
-                "message": f"Successfully processed {success_count} teachers with {error_count} errors",
+                "message": f"Successfully processed {success_count} teachers ({skipped_count} skipped, {error_count} errors)",
                 "processed_count": success_count,
+                "skipped_count": skipped_count,
                 "error_count": error_count,
                 "is_delta_sync": is_delta,
-                "errors": errors,
+                "errors": errors[:100],  # Limit error list size in response
             }
         )
 

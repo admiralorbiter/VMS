@@ -141,49 +141,55 @@ def import_organizations_from_salesforce():
         result = safe_query_all(sf, org_query)
         sf_rows = result.get("records", [])
 
-        # Process each organization from Salesforce
+        # Process each organization from Salesforce with savepoint recovery
+        skipped_count = 0
         for i, row in enumerate(sf_rows):
+            # Use savepoint to isolate each record - failures won't roll back the batch
             try:
-                # Check if organization already exists in local database
-                org = Organization.query.filter_by(salesforce_id=row["Id"]).first()
-                if not org:
-                    # Create new organization if it doesn't exist
-                    org = Organization()
-                    db.session.add(org)
+                with db.session.begin_nested():
+                    # Check if organization already exists in local database
+                    org = Organization.query.filter_by(salesforce_id=row["Id"]).first()
+                    if not org:
+                        # Create new organization if it doesn't exist
+                        org = Organization()
+                        db.session.add(org)
 
-                # Update organization fields with Salesforce data
-                org.salesforce_id = row["Id"]
-                org.name = row.get("Name", "")
-                org.type = row.get("Type")
-                org.description = row.get("Description")
-                org.billing_street = row.get("BillingStreet")
-                org.billing_city = row.get("BillingCity")
-                org.billing_state = row.get("BillingState")
-                org.billing_postal_code = row.get("BillingPostalCode")
-                org.billing_country = row.get("BillingCountry")
+                    # Update organization fields with Salesforce data
+                    org.salesforce_id = row["Id"]
+                    org.name = row.get("Name", "")
+                    org.type = row.get("Type")
+                    org.description = row.get("Description")
+                    org.billing_street = row.get("BillingStreet")
+                    org.billing_city = row.get("BillingCity")
+                    org.billing_state = row.get("BillingState")
+                    org.billing_postal_code = row.get("BillingPostalCode")
+                    org.billing_country = row.get("BillingCountry")
 
-                # Parse and set last activity date if available
-                if row.get("LastActivityDate"):
-                    org.last_activity_date = parse_date(row["LastActivityDate"])
+                    # Parse and set last activity date if available
+                    if row.get("LastActivityDate"):
+                        org.last_activity_date = parse_date(row["LastActivityDate"])
 
-                success_count += 1
-
-                # Batch commit every 50 records for resumability
-                if (i + 1) % 50 == 0:
-                    try:
-                        db.session.commit()
-                        print(f"  → Committed orgs batch {(i+1) // 50}")
-                    except Exception as batch_e:
-                        db.session.rollback()
-                        print(f"  → Orgs batch commit failed: {batch_e}")
+                    success_count += 1
 
             except Exception as e:
-                # Track errors for reporting
+                # Savepoint automatically rolled back - other records in batch preserved
                 error_count += 1
-                errors.append(
-                    f"Error processing organization {row.get('Name', 'Unknown')}: {str(e)}"
-                )
+                skipped_count += 1
+                error_msg = f"SKIPPED: {row.get('Name', 'Unknown')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
+                errors.append(error_msg)
+                print(f"  ⚠ {error_msg}")
                 continue
+
+            # Batch commit every 50 records for resumability
+            if (i + 1) % 50 == 0:
+                try:
+                    db.session.commit()
+                    print(
+                        f"  → Committed orgs batch {(i+1) // 50} ({success_count} successful, {skipped_count} skipped)"
+                    )
+                except Exception as batch_e:
+                    db.session.rollback()
+                    print(f"  → Orgs batch commit failed: {batch_e}")
 
         # Final commit for any remaining changes
         db.session.commit()

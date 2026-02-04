@@ -134,56 +134,56 @@ def import_students_from_salesforce():
         error_count = 0
         errors = []
         processed_ids = []
+        skipped_count = 0
 
-        # Process each student in the chunk
+        # Process each student in the chunk with savepoint recovery
         for i, row in enumerate(student_rows):
+            # Use savepoint to isolate each record - failures won't roll back the batch
             try:
-                # Use the Student model's import method
-                student, is_new, error = Student.import_from_salesforce(row, db.session)
-
-                if error:
-                    error_count += 1
-                    errors.append(error)
-                    continue
-
-                if not student.id:
-                    db.session.add(student)
-
-                # Flush to get ID (needed for contact info) without full commit
-                db.session.flush()
-
-                # Handle contact info using the student's method
-                try:
-                    success, error = student.update_contact_info(row, db.session)
-                    if not success:
-                        errors.append(error)
-                    else:
-                        success_count += 1
-                        processed_ids.append(row["Id"])
-
-                except Exception as e:
-                    db.session.rollback()
-                    errors.append(
-                        f"Error processing contact info for {student.first_name} {student.last_name}: {str(e)}"
+                with db.session.begin_nested():
+                    # Use the Student model's import method
+                    student, is_new, error = Student.import_from_salesforce(
+                        row, db.session
                     )
-                    error_count += 1
 
-                # Batch commit every 100 records for resumability and performance
-                if (i + 1) % 100 == 0:
-                    try:
-                        db.session.commit()
-                        print(f"  → Committed students batch {(i+1) // 100}")
-                    except Exception as batch_e:
-                        db.session.rollback()
-                        print(f"  → Batch commit failed: {batch_e}")
+                    if error:
+                        raise ValueError(error)
+
+                    if not student.id:
+                        db.session.add(student)
+
+                    # Flush to get ID (needed for contact info) without full commit
+                    db.session.flush()
+
+                    # Handle contact info using the student's method
+                    contact_success, contact_error = student.update_contact_info(
+                        row, db.session
+                    )
+                    if not contact_success:
+                        raise ValueError(contact_error)
+
+                    success_count += 1
+                    processed_ids.append(row["Id"])
 
             except Exception as e:
-                db.session.rollback()
-                errors.append(
-                    f"Error processing student {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}"
-                )
+                # Savepoint automatically rolled back - other records in batch preserved
                 error_count += 1
+                skipped_count += 1
+                error_msg = f"SKIPPED: {row.get('FirstName', '')} {row.get('LastName', '')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
+                errors.append(error_msg)
+                print(f"  ⚠ {error_msg}")
                 continue
+
+            # Batch commit every 100 records for resumability and performance
+            if (i + 1) % 100 == 0:
+                try:
+                    db.session.commit()
+                    print(
+                        f"  → Committed students batch {(i+1) // 100} ({success_count} successful, {skipped_count} skipped)"
+                    )
+                except Exception as batch_e:
+                    db.session.rollback()
+                    print(f"  → Batch commit failed: {batch_e}")
 
         # Final commit for remaining records
         db.session.commit()
@@ -239,11 +239,11 @@ def import_students_from_salesforce():
         return {
             "success": True,  # For frontend compatibility
             "status": "success",
-            "message": f"Processed chunk of {len(student_rows)} students ({success_count} successful, {error_count} errors)",
+            "message": f"Processed chunk of {len(student_rows)} students ({success_count} successful, {skipped_count} skipped, {error_count} errors)",
             "total_records": total_records,
             "processed_count": len(processed_ids),
             "error_count": error_count,
-            "skipped_count": 0,
+            "skipped_count": skipped_count,
             "next_id": next_id if not is_complete else None,
             "is_complete": is_complete,
             "is_delta_sync": is_delta,

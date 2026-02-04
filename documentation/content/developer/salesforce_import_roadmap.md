@@ -34,11 +34,12 @@ This document tracks improvements to the Salesforce import system following the 
   - ✅ Using 50-record commit windows (matching other imports)
   - **Verified**: Uses `flush()` then batch commits, matching student_import.py
 
-- [ ] **Implement savepoint recovery**
-  - Wrap individual record processing in `db.session.begin_nested()`
-  - Allow skipping malformed records without failing entire batch
-  - Log skipped records with reason
-  - **Acceptance**: Single bad record doesn't fail entire import
+- [x] **Implement savepoint recovery** *(Complete for core imports)*
+  - ✅ Wrapped record processing in `db.session.begin_nested()`
+  - ✅ Failures skip individual records without failing batch
+  - ✅ Logs skipped records with reason and Salesforce ID
+  - **Applied to**: teacher, student, organization, school (districts + schools)
+  - **Remaining**: volunteer (794 lines, needs separate refactor), event, pathway, history
 
 ---
 
