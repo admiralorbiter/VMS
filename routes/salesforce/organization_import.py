@@ -25,7 +25,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from routes.decorators import global_users_only
 from routes.utils import parse_date
-from services.salesforce_client import get_salesforce_client, safe_query_all
+from services.salesforce import get_salesforce_client, safe_query_all
 
 # SQLite has a limit on the number of variables in a query (typically 999)
 # We chunk large IN queries to avoid this limit
@@ -95,7 +95,7 @@ def import_organizations_from_salesforce():
         started_at = datetime.now(tz.utc)
 
         # Delta sync support - check if incremental sync requested
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("organizations")
         delta_info = delta_helper.get_delta_info(request.args)
@@ -287,7 +287,7 @@ def import_affiliations_from_salesforce():
         started_at = datetime.now(tz.utc)
 
         # Delta sync support - check if incremental sync requested
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("affiliations")
         delta_info = delta_helper.get_delta_info(request.args)

@@ -77,11 +77,7 @@ from routes.utils import (
     parse_date,
     parse_skills,
 )
-from services.salesforce_mappers import (
-    map_age_group,
-    map_education_level,
-    map_race_ethnicity,
-)
+from services.salesforce import map_age_group, map_education_level, map_race_ethnicity
 
 # Create Flask Blueprint for volunteer routes
 volunteers_bp = Blueprint("volunteers", __name__)

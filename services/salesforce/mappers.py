@@ -7,7 +7,7 @@ to Polaris database enum values. This module consolidates all Salesforce-to-enum
 mapping logic that was previously scattered throughout route handlers.
 
 Usage:
-    from services.salesforce_mappers import (
+    from services.salesforce import (
         map_education_level,
         map_race_ethnicity,
         map_age_group,
@@ -235,6 +235,58 @@ def map_age_group(value: Optional[str]):
     cleaned = value.strip()
     enum_name = AGE_GROUP_MAPPING.get(cleaned, "UNKNOWN")
     return AgeGroupEnum[enum_name]
+
+
+# =============================================================================
+# GRADE LEVEL MAPPING
+# =============================================================================
+# Maps Salesforce grade level values to GradeLevelEnum names
+
+GRADE_LEVEL_MAPPING = {
+    "K": "KINDERGARTEN",
+    "Kindergarten": "KINDERGARTEN",
+    "1": "FIRST",
+    "1st": "FIRST",
+    "2": "SECOND",
+    "2nd": "SECOND",
+    "3": "THIRD",
+    "3rd": "THIRD",
+    "4": "FOURTH",
+    "4th": "FOURTH",
+    "5": "FIFTH",
+    "5th": "FIFTH",
+    "6": "SIXTH",
+    "6th": "SIXTH",
+    "7": "SEVENTH",
+    "7th": "SEVENTH",
+    "8": "EIGHTH",
+    "8th": "EIGHTH",
+    "9": "NINTH",
+    "9th": "NINTH",
+    "10": "TENTH",
+    "10th": "TENTH",
+    "11": "ELEVENTH",
+    "11th": "ELEVENTH",
+    "12": "TWELFTH",
+    "12th": "TWELFTH",
+}
+
+
+def map_grade_level(value: Optional[str], default: str = "UNKNOWN") -> str:
+    """
+    Map a Salesforce grade level value to the corresponding enum name.
+
+    Args:
+        value: Salesforce grade level field value
+        default: Default enum name if no mapping found
+
+    Returns:
+        String enum name suitable for GradeLevelEnum[name]
+    """
+    if not value:
+        return default
+    cleaned = value.strip()
+    return GRADE_LEVEL_MAPPING.get(cleaned, default)
 
 
 # =============================================================================

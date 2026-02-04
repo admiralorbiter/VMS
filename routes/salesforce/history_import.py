@@ -26,7 +26,7 @@ from models.teacher import Teacher
 from models.volunteer import Volunteer
 from routes.decorators import global_users_only
 from routes.utils import parse_date
-from services.salesforce_client import get_salesforce_client, safe_query_all
+from services.salesforce import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce history import routes
 history_import_bp = Blueprint("history_import", __name__)
@@ -66,7 +66,7 @@ def import_history_from_salesforce():
         started_at = datetime.now(timezone.utc)
 
         # Delta sync support - check if incremental sync requested
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("history")
         delta_info = delta_helper.get_delta_info(request.args)

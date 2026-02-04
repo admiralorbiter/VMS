@@ -20,7 +20,7 @@ from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 from models import db
 from models.teacher import Teacher
 from routes.decorators import global_users_only
-from services.salesforce_client import get_salesforce_client, safe_query_all
+from services.salesforce import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce teacher import routes
 sf_teacher_import_bp = Blueprint("sf_teacher_import", __name__)
@@ -46,7 +46,7 @@ def import_teachers_from_salesforce():
         started_at = datetime.now(tz.utc)
 
         # Delta sync support - check if incremental sync requested
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("teachers")
         delta_info = delta_helper.get_delta_info(request.args)

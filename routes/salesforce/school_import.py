@@ -24,7 +24,7 @@ from models.district_model import District
 from models.school_model import School
 from models.sync_log import SyncLog, SyncStatus
 from routes.decorators import global_users_only
-from services.salesforce_client import get_salesforce_client, safe_query_all
+from services.salesforce import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce school import routes
 school_import_bp = Blueprint("school_import", __name__)
@@ -48,7 +48,7 @@ def import_schools():
         started_at = datetime.now(timezone.utc)
 
         # Delta sync support
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("schools_and_districts")
         delta_info = delta_helper.get_delta_info(request.args)
@@ -326,7 +326,7 @@ def import_classes():
         started_at = datetime.now(timezone.utc)
 
         # Delta sync support
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("classes")
         delta_info = delta_helper.get_delta_info(request.args)

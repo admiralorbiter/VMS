@@ -6,7 +6,7 @@ Centralized Salesforce connection management with retry logic and connection poo
 This module provides a single source of truth for Salesforce API connections.
 
 Usage:
-    from services.salesforce_client import get_salesforce_client, safe_query_all
+    from services.salesforce import get_salesforce_client, safe_query_all
 
     # Get a client
     sf = get_salesforce_client()

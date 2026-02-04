@@ -28,11 +28,12 @@ from models.contact import (
 from models.volunteer import ConnectorData, ConnectorSubscriptionEnum, Skill, Volunteer
 from routes.decorators import global_users_only
 from routes.utils import parse_date, parse_skills
-from services.salesforce_client import get_salesforce_client, safe_query_all
-from services.salesforce_mappers import (
+from services.salesforce import (
+    get_salesforce_client,
     map_age_group,
     map_education_level,
     map_race_ethnicity,
+    safe_query_all,
 )
 
 # Create Blueprint for Salesforce import routes
@@ -49,7 +50,7 @@ def import_from_salesforce():
         started_at = datetime.now(tz.utc)
 
         # Delta sync support - check if incremental sync requested
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("volunteers")
         delta_info = delta_helper.get_delta_info(request.args)

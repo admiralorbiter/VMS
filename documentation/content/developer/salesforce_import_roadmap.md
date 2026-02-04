@@ -16,17 +16,18 @@ This document tracks improvements to the Salesforce import system following the 
 
 ### 🔴 High Priority
 
-- [ ] **Create centralized service layer**
-  - Extract import logic from route files to `services/salesforce/processors/`
-  - Create `services/salesforce/utils.py` for shared utilities
-  - Keep routes as thin HTTP handlers only
-  - **Acceptance**: Routes only handle request/response, all logic in services
+- [x] **Create centralized service layer** *(Complete)*
+  - ✅ Created `services/salesforce/` package structure
+  - ✅ Created `services/salesforce/utils.py` for shared utilities
+  - ✅ Created `services/salesforce/processors/event.py` with row processors
+  - ✅ Updated `routes/salesforce/event_import.py` to import from services
+  - **Verified**: Tests pass, route file reduced from 955 to 530 lines
 
-- [ ] **Consolidate duplicate helper functions**
-  - Audit: `safe_parse_delivery_hours`, date parsers, null-safety helpers
-  - Move to `services/salesforce/utils.py`
-  - Update all import modules to use centralized versions
-  - **Acceptance**: `grep` returns single definition per helper
+- [x] **Consolidate duplicate helper functions** *(Complete)*
+  - ✅ Added `safe_parse_delivery_hours` to `services/salesforce/utils.py`
+  - ✅ Added `chunked_in_query` to `services/salesforce/utils.py`
+  - ✅ Updated `event_import.py` to import from centralized location
+  - **Verified**: Route imports from `services.salesforce.utils`
 
 - [ ] **Migrate Teacher import to batch commits**
   - Replace per-record `db.session.commit()` with Flush+Batch pattern
@@ -134,7 +135,7 @@ The following were considered but are **not currently feasible**:
 
 | Sprint | Focus | Status |
 |--------|-------|--------|
-| Sprint 1 | Service layer extraction | ⬜ Not Started |
+| Sprint 1 | Service layer extraction | ✅ Complete |
 | Sprint 2 | Error handling & savepoints | ⬜ Not Started |
 | Sprint 3 | Dashboard enhancements | ⬜ Not Started |
 

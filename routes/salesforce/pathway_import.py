@@ -40,7 +40,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
-from services.salesforce_client import get_salesforce_client, safe_query_all
+from services.salesforce import get_salesforce_client, safe_query_all
 
 # Blueprint for pathway events import functionality
 pathway_import_bp = Blueprint("pathway_import", __name__, url_prefix="/pathway-events")

@@ -19,7 +19,7 @@ from flask_login import login_required
 from models import db
 from models.student import Student
 from routes.decorators import global_users_only
-from services.salesforce_client import get_salesforce_client, safe_query
+from services.salesforce import get_salesforce_client, safe_query
 from utils.rate_limiter import limiter
 
 # Create Blueprint for Salesforce student import routes
@@ -48,7 +48,7 @@ def import_students_from_salesforce():
         started_at = datetime.now(tz.utc)
 
         # Delta sync support - check if incremental sync requested
-        from services.delta_sync_service import DeltaSyncHelper
+        from services.salesforce import DeltaSyncHelper
 
         delta_helper = DeltaSyncHelper("students")
         delta_info = delta_helper.get_delta_info(request.args)
