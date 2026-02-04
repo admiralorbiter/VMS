@@ -44,7 +44,9 @@ from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import ImportErrorCode, create_import_error
 
 # Blueprint for pathway events import functionality
-pathway_import_bp = Blueprint("pathway_import", __name__, url_prefix="/pathway-events")
+sf_pathway_import_bp = Blueprint(
+    "sf_pathway_import", __name__, url_prefix="/pathway-events"
+)
 
 
 def _create_event_from_salesforce(sf_event_data, event_districts):
@@ -294,7 +296,7 @@ def _process_student_participation_row(
         return success_count, error_count + 1
 
 
-@pathway_import_bp.route("/sync-unaffiliated-events", methods=["POST"])
+@sf_pathway_import_bp.route("/sync-unaffiliated-events", methods=["POST"])
 @login_required
 @global_users_only
 def sync_unaffiliated_events():

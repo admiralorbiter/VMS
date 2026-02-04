@@ -30,10 +30,10 @@ from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import ImportErrorCode, create_import_error
 
 # Create Blueprint for Salesforce history import routes
-history_import_bp = Blueprint("history_import", __name__)
+sf_history_import_bp = Blueprint("sf_history_import", __name__)
 
 
-@history_import_bp.route("/history/import-from-salesforce", methods=["POST"])
+@sf_history_import_bp.route("/history/import-from-salesforce", methods=["POST"])
 @login_required
 @global_users_only
 def import_history_from_salesforce():

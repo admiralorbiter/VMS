@@ -67,10 +67,12 @@ def chunked_in_query(model, field, id_set, key_func=None):
 
 
 # Create Blueprint for Salesforce organization import routes
-organization_import_bp = Blueprint("organization_import", __name__)
+sf_organization_import_bp = Blueprint("sf_organization_import", __name__)
 
 
-@organization_import_bp.route("/organizations/import-from-salesforce", methods=["POST"])
+@sf_organization_import_bp.route(
+    "/organizations/import-from-salesforce", methods=["POST"]
+)
 @login_required
 @global_users_only
 def import_organizations_from_salesforce():
@@ -270,7 +272,7 @@ def import_organizations_from_salesforce():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@organization_import_bp.route(
+@sf_organization_import_bp.route(
     "/organizations/import-affiliations-from-salesforce", methods=["POST"]
 )
 @login_required

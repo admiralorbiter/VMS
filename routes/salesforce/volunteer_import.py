@@ -38,10 +38,10 @@ from services.salesforce import (
 from services.salesforce.errors import classify_exception
 
 # Create Blueprint for Salesforce import routes
-salesforce_import_bp = Blueprint("salesforce_import", __name__)
+sf_volunteer_import_bp = Blueprint("sf_volunteer_import", __name__)
 
 
-@salesforce_import_bp.route("/volunteers/import-from-salesforce", methods=["POST"])
+@sf_volunteer_import_bp.route("/volunteers/import-from-salesforce", methods=["POST"])
 @login_required
 @global_users_only
 def import_from_salesforce():

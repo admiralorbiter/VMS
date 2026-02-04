@@ -47,7 +47,7 @@ from services.salesforce.utils import safe_parse_delivery_hours
 from utils.cache_refresh_scheduler import refresh_all_caches
 
 # Create Blueprint for Salesforce event import routes
-event_import_bp = Blueprint("event_import", __name__)
+sf_event_import_bp = Blueprint("sf_event_import", __name__)
 
 
 # =============================================================================
@@ -57,7 +57,7 @@ event_import_bp = Blueprint("event_import", __name__)
 # are now imported from services.salesforce.processors.event above.
 
 
-@event_import_bp.route("/events/import-from-salesforce", methods=["POST"])
+@sf_event_import_bp.route("/events/import-from-salesforce", methods=["POST"])
 @login_required
 @global_users_only
 def import_events_from_salesforce():
@@ -289,7 +289,7 @@ def import_events_from_salesforce():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@event_import_bp.route("/events/sync-student-participants", methods=["POST"])
+@sf_event_import_bp.route("/events/sync-student-participants", methods=["POST"])
 @login_required
 @global_users_only
 def sync_student_participants():

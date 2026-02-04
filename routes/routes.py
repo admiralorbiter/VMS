@@ -64,15 +64,15 @@ from routes.management.cache_management import cache_management_bp
 from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
-from routes.salesforce.event_import import event_import_bp
-from routes.salesforce.history_import import history_import_bp
-from routes.salesforce.organization_import import organization_import_bp
-from routes.salesforce.pathway_import import pathway_import_bp
-from routes.salesforce.routes import salesforce_bp
-from routes.salesforce.school_import import school_import_bp
+from routes.salesforce.event_import import sf_event_import_bp
+from routes.salesforce.history_import import sf_history_import_bp
+from routes.salesforce.organization_import import sf_organization_import_bp
+from routes.salesforce.pathway_import import sf_pathway_import_bp
+from routes.salesforce.routes import sf_dashboard_bp
+from routes.salesforce.school_import import sf_school_import_bp
 from routes.salesforce.student_import import sf_student_import_bp
 from routes.salesforce.teacher_import import sf_teacher_import_bp
-from routes.salesforce.volunteer_import import salesforce_import_bp
+from routes.salesforce.volunteer_import import sf_volunteer_import_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 from routes.tenants import tenant_users_bp, tenants_bp
@@ -112,7 +112,7 @@ def init_routes(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(volunteers_bp)
-    app.register_blueprint(salesforce_import_bp)
+    app.register_blueprint(sf_volunteer_import_bp)
     app.register_blueprint(organizations_bp)
     app.register_blueprint(events_bp)
 
@@ -130,14 +130,14 @@ def init_routes(app):
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
     app.register_blueprint(email_bp)
-    app.register_blueprint(salesforce_bp)  # Salesforce Import Dashboard
-    app.register_blueprint(event_import_bp)  # Salesforce event imports
-    app.register_blueprint(history_import_bp)  # Salesforce history imports
-    app.register_blueprint(organization_import_bp)  # Salesforce organization imports
-    app.register_blueprint(school_import_bp)  # Salesforce school/class imports
+    app.register_blueprint(sf_dashboard_bp)  # Salesforce Import Dashboard
+    app.register_blueprint(sf_event_import_bp)  # Salesforce event imports
+    app.register_blueprint(sf_history_import_bp)  # Salesforce history imports
+    app.register_blueprint(sf_organization_import_bp)  # Salesforce organization imports
+    app.register_blueprint(sf_school_import_bp)  # Salesforce school/class imports
     app.register_blueprint(sf_student_import_bp)  # Salesforce student imports
     app.register_blueprint(sf_teacher_import_bp)  # Salesforce teacher imports (global)
-    app.register_blueprint(pathway_import_bp)  # Salesforce pathway events import
+    app.register_blueprint(sf_pathway_import_bp)  # Salesforce pathway events import
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(api_bp, url_prefix="/api/v1")

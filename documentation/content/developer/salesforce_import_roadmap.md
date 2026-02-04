@@ -50,27 +50,14 @@ This document tracks improvements to the Salesforce import system following the 
   - ✅ Created `ImportError` dataclass with code, record_id, record_name, field, message
   - ✅ Added `classify_exception()` for auto-categorization
   - **Applied to**: All import files
-
-- [ ] **Add progress streaming for long imports**
-  - Evaluate SSE vs WebSocket for real-time progress
-  - Update admin dashboard to display progress bar
-  - **Acceptance**: Admin sees live progress during 1000+ record imports
-
-- [ ] **Evaluate Student import automation**
-  - Document rate limit requirements
-  - Test off-peak scheduling (2-4 AM)
-  - Add to `--daily` preset if viable
-  - **Acceptance**: Decision documented with rationale
-
 ---
 
 ### 🟢 Lower Priority
 
-- [ ] **Standardize blueprint prefixes**
-  - Audit all SF-related blueprints
-  - Rename to consistent `sf_` prefix
-  - Update route registrations in `routes/routes.py`
-  - **Acceptance**: All SF blueprints use `sf_` prefix
+- [x] **Standardize blueprint prefixes** *(Complete)*
+  - ✅ Renamed 7 SF blueprints to use `sf_` prefix
+  - ✅ Updated all route decorators and registrations
+  - **All 9 SF blueprints now**: `sf_volunteer_import_bp`, `sf_event_import_bp`, `sf_history_import_bp`, `sf_organization_import_bp`, `sf_pathway_import_bp`, `sf_dashboard_bp`, `sf_school_import_bp`, `sf_student_import_bp`, `sf_teacher_import_bp`
 
 - [ ] **Integrate health metrics into dashboard**
   - Add 7-day error rate trend chart
@@ -89,6 +76,11 @@ This document tracks improvements to the Salesforce import system following the 
 ## Future Roadmap
 
 ### Near Future (Next Quarter)
+
+- [ ] **Background task execution for large imports**
+  - Move long-running imports to background worker (threading or Celery)
+  - Add status polling endpoint (`GET /import-status/{id}`)
+  - Simpler than SSE/WebSocket, more Flask-native
 
 - [ ] **Resumable imports with checkpointing**
   - Store last processed ID in SyncLog

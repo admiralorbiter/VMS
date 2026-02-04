@@ -28,10 +28,10 @@ from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import classify_exception, create_import_error
 
 # Create Blueprint for Salesforce school import routes
-school_import_bp = Blueprint("school_import", __name__)
+sf_school_import_bp = Blueprint("sf_school_import", __name__)
 
 
-@school_import_bp.route("/management/import-schools", methods=["POST"])
+@sf_school_import_bp.route("/management/import-schools", methods=["POST"])
 @login_required
 @global_users_only
 def import_schools():
@@ -256,7 +256,7 @@ def import_schools():
         return jsonify({"error": str(e)}), 500
 
 
-@school_import_bp.route("/management/import-districts", methods=["POST"])
+@sf_school_import_bp.route("/management/import-districts", methods=["POST"])
 @login_required
 @global_users_only
 def import_districts():
@@ -331,7 +331,7 @@ def import_districts():
         return jsonify({"error": str(e)}), 500
 
 
-@school_import_bp.route("/management/import-classes", methods=["POST"])
+@sf_school_import_bp.route("/management/import-classes", methods=["POST"])
 @login_required
 @global_users_only
 def import_classes():

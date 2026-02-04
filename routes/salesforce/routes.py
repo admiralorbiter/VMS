@@ -17,10 +17,10 @@ from models import db
 from models.sync_log import SyncLog
 from routes.utils import admin_required
 
-salesforce_bp = Blueprint("salesforce", __name__, url_prefix="/admin/salesforce")
+sf_dashboard_bp = Blueprint("sf_dashboard", __name__, url_prefix="/admin/salesforce")
 
 
-@salesforce_bp.route("/")
+@sf_dashboard_bp.route("/")
 @login_required
 @admin_required
 def import_dashboard():
@@ -57,7 +57,7 @@ def import_dashboard():
     return render_template("salesforce/import_dashboard.html", last_syncs=last_syncs)
 
 
-@salesforce_bp.route("/sync-history")
+@sf_dashboard_bp.route("/sync-history")
 @login_required
 @admin_required
 def sync_history():
