@@ -58,7 +58,6 @@ from routes.district import district_bp
 from routes.district.tenant_teacher_import import teacher_import_bp
 from routes.district.tenant_teacher_usage import teacher_usage_bp
 from routes.email.routes import email_bp
-from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
 from routes.management.cache_management import cache_management_bp
@@ -68,6 +67,7 @@ from routes.reports import report_bp
 from routes.salesforce.event_import import event_import_bp
 from routes.salesforce.history_import import history_import_bp
 from routes.salesforce.organization_import import organization_import_bp
+from routes.salesforce.pathway_import import pathway_import_bp
 from routes.salesforce.routes import salesforce_bp
 from routes.salesforce.school_import import school_import_bp
 from routes.salesforce.student_import import sf_student_import_bp
@@ -106,7 +106,7 @@ def init_routes(app):
         - bug_reports_bp: Bug reporting routes (/bug_reports/*)
         - client_projects_bp: Client project routes (/client_projects/*)
 
-        - pathway_events_bp: Pathway event routes (/pathway_events/*)
+        - pathway_import_bp: Salesforce pathway events import (/pathway-events/*)
         - api_bp: API endpoints (/api/v1/*)
     """
     app.register_blueprint(auth_bp)
@@ -137,8 +137,7 @@ def init_routes(app):
     app.register_blueprint(school_import_bp)  # Salesforce school/class imports
     app.register_blueprint(sf_student_import_bp)  # Salesforce student imports
     app.register_blueprint(sf_teacher_import_bp)  # Salesforce teacher imports (global)
-
-    app.register_blueprint(pathway_events_bp)
+    app.register_blueprint(pathway_import_bp)  # Salesforce pathway events import
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(api_bp, url_prefix="/api/v1")

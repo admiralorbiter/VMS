@@ -42,6 +42,7 @@ def import_dashboard():
         "teachers",
         "students",
         "student_participations",
+        "unaffiliated_events",
     ]
 
     last_syncs = {}

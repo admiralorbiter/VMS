@@ -846,7 +846,17 @@ Organized by import frequency with delta sync controls and progress tracking.
                         </div>
                     </div>
                     <div class="import-meta">
-                        <span class="last-sync-info">Links events to districts via student data</span>
+                        {% if last_syncs.get('unaffiliated_events') %}
+                        <span class="last-sync-info">
+                            Last: {{ last_syncs['unaffiliated_events'].completed_at.strftime('%m/%d %H:%M') if
+                            last_syncs['unaffiliated_events'].completed_at else 'N/A' }}
+                            <span class="sync-status {{ last_syncs['unaffiliated_events'].status }}">{{
+                                last_syncs['unaffiliated_events'].status }}</span>
+                        </span>
+                        {% else %}
+                        <span class="last-sync-info">Never synced</span>
+                        {% endif %}
+                        <span class="dependency-badge"><i class="fas fa-link"></i> Requires: Events, Students</span>
                     </div>
                     <button class="import-btn import-btn-primary" onclick="runImport('unaffiliated_events')">
                         <i class="fas fa-sync"></i> Sync Affiliations
