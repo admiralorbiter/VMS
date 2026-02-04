@@ -104,7 +104,7 @@ def import_organizations_from_salesforce():
         sf_rows = result.get("records", [])
 
         # Process each organization from Salesforce
-        for row in sf_rows:
+        for i, row in enumerate(sf_rows):
             try:
                 # Check if organization already exists in local database
                 org = Organization.query.filter_by(salesforce_id=row["Id"]).first()
@@ -129,6 +129,16 @@ def import_organizations_from_salesforce():
                     org.last_activity_date = parse_date(row["LastActivityDate"])
 
                 success_count += 1
+
+                # Batch commit every 50 records for resumability
+                if (i + 1) % 50 == 0:
+                    try:
+                        db.session.commit()
+                        print(f"  → Committed orgs batch {(i+1) // 50}")
+                    except Exception as batch_e:
+                        db.session.rollback()
+                        print(f"  → Orgs batch commit failed: {batch_e}")
+
             except Exception as e:
                 # Track errors for reporting
                 error_count += 1
@@ -137,7 +147,7 @@ def import_organizations_from_salesforce():
                 )
                 continue
 
-        # Commit all changes to database
+        # Final commit for any remaining changes
         db.session.commit()
 
         # Print summary to console for debugging
@@ -282,7 +292,7 @@ def import_affiliations_from_salesforce():
         affiliation_rows = affiliation_result.get("records", [])
 
         # Process each affiliation from Salesforce
-        for row in affiliation_rows:
+        for i, row in enumerate(affiliation_rows):
             try:
                 # Get the organization by its Salesforce ID
                 org = Organization.query.filter_by(
@@ -364,13 +374,22 @@ def import_affiliations_from_salesforce():
                         )
                     errors.extend(error_msgs)
 
+                # Batch commit every 50 records for resumability
+                if (i + 1) % 50 == 0:
+                    try:
+                        db.session.commit()
+                        print(f"  → Committed affiliations batch {(i+1) // 50}")
+                    except Exception as batch_e:
+                        db.session.rollback()
+                        print(f"  → Affiliations batch commit failed: {batch_e}")
+
             except Exception as e:
                 # Track processing errors
                 affiliation_error += 1
                 errors.append(f"Error processing affiliation: {str(e)}")
                 continue
 
-        # Commit all changes to database
+        # Final commit for remaining changes
         db.session.commit()
 
         # Print summary to console for debugging

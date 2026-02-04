@@ -520,6 +520,15 @@ def import_events_from_salesforce():
                 row, success_count, error_count, errors, skipped_count
             )
 
+            # Batch commit every 100 events for resumability
+            if (i + 1) % 100 == 0:
+                try:
+                    db.session.commit()
+                    print(f"  → Committed events batch {(i+1) // 100}")
+                except Exception as batch_e:
+                    db.session.rollback()
+                    print(f"  → Events batch commit failed: {batch_e}")
+
         # Print status summary
         print(f"\n{'='*60}")
         print(f"EVENTS IMPORT SUMMARY")

@@ -686,6 +686,15 @@ def import_from_salesforce():
                         f"[{i+1:4d}] {status}: {volunteer.first_name} {volunteer.last_name}"
                     )
 
+                # Batch commit every 100 records for resumability
+                if (i + 1) % 100 == 0:
+                    try:
+                        db.session.commit()
+                        print(f"  → Committed batch {(i+1) // 100}")
+                    except Exception as batch_e:
+                        db.session.rollback()
+                        print(f"  → Batch commit failed: {batch_e}")
+
             except Exception as e:
                 error_count += 1
                 error_detail = {
