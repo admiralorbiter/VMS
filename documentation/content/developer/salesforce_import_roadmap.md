@@ -66,11 +66,11 @@ This document tracks improvements to the Salesforce import system following the 
   - **API**: `GET /admin/salesforce/health-metrics`
   - **Visible on**: `/admin/salesforce`
 
-- [ ] **Add unit tests for mapper functions**
-  - Create `tests/unit/services/test_salesforce_mappers.py`
-  - Test all enum mappings (education, age group, race/ethnicity)
-  - Test null handling and edge cases
-  - **Acceptance**: >90% coverage on mapper functions
+- [x] **Add unit tests for mapper functions** *(Complete)*
+  - ✅ Created `tests/unit/services/test_salesforce_mappers.py`
+  - ✅ 52 tests covering all 5 mapper functions
+  - ✅ Tests education, race/ethnicity, age group, grade level, participation status
+  - ✅ Covers null handling, case-insensitivity, whitespace, edge cases
 
 ---
 
