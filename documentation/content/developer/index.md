@@ -270,6 +270,7 @@ flask run --port 5051
 
 ### Resources
 
+- [Salesforce Import Roadmap](salesforce_import_roadmap) — **NEW** Active development checklist
 - [Development Status Tracker](development-status-tracker) — FR-by-FR implementation status
 - [Codebase Structure](codebase-structure) — Detailed code organization
 - [CLI Reference](cli-reference) — Common commands
