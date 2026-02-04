@@ -16,9 +16,8 @@ from datetime import timezone as tz
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.contact import Contact
 from models.district_model import District
@@ -26,6 +25,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from routes.decorators import global_users_only
 from routes.utils import parse_date
+from services.salesforce_client import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce organization import routes
 organization_import_bp = Blueprint("organization_import", __name__)
@@ -80,13 +80,8 @@ def import_organizations_from_salesforce():
         error_count = 0
         errors = []
 
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
         # Query organizations from Salesforce with LastModifiedDate
         # Excludes household, school district, and school accounts
@@ -105,7 +100,7 @@ def import_organizations_from_salesforce():
         org_query += " ORDER BY Name ASC"
 
         # Execute the query and get results
-        result = sf.query_all(org_query)
+        result = safe_query_all(sf, org_query)
         sf_rows = result.get("records", [])
 
         # Process each organization from Salesforce
@@ -265,13 +260,8 @@ def import_affiliations_from_salesforce():
         affiliation_error = 0
         errors = []
 
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
         # Query affiliations from Salesforce with LastModifiedDate for delta sync
         # Note: WHERE Id != null is required so delta filter can append AND clause
@@ -288,7 +278,7 @@ def import_affiliations_from_salesforce():
             affiliation_query += delta_helper.build_date_filter(watermark)
 
         # Execute the query and get results
-        affiliation_result = sf.query_all(affiliation_query)
+        affiliation_result = safe_query_all(sf, affiliation_query)
         affiliation_rows = affiliation_result.get("records", [])
 
         # Process each affiliation from Salesforce

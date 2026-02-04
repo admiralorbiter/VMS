@@ -24,10 +24,8 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from simple_salesforce.api import Salesforce
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.district_model import District
 from models.event import Event, EventStatus, EventStudentParticipation, EventType
@@ -44,6 +42,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
+from services.salesforce_client import get_salesforce_client, safe_query_all
 from utils.cache_refresh_scheduler import refresh_all_caches
 
 # Create Blueprint for Salesforce event import routes
@@ -478,12 +477,8 @@ def import_events_from_salesforce():
         errors = []
         skipped_count = 0
 
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
         # First query: Get events
         events_query = """
@@ -503,7 +498,7 @@ def import_events_from_salesforce():
 
         events_query += " ORDER BY Start_Date_and_Time__c DESC"
 
-        events_result = sf.query_all(events_query)
+        events_result = safe_query_all(sf, events_query)
         events_rows = events_result.get("records", [])
         total_events = len(events_rows)
 
@@ -554,7 +549,7 @@ def import_events_from_salesforce():
         if is_delta and watermark:
             participants_query += delta_helper.build_date_filter(watermark)
 
-        participants_result = sf.query_all(participants_query)
+        participants_result = safe_query_all(sf, participants_query)
         participant_rows = participants_result.get("records", [])
 
         participant_success = 0
@@ -703,12 +698,8 @@ def sync_student_participants():
         error_count = 0
         errors = []
 
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
         participants_query = """
         SELECT
@@ -731,7 +722,7 @@ def sync_student_participants():
 
         participants_query += " ORDER BY Session__c, Name"
 
-        participants_result = sf.query_all(participants_query)
+        participants_result = safe_query_all(sf, participants_query)
         participant_rows = participants_result.get("records", [])
 
         print(

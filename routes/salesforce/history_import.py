@@ -15,10 +15,9 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 from sqlalchemy import text
 
-from config import Config
 from models import db
 from models.contact import Email
 from models.event import Event
@@ -27,6 +26,7 @@ from models.teacher import Teacher
 from models.volunteer import Volunteer
 from routes.decorators import global_users_only
 from routes.utils import parse_date
+from services.salesforce_client import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce history import routes
 history_import_bp = Blueprint("history_import", __name__)
@@ -90,13 +90,8 @@ def import_history_from_salesforce():
         errors = []
         skipped_count = 0
 
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
         # Query Task records (activities, calls, meetings) with LastModifiedDate
         task_query = """
@@ -126,13 +121,13 @@ def import_history_from_salesforce():
 
         # Process Task records
         print("Processing Task records...")
-        task_result = sf.query_all(task_query)
+        task_result = safe_query_all(sf, task_query)
         task_rows = task_result.get("records", [])
         print(f"Found {len(task_rows)} Task records in Salesforce")
 
         # Process EmailMessage records
         print("Processing EmailMessage records...")
-        email_result = sf.query_all(email_query)
+        email_result = safe_query_all(sf, email_query)
         email_rows = email_result.get("records", [])
         print(f"Found {len(email_rows)} EmailMessage records in Salesforce")
 

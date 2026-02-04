@@ -15,16 +15,16 @@ Routes:
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
-from flask_login import current_user, login_required
-from simple_salesforce.api import Salesforce
+from flask_login import login_required
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.class_model import Class
 from models.district_model import District
 from models.school_model import School
 from models.sync_log import SyncLog, SyncStatus
+from routes.decorators import global_users_only
+from services.salesforce_client import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce school import routes
 school_import_bp = Blueprint("school_import", __name__)
@@ -32,6 +32,7 @@ school_import_bp = Blueprint("school_import", __name__)
 
 @school_import_bp.route("/management/import-schools", methods=["POST"])
 @login_required
+@global_users_only
 def import_schools():
     """
     Import school and district data from Salesforce.
@@ -43,9 +44,6 @@ def import_schools():
     Returns:
         JSON response with import results and statistics
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         started_at = datetime.now(timezone.utc)
 
@@ -79,14 +77,10 @@ def import_schools():
         if is_delta and watermark:
             district_query += delta_helper.build_date_filter(watermark)
 
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
-        district_result = sf.query_all(district_query)
+        district_result = safe_query_all(sf, district_query)
         district_rows = district_result.get("records", [])
 
         district_success = 0
@@ -131,7 +125,7 @@ def import_schools():
         if is_delta and watermark:
             school_query += delta_helper.build_date_filter(watermark)
 
-        school_result = sf.query_all(school_query)
+        school_result = safe_query_all(sf, school_query)
         school_rows = school_result.get("records", [])
 
         school_success = 0
@@ -241,6 +235,7 @@ def import_schools():
 
 @school_import_bp.route("/management/import-districts", methods=["POST"])
 @login_required
+@global_users_only
 def import_districts():
     """
     Import district data only from Salesforce.
@@ -250,9 +245,6 @@ def import_districts():
     Returns:
         JSON response with import results and statistics
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         salesforce_query = """
         SELECT Id, Name, School_Code_External_ID__c
@@ -260,14 +252,10 @@ def import_districts():
         WHERE Type = 'School District'
         """
 
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
-        result = sf.query_all(salesforce_query)
+        result = safe_query_all(sf, salesforce_query)
         sf_rows = result.get("records", [])
 
         success_count = 0
@@ -322,6 +310,7 @@ def import_districts():
 
 @school_import_bp.route("/management/import-classes", methods=["POST"])
 @login_required
+@global_users_only
 def import_classes():
     """
     Import class data from Salesforce.
@@ -333,9 +322,6 @@ def import_classes():
     Returns:
         JSON response with import results and statistics
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         started_at = datetime.now(timezone.utc)
 
@@ -369,14 +355,10 @@ def import_classes():
         if is_delta and watermark:
             salesforce_query += delta_helper.build_date_filter(watermark)
 
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
-        result = sf.query_all(salesforce_query)
+        result = safe_query_all(sf, salesforce_query)
         sf_rows = result.get("records", [])
 
         success_count = 0

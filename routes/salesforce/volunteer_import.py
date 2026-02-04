@@ -13,9 +13,8 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.contact import (
     Address,
@@ -29,6 +28,7 @@ from models.contact import (
 from models.volunteer import ConnectorData, ConnectorSubscriptionEnum, Skill, Volunteer
 from routes.decorators import global_users_only
 from routes.utils import parse_date, parse_skills
+from services.salesforce_client import get_salesforce_client, safe_query_all
 from services.salesforce_mappers import (
     map_age_group,
     map_education_level,
@@ -43,9 +43,6 @@ salesforce_import_bp = Blueprint("salesforce_import", __name__)
 @login_required
 @global_users_only
 def import_from_salesforce():
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         from datetime import timezone as tz
 
@@ -114,16 +111,11 @@ def import_from_salesforce():
         if is_delta and watermark:
             salesforce_query += delta_helper.build_date_filter(watermark)
 
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
-        # Execute the query
-        result = sf.query_all(salesforce_query)
+        # Execute the query with automatic retry
+        result = safe_query_all(sf, salesforce_query)
         sf_rows = result.get("records", [])
         total_records = len(sf_rows)
 

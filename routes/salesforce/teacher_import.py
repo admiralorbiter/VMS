@@ -15,13 +15,12 @@ from datetime import timezone as tz
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from simple_salesforce.api import Salesforce
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
-from config import Config
 from models import db
 from models.teacher import Teacher
 from routes.decorators import global_users_only
+from services.salesforce_client import get_salesforce_client, safe_query_all
 
 # Create Blueprint for Salesforce teacher import routes
 sf_teacher_import_bp = Blueprint("sf_teacher_import", __name__)
@@ -70,13 +69,8 @@ def import_teachers_from_salesforce():
         error_count = 0
         errors = []
 
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry logic
+        sf = get_salesforce_client()
 
         # Query for teachers with specific fields and LastModifiedDate
         teacher_query = """
@@ -92,8 +86,8 @@ def import_teachers_from_salesforce():
         if is_delta and watermark:
             teacher_query += delta_helper.build_date_filter(watermark)
 
-        # Execute query and get results
-        result = sf.query_all(teacher_query)
+        # Execute query with automatic retry
+        result = safe_query_all(sf, teacher_query)
         teacher_rows = result.get("records", [])
 
         # Process each teacher record

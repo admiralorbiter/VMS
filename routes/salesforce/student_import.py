@@ -15,12 +15,11 @@ from datetime import timezone as tz
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from simple_salesforce.api import Salesforce
 
-from config import Config
 from models import db
 from models.student import Student
 from routes.decorators import global_users_only
+from services.salesforce_client import get_salesforce_client, safe_query
 
 # Create Blueprint for Salesforce student import routes
 sf_student_import_bp = Blueprint("sf_student_import", __name__)
@@ -75,13 +74,8 @@ def import_students_from_salesforce():
                 f"Starting student import from Salesforce (chunk_size: {chunk_size}, last_id: {last_id})..."
             )
 
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
+        # Connect to Salesforce using centralized client with retry
+        sf = get_salesforce_client()
 
         # First, get total count for progress tracking
         count_query = """
@@ -93,7 +87,7 @@ def import_students_from_salesforce():
         if is_delta and watermark:
             count_query += delta_helper.build_date_filter(watermark)
 
-        result = sf.query(count_query)
+        result = safe_query(sf, count_query)
         if not result or "records" not in result or not result["records"]:
             return {
                 "status": "error",
@@ -129,7 +123,7 @@ def import_students_from_salesforce():
         print(
             f"Fetching students from Salesforce (chunk_size: {chunk_size}, last_id: {last_id}, delta: {is_delta})..."
         )
-        result = sf.query(query)
+        result = safe_query(sf, query)
         student_rows = result.get("records", [])
 
         success_count = 0
