@@ -25,6 +25,7 @@ from models.school_model import School
 from models.sync_log import SyncLog, SyncStatus
 from routes.decorators import global_users_only
 from services.salesforce import get_salesforce_client, safe_query_all
+from services.salesforce.errors import classify_exception, create_import_error
 
 # Create Blueprint for Salesforce school import routes
 school_import_bp = Blueprint("school_import", __name__)
@@ -111,9 +112,14 @@ def import_schools():
                     district_success += 1
             except Exception as e:
                 district_skipped += 1
-                error_msg = f"SKIPPED: {row.get('Name', 'Unknown')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
-                district_errors.append(error_msg)
-                print(f"  ⚠ {error_msg}")
+                import_error = create_import_error(
+                    code=classify_exception(e),
+                    row=row,
+                    message=str(e),
+                    name_fields=("Name",),
+                )
+                district_errors.append(import_error.to_dict())
+                print(f"  ⚠ {import_error}")
 
         db.session.commit()
 
@@ -169,9 +175,14 @@ def import_schools():
                     school_success += 1
             except Exception as e:
                 school_skipped += 1
-                error_msg = f"SKIPPED: {row.get('Name', 'Unknown')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
-                school_errors.append(error_msg)
-                print(f"  ⚠ {error_msg}")
+                import_error = create_import_error(
+                    code=classify_exception(e),
+                    row=row,
+                    message=str(e),
+                    name_fields=("Name",),
+                )
+                school_errors.append(import_error.to_dict())
+                print(f"  ⚠ {import_error}")
 
         db.session.commit()
 

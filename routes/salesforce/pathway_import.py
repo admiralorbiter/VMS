@@ -41,6 +41,7 @@ from routes.utils import (
     parse_event_skills,
 )
 from services.salesforce import get_salesforce_client, safe_query_all
+from services.salesforce.errors import ImportErrorCode, create_import_error
 
 # Blueprint for pathway events import functionality
 pathway_import_bp = Blueprint("pathway_import", __name__, url_prefix="/pathway-events")
@@ -209,9 +210,12 @@ def _process_volunteer_participation_row(
 
         return success_count + 1, error_count
     except Exception as e:
-        errors.append(
-            f"Error processing volunteer participation {row.get('Id', 'unknown')}: {e}"
+        import_error = create_import_error(
+            code=ImportErrorCode.UNKNOWN,
+            row=row,
+            message=f"Error processing volunteer participation: {e}",
         )
+        errors.append(import_error.to_dict())
         return success_count, error_count + 1
 
 
@@ -281,9 +285,12 @@ def _process_student_participation_row(
 
         return success_count + 1, error_count
     except Exception as e:
-        errors.append(
-            f"Error processing student participation {row.get('Id', 'unknown')}: {e}"
+        import_error = create_import_error(
+            code=ImportErrorCode.UNKNOWN,
+            row=row,
+            message=f"Error processing student participation: {e}",
         )
+        errors.append(import_error.to_dict())
         return success_count, error_count + 1
 
 
@@ -458,7 +465,14 @@ def sync_unaffiliated_events():
 
             except Exception as e:
                 db.session.rollback()
-                errors.append(f"Error processing event {event_sf_id}: {e}")
+                errors.append(
+                    {
+                        "code": "UNKNOWN",
+                        "record_id": event_sf_id,
+                        "record_name": "Event",
+                        "message": str(e),
+                    }
+                )
 
         db.session.commit()
         print(f"Events processed: {created_count} created, {updated_count} updated")
@@ -558,7 +572,14 @@ def sync_unaffiliated_events():
                             )
                         )
                 except Exception as batch_error:
-                    errors.append(f"Volunteer batch error: {batch_error}")
+                    errors.append(
+                        {
+                            "code": "UNKNOWN",
+                            "record_id": None,
+                            "record_name": "Volunteer Batch",
+                            "message": str(batch_error),
+                        }
+                    )
 
         # Step 6: Sync student participants
         student_success = 0
@@ -603,7 +624,14 @@ def sync_unaffiliated_events():
                             )
                         )
                 except Exception as batch_error:
-                    errors.append(f"Student batch error: {batch_error}")
+                    errors.append(
+                        {
+                            "code": "UNKNOWN",
+                            "record_id": None,
+                            "record_name": "Student Batch",
+                            "message": str(batch_error),
+                        }
+                    )
 
         db.session.commit()
         print(

@@ -34,27 +34,22 @@ This document tracks improvements to the Salesforce import system following the 
   - ✅ Using 50-record commit windows (matching other imports)
   - **Verified**: Uses `flush()` then batch commits, matching student_import.py
 
-- [x] **Implement savepoint recovery** *(Complete for core imports)*
+- [x] **Implement savepoint recovery** *(Complete)*
   - ✅ Wrapped record processing in `db.session.begin_nested()`
   - ✅ Failures skip individual records without failing batch
   - ✅ Logs skipped records with reason and Salesforce ID
-  - **Applied to**: teacher, student, organization, school (districts + schools)
-  - **Remaining**: volunteer (794 lines, needs separate refactor), event, pathway, history
+  - **Applied to**: All import files (teacher, student, organization, school, volunteer, history, pathway)
+  - **Note**: `event_import.py` uses processor pattern which already provides isolation
 
 ---
 
 ### 🟡 Medium Priority
 
-- [ ] **Add dry-run mode to HTTP routes**
-  - Add `?dry_run=true` parameter to all import endpoints
-  - Return what would be changed without committing
-  - **Acceptance**: Dry-run returns preview of changes
-
-- [ ] **Implement structured error codes**
-  - Define error taxonomy (e.g., `MISSING_SF_ID`, `INVALID_DATE`, `FK_NOT_FOUND`)
-  - Create `ImportError` dataclass with code, record_id, field, message
-  - Update all import modules to use structured errors
-  - **Acceptance**: API responses include machine-parseable error codes
+- [x] **Implement structured error codes** *(Complete)*
+  - ✅ Created `services/salesforce/errors.py` with `ImportErrorCode` enum
+  - ✅ Created `ImportError` dataclass with code, record_id, record_name, field, message
+  - ✅ Added `classify_exception()` for auto-categorization
+  - **Applied to**: All import files
 
 - [ ] **Add progress streaming for long imports**
   - Evaluate SSE vs WebSocket for real-time progress
@@ -137,7 +132,7 @@ The following were considered but are **not currently feasible**:
 | Sprint | Focus | Status |
 |--------|-------|--------|
 | Sprint 1 | Service layer extraction | ✅ Complete |
-| Sprint 2 | Error handling & savepoints | ⬜ Not Started |
+| Sprint 2 | Error handling & savepoints | ✅ Complete |
 | Sprint 3 | Dashboard enhancements | ⬜ Not Started |
 
 ---

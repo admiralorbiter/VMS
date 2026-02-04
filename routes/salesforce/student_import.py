@@ -20,6 +20,7 @@ from models import db
 from models.student import Student
 from routes.decorators import global_users_only
 from services.salesforce import get_salesforce_client, safe_query
+from services.salesforce.errors import classify_exception, create_import_error
 from utils.rate_limiter import limiter
 
 # Create Blueprint for Salesforce student import routes
@@ -169,9 +170,13 @@ def import_students_from_salesforce():
                 # Savepoint automatically rolled back - other records in batch preserved
                 error_count += 1
                 skipped_count += 1
-                error_msg = f"SKIPPED: {row.get('FirstName', '')} {row.get('LastName', '')} (SF ID: {row.get('Id', 'unknown')}) - {str(e)}"
-                errors.append(error_msg)
-                print(f"  ⚠ {error_msg}")
+                import_error = create_import_error(
+                    code=classify_exception(e),
+                    row=row,
+                    message=str(e),
+                )
+                errors.append(import_error.to_dict())
+                print(f"  ⚠ {import_error}")
                 continue
 
             # Batch commit every 100 records for resumability and performance

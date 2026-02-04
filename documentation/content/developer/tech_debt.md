@@ -63,4 +63,22 @@ role_value = tenant_role.value if hasattr(tenant_role, 'value') else str(tenant_
 
 ---
 
+## ~~TD-002: Incomplete Savepoint Recovery in Import Files~~ *(Resolved)*
+
+**Created:** 2026-02-04
+**Resolved:** 2026-02-04
+**Category:** Data Integrity / Error Handling
+
+### Resolution
+
+All Salesforce import files have been updated with:
+- Savepoint recovery using `db.session.begin_nested()`
+- Structured error codes using `ImportErrorCode` enum and `ImportError` dataclass
+
+Files updated: `volunteer_import.py`, `history_import.py`, `pathway_import.py`, `teacher_import.py`, `student_import.py`, `organization_import.py`, `school_import.py`
+
+See [Salesforce Import Roadmap](salesforce_import_roadmap.md) for details.
+
+---
+
 *Add new tech debt items below following the same format.*

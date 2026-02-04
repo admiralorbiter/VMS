@@ -22,6 +22,14 @@ from services.salesforce.client import get_salesforce_client, safe_query, safe_q
 # Re-export delta sync
 from services.salesforce.delta_sync import DeltaSyncHelper
 
+# Re-export error handling
+from services.salesforce.errors import (
+    ImportError,
+    ImportErrorCode,
+    classify_exception,
+    create_import_error,
+)
+
 # Re-export mapper functions
 from services.salesforce.mappers import (
     map_age_group,

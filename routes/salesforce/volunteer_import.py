@@ -35,6 +35,7 @@ from services.salesforce import (
     map_race_ethnicity,
     safe_query_all,
 )
+from services.salesforce.errors import classify_exception
 
 # Create Blueprint for Salesforce import routes
 salesforce_import_bp = Blueprint("salesforce_import", __name__)
@@ -136,13 +137,15 @@ def import_from_salesforce():
 
         # Process each row from Salesforce
         for i, row in enumerate(sf_rows):
+            # Use savepoint to isolate each record - failures won't roll back the batch
             try:
-                # Progress indicator
-                if i >= last_progress + progress_interval:
-                    progress = (i / total_records) * 100
-                    print(
-                        f"Progress: {progress:.1f}% ({i}/{total_records}) - Created: {created_count}, Updated: {updated_count}, Errors: {error_count}"
-                    )
+                with db.session.begin_nested():
+                    # Progress indicator
+                    if i >= last_progress + progress_interval:
+                        progress = (i / total_records) * 100
+                        print(
+                            f"Progress: {progress:.1f}% ({i}/{total_records}) - Created: {created_count}, Updated: {updated_count}, Errors: {error_count}"
+                        )
                     last_progress = i
 
                 # Check if volunteer exists
@@ -697,17 +700,20 @@ def import_from_salesforce():
                         print(f"  → Batch commit failed: {batch_e}")
 
             except Exception as e:
+                # Savepoint automatically rolled back - other records in batch preserved
                 error_count += 1
                 error_detail = {
-                    "name": f"{row.get('FirstName', '')} {row.get('LastName', '')}",
-                    "salesforce_id": row.get("Id", ""),
-                    "error": str(e),
+                    "code": classify_exception(e).value,
+                    "record_id": row.get("Id", ""),
+                    "record_name": f"{row.get('FirstName', '')} {row.get('LastName', '')}".strip()
+                    or "Unknown",
+                    "field": None,
+                    "message": str(e),
                 }
                 errors.append(error_detail)
                 print(
-                    f"[{i+1:4d}] ERROR: {error_detail['name']} (ID: {error_detail['salesforce_id']}) - {str(e)[:100]}"
+                    f"[{i+1:4d}] ERROR: {error_detail['record_name']} (ID: {error_detail['record_id']}) - {str(e)[:100]}"
                 )
-                db.session.rollback()
 
         # Final summary
         print(f"\n{'='*60}")

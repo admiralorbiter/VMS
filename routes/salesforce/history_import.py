@@ -27,6 +27,7 @@ from models.volunteer import Volunteer
 from routes.decorators import global_users_only
 from routes.utils import parse_date
 from services.salesforce import get_salesforce_client, safe_query_all
+from services.salesforce.errors import ImportErrorCode, create_import_error
 
 # Create Blueprint for Salesforce history import routes
 history_import_bp = Blueprint("history_import", __name__)
@@ -195,9 +196,15 @@ def import_history_from_salesforce():
                         if not contact:
                             no_contact_count += 1
                             skipped_count += 1
-                            error_msg = f"Skipped Task record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): No matching contact found for WhoId: {row.get('WhoId', 'None')}"
-                            print(f"NO_CONTACT: {error_msg}")
-                            errors.append(error_msg)
+                            import_error = create_import_error(
+                                code=ImportErrorCode.FK_NOT_FOUND,
+                                row=row,
+                                message=f"No matching contact found for WhoId: {row.get('WhoId', 'None')}",
+                                field="WhoId",
+                                name_fields=("Subject",),
+                            )
+                            print(f"NO_CONTACT: {import_error}")
+                            errors.append(import_error.to_dict())
                             continue
 
                     elif record_type == "EmailMessage":
@@ -211,9 +218,15 @@ def import_history_from_salesforce():
                         if not contact:
                             no_contact_count += 1
                             skipped_count += 1
-                            error_msg = f"Skipped EmailMessage record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): No matching contact found for RelatedToId: {row.get('RelatedToId', 'None')} (To: {row.get('ToAddress', 'None')}, From: {row.get('FromAddress', 'None')})"
-                            print(f"NO_CONTACT: {error_msg}")
-                            errors.append(error_msg)
+                            import_error = create_import_error(
+                                code=ImportErrorCode.FK_NOT_FOUND,
+                                row=row,
+                                message=f"No matching contact found for RelatedToId: {row.get('RelatedToId', 'None')} (To: {row.get('ToAddress', 'None')}, From: {row.get('FromAddress', 'None')})",
+                                field="RelatedToId",
+                                name_fields=("Subject",),
+                            )
+                            print(f"NO_CONTACT: {import_error}")
+                            errors.append(import_error.to_dict())
                             continue
 
                     # Check if history exists - use raw SQL to avoid schema issues
@@ -249,9 +262,14 @@ def import_history_from_salesforce():
                 except Exception as e:
                     error_count += 1
                     other_skip_reasons += 1
-                    error_msg = f"Error processing {record_type} record {row.get('Subject', 'Unknown')} (ID: {row.get('Id', 'Unknown')}): {str(e)}"
-                    print(f"ERROR: {error_msg}")
-                    errors.append(error_msg)
+                    import_error = create_import_error(
+                        code=ImportErrorCode.UNKNOWN,
+                        row=row,
+                        message=str(e),
+                        name_fields=("Subject",),
+                    )
+                    print(f"ERROR: {import_error}")
+                    errors.append(import_error.to_dict())
                     continue
 
             # Final commit
