@@ -31,6 +31,8 @@ class TestRecruitmentNoteModel:
     def db_session(self, app):
         """Create database session with test data."""
         with app.app_context():
+            # Ensure clean database state
+            db.drop_all()
             db.create_all()
 
             # Create test tenant

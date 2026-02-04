@@ -60,8 +60,10 @@ class TestReportingCache:
         triggering cache refresh.
         """
         with (
-            patch("routes.events.routes.Salesforce") as mock_sf,
-            patch("routes.events.routes.refresh_all_caches") as mock_refresh,
+            patch(
+                "routes.salesforce.event_import.get_salesforce_client"
+            ) as mock_get_sf,
+            patch("routes.salesforce.event_import.refresh_all_caches") as mock_refresh,
         ):
 
             # Mock successful Salesforce query with one record
@@ -78,7 +80,7 @@ class TestReportingCache:
                     }
                 ]
             }
-            mock_sf.return_value = mock_instance
+            mock_get_sf.return_value = mock_instance
 
             # Trigger sync
             response = client.post(

@@ -27,11 +27,13 @@ class TestSyncErrorHandling:
         TC-200: Verify that finding no events returns success (200 OK)
         with 0 processed count, not an error.
         """
-        with patch("routes.events.routes.Salesforce") as mock_sf:
+        with patch(
+            "routes.salesforce.event_import.get_salesforce_client"
+        ) as mock_get_sf:
             # Mock empty results for event query
             mock_instance = MagicMock()
             mock_instance.query_all.return_value = {"records": []}
-            mock_sf.return_value = mock_instance
+            mock_get_sf.return_value = mock_instance
 
             response = client.post(
                 "/events/import-from-salesforce",
@@ -50,9 +52,11 @@ class TestSyncErrorHandling:
         TC-200: Verify that Salesforce authentication failure returns
         appropriate error status (401 Unauthorized).
         """
-        with patch("routes.events.routes.Salesforce") as mock_sf:
+        with patch(
+            "routes.salesforce.event_import.get_salesforce_client"
+        ) as mock_get_sf:
             # Mock authentication failure
-            mock_sf.side_effect = SalesforceAuthenticationFailed(
+            mock_get_sf.side_effect = SalesforceAuthenticationFailed(
                 "https://test.salesforce.com", "Auth Failed"
             )
 
@@ -70,9 +74,11 @@ class TestSyncErrorHandling:
         """
         TC-200: Verify that general API errors return failure status (500).
         """
-        with patch("routes.events.routes.Salesforce") as mock_sf:
+        with patch(
+            "routes.salesforce.event_import.get_salesforce_client"
+        ) as mock_get_sf:
             # Mock general exception
-            mock_sf.side_effect = Exception("General connection error")
+            mock_get_sf.side_effect = Exception("General connection error")
 
             response = client.post(
                 "/events/import-from-salesforce",
