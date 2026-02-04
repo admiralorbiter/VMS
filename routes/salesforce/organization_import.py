@@ -27,6 +27,44 @@ from routes.decorators import global_users_only
 from routes.utils import parse_date
 from services.salesforce_client import get_salesforce_client, safe_query_all
 
+# SQLite has a limit on the number of variables in a query (typically 999)
+# We chunk large IN queries to avoid this limit
+QUERY_CHUNK_SIZE = 500
+
+
+def chunked_in_query(model, field, id_set, key_func=None):
+    """
+    Execute IN queries in chunks to avoid SQLite's variable limit.
+
+    Args:
+        model: SQLAlchemy model class to query
+        field: Model field to filter on (e.g., Model.salesforce_id)
+        id_set: Set of IDs to query for
+        key_func: Optional function to extract key from result (defaults to field value)
+
+    Returns:
+        Dictionary mapping key to model instance
+    """
+    if not id_set:
+        return {}
+
+    result = {}
+    id_list = list(id_set)
+
+    for i in range(0, len(id_list), QUERY_CHUNK_SIZE):
+        chunk = id_list[i : i + QUERY_CHUNK_SIZE]
+        rows = model.query.filter(field.in_(chunk)).all()
+        for row in rows:
+            if key_func:
+                key = key_func(row)
+            else:
+                # Default: use the field value we filtered on
+                key = getattr(row, field.key)
+            result[key] = row
+
+    return result
+
+
 # Create Blueprint for Salesforce organization import routes
 organization_import_bp = Blueprint("organization_import", __name__)
 
@@ -234,6 +272,8 @@ def import_affiliations_from_salesforce():
     - Handles schools and districts as organizations
     - Manages role, status, and date information
     - Provides detailed success/error reporting
+    - Uses pre-loaded lookups for O(1) entity resolution
+    - Bulk commits for improved throughput
 
     Salesforce Query:
     - Queries npe5__Affiliation__c object
@@ -269,6 +309,7 @@ def import_affiliations_from_salesforce():
         affiliation_success = 0
         affiliation_error = 0
         errors = []
+        MAX_ERRORS = 100  # Cap error list to prevent memory bloat
 
         # Connect to Salesforce using centralized client with retry
         sf = get_salesforce_client()
@@ -290,21 +331,76 @@ def import_affiliations_from_salesforce():
         # Execute the query and get results
         affiliation_result = safe_query_all(sf, affiliation_query)
         affiliation_rows = affiliation_result.get("records", [])
+        total_count = len(affiliation_rows)
+        print(f"  Fetched {total_count} affiliation records from Salesforce")
 
-        # Process each affiliation from Salesforce
+        # === PRE-LOAD PHASE: Build lookup dictionaries for O(1) access ===
+        # Extract unique Salesforce IDs from the incoming data
+        org_sf_ids = {
+            row.get("npe5__Organization__c")
+            for row in affiliation_rows
+            if row.get("npe5__Organization__c")
+        }
+        contact_sf_ids = {
+            row.get("npe5__Contact__c")
+            for row in affiliation_rows
+            if row.get("npe5__Contact__c")
+        }
+
+        print(
+            f"  Pre-loading {len(org_sf_ids)} orgs, {len(contact_sf_ids)} contacts..."
+        )
+
+        # Pre-load organizations by salesforce_id (chunked to avoid SQLite variable limit)
+        org_lookup = chunked_in_query(
+            Organization, Organization.salesforce_id, org_sf_ids
+        )
+
+        # Pre-load schools by id (matching current query pattern)
+        school_lookup = chunked_in_query(School, School.id, org_sf_ids)
+
+        # Pre-load districts by salesforce_id
+        district_lookup = chunked_in_query(District, District.salesforce_id, org_sf_ids)
+
+        # Pre-load contacts by salesforce_individual_id
+        contact_lookup = chunked_in_query(
+            Contact, Contact.salesforce_individual_id, contact_sf_ids
+        )
+
+        # Pre-load existing volunteer-organization relationships (chunked)
+        # Query by Salesforce IDs to find existing relationships
+        vol_org_lookup = {}
+        org_id_list = list(org_sf_ids)
+        for i in range(0, len(org_id_list), QUERY_CHUNK_SIZE):
+            chunk = org_id_list[i : i + QUERY_CHUNK_SIZE]
+            chunk_results = VolunteerOrganization.query.filter(
+                VolunteerOrganization.salesforce_org_id.in_(chunk)
+            ).all()
+            for vo in chunk_results:
+                vol_org_lookup[(vo.volunteer_id, vo.organization_id)] = vo
+
+        print(
+            f"  Pre-loaded: {len(org_lookup)} orgs, {len(school_lookup)} schools, "
+            f"{len(district_lookup)} districts, {len(contact_lookup)} contacts, "
+            f"{len(vol_org_lookup)} existing relationships"
+        )
+
+        # Track newly created organizations to add to lookup
+        new_orgs_pending = []
+
+        # === PROCESSING PHASE: Use lookups instead of queries ===
         for i, row in enumerate(affiliation_rows):
             try:
-                # Get the organization by its Salesforce ID
-                org = Organization.query.filter_by(
-                    salesforce_id=row.get("npe5__Organization__c")
-                ).first()
+                sf_org_id = row.get("npe5__Organization__c")
+                sf_contact_id = row.get("npe5__Contact__c")
+
+                # Get the organization using pre-loaded lookup (O(1))
+                org = org_lookup.get(sf_org_id)
 
                 # If organization not found, check if it's a school or district
                 if not org:
                     # First check if it's a school
-                    school = School.query.filter_by(
-                        id=row.get("npe5__Organization__c")
-                    ).first()
+                    school = school_lookup.get(sf_org_id)
                     if school:
                         # Create an organization record for the school
                         org = Organization(
@@ -312,11 +408,11 @@ def import_affiliations_from_salesforce():
                         )
                         db.session.add(org)
                         db.session.flush()  # Get the new org ID
+                        # Add to lookup for future iterations
+                        org_lookup[sf_org_id] = org
                     else:
                         # If not a school, check if it's a district
-                        district = District.query.filter_by(
-                            salesforce_id=row.get("npe5__Organization__c")
-                        ).first()
+                        district = district_lookup.get(sf_org_id)
                         if district:
                             # Create an organization record for the district
                             org = Organization(
@@ -326,18 +422,16 @@ def import_affiliations_from_salesforce():
                             )
                             db.session.add(org)
                             db.session.flush()  # Get the new org ID
+                            # Add to lookup for future iterations
+                            org_lookup[sf_org_id] = org
 
-                # Look up contact by Salesforce ID across all contact types
-                contact = Contact.query.filter_by(
-                    salesforce_individual_id=row.get("npe5__Contact__c")
-                ).first()
+                # Look up contact using pre-loaded lookup (O(1))
+                contact = contact_lookup.get(sf_contact_id)
 
                 # Create or update the volunteer-organization relationship
                 if org and contact:
-                    # Check for existing relationship
-                    vol_org = VolunteerOrganization.query.filter_by(
-                        volunteer_id=contact.id, organization_id=org.id
-                    ).first()
+                    # Check for existing relationship using pre-loaded lookup (O(1))
+                    vol_org = vol_org_lookup.get((contact.id, org.id))
 
                     if not vol_org:
                         # Create new relationship
@@ -345,10 +439,12 @@ def import_affiliations_from_salesforce():
                             volunteer_id=contact.id, organization_id=org.id
                         )
                         db.session.add(vol_org)
+                        # Add to lookup for future iterations
+                        vol_org_lookup[(contact.id, org.id)] = vol_org
 
                     # Update relationship details from Salesforce
-                    vol_org.salesforce_volunteer_id = row.get("npe5__Contact__c")
-                    vol_org.salesforce_org_id = row.get("npe5__Organization__c")
+                    vol_org.salesforce_volunteer_id = sf_contact_id
+                    vol_org.salesforce_org_id = sf_org_id
                     vol_org.role = row.get("npe5__Role__c")
                     vol_org.is_primary = row.get("npe5__Primary__c") == "true"
                     vol_org.status = row.get("npe5__Status__c")
@@ -361,24 +457,29 @@ def import_affiliations_from_salesforce():
 
                     affiliation_success += 1
                 else:
-                    # Track missing organization or contact
+                    # Track missing organization or contact (with error cap)
                     affiliation_error += 1
-                    error_msgs = []
-                    if not org:
-                        error_msgs.append(
-                            f"Organization/School/District with Salesforce ID {row.get('npe5__Organization__c')} not found"
-                        )
-                    if not contact:
-                        error_msgs.append(
-                            f"Contact (Volunteer/Teacher) with Salesforce ID {row.get('npe5__Contact__c')} not found"
-                        )
-                    errors.extend(error_msgs)
+                    if len(errors) < MAX_ERRORS:
+                        error_msgs = []
+                        if not org:
+                            error_msgs.append(
+                                f"Organization/School/District with Salesforce ID {sf_org_id} not found"
+                            )
+                        if not contact:
+                            error_msgs.append(
+                                f"Contact (Volunteer/Teacher) with Salesforce ID {sf_contact_id} not found"
+                            )
+                        errors.extend(error_msgs[: MAX_ERRORS - len(errors)])
 
                 # Batch commit every 50 records for resumability
                 if (i + 1) % 50 == 0:
                     try:
                         db.session.commit()
-                        print(f"  → Committed affiliations batch {(i+1) // 50}")
+                        # Progress logging for large imports
+                        if total_count >= 500:
+                            print(
+                                f"  → Batch {(i+1) // 50}: {i+1}/{total_count} ({(i+1)*100//total_count}%)"
+                            )
                     except Exception as batch_e:
                         db.session.rollback()
                         print(f"  → Affiliations batch commit failed: {batch_e}")
@@ -386,7 +487,8 @@ def import_affiliations_from_salesforce():
             except Exception as e:
                 # Track processing errors
                 affiliation_error += 1
-                errors.append(f"Error processing affiliation: {str(e)}")
+                if len(errors) < MAX_ERRORS:
+                    errors.append(f"Error processing affiliation: {str(e)}")
                 continue
 
         # Final commit for remaining changes
