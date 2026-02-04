@@ -456,7 +456,7 @@ def import_events_from_salesforce():
         # Delta sync support
         from services.delta_sync_service import DeltaSyncHelper
 
-        delta_helper = DeltaSyncHelper("events_and_participants")
+        delta_helper = DeltaSyncHelper("events")
         delta_info = delta_helper.get_delta_info(request.args)
         is_delta = delta_info["actual_delta"]
         watermark = delta_info["watermark"]
@@ -599,7 +599,7 @@ def import_events_from_salesforce():
                     sync_status = SyncStatus.FAILED.value
 
             sync_log = SyncLog(
-                sync_type="events_and_participants",
+                sync_type="events",
                 started_at=started_at,
                 completed_at=datetime.now(timezone.utc),
                 status=sync_status,
@@ -642,7 +642,7 @@ def import_events_from_salesforce():
     except SalesforceAuthenticationFailed:
         print("Error: Failed to authenticate with Salesforce")
         _record_failure_sync_log(
-            "events_and_participants",
+            "events",
             started_at if "started_at" in locals() else datetime.now(timezone.utc),
             "Failed to authenticate with Salesforce",
         )
@@ -656,7 +656,7 @@ def import_events_from_salesforce():
         db.session.rollback()
         print(f"Error: {str(e)}")
         _record_failure_sync_log(
-            "events_and_participants",
+            "events",
             started_at if "started_at" in locals() else datetime.now(timezone.utc),
             str(e),
         )
@@ -765,7 +765,7 @@ def sync_student_participants():
                     sync_status = SyncStatus.FAILED.value
 
             sync_log = SyncLog(
-                sync_type="student_participants",
+                sync_type="student_participations",
                 started_at=started_at,
                 completed_at=datetime.now(timezone.utc),
                 status=sync_status,

@@ -191,7 +191,7 @@ def import_schools():
                 )
 
             sync_log = SyncLog(
-                sync_type="schools_and_districts",
+                sync_type="schools",
                 started_at=started_at,
                 completed_at=datetime.now(timezone.utc),
                 status=sync_status,
@@ -337,11 +337,37 @@ def import_classes():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting class import process...")
+        started_at = datetime.now(timezone.utc)
+
+        # Delta sync support
+        from services.delta_sync_service import DeltaSyncHelper
+
+        delta_helper = DeltaSyncHelper("classes")
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info["actual_delta"]
+        watermark = delta_info["watermark"]
+
+        if delta_info["requested_delta"]:
+            if is_delta:
+                print(
+                    f"DELTA SYNC: Only fetching classes modified after {delta_info['watermark_formatted']}"
+                )
+            else:
+                print(
+                    "DELTA SYNC requested but no previous watermark found - performing FULL SYNC"
+                )
+        else:
+            print("Starting class import process (FULL SYNC)...")
+
         salesforce_query = """
-        SELECT Id, Name, School__c, Class_Year_Number__c
+        SELECT Id, Name, School__c, Class_Year_Number__c, LastModifiedDate
         FROM Class__c
+        WHERE Id != null
         """
+
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            salesforce_query += delta_helper.build_date_filter(watermark)
 
         sf = Salesforce(
             username=Config.SF_USERNAME,
@@ -383,12 +409,43 @@ def import_classes():
 
         print(f"Class import complete: {success_count} successes, {error_count} errors")
 
+        # Record sync log for dashboard tracking
+        try:
+            sync_status = SyncStatus.SUCCESS.value
+            if error_count > 0:
+                sync_status = (
+                    SyncStatus.PARTIAL.value
+                    if success_count > 0
+                    else SyncStatus.FAILED.value
+                )
+
+            sync_log = SyncLog(
+                sync_type="classes",
+                started_at=started_at,
+                completed_at=datetime.now(timezone.utc),
+                status=sync_status,
+                records_processed=success_count,
+                records_failed=error_count,
+                is_delta_sync=is_delta,
+                last_sync_watermark=(
+                    datetime.now(timezone.utc)
+                    if sync_status
+                    in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
+                    else None
+                ),
+            )
+            db.session.add(sync_log)
+            db.session.commit()
+        except Exception as log_e:
+            print(f"Warning: Failed to record sync log: {log_e}")
+
         return jsonify(
             {
                 "success": True,
                 "message": f"Successfully processed {success_count} classes with {error_count} errors",
                 "processed_count": success_count,
                 "error_count": error_count,
+                "is_delta_sync": is_delta,
                 "errors": errors,
             }
         )

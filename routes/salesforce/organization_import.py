@@ -239,7 +239,28 @@ def import_affiliations_from_salesforce():
         JSON response with import statistics and error details
     """
     try:
-        print("Fetching affiliations from Salesforce...")
+        started_at = datetime.now(tz.utc)
+
+        # Delta sync support - check if incremental sync requested
+        from services.delta_sync_service import DeltaSyncHelper
+
+        delta_helper = DeltaSyncHelper("affiliations")
+        delta_info = delta_helper.get_delta_info(request.args)
+        is_delta = delta_info["actual_delta"]
+        watermark = delta_info["watermark"]
+
+        if delta_info["requested_delta"]:
+            if is_delta:
+                print(
+                    f"DELTA SYNC: Only fetching affiliations modified after {delta_info['watermark_formatted']}"
+                )
+            else:
+                print(
+                    "DELTA SYNC requested but no previous watermark found - performing FULL SYNC"
+                )
+        else:
+            print("Fetching affiliations from Salesforce (FULL SYNC)...")
+
         affiliation_success = 0
         affiliation_error = 0
         errors = []
@@ -252,13 +273,19 @@ def import_affiliations_from_salesforce():
             domain="login",
         )
 
-        # Query affiliations from Salesforce
+        # Query affiliations from Salesforce with LastModifiedDate for delta sync
+        # Note: WHERE Id != null is required so delta filter can append AND clause
         affiliation_query = """
         SELECT Id, Name, npe5__Organization__c, npe5__Contact__c,
                npe5__Role__c, npe5__Primary__c, npe5__Status__c,
-               npe5__StartDate__c, npe5__EndDate__c
+               npe5__StartDate__c, npe5__EndDate__c, LastModifiedDate
         FROM npe5__Affiliation__c
+        WHERE Id != null
         """
+
+        # Add delta filter if using incremental sync
+        if is_delta and watermark:
+            affiliation_query += delta_helper.build_date_filter(watermark)
 
         # Execute the query and get results
         affiliation_result = sf.query_all(affiliation_query)
@@ -381,12 +408,12 @@ def import_affiliations_from_salesforce():
 
             sync_log = SyncLog(
                 sync_type="affiliations",
-                started_at=datetime.now(tz.utc),  # Note: ideally track start earlier
+                started_at=started_at,
                 completed_at=datetime.now(tz.utc),
                 status=sync_status,
                 records_processed=affiliation_success,
                 records_failed=affiliation_error,
-                is_delta_sync=False,
+                is_delta_sync=is_delta,
                 last_sync_watermark=(
                     datetime.now(tz.utc)
                     if sync_status
@@ -406,6 +433,7 @@ def import_affiliations_from_salesforce():
                 "message": f"Successfully processed {affiliation_success} affiliations with {affiliation_error} errors",
                 "processed_count": affiliation_success,
                 "error_count": affiliation_error,
+                "is_delta_sync": is_delta,
                 "errors": errors[:3] if errors else [],
             }
         )
