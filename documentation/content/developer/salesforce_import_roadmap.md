@@ -29,10 +29,10 @@ This document tracks improvements to the Salesforce import system following the 
   - ✅ Updated `event_import.py` to import from centralized location
   - **Verified**: Route imports from `services.salesforce.utils`
 
-- [ ] **Migrate Teacher import to batch commits**
-  - Replace per-record `db.session.commit()` with Flush+Batch pattern
-  - Use 50-record commit windows (matching other imports)
-  - **Acceptance**: Teacher import uses same commit pattern as Student import
+- [x] **Migrate Teacher import to batch commits** *(Complete)*
+  - ✅ Replaced per-record `db.session.commit()` with Flush+Batch pattern
+  - ✅ Using 50-record commit windows (matching other imports)
+  - **Verified**: Uses `flush()` then batch commits, matching student_import.py
 
 - [ ] **Implement savepoint recovery**
   - Wrap individual record processing in `db.session.begin_nested()`

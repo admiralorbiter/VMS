@@ -91,7 +91,7 @@ def import_teachers_from_salesforce():
         teacher_rows = result.get("records", [])
 
         # Process each teacher record
-        for row in teacher_rows:
+        for i, row in enumerate(teacher_rows):
             try:
                 # Use the Teacher model's import method
                 teacher, is_new, error = Teacher.import_from_salesforce(row, db.session)
@@ -101,18 +101,8 @@ def import_teachers_from_salesforce():
                     errors.append(error)
                     continue
 
-                success_count += 1
-
-                # Save the teacher first to get the ID
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    error_count += 1
-                    errors.append(
-                        f"Error saving teacher {teacher.first_name} {teacher.last_name}: {str(e)}"
-                    )
-                    continue
+                # Flush to get ID (needed for contact info) without full commit
+                db.session.flush()
 
                 # Handle contact info using the teacher's method
                 try:
@@ -120,12 +110,23 @@ def import_teachers_from_salesforce():
                     if not success:
                         errors.append(error)
                     else:
-                        db.session.commit()
+                        success_count += 1
+
                 except Exception as e:
                     db.session.rollback()
+                    error_count += 1
                     errors.append(
                         f"Error saving contact info for teacher {teacher.first_name} {teacher.last_name}: {str(e)}"
                     )
+
+                # Batch commit every 50 records for performance and resumability
+                if (i + 1) % 50 == 0:
+                    try:
+                        db.session.commit()
+                        print(f"  → Committed teachers batch {(i+1) // 50}")
+                    except Exception as batch_e:
+                        db.session.rollback()
+                        print(f"  → Batch commit failed: {batch_e}")
 
             except Exception as e:
                 error_count += 1
@@ -133,6 +134,9 @@ def import_teachers_from_salesforce():
                     f"Error processing teacher {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}"
                 )
                 continue
+
+        # Final commit for remaining records
+        db.session.commit()
 
         print(
             f"Teacher import complete: {success_count} successes, {error_count} errors"
