@@ -420,6 +420,159 @@ Organized by import frequency with delta sync controls and progress tracking.
         cursor: pointer;
         color: #666;
     }
+
+    /* Health Metrics Section */
+    .health-metrics-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .health-metrics-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .health-metrics-header h3 {
+        color: #2c3e50;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .health-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .metric-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .metric-card h4 {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.9rem;
+        color: #666;
+        font-weight: 500;
+    }
+
+    .trend-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 80px;
+        padding-top: 0.5rem;
+    }
+
+    .trend-bar {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .trend-bar-fill {
+        width: 100%;
+        border-radius: 4px 4px 0 0;
+        transition: height 0.3s ease;
+        min-height: 4px;
+    }
+
+    .trend-bar-fill.success {
+        background: linear-gradient(180deg, #27ae60 0%, #2ecc71 100%);
+    }
+
+    .trend-bar-fill.partial {
+        background: linear-gradient(180deg, #f39c12 0%, #f1c40f 100%);
+    }
+
+    .trend-bar-fill.failed {
+        background: linear-gradient(180deg, #c0392b 0%, #e74c3c 100%);
+    }
+
+    .trend-bar-label {
+        font-size: 0.65rem;
+        color: #888;
+        margin-top: 4px;
+    }
+
+    .stale-warnings {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .stale-warning-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: #fff3cd;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .stale-warning-item i {
+        color: #856404;
+    }
+
+    .stale-warning-item.never-synced {
+        background: #f8d7da;
+    }
+
+    .stale-warning-item.never-synced i {
+        color: #721c24;
+    }
+
+    .no-warnings {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #155724;
+        font-size: 0.9rem;
+    }
+
+    .duration-table {
+        width: 100%;
+        font-size: 0.85rem;
+    }
+
+    .duration-table th,
+    .duration-table td {
+        padding: 0.35rem 0.5rem;
+        text-align: left;
+    }
+
+    .duration-table th {
+        font-weight: 500;
+        color: #666;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .duration-table .sync-type {
+        text-transform: capitalize;
+    }
+
+    .duration-table .duration {
+        color: #3498db;
+        font-weight: 500;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
 </style>
 {% endblock %}
 
@@ -439,6 +592,18 @@ Organized by import frequency with delta sync controls and progress tracking.
                 <button class="btn-history" onclick="openHistoryModal()">
                     <i class="fas fa-history"></i> Sync History
                 </button>
+            </div>
+        </div>
+
+        <!-- Health Metrics Section -->
+        <div class="health-metrics-section" id="health-metrics">
+            <div class="health-metrics-header">
+                <h3><i class="fas fa-heartbeat"></i> Sync Health (Last 7 Days)</h3>
+            </div>
+            <div id="metrics-content">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i> Loading metrics...
+                </div>
             </div>
         </div>
 
@@ -909,6 +1074,79 @@ Organized by import frequency with delta sync controls and progress tracking.
 
 {% block extra_js %}
 <script>
+    // Load health metrics on page load
+    document.addEventListener('DOMContentLoaded', loadHealthMetrics);
+
+    async function loadHealthMetrics() {
+        const container = document.getElementById('metrics-content');
+        try {
+            const response = await fetch('/admin/salesforce/health-metrics');
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = '<div class="text-danger">Failed to load metrics</div>';
+                return;
+            }
+
+            // Build metrics grid HTML
+            let html = '<div class="health-metrics-grid">';
+
+            // 7-Day Trend Chart
+            html += '<div class="metric-card">';
+            html += '<h4><i class="fas fa-chart-bar"></i> 7-Day Success Rate</h4>';
+            html += '<div class="trend-chart">';
+            for (const day of data.daily_trend) {
+                const height = Math.max(10, day.success_rate);
+                const statusClass = day.failed_runs > 0 ? 'partial' : 'success';
+                html += `<div class="trend-bar" title="${day.date}: ${day.total_runs} runs, ${day.success_rate}% success">`;
+                html += `<div class="trend-bar-fill ${statusClass}" style="height: ${height}%"></div>`;
+                html += `<span class="trend-bar-label">${day.day_name}</span>`;
+                html += '</div>';
+            }
+            html += '</div></div>';
+
+            // Stale Sync Warnings
+            html += '<div class="metric-card">';
+            html += '<h4><i class="fas fa-exclamation-triangle"></i> Stale Sync Warnings</h4>';
+            html += '<div class="stale-warnings">';
+            if (data.stale_syncs.length === 0) {
+                html += '<div class="no-warnings"><i class="fas fa-check-circle"></i> All syncs up to date</div>';
+            } else {
+                for (const stale of data.stale_syncs) {
+                    const itemClass = stale.hours_since === null ? 'never-synced' : '';
+                    const message = stale.hours_since === null
+                        ? `${stale.sync_type} has never been synced`
+                        : `${stale.sync_type} - ${Math.round(stale.hours_since)}h since last sync`;
+                    html += `<div class="stale-warning-item ${itemClass}">`;
+                    html += `<i class="fas fa-${stale.hours_since === null ? 'times-circle' : 'clock'}"></i>`;
+                    html += `<span>${message}</span>`;
+                    html += '</div>';
+                }
+            }
+            html += '</div></div>';
+
+            // Duration Table
+            html += '<div class="metric-card">';
+            html += '<h4><i class="fas fa-stopwatch"></i> Avg Duration by Type</h4>';
+            html += '<table class="duration-table"><thead><tr><th>Type</th><th>Avg</th><th>Runs</th></tr></thead><tbody>';
+            for (const [type, m] of Object.entries(data.metrics)) {
+                if (m.total_runs > 0) {
+                    const duration = m.avg_duration_seconds !== null
+                        ? (m.avg_duration_seconds < 60 ? `${m.avg_duration_seconds}s` : `${Math.round(m.avg_duration_seconds / 60)}m`)
+                        : '-';
+                    html += `<tr><td class="sync-type">${type}</td><td class="duration">${duration}</td><td>${m.total_runs}</td></tr>`;
+                }
+            }
+            html += '</tbody></table></div>';
+
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (error) {
+            console.error('Error loading health metrics:', error);
+            container.innerHTML = '<div class="text-danger">Failed to load metrics</div>';
+        }
+    }
+
     // Import URL mapping
     const IMPORT_URLS = {
         'organizations': '/organizations/import-from-salesforce',

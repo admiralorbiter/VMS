@@ -59,11 +59,12 @@ This document tracks improvements to the Salesforce import system following the 
   - ✅ Updated all route decorators and registrations
   - **All 9 SF blueprints now**: `sf_volunteer_import_bp`, `sf_event_import_bp`, `sf_history_import_bp`, `sf_organization_import_bp`, `sf_pathway_import_bp`, `sf_dashboard_bp`, `sf_school_import_bp`, `sf_student_import_bp`, `sf_teacher_import_bp`
 
-- [ ] **Integrate health metrics into dashboard**
-  - Add 7-day error rate trend chart
-  - Add average duration by sync type
-  - Add stale sync warnings
-  - **Acceptance**: Metrics visible on `/admin/salesforce`
+- [x] **Integrate health metrics into dashboard** *(Complete)*
+  - ✅ Added 7-day success rate trend chart
+  - ✅ Added average duration by sync type table
+  - ✅ Added stale sync warnings (24h+ since last sync)
+  - **API**: `GET /admin/salesforce/health-metrics`
+  - **Visible on**: `/admin/salesforce`
 
 - [ ] **Add unit tests for mapper functions**
   - Create `tests/unit/services/test_salesforce_mappers.py`
