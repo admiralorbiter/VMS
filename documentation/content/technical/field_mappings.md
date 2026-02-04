@@ -119,7 +119,7 @@ Events are imported only if they meet ALL criteria:
 
 ## 2. Salesforce → Polaris (Volunteer Import)
 
-**Implementation**: `routes/volunteers/routes.py` (`/volunteers/import-from-salesforce`)
+**Implementation**: `routes/salesforce/volunteer_import.py` (`/volunteers/import-from-salesforce`)
 
 | SF Field | POL Target | Transform | Notes |
 |----------|------------|-----------|-------|
@@ -151,7 +151,7 @@ Events are imported only if they meet ALL criteria:
 
 ## 3. Salesforce → Polaris (Teacher Import)
 
-**Implementation**: `routes/teachers/routes.py` (`/teachers/import-from-salesforce`)
+**Implementation**: `routes/salesforce/teacher_import.py` (`/teachers/import-from-salesforce`)
 
 | SF Field | POL Target | Transform | Notes |
 |----------|------------|-----------|-------|
@@ -169,7 +169,7 @@ Events are imported only if they meet ALL criteria:
 
 ## 4. Salesforce → Polaris (Student Participation Import)
 
-**Implementation**: `routes/events/routes.py` (`process_student_participation_row()`)
+**Implementation**: `routes/salesforce/event_import.py` (`process_student_participation_row()`)
 
 | SF Field | POL Target | Transform | Notes |
 |----------|------------|-----------|-------|

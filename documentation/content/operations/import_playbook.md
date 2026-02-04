@@ -314,7 +314,7 @@ Errors: D
 ```
 
 **Implementation:**
-- Route: `routes/volunteers/routes.py` `import_from_salesforce()`
+- Route: `routes/salesforce/volunteer_import.py` `import_from_salesforce()`
 - Reference: [Field Mappings - Volunteer Import](field_mappings#salesforce--polaris-volunteer-import)
 
 ### D2: Teacher Import
@@ -350,7 +350,7 @@ Errors: D
 ```
 
 **Implementation:**
-- Route: `routes/teachers/routes.py` `import_from_salesforce()`
+- Route: `routes/salesforce/teacher_import.py` `import_teachers_from_salesforce()`
 - Reference: [Field Mappings - Teacher Import](field_mappings#salesforce--polaris-teacher-import)
 
 ### D3: Student Import
@@ -390,7 +390,7 @@ Chunks processed: X
 ```
 
 **Implementation:**
-- Route: `routes/students/routes.py` `import_from_salesforce()`
+- Route: `routes/salesforce/student_import.py` `import_students_from_salesforce()`
 - Chunked processing for large datasets
 
 ### D4: Event Import
@@ -433,7 +433,7 @@ Session type breakdown:
 ```
 
 **Implementation:**
-- Route: `routes/events/routes.py` `import_events_from_salesforce()`
+- Route: `routes/salesforce/event_import.py` `import_events_from_salesforce()`
 - Processes events and associated participations
 
 ### D5: Organization Import
@@ -468,7 +468,7 @@ Errors: D
 ```
 
 **Implementation:**
-- Route: `routes/organizations/routes.py` `import_organizations_from_salesforce()`
+- Route: `routes/salesforce/organization_import.py` `import_organizations_from_salesforce()`
 
 ### D6: History Import
 
@@ -502,7 +502,7 @@ Total skipped: E
 ```
 
 **Implementation:**
-- Route: `routes/history/routes.py` `import_history_from_salesforce()`
+- Route: `routes/salesforce/history_import.py` `import_history_from_salesforce()`
 - Processes both Task and EmailMessage records
 - Matches contacts by email or Salesforce ID
 
@@ -538,7 +538,7 @@ Errors: D
 ```
 
 **Implementation:**
-- Route: `routes/management/management.py` `import_schools()`
+- Route: `routes/salesforce/school_import.py` `import_schools()`
 
 ### D8: Class Import
 
@@ -572,7 +572,7 @@ Errors: D
 ```
 
 **Implementation:**
-- Route: `routes/management/management.py` `import_classes()`
+- Route: `routes/salesforce/school_import.py` `import_classes()`
 
 ### Daily Import Script
 
@@ -826,7 +826,7 @@ Pathful changes `TeacherEmail` column to `EducatorEmail`:
 
 > [!TIP]
 > **Use Delta Sync for Daily Imports**
-> 
+>
 > Add `?delta=true` to daily import calls to only fetch records modified since the last sync. This can reduce import time by **10-30x** for routine syncs.
 
 ### Data Quality
@@ -843,7 +843,7 @@ Pathful changes `TeacherEmail` column to `EducatorEmail`:
 
 > [!IMPORTANT]
 > **New Feature — February 2026**
-> 
+>
 > Delta sync enables importing only records modified since the last successful sync, dramatically reducing import time for routine daily syncs.
 
 ### Overview
@@ -858,7 +858,7 @@ sequenceDiagram
     participant API as Import Endpoint
     participant DB as sync_logs
     participant SF as Salesforce
-    
+
     Admin->>API: POST /import?delta=true
     API->>DB: Get last watermark
     DB-->>API: 2026-02-03T12:00:00Z
@@ -985,4 +985,3 @@ DELTA SYNC requested but no previous watermark found - performing FULL SYNC
 
 *Last updated: February 2026*
 *Version: 2.0* — Added Delta Sync documentation
-

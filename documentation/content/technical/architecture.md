@@ -123,7 +123,7 @@ If SF and VT disagree on mapped fields, VT is overwritten on next sync.
 - Sync behavior: Idempotent on `salesforce_id`
 - SF edits overwrite VT on next sync
 - VT-owned fields preserved during sync
-- Reference: `routes/events/routes.py`, `routes/events/pathway_events.py`
+- Reference: `routes/salesforce/event_import.py`, `routes/salesforce/pathway_import.py`
 - Reference: [Field Mappings - Salesforce → VolunTeach](field_mappings#1-salesforce--volunteach-in-person-sync)
 
 ### R2 — Volunteer identity: Polaris wins
@@ -199,12 +199,12 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 | Integration | Cadence | Manual Trigger | Implementation |
 |-------------|---------|----------------|----------------|
 | SF → VolunTeach | Hourly | Yes | VolunTeach sync process |
-| SF Comms → Polaris | Daily | Yes | `routes/history/routes.py` `/history/import-from-salesforce` |
-| SF In-Person Events → Polaris | Daily | Yes | `routes/events/routes.py` `/events/import-from-salesforce` |
-| SF Volunteers → Polaris | Daily | Yes | `routes/volunteers/routes.py` `/volunteers/import-from-salesforce` |
-| SF Students → Polaris | Daily | Yes | `routes/students/routes.py` `/students/import-from-salesforce` |
-| SF Organizations → Polaris | Daily | Yes | `routes/organizations/routes.py` `/organizations/import-from-salesforce` |
-| SF Schools/Classes → Polaris | Weekly | Yes | `routes/management/management.py` import routes |
+| SF Comms → Polaris | Daily | Yes | `routes/salesforce/history_import.py` `/history/import-from-salesforce` |
+| SF In-Person Events → Polaris | Daily | Yes | `routes/salesforce/event_import.py` `/events/import-from-salesforce` |
+| SF Volunteers → Polaris | Daily | Yes | `routes/salesforce/volunteer_import.py` `/volunteers/import-from-salesforce` |
+| SF Students → Polaris | Daily | Yes | `routes/salesforce/student_import.py` `/students/import-from-salesforce` |
+| SF Organizations → Polaris | Daily | Yes | `routes/salesforce/organization_import.py` `/organizations/import-from-salesforce` |
+| SF Schools/Classes → Polaris | Weekly | Yes | `routes/salesforce/school_import.py` import routes |
 | Pathful → Polaris | Daily | Yes | `routes/virtual/routes.py` `/virtual/import-sheet` |
 | Roster → Polaris | Manual (2 week cadence) | Yes | `routes/virtual/usage.py` teacher progress import |
 | API Health Monitor | Hourly | Yes (Script) | `scripts/monitor_api.py` checks signup API |
@@ -321,7 +321,7 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 4. Email appears in volunteer communication history
 
 **Implementation:**
-- Route: `routes/history/routes.py` `/history/import-from-salesforce`
+- Route: `routes/salesforce/history_import.py` `/history/import-from-salesforce`
 - Source: Salesforce Task and EmailMessage records
 - Contract: [Contract C: Gmail Logging → Polaris](contract_c)
 - Reference: [User Stories - Communication History](user-stories#us-404)
@@ -338,7 +338,7 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 
 **Implementation:**
 - Form: Form Assembly integration (managed externally)
-- Import: `routes/volunteers/routes.py` (via Salesforce Sync)
+- Import: `routes/salesforce/volunteer_import.py` (via Salesforce Sync)
 - Reference: [Field Mappings - Website Signup](field_mappings#2-website-signup--sf--polaris)
 
 ### District Roster Import → Polaris

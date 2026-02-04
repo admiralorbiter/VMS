@@ -36,7 +36,7 @@ Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestam
 
 2. **Comms Sync**: Check history import logs
    - Expected: Daily sync
-   - Route: `routes/history/routes.py` `/history/import-from-salesforce`
+   - Route: `routes/salesforce/history_import.py` `/history/import-from-salesforce`
 
 3. **Dashboard Refresh**: Check cache refresh timestamps
    - Expected: As configured in cache management

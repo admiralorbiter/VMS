@@ -219,7 +219,7 @@ Monitor data freshness by checking sync timestamps:
 
 **How to Check:**
 - Check history import logs
-- Route: `routes/history/routes.py` `/history/import-from-salesforce`
+- Route: `routes/salesforce/history_import.py` `/history/import-from-salesforce`
 - Verify last import timestamp
 
 **Threshold:** > 24 hours stale → SEV2
