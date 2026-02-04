@@ -78,6 +78,23 @@ def authenticated_limit():
     )
 
 
+def admin_import_limit():
+    """
+    Higher rate limit for admin bulk import endpoints.
+    These need to make many rapid API calls for pagination.
+    """
+    return limiter.limit(
+        "1000 per minute; 10000 per hour",
+        key_func=get_user_id_or_ip,
+        error_message="Too many import requests. Please wait before continuing.",
+    )
+
+
+def exempt_from_rate_limit():
+    """Decorator to completely exempt an endpoint from rate limiting."""
+    return limiter.exempt
+
+
 def init_rate_limiter(app):
     """
     Initialize rate limiter with Flask app.

@@ -939,23 +939,68 @@ Organized by import frequency with delta sync controls and progress tracking.
             const url = IMPORT_URLS[importType];
             const params = isDelta ? '?delta=true' : '';
 
-            const response = await fetch(url + params, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
+            // For chunked imports (students), loop until complete
+            const chunkedImports = ['students'];
+            if (chunkedImports.includes(importType)) {
+                let totalProcessed = 0;
+                let totalErrors = 0;
+                let nextId = null;
+                let chunkNumber = 0;
+                let isComplete = false;
 
-            if (progressBar) progressBar.style.width = '90%';
+                while (!isComplete) {
+                    chunkNumber++;
+                    status.textContent = `Processing ${importType} chunk ${chunkNumber}... (${totalProcessed} so far)`;
 
-            const data = await response.json();
+                    // Use same params (including delta) for all chunks
+                    // Backend only updates watermark on final chunk
+                    const body = nextId ? { last_id: nextId } : {};
+                    const response = await fetch(url + params, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
 
-            if (progressBar) progressBar.style.width = '100%';
+                    const data = await response.json();
 
-            if (data.success) {
-                status.textContent = data.message || `${importType} import completed successfully`;
+                    if (!data.success) {
+                        throw new Error(data.message || data.error || 'Import failed');
+                    }
+
+                    totalProcessed += data.processed_count || 0;
+                    totalErrors += data.error_count || 0;
+                    nextId = data.next_id;
+                    isComplete = data.is_complete || !nextId;
+
+                    // Update progress bar based on chunks
+                    const progressPercent = Math.min(90, 10 + (chunkNumber * 20));
+                    if (progressBar) progressBar.style.width = `${progressPercent}%`;
+                }
+
+                if (progressBar) progressBar.style.width = '100%';
+                status.textContent = `Imported ${totalProcessed} ${importType} (${totalErrors} errors)`;
                 status.classList.add('success');
-                showToast('Success', data.message || `${importType} import completed`, 'success');
+                showToast('Success', `Imported ${totalProcessed} ${importType}`, 'success');
             } else {
-                throw new Error(data.message || data.error || 'Import failed');
+                // Standard single-call import for other types
+                const response = await fetch(url + params, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (progressBar) progressBar.style.width = '90%';
+
+                const data = await response.json();
+
+                if (progressBar) progressBar.style.width = '100%';
+
+                if (data.success) {
+                    status.textContent = data.message || `${importType} import completed successfully`;
+                    status.classList.add('success');
+                    showToast('Success', data.message || `${importType} import completed`, 'success');
+                } else {
+                    throw new Error(data.message || data.error || 'Import failed');
+                }
             }
         } catch (error) {
             status.textContent = `Error: ${error.message}`;

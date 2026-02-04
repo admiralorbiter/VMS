@@ -27,7 +27,7 @@ from datetime import datetime  # Add datetime
 
 from flask import Blueprint, jsonify
 from flask_login import login_required
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import SalesforceAuthenticationFailed
 from sqlalchemy.orm import selectinload
 
 from config import Config
@@ -225,13 +225,10 @@ def sync_unaffiliated_events():
 
     try:
         print("Connecting to Salesforce...")
-        # Initialize Salesforce connection
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",  # Use 'test' for sandbox if needed
-        )
+        # Use centralized Salesforce client with connection caching and retry
+        from services.salesforce_client import get_salesforce_client, safe_query_all
+
+        sf = get_salesforce_client()
         print("Connected to Salesforce.")
 
         # Step 1: Query for ALL student participants first
@@ -243,7 +240,7 @@ def sync_unaffiliated_events():
         WHERE Participant_Type__c = 'Student' AND Contact__c != NULL
         """
         print("Querying ALL student participants from Salesforce...")
-        all_participants_result = sf.query_all(all_participants_query)
+        all_participants_result = safe_query_all(sf, all_participants_query)
         all_participant_rows = all_participants_result.get("records", [])
         print(f"Found {len(all_participant_rows)} total student participation records.")
 
@@ -274,7 +271,7 @@ def sync_unaffiliated_events():
         ORDER BY CreatedDate DESC
         """
         print("Querying unaffiliated events (full details) from Salesforce...")
-        events_result = sf.query_all(unaffiliated_events_query)
+        events_result = safe_query_all(sf, unaffiliated_events_query)
         unaffiliated_events_data = events_result.get("records", [])  # Rename variable
         print(
             f"Found {len(unaffiliated_events_data)} potentially unaffiliated events in Salesforce."

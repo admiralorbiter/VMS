@@ -272,7 +272,16 @@ def process_participation_row(row, success_count, error_count, errors):
         return success_count, error_count + 1
 
 
-def process_student_participation_row(row, success_count, error_count, errors):
+def process_student_participation_row(
+    row,
+    success_count,
+    error_count,
+    errors,
+    events_cache=None,
+    students_cache=None,
+    participations_by_sf_id=None,
+    participations_by_pair=None,
+):
     """
     Process a single student participation row from Salesforce data
 
@@ -285,6 +294,10 @@ def process_student_participation_row(row, success_count, error_count, errors):
         success_count (int): Running count of successful operations
         error_count (int): Running count of failed operations
         errors (list): List to collect error messages
+        events_cache (dict, optional): Pre-loaded events by salesforce_id
+        students_cache (dict, optional): Pre-loaded students by salesforce_individual_id
+        participations_by_sf_id (dict, optional): Pre-loaded participations by salesforce_id
+        participations_by_pair (dict, optional): Pre-loaded participations by (event_id, student_id)
 
     Returns:
         tuple: Updated (success_count, error_count)
@@ -303,32 +316,50 @@ def process_student_participation_row(row, success_count, error_count, errors):
             )
             return success_count, error_count + 1
 
-        event = Event.query.filter_by(salesforce_id=event_sf_id).first()
+        # Use cache if available, otherwise fall back to DB query
+        if events_cache is not None:
+            event = events_cache.get(event_sf_id)
+        else:
+            event = Event.query.filter_by(salesforce_id=event_sf_id).first()
+
         if not event:
             errors.append(
                 f"Event with Salesforce ID {event_sf_id} not found for participation {participation_sf_id}"
             )
             return success_count, error_count + 1
 
-        student = Student.query.filter(
-            Student.salesforce_individual_id == student_contact_sf_id
-        ).first()
+        # Use cache if available, otherwise fall back to DB query
+        if students_cache is not None:
+            student = students_cache.get(student_contact_sf_id)
+        else:
+            student = Student.query.filter(
+                Student.salesforce_individual_id == student_contact_sf_id
+            ).first()
+
         if not student:
             errors.append(
                 f"Student with Salesforce Contact ID {student_contact_sf_id} not found for participation {participation_sf_id}"
             )
             return success_count, error_count + 1
 
-        existing_participation = EventStudentParticipation.query.filter_by(
-            salesforce_id=participation_sf_id
-        ).first()
+        # Check for existing participation by SF ID (use cache if available)
+        if participations_by_sf_id is not None:
+            existing_participation = participations_by_sf_id.get(participation_sf_id)
+        else:
+            existing_participation = EventStudentParticipation.query.filter_by(
+                salesforce_id=participation_sf_id
+            ).first()
 
         if existing_participation:
             return success_count, error_count
 
-        pair_participation = EventStudentParticipation.query.filter_by(
-            event_id=event.id, student_id=student.id
-        ).first()
+        # Check for existing participation by event+student pair (use cache if available)
+        if participations_by_pair is not None:
+            pair_participation = participations_by_pair.get((event.id, student.id))
+        else:
+            pair_participation = EventStudentParticipation.query.filter_by(
+                event_id=event.id, student_id=student.id
+            ).first()
 
         delivery_hours = safe_parse_delivery_hours(delivery_hours_str)
 
@@ -352,7 +383,7 @@ def process_student_participation_row(row, success_count, error_count, errors):
             salesforce_id=participation_sf_id,
         )
         db.session.add(new_participation)
-        db.session.commit()
+        # Note: Commit is now handled in batches by the caller
         return success_count + 1, error_count
 
     except Exception as e:
@@ -738,11 +769,49 @@ def sync_student_participants():
             f"Found {len(participant_rows)} student participation records in Salesforce."
         )
 
-        for row in participant_rows:
+        # Pre-load lookup caches for performance (avoids N+1 queries)
+        print("Pre-loading lookup caches for performance optimization...")
+        events_cache = {
+            e.salesforce_id: e for e in Event.query.all() if e.salesforce_id
+        }
+        students_cache = {
+            s.salesforce_individual_id: s
+            for s in Student.query.all()
+            if s.salesforce_individual_id
+        }
+        existing_participations = EventStudentParticipation.query.all()
+        participations_by_sf_id = {
+            p.salesforce_id: p for p in existing_participations if p.salesforce_id
+        }
+        participations_by_pair = {
+            (p.event_id, p.student_id): p for p in existing_participations
+        }
+        print(
+            f"  → Cached {len(events_cache)} events, {len(students_cache)} students, {len(existing_participations)} participations"
+        )
+
+        for i, row in enumerate(participant_rows):
             success_count, error_count = process_student_participation_row(
-                row, success_count, error_count, errors
+                row,
+                success_count,
+                error_count,
+                errors,
+                events_cache=events_cache,
+                students_cache=students_cache,
+                participations_by_sf_id=participations_by_sf_id,
+                participations_by_pair=participations_by_pair,
             )
 
+            # Batch commit every 100 records for resumability
+            if (i + 1) % 100 == 0:
+                try:
+                    db.session.commit()
+                    print(f"  → Committed student participations batch {(i+1) // 100}")
+                except Exception as batch_e:
+                    db.session.rollback()
+                    print(f"  → Batch commit failed: {batch_e}")
+
+        # Final commit for remaining records
         db.session.commit()
 
         print(

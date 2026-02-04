@@ -20,6 +20,7 @@ from models import db
 from models.student import Student
 from routes.decorators import global_users_only
 from services.salesforce_client import get_salesforce_client, safe_query
+from utils.rate_limiter import limiter
 
 # Create Blueprint for Salesforce student import routes
 sf_student_import_bp = Blueprint("sf_student_import", __name__)
@@ -28,6 +29,7 @@ sf_student_import_bp = Blueprint("sf_student_import", __name__)
 @sf_student_import_bp.route("/students/import-from-salesforce", methods=["POST"])
 @login_required
 @global_users_only
+@limiter.exempt  # Exempt from rate limiting - admin-only bulk import needs rapid pagination
 def import_students_from_salesforce():
     """
     Import student data from Salesforce with chunked processing.
@@ -53,10 +55,12 @@ def import_students_from_salesforce():
         is_delta = delta_info["actual_delta"]
         watermark = delta_info["watermark"]
 
-        chunk_size = request.json.get(
+        # Safely get JSON body (silent=True prevents 400 error on empty body)
+        json_body = request.get_json(silent=True) or {}
+        chunk_size = json_body.get(
             "chunk_size", 2000
         )  # Reduced to 2000 to stay within limits
-        last_id = request.json.get(
+        last_id = json_body.get(
             "last_id", None
         )  # Use ID-based pagination instead of offset
 
@@ -132,7 +136,7 @@ def import_students_from_salesforce():
         processed_ids = []
 
         # Process each student in the chunk
-        for row in student_rows:
+        for i, row in enumerate(student_rows):
             try:
                 # Use the Student model's import method
                 student, is_new, error = Student.import_from_salesforce(row, db.session)
@@ -145,8 +149,8 @@ def import_students_from_salesforce():
                 if not student.id:
                     db.session.add(student)
 
-                # Commit each student individually to prevent large transaction blocks
-                db.session.commit()
+                # Flush to get ID (needed for contact info) without full commit
+                db.session.flush()
 
                 # Handle contact info using the student's method
                 try:
@@ -154,7 +158,6 @@ def import_students_from_salesforce():
                     if not success:
                         errors.append(error)
                     else:
-                        db.session.commit()
                         success_count += 1
                         processed_ids.append(row["Id"])
 
@@ -165,6 +168,15 @@ def import_students_from_salesforce():
                     )
                     error_count += 1
 
+                # Batch commit every 100 records for resumability and performance
+                if (i + 1) % 100 == 0:
+                    try:
+                        db.session.commit()
+                        print(f"  → Committed students batch {(i+1) // 100}")
+                    except Exception as batch_e:
+                        db.session.rollback()
+                        print(f"  → Batch commit failed: {batch_e}")
+
             except Exception as e:
                 db.session.rollback()
                 errors.append(
@@ -172,6 +184,9 @@ def import_students_from_salesforce():
                 )
                 error_count += 1
                 continue
+
+        # Final commit for remaining records
+        db.session.commit()
 
         # Get the last processed ID for the next chunk
         next_id = processed_ids[-1] if processed_ids else None
@@ -188,6 +203,7 @@ def import_students_from_salesforce():
                 print(f"- {error}")
 
         # Record sync log for delta sync tracking (only on final chunk)
+        # This ensures watermark isn't set until all chunks are processed
         if is_complete:
             try:
                 from models.sync_log import SyncLog, SyncStatus
@@ -221,6 +237,7 @@ def import_students_from_salesforce():
                 print(f"Warning: Failed to record sync log: {log_e}")
 
         return {
+            "success": True,  # For frontend compatibility
             "status": "success",
             "message": f"Processed chunk of {len(student_rows)} students ({success_count} successful, {error_count} errors)",
             "total_records": total_records,
