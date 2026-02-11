@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}{{ teacher_progress.name }} - Session Details{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher_dashboard.css') }}">
+<style>
+    .teacher-detail-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .back-link {
+        color: #28a745;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        font-weight: 500;
+        font-size: 0.95em;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+        color: #1e7e34;
+    }
+
+    .teacher-detail-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .teacher-detail-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.8em;
+    }
+
+    .teacher-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        opacity: 0.9;
+        font-size: 0.95em;
+    }
+
+    .teacher-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .progress-summary-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px 25px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .progress-summary-card .progress-bar-lg {
+        flex: 1;
+        height: 12px;
+        background: #e9ecef;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .progress-summary-card .progress-fill {
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-summary-card .progress-fill.achieved {
+        background: #28a745;
+    }
+
+    .progress-summary-card .progress-fill.in_progress {
+        background: #ffd700;
+    }
+
+    .progress-summary-card .progress-fill.not_started {
+        background: #dc3545;
+    }
+
+    .progress-summary-card .progress-text {
+        font-weight: 700;
+        font-size: 1.1em;
+        white-space: nowrap;
+    }
+
+    .goal-badge {
+        font-size: 0.85em;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+        white-space: nowrap;
+    }
+
+    .goal-badge.achieved {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .goal-badge.in_progress {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .goal-badge.not_started {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .no-link-alert {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 25px;
+        color: #856404;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .no-link-alert i {
+        font-size: 1.2em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="teacher-detail-container">
+    <a href="{{ url_for('teacher_usage.index') }}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Teacher Usage Dashboard
+    </a>
+
+    <!-- Teacher Header -->
+    <div class="teacher-detail-header">
+        <h1><i class="fas fa-chalkboard-teacher" style="margin-right: 10px;"></i>{{ teacher_progress.name }}</h1>
+        <div class="teacher-meta">
+            {% if teacher_progress.email %}
+            <span><i class="fas fa-envelope"></i> {{ teacher_progress.email }}</span>
+            {% endif %}
+            {% if teacher_progress.building %}
+            <span><i class="fas fa-school"></i> {{ teacher_progress.building }}</span>
+            {% endif %}
+            {% if teacher_progress.grade %}
+            <span><i class="fas fa-graduation-cap"></i> Grade {{ teacher_progress.grade }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Progress Summary -->
+    {% set completed = past_sessions|length %}
+    {% set target = teacher_progress.target_sessions or 1 %}
+    {% set pct = [((completed / target) * 100), 100] | min %}
+    {% if completed >= target %}
+    {% set status_class = "achieved" %}
+    {% set status_text = "Goal Achieved" %}
+    {% elif completed > 0 %}
+    {% set status_class = "in_progress" %}
+    {% set status_text = "In Progress" %}
+    {% else %}
+    {% set status_class = "not_started" %}
+    {% set status_text = "Not Started" %}
+    {% endif %}
+
+    <div class="progress-summary-card">
+        <div class="progress-text">{{ completed }} / {{ target }} sessions</div>
+        <div class="progress-bar-lg">
+            <div class="progress-fill {{ status_class }}" style="width: {{ pct }}%"></div>
+        </div>
+        <span class="goal-badge {{ status_class }}">{{ status_text }}</span>
+    </div>
+
+    {% if no_link_message %}
+    <div class="no-link-alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>{{ no_link_message }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Sessions (same layout as teacher dashboard) -->
+    <div class="sessions-section">
+        <!-- Upcoming Sessions -->
+        <div class="sessions-column">
+            <h2 class="sessions-title">
+                <i class="fas fa-calendar-alt"></i>
+                Upcoming Sessions
+            </h2>
+            {% if upcoming_sessions %}
+            <div class="sessions-list">
+                {% for session in upcoming_sessions %}
+                <div class="session-card upcoming">
+                    <div class="session-header">
+                        <h3 class="session-title">{{ session.title }}</h3>
+                        {% if session.is_simulcast %}
+                        <span class="simulcast-badge">Simulcast</span>
+                        {% endif %}
+                    </div>
+                    <div class="session-details">
+                        {% if session.date %}
+                        <div class="session-date">
+                            <i class="fas fa-calendar"></i>
+                            {{ session.date.strftime('%B %d, %Y') }}
+                        </div>
+                        {% endif %}
+                        {% if session.time %}
+                        <div class="session-time">
+                            <i class="fas fa-clock"></i>
+                            {{ session.time.strftime('%I:%M %p') }}
+                        </div>
+                        {% endif %}
+                        {% if session.topic_theme %}
+                        <div class="session-topic">
+                            <i class="fas fa-tag"></i>
+                            {{ session.topic_theme }}
+                        </div>
+                        {% endif %}
+                        {% if session.presenter_name %}
+                        <div class="session-presenter">
+                            <i class="fas fa-user-tie"></i>
+                            {{ session.presenter_name }}
+                            {% if session.presenter_org %}
+                            <span class="presenter-org">({{ session.presenter_org }})</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if session.session_link %}
+                        <div class="session-link">
+                            <a href="{{ session.session_link }}" target="_blank" class="session-link-btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                View Session
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="session-status">
+                        <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-sessions">
+                <i class="fas fa-calendar-times"></i>
+                <p>No upcoming sessions scheduled</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Past Sessions -->
+        <div class="sessions-column">
+            <h2 class="sessions-title">
+                <i class="fas fa-history"></i>
+                Past Sessions
+            </h2>
+            {% if past_sessions %}
+            <div class="sessions-list">
+                {% for session in past_sessions %}
+                <div class="session-card past">
+                    <div class="session-header">
+                        <h3 class="session-title">{{ session.title }}</h3>
+                        {% if session.is_simulcast %}
+                        <span class="simulcast-badge">Simulcast</span>
+                        {% endif %}
+                    </div>
+                    <div class="session-details">
+                        {% if session.date %}
+                        <div class="session-date">
+                            <i class="fas fa-calendar"></i>
+                            {{ session.date.strftime('%B %d, %Y') }}
+                        </div>
+                        {% endif %}
+                        {% if session.time %}
+                        <div class="session-time">
+                            <i class="fas fa-clock"></i>
+                            {{ session.time.strftime('%I:%M %p') }}
+                        </div>
+                        {% endif %}
+                        {% if session.topic_theme %}
+                        <div class="session-topic">
+                            <i class="fas fa-tag"></i>
+                            {{ session.topic_theme }}
+                        </div>
+                        {% endif %}
+                        {% if session.presenter_name %}
+                        <div class="session-presenter">
+                            <i class="fas fa-user-tie"></i>
+                            {{ session.presenter_name }}
+                            {% if session.presenter_org %}
+                            <span class="presenter-org">({{ session.presenter_org }})</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if session.session_link %}
+                        <div class="session-link">
+                            <a href="{{ session.session_link }}" target="_blank" class="session-link-btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                View Session
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="session-status">
+                        <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+                        {% if session.attendance_status %}
+                        <span class="attendance-badge">{{ session.attendance_status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-sessions">
+                <i class="fas fa-calendar-times"></i>
+                <p>No past sessions found</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

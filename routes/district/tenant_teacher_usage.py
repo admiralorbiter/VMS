@@ -134,6 +134,29 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         events, teacher_alias_map, teacher_progress_map
     )
 
+    # Also count planned/upcoming sessions (confirmed, published, requested)
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    planned_events_query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.status.in_(
+            [EventStatus.CONFIRMED, EventStatus.PUBLISHED, EventStatus.REQUESTED]
+        ),
+        Event.start_date >= now,
+    )
+    if district_name:
+        planned_events_query = planned_events_query.filter(
+            Event.district_partner == district_name
+        )
+    planned_events = planned_events_query.all()
+
+    # Build a separate map for planned session counts
+    planned_progress_map = {t.id: 0 for t in teachers}
+    planned_progress_map = count_sessions_for_teachers(
+        planned_events, teacher_alias_map, planned_progress_map
+    )
+
     # Aggregate by building
     building_data = {}
 
@@ -154,14 +177,15 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
 
         # Get matched session count
         completed = teacher_progress_map[teacher.id]
+        planned = planned_progress_map[teacher.id]
         target = teacher.target_sessions or 1
 
-        # Determine status
+        # Determine status (consider both completed and planned sessions)
         if completed >= target:
             status_class = "achieved"
             status_text = "Goal Achieved"
             bd["goals_achieved"] += 1
-        elif completed > 0:
+        elif completed > 0 or planned > 0:
             status_class = "in_progress"
             status_text = "In Progress"
             bd["goals_in_progress"] += 1
@@ -181,6 +205,7 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         bd["teachers"].append(
             {
                 "id": teacher.id,
+                "teacher_id": teacher.teacher_id,
                 "name": teacher.name,
                 "email": teacher.email,
                 "grade": teacher.grade or "",
@@ -322,6 +347,124 @@ def export_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         as_attachment=True,
         download_name=filename,
+    )
+
+
+# ── Teacher Detail View ───────────────────────────────────────────────
+
+
+@teacher_usage_bp.route("/teacher/<int:teacher_progress_id>")
+@login_required
+@virtual_admin_required
+def teacher_detail(teacher_progress_id):
+    """View a teacher's virtual session history from the usage dashboard.
+
+    Uses the same name-based matching against Event.educators that the
+    usage dashboard relies on, so results are consistent regardless of
+    whether the TeacherProgress record has a linked teacher_id.
+    """
+    from datetime import datetime, timezone
+
+    from models.event import Event, EventStatus, EventType
+    from services.teacher_matching_service import (
+        build_teacher_alias_map,
+        match_educator_to_teacher,
+    )
+
+    tp = TeacherProgress.query.get_or_404(teacher_progress_id)
+    district_name = get_tenant_district_name() or "Your District"
+
+    # Resolve the tenant's linked district name (same as compute_teacher_progress)
+    tenant = Tenant.query.get(current_user.tenant_id)
+    linked_district = None
+    if tenant:
+        if tenant.district:
+            linked_district = tenant.district.name
+        else:
+            linked_district = tenant.get_setting("linked_district_name")
+
+    # Build alias map for just this one teacher
+    _, alias_map = build_teacher_alias_map([tp])
+
+    # Query ALL virtual sessions for this district (completed + future)
+    events_query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+    )
+    if linked_district:
+        events_query = events_query.filter(Event.district_partner == linked_district)
+    events = events_query.order_by(Event.start_date.desc()).all()
+
+    now = datetime.now(timezone.utc)
+    past_sessions = []
+    upcoming_sessions = []
+
+    for event in events:
+        if not event.educators:
+            continue
+
+        # Check if this teacher is listed in the educators field
+        educator_names = [n.strip() for n in event.educators.split(";") if n.strip()]
+        matched = any(
+            match_educator_to_teacher(name, alias_map) == tp.id
+            for name in educator_names
+        )
+        if not matched:
+            continue
+
+        # Get presenter info from volunteers
+        presenter_name = ""
+        presenter_org = ""
+        if event.volunteers:
+            vol = event.volunteers[0]
+            presenter_name = f"{vol.first_name} {vol.last_name}".strip()
+            presenter_org = vol.organization_name or ""
+
+        start_date = event.start_date
+        if start_date and start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+
+        session_data = {
+            "id": event.id,
+            "title": event.title or "Untitled Session",
+            "date": start_date.date() if start_date else None,
+            "time": start_date.time() if start_date else None,
+            "datetime": start_date,
+            "status": event.status.value if event.status else "unknown",
+            "topic_theme": event.series or "",
+            "session_link": event.registration_link or "",
+            "presenter_name": presenter_name,
+            "presenter_org": presenter_org,
+            "is_simulcast": False,
+            "attendance_status": "",
+        }
+
+        if start_date and start_date < now:
+            past_sessions.append(session_data)
+        elif start_date and start_date >= now:
+            if event.status in [
+                EventStatus.CONFIRMED,
+                EventStatus.PUBLISHED,
+                EventStatus.REQUESTED,
+                EventStatus.COMPLETED,
+            ]:
+                upcoming_sessions.append(session_data)
+
+    # Sort: past desc, upcoming asc
+    past_sessions.sort(
+        key=lambda x: x["datetime"] or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    upcoming_sessions.sort(
+        key=lambda x: x["datetime"] or datetime.max.replace(tzinfo=timezone.utc),
+    )
+
+    return render_template(
+        "district/teacher_usage/teacher_detail.html",
+        teacher_progress=tp,
+        past_sessions=past_sessions,
+        upcoming_sessions=upcoming_sessions,
+        district_name=district_name,
+        no_link_message=None,
     )
 
 

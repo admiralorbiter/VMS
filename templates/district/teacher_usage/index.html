@@ -387,6 +387,17 @@
         color: #666;
     }
 
+    .teacher-name-link {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .teacher-name-link:hover {
+        text-decoration: underline;
+        color: #0056b3;
+    }
+
     .teacher-progress {
         text-align: right;
     }
@@ -643,7 +654,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 6px 0;
-        border-bottom: 1px solid rgba(0,0,0,0.1);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
         font-size: 0.85em;
     }
 
@@ -824,23 +835,26 @@
         <div class="teacher-list">
             {% for teacher in school_data.teachers %}
             <div class="teacher-item">
-                    <div class="teacher-info">
-                        <div class="teacher-name">
-                            <button class="flag-btn {{ 'flagged' if teacher.has_open_flags else 'unflagged' }}"
-                                onclick="event.stopPropagation(); openFlagModal({{ teacher.id }}, '{{ teacher.name|e }}')"
-                                title="{{ 'Has open flags — click to view/add' if teacher.has_open_flags else 'Flag a data issue' }}">
-                                <i class="fas fa-flag"></i>
-                                {% if teacher.open_flags_count > 0 %}
-                                <span class="flag-badge">{{ teacher.open_flags_count }}</span>
-                                {% endif %}
-                            </button>
-                            {{ teacher.name }}
-                            {% if teacher.grade %}
-                            <span class="teacher-grade">Grade {{ teacher.grade }}</span>
+                <div class="teacher-info">
+                    <div class="teacher-name">
+                        <button class="flag-btn {{ 'flagged' if teacher.has_open_flags else 'unflagged' }}"
+                            onclick="event.stopPropagation(); openFlagModal({{ teacher.id }}, '{{ teacher.name|e }}')"
+                            title="{{ 'Has open flags — click to view/add' if teacher.has_open_flags else 'Flag a data issue' }}">
+                            <i class="fas fa-flag"></i>
+                            {% if teacher.open_flags_count > 0 %}
+                            <span class="flag-badge">{{ teacher.open_flags_count }}</span>
                             {% endif %}
-                        </div>
-                        <div class="teacher-email">{{ teacher.email }}</div>
+                        </button>
+                        <a href="{{ url_for('teacher_usage.teacher_detail', teacher_progress_id=teacher.id) }}"
+                            class="teacher-name-link" title="View session details">
+                            {{ teacher.name }}
+                        </a>
+                        {% if teacher.grade %}
+                        <span class="teacher-grade">Grade {{ teacher.grade }}</span>
+                        {% endif %}
                     </div>
+                    <div class="teacher-email">{{ teacher.email }}</div>
+                </div>
                 <div class="teacher-progress">
                     <div class="progress-indicator">
                         <div class="progress-bar">

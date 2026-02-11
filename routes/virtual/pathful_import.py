@@ -357,6 +357,11 @@ def match_or_create_event(
     1. pathful_session_id (exact match)
     2. title + date (flexible match)
 
+    When matched, the event status is updated if the incoming status
+    represents a forward progression in the lifecycle:
+        DRAFT -> REQUESTED -> CONFIRMED -> PUBLISHED -> COMPLETED
+    Cancelled/No-Show are treated as terminal and always accepted.
+
     Args:
         session_id: Pathful Session ID
         title: Session title
@@ -369,15 +374,47 @@ def match_or_create_event(
     Returns:
         tuple: (Event, match_type) where match_type is 'matched' or 'created'
     """
+    # Status progression order (higher index = further along in lifecycle)
+    STATUS_ORDER = {
+        EventStatus.DRAFT: 0,
+        EventStatus.REQUESTED: 1,
+        EventStatus.CONFIRMED: 2,
+        EventStatus.PUBLISHED: 3,
+        EventStatus.COMPLETED: 4,
+    }
+
+    def _should_update_status(current_status, new_status):
+        """Return True if new_status is a forward progression from current_status."""
+        # Terminal statuses (Cancelled, No Show, etc.) always accepted
+        if new_status in (
+            EventStatus.CANCELLED,
+            EventStatus.NO_SHOW,
+            EventStatus.SIMULCAST,
+        ):
+            return True
+        cur_order = STATUS_ORDER.get(current_status, -1)
+        new_order = STATUS_ORDER.get(new_status, -1)
+        return new_order > cur_order
+
+    def _update_matched_event(event, status_str, career_cluster):
+        """Update fields on a matched event that may have changed since last import."""
+        if career_cluster and not event.career_cluster:
+            event.career_cluster = career_cluster
+
+        # Update status if it has progressed
+        if status_str:
+            new_status = EventStatus.map_status(status_str)
+            if _should_update_status(event.status, new_status):
+                event.status = new_status
+                event.original_status_string = status_str
+
     session_id_str = str(session_id) if session_id and not pd.isna(session_id) else None
 
     # Priority 1: Match by pathful_session_id
     if session_id_str:
         event = Event.query.filter(Event.pathful_session_id == session_id_str).first()
         if event:
-            # Update fields that may have changed
-            if career_cluster and not event.career_cluster:
-                event.career_cluster = career_cluster
+            _update_matched_event(event, status_str, career_cluster)
             return event, "matched_by_session_id"
 
     # Priority 2: Match by title + date
@@ -392,8 +429,7 @@ def match_or_create_event(
             # Update pathful_session_id if not set
             if session_id_str and not event.pathful_session_id:
                 event.pathful_session_id = session_id_str
-            if career_cluster and not event.career_cluster:
-                event.career_cluster = career_cluster
+            _update_matched_event(event, status_str, career_cluster)
             return event, "matched_by_title_date"
 
     # No match: Create new event
