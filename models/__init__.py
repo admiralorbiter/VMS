@@ -49,6 +49,7 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 from .attendance import EventAttendanceDetail
+from .attendance_override import AttendanceOverride, OverrideAction
 from .audit_log import AuditLog
 from .bug_report import BugReport
 from .class_model import Class
@@ -99,6 +100,8 @@ from .volunteer import Volunteer
 __all__ = [
     "db",
     "User",
+    "AttendanceOverride",
+    "OverrideAction",
     "SecurityLevel",
     "TenantRole",
     "Volunteer",

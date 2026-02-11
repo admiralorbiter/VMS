@@ -12,6 +12,8 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from models import db
+from models.attendance_override import AttendanceOverride, OverrideAction
+from models.audit_log import AuditLog
 from models.teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
 from models.teacher_progress import TeacherProgress
 from models.tenant import Tenant
@@ -133,6 +135,19 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     teacher_progress_map = count_sessions_for_teachers(
         events, teacher_alias_map, teacher_progress_map
     )
+
+    # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
+    active_overrides = AttendanceOverride.query.filter(
+        AttendanceOverride.teacher_progress_id.in_([t.id for t in teachers]),
+        AttendanceOverride.is_active == True,  # noqa: E712
+    ).all()
+    for ov in active_overrides:
+        tid = ov.teacher_progress_id
+        if tid in teacher_progress_map:
+            if ov.action == OverrideAction.ADD:
+                teacher_progress_map[tid] += 1
+            elif ov.action == OverrideAction.REMOVE:
+                teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
 
     # Also count planned/upcoming sessions (confirmed, published, requested)
     from datetime import datetime, timezone
@@ -449,6 +464,70 @@ def teacher_detail(teacher_progress_id):
             ]:
                 upcoming_sessions.append(session_data)
 
+    # ── Merge attendance overrides into session lists ──────────────────
+    add_overrides = AttendanceOverride.query.filter_by(
+        teacher_progress_id=tp.id,
+        action=OverrideAction.ADD,
+        is_active=True,
+    ).all()
+
+    # Build set of event IDs that have active "remove" overrides
+    remove_override_event_ids = set(
+        ov.event_id
+        for ov in AttendanceOverride.query.filter_by(
+            teacher_progress_id=tp.id,
+            action=OverrideAction.REMOVE,
+            is_active=True,
+        ).all()
+    )
+
+    # Tag existing sessions that have been removed via override
+    past_sessions = [
+        s for s in past_sessions if s["id"] not in remove_override_event_ids
+    ]
+
+    # Add sessions credited via override that aren't already in the list
+    existing_event_ids = {s["id"] for s in past_sessions}
+    for ov in add_overrides:
+        if ov.event_id not in existing_event_ids:
+            event = Event.query.get(ov.event_id)
+            if event:
+                start_date = event.start_date
+                if start_date and start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
+
+                presenter_name = ""
+                presenter_org = ""
+                if event.volunteers:
+                    vol = event.volunteers[0]
+                    presenter_name = f"{vol.first_name} {vol.last_name}".strip()
+                    presenter_org = vol.organization_name or ""
+
+                past_sessions.append(
+                    {
+                        "id": event.id,
+                        "title": event.title or "Untitled Session",
+                        "date": start_date.date() if start_date else None,
+                        "time": start_date.time() if start_date else None,
+                        "datetime": start_date,
+                        "status": event.status.value if event.status else "unknown",
+                        "topic_theme": event.series or "",
+                        "session_link": event.registration_link or "",
+                        "presenter_name": presenter_name,
+                        "presenter_org": presenter_org,
+                        "is_simulcast": False,
+                        "attendance_status": "",
+                        "is_override": True,
+                        "override_reason": ov.reason,
+                    }
+                )
+
+    # Tag override sessions in existing list
+    override_add_event_ids = {ov.event_id for ov in add_overrides}
+    for session in past_sessions:
+        if "is_override" not in session:
+            session["is_override"] = session["id"] in override_add_event_ids
+
     # Sort: past desc, upcoming asc
     past_sessions.sort(
         key=lambda x: x["datetime"] or datetime.min.replace(tzinfo=timezone.utc),
@@ -458,6 +537,16 @@ def teacher_detail(teacher_progress_id):
         key=lambda x: x["datetime"] or datetime.max.replace(tzinfo=timezone.utc),
     )
 
+    # Get active overrides for template
+    active_overrides = (
+        AttendanceOverride.query.filter_by(
+            teacher_progress_id=tp.id,
+            is_active=True,
+        )
+        .order_by(AttendanceOverride.created_at.desc())
+        .all()
+    )
+
     return render_template(
         "district/teacher_usage/teacher_detail.html",
         teacher_progress=tp,
@@ -465,6 +554,7 @@ def teacher_detail(teacher_progress_id):
         upcoming_sessions=upcoming_sessions,
         district_name=district_name,
         no_link_message=None,
+        active_overrides=active_overrides,
     )
 
 
@@ -525,3 +615,229 @@ def resolve_flag(flag_id):
     )
     db.session.commit()
     return jsonify({"message": "Flag resolved", "flag": flag.to_dict()})
+
+
+# ── Attendance Override API (FR-VIRTUAL-234 – FR-VIRTUAL-243) ─────────
+
+
+@teacher_usage_bp.route("/overrides/<int:teacher_progress_id>", methods=["POST"])
+@login_required
+@virtual_admin_required
+def create_override(teacher_progress_id):
+    """Create an attendance override (add or remove a teacher from a session).
+
+    Expects JSON: {action: "add"|"remove", event_id: int, reason: str}
+    """
+    from models.event import Event, EventStatus, EventType
+
+    tp = TeacherProgress.query.get_or_404(teacher_progress_id)
+
+    # Verify tenant scoping (FR-VIRTUAL-239)
+    if not current_user.is_admin and tp.tenant_id != current_user.tenant_id:
+        return jsonify({"error": "Access denied"}), 403
+
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "")
+    event_id = data.get("event_id")
+    reason = data.get("reason", "").strip()
+
+    # Validate inputs
+    if action not in OverrideAction.all_actions():
+        return jsonify({"error": "Invalid action. Must be 'add' or 'remove'."}), 400
+    if not event_id:
+        return jsonify({"error": "event_id is required."}), 400
+    if not reason:
+        return jsonify({"error": "A reason is required for attendance overrides."}), 400
+
+    # Verify event exists and is a completed virtual session
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({"error": "Event not found."}), 404
+    if event.type != EventType.VIRTUAL_SESSION:
+        return jsonify({"error": "Event is not a virtual session."}), 400
+    if event.status != EventStatus.COMPLETED:
+        return jsonify({"error": "Event is not completed."}), 400
+
+    # Check for duplicate active override
+    existing = AttendanceOverride.query.filter_by(
+        teacher_progress_id=tp.id,
+        event_id=event_id,
+        action=action,
+        is_active=True,
+    ).first()
+    if existing:
+        return (
+            jsonify(
+                {
+                    "error": f"An active '{action}' override already exists for this session.",
+                    "existing_override": existing.to_dict(),
+                }
+            ),
+            409,
+        )
+
+    # Create the override
+    override = AttendanceOverride(
+        teacher_progress_id=tp.id,
+        event_id=event_id,
+        action=action,
+        reason=reason,
+        created_by=current_user.id,
+    )
+    db.session.add(override)
+
+    # Create audit log entry (FR-VIRTUAL-241)
+    audit = AuditLog(
+        user_id=current_user.id,
+        action=f"attendance_override_{action}",
+        resource_type="attendance_override",
+        resource_id=str(override.id),
+        method="POST",
+        path=request.path,
+        ip=request.remote_addr,
+        meta={
+            "teacher_progress_id": tp.id,
+            "teacher_name": tp.name,
+            "event_id": event.id,
+            "event_title": event.title,
+            "override_action": action,
+            "reason": reason,
+        },
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "message": f"Override created: {override.action_display}",
+                "override": override.to_dict(),
+            }
+        ),
+        201,
+    )
+
+
+@teacher_usage_bp.route("/overrides/<int:teacher_progress_id>", methods=["GET"])
+@login_required
+@virtual_admin_required
+def list_overrides(teacher_progress_id):
+    """List active overrides for a teacher."""
+    overrides = (
+        AttendanceOverride.query.filter_by(
+            teacher_progress_id=teacher_progress_id,
+            is_active=True,
+        )
+        .order_by(AttendanceOverride.created_at.desc())
+        .all()
+    )
+    return jsonify({"overrides": [o.to_dict() for o in overrides]})
+
+
+@teacher_usage_bp.route("/overrides/<int:override_id>/reverse", methods=["POST"])
+@login_required
+@virtual_admin_required
+def reverse_override(override_id):
+    """Reverse an attendance override (FR-VIRTUAL-243).
+
+    Expects JSON: {reason: str}
+    """
+    override = AttendanceOverride.query.get_or_404(override_id)
+
+    if not override.is_active:
+        return jsonify({"error": "This override has already been reversed."}), 400
+
+    data = request.get_json(silent=True) or {}
+    reason = data.get("reason", "").strip()
+    if not reason:
+        return jsonify({"error": "A reason is required to reverse an override."}), 400
+
+    override.reverse(reason=reason, reversed_by=current_user.id)
+
+    # Audit log for reversal
+    audit = AuditLog(
+        user_id=current_user.id,
+        action="attendance_override_reverse",
+        resource_type="attendance_override",
+        resource_id=str(override.id),
+        method="POST",
+        path=request.path,
+        ip=request.remote_addr,
+        meta={
+            "teacher_progress_id": override.teacher_progress_id,
+            "event_id": override.event_id,
+            "original_action": override.action,
+            "reversal_reason": reason,
+        },
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    return jsonify(
+        {
+            "message": "Override reversed",
+            "override": override.to_dict(),
+        }
+    )
+
+
+@teacher_usage_bp.route("/sessions/search", methods=["GET"])
+@login_required
+@virtual_admin_required
+def search_sessions():
+    """Search completed virtual sessions for the add-to-session modal.
+
+    Query params: q (search term), limit (default 20)
+    """
+    from models.event import Event, EventStatus, EventType
+
+    query_str = request.args.get("q", "").strip()
+    limit = min(int(request.args.get("limit", 20)), 50)
+
+    # Get tenant's district
+    tenant = Tenant.query.get(current_user.tenant_id)
+    linked_district = None
+    if tenant:
+        if tenant.district:
+            linked_district = tenant.district.name
+        else:
+            linked_district = tenant.get_setting("linked_district_name")
+
+    # Base query: completed virtual sessions in this district
+    sessions_query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.status == EventStatus.COMPLETED,
+    )
+    if linked_district:
+        sessions_query = sessions_query.filter(
+            Event.district_partner == linked_district
+        )
+
+    # Apply search filter if provided
+    if query_str:
+        search_pattern = f"%{query_str}%"
+        sessions_query = sessions_query.filter(
+            db.or_(
+                Event.title.ilike(search_pattern),
+                Event.series.ilike(search_pattern),
+            )
+        )
+
+    sessions = sessions_query.order_by(Event.start_date.desc()).limit(limit).all()
+
+    results = []
+    for event in sessions:
+        start_date = event.start_date
+        results.append(
+            {
+                "id": event.id,
+                "title": event.title or "Untitled Session",
+                "date": start_date.strftime("%Y-%m-%d") if start_date else None,
+                "date_display": (
+                    start_date.strftime("%B %d, %Y") if start_date else "Unknown"
+                ),
+                "series": event.series or "",
+            }
+        )
+
+    return jsonify({"sessions": results})

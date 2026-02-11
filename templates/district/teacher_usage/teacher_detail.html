@@ -136,6 +136,241 @@
     .no-link-alert i {
         font-size: 1.2em;
     }
+
+    /* Override badge */
+    .override-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #e8f4fd;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+        border-radius: 12px;
+        padding: 2px 10px;
+        font-size: 0.78em;
+        font-weight: 600;
+        cursor: help;
+    }
+
+    .override-badge i {
+        font-size: 0.85em;
+    }
+
+    /* Override action buttons */
+    .override-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .btn-override {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.82em;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid;
+        transition: all 0.2s ease;
+    }
+
+    .btn-override-remove {
+        background: #fff5f5;
+        color: #c53030;
+        border-color: #feb2b2;
+    }
+
+    .btn-override-remove:hover {
+        background: #fed7d7;
+    }
+
+    .btn-add-session {
+        background: #ebf8ff;
+        color: #2b6cb0;
+        border-color: #90cdf4;
+    }
+
+    .btn-add-session:hover {
+        background: #bee3f8;
+    }
+
+    /* Modal styles */
+    .override-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .override-modal-overlay.active {
+        display: flex;
+    }
+
+    .override-modal {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 550px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .override-modal h3 {
+        margin: 0 0 20px 0;
+        font-size: 1.2em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .override-modal .form-group {
+        margin-bottom: 16px;
+    }
+
+    .override-modal label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-bottom: 6px;
+        color: #333;
+    }
+
+    .override-modal input,
+    .override-modal textarea,
+    .override-modal select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.95em;
+        box-sizing: border-box;
+    }
+
+    .override-modal textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+
+    .override-modal .btn-group {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+
+    .override-modal .btn-cancel {
+        padding: 8px 20px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.9em;
+    }
+
+    .override-modal .btn-submit {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9em;
+    }
+
+    .override-modal .btn-submit.add {
+        background: #28a745;
+    }
+
+    .override-modal .btn-submit.remove {
+        background: #dc3545;
+    }
+
+    .override-modal .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Session search results */
+    .session-search-results {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        margin-top: 8px;
+    }
+
+    .session-search-item {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .session-search-item:hover {
+        background: #f7fafc;
+    }
+
+    .session-search-item.selected {
+        background: #ebf8ff;
+        border-left: 3px solid #3182ce;
+    }
+
+    .session-search-item .session-search-title {
+        font-weight: 600;
+        font-size: 0.9em;
+    }
+
+    .session-search-item .session-search-meta {
+        font-size: 0.8em;
+        color: #666;
+        margin-top: 2px;
+    }
+
+    /* Toast notification */
+    .override-toast {
+        display: none;
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        padding: 14px 24px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 2000;
+        animation: slideUp 0.3s ease;
+    }
+
+    .override-toast.success {
+        background: #28a745;
+    }
+
+    .override-toast.error {
+        background: #dc3545;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -265,13 +500,24 @@
             <h2 class="sessions-title">
                 <i class="fas fa-history"></i>
                 Past Sessions
+                <button class="btn-override btn-add-session" onclick="openAddModal()" style="margin-left: auto;">
+                    <i class="fas fa-plus"></i> Add to Session
+                </button>
             </h2>
             {% if past_sessions %}
             <div class="sessions-list">
                 {% for session in past_sessions %}
-                <div class="session-card past">
+                <div class="session-card past" data-event-id="{{ session.id }}">
                     <div class="session-header">
-                        <h3 class="session-title">{{ session.title }}</h3>
+                        <h3 class="session-title">
+                            {{ session.title }}
+                            {% if session.is_override %}
+                            <span class="override-badge"
+                                title="Admin override: {{ session.override_reason|default('Added by admin') }}">
+                                <i class="fas fa-wrench"></i> Override
+                            </span>
+                            {% endif %}
+                        </h3>
                         {% if session.is_simulcast %}
                         <span class="simulcast-badge">Simulcast</span>
                         {% endif %}
@@ -319,6 +565,13 @@
                         <span class="attendance-badge">{{ session.attendance_status }}</span>
                         {% endif %}
                     </div>
+                    <div class="override-actions">
+                        <button class="btn-override btn-override-remove"
+                            onclick="openRemoveModal({{ session.id }}, '{{ session.title|e }}')"
+                            title="Remove this teacher from this session">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -326,9 +579,236 @@
             <div class="no-sessions">
                 <i class="fas fa-calendar-times"></i>
                 <p>No past sessions found</p>
+                <button class="btn-override btn-add-session" onclick="openAddModal()" style="margin-top: 12px;">
+                    <i class="fas fa-plus"></i> Add to Session
+                </button>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Add to Session Modal -->
+<div id="addModal" class="override-modal-overlay" onclick="if(event.target===this) closeModals()">
+    <div class="override-modal">
+        <h3><i class="fas fa-plus-circle" style="color: #28a745;"></i> Add Teacher to Session</h3>
+        <div class="form-group">
+            <label for="sessionSearch">Search Sessions</label>
+            <input type="text" id="sessionSearch" placeholder="Search by title or topic..."
+                oninput="searchSessions(this.value)">
+            <div id="sessionSearchResults" class="session-search-results" style="display: none;"></div>
+        </div>
+        <div class="form-group">
+            <label for="addReason">Reason (required)</label>
+            <textarea id="addReason" placeholder="Why is this teacher being added to this session?"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+            <button id="addSubmitBtn" class="btn-submit add" onclick="submitAddOverride()" disabled>
+                <i class="fas fa-plus"></i> Add to Session
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Remove from Session Modal -->
+<div id="removeModal" class="override-modal-overlay" onclick="if(event.target===this) closeModals()">
+    <div class="override-modal">
+        <h3><i class="fas fa-times-circle" style="color: #dc3545;"></i> Remove from Session</h3>
+        <p id="removeSessionInfo" style="margin-bottom: 16px; color: #555;"></p>
+        <input type="hidden" id="removeEventId">
+        <div class="form-group">
+            <label for="removeReason">Reason (required)</label>
+            <textarea id="removeReason" placeholder="Why is this teacher being removed from this session?"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+            <button id="removeSubmitBtn" class="btn-submit remove" onclick="submitRemoveOverride()">
+                <i class="fas fa-times"></i> Remove from Session
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div id="overrideToast" class="override-toast"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const TEACHER_PROGRESS_ID = {{ teacher_progress.id }};
+    const OVERRIDE_URL = "{{ url_for('teacher_usage.create_override', teacher_progress_id=teacher_progress.id) }}";
+    const SEARCH_URL = "{{ url_for('teacher_usage.search_sessions') }}";
+
+    let selectedEventId = null;
+    let searchTimeout = null;
+
+    // ── Modal Management ────────────────────────────────────────────
+    function openAddModal() {
+        document.getElementById('addModal').classList.add('active');
+        document.getElementById('sessionSearch').value = '';
+        document.getElementById('addReason').value = '';
+        document.getElementById('sessionSearchResults').style.display = 'none';
+        selectedEventId = null;
+        updateAddButton();
+        // Load recent sessions by default
+        searchSessions('');
+    }
+
+    function openRemoveModal(eventId, sessionTitle) {
+        document.getElementById('removeModal').classList.add('active');
+        document.getElementById('removeEventId').value = eventId;
+        document.getElementById('removeReason').value = '';
+        document.getElementById('removeSessionInfo').textContent =
+            'Remove "' + sessionTitle + '" from this teacher\'s attendance?';
+    }
+
+    function closeModals() {
+        document.getElementById('addModal').classList.remove('active');
+        document.getElementById('removeModal').classList.remove('active');
+    }
+
+    // ── Session Search ──────────────────────────────────────────────
+    function searchSessions(query) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            try {
+                const resp = await fetch(SEARCH_URL + '?q=' + encodeURIComponent(query));
+                const data = await resp.json();
+                renderSearchResults(data.sessions);
+            } catch (err) {
+                console.error('Search failed:', err);
+            }
+        }, 300);
+    }
+
+    function renderSearchResults(sessions) {
+        const container = document.getElementById('sessionSearchResults');
+        if (!sessions.length) {
+            container.innerHTML = '<div style="padding: 12px; color: #999; text-align: center;">No sessions found</div>';
+            container.style.display = 'block';
+            return;
+        }
+        container.innerHTML = sessions.map(s => `
+        <div class="session-search-item ${s.id === selectedEventId ? 'selected' : ''}"
+             onclick="selectSession(${s.id}, this)">
+            <div class="session-search-title">${escapeHtml(s.title)}</div>
+            <div class="session-search-meta">${s.date_display} ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
+        </div>
+    `).join('');
+        container.style.display = 'block';
+    }
+
+    function selectSession(eventId, element) {
+        selectedEventId = eventId;
+        // Update visual selection
+        document.querySelectorAll('.session-search-item').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        updateAddButton();
+    }
+
+    function updateAddButton() {
+        const reason = document.getElementById('addReason').value.trim();
+        document.getElementById('addSubmitBtn').disabled = !selectedEventId || !reason;
+    }
+
+    // Keep button state updated as user types reason
+    document.addEventListener('DOMContentLoaded', function () {
+        const addReason = document.getElementById('addReason');
+        if (addReason) {
+            addReason.addEventListener('input', updateAddButton);
+        }
+    });
+
+    // ── Submit Overrides ────────────────────────────────────────────
+    async function submitAddOverride() {
+        const reason = document.getElementById('addReason').value.trim();
+        if (!selectedEventId || !reason) return;
+
+        const btn = document.getElementById('addSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+        try {
+            const resp = await fetch(OVERRIDE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add',
+                    event_id: selectedEventId,
+                    reason: reason,
+                }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Session added successfully!', 'success');
+                closeModals();
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(data.error || 'Failed to add session', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i> Add to Session';
+            }
+        } catch (err) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus"></i> Add to Session';
+        }
+    }
+
+    async function submitRemoveOverride() {
+        const eventId = document.getElementById('removeEventId').value;
+        const reason = document.getElementById('removeReason').value.trim();
+        if (!eventId || !reason) {
+            showToast('A reason is required.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('removeSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...';
+
+        try {
+            const resp = await fetch(OVERRIDE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'remove',
+                    event_id: parseInt(eventId),
+                    reason: reason,
+                }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Session removed successfully!', 'success');
+                closeModals();
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(data.error || 'Failed to remove session', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times"></i> Remove from Session';
+            }
+        } catch (err) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-times"></i> Remove from Session';
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    function showToast(message, type) {
+        const toast = document.getElementById('overrideToast');
+        toast.textContent = message;
+        toast.className = 'override-toast ' + type;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
 {% endblock %}
