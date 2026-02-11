@@ -381,6 +381,36 @@ def import_affiliations_from_salesforce():
             Contact, Contact.salesforce_individual_id, contact_sf_ids
         )
 
+        # Filter out student contacts — affiliations import creates
+        # VolunteerOrganization records, which are not relevant for students.
+        # This can eliminate a large portion of the 354K rows from processing.
+        student_count = sum(1 for c in contact_lookup.values() if c.type == "student")
+        if student_count > 0:
+            contact_lookup = {
+                k: v for k, v in contact_lookup.items() if v.type != "student"
+            }
+            print(
+                f"  Filtered out {student_count} student contacts "
+                f"({len(contact_lookup)} non-student contacts remaining)"
+            )
+
+        # Pre-filter affiliation rows to only those with a matching non-student contact
+        # This avoids processing rows we know will fail the contact lookup
+        valid_contact_ids = set(contact_lookup.keys())
+        original_count = len(affiliation_rows)
+        affiliation_rows = [
+            row
+            for row in affiliation_rows
+            if row.get("npe5__Contact__c") in valid_contact_ids
+        ]
+        total_count = len(affiliation_rows)
+        skipped_students = original_count - total_count
+        if skipped_students > 0:
+            print(
+                f"  Skipped {skipped_students} affiliations (no matching volunteer/teacher contact), "
+                f"{total_count} to process"
+            )
+
         # Pre-load existing volunteer-organization relationships (chunked)
         # Query by Salesforce IDs to find existing relationships
         vol_org_lookup = {}
@@ -399,114 +429,141 @@ def import_affiliations_from_salesforce():
             f"{len(vol_org_lookup)} existing relationships"
         )
 
-        # Track newly created organizations to add to lookup
-        new_orgs_pending = []
-
         # === PROCESSING PHASE: Use lookups instead of queries ===
-        for i, row in enumerate(affiliation_rows):
-            try:
-                sf_org_id = row.get("npe5__Organization__c")
-                sf_contact_id = row.get("npe5__Contact__c")
+        # Temporarily disable expire_on_commit for performance
+        # This prevents SQLAlchemy from expiring all cached objects after each
+        # batch commit, avoiding O(n²) re-fetch overhead with 354K+ records
+        db.session.expire_on_commit = False
+        try:
+            for i, row in enumerate(affiliation_rows):
+                try:
+                    sf_org_id = row.get("npe5__Organization__c")
+                    sf_contact_id = row.get("npe5__Contact__c")
 
-                # Get the organization using pre-loaded lookup (O(1))
-                org = org_lookup.get(sf_org_id)
+                    # Get the organization using pre-loaded lookup (O(1))
+                    org = org_lookup.get(sf_org_id)
 
-                # If organization not found, check if it's a school or district
-                if not org:
-                    # First check if it's a school
-                    school = school_lookup.get(sf_org_id)
-                    if school:
-                        # Create an organization record for the school
-                        org = Organization(
-                            name=school.name, type="School", salesforce_id=school.id
-                        )
-                        db.session.add(org)
-                        db.session.flush()  # Get the new org ID
-                        # Add to lookup for future iterations
-                        org_lookup[sf_org_id] = org
-                    else:
-                        # If not a school, check if it's a district
-                        district = district_lookup.get(sf_org_id)
-                        if district:
-                            # Create an organization record for the district
+                    # If organization not found, check if it's a school or district
+                    if not org:
+                        # First check if it's a school
+                        school = school_lookup.get(sf_org_id)
+                        if school:
+                            # Create an organization record for the school
                             org = Organization(
-                                name=district.name,
-                                type="District",
-                                salesforce_id=district.salesforce_id,
+                                name=school.name, type="School", salesforce_id=school.id
                             )
                             db.session.add(org)
                             db.session.flush()  # Get the new org ID
                             # Add to lookup for future iterations
                             org_lookup[sf_org_id] = org
+                        else:
+                            # If not a school, check if it's a district
+                            district = district_lookup.get(sf_org_id)
+                            if district:
+                                # Create an organization record for the district
+                                org = Organization(
+                                    name=district.name,
+                                    type="District",
+                                    salesforce_id=district.salesforce_id,
+                                )
+                                db.session.add(org)
+                                db.session.flush()  # Get the new org ID
+                                # Add to lookup for future iterations
+                                org_lookup[sf_org_id] = org
 
-                # Look up contact using pre-loaded lookup (O(1))
-                contact = contact_lookup.get(sf_contact_id)
+                    # Look up contact using pre-loaded lookup (O(1))
+                    contact = contact_lookup.get(sf_contact_id)
 
-                # Create or update the volunteer-organization relationship
-                if org and contact:
-                    # Check for existing relationship using pre-loaded lookup (O(1))
-                    vol_org = vol_org_lookup.get((contact.id, org.id))
+                    # Create or update the volunteer-organization relationship
+                    if org and contact:
+                        # Check for existing relationship using pre-loaded lookup (O(1))
+                        vol_org = vol_org_lookup.get((contact.id, org.id))
 
-                    if not vol_org:
-                        # Create new relationship
-                        vol_org = VolunteerOrganization(
-                            volunteer_id=contact.id, organization_id=org.id
+                        if not vol_org:
+                            # Create new relationship
+                            vol_org = VolunteerOrganization(
+                                volunteer_id=contact.id, organization_id=org.id
+                            )
+                            db.session.add(vol_org)
+                            # Add to lookup for future iterations
+                            vol_org_lookup[(contact.id, org.id)] = vol_org
+
+                        # Update relationship details from Salesforce
+                        # Only set fields that have actually changed to avoid
+                        # dirtying the session unnecessarily (huge perf win
+                        # when most of 354K records are unchanged updates)
+                        new_role = row.get("npe5__Role__c")
+                        new_is_primary = row.get("npe5__Primary__c") == "true"
+                        new_status = row.get("npe5__Status__c")
+                        new_start = (
+                            parse_date(row["npe5__StartDate__c"])
+                            if row.get("npe5__StartDate__c")
+                            else None
                         )
-                        db.session.add(vol_org)
-                        # Add to lookup for future iterations
-                        vol_org_lookup[(contact.id, org.id)] = vol_org
+                        new_end = (
+                            parse_date(row["npe5__EndDate__c"])
+                            if row.get("npe5__EndDate__c")
+                            else None
+                        )
 
-                    # Update relationship details from Salesforce
-                    vol_org.salesforce_volunteer_id = sf_contact_id
-                    vol_org.salesforce_org_id = sf_org_id
-                    vol_org.role = row.get("npe5__Role__c")
-                    vol_org.is_primary = row.get("npe5__Primary__c") == "true"
-                    vol_org.status = row.get("npe5__Status__c")
+                        if vol_org.salesforce_volunteer_id != sf_contact_id:
+                            vol_org.salesforce_volunteer_id = sf_contact_id
+                        if vol_org.salesforce_org_id != sf_org_id:
+                            vol_org.salesforce_org_id = sf_org_id
+                        if vol_org.role != new_role:
+                            vol_org.role = new_role
+                        if vol_org.is_primary != new_is_primary:
+                            vol_org.is_primary = new_is_primary
+                        if vol_org.status != new_status:
+                            vol_org.status = new_status
+                        if new_start and vol_org.start_date != new_start:
+                            vol_org.start_date = new_start
+                        if new_end and vol_org.end_date != new_end:
+                            vol_org.end_date = new_end
 
-                    # Parse and set date fields if available
-                    if row.get("npe5__StartDate__c"):
-                        vol_org.start_date = parse_date(row["npe5__StartDate__c"])
-                    if row.get("npe5__EndDate__c"):
-                        vol_org.end_date = parse_date(row["npe5__EndDate__c"])
+                        affiliation_success += 1
+                    else:
+                        # Track missing organization or contact (with error cap)
+                        affiliation_error += 1
+                        if len(errors) < MAX_ERRORS:
+                            error_msgs = []
+                            if not org:
+                                error_msgs.append(
+                                    f"Organization/School/District with Salesforce ID {sf_org_id} not found"
+                                )
+                            if not contact:
+                                error_msgs.append(
+                                    f"Contact (Volunteer/Teacher) with Salesforce ID {sf_contact_id} not found"
+                                )
+                            errors.extend(error_msgs[: MAX_ERRORS - len(errors)])
 
-                    affiliation_success += 1
-                else:
-                    # Track missing organization or contact (with error cap)
+                    # Batch commit every 5000 records for resumability
+                    # expire_on_commit=False (set above) prevents SQLAlchemy from
+                    # expiring cached objects after commit — no lazy re-fetches
+                    if (i + 1) % 5000 == 0:
+                        try:
+                            db.session.commit()
+                            # Progress logging for large imports
+                            if total_count >= 500:
+                                print(
+                                    f"  → Batch {(i+1) // 5000}: {i+1}/{total_count} ({(i+1)*100//total_count}%)"
+                                )
+                        except Exception as batch_e:
+                            db.session.rollback()
+                            print(f"  → Affiliations batch commit failed: {batch_e}")
+
+                except Exception as e:
+                    # Track processing errors
                     affiliation_error += 1
                     if len(errors) < MAX_ERRORS:
-                        error_msgs = []
-                        if not org:
-                            error_msgs.append(
-                                f"Organization/School/District with Salesforce ID {sf_org_id} not found"
-                            )
-                        if not contact:
-                            error_msgs.append(
-                                f"Contact (Volunteer/Teacher) with Salesforce ID {sf_contact_id} not found"
-                            )
-                        errors.extend(error_msgs[: MAX_ERRORS - len(errors)])
+                        errors.append(f"Error processing affiliation: {str(e)}")
+                    continue
 
-                # Batch commit every 50 records for resumability
-                if (i + 1) % 50 == 0:
-                    try:
-                        db.session.commit()
-                        # Progress logging for large imports
-                        if total_count >= 500:
-                            print(
-                                f"  → Batch {(i+1) // 50}: {i+1}/{total_count} ({(i+1)*100//total_count}%)"
-                            )
-                    except Exception as batch_e:
-                        db.session.rollback()
-                        print(f"  → Affiliations batch commit failed: {batch_e}")
-
-            except Exception as e:
-                # Track processing errors
-                affiliation_error += 1
-                if len(errors) < MAX_ERRORS:
-                    errors.append(f"Error processing affiliation: {str(e)}")
-                continue
-
-        # Final commit for remaining changes
-        db.session.commit()
+            # Final commit for remaining changes
+            db.session.commit()
+        finally:
+            # Restore default expire_on_commit behavior
+            db.session.expire_on_commit = True
 
         # Print summary to console for debugging
         print(f"\nAffiliation import completed:")
