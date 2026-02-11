@@ -20,6 +20,7 @@
 | [Epic 10](#epic-10) | Tenant Management (District Suite) | 6 |
 | [Epic 11](#epic-11) | District Self-Service (District Suite) | 7 |
 | [Epic 12](#epic-12) | Public Event API (District Suite) | 2 |
+| [Epic 13](#epic-13) | Bug Reporting | 3 |
 
 ---
 
@@ -991,5 +992,52 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 ---
 
+<a id="epic-13"></a>
+
+## Epic 13: Bug Reporting
+
+### <a id="us-1301"></a>US-1301: Submit a bug report
+
+**As** an authenticated user, **I want** to submit a bug report describing an issue I encountered, **So that** administrators can track and resolve problems.
+
+**Related Requirements:** [FR-BUG-001](requirements-bug-reporting#fr-bug-001), [FR-BUG-002](requirements-bug-reporting#fr-bug-002), [FR-BUG-003](requirements-bug-reporting#fr-bug-003), [FR-BUG-004](requirements-bug-reporting#fr-bug-004), [FR-BUG-005](requirements-bug-reporting#fr-bug-005)
+
+**Acceptance Criteria:**
+
+- Given I am logged in, when I open the bug report form, then I can select a type (Bug, Data Error, Other), enter a description, and the page URL/title are captured automatically.
+- Given I submit a report with a valid description, then the report is saved and I see a success confirmation.
+- Given I submit a report with an empty description, then I see an error message and the report is not saved.
+- Given I am not logged in, when I attempt to access the bug report form, then I am redirected to the login page.
+
+### <a id="us-1302"></a>US-1302: Manage bug reports as admin
+
+**As** an administrator, **I want** to view, filter, resolve, and delete bug reports, **So that** I can track and address user-reported issues.
+
+**Related Requirements:** [FR-BUG-006](requirements-bug-reporting#fr-bug-006)–[FR-BUG-012](requirements-bug-reporting#fr-bug-012)
+
+**Acceptance Criteria:**
+
+- Given I am an admin, when I access the bug reports page, then I see all reports separated into open and resolved sections.
+- Given I filter by status or type, then only matching reports are displayed.
+- Given I search by keyword, then results match against description, page title, or URL.
+- Given I resolve a report with notes, then it moves to the resolved section with my identity and timestamp recorded.
+- Given I delete a report, then it is removed and an audit log entry is created.
+- Given I am a non-admin user attempting to delete a report, then I receive a 403 Forbidden response.
+
+### <a id="us-1303"></a>US-1303: System generates bug reports for failures
+
+**As** the system, **I want** to auto-create bug reports for email delivery failures, **So that** administrators are alerted to operational issues without manual reporting.
+
+**Related Requirements:** [FR-BUG-013](requirements-bug-reporting#fr-bug-013)
+
+**Acceptance Criteria:**
+
+- Given an email delivery fails, then the system creates a bug report with type=Other, containing the message ID, template, recipients, and error details.
+- Given no system user exists, then the report uses the first admin user as the submitter.
+
+[↑ Back to Quick Navigation](#quick-navigation)
+
+---
+
 *Last updated: February 2026*
-*Version: 1.3*
+*Version: 1.4*

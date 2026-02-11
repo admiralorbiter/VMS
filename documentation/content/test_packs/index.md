@@ -16,12 +16,13 @@ Comprehensive test cases for all major workflows
 | [Test Pack 6](#test-pack-6-reporting-dashboards) | Exports + ad hoc queries | TC-700–822 |
 | [Test Pack 7](#test-pack-7-data-integrity--operations) | Sync + imports + data ops | TC-160–222, TC-901–913 |
 | [Test Pack 8](#test-pack-8-tenant-management) | District Suite CRUD | TC-801–1135 |
+| [Test Pack 9](#test-pack-9-bug-reporting) | Bug report submission + admin mgmt | TC-1300–1315 |
 
 ---
 
 ## Overview
 
-This documentation contains **8 test packs** that verify ~178 functional requirements are met across the entire VMS system. Each test pack focuses on specific workflows and includes detailed test cases with expected outcomes.
+This documentation contains **9 test packs** that verify ~191 functional requirements are met across the entire VMS system. Each test pack focuses on specific workflows and includes detailed test cases with expected outcomes.
 
 ```mermaid
 graph LR
@@ -34,9 +35,10 @@ graph LR
         TP6[TP6: Reporting]
         TP7[TP7: Data Ops]
         TP8[TP8: Tenants]
+        TP9[TP9: Bug Reports]
     end
 
-    FR[📝 Functional Requirements] --> TP1 & TP2 & TP3 & TP4 & TP5 & TP6 & TP7 & TP8
+    FR[📝 Functional Requirements] --> TP1 & TP2 & TP3 & TP4 & TP5 & TP6 & TP7 & TP8 & TP9
 ```
 
 ---
@@ -53,6 +55,7 @@ graph LR
 | [Test Pack 6](test-pack-6) | Reporting Dashboards | Exports + ad hoc queries + access control | [FR-REPORTING-401](requirements-reporting#fr-reporting-401)–[FR-REPORTING-434](requirements-reporting#fr-reporting-434) |
 | [Test Pack 7](test-pack-7) | Data Integrity & Operations | Duplicates + Sync + Admin Safety + Imports | [FR-DATA-901](requirements-data-operations#fr-data-901)–[FR-OPS-907](requirements-data-operations#fr-ops-907) |
 | [Test Pack 8](test-pack-8) | Tenant Management | District Suite tenant CRUD + configuration | [FR-TENANT-101](requirements-district-suite#fr-tenant-101)–[FR-API-108](requirements-district-suite#fr-api-108) |
+| [Test Pack 9](test-pack-9) | Bug Reporting | Bug report submission + admin management + system integration | [FR-BUG-001](requirements-bug-reporting#fr-bug-001)–[FR-BUG-013](requirements-bug-reporting#fr-bug-013) |
 
 [↑ Back to Navigation](#quick-navigation)
 
@@ -199,6 +202,23 @@ graph LR
 
 ---
 
+### Test Pack 9: Bug Reporting
+
+**Focus:** Bug report submission + admin management + system integration
+
+**Coverage:**
+- [FR-BUG-001](requirements-bug-reporting#fr-bug-001)–[FR-BUG-005](requirements-bug-reporting#fr-bug-005) (Submission)
+- [FR-BUG-006](requirements-bug-reporting#fr-bug-006)–[FR-BUG-012](requirements-bug-reporting#fr-bug-012) (Administration)
+- [FR-BUG-013](requirements-bug-reporting#fr-bug-013) (System Integration)
+
+**Test Cases:** TC-1300 through TC-1315
+
+[View Full Test Pack →](test-pack-9)
+
+[↑ Back to Navigation](#quick-navigation)
+
+---
+
 ## Traceability
 
 Each test case (TC-xxx) is linked to one or more functional requirements (FR-xxx). This bidirectional linking ensures:
@@ -224,6 +244,7 @@ Test cases are organized by test pack:
 | TC-700–TC-822 | Test Pack 6 (Reporting) |
 | TC-801–TC-1135 | Test Pack 8 (Tenant Management) |
 | TC-901–TC-913, TC-160–TC-222 | Test Pack 7 (Data Integrity & Ops) |
+| TC-1300–TC-1315 | Test Pack 9 (Bug Reporting) |
 
 ---
 

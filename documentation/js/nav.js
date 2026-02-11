@@ -29,9 +29,11 @@ const PAGE_MANIFEST = {
     'requirements-email': 'requirements/email',
     'requirements-data-operations': 'requirements/data_operations',
     'requirements-district-suite': 'requirements/district_suite',
+    'requirements-bug-reporting': 'requirements/bug_reporting',
     'user-stories': 'requirements/user_stories',
     'use-cases': 'requirements/use_cases',
     'non-functional-requirements': 'requirements/non_functional',
+    'bug-reporting': 'requirements/bug_reporting',
     // Testing
     'test-packs': 'test_packs/index',
     'test-pack-1': 'test_packs/test_pack_1',
@@ -42,6 +44,7 @@ const PAGE_MANIFEST = {
     'test-pack-6': 'test_packs/test_pack_6',
     'test-pack-7': 'test_packs/test_pack_7',
     'test-pack-8': 'test_packs/test_pack_8',
+    'test-pack-9': 'test_packs/test_pack_9',
     // User Guide
     'user-guide-index': 'user_guide/index',
     'user-guide-in-person-events': 'user_guide/in_person_events',
@@ -196,6 +199,7 @@ function getTestPackForTC(tcId) {
     if (tcNum >= 700 && tcNum <= 822) return 'test_packs/test_pack_6';
     if (tcNum >= 900 && tcNum <= 913) return 'test_packs/test_pack_7';
     if (tcNum >= 800 && tcNum <= 899) return 'test_packs/test_pack_8';
+    if (tcNum >= 1300 && tcNum <= 1315) return 'test_packs/test_pack_9';
 
     return null;
 }

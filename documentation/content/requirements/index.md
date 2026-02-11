@@ -1,7 +1,7 @@
 # Functional Requirements
 
 This document defines **what the system must do**. Each requirement is:
-- ✅ **Testable** - Verified by test cases in Test Packs 1-8
+- ✅ **Testable** - Verified by test cases in Test Packs 1-9
 - 🔗 **Traceable** - Linked to User Stories and Use Cases
 - 🎯 **Specific** - Clear acceptance criteria
 
@@ -20,8 +20,9 @@ This document defines **what the system must do**. Each requirement is:
 | **Email System** | [Email](requirements-email) | FR-EMAIL | ~22 |
 | **Data & Operations** | [Data/Ops](requirements-data-operations) | FR-DATA, FR-OPS, FR-DELTA | ~37 |
 | **District Suite** | [District Suite](requirements-district-suite) | FR-TENANT, FR-SELFSERV, FR-API | ~40 |
+| **Bug Reporting** | [Bug Reporting](requirements-bug-reporting) | FR-BUG | 13 |
 
-**Total: ~190 functional requirements**
+**Total: ~203 functional requirements**
 
 ---
 
