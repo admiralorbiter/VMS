@@ -8,10 +8,11 @@ Shows which teachers have completed their virtual session goals.
 
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import db
+from models.teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
 from models.teacher_progress import TeacherProgress
 from models.tenant import Tenant
 from models.user import TenantRole
@@ -172,6 +173,11 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         # Calculate progress percentage
         progress_pct = min(100, (completed / target * 100)) if target > 0 else 0
 
+        # Check for open data flags
+        open_flags_count = TeacherDataFlag.query.filter_by(
+            teacher_progress_id=teacher.id, is_resolved=False
+        ).count()
+
         bd["teachers"].append(
             {
                 "id": teacher.id,
@@ -188,6 +194,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
                     if completed >= target
                     else ("warning" if completed > 0 else "danger")
                 ),
+                "has_open_flags": open_flags_count > 0,
+                "open_flags_count": open_flags_count,
             }
         )
 
@@ -315,3 +323,62 @@ def export_excel():
         as_attachment=True,
         download_name=filename,
     )
+
+
+# ── Data Flag API ──────────────────────────────────────────────────────
+
+
+@teacher_usage_bp.route("/flags/<int:teacher_progress_id>", methods=["POST"])
+@login_required
+@virtual_admin_required
+def create_flag(teacher_progress_id):
+    """Create a new data flag for a teacher."""
+    tp = TeacherProgress.query.get_or_404(teacher_progress_id)
+
+    data = request.get_json(silent=True) or {}
+    flag_type = data.get("flag_type", "")
+    details = data.get("details", "").strip()
+
+    if flag_type not in TeacherDataFlagType.all_types():
+        return jsonify({"error": "Invalid flag type"}), 400
+
+    flag = TeacherDataFlag(
+        teacher_progress_id=tp.id,
+        flag_type=flag_type,
+        details=details or None,
+        created_by=current_user.id,
+    )
+    db.session.add(flag)
+    db.session.commit()
+
+    return jsonify({"message": "Flag created", "flag": flag.to_dict()}), 201
+
+
+@teacher_usage_bp.route("/flags/<int:teacher_progress_id>", methods=["GET"])
+@login_required
+@virtual_admin_required
+def list_flags(teacher_progress_id):
+    """List open flags for a teacher."""
+    flags = (
+        TeacherDataFlag.query.filter_by(
+            teacher_progress_id=teacher_progress_id, is_resolved=False
+        )
+        .order_by(TeacherDataFlag.created_at.desc())
+        .all()
+    )
+    return jsonify({"flags": [f.to_dict() for f in flags]})
+
+
+@teacher_usage_bp.route("/flags/<int:flag_id>/resolve", methods=["POST"])
+@login_required
+@virtual_admin_required
+def resolve_flag(flag_id):
+    """Resolve a data flag."""
+    flag = TeacherDataFlag.query.get_or_404(flag_id)
+    data = request.get_json(silent=True) or {}
+    flag.resolve(
+        notes=data.get("notes", "").strip() or None,
+        resolved_by=current_user.id,
+    )
+    db.session.commit()
+    return jsonify({"message": "Flag resolved", "flag": flag.to_dict()})

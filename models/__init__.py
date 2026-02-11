@@ -78,6 +78,7 @@ from .school_model import School
 from .student import Student
 from .sync_log import SyncLog
 from .teacher import Teacher
+from .teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
 from .teacher_progress import TeacherProgress
 from .teacher_progress_archive import TeacherProgressArchive
 from .tenant import Tenant
@@ -143,6 +144,8 @@ __all__ = [
     "PathfulUnmatchedRecord",
     "EventFlag",
     "FlagType",
+    "TeacherDataFlag",
+    "TeacherDataFlagType",
 ]
 
 # Eager-loading helper options

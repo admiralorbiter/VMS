@@ -213,6 +213,58 @@ def admin():
     )
 
 
+@management_bp.route("/admin/data-flags")
+@login_required
+def data_flags():
+    """
+    Admin page to review all teacher data flags across tenants.
+
+    Permission Requirements:
+        - Admin access required
+
+    Query Parameters:
+        type: Filter by flag type (missing_session, not_tracked, other)
+        status: Filter by status (open, resolved, all). Default: open
+    """
+    if not current_user.is_admin:
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("management.admin"))
+
+    from models.teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
+
+    # Build query
+    q = TeacherDataFlag.query
+
+    # Status filter (default to open)
+    status = request.args.get("status", "open")
+    if status == "open":
+        q = q.filter_by(is_resolved=False)
+    elif status == "resolved":
+        q = q.filter_by(is_resolved=True)
+
+    # Type filter
+    type_filter = request.args.get("type", "")
+    if type_filter in TeacherDataFlagType.all_types():
+        q = q.filter_by(flag_type=type_filter)
+
+    flags = q.order_by(TeacherDataFlag.created_at.desc()).all()
+
+    # Stats — always count open flags regardless of current filter
+    total_open = TeacherDataFlag.query.filter_by(is_resolved=False).count()
+    count_by_type = {}
+    for ft in TeacherDataFlagType.all_types():
+        count_by_type[ft] = TeacherDataFlag.query.filter_by(
+            is_resolved=False, flag_type=ft
+        ).count()
+
+    return render_template(
+        "management/data_flags.html",
+        flags=flags,
+        total_open=total_open,
+        count_by_type=count_by_type,
+    )
+
+
 @management_bp.route("/admin/sync-logs")
 @login_required
 def view_sync_logs():
