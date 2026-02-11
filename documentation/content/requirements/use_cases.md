@@ -22,6 +22,7 @@
 | [UC-12: Partner Reconciliation](#uc-12) | |
 | [UC-13: Semester Rollover](#uc-13) | |
 | [UC-20: District Admin Virtual Review](#uc-20) | |
+| [UC-21: Virtual Admin Attendance Override](#uc-21) | |
 
 ---
 
@@ -65,6 +66,7 @@ graph LR
 | [UC-12](#uc-12) | Partner Reconciliation Report | [US-705](user-stories#us-705) | [Test Pack 6](test-pack-6) |
 | [UC-13](#uc-13) | Semester Progress Rollover | [US-509](user-stories#us-509) | [Test Pack 1](test-pack-1) |
 | [UC-20](#uc-20) | District Admin Virtual Review | [US-310](user-stories#us-310), [US-311](user-stories#us-311) | [Test Pack 3](test-pack-3) |
+| [UC-21](#uc-21) | Virtual Admin Attendance Override | [US-313](user-stories#us-313), [US-314](user-stories#us-314), [US-315](user-stories#us-315) | *TBD* |
 | **District Suite** | | | |
 | [UC-14](#uc-14) | Onboard New District Tenant | [US-1001](user-stories#us-1001), [US-1002](user-stories#us-1002) | *Phase 1* |
 | [UC-15](#uc-15) | District Creates/Manages Event | [US-1101](user-stories#us-1101), [US-1102](user-stories#us-1102), [US-1104](user-stories#us-1104) | *Phase 2* |
@@ -421,6 +423,72 @@ flowchart LR
 
 ---
 
+### <a id="uc-21"></a>UC-21: Virtual Admin Attendance Override
+
+| Actor | System | Outcome |
+|-------|--------|---------|
+| Virtual Admin | Polaris (Teacher Usage Dashboard) | Teacher attendance corrected, audit logged |
+
+**Preconditions:**
+- User has `virtual_admin` or higher tenant role
+- Virtual session exists with `Completed` status
+
+```mermaid
+flowchart TB
+    subgraph "Phase 1: Add Attendance"
+        NAV[📊 Teacher Usage Dashboard] --> SELECT[👤 Select Teacher]
+        SELECT --> HISTORY[📋 View Session History]
+        HISTORY --> SEARCH[🔍 Search Completed Sessions]
+        SEARCH --> ADD[➕ Add to Session]
+        ADD --> REASON[📝 Enter Required Reason]
+    end
+
+    subgraph "Phase 2: Data Update"
+        REASON --> OVERRIDE[💾 Create Override Record]
+        OVERRIDE --> RECALC[🔄 Recalculate Progress]
+        RECALC --> AUDIT[📝 Audit Log Entry]
+    end
+
+    subgraph "Phase 3: Propagation"
+        AUDIT --> DASH[📊 Dashboard Updated]
+        AUDIT --> EXPORT[📥 Exports Updated]
+        AUDIT --> MAIN[🏢 Main App Tracking Updated]
+    end
+```
+
+**Workflow:**
+
+**Add Teacher to Session:**
+1. Virtual Admin navigates to Teacher Usage dashboard
+2. Selects a teacher from the progress table
+3. Views teacher's session history (completed + upcoming)
+4. Clicks "Add to Session" for a completed session the teacher attended but isn't credited for
+5. Searches for the session by date/title/topic
+6. Confirms the override with a required reason/note
+7. System creates attendance override record (separate from original import data)
+8. Teacher's progress recalculates to include the override
+9. All changes logged in audit trail with admin identity, timestamp, and reason
+
+**Alternative: Remove Attendance**
+1. Admin views a teacher's session where they were incorrectly credited
+2. Clicks "Remove from Session"
+3. Confirms with required reason/note
+4. System records a removal override (original data preserved)
+5. Teacher progress recalculates excluding the overridden session
+
+**Postconditions:**
+- Override stored separately from imported data (enables rollback)
+- Teacher progress updated across all views (district dashboards, exports, main app)
+- Full audit trail with admin identity, role, timestamp, action, and reason
+- Overridden sessions visually distinguished in teacher detail view
+
+**Requirements:** [FR-VIRTUAL-234](requirements-virtual#fr-virtual-234)–[FR-VIRTUAL-243](requirements-virtual#fr-virtual-243), [FR-DISTRICT-550](requirements-district#fr-district-550)–[FR-DISTRICT-553](requirements-district#fr-district-553)
+**User Stories:** [US-313](user-stories#us-313), [US-314](user-stories#us-314), [US-315](user-stories#us-315)
+
+[↑ Back to Index](#use-case-index)
+
+---
+
 ## District Suite Use Cases
 
 > [!NOTE]
@@ -591,4 +659,4 @@ flowchart LR
 
 ---
 
-*Last updated: February 2026 · Version 2.0*
+*Last updated: February 2026 · Version 2.1*

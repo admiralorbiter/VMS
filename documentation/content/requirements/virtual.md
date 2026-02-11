@@ -57,6 +57,23 @@
 
 ---
 
+## Attendance Override Management
+
+| ID | Requirement | Test Coverage | Related Stories |
+|----|-------------|---------------|-----------------|
+| <a id="fr-virtual-234"></a>**FR-VIRTUAL-234** | The system shall allow virtual admins to add a teacher from the TeacherProgress roster to a completed virtual session as an attendance override. | *TBD* | [US-313](user-stories#us-313) |
+| <a id="fr-virtual-235"></a>**FR-VIRTUAL-235** | The system shall require a reason/note when creating or removing an attendance override. | *TBD* | [US-313](user-stories#us-313), [US-314](user-stories#us-314) |
+| <a id="fr-virtual-236"></a>**FR-VIRTUAL-236** | Attendance overrides shall be stored separately from original import/match data so that the original data is preserved and rollback is possible. | *TBD* | [US-313](user-stories#us-313), [US-314](user-stories#us-314) |
+| <a id="fr-virtual-237"></a>**FR-VIRTUAL-237** | The system shall allow virtual admins to remove an attendance override or original attendance credit for a teacher on a session. | *TBD* | [US-314](user-stories#us-314) |
+| <a id="fr-virtual-238"></a>**FR-VIRTUAL-238** | Attendance overrides shall immediately affect teacher progress calculations (session counts and goal status). | *TBD* | [US-313](user-stories#us-313), [US-314](user-stories#us-314) |
+| <a id="fr-virtual-239"></a>**FR-VIRTUAL-239** | Attendance overrides shall be scoped to the admin's tenant district — admins cannot override attendance for sessions outside their tenant scope. | *TBD* | [US-313](user-stories#us-313), [US-314](user-stories#us-314) |
+| <a id="fr-virtual-240"></a>**FR-VIRTUAL-240** | The system shall display attendance overrides distinctly from original attendance in the teacher detail view (e.g., badge or icon indicating admin override). | *TBD* | [US-313](user-stories#us-313) |
+| <a id="fr-virtual-241"></a>**FR-VIRTUAL-241** | The system shall log all attendance overrides with: admin identity, admin role, timestamp, teacher, session, action type (add/remove), and reason. | *TBD* | [US-315](user-stories#us-315) |
+| <a id="fr-virtual-242"></a>**FR-VIRTUAL-242** | Staff shall be able to view attendance override audit logs filtered by admin, teacher, session, date range, or tenant. | *TBD* | [US-315](user-stories#us-315) |
+| <a id="fr-virtual-243"></a>**FR-VIRTUAL-243** | Staff shall be able to reverse an attendance override, restoring the original attendance state. | *TBD* | [US-315](user-stories#us-315) |
+
+---
+
 ## Related Documentation
 
 - [Requirements Overview](requirements) — Summary and traceability matrix
@@ -65,4 +82,4 @@
 
 ---
 
-*Last updated: February 2026 · Version 1.0*
+*Last updated: February 2026 · Version 1.1*

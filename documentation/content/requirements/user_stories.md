@@ -10,7 +10,7 @@
 |------|-------------|:-------:|
 | [Epic 1](#epic-1) | In-Person Events (Salesforce → VolunTeach → Website) | 5 |
 | [Epic 2](#epic-2) | Public Volunteer Signup + Confirmation + Calendar Invite | 3 |
-| [Epic 3](#epic-3) | Virtual Events in Polaris + Pathful Data Ingest + Data Management | 12 |
+| [Epic 3](#epic-3) | Virtual Events in Polaris + Pathful Data Ingest + Data Management | 15 |
 | [Epic 4](#epic-4) | Volunteer Recruitment (Search + History + Communication Logs) | 6 |
 | [Epic 5](#epic-5) | District Progress Dashboards + Teacher Magic Links | 6 |
 | [Epic 6](#epic-6) | Student Roster + Attendance | 3 |
@@ -350,11 +350,56 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 - Given I filter the audit log by user, district, or date range, then results match those criteria.
 - Given I view the audit log, then I can distinguish between staff edits, district admin edits, and system/import changes.
 
+### <a id="us-313"></a>US-313: Virtual Admin Adds Teacher to Session Attendance
+
+**As** a virtual admin, **I want** to manually add a teacher to a completed virtual session's attendance, **So that** teachers who attended without prior signup or joined via another class get credit toward their session goal.
+
+**Related Requirements:** [FR-VIRTUAL-234](requirements-virtual#fr-virtual-234), [FR-VIRTUAL-235](requirements-virtual#fr-virtual-235), [FR-VIRTUAL-236](requirements-virtual#fr-virtual-236), [FR-VIRTUAL-238](requirements-virtual#fr-virtual-238), [FR-VIRTUAL-239](requirements-virtual#fr-virtual-239), [FR-VIRTUAL-240](requirements-virtual#fr-virtual-240)
+
+**Related Use Cases:** [UC-21](use-cases#uc-21)
+
+**Acceptance Criteria:**
+
+- Given I am a virtual admin, when I view a teacher's session history, then I see an "Add to Session" action.
+- Given I click "Add to Session", then I can search/browse completed sessions within my tenant's district.
+- Given I select a session, then I must provide a reason/note before confirming (required field).
+- Given I confirm the override, then the teacher's progress immediately recalculates to include the added session.
+- Given the override is saved, then it is reflected in district dashboards, exports, and main app tracking.
+- Given the override is displayed in the teacher detail view, then it is visually distinguished from system-matched sessions (e.g., badge or icon).
+
+### <a id="us-314"></a>US-314: Virtual Admin Removes Teacher from Session Attendance
+
+**As** a virtual admin, **I want** to remove an incorrectly recorded teacher from a session's attendance, **So that** progress data is accurate when a teacher was mistakenly credited.
+
+**Related Requirements:** [FR-VIRTUAL-237](requirements-virtual#fr-virtual-237), [FR-VIRTUAL-235](requirements-virtual#fr-virtual-235), [FR-VIRTUAL-236](requirements-virtual#fr-virtual-236), [FR-VIRTUAL-238](requirements-virtual#fr-virtual-238), [FR-VIRTUAL-239](requirements-virtual#fr-virtual-239)
+
+**Related Use Cases:** [UC-21](use-cases#uc-21)
+
+**Acceptance Criteria:**
+
+- Given I am a virtual admin viewing a teacher's session history, when I see a session with incorrect attendance, then I see a "Remove from Session" action.
+- Given I click "Remove from Session", then I must provide a reason/note before confirming (required field).
+- Given I confirm the removal, then the teacher's progress recalculates excluding the removed session.
+- Given the removal is a soft operation, then the original data is preserved (not hard-deleted) and can be restored.
+
+### <a id="us-315"></a>US-315: View Audit Log for Virtual Admin Attendance Overrides
+
+**As** PrepKC staff, **I want** to view an audit trail of all virtual admin attendance overrides, **So that** I can verify changes, roll back if needed, and monitor admin activity across tenants.
+
+**Related Requirements:** [FR-VIRTUAL-241](requirements-virtual#fr-virtual-241), [FR-VIRTUAL-242](requirements-virtual#fr-virtual-242), [FR-VIRTUAL-243](requirements-virtual#fr-virtual-243)
+
+**Related Use Cases:** [UC-21](use-cases#uc-21)
+
+**Acceptance Criteria:**
+
+- Given attendance overrides are made, then an audit log entry is created capturing: admin identity, admin role, timestamp, teacher, session, action (add/remove), and stated reason.
+- Given I view the audit log, then I can filter by admin, teacher, session, date range, and tenant.
+- Given I view a teacher's session history, then I can distinguish between system-matched attendance and admin-overridden attendance.
+- Given I identify an incorrect override, then I can reverse it and restore the original attendance state.
+
 [↑ Back to Quick Navigation](#quick-navigation)
 
 ---
-
-<a id="epic-4"></a>
 
 ## Epic 4: Volunteer Recruitment (Search + History + Communication Logs)
 
@@ -1040,4 +1085,4 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 ---
 
 *Last updated: February 2026*
-*Version: 1.4*
+*Version: 1.5*

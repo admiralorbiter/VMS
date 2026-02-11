@@ -77,6 +77,20 @@
 
 ---
 
+## Attendance Override Impact
+
+> [!NOTE]
+> These requirements document how virtual admin attendance overrides ([FR-VIRTUAL-234](requirements-virtual#fr-virtual-234)–[FR-VIRTUAL-243](requirements-virtual#fr-virtual-243)) affect district progress tracking and reporting.
+
+| ID | Requirement | Test Coverage | Related Stories |
+|----|-------------|---------------|-----------------|
+| <a id="fr-district-550"></a>**FR-DISTRICT-550** | Teacher progress calculations shall incorporate attendance overrides in addition to original name-matched session data. | *TBD* | [US-313](user-stories#us-313), [US-503](user-stories#us-503) |
+| <a id="fr-district-551"></a>**FR-DISTRICT-551** | District progress dashboards shall reflect attendance overrides in real-time (achieved/in-progress/not-started counts update immediately). | *TBD* | [US-313](user-stories#us-313), [US-501](user-stories#us-501) |
+| <a id="fr-district-552"></a>**FR-DISTRICT-552** | The teacher detail view shall visually distinguish between system-matched sessions and admin-overridden sessions. | *TBD* | [US-313](user-stories#us-313), [US-502](user-stories#us-502) |
+| <a id="fr-district-553"></a>**FR-DISTRICT-553** | Attendance override data shall propagate to all downstream reporting and export functions including Excel exports. | *TBD* | [US-313](user-stories#us-313), [US-703](user-stories#us-703) |
+
+---
+
 ## Related Documentation
 
 - [Requirements Overview](requirements) — Summary and traceability matrix
@@ -85,4 +99,4 @@
 
 ---
 
-*Last updated: February 2026 · Version 1.0*
+*Last updated: February 2026 · Version 1.1*
